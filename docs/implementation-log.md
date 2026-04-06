@@ -79,3 +79,44 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because the CLI now exposes node transitions, prompt bundle usage, and persisted-plan state for every turn.
+
+## 2026-04-06
+
+### Rewrite prompt architecture into node contracts
+- Replaced the one-file prompt placeholders with multi-file Spanish prompt bundles per node.
+- Split conversational prompt composition from extraction prompt composition.
+- Added shared flow discipline, question strategy, and anti-pattern prompt files for conversational turns.
+- Added extractor-specific prompt files for field definitions, normalization rules, conflict resolution, and examples.
+- Scoped tool availability per node in the runtime so the Agents SDK only exposes tools allowed by the current flow step.
+- Added prompt loader tests that verify bundle structure and extractor isolation.
+
+Reason:
+- The original prompt files were too thin and too loosely coupled to the runtime, which made node behavior improvised and hard to audit against the thesis flow.
+
+Decision:
+- Keep prompt files as plain Spanish text under `prompts/`, but make the runtime enforce the same structure through the manifest so prompt traceability is behavioral, not just nominal.
+
+Flow nodes affected:
+- `contacto_inicial`
+- `deteccion_intencion`
+- `existe_plan_guardado`
+- `entrevista`
+- `minimos_para_buscar`
+- `aclarar_pedir_faltante`
+- `usuario_responde`
+- `buscar_proveedores`
+- `busqueda_exitosa`
+- `hay_resultados`
+- `recomendar`
+- `refinar_criterios`
+- `usuario_elige_proveedor`
+- `anadir_a_proveedores_recomendados`
+- `seguir_refinando_guardar_plan`
+- `continua`
+- `accion_final_exitosa`
+- `necesidad_cubierta`
+- `crear_lead_cerrar`
+- `guardar_seleccion_reintentar_luego`
+- `guardar_cerrar_temporalmente`
+- `informar_error_reintento`
+- `reintentar`

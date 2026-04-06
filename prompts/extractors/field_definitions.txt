@@ -1,0 +1,48 @@
+Definiciones de campos:
+
+- intent:
+  - buscar_proveedores: quiere iniciar o continuar una búsqueda con intención de ver opciones.
+  - refinar_busqueda: quiere ajustar criterios, ampliar o acotar resultados.
+  - ver_opciones: quiere revisar alternativas sin expresar refinamiento claro.
+  - confirmar_proveedor: quiere elegir un proveedor o pedir avanzar con una opción específica.
+  - retomar_plan: quiere seguir desde un plan ya guardado.
+  - cerrar: quiere terminar la conversación.
+  - pausar: quiere dejarlo para después o retomarlo luego.
+
+- intentConfidence:
+  - alto si el mensaje es directo;
+  - medio si hay inferencia razonable;
+  - bajo si hay ambigüedad.
+
+- eventType:
+  - tipo de evento o contexto general, por ejemplo boda, cumpleaños, evento corporativo.
+
+- vendorCategory:
+  - tipo de proveedor buscado, por ejemplo fotografía, catering, música, flores.
+
+- location:
+  - ciudad, distrito, zona o país útil para la búsqueda.
+
+- budgetSignal:
+  - señal textual o semántica de presupuesto, incluso si no hay monto exacto.
+
+- guestRange:
+  - normaliza a uno de estos valores: 1-20, 21-50, 51-100, 101-200, 201+, unknown.
+
+- preferences:
+  - gustos o atributos deseables, no obligatorios.
+
+- hardConstraints:
+  - restricciones obligatorias que sí cambian la selección.
+
+- assumptions:
+  - inferencias razonables que conviene transparentar después.
+
+- conversationSummary:
+  - resumen corto, acumulativo y actualizado del caso.
+
+- selectedProviderHint:
+  - índice, nombre parcial o referencia clara a un proveedor ya recomendado.
+
+- pauseRequested:
+  - true si el usuario quiere pausar, cerrar o retomar más tarde.

@@ -15,6 +15,7 @@ import type {
 } from './contracts';
 import { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
+import type { ToolName } from './prompt-manifest';
 
 const extractionSchema = z.object({
   intent: z
@@ -92,14 +93,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const bundle = await this.options.promptLoader.loadNodeBundle(
       request.currentNode,
     );
-    const tools = this.createTools(request.toolUsage, request.plan);
-
-    request.toolUsage.considered.push(
-      'list_categories',
-      'list_locations',
-      'search_providers',
-      'get_provider_detail',
+    const tools = this.createTools(
+      request.toolUsage,
+      request.plan,
+      bundle.allowedTools,
     );
+
+    request.toolUsage.considered.push(...bundle.allowedTools);
 
     const agent = new Agent<RuntimeContext>({
       name: `reply_${request.currentNode}`,
@@ -130,6 +130,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private composeConversationInput(request: ComposeReplyRequest): string {
+    const allowedTools =
+      request.toolUsage.considered.length > 0
+        ? request.toolUsage.considered.join(', ')
+        : 'ninguna';
+
     return [
       `Nodo previo: ${request.previousNode}`,
       `Nodo actual: ${request.currentNode}`,
@@ -137,6 +142,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Plan estructurado: ${JSON.stringify(request.plan, null, 2)}`,
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
       `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
+      `Herramientas autorizadas en este nodo: ${allowedTools}`,
       `Resultados vigentes:\n${summarizeRecommendedProviders(request.providerResults)}`,
       request.errorMessage ? `Error operativo: ${request.errorMessage}` : '',
       'Responde únicamente con el próximo mensaje para el usuario.',
@@ -148,9 +154,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private createTools(
     toolUsage: RuntimeContext['toolUsage'],
     plan: PersistedPlan,
+    allowedTools: readonly ToolName[],
   ) {
-    return [
-      tool({
+    const toolMap = {
+      list_categories: tool({
         name: 'list_categories',
         description:
           'Lista categorías reales del marketplace para aclarar ambigüedad.',
@@ -160,7 +167,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           return await this.options.providerGateway.listCategories();
         },
       }),
-      tool({
+      list_locations: tool({
         name: 'list_locations',
         description:
           'Lista ubicaciones reales del marketplace para normalizar la ciudad o país.',
@@ -170,7 +177,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           return await this.options.providerGateway.listLocations();
         },
       }),
-      tool({
+      search_providers: tool({
         name: 'search_providers',
         description:
           'Busca proveedores reales usando el plan vigente cuando ya hay mínimos suficientes.',
@@ -180,7 +187,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           return await this.options.providerGateway.searchProviders(plan);
         },
       }),
-      tool({
+      get_provider_detail: tool({
         name: 'get_provider_detail',
         description:
           'Obtiene detalle real de un proveedor por id para ampliar una recomendación.',
@@ -192,7 +199,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           return await this.options.providerGateway.getProviderDetail(provider_id);
         },
       }),
-    ];
+    } satisfies Record<ToolName, ReturnType<typeof tool>>;
+
+    return allowedTools.map((name) => toolMap[name]);
   }
 }
-
