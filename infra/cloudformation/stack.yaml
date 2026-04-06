@@ -1,0 +1,125 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: recap-agent serverless runtime
+
+Parameters:
+  FunctionName:
+    Type: String
+    Default: recap-agent-runtime
+  CodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the zipped Lambda artifact.
+  CodeS3Key:
+    Type: String
+    Description: S3 key containing the zipped Lambda artifact.
+  OpenAISecretArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing the OpenAI API key.
+  OpenAIModel:
+    Type: String
+    Default: gpt-5
+  OpenAIExtractorModel:
+    Type: String
+    Default: gpt-5-mini
+  SinEnvolturasBaseUrl:
+    Type: String
+    Default: https://api.sinenvolturas.com/api-web/vendor
+
+Resources:
+  PlansTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      TableName: !Sub '${FunctionName}-plans'
+
+  RuntimeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: recap-agent-dynamo
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                Resource: !GetAtt PlansTable.Arn
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref OpenAISecretArn
+
+  RuntimeFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref FunctionName
+      Handler: lambda/index.handler
+      Runtime: nodejs20.x
+      Timeout: 30
+      MemorySize: 1024
+      Role: !GetAtt RuntimeRole.Arn
+      Code:
+        S3Bucket: !Ref CodeS3Bucket
+        S3Key: !Ref CodeS3Key
+      Environment:
+        Variables:
+          OPENAI_SECRET_ID: !Ref OpenAISecretArn
+          OPENAI_MODEL: !Ref OpenAIModel
+          OPENAI_EXTRACTOR_MODEL: !Ref OpenAIExtractorModel
+          PLANS_TABLE_NAME: !Ref PlansTable
+          PROMPTS_DIR: /var/task/prompts
+          SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
+
+  RuntimeFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !GetAtt RuntimeFunction.Arn
+      Cors:
+        AllowMethods:
+          - POST
+        AllowOrigins:
+          - '*'
+
+  RuntimeFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName: !Ref RuntimeFunction
+      FunctionUrlAuthType: NONE
+      Principal: '*'
+
+  RuntimeFunctionInvokePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref RuntimeFunction
+      Principal: '*'
+      InvokedViaFunctionUrl: true
+
+Outputs:
+  FunctionUrl:
+    Value: !GetAtt RuntimeFunctionUrl.FunctionUrl
+  PlansTableName:
+    Value: !Ref PlansTable
+  OpenAISecretArn:
+    Value: !Ref OpenAISecretArn
