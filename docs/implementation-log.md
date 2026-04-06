@@ -120,3 +120,15 @@ Flow nodes affected:
 - `guardar_cerrar_temporalmente`
 - `informar_error_reintento`
 - `reintentar`
+
+### Increase Lambda timeout for prompt-heavy runtime turns
+- Raised the Lambda timeout in CloudFormation from 30 seconds to 90 seconds.
+
+Reason:
+- The deployed runtime timed out on a live invocation after the prompt rewrite, which increased end-to-end turn latency enough to hit the previous limit.
+
+Decision:
+- Increase the function timeout now to keep the live serverless path usable while preserving the same runtime architecture.
+
+Flow nodes affected:
+- All nodes indirectly, because the timeout applies to the full conversational turn path.
