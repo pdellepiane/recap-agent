@@ -63,3 +63,19 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because every runtime call to OpenAI depends on this credential path.
+
+### Replace the thin terminal client with a debug-first Bun CLI
+- Replaced the minimal terminal loop with a Bun-first CLI that targets the deployed Lambda Function URL.
+- Added CloudFormation output resolution so the CLI can infer the Function URL and plans table by default.
+- Added persisted-plan inspection from DynamoDB after each turn.
+- Added rich trace and plan rendering for local debugging.
+- Added a tracked `.env.example` so defaults are documented while still allowing CLI flags to override them.
+
+Reason:
+- The dev tool needs to be informative enough to debug conversations, not just send plain text and print raw JSON.
+
+Decision:
+- Keep the CLI on the same deployed runtime path as Lambda by always sending turns to the live Function URL, while using local AWS access only for developer inspection of CloudFormation outputs and persisted plans.
+
+Flow nodes affected:
+- All nodes indirectly, because the CLI now exposes node transitions, prompt bundle usage, and persisted-plan state for every turn.

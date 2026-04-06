@@ -34,27 +34,61 @@ npm test
 npm run build
 ```
 
-## Terminal client
+## Dev CLI
 
-The terminal client is intentionally thin. It does not run the agent locally; it sends user turns to the deployed Lambda Function URL.
+The CLI is developer-first and always targets the live deployed Lambda runtime, so the conversation path is the same one used by the deployed function. It does not run a separate local agent.
 
-Required env vars:
-
-```bash
-export AGENT_FUNCTION_URL="https://..."
-export TERMINAL_USER_ID="51999999999"
-```
-
-Then run:
+It uses Bun by default:
 
 ```bash
 npm run terminal
 ```
 
+Node fallback:
+
+```bash
+npm run terminal:node
+```
+
+Default resolution order:
+
+1. CLI flags
+2. local `.env`
+3. CloudFormation stack outputs for `FunctionUrl` and `PlansTableName`
+4. hardcoded defaults for profile, region, user id, channel, and timeout
+
+Create your local defaults from the tracked example:
+
+```bash
+cp .env.example .env
+```
+
+Useful flags:
+
+```bash
+npm run terminal -- --help
+npm run terminal -- --user-id 51988888888
+npm run terminal -- --show-raw --full-plan
+npm run terminal -- --url https://... --plans-table recap-agent-runtime-plans
+```
+
+Built-in debug commands inside the CLI:
+
+- `/help`
+- `/config`
+- `/plan`
+- `/exit`
+
+After every turn the CLI can show:
+
+- the rendered agent reply
+- the full node transition trace
+- the persisted DynamoDB plan snapshot
+- the raw Lambda JSON payload when `--show-raw` is enabled
+
 ## Lambda runtime env vars
 
 ```bash
-OPENAI_API_KEY=...
 OPENAI_MODEL=gpt-5
 OPENAI_EXTRACTOR_MODEL=gpt-5-mini
 AWS_REGION=us-east-1
