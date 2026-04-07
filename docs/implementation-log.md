@@ -132,3 +132,49 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because the timeout applies to the full conversational turn path.
+
+## 2026-04-07
+
+### Add terminal-plan purge utility for DynamoDB
+- Added a repo-native purge script for deleting persisted plans created by the terminal test channel.
+- Defaulted the script to the `terminal_whatsapp` channel and made it resolve the plans table from CloudFormation or flags.
+- Added a `--dry-run` mode and required `--yes` for destructive execution.
+- Documented the command in the README.
+
+Reason:
+- Terminal-driven testing leaves plan artifacts in the shared DynamoDB table, so the project needs a fast and explicit cleanup path that does not require ad hoc AWS console work.
+
+Decision:
+- Implement the purge as a small Node script under `scripts/` instead of an AWS CLI snippet so it stays versioned, reviewable, and aligned with the same stack defaults as the rest of the repo tooling.
+
+Flow nodes affected:
+- All nodes indirectly, because the utility deletes persisted plan records regardless of which node last wrote them.
+
+### Centralize runtime configuration and ban explicit any
+- Added a project-level convention in `AGENTS.md` that explicit `any` is banned.
+- Added ESLint with TypeScript-aware rules so `npm run check` enforces the no-`any` rule through standard linting instead of a custom script.
+- Replaced the flat config helper with a validated, centralized runtime config object.
+- Moved model names, provider search limits, recommendation limits, detail lookup caps, and default channel settings into the config module.
+- Wired Lambda bootstrap, provider gateway, and reply runtime to consume the centralized settings.
+
+Reason:
+- Model behavior and runtime knobs were spread across handler defaults, gateway constants, and agent runtime literals, which makes tuning harder and increases drift risk.
+
+Decision:
+- Keep configuration environment-driven, but parse it once into a nested typed object so behavior tuning remains explicit and auditable.
+
+Flow nodes affected:
+- All nodes indirectly, because the config controls how the runtime searches, recommends, and defaults channel behavior across the full turn path.
+
+### Clarify non-streaming channel scope
+- Added a project convention stating that streaming responses are out of scope for now.
+- Locked the terminal client to direct WhatsApp-style emulation instead of introducing response patterns the real channel cannot support.
+
+Reason:
+- The deployed dev tool should reflect the real channel contract rather than optimizing around terminal-only capabilities that will not exist in WhatsApp.
+
+Decision:
+- Keep the runtime synchronous and single-response per inbound turn until a real supported multi-message channel pattern is designed.
+
+Flow nodes affected:
+- All nodes indirectly, because this constrains how replies are delivered across the full conversational path.

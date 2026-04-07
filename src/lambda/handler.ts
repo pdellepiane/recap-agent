@@ -39,7 +39,7 @@ export async function handler(
     }
 
     const response = await service.handleTurn({
-      channel: body.channel ?? 'terminal_whatsapp',
+      channel: body.channel ?? config.conversation.defaultChannel,
       externalUserId: body.user_id,
       text: body.text,
       messageId: body.message_id ?? crypto.randomUUID(),
@@ -64,23 +64,29 @@ async function getService(): Promise<AgentService> {
   if (!servicePromise) {
     servicePromise = (async () => {
       const apiKey = await resolveOpenAiApiKey({
-        directApiKey: config.openAiApiKey,
-        secretId: config.openAiSecretId,
-        region: config.awsRegion,
+        directApiKey: config.openAi.apiKey,
+        secretId: config.openAi.secretId,
+        region: config.aws.region,
       });
       process.env.OPENAI_API_KEY = apiKey;
 
-      const promptLoader = new PromptLoader(config.promptsDir);
-      const providerGateway = new SinEnvolturasGateway(config.sinEnvolturasBaseUrl);
+      const promptLoader = new PromptLoader(config.prompts.dir);
+      const providerGateway = new SinEnvolturasGateway({
+        baseUrl: config.providerApi.baseUrl,
+        persistedSearchLimit: config.providerApi.persistedSearchLimit,
+        summarySearchWordLimit: config.providerApi.summarySearchWordLimit,
+      });
       const runtime = new OpenAiAgentRuntime({
         apiKey,
-        model: config.openAiModel,
-        extractorModel: config.extractorModel,
+        replyModel: config.openAi.models.reply,
+        extractorModel: config.openAi.models.extractor,
+        replyProviderLimit: config.recommendation.replyProviderLimit,
+        providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,
         promptLoader,
         providerGateway,
       });
-      const planStore = new DynamoPlanStore(config.plansTableName, {
-        region: config.awsRegion,
+      const planStore = new DynamoPlanStore(config.storage.plansTableName, {
+        region: config.aws.region,
       });
 
       return new AgentService({

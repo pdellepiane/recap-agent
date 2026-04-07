@@ -67,7 +67,7 @@ export class AgentService {
     const mergedPlan = this.applyExtraction(workingPlan, extraction, extractionNode);
     const sufficiency = computeSearchSufficiency(mergedPlan);
 
-    let nodePath: DecisionNode[] = existingPlan
+    const nodePath: DecisionNode[] = existingPlan
       ? [previousNode, 'existe_plan_guardado', extractionNode]
       : [previousNode, extractionNode];
     let currentNode = extractionNode;

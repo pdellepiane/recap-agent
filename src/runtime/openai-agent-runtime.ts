@@ -2,10 +2,8 @@ import { Agent, OpenAIConversationsSession, run, tool } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-import type { DecisionNode } from '../core/decision-nodes';
 import type { PersistedPlan } from '../core/plan';
 import { summarizeRecommendedProviders } from '../core/plan';
-import type { ProviderSummary } from '../core/provider';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -13,7 +11,7 @@ import type {
   ExtractRequest,
   ExtractionResult,
 } from './contracts';
-import { PromptLoader } from './prompt-loader';
+import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { ToolName } from './prompt-manifest';
 
@@ -56,8 +54,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   constructor(
     private readonly options: {
       apiKey: string;
-      model: string;
+      replyModel: string;
       extractorModel: string;
+      replyProviderLimit: number;
+      providerDetailLookupLimit: number;
       promptLoader: PromptLoader;
       providerGateway: ProviderGateway;
     },
@@ -103,8 +103,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     const agent = new Agent<RuntimeContext>({
       name: `reply_${request.currentNode}`,
-      model: this.options.model,
-      instructions: async () => bundle.instructions,
+      model: this.options.replyModel,
+      instructions: () => bundle.instructions,
       tools,
     });
 
@@ -134,6 +134,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.toolUsage.considered.length > 0
         ? request.toolUsage.considered.join(', ')
         : 'ninguna';
+    const providerResults = request.providerResults.slice(
+      0,
+      this.options.replyProviderLimit,
+    );
 
     return [
       `Nodo previo: ${request.previousNode}`,
@@ -143,7 +147,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
       `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
       `Herramientas autorizadas en este nodo: ${allowedTools}`,
-      `Resultados vigentes:\n${summarizeRecommendedProviders(request.providerResults)}`,
+      `Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`,
       request.errorMessage ? `Error operativo: ${request.errorMessage}` : '',
       'Responde únicamente con el próximo mensaje para el usuario.',
     ]
@@ -156,6 +160,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     plan: PersistedPlan,
     allowedTools: readonly ToolName[],
   ) {
+    let remainingProviderDetailLookups =
+      this.options.providerDetailLookupLimit;
+
     const toolMap = {
       list_categories: tool({
         name: 'list_categories',
@@ -195,6 +202,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           provider_id: z.number(),
         }),
         execute: async ({ provider_id }) => {
+          if (remainingProviderDetailLookups <= 0) {
+            return null;
+          }
+
+          remainingProviderDetailLookups -= 1;
           toolUsage.called.push('get_provider_detail');
           return await this.options.providerGateway.getProviderDetail(provider_id);
         },

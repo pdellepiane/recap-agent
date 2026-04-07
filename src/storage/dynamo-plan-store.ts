@@ -50,8 +50,7 @@ export class DynamoPlanStore implements PlanStore {
       return null;
     }
 
-    const { pk: _pk, sk: _sk, reason: _reason, ...rawPlan } =
-      response.Item as StoredItem;
+    const rawPlan = this.stripStorageEnvelope(response.Item as StoredItem);
 
     return planSchema.parse(rawPlan) as PlanSnapshot;
   }
@@ -72,5 +71,13 @@ export class DynamoPlanStore implements PlanStore {
 
   private pk(channel: string, externalUserId: string): string {
     return `${channel}#${externalUserId}`;
+  }
+
+  private stripStorageEnvelope(item: StoredItem): Record<string, unknown> {
+    const rawPlan: Record<string, unknown> = { ...item };
+    delete rawPlan.pk;
+    delete rawPlan.sk;
+    delete rawPlan.reason;
+    return rawPlan;
   }
 }

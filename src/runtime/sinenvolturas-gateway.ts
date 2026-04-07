@@ -47,7 +47,13 @@ type PaginatedProviders = {
 };
 
 export class SinEnvolturasGateway implements ProviderGateway {
-  constructor(private readonly baseUrl: string) {}
+  constructor(
+    private readonly options: {
+      baseUrl: string;
+      persistedSearchLimit: number;
+      summarySearchWordLimit: number;
+    },
+  ) {}
 
   async listCategories(): Promise<string[]> {
     const response = await this.fetchJson<ApiEnvelope<CategoryApiItem[]>>(
@@ -76,7 +82,10 @@ export class SinEnvolturasGateway implements ProviderGateway {
       plan.vendor_category,
       plan.event_type,
       plan.location,
-      plan.conversation_summary.split(/\s+/).slice(0, 5).join(' '),
+      plan.conversation_summary
+        .split(/\s+/)
+        .slice(0, this.options.summarySearchWordLimit)
+        .join(' '),
     ]
       .map((value) => value?.trim())
       .filter((value): value is string => Boolean(value));
@@ -104,7 +113,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const providers = paginated
       .map((provider) => this.toProviderSummary(provider))
       .filter((provider) => this.matchesPlan(provider, plan))
-      .slice(0, 5)
+      .slice(0, this.options.persistedSearchLimit)
       .map((provider) => ({
         ...provider,
         reason: this.reasonForProvider(provider, plan),
@@ -204,7 +213,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
   }
 
   private async fetchJson<T>(pathname: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${pathname}`);
+    const response = await fetch(`${this.options.baseUrl}${pathname}`);
 
     if (!response.ok) {
       throw new Error(`Provider API request failed with ${response.status}`);
@@ -213,4 +222,3 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return (await response.json()) as T;
   }
 }
-

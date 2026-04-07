@@ -30,6 +30,7 @@ Serverless conversational agent runtime for Sin Envolturas.
 ```bash
 npm install
 npm run typecheck
+npm run lint
 npm test
 npm run build
 ```
@@ -86,16 +87,55 @@ After every turn the CLI can show:
 - the persisted DynamoDB plan snapshot
 - the raw Lambda JSON payload when `--show-raw` is enabled
 
+## Purge terminal test plans
+
+To remove persisted plans created by the terminal test channel from DynamoDB:
+
+```bash
+npm run purge:terminal-plans -- --dry-run
+npm run purge:terminal-plans -- --yes
+```
+
+Defaults:
+
+- channel: `terminal_whatsapp`
+- stack: `recap-agent-runtime`
+- profile: `se-dev`
+- region: `us-east-1`
+
+Useful overrides:
+
+```bash
+npm run purge:terminal-plans -- --channel terminal_whatsapp --yes
+npm run purge:terminal-plans -- --table recap-agent-runtime-plans --yes
+```
+
 ## Lambda runtime env vars
 
 ```bash
 OPENAI_MODEL=gpt-5
-OPENAI_EXTRACTOR_MODEL=gpt-5-mini
+OPENAI_EXTRACTOR_MODEL=gpt-5
 AWS_REGION=us-east-1
 PLANS_TABLE_NAME=recap-agent-runtime-plans
 PROMPTS_DIR=/var/task/prompts
 SINENVOLTURAS_BASE_URL=https://api.sinenvolturas.com/api-web/vendor
+DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
+PROVIDER_SEARCH_LIMIT=5
+SEARCH_SUMMARY_WORD_LIMIT=5
+REPLY_PROVIDER_LIMIT=3
+PROVIDER_DETAIL_LOOKUP_LIMIT=3
 ```
+
+These env vars are read through one validated runtime config module in [config.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/config.ts). That is the central place for:
+
+- model selection
+- provider search limits
+- recommendation display limits
+- provider detail lookup limits
+- default inbound channel
+- AWS table and prompt paths
+
+Linting is enforced through [eslint.config.mjs](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/eslint.config.mjs), including an explicit ban on `any` in TypeScript files.
 
 ## Deployment
 

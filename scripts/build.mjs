@@ -38,4 +38,3 @@ await cp(path.join(root, 'prompts'), path.join(distDir, 'prompts'), {
 });
 
 console.log('Build completed.');
-

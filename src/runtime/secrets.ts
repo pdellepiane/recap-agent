@@ -1,12 +1,7 @@
-const {
+import {
   GetSecretValueCommand,
   SecretsManagerClient,
-}: {
-  GetSecretValueCommand: new (input: { SecretId: string }) => unknown;
-  SecretsManagerClient: new (input: { region: string }) => {
-    send(command: unknown): Promise<{ SecretString?: string }>;
-  };
-} = require('@aws-sdk/client-secrets-manager');
+} from '@aws-sdk/client-secrets-manager';
 
 let cachedSecret: string | null = null;
 

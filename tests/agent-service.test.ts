@@ -3,7 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 import type { PersistedPlan } from '../src/core/plan';
-import type { ProviderDetail, ProviderSummary } from '../src/core/provider';
+import type { ProviderDetail } from '../src/core/provider';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -112,7 +112,8 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async getProviderDetail(_providerId: number): Promise<ProviderDetail | null> {
+  async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+    void providerId;
     return null;
   }
 }
@@ -171,4 +172,3 @@ describe('AgentService', () => {
     expect(response.trace.plan_persist_reason).toBe('guardar_cerrar_temporalmente');
   });
 });
-
