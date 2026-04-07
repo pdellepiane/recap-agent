@@ -27,6 +27,12 @@ Serverless conversational agent runtime for Sin Envolturas.
 
 ## Local checks
 
+Required local runtime:
+
+```bash
+node -v  # Node 24 LTS
+```
+
 ```bash
 npm install
 npm run typecheck
@@ -136,6 +142,8 @@ These env vars are read through one validated runtime config module in [config.t
 - AWS table and prompt paths
 
 Linting is enforced through [eslint.config.mjs](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/eslint.config.mjs), including an explicit ban on `any` in TypeScript files.
+
+The repo and deployed Lambda are aligned on Node 24 LTS.
 
 ## Deployment
 

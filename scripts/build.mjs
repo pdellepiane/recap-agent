@@ -17,7 +17,7 @@ await esbuild.build({
   outfile: lambdaOutfile,
   bundle: true,
   platform: 'node',
-  target: 'node20',
+  target: 'node24',
   format: 'cjs',
   sourcemap: true,
   external: ['aws-sdk'],
@@ -28,7 +28,7 @@ await esbuild.build({
   outfile: terminalOutfile,
   bundle: true,
   platform: 'node',
-  target: 'node20',
+  target: 'node24',
   format: 'cjs',
   sourcemap: true,
 });

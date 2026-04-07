@@ -178,3 +178,17 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because this constrains how replies are delivered across the full conversational path.
+
+### Align repo and Lambda runtime to Node 24 LTS
+- Updated the Lambda runtime in CloudFormation from `nodejs20.x` to `nodejs24.x`.
+- Updated local build targets from `node20` to `node24`.
+- Raised the repo engine requirement to Node 24 and added `.nvmrc` for local alignment.
+
+Reason:
+- There is no reason to keep the repo and Lambda on an older Node line when the latest available LTS is already supported by the target stack.
+
+Decision:
+- Keep the repo and AWS runtime on the same LTS major so build output, local tooling, and deployed execution semantics stay aligned.
+
+Flow nodes affected:
+- All nodes indirectly, because the Node runtime applies to the full Lambda execution path.
