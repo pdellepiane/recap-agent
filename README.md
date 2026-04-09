@@ -119,8 +119,8 @@ npm run purge:terminal-plans -- --table recap-agent-runtime-plans --yes
 ## Lambda runtime env vars
 
 ```bash
-OPENAI_MODEL=gpt-5
-OPENAI_EXTRACTOR_MODEL=gpt-5
+OPENAI_MODEL=gpt-5.4-mini
+OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano
 AWS_REGION=us-east-1
 PLANS_TABLE_NAME=recap-agent-runtime-plans
 PROMPTS_DIR=/var/task/prompts
@@ -132,7 +132,7 @@ REPLY_PROVIDER_LIMIT=3
 PROVIDER_DETAIL_LOOKUP_LIMIT=3
 ```
 
-These env vars are read through one validated runtime config module in [config.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/config.ts). That is the central place for:
+These env vars are read through one validated runtime config module in [config.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/config.ts). `stack.yaml` supplies the Lambda environment at deploy time, so the CloudFormation defaults and deploy script must stay aligned with `config.ts`. That file is the central place for:
 
 - model selection
 - provider search limits
@@ -154,6 +154,13 @@ CloudFormation template:
 Deployment script:
 
 - `node scripts/deploy.mjs`
+- `node scripts/deploy.mjs`
+
+The deploy script passes model parameter overrides to CloudFormation from `.env` or the shell when present:
+
+```bash
+OPENAI_MODEL=gpt-5.4-mini OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano node scripts/deploy.mjs
+```
 
 Secret handling:
 

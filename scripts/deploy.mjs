@@ -56,6 +56,8 @@ run(
     `CodeS3Bucket=${artifactBucket}`,
     `CodeS3Key=${artifactKey}`,
     `OpenAISecretArn=${secretArn}`,
+    `OpenAIModel=${process.env.OPENAI_MODEL ?? env.OPENAI_MODEL ?? 'gpt-5.4-mini'}`,
+    `OpenAIExtractorModel=${process.env.OPENAI_EXTRACTOR_MODEL ?? env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.4-nano'}`,
   ],
   { env: awsEnv },
 );
