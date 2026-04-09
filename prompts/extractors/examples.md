@@ -1,19 +1,33 @@
 Ejemplos breves:
 
-1. Usuario: "Busco fotógrafo para mi boda en Lima, algo medio."
+1. Usuario: "Quiero planear una boda en Lima, probablemente necesitaré local, catering y foto."
 - intent: buscar_proveedores
 - eventType: boda
+- vendorCategory: null
+- vendorCategories: [local, catering, fotografía]
+- activeNeedCategory: null
+- location: Lima
+- budgetSignal: null
+
+2. Usuario: "Empecemos por fotógrafos en Lima, de presupuesto medio."
+- intent: buscar_proveedores
+- eventType: null
 - vendorCategory: fotografía
+- vendorCategories: [fotografía]
+- activeNeedCategory: fotografía
 - location: Lima
 - budgetSignal: medio
 
-2. Usuario: "Muéstrame otras opciones pero más económicas."
+3. Usuario: "Muéstrame otras opciones pero más económicas para catering."
 - intent: refinar_busqueda
+- vendorCategory: catering
+- vendorCategories: [catering]
+- activeNeedCategory: catering
 - preferences: []
 - hardConstraints: []
 - budgetSignal: económico
 
-3. Usuario: "Me quedo con la segunda. Si no, lo veo luego."
+4. Usuario: "Me quedo con la segunda. Si no, lo veo luego."
 - intent: confirmar_proveedor
 - selectedProviderHint: 2
 - pauseRequested: true

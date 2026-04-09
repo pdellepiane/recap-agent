@@ -401,6 +401,13 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
     ['Conversation', plan.conversation_id ?? 'null'],
     ['Intent', plan.intent ?? 'null'],
     ['Event Type', plan.event_type ?? 'null'],
+    ['Active Need', plan.active_need_category ?? 'null'],
+    [
+      'Provider Needs',
+      plan.provider_needs
+        .map((need, index) => `${index + 1}. ${need.category} [${need.status}]`)
+        .join('\n') || 'none',
+    ],
     ['Category', plan.vendor_category ?? 'null'],
     ['Location', plan.location ?? 'null'],
     ['Budget', plan.budget_signal ?? 'null'],

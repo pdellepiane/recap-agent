@@ -7,6 +7,8 @@ export type ExtractionResult = {
   intentConfidence: number | null;
   eventType: string | null;
   vendorCategory: string | null;
+  vendorCategories: string[];
+  activeNeedCategory: string | null;
   location: string | null;
   budgetSignal: string | null;
   guestRange: PersistedPlan['guest_range'];
@@ -50,4 +52,3 @@ export interface AgentRuntime {
   extract(request: ExtractRequest): Promise<ExtractionResult>;
   composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult>;
 }
-

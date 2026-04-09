@@ -3,6 +3,8 @@ Resolución de conflictos:
 - Si el usuario corrige explícitamente un dato, reemplázalo.
 - Si el nuevo mensaje es ambiguo, no sobrescribas el valor actual.
 - No elimines datos útiles solo porque el usuario no los repitió.
+- No elimines categorías de vendorCategories solo porque en este turno el usuario se enfoque en otra.
 - Si el usuario cambia una preferencia por una restricción dura, mueve la información al campo correcto.
 - Si el usuario menciona una opción por orden, como "la primera" o "la segunda", llena selectedProviderHint con ese índice textual.
+- Si el usuario menciona varios servicios pero aclara por cuál quiere empezar, conserva todos en vendorCategories y usa activeNeedCategory para el foco actual.
 - Si el usuario pide pausar aunque también dé más información, pauseRequested debe ser true.

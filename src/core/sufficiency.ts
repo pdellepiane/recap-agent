@@ -1,4 +1,4 @@
-import type { PersistedPlan } from './plan';
+import { getActiveNeed, type PersistedPlan } from './plan';
 
 export type SearchSufficiency = {
   searchReady: boolean;
@@ -7,8 +7,9 @@ export type SearchSufficiency = {
 
 export function computeSearchSufficiency(plan: PersistedPlan): SearchSufficiency {
   const missingFields: string[] = [];
+  const activeNeed = getActiveNeed(plan);
 
-  if (!plan.vendor_category) {
+  if (!activeNeed?.category) {
     missingFields.push('vendor_category');
   }
 
@@ -23,4 +24,3 @@ export function computeSearchSufficiency(plan: PersistedPlan): SearchSufficiency
   const searchReady = missingFields.length === 0;
   return { searchReady, missingFields };
 }
-

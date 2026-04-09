@@ -9,9 +9,11 @@ import type {
 } from '../core/messages';
 import {
   createEmptyPlan,
+  getActiveNeed,
   mergePlan,
   type PersistedPlan,
   type PlanSnapshot,
+  type ProviderNeed,
 } from '../core/plan';
 import type { ProviderSummary } from '../core/provider';
 import { computeSearchSufficiency } from '../core/sufficiency';
@@ -71,7 +73,8 @@ export class AgentService {
       ? [previousNode, 'existe_plan_guardado', extractionNode]
       : [previousNode, extractionNode];
     let currentNode = extractionNode;
-    let providerResults: ProviderSummary[] = mergedPlan.recommended_providers;
+    let providerResults: ProviderSummary[] =
+      getActiveNeed(mergedPlan)?.recommended_providers ?? [];
     let errorMessage: string | null = null;
     let planPersistReason: string | null = null;
     let planPersisted = false;
@@ -147,9 +150,18 @@ export class AgentService {
     if (!sufficiency.searchReady) {
       currentNode = 'aclarar_pedir_faltante';
       nodePath.push('minimos_para_buscar', currentNode);
+      const activeNeed = getActiveNeed(mergedPlan);
       planAfterFlow = mergePlan(mergedPlan, {
         current_node: currentNode,
         missing_fields: sufficiency.missingFields,
+        provider_needs: activeNeed
+          ? [
+              {
+                ...activeNeed,
+                missing_fields: sufficiency.missingFields,
+              },
+            ]
+          : [],
       });
     } else if (this.tryResolveSelection(planAfterFlow, extraction.selectedProviderHint)) {
       currentNode = 'anadir_a_proveedores_recomendados';
@@ -171,7 +183,24 @@ export class AgentService {
           planAfterFlow,
         );
         providerResults = searchResult.providers;
+        const activeNeed = getActiveNeed(planAfterFlow);
         planAfterFlow = mergePlan(planAfterFlow, {
+          active_need_category:
+            activeNeed?.category ?? planAfterFlow.active_need_category,
+          provider_needs: activeNeed
+            ? [
+                {
+                  ...activeNeed,
+                  recommended_provider_ids: providerResults.map(
+                    (provider) => provider.id,
+                  ),
+                  recommended_providers: providerResults,
+                  missing_fields: [],
+                  status:
+                    providerResults.length > 0 ? 'shortlisted' : 'search_ready',
+                },
+              ]
+            : [],
           recommended_provider_ids: providerResults.map((provider) => provider.id),
           recommended_providers: providerResults,
         });
@@ -267,7 +296,7 @@ export class AgentService {
     plan: PersistedPlan,
     extraction: ExtractionResult,
   ): DecisionNode {
-    if (!plan.intent) {
+    if (!plan.intent && !plan.event_type) {
       return 'deteccion_intencion';
     }
 
@@ -297,6 +326,8 @@ export class AgentService {
       intent_confidence: extraction.intentConfidence,
       event_type: extraction.eventType,
       vendor_category: extraction.vendorCategory,
+      active_need_category:
+        extraction.activeNeedCategory ?? extraction.vendorCategory,
       location: extraction.location,
       budget_signal: extraction.budgetSignal,
       guest_range: extraction.guestRange,
@@ -305,6 +336,8 @@ export class AgentService {
       assumptions: extraction.assumptions,
       conversation_summary: extraction.conversationSummary,
       selected_provider_hint: extraction.selectedProviderHint,
+      provider_needs: this.buildNeedUpdates(plan, extraction),
+      last_user_goal: extraction.intent,
     });
 
     const sufficiency = computeSearchSufficiency(candidate);
@@ -317,30 +350,102 @@ export class AgentService {
     plan: PlanSnapshot,
     selectedProviderHint: string | null,
   ): boolean {
-    if (!selectedProviderHint || plan.recommended_providers.length === 0) {
+    const activeNeed = getActiveNeed(plan);
+
+    if (
+      !selectedProviderHint ||
+      !activeNeed ||
+      activeNeed.recommended_providers.length === 0
+    ) {
       return false;
     }
 
     const numericChoice = Number.parseInt(selectedProviderHint, 10);
     let selected = Number.isFinite(numericChoice)
-      ? plan.recommended_providers[numericChoice - 1]
+      ? activeNeed.recommended_providers[numericChoice - 1]
       : null;
 
     if (!selected) {
       const lowered = selectedProviderHint.toLowerCase();
       selected =
-        plan.recommended_providers.find((provider) =>
-        provider.title.toLowerCase().includes(lowered),
-      ) ?? null;
+        activeNeed.recommended_providers.find((provider) =>
+          provider.title.toLowerCase().includes(lowered),
+        ) ?? null;
     }
 
     if (!selected) {
       return false;
     }
 
-    plan.selected_provider_id = selected.id;
-    plan.selected_provider_hint = selectedProviderHint;
-    plan.current_node = 'usuario_elige_proveedor';
+    const updatedNeed: ProviderNeed = {
+      ...activeNeed,
+      status: 'selected',
+      selected_provider_id: selected.id,
+      selected_provider_hint: selectedProviderHint,
+    };
+
+    const updatedPlan = mergePlan(plan, {
+      current_node: 'usuario_elige_proveedor',
+      active_need_category: activeNeed.category,
+      provider_needs: [updatedNeed],
+      selected_provider_id: selected.id,
+      selected_provider_hint: selectedProviderHint,
+    });
+
+    Object.assign(plan, updatedPlan);
     return true;
+  }
+
+  private buildNeedUpdates(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): ProviderNeed[] {
+    const categories = Array.from(
+      new Set(
+        [
+          extraction.activeNeedCategory,
+          extraction.vendorCategory,
+          ...extraction.vendorCategories,
+        ]
+          .map((category) => category?.trim().toLowerCase())
+          .filter((category): category is string => Boolean(category)),
+      ),
+    );
+    const currentActiveCategory =
+      plan.active_need_category?.trim().toLowerCase() ??
+      getActiveNeed(plan)?.category?.trim().toLowerCase() ??
+      null;
+
+    if (categories.length === 0 && currentActiveCategory) {
+      categories.push(currentActiveCategory);
+    }
+
+    if (categories.length === 0) {
+      return [];
+    }
+
+    const currentNeeds = plan.provider_needs ?? [];
+
+    return categories.map((category) => {
+      const currentNeed =
+        currentNeeds.find(
+          (need) => need.category.trim().toLowerCase() === category,
+        ) ?? null;
+
+      return {
+        category,
+        status:
+          currentNeed?.status ??
+          (currentNeed?.recommended_provider_ids.length ? 'shortlisted' : 'identified'),
+        preferences: extraction.preferences,
+        hard_constraints: extraction.hardConstraints,
+        missing_fields: [],
+        recommended_provider_ids: currentNeed?.recommended_provider_ids ?? [],
+        recommended_providers: currentNeed?.recommended_providers ?? [],
+        selected_provider_id: currentNeed?.selected_provider_id ?? null,
+        selected_provider_hint:
+          extraction.selectedProviderHint ?? currentNeed?.selected_provider_hint ?? null,
+      };
+    });
   }
 }

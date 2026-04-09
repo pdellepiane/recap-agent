@@ -18,7 +18,15 @@ Definiciones de campos:
   - tipo de evento o contexto general, por ejemplo boda, cumpleaños, evento corporativo.
 
 - vendorCategory:
-  - tipo de proveedor buscado, por ejemplo fotografía, catering, música, flores.
+  - necesidad activa o principal del turno actual, por ejemplo fotografía, catering, música, flores.
+
+- vendorCategories:
+  - lista de necesidades de proveedores mencionadas en este turno o claramente vigentes.
+  - incluye categorías futuras o paralelas si el usuario las nombra como parte del plan.
+
+- activeNeedCategory:
+  - categoría con la que el usuario quiere avanzar ahora.
+  - si el usuario menciona varias categorías pero no prioriza ninguna, déjalo en null.
 
 - location:
   - ciudad, distrito, zona o país útil para la búsqueda.
@@ -39,7 +47,7 @@ Definiciones de campos:
   - inferencias razonables que conviene transparentar después.
 
 - conversationSummary:
-  - resumen corto, acumulativo y actualizado del caso.
+  - resumen corto, acumulativo y actualizado del plan del evento y del frente activo.
 
 - selectedProviderHint:
   - índice, nombre parcial o referencia clara a un proveedor ya recomendado.

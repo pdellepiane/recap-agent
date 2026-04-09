@@ -19,9 +19,20 @@ export const extractorPromptFiles = [
 
 export const toolNames = [
   'list_categories',
+  'get_category_by_slug',
   'list_locations',
   'search_providers',
+  'get_relevant_providers',
   'get_provider_detail',
+  'get_provider_detail_and_track_view',
+  'get_related_providers',
+  'list_provider_reviews',
+  'get_event_vendor_context',
+  'list_event_favorite_providers',
+  'list_user_events_vendor_context',
+  'create_quote_request',
+  'add_vendor_to_event_favorites',
+  'create_provider_review',
 ] as const;
 
 export type ToolName = (typeof toolNames)[number];
@@ -51,11 +62,15 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   existe_plan_guardado: {
     files: buildNodeFiles('existe_plan_guardado'),
-    allowedTools: [],
+    allowedTools: [
+      'get_event_vendor_context',
+      'list_event_favorite_providers',
+      'list_user_events_vendor_context',
+    ],
   },
   entrevista: {
     files: buildNodeFiles('entrevista'),
-    allowedTools: ['list_categories', 'list_locations'],
+    allowedTools: ['list_categories', 'get_category_by_slug', 'list_locations'],
   },
   minimos_para_buscar: {
     files: buildNodeFiles('minimos_para_buscar'),
@@ -63,7 +78,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   aclarar_pedir_faltante: {
     files: buildNodeFiles('aclarar_pedir_faltante'),
-    allowedTools: ['list_categories', 'list_locations'],
+    allowedTools: ['list_categories', 'get_category_by_slug', 'list_locations'],
   },
   usuario_responde: {
     files: buildNodeFiles('usuario_responde'),
@@ -71,7 +86,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   buscar_proveedores: {
     files: buildNodeFiles('buscar_proveedores'),
-    allowedTools: ['search_providers'],
+    allowedTools: ['search_providers', 'get_relevant_providers'],
   },
   busqueda_exitosa: {
     files: buildNodeFiles('busqueda_exitosa'),
@@ -83,19 +98,23 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   recomendar: {
     files: buildNodeFiles('recomendar'),
-    allowedTools: ['get_provider_detail'],
+    allowedTools: [
+      'get_provider_detail',
+      'get_related_providers',
+      'list_provider_reviews',
+    ],
   },
   refinar_criterios: {
     files: buildNodeFiles('refinar_criterios'),
-    allowedTools: ['list_categories', 'list_locations'],
+    allowedTools: ['list_categories', 'get_category_by_slug', 'list_locations'],
   },
   usuario_elige_proveedor: {
     files: buildNodeFiles('usuario_elige_proveedor'),
-    allowedTools: ['get_provider_detail'],
+    allowedTools: ['get_provider_detail', 'get_provider_detail_and_track_view'],
   },
   anadir_a_proveedores_recomendados: {
     files: buildNodeFiles('anadir_a_proveedores_recomendados'),
-    allowedTools: [],
+    allowedTools: ['add_vendor_to_event_favorites'],
   },
   seguir_refinando_guardar_plan: {
     files: buildNodeFiles('seguir_refinando_guardar_plan'),
@@ -107,7 +126,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   accion_final_exitosa: {
     files: buildNodeFiles('accion_final_exitosa'),
-    allowedTools: [],
+    allowedTools: ['create_provider_review'],
   },
   necesidad_cubierta: {
     files: buildNodeFiles('necesidad_cubierta'),
@@ -115,7 +134,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   crear_lead_cerrar: {
     files: buildNodeFiles('crear_lead_cerrar'),
-    allowedTools: [],
+    allowedTools: ['create_quote_request', 'add_vendor_to_event_favorites'],
   },
   guardar_seleccion_reintentar_luego: {
     files: buildNodeFiles('guardar_seleccion_reintentar_luego'),
@@ -131,6 +150,6 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   reintentar: {
     files: buildNodeFiles('reintentar'),
-    allowedTools: [],
+    allowedTools: ['search_providers', 'get_relevant_providers'],
   },
 };

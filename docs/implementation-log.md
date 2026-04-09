@@ -192,3 +192,63 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because the Node runtime applies to the full Lambda execution path.
+
+### Align deployed model defaults with centralized runtime config
+- Updated CloudFormation model parameter defaults to match the centralized values in `src/runtime/config.ts`.
+- Updated the deploy script to pass explicit model parameter overrides from `.env` or shell env when present.
+- Updated `.env.example` and README examples to use the same reply and extractor model defaults as the runtime config.
+
+Reason:
+- The Lambda environment is injected by CloudFormation, so stale template defaults could override the centralized TypeScript config at deploy time and produce a different model selection in AWS than the repo suggests locally.
+
+Decision:
+- Keep `src/runtime/config.ts` as the canonical runtime config shape, but ensure CloudFormation defaults and deploy-time parameter wiring stay aligned with it so deployed behavior does not drift.
+
+Flow nodes affected:
+- All nodes indirectly, because the reply and extractor models govern the full turn path.
+
+### Shift the agent to an event-plan-first model
+- Expanded the persisted plan schema to support multiple provider needs plus an active need for the current search or recommendation turn.
+- Kept event-level context at the top of the plan while projecting the active need into the legacy single-need fields for runtime compatibility.
+- Updated sufficiency, resume logic, provider search, selection handling, and terminal debug output to operate around the active need inside a broader event plan.
+- Rewrote the Spanish extractor and node prompts so the agent reasons about the event first and about one active provider need at a time.
+- Added an explicit project convention in `AGENTS.md` stating that the agent is event-plan-first and that single-provider search is a subset of that behavior.
+
+Reason:
+- The previous runtime was structurally biased toward one provider search at a time, which mismatched the intended product behavior of helping users plan events that often require several providers.
+
+Decision:
+- Refactor incrementally toward an event-plan-first model by introducing `provider_needs` and `active_need_category` now, while preserving the existing active-need mirror fields so the deployed runtime, CLI, and traces stay stable during the transition.
+
+Flow nodes affected:
+- `deteccion_intencion`
+- `entrevista`
+- `aclarar_pedir_faltante`
+- `recomendar`
+- `refinar_criterios`
+- `seguir_refinando_guardar_plan`
+- `usuario_elige_proveedor`
+
+### Expand the provider tool surface to cover validated marketplace endpoints
+- Expanded the provider gateway contract beyond the initial four operations so the runtime can expose the full set of validated marketplace capabilities.
+- Added support for category lookup by slug, relevant providers, related providers, provider reviews, event vendor context, event favorites, user events vendor context, tracked provider detail views, quote creation, favorites creation, and provider review creation.
+- Updated the Agents SDK tool registry and node prompt manifest so the new capabilities are reachable from the appropriate nodes.
+- Updated node tool policy prompts so the conversational layer matches the actual tool surface.
+
+Reason:
+- The validated endpoint map in Notion covers more than the initial discovery/search subset, and the runtime should not artificially narrow the system to four operations when the marketplace already exposes a richer capability surface.
+
+Decision:
+- Keep the current flow behavior conservative, but expose the full validated endpoint capability set through typed gateway methods and Agents SDK tools so future flow work can build on a stable surface instead of reworking the tool layer again.
+
+Flow nodes affected:
+- `entrevista`
+- `aclarar_pedir_faltante`
+- `buscar_proveedores`
+- `recomendar`
+- `usuario_elige_proveedor`
+- `anadir_a_proveedores_recomendados`
+- `crear_lead_cerrar`
+- `existe_plan_guardado`
+- `reintentar`
+- `accion_final_exitosa`
