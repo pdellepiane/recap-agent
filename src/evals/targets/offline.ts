@@ -6,8 +6,8 @@ import type {
   AgentRuntime,
   ComposeReplyRequest,
   ComposeReplyResult,
+  ExtractResult,
   ExtractRequest,
-  ExtractionResult,
 } from '../../runtime/contracts';
 import { PromptLoader } from '../../runtime/prompt-loader';
 import type {
@@ -106,31 +106,37 @@ class FixtureRuntime implements AgentRuntime {
 
   constructor(private readonly fixture: OfflineFixture | undefined) {}
 
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
+  async extract(request: ExtractRequest): Promise<ExtractResult> {
     void request;
     const configured = this.fixture?.extractionsByTurn?.[this.extractionIndex];
     this.extractionIndex += 1;
 
     if (configured) {
-      return configured;
+      return {
+        extraction: configured,
+        tokenUsage: null,
+      };
     }
 
     return {
-      intent: 'buscar_proveedores',
-      intentConfidence: 0.9,
-      eventType: null,
-      vendorCategory: null,
-      vendorCategories: [],
-      activeNeedCategory: null,
-      location: null,
-      budgetSignal: null,
-      guestRange: null,
-      preferences: [],
-      hardConstraints: [],
-      assumptions: [],
-      conversationSummary: 'Offline fixture did not provide an extraction result.',
-      selectedProviderHint: null,
-      pauseRequested: false,
+      extraction: {
+        intent: 'buscar_proveedores',
+        intentConfidence: 0.9,
+        eventType: null,
+        vendorCategory: null,
+        vendorCategories: [],
+        activeNeedCategory: null,
+        location: null,
+        budgetSignal: null,
+        guestRange: null,
+        preferences: [],
+        hardConstraints: [],
+        assumptions: [],
+        conversationSummary: 'Offline fixture did not provide an extraction result.',
+        selectedProviderHint: null,
+        pauseRequested: false,
+      },
+      tokenUsage: null,
     };
   }
 
@@ -141,6 +147,7 @@ class FixtureRuntime implements AgentRuntime {
 
     return {
       text: configured ?? `offline-reply-${this.replyIndex}`,
+      tokenUsage: null,
     };
   }
 }

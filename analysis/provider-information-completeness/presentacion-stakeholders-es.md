@@ -10,10 +10,10 @@
 
 - Se hizo un censo completo del marketplace expuesto por el endpoint actual.
 - Universo analizado:
-  - 180 proveedores
+  - 182 proveedores
   - 16 categorías
-  - 15 páginas de listado
-  - 180 fichas de detalle consultadas
+  - 16 páginas de listado
+  - 182 fichas de detalle consultadas
 
 ## Hallazgo Principal
 
@@ -29,6 +29,7 @@ Esto es importante porque hoy el agente puede sonar útil en una shortlist, pero
 - Después del enriquecimiento con detalle, 15 de 16 categorías quedan con proveedores distinguibles entre sí.
 - El campo de descripción corta aparece en el 100% de los proveedores.
 - En la mayoría de categorías el agente ya tiene suficiente material para decirle al usuario por qué una opción parece distinta de otra.
+- Pero hay un bloque importante de baja calidad: 73 proveedores tienen solo 1 o 2 señales útiles para comparación.
 
 Lectura práctica:
 
@@ -39,10 +40,10 @@ Lectura práctica:
 
 Los vacíos más fuertes están en la data estructurada:
 
-- 176 de 180 proveedores tienen rating `0.0`.
-- 146 de 180 no tienen una señal de precio usable.
-- 121 de 180 no tienen ubicación.
-- 180 de 180 no tienen `eventTypes`.
+- 178 de 182 proveedores tienen rating `0.0`.
+- 93 de 182 no tienen una señal de precio usable.
+- 77 de 182 no tienen ubicación.
+- 182 de 182 no tienen `eventTypes`.
 
 Eso significa que varios de los campos que uno esperaría usar para comparar opciones, en la práctica hoy no ayudan.
 
@@ -50,7 +51,7 @@ Eso significa que varios de los campos que uno esperaría usar para comparar opc
 
 Acá hay una oportunidad clara.
 
-- 97 proveedores comunican descuentos, regalos o beneficios en el título.
+- 73 proveedores comunican descuentos, regalos o beneficios en el título.
 - Pero esos beneficios no aparecen estructurados en `promoBadge` o `promoSummary`.
 
 En la práctica, el beneficio existe, pero el sistema no lo puede leer bien como dato.
@@ -62,7 +63,7 @@ Resultado:
 
 ## Qué Pasa Con Servicios Y Condiciones
 
-- `serviceHighlights` y `termsHighlights` aparecen solo en 44.4% de los proveedores.
+- `serviceHighlights` y `termsHighlights` aparecen en 58.2% de los proveedores.
 - Cuando existen, ayudan bastante.
 - Cuando no existen, el agente termina apoyándose en descripciones largas.
 - Además, algunos casos tienen ruido de parsing, por ejemplo frases genéricas como “Preguntar por paquetes” o “Consultar términos y condiciones”.
@@ -81,6 +82,7 @@ El riesgo real es otro:
 - puede diferenciar opciones con argumentos desparejos;
 - puede sonar convincente usando texto semiestructurado;
 - y puede no sostener comparaciones más exigentes cuando el usuario pide filtrar mejor, ordenar mejor o justificar por qué una opción es superior.
+- además, la calidad depende mucho de la categoría: no todas están igual de bien cubiertas.
 
 Eso limita especialmente:
 
@@ -106,7 +108,8 @@ Si queremos mejorar la calidad de recomendación sin rehacer todo, el orden suge
 2. Completar ubicación de servicio.
 3. Agregar una señal de precio utilizable.
 4. Completar `eventTypes`.
-5. Normalizar mejor servicios o paquetes.
+5. Atacar primero las categorías más débiles: `Vestidos`, `Bebés`, `Hogar y deco`, `Salud y belleza` y `Otros`.
+6. Normalizar mejor servicios o paquetes.
 
 ## Por Qué Ese Orden
 
@@ -136,18 +139,19 @@ Si mejoramos esos pocos campos estructurales, la calidad de recomendación deber
 
 ## Anexo: Números Clave
 
-- Marketplace analizado: 180 proveedores
+- Marketplace analizado: 182 proveedores
 - Categorías analizadas: 16
 - Categorías con diferenciación suficiente tras detalle: 15 de 16
-- Proveedores con rating `0.0`: 176
-- Proveedores sin ubicación: 121
-- Proveedores sin señal estructurada de precio: 146
-- Proveedores sin `eventTypes`: 180
-- Proveedores con promo implícita en texto pero no estructurada: 97
+- Proveedores con rating `0.0`: 178
+- Proveedores sin ubicación: 77
+- Proveedores sin señal estructurada de precio: 93
+- Proveedores sin `eventTypes`: 182
+- Proveedores con promo implícita en texto pero no estructurada: 73
+- Proveedores con solo 1 o 2 señales útiles para comparación: 73
 
 ## Anexo: Fuente
 
 - Artefacto base del análisis:
-  - `analysis/provider-information-completeness/artifacts/provider-completeness-census.json`
+  - `analysis/provider-information-completeness/artifacts/provider-completeness-audit.json`
 - Hallazgos durables:
   - `analysis/provider-information-completeness/findings.md`

@@ -43,6 +43,7 @@ export type ComposeReplyRequest = {
 
 export type ComposeReplyResult = {
   text: string;
+  tokenUsage?: TokenUsage | null;
 };
 
 export type ToolUsage = {
@@ -52,7 +53,18 @@ export type ToolUsage = {
   outputs: ToolOutputTrace[];
 };
 
+export type TokenUsage = {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+};
+
+export type ExtractResult = {
+  extraction: ExtractionResult;
+  tokenUsage: TokenUsage | null;
+};
+
 export interface AgentRuntime {
-  extract(request: ExtractRequest): Promise<ExtractionResult>;
+  extract(request: ExtractRequest): Promise<ExtractResult | ExtractionResult>;
   composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult>;
 }

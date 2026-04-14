@@ -30,4 +30,34 @@ export type TurnTrace = {
   provider_results: ProviderSummary[];
   plan_persisted: boolean;
   plan_persist_reason: string | null;
+  timing_ms: {
+    total: number;
+    load_plan: number;
+    prepare_working_plan: number;
+    extraction: number;
+    apply_extraction: number;
+    compute_sufficiency: number;
+    provider_search: number;
+    provider_enrichment: number;
+    prompt_bundle_load: number;
+    compose_reply: number;
+    save_plan: number;
+  };
+  token_usage: {
+    extraction: {
+      input_tokens: number;
+      output_tokens: number;
+      total_tokens: number;
+    } | null;
+    reply: {
+      input_tokens: number;
+      output_tokens: number;
+      total_tokens: number;
+    } | null;
+    total: {
+      input_tokens: number;
+      output_tokens: number;
+      total_tokens: number;
+    } | null;
+  };
 };

@@ -19,6 +19,7 @@ import { normalizeProviderSummary, type ProviderSummary } from '../core/provider
 import { computeSearchSufficiency } from '../core/sufficiency';
 import type { TurnTrace } from '../core/trace';
 import type { AgentRuntime, ExtractionResult } from './contracts';
+import type { TokenUsage } from './contracts';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { PlanStore } from '../storage/plan-store';
@@ -51,16 +52,41 @@ export class AgentService {
   async handleTurn(
     inbound: NormalizedInboundMessage,
   ): Promise<HandleTurnResponse> {
+    const handleTurnStartedAt = Date.now();
     const toolUsage = {
       considered: [] as string[],
       called: [] as string[],
       inputs: [] as { tool: string; input: string }[],
       outputs: [] as { tool: string; output: string }[],
     };
+    const timingMs = {
+      total: 0,
+      load_plan: 0,
+      prepare_working_plan: 0,
+      extraction: 0,
+      apply_extraction: 0,
+      compute_sufficiency: 0,
+      provider_search: 0,
+      provider_enrichment: 0,
+      prompt_bundle_load: 0,
+      compose_reply: 0,
+      save_plan: 0,
+    };
+    const tokenUsage: {
+      extraction: TokenUsage | null;
+      reply: TokenUsage | null;
+      total: TokenUsage | null;
+    } = {
+      extraction: null,
+      reply: null,
+      total: null,
+    };
+    const loadPlanStartedAt = Date.now();
     const existingPlan = await this.dependencies.planStore.getByExternalUser(
       inbound.channel,
       inbound.externalUserId,
     );
+    timingMs.load_plan += Date.now() - loadPlanStartedAt;
 
     const previousNode = existingPlan?.current_node ?? 'contacto_inicial';
     const loadedPlan =
@@ -71,15 +97,28 @@ export class AgentService {
         externalUserId: inbound.externalUserId,
       });
 
+    const prepareWorkingPlanStartedAt = Date.now();
     const workingPlan = mergePlan(loadedPlan, {
       current_node: existingPlan ? resolveResumeNode(existingPlan) : 'deteccion_intencion',
     });
+    timingMs.prepare_working_plan += Date.now() - prepareWorkingPlanStartedAt;
 
-    const extraction = await this.dependencies.runtime.extract({
+    const extractionStartedAt = Date.now();
+    const rawExtractionResult = await this.dependencies.runtime.extract({
       userMessage: inbound.text,
       plan: workingPlan,
     });
+    const extraction =
+      'extraction' in rawExtractionResult
+        ? rawExtractionResult.extraction
+        : rawExtractionResult;
+    tokenUsage.extraction =
+      'tokenUsage' in rawExtractionResult
+        ? (rawExtractionResult.tokenUsage ?? null)
+        : null;
+    timingMs.extraction += Date.now() - extractionStartedAt;
 
+    const applyExtractionStartedAt = Date.now();
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
     const mergedPlan = this.applyExtraction(
       workingPlan,
@@ -87,7 +126,10 @@ export class AgentService {
       extractionNode,
       inbound.text,
     );
+    timingMs.apply_extraction += Date.now() - applyExtractionStartedAt;
+    const sufficiencyStartedAt = Date.now();
     const sufficiency = computeSearchSufficiency(mergedPlan);
+    timingMs.compute_sufficiency += Date.now() - sufficiencyStartedAt;
 
     const nodePath: DecisionNode[] = existingPlan
       ? [previousNode, 'existe_plan_guardado', extractionNode]
@@ -103,14 +145,19 @@ export class AgentService {
       currentNode = 'guardar_cerrar_temporalmente';
       nodePath.push(currentNode);
       const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
+      const savePlanStartedAt = Date.now();
       await this.dependencies.planStore.save({
         plan: planToSave,
         reason: 'guardar_cerrar_temporalmente',
       });
+      timingMs.save_plan += Date.now() - savePlanStartedAt;
       planPersisted = true;
       planPersistReason = 'guardar_cerrar_temporalmente';
 
+      const promptBundleStartedAt = Date.now();
       const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+      const composeReplyStartedAt = Date.now();
       const reply = await this.dependencies.runtime.composeReply({
         currentNode,
         previousNode,
@@ -124,11 +171,17 @@ export class AgentService {
         promptFilePaths: bundle.filePaths,
         toolUsage,
       });
+      tokenUsage.reply = reply.tokenUsage ?? null;
+      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
 
+      const finalSaveStartedAt = Date.now();
       await this.dependencies.planStore.save({
         plan: planToSave,
         reason: planPersistReason ?? currentNode,
       });
+      timingMs.save_plan += Date.now() - finalSaveStartedAt;
+      timingMs.total = Date.now() - handleTurnStartedAt;
 
       return {
         plan: planToSave,
@@ -155,15 +208,19 @@ export class AgentService {
           provider_results: providerResults,
           plan_persisted: true,
           plan_persist_reason: planPersistReason,
+          timing_ms: timingMs,
+          token_usage: tokenUsage,
         },
       };
     }
 
     if (extractionPersistenceNodes.has(extractionNode)) {
+      const savePlanStartedAt = Date.now();
       await this.dependencies.planStore.save({
         plan: mergedPlan,
         reason: extractionNode,
       });
+      timingMs.save_plan += Date.now() - savePlanStartedAt;
       planPersisted = true;
       planPersistReason = extractionNode;
     }
@@ -232,15 +289,19 @@ export class AgentService {
               2,
             ),
           });
+          const providerSearchStartedAt = Date.now();
           const searchResult = await this.dependencies.providerGateway.searchProviders(
             planAfterFlow,
           );
+          timingMs.provider_search += Date.now() - providerSearchStartedAt;
           toolUsage.called.push('search_providers_from_plan');
           toolUsage.outputs.push({
             tool: 'search_providers_from_plan',
             output: JSON.stringify(searchResult, null, 2),
           });
+          const providerEnrichmentStartedAt = Date.now();
           providerResults = await this.enrichProviders(searchResult.providers);
+          timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
           const activeNeed = getActiveNeed(planAfterFlow);
           planAfterFlow = mergePlan(planAfterFlow, {
             active_need_category:
@@ -278,10 +339,12 @@ export class AgentService {
             });
           }
 
+          const savePlanStartedAt = Date.now();
           await this.dependencies.planStore.save({
             plan: planAfterFlow,
             reason: currentNode,
           });
+          timingMs.save_plan += Date.now() - savePlanStartedAt;
           planPersisted = true;
           planPersistReason = currentNode;
         } catch (error) {
@@ -292,19 +355,24 @@ export class AgentService {
           planAfterFlow = mergePlan(planAfterFlow, {
             current_node: currentNode,
           });
+          const savePlanStartedAt = Date.now();
           await this.dependencies.planStore.save({
             plan: planAfterFlow,
             reason: currentNode,
           });
+          timingMs.save_plan += Date.now() - savePlanStartedAt;
           planPersisted = true;
           planPersistReason = currentNode;
         }
       }
     }
 
+    const promptBundleStartedAt = Date.now();
     const promptBundle = await this.dependencies.promptLoader.loadNodeBundle(
       currentNode,
     );
+    timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+    const composeReplyStartedAt = Date.now();
     const reply = await this.dependencies.runtime.composeReply({
       currentNode,
       previousNode,
@@ -318,11 +386,17 @@ export class AgentService {
       promptFilePaths: promptBundle.filePaths,
       toolUsage,
     });
+    tokenUsage.reply = reply.tokenUsage ?? null;
+    tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+    timingMs.compose_reply += Date.now() - composeReplyStartedAt;
 
+    const finalSaveStartedAt = Date.now();
     await this.dependencies.planStore.save({
       plan: planAfterFlow,
       reason: planPersistReason ?? currentNode,
     });
+    timingMs.save_plan += Date.now() - finalSaveStartedAt;
+    timingMs.total = Date.now() - handleTurnStartedAt;
 
     return {
       plan: planAfterFlow,
@@ -349,7 +423,24 @@ export class AgentService {
         provider_results: providerResults,
         plan_persisted: planPersisted,
         plan_persist_reason: planPersistReason,
+        timing_ms: timingMs,
+        token_usage: tokenUsage,
       },
+    };
+  }
+
+  private sumTokenUsage(
+    first: TokenUsage | null,
+    second: TokenUsage | null,
+  ): TokenUsage | null {
+    if (!first && !second) {
+      return null;
+    }
+
+    return {
+      input_tokens: (first?.input_tokens ?? 0) + (second?.input_tokens ?? 0),
+      output_tokens: (first?.output_tokens ?? 0) + (second?.output_tokens ?? 0),
+      total_tokens: (first?.total_tokens ?? 0) + (second?.total_tokens ?? 0),
     };
   }
 

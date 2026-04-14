@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { SinEnvolturasGateway } from '../src/runtime/sinenvolturas-gateway';
 
 describe('SinEnvolturasGateway strict search mapping', () => {
@@ -86,5 +87,62 @@ describe('SinEnvolturasGateway strict search mapping', () => {
       'https://api.example.test/vendor/filtered?search=catering+Lima&page=1',
     );
     expect(result.providers[0]?.id).toBe(35);
+  });
+
+  it('keeps category matches when provider location granularity is broader than the plan city', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          status: true,
+          errors: null,
+          error: '',
+          data: {
+            data: [
+              {
+                id: 115,
+                slug: 'dj-naoki',
+                rating: '0.0',
+                price_level: null,
+                min_price: null,
+                max_price: null,
+                translations: [{ title: 'Dj Naoki' }],
+                category: {
+                  translations: [{ name: 'Música' }],
+                },
+                city: null,
+                country: { name: 'Perú' },
+              },
+            ],
+          },
+        };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-music-location',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-1',
+      }),
+      {
+        event_type: 'matrimonio',
+        active_need_category: 'música',
+        vendor_category: 'música',
+        location: 'Lima',
+        conversation_summary: 'Matrimonio en Lima, música primero.',
+      },
+    );
+
+    const result = await gateway.searchProviders(plan);
+
+    expect(result.providers).toHaveLength(1);
+    expect(result.providers[0]?.location).toBe('Perú');
   });
 });

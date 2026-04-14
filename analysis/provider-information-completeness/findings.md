@@ -2,33 +2,45 @@
 
 ## Current Understanding
 
-- Recommendation-time detail records are generally sufficient for textual differentiation across the full marketplace, but not for robust structured comparison.
-  - On 2026-04-10, a full live census fetched all 180 providers reported by `/filtered?page=1` and all 180 provider detail records.
-  - After detail enrichment, 15 of 16 categories had fully unique differentiator signatures for every provider in that category. The only exception was `Bebés`, where 35 providers collapsed to 32 detail signatures, so some enriched records still remain indistinguishable there.
-  - Conclusion: for most categories the agent has enough detail to explain why option A differs from option B, but some categories still suffer from real data collisions even after enrichment.
-  - Evidence: `analysis/provider-information-completeness/artifacts/provider-completeness-census.json`, `src/runtime/sinenvolturas-gateway.ts`, `src/runtime/agent-service.ts`, and `src/runtime/openai-agent-runtime.ts`.
+- The dossier now has exhaustive provider-level coverage for the full marketplace snapshot on 2026-04-14.
+  - The audit fetched all 182 providers reported by `/filtered?page=1`, all 182 provider detail records, and stored provider-by-provider outputs in `provider-entry-audit.csv` and `provider-completeness-audit.json`.
+  - This means the analysis can now answer both marketplace-level questions and entry-level questions such as which exact providers are missing location, price, promo structure, or event types.
+  - Evidence: `analysis/provider-information-completeness/artifacts/provider-completeness-audit.json` and `analysis/provider-information-completeness/artifacts/provider-entry-audit.csv`.
+
+- Recommendation-time detail records are generally sufficient for textual differentiation, but coverage is uneven enough that a large low-signal segment still exists.
+  - After detail enrichment, only 2 detail collision clusters remained, both in `Bebés`. They cover 5 providers total whose normalized details are still effectively indistinguishable.
+  - However, 73 of 182 providers have only 1 or 2 comparison signals across location, structured price, website, structured promo, description snippet, service highlights, terms highlights, event types, and non-zero rating.
+  - Conclusion: the agent can usually explain differences, but for roughly 40% of the marketplace it is still working with thin evidence.
+  - Evidence: `analysis/provider-information-completeness/artifacts/provider-completeness-audit.json`.
 
 - Raw search summaries are not sufficient for provider differentiation on their own.
   - Summary records had 0 completeness for `promoBadge`, `promoSummary`, `descriptionSnippet`, `serviceHighlights`, and `termsHighlights`, plus 0 completeness for `websiteUrl`.
-  - Structured comparison fields were also thin in the full census summaries: `location` was present in only 32.8% of records, `priceLevel` in 18.9%, `minPrice` in 8.3%, and `maxPrice` in 0.6%.
-  - Category-level summary collisions were severe across large parts of the marketplace: `Bebés` collapsed 35 providers into only 2 summary signatures, `Hogar y deco` collapsed 19 providers into 3, and `Vestidos` collapsed 6 providers into 1.
+  - Structured comparison fields remain weak even in the April 14 marketplace snapshot: `location` is present in only 57.7% of detail records, `structuredPrice` in 48.9%, `websiteUrl` in 56.0%, and `nonZeroRating` in only 2.2%. `eventTypes` is still 0%.
+  - Category-level summary collisions remain severe: `Bebés` collapses 35 providers into only 2 summary signatures, `Vestidos` collapses 6 providers into 1, and `Hogar y deco` collapses 19 providers into 3.
   - Conclusion: recommendation prompts should assume that meaningful differentiation comes from detail enrichment, not from the initial search payload.
 
-- The biggest quality issue is inconsistency in structured metadata, not a total absence of descriptive text.
-  - 176 of 180 providers had rating `0.0`, so rating is almost never a useful comparator despite being technically present on every record.
-  - 146 of 180 providers had no structured price anchor (`priceLevel`, `minPrice`, and `maxPrice` all missing), 121 of 180 had no location, and all 180 had empty `eventTypes`.
-  - 97 providers advertised a discount, freebie, or bonus in the title while both `promoBadge` and `promoSummary` were null, so promo information is often implicit instead of structured.
-  - Detail parsing helps but is still incomplete: `descriptionSnippet` reached 100% completeness, while `promoBadge`, `promoSummary`, `serviceHighlights`, and `termsHighlights` were each present in only 40.6% to 44.4% of records.
-  - Extracted `serviceHighlights` and `termsHighlights` can also contain parsing noise or generic placeholders such as `Preguntar por paquetes` or `Consultar términos y condiciones`.
-  - Conclusion: the agent can often explain differences, but many differences come from semi-structured marketing text instead of reliable comparable fields.
+- The biggest quality issue is uneven structured metadata by category, not a total absence of descriptive text.
+  - Across all 182 providers, `descriptionSnippet` reaches 100% completeness, `structuredPromo` 56.6%, `serviceHighlights` 58.2%, `termsHighlights` 58.2%, `location` 57.7%, `structuredPrice` 48.9%, `websiteUrl` 56.0%, `eventTypes` 0%, and `nonZeroRating` 2.2%.
+  - The weakest large categories are starkly under-structured:
+    - `Vestidos`: 0% completeness for location, structured price, structured promo, service highlights, and terms highlights.
+    - `Bebés`: 2.9% location, 0% structured price, 2.9% structured promo, 5.7% service highlights, 2.9% terms highlights.
+    - `Hogar y deco`: 10.5% location, 10.5% structured price, 0% structured promo, 5.3% service highlights, 5.3% terms highlights.
+  - The strongest categories are much healthier: `Catering`, `Fotografía y video`, `Wedding planners`, `Música`, `Florería y papelería`, and `Maquillaje` all have near-complete promo plus high service-and-terms coverage.
+  - 73 providers advertise promo-like offers in the title while still lacking structured promo fields, and 40 providers have generic or low-value `termsHighlights`.
+  - Conclusion: the marketplace is split between high-signal categories that already support good recommendation quality and low-signal categories where the agent still relies mostly on thin marketing text.
+
+- This data source is temporally unstable, and the analysis must keep using absolute dates.
+  - The previous full census on 2026-04-10 saw 180 providers; the exhaustive audit on 2026-04-14 saw 182 providers and materially better coverage in several fields.
+  - Conclusion: any product decision based on provider-data quality should cite the audit date explicitly and should not assume these rates are static.
 
 ## Implications For Prompts
 
 - The recommendation prompt can differentiate providers if it prioritizes detail fields in this order: `promoBadge` or `promoSummary`, `serviceHighlights`, `termsHighlights`, `descriptionSnippet`, then structured price and location when present.
-- The prompt should not treat `rating` as a strong ranking signal unless it is non-zero, because 176 of 180 providers in the census had `0.0`.
+- The prompt should not treat `rating` as a ranking signal unless it is non-zero, because only 4 of 182 providers currently have non-zero ratings.
 - The prompt should not rely on `eventTypes` as evidence until upstream fixes the feed or the gateway derives a trustworthy fallback.
 - When a provider lacks concrete fields among promo, services, terms, price, and location, the prompt should explicitly frame the option as having limited structured detail instead of inventing a stronger comparison.
 - For categories with residual detail collisions such as `Bebés`, the prompt should avoid overclaiming meaningful distinctions when two options expose nearly identical detail fields.
+- For low-signal providers with `comparisonSignalCount <= 2`, the prompt should bias toward transparency and ask for refinement rather than pretend strong confidence.
 
 ## Upstream Collection Priorities
 
@@ -38,3 +50,4 @@
 - Normalize promo metadata so title-level offers also populate `promoBadge` or `promoSummary`.
 - Add a structured service or package taxonomy so the agent can compare providers on more than free-form prose.
 - Consider a stronger trust signal than raw rating alone, such as review count, verified bookings, or last activity, because `rating` is currently near-useless as a comparator.
+- Prioritize cleanup category-by-category instead of only field-by-field, starting with `Vestidos`, `Bebés`, `Hogar y deco`, `Salud y belleza`, and `Otros`.

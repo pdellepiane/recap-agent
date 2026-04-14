@@ -169,9 +169,11 @@ export class SinEnvolturasGateway implements ProviderGateway {
       paginated = fallback.data;
     }
 
-    const providers = paginated
-      .map((provider) => this.toProviderSummary(provider))
-      .filter((provider) => this.matchesPlan(provider, plan, activeNeed?.category ?? null))
+    const providers = this.selectProvidersForPlan(
+      paginated.map((provider) => this.toProviderSummary(provider)),
+      plan,
+      activeNeed?.category ?? null,
+    )
       .slice(0, this.options.persistedSearchLimit)
       .map((provider) => ({
         ...provider,
@@ -345,26 +347,109 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return response.data;
   }
 
-  private matchesPlan(
-    provider: ProviderSummary,
+  private selectProvidersForPlan(
+    providers: ProviderSummary[],
     plan: PersistedPlan,
     activeCategory: string | null,
-  ): boolean {
+  ): ProviderSummary[] {
+    const categoryAliases = this.categoryAliases(activeCategory ?? plan.vendor_category);
+    const locationAliases = this.locationAliases(plan.location);
+    const evaluated = providers
+      .map((provider) => {
+        const categoryScore = this.categoryMatchScore(provider, categoryAliases);
+        const locationScore = this.locationMatchScore(provider, locationAliases);
+        return {
+          provider,
+          categoryScore,
+          locationScore,
+          hasLocation: Boolean(provider.location),
+        };
+      })
+      .filter((entry) => categoryAliases.length === 0 || entry.categoryScore > 0);
+
+    const categoryScoped = evaluated.length > 0 ? evaluated : providers.map((provider) => ({
+      provider,
+      categoryScore: 0,
+      locationScore: this.locationMatchScore(provider, locationAliases),
+      hasLocation: Boolean(provider.location),
+    }));
+
+    const exactLocationMatches =
+      locationAliases.length === 0
+        ? categoryScoped
+        : categoryScoped.filter((entry) => entry.locationScore >= 3);
+
+    const rankedPool = exactLocationMatches.length > 0 ? exactLocationMatches : categoryScoped;
+
+    return rankedPool
+      .sort((left, right) => {
+        if (right.locationScore !== left.locationScore) {
+          return right.locationScore - left.locationScore;
+        }
+        if (right.categoryScore !== left.categoryScore) {
+          return right.categoryScore - left.categoryScore;
+        }
+        if (left.hasLocation !== right.hasLocation) {
+          return Number(right.hasLocation) - Number(left.hasLocation);
+        }
+        return left.provider.id - right.provider.id;
+      })
+      .map((entry) => entry.provider);
+  }
+
+  private categoryMatchScore(
+    provider: ProviderSummary,
+    categoryAliases: string[],
+  ): number {
+    if (categoryAliases.length === 0) {
+      return 1;
+    }
+
     const haystack = this.normalizeText([
       provider.title,
       provider.category ?? '',
-      provider.location ?? '',
     ].join(' '));
-    const categoryAliases = this.categoryAliases(activeCategory ?? plan.vendor_category);
-    const categoryMatches =
-      categoryAliases.length === 0 ||
-      categoryAliases.some((alias) => haystack.includes(this.normalizeText(alias)));
-    const locationAliases = this.locationAliases(plan.location);
-    const locationMatches =
-      locationAliases.length === 0 ||
-      locationAliases.some((alias) => haystack.includes(this.normalizeText(alias)));
+    const categoryText = this.normalizeText(provider.category ?? '');
 
-    return categoryMatches && locationMatches;
+    if (categoryAliases.some((alias) => categoryText.includes(this.normalizeText(alias)))) {
+      return 2;
+    }
+    if (categoryAliases.some((alias) => haystack.includes(this.normalizeText(alias)))) {
+      return 1;
+    }
+
+    return 0;
+  }
+
+  private locationMatchScore(
+    provider: ProviderSummary,
+    locationAliases: string[],
+  ): number {
+    if (!provider.location) {
+      return 0;
+    }
+
+    if (locationAliases.length === 0) {
+      return 1;
+    }
+
+    const normalizedLocation = this.normalizeText(provider.location);
+    if (
+      locationAliases.some((alias) =>
+        normalizedLocation.includes(this.normalizeText(alias)),
+      )
+    ) {
+      return 3;
+    }
+
+    return 1;
+  }
+
+  private hasExactLocationMatch(
+    provider: ProviderSummary,
+    locationAliases: string[],
+  ): boolean {
+    return this.locationMatchScore(provider, locationAliases) >= 3;
   }
 
   private reasonForProvider(
@@ -376,8 +461,17 @@ export class SinEnvolturasGateway implements ProviderGateway {
     if (activeCategory && provider.category) {
       reasons.push(`coincide con la categoría ${activeCategory}`);
     }
+    const locationAliases = this.locationAliases(plan.location);
     if (plan.location && provider.location) {
-      reasons.push(`opera en ${provider.location}`);
+      if (this.hasExactLocationMatch(provider, locationAliases)) {
+        reasons.push(`opera en ${provider.location}`);
+      } else {
+        reasons.push(
+          `reporta cobertura en ${provider.location} (confirma atención exacta en ${plan.location})`,
+        );
+      }
+    } else if (plan.location && !provider.location) {
+      reasons.push(`sin ubicación pública confirmada para ${plan.location}`);
     }
     if (plan.budget_signal && provider.priceLevel) {
       reasons.push(`parece alineado al rango ${plan.budget_signal}`);

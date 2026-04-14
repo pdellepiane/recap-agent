@@ -92,6 +92,36 @@ const turnTraceSchema = z.object({
   provider_results: z.array(providerSummarySchema),
   plan_persisted: z.boolean(),
   plan_persist_reason: z.string().nullable(),
+  timing_ms: z.object({
+    total: z.number().nonnegative(),
+    load_plan: z.number().nonnegative(),
+    prepare_working_plan: z.number().nonnegative(),
+    extraction: z.number().nonnegative(),
+    apply_extraction: z.number().nonnegative(),
+    compute_sufficiency: z.number().nonnegative(),
+    provider_search: z.number().nonnegative(),
+    provider_enrichment: z.number().nonnegative(),
+    prompt_bundle_load: z.number().nonnegative(),
+    compose_reply: z.number().nonnegative(),
+    save_plan: z.number().nonnegative(),
+  }),
+  token_usage: z.object({
+    extraction: z.object({
+      input_tokens: z.number().nonnegative(),
+      output_tokens: z.number().nonnegative(),
+      total_tokens: z.number().nonnegative(),
+    }).nullable(),
+    reply: z.object({
+      input_tokens: z.number().nonnegative(),
+      output_tokens: z.number().nonnegative(),
+      total_tokens: z.number().nonnegative(),
+    }).nullable(),
+    total: z.object({
+      input_tokens: z.number().nonnegative(),
+      output_tokens: z.number().nonnegative(),
+      total_tokens: z.number().nonnegative(),
+    }).nullable(),
+  }),
 });
 
 const turnInputSchema = z.object({

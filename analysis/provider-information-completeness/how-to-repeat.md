@@ -9,6 +9,10 @@
 ## Commands
 
 ```bash
+node analysis/provider-information-completeness/artifacts/generate-provider-completeness-audit.mjs
+
+node -e "const data=require('./analysis/provider-information-completeness/artifacts/provider-completeness-audit.json'); console.log(JSON.stringify({crawl:data.crawl,fieldCoverage:data.fieldCoverage,scoreDistribution:data.scoreDistribution},null,2));"
+
 node analysis/provider-information-completeness/artifacts/generate-provider-completeness-census.mjs \
   > analysis/provider-information-completeness/artifacts/provider-completeness-census.json
 
@@ -24,6 +28,12 @@ node -e "const data=require('./analysis/provider-information-completeness/artifa
 
 ## Expected Outputs
 
+- `analysis/provider-information-completeness/artifacts/provider-completeness-audit.json`
+- `analysis/provider-information-completeness/artifacts/provider-entry-audit.csv`
+- `analysis/provider-information-completeness/artifacts/provider-category-coverage.csv`
+- `analysis/provider-information-completeness/artifacts/provider-field-coverage.csv`
+- `analysis/provider-information-completeness/artifacts/provider-collision-clusters.json`
+- `analysis/provider-information-completeness/artifacts/generate-provider-completeness-audit.mjs`
 - `analysis/provider-information-completeness/artifacts/provider-completeness-census.json`
 - `analysis/provider-information-completeness/artifacts/generate-provider-completeness-census.mjs`
 - `analysis/provider-information-completeness/artifacts/provider-completeness-sample.json`
@@ -31,6 +41,11 @@ node -e "const data=require('./analysis/provider-information-completeness/artifa
 
 ## Validation
 
+- Confirm the audit reports matching values for `totalProvidersReported`, `fetchedSummaries`, and `fetchedDetails`.
+- Confirm `provider-entry-audit.csv` has one row per fetched provider.
+- Confirm `provider-field-coverage.csv` and `provider-category-coverage.csv` reflect the same total provider count.
+- Confirm `provider-collision-clusters.json` contains only the remaining duplicate-signature groups after detail enrichment.
+- Use the audit as the primary source for exact provider lists and cleanup work.
 - Confirm the census reports `totalProvidersReported`, `fetchedSummaries`, and `fetchedDetails`, and that the fetched counts match.
 - Confirm the census shows `categoriesReported: 16` and a non-empty `categoryDifferentiation` breakdown.
 - Confirm the JSON contains `aggregate`, `perCategoryDifferentiation`, and `sampledProviders`.

@@ -405,7 +405,7 @@ export function summarizeRecommendedProviders(providers: ProviderSummary[]): str
 
   return providers
     .map((provider, index) => {
-      const location = provider.location ? ` en ${provider.location}` : '';
+      const location = provider.location ?? 'ubicación no especificada';
       const category = provider.category ? ` [${provider.category}]` : '';
       const price = provider.priceLevel ? ` (${provider.priceLevel})` : '';
       const differentiators = [
@@ -414,7 +414,7 @@ export function summarizeRecommendedProviders(providers: ProviderSummary[]): str
         provider.descriptionSnippet,
       ].filter((value): value is string => Boolean(value));
       const detailUrl = provider.detailUrl ? ` | ficha: ${provider.detailUrl}` : '';
-      return `${index + 1}. ${provider.title}${category}${location}${price}${differentiators.length > 0 ? ` | detalles: ${differentiators.join(' | ')}` : ''}${detailUrl}`;
+      return `${index + 1}. ${provider.title}${category} | ubicación: ${location}${price}${differentiators.length > 0 ? ` | detalles: ${differentiators.join(' | ')}` : ''}${detailUrl}`;
     })
     .join('\n');
 }

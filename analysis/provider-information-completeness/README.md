@@ -7,9 +7,10 @@
 
 ## Current Status
 
-- Updated on 2026-04-10 with a full live census of the Sin Envolturas marketplace: 180 providers, 15 list pages, and 180 provider-detail fetches.
-- Current answer: detail-enriched provider records are generally enough for recommendation-time textual differentiation across the marketplace, but the structured fields are too sparse and inconsistent for reliable ranking, filtering, or crisp side-by-side comparison.
-- Confidence: moderately high. The conclusion now comes from the full marketplace population exposed by the current endpoint rather than only a category-led sample.
+- Updated on 2026-04-14 with an exhaustive entry-level audit of the full live marketplace: 182 providers, 16 list pages, and 182 provider-detail fetches.
+- Current answer: the agent has enough data to differentiate providers in many categories, but coverage is still uneven enough that ranking and strict comparison remain unreliable for a large minority of entries.
+- Hard-data coverage is now available at the provider level through CSV and JSON artifacts, not only through aggregate percentages.
+- Confidence: high for the current endpoint snapshot on 2026-04-14. These conclusions are backed by a full provider-by-provider audit rather than a sample.
 
 ## Durable Files
 
@@ -17,4 +18,4 @@
 - [how-to-repeat.md](how-to-repeat.md)
 - [sources.md](sources.md)
 - [Spanish stakeholder presentation](presentacion-stakeholders-es.md)
-- [Latest dated note](dates/2026-04-10.md)
+- [Latest dated note](dates/2026-04-14.md)

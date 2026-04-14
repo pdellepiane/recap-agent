@@ -58,6 +58,12 @@ type LambdaErrorPayload = {
   error?: string;
 };
 
+type InvokeTiming = {
+  total: number;
+  fetch: number;
+  parse: number;
+};
+
 const program = new Command();
 
 program
@@ -164,14 +170,18 @@ async function main() {
     const durationMs = Date.now() - startedAt;
 
     if (!result.ok) {
-      renderError(result.body.error ?? 'Unknown runtime error.', durationMs);
+      renderError(
+        result.body.error ?? 'Unknown runtime error.',
+        durationMs,
+        result.timing,
+      );
       continue;
     }
 
-    renderReply(result.body.message, result.body.current_node, durationMs);
+    renderReply(result.body.message, result.body.current_node, durationMs, result.body.trace);
 
     if (config.showTrace) {
-      renderTrace(result.body.trace);
+      renderTrace(result.body.trace, result.timing);
     }
 
     if (config.showPlan) {
@@ -250,13 +260,16 @@ async function invokeLambda(
   body: Record<string, unknown>,
   timeoutMs: number,
 ): Promise<
-  | { ok: true; body: LambdaSuccessPayload }
-  | { ok: false; body: LambdaErrorPayload }
+  | { ok: true; body: LambdaSuccessPayload; timing: InvokeTiming }
+  | { ok: false; body: LambdaErrorPayload; timing: InvokeTiming }
 > {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAt = Date.now();
+  let fetchCompletedAt = startedAt;
 
   try {
+    const fetchStartedAt = Date.now();
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -265,13 +278,22 @@ async function invokeLambda(
       body: JSON.stringify(body),
       signal: controller.signal,
     });
+    fetchCompletedAt = Date.now();
 
+    const parseStartedAt = Date.now();
     const json = (await response.json()) as LambdaSuccessPayload | LambdaErrorPayload;
+    const parseCompletedAt = Date.now();
+    const timing: InvokeTiming = {
+      total: parseCompletedAt - startedAt,
+      fetch: fetchCompletedAt - fetchStartedAt,
+      parse: parseCompletedAt - parseStartedAt,
+    };
+
     if (!response.ok) {
-      return { ok: false, body: json as LambdaErrorPayload };
+      return { ok: false, body: json as LambdaErrorPayload, timing };
     }
 
-    return { ok: true, body: json as LambdaSuccessPayload };
+    return { ok: true, body: json as LambdaSuccessPayload, timing };
   } finally {
     clearTimeout(timeout);
   }
@@ -343,18 +365,31 @@ function renderConfig(config: ResolvedCliConfig) {
   output.write(`${table.toString()}\n`);
 }
 
-function renderReply(message: string, node: string, durationMs: number) {
+function renderReply(
+  message: string,
+  node: string,
+  durationMs: number,
+  trace: TurnTrace,
+) {
+  const runtimeTiming = trace.timing_ms;
+  const runtimeTokens = trace.token_usage.total;
+  const timingHint = runtimeTiming
+    ? ` · extract ${runtimeTiming.extraction}ms · compose ${runtimeTiming.compose_reply}ms`
+    : '';
+  const tokensHint = runtimeTokens
+    ? ` · tokens ${runtimeTokens.total_tokens}`
+    : '';
   output.write(
     `${boxen(message, {
       padding: 1,
       borderColor: 'green',
-      title: `agent reply · ${node} · ${durationMs}ms`,
+      title: `agent reply · ${node} · ${durationMs}ms${timingHint}${tokensHint}`,
       titleAlignment: 'left',
     })}\n`,
   );
 }
 
-function renderTrace(trace: TurnTrace) {
+function renderTrace(trace: TurnTrace, invokeTiming?: InvokeTiming) {
   const hasToolInputsField = Object.prototype.hasOwnProperty.call(
     trace,
     'tool_inputs',
@@ -424,6 +459,42 @@ function renderTrace(trace: TurnTrace) {
     ],
     ['Plan Persisted', String(trace.plan_persisted)],
     ['Persist Reason', trace.plan_persist_reason ?? 'null'],
+    [
+      'Timing (agent pipeline)',
+      [
+        `total=${trace.timing_ms.total}ms`,
+        `load_plan=${trace.timing_ms.load_plan}ms`,
+        `prepare_working_plan=${trace.timing_ms.prepare_working_plan}ms`,
+        `extraction=${trace.timing_ms.extraction}ms`,
+        `apply_extraction=${trace.timing_ms.apply_extraction}ms`,
+        `compute_sufficiency=${trace.timing_ms.compute_sufficiency}ms`,
+        `provider_search=${trace.timing_ms.provider_search}ms`,
+        `provider_enrichment=${trace.timing_ms.provider_enrichment}ms`,
+        `prompt_bundle_load=${trace.timing_ms.prompt_bundle_load}ms`,
+        `compose_reply=${trace.timing_ms.compose_reply}ms`,
+        `save_plan=${trace.timing_ms.save_plan}ms`,
+      ].join('\n'),
+    ],
+    [
+      'Timing (transport)',
+      invokeTiming
+        ? `total=${invokeTiming.total}ms\nfetch=${invokeTiming.fetch}ms\nparse=${invokeTiming.parse}ms`
+        : 'not captured',
+    ],
+    [
+      'Token Usage',
+      [
+        trace.token_usage.extraction
+          ? `extraction: input=${trace.token_usage.extraction.input_tokens} output=${trace.token_usage.extraction.output_tokens} total=${trace.token_usage.extraction.total_tokens}`
+          : 'extraction: not available',
+        trace.token_usage.reply
+          ? `reply: input=${trace.token_usage.reply.input_tokens} output=${trace.token_usage.reply.output_tokens} total=${trace.token_usage.reply.total_tokens}`
+          : 'reply: not available',
+        trace.token_usage.total
+          ? `overall: input=${trace.token_usage.total.input_tokens} output=${trace.token_usage.total.output_tokens} total=${trace.token_usage.total.total_tokens}`
+          : 'overall: not available',
+      ].join('\n'),
+    ],
   );
 
   output.write(`${table.toString()}\n`);
@@ -478,12 +549,19 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
   }
 }
 
-function renderError(message: string, durationMs: number) {
+function renderError(
+  message: string,
+  durationMs: number,
+  invokeTiming?: InvokeTiming,
+) {
+  const invokeHint = invokeTiming
+    ? ` · fetch ${invokeTiming.fetch}ms · parse ${invokeTiming.parse}ms`
+    : '';
   output.write(
     `${boxen(message, {
       padding: 1,
       borderColor: 'red',
-      title: `runtime error · ${durationMs}ms`,
+      title: `runtime error · ${durationMs}ms${invokeHint}`,
       titleAlignment: 'left',
     })}\n`,
   );

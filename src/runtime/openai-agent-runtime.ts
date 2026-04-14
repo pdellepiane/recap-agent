@@ -12,8 +12,9 @@ import type {
   AgentRuntime,
   ComposeReplyRequest,
   ComposeReplyResult,
+  ExtractResult,
   ExtractRequest,
-  ExtractionResult,
+  TokenUsage,
 } from './contracts';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
@@ -68,7 +69,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     this.client = new OpenAI({ apiKey: options.apiKey });
   }
 
-  async extract(request: ExtractRequest): Promise<ExtractionResult> {
+  async extract(request: ExtractRequest): Promise<ExtractResult> {
     const bundle = await this.options.promptLoader.loadExtractorBundle();
     const extractor = new Agent({
       name: 'plan_extractor',
@@ -88,7 +89,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     ].join('\n\n');
 
     const result = await run(extractor, input);
-    return result.finalOutput as ExtractionResult;
+    return {
+      extraction: result.finalOutput as ExtractResult['extraction'],
+      tokenUsage: this.extractTokenUsage(result),
+    };
   }
 
   async composeReply(
@@ -130,7 +134,94 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     return {
       text: String(result.finalOutput ?? '').trim(),
+      tokenUsage: this.extractTokenUsage(result),
     };
+  }
+
+  private extractTokenUsage(value: unknown): TokenUsage | null {
+    const candidates = this.collectUsageCandidates(value);
+    for (const candidate of candidates) {
+      const parsed = this.parseTokenUsage(candidate);
+      if (parsed) {
+        return parsed;
+      }
+    }
+
+    return null;
+  }
+
+  private collectUsageCandidates(value: unknown): unknown[] {
+    if (!value || typeof value !== 'object') {
+      return [];
+    }
+
+    const root = value as Record<string, unknown>;
+    const nestedKeys = ['usage', 'response', 'rawResponse', 'finalResponse', 'result'];
+    const candidates: unknown[] = [];
+
+    for (const key of nestedKeys) {
+      const entry = root[key];
+      if (!entry) {
+        continue;
+      }
+      candidates.push(entry);
+      if (typeof entry === 'object') {
+        const nested = entry as Record<string, unknown>;
+        if (nested.usage) {
+          candidates.push(nested.usage);
+        }
+      }
+    }
+
+    return candidates;
+  }
+
+  private parseTokenUsage(value: unknown): TokenUsage | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+
+    const usage = value as Record<string, unknown>;
+    const inputTokens = this.readNumericField(
+      usage,
+      ['input_tokens', 'prompt_tokens', 'inputTokenCount'],
+    );
+    const outputTokens = this.readNumericField(
+      usage,
+      ['output_tokens', 'completion_tokens', 'outputTokenCount'],
+    );
+    const totalTokens = this.readNumericField(
+      usage,
+      ['total_tokens', 'totalTokenCount'],
+    );
+
+    if (inputTokens === null && outputTokens === null && totalTokens === null) {
+      return null;
+    }
+
+    const safeInput = inputTokens ?? 0;
+    const safeOutput = outputTokens ?? 0;
+    const safeTotal = totalTokens ?? safeInput + safeOutput;
+
+    return {
+      input_tokens: safeInput,
+      output_tokens: safeOutput,
+      total_tokens: safeTotal,
+    };
+  }
+
+  private readNumericField(
+    source: Record<string, unknown>,
+    keys: string[],
+  ): number | null {
+    for (const key of keys) {
+      const value = source[key];
+      if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+      }
+    }
+
+    return null;
   }
 
   private composeConversationInput(request: ComposeReplyRequest): string {

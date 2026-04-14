@@ -362,6 +362,22 @@ Decision:
 Flow nodes affected:
 - None directly. This change adds analysis tooling and documentation rather than changing runtime behavior.
 
+## 2026-04-14
+
+### Add exhaustive provider-entry audit artifacts
+- Added an exhaustive provider-audit script under `analysis/provider-information-completeness/artifacts/` that exports provider-level JSON and CSV coverage for every current marketplace entry.
+- Added field-level, category-level, and collision-cluster artifacts so the dossier can support exact cleanup work rather than only aggregate percentages.
+- Updated the provider-information-completeness dossier and stakeholder presentation to reflect the 2026-04-14 full-entry audit.
+
+Reason:
+- The earlier census answered marketplace-wide questions, but it still did not provide hard entry-level coverage for all providers or exact issue inventories for remediation work.
+
+Decision:
+- Keep the census artifacts as lightweight historical snapshots, but treat the new provider-entry audit as the primary source for exhaustive coverage and cleanup prioritization.
+
+Flow nodes affected:
+- None directly. This change adds analysis tooling and documentation rather than changing runtime behavior.
+
 ## 2026-04-12
 
 ### Add a repo-native evaluation framework for offline and live benchmarking
@@ -409,3 +425,58 @@ Flow nodes affected:
 - `buscar_proveedores`
 - `recomendar`
 - `reintentar`
+
+## 2026-04-14
+
+### Make search resilient to sparse location granularity and require location in recommendations
+- Reworked provider selection in the Sin Envolturas gateway to use category-first matching with location-aware ranking, instead of a strict category+location hard filter that could drop valid providers when location data is coarse.
+- Added exact-location preference without forcing zero results: when exact city matches do not exist, category-matching providers with broader location metadata remain eligible.
+- Expanded recommendation/output prompt contracts so every shown provider includes location information, and explicitly labels missing location as `Ubicación no especificada`.
+- Added a regression test covering the real failure mode where a `Lima` music search returns providers with country-level location (`Perú`) and should still surface options.
+
+Reason:
+- Live traces showed users were being sent to refinement despite valid providers existing, because strict location filtering eliminated category-relevant results due to incomplete or coarse marketplace location fields.
+- Recommendation messages also needed a stricter contract to always expose location context for decision-making.
+
+Decision:
+- Keep precision by preferring exact location matches when present, but preserve recall by falling back to category-relevant candidates when location granularity is insufficient.
+- Enforce location visibility at response-contract level so provider cards are always location-explicit to users.
+
+Flow nodes affected:
+- `buscar_proveedores`
+- `recomendar`
+
+## 2026-04-14
+
+### Tighten zero-result refinement messaging after search-ready turns
+- Updated the `refinar_criterios` prompt contract to force explicit acknowledgment that search already ran when `Listo para buscar` is `sí`.
+- Required a single concrete closed question after empty results, instead of optional or deferential phrasing.
+- Added a guardrail to avoid re-asking the same criterion immediately after the user already relaxed it (for example, budget).
+- Updated the `refinar_criterios` system contract so refinement in search-ready context is treated as immediate continuation, not a permission-based next step.
+
+Reason:
+- Live terminal traces showed the runtime did execute provider search in search-ready turns, but the conversational reply still used vague "si quieres" follow-ups that sounded like search had not happened and added friction.
+
+Decision:
+- Keep search orchestration unchanged in the service layer, and fix the issue at the node prompt-contract level where response behavior is defined.
+
+Flow nodes affected:
+- `refinar_criterios`
+
+## 2026-04-14
+
+### Add granular runtime and transport latency tracing in the dev CLI
+- Added structured per-stage timing data (`timing_ms`) to turn traces in the runtime service, including plan load, working-plan prep, extraction, extraction-merge, sufficiency, provider search, provider enrichment, prompt loading, reply composition, and persistence.
+- Updated terminal CLI rendering to show key timings directly in the reply title (notably extraction and compose latency) and a full timing breakdown in the trace table.
+- Added HTTP transport timing in the CLI invocation layer (fetch and JSON parse) so end-to-end latency can be split between network/transport and agent pipeline execution.
+- Added token-usage tracing (`token_usage`) for extractor, reply, and combined totals when the runtime exposes usage, and surfaced those values in the CLI trace/debug output.
+- Extended eval trace schema validation to include the new `timing_ms` shape.
+
+Reason:
+- Live Lambda interactions were taking several seconds and the existing debug output only showed total turn latency, which was insufficient to identify whether delays came from extraction, provider operations, reply composition, persistence, or transport.
+
+Decision:
+- Keep instrumentation lightweight and always-on in trace payloads so the same runtime path used in development and evaluation can surface actionable latency breakdowns without adding separate debug codepaths.
+
+Flow nodes affected:
+- All nodes indirectly, because latency instrumentation wraps the full turn pipeline regardless of the active decision node.
