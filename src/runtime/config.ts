@@ -52,7 +52,7 @@ const environmentSchema = z.object({
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(5),
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
-  REPLY_PROVIDER_LIMIT: z.coerce.number().int().positive().default(3),
+  REPLY_PROVIDER_LIMIT: z.coerce.number().int().positive().default(4),
   PROVIDER_DETAIL_LOOKUP_LIMIT: z.coerce.number().int().positive().default(3),
 });
 

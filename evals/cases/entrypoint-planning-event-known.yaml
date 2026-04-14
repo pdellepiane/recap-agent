@@ -1,0 +1,56 @@
+template: template.base-both-targets
+id: entrypoint.event_known_no_active_need
+suite: entrypoint_planning
+version: 1
+description: Event is known but no provider need is active yet, so the agent should stay in planning mode.
+tags:
+  - planning
+  - greeting
+  - regression
+variables:
+  event_type: matrimonio
+  location: lima
+inputs:
+  - text: hola, me gustaria planear un {{event_type}} en {{location}}
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.92
+        eventType: boda
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: Lima
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere planear una boda en Lima.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Cuéntame qué parte del matrimonio quieres resolver primero para empezar bien el plan.
+expectations:
+  - id: final-node
+    type: node_transition
+    to: entrevista
+  - id: event-type
+    type: plan_field_equals
+    path: event_type
+    expected: boda
+  - id: location
+    type: plan_field_equals
+    path: location
+    expected: Lima
+  - id: no-provider-first
+    type: text_not_contains
+    phrases:
+      - qué proveedor quieres revisar primero
+  - id: no-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+notes:
+  - Mirrors the broad planning opening that should not force a category immediately.

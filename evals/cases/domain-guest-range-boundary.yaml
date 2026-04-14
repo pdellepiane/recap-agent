@@ -1,0 +1,63 @@
+template: template.base-both-targets
+id: domain.guest_range_boundary_100
+suite: domain_knowledge
+version: 1
+description: Explicit guest count of 100 should map to the inclusive 51-100 range.
+tags:
+  - normalization
+  - guests
+  - regression
+inputs:
+  - text: son 100 invitados, que fotografos me recomiendas?
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.95
+        eventType: boda
+        vendorCategory: fotografía
+        vendorCategories:
+          - fotografía
+        activeNeedCategory: fotografía
+        location: Lima
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Boda en Lima con 100 invitados.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Tengo opciones de fotografía para tu boda en Lima.
+    providerGateway:
+      searchProvidersByTurn:
+        - value:
+            providers:
+              - id: 33
+                title: Spotlight Studio
+                slug: spotlight-studio
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: null
+                rating: "0.0"
+                reason: coincide con la categoría fotografía, opera en Lima, Perú
+                detailUrl: https://sinenvolturas.com/proveedores/spotlight-studio
+                websiteUrl: https://www.spotlight.com.pe/
+                minPrice: null
+                maxPrice: null
+                promoBadge: 10% Off
+                promoSummary: 10% de descuento en bodas.
+                descriptionSnippet: Cobertura para bodas.
+                serviceHighlights:
+                  - Cobertura de boda
+                termsHighlights:
+                  - Sujeto a disponibilidad
+expectations:
+  - id: guest-range
+    type: plan_field_equals
+    path: guest_range
+    expected: 51-100
+  - id: recommendation-node
+    type: node_transition
+    to: recomendar

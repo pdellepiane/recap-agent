@@ -252,3 +252,160 @@ Flow nodes affected:
 - `existe_plan_guardado`
 - `reintentar`
 - `accion_final_exitosa`
+
+### Improve the first-turn entrypoint for event planning
+- Added a first-turn branch so the runtime keeps the conversation in `entrevista` when neither the event type nor an active provider need is known yet.
+- Updated the shared and opening Spanish prompts so the agent introduces itself as an event-planning assistant and asks what type of event the user wants to plan before jumping to provider categories.
+
+Reason:
+- The previous first reply was still too provider-search-centric and skipped the higher-level event-planning framing that the product now needs.
+
+Decision:
+- Keep the existing decision-flow structure, but short-circuit the first missing-data path into `entrevista` whenever the event itself is still undefined. That preserves the node model while fixing the opening behavior.
+
+Flow nodes affected:
+- `contacto_inicial`
+- `entrevista`
+
+### Enrich recommendation data with provider detail and Sin Envolturas links
+- Expanded the typed provider summary model so shortlist items can carry real differentiators from the marketplace, including promo text, service highlights, terms highlights, website URL, min/max price, and the Sin Envolturas detail-page URL.
+- Updated the live Sin Envolturas gateway to parse `info_translations`, `promos`, and social-network links into those typed fields instead of leaving them only inside `raw`.
+- Enriched provider search results with detail lookups before persisting and recommending them, so the recommendation node receives structured differentiators even when the model does not call detail tools on its own.
+- Raised the default recommendation display limit from 3 to 4 and updated the recommendation prompt contract to require concrete differentiators plus the Sin Envolturas link.
+
+Reason:
+- The previous recommendation output was too generic because the service persisted shallow search summaries and relied on the model to optionally fetch detail, which often did not happen. That made providers hard to differentiate and omitted direct links to their marketplace pages.
+
+Decision:
+- Keep search and recommendation in the same turn, but move provider-detail enrichment into deterministic service logic so the model starts from richer, typed provider records instead of improvising from weak summaries.
+
+Flow nodes affected:
+- `buscar_proveedores`
+- `hay_resultados`
+- `recomendar`
+
+### Fix provider-selection continuity so chosen vendors do not restart search
+- Updated the turn orchestration so a provider confirmed by name can be resolved from the active shortlist even when the extractor does not emit an explicit `selectedProviderHint`.
+- Changed the post-selection resume path to continue from `seguir_refinando_guardar_plan`, matching the intended state-flow branch after a provider is chosen and saved.
+- Allowed the continuity node to use provider detail when the user asks a concrete follow-up about the already selected vendor.
+- Added extractor guidance for partial-name selections and a regression test covering the "quiero EDO" path.
+
+Reason:
+- The runtime was recognizing `confirmar_proveedor` in traces but still falling back into `buscar_proveedores` and `recomendar`, which broke the Figma state-flow branch where provider choice should transition into saved selection and continuation.
+
+Decision:
+- Resolve provider choice deterministically from the current shortlist before any new search is attempted, and treat post-selection follow-ups as continuity work rather than a fresh recommendation cycle.
+
+Flow nodes affected:
+- `usuario_elige_proveedor`
+- `anadir_a_proveedores_recomendados`
+- `seguir_refinando_guardar_plan`
+- `recomendar`
+
+### Expose tool outputs in the CLI debug state and add shared domain knowledge
+- Extended turn traces to include serialized tool outputs and the provider results that were active for the turn.
+- Updated the terminal CLI to render tool outputs and expanded provider debug details, including promo data, services, terms, and URLs.
+- Added shared domain-knowledge prompt files for both the conversational runtime and the extractor so all agents inherit local Sin Envolturas terminology, especially around `local` meaning venue/event space.
+- Hardened extraction merging so nulls from the extractor do not erase previously known event facts like location, guest range, or event type.
+
+Reason:
+- The dev CLI was not exposing enough information to understand why the agent branched a certain way or what data came back from provider search/detail calls. At the same time, the runtime was forgetting previously known facts across turns and re-asking obvious domain concepts like `local`.
+
+Decision:
+- Treat full debug visibility as a first-class developer feature by surfacing tool outputs directly in the trace and by keeping provider debug data visible in the CLI without needing raw JSON mode. Treat shared domain knowledge as prompt-level configuration so local terminology is learned consistently by both the reply agent and the extractor.
+
+Flow nodes affected:
+- `entrevista`
+- `aclarar_pedir_faltante`
+- `refinar_criterios`
+- `buscar_proveedores`
+- `recomendar`
+
+### Preserve mixed provider selections, keep planning mode broader, and harden venue/guest normalization
+- Updated the turn orchestrator so a user can confirm a previously recommended provider for one need and open a different active need in the same message without losing the first selection.
+- Kept provider confirmation on the selected need while allowing the turn to continue into search/recommendation for the newly active need when appropriate.
+- Broadened the interview gating so the runtime stays in `entrevista` whenever the event already exists but no active provider need has been chosen yet, instead of treating the missing category as a search blocker immediately.
+- Added deterministic guest-count parsing in the service layer so explicit counts like `100 invitados` map to the correct inclusive range even if the extractor model drifts.
+- Strengthened the Sin Envolturas search gateway with category aliases and looser location matching so venue-style queries like `local` can still surface Lima-wide results when the plan contains district-plus-city locations.
+- Tightened extractor and interview prompt guidance to preserve mixed-intent turns and to prioritize the event context before asking for provider categories.
+- Added regression tests for mixed selection-plus-new-need turns, event-known/no-need planning turns, and the `100 invitados` boundary case.
+
+Reason:
+- The live interactions still showed three core failures: confirming one provider while asking for another category only persisted one side of the turn, broad event-planning openings were still treated as missing-category errors, and venue/guest normalization remained brittle enough to trigger unnecessary clarifications.
+
+Decision:
+- Keep the multi-need event-plan model, but make selection persistence independent from the currently active need, make the pre-search interview stage handle missing active needs, and add deterministic normalization where exact user input should outrank model inference.
+
+Flow nodes affected:
+- `entrevista`
+- `usuario_elige_proveedor`
+- `anadir_a_proveedores_recomendados`
+- `buscar_proveedores`
+- `recomendar`
+- `seguir_refinando_guardar_plan`
+
+## 2026-04-10
+
+### Add full-marketplace provider completeness census tooling
+- Added a reproducible full-census analysis script under `analysis/provider-information-completeness/artifacts/` to crawl the current Sin Envolturas marketplace pagination and fetch every provider detail record.
+- Updated the provider-information-completeness dossier to promote full-marketplace conclusions, reproducibility steps, and supporting census artifacts.
+- Added a Spanish stakeholder-facing presentation document inside the dossier so the findings can be shared directly without translating the technical notes live.
+
+Reason:
+- The earlier category-led sample was good enough for directional guidance, but not for stronger claims about how representative the provider-data issues are across the whole marketplace.
+- The dossier had the evidence, but it still needed a concise narrative version that non-technical stakeholders could read quickly.
+
+Decision:
+- Keep the original sample artifact for fast spot checks, but treat the census artifact as the default basis for marketplace-wide conclusions about provider differentiation and missing fields.
+- Keep the stakeholder presentation in Spanish because it is presentation material for business audiences rather than developer-facing documentation.
+
+Flow nodes affected:
+- None directly. This change adds analysis tooling and documentation rather than changing runtime behavior.
+
+## 2026-04-12
+
+### Add a repo-native evaluation framework for offline and live benchmarking
+- Added a typed evaluation subsystem under `src/evals/` covering case schemas, YAML or JSON loading, expectation evaluation, scoring, offline and live targets, reporting, and a CLI entrypoint.
+- Added git-tracked evaluation assets under `evals/`, including reusable templates, suite manifests, model matrices, sample fixtures, and seeded regression cases for planning, clarification, recommendation, selection continuity, multi-need continuity, domain knowledge, failure modes, and trace observability.
+- Added fixture imports and variable interpolation so cases can reuse seed plans and provider payload fragments instead of duplicating large provider blocks across files.
+- Added offline harness support using the real `AgentService` with in-memory persistence plus fixture-backed runtime and provider gateway behavior, and added live Lambda normalization that maps deployed responses back into the same result envelope.
+- Added JSONL, JSON, and Markdown report artifacts with aggregate summaries by suite, config, and target plus flaky-case detection.
+- Added operator-facing `npm` scripts and documentation for authoring cases, running smoke subsets safely, using dry-runs for cost estimation, and benchmarking across model matrices.
+- Added test coverage for schema validation, loader behavior, offline target execution, live target normalization, report generation, and runner-level dry-run and envelope stability.
+
+Reason:
+- The agent is still evolving, so the project needed a standardized benchmark harness that can measure state correctness, trajectory quality, tool use, and reply quality without depending on brittle transcript snapshots.
+- The repo also needed a shared evaluation language so model, prompt, and orchestration changes can be compared against the same git-tracked cases across offline and live surfaces.
+
+Decision:
+- Keep the framework repo-native and TypeScript-first instead of introducing an external evaluation platform as a runtime dependency.
+- Use layered expectations and weighted scorers rather than exact response snapshots so the suite stays useful during active development.
+- Treat offline evaluation as the default inner loop and live Lambda evaluation as an explicit, budget-aware integration check.
+
+Flow nodes affected:
+- None directly. This change adds benchmarking infrastructure, fixtures, documentation, and tests rather than changing the runtime flow behavior itself.
+
+## 2026-04-13
+
+### Reduce extraction and reply token pressure, and expose tool inputs in traces
+- Replaced full-plan prompt payloads in the OpenAI runtime with a compact plan snapshot for both extraction and reply composition, preserving key planning fields while removing large duplicated state blocks.
+- Added truncation for long conversation summaries in model inputs so summary growth does not linearly inflate prompt size turn by turn.
+- Stripped `raw` objects from high-volume tool payloads (`get_provider_detail`, `get_provider_detail_and_track_view`, `list_provider_reviews`) before returning results to the model, reducing tool-context token overhead.
+- Extended turn traces with `tool_inputs` and updated the terminal CLI trace renderer to display per-tool inputs and remain robust when older runtime responses do not include the new field.
+- Updated project conventions to prefer clean breaks in dev and to redeploy Lambda after Lambda-impacting changes.
+
+Reason:
+- Live interactions showed very high token usage and slow extraction latency caused by oversized per-turn context and verbose tool payloads that were not required for model decisions.
+- Debugging tool behavior needed both inputs and outputs in the CLI trace, not outputs only.
+
+Decision:
+- Keep semantic coverage by sending a compact, purpose-built plan snapshot to models instead of the full persisted plan JSON.
+- Remove heavyweight `raw` blobs from tool responses sent to the model while preserving useful structured fields for recommendation quality.
+- Treat Lambda redeploy as mandatory in development after runtime-impacting changes to avoid testing stale behavior.
+
+Flow nodes affected:
+- `entrevista`
+- `aclarar_pedir_faltante`
+- `buscar_proveedores`
+- `recomendar`
+- `reintentar`

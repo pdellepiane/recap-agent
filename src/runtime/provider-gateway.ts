@@ -5,13 +5,15 @@ export type ProviderGatewaySearchResult = {
   providers: ProviderSummary[];
 };
 
-export type QueryPrimitive = string | number | boolean;
-export type QueryValue = QueryPrimitive | QueryPrimitive[] | null | undefined;
-
-export type ProviderSearchQuery = {
-  search?: string | null;
+export type KeywordProviderSearchInput = {
+  keyword: string;
   page?: number | null;
-  query?: Record<string, QueryValue>;
+};
+
+export type CategoryLocationProviderSearchInput = {
+  category: string;
+  location?: string | null;
+  page?: number | null;
 };
 
 export type MarketplaceCategory = {
@@ -71,7 +73,12 @@ export interface ProviderGateway {
   getCategoryBySlug(slug: string): Promise<MarketplaceCategory | null>;
   listLocations(): Promise<MarketplaceLocation[]>;
   searchProviders(plan: PersistedPlan): Promise<ProviderGatewaySearchResult>;
-  searchProvidersByQuery(query: ProviderSearchQuery): Promise<ProviderGatewaySearchResult>;
+  searchProvidersByKeyword(
+    input: KeywordProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult>;
+  searchProvidersByCategoryLocation(
+    input: CategoryLocationProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult>;
   getRelevantProviders(): Promise<ProviderSummary[]>;
   getProviderDetail(providerId: number): Promise<ProviderDetail | null>;
   getProviderDetailAndTrackView(providerId: number): Promise<ProviderDetail | null>;

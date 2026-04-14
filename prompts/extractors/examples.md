@@ -31,3 +31,15 @@ Ejemplos breves:
 - intent: confirmar_proveedor
 - selectedProviderHint: 2
 - pauseRequested: true
+
+5. Usuario: "Quiero usar EDO para el catering."
+- intent: confirmar_proveedor
+- vendorCategory: catering
+- activeNeedCategory: catering
+- selectedProviderHint: EDO
+
+6. Usuario: "Quiero utilizar los servicios de Carlos y también necesito catering."
+- intent: confirmar_proveedor
+- vendorCategories: [fotografía, catering]
+- activeNeedCategory: catering
+- selectedProviderHint: Carlos

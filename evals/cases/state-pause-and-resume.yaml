@@ -1,0 +1,38 @@
+template: template.base-offline
+id: state.pause_request_persists_closure_node
+suite: state_and_resume
+version: 1
+description: Pause requests should store the temporal-close node.
+tags:
+  - pause
+  - state
+inputs:
+  - text: stop por ahora
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: pausar
+        intentConfidence: 0.98
+        eventType: null
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Pausa solicitada por el usuario.
+        selectedProviderHint: null
+        pauseRequested: true
+    repliesByTurn:
+      - Perfecto, dejo esto guardado y lo retomamos cuando quieras.
+expectations:
+  - id: closure-node
+    type: node_transition
+    to: guardar_cerrar_temporalmente
+  - id: pause-intent
+    type: plan_field_equals
+    path: intent
+    expected: pausar

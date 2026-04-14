@@ -24,6 +24,7 @@ Serverless conversational agent runtime for Sin Envolturas.
 - `prompts/`: Spanish prompt files tracked by exact node
 - `infra/cloudformation`: serverless infrastructure template
 - `docs/implementation-log.md`: change log with reasons and decisions
+- `docs/evaluation-framework.md`: authoring and operating guide for the eval harness
 
 ## Local checks
 
@@ -116,6 +117,44 @@ npm run purge:terminal-plans -- --channel terminal_whatsapp --yes
 npm run purge:terminal-plans -- --table recap-agent-runtime-plans --yes
 ```
 
+## Evaluation framework
+
+The repo includes a native evaluation harness for benchmarking the agent across:
+
+- `offline`: deterministic local runs with fixture-backed runtime and provider gateway behavior
+- `live_lambda`: live Lambda execution normalized into the same result envelope
+
+Primary commands:
+
+```bash
+npm run eval:list
+npm run eval -- --suite smoke --target offline
+npm run eval -- --case selection.choose_edo_from_shortlist --target offline
+npm run eval -- --suite benchmark_full --matrix evals/matrices/models.yaml --dry-run
+npm run eval:report -- --input .eval-runs/<run-id>
+```
+
+Dataset layout:
+
+- `evals/cases`: scenario definitions
+- `evals/templates`: reusable case defaults
+- `evals/fixtures`: reusable seed plans and offline fixture fragments
+- `evals/suites`: suite manifests
+- `evals/matrices`: benchmarking matrices
+
+Run artifacts are written to `.eval-runs/` and are intentionally gitignored.
+
+The framework is designed around layered expectations rather than transcript snapshots:
+
+- flow and transition checks
+- persisted plan checks
+- provider shortlist checks
+- tool usage checks
+- tolerant text checks
+- optional semantic graders
+
+Full usage guidance is documented in [evaluation-framework.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/docs/evaluation-framework.md).
+
 ## Lambda runtime env vars
 
 ```bash
@@ -128,7 +167,7 @@ SINENVOLTURAS_BASE_URL=https://api.sinenvolturas.com/api-web/vendor
 DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
 PROVIDER_SEARCH_LIMIT=5
 SEARCH_SUMMARY_WORD_LIMIT=5
-REPLY_PROVIDER_LIMIT=3
+REPLY_PROVIDER_LIMIT=4
 PROVIDER_DETAIL_LOOKUP_LIMIT=3
 ```
 

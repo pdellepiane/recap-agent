@@ -7,11 +7,17 @@ Reglas de normalización:
   - "poquitos", "algo íntimo" -> 1-20 o 21-50 según el contexto;
   - "mediano" -> 51-100 si no hay mejor señal;
   - "grande" -> 101-200 o 201+ según el contexto.
+  - si el usuario da un número explícito de invitados, usa rangos inclusivos: 1-20, 21-50, 51-100, 101-200, 201+.
 - ubicación:
   - conserva el texto útil más específico que sirva para buscar.
 - categoría:
   - normaliza a una etiqueta breve en singular cuando sea posible.
   - si el usuario menciona varias categorías, devuélvelas en vendorCategories sin perder ninguna.
   - vendorCategory debe reflejar la categoría activa del turno si está clara.
+  - en este dominio, "local" y "solo el espacio" deben mapearse a la necesidad de venue o salón/local para eventos, no a una ubicación comercial cualquiera.
+- selección de proveedor:
+  - si el usuario elige una opción por nombre parcial, conserva ese nombre breve en selectedProviderHint;
+  - si combina elección y pregunta puntual sobre esa opción, mantén intent=confirmar_proveedor.
+  - si combina elección de un proveedor previo con una nueva necesidad, conserva selectedProviderHint y usa activeNeedCategory para la nueva necesidad si queda clara.
 - resumen:
   - incluye solo lo más relevante para continuar la conversación y el avance general del evento.

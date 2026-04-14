@@ -1,0 +1,23 @@
+id: template.base-offline
+suite: template
+version: 1
+description: Base template for deterministic offline eval cases.
+tags:
+  - template
+priority: p2
+status: active
+targetModes:
+  - offline
+variables: {}
+inputs:
+  - text: template placeholder
+expectations: []
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+  - id: budget-efficiency
+    type: budget_efficiency
+    weight: 0.25
+notes:
+  - Use variables to customize user text and expectation payloads.

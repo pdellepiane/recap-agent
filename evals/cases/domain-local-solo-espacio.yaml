@@ -1,0 +1,60 @@
+template: template.base-offline
+id: domain.local_solo_espacio_no_category_reask
+suite: domain_knowledge
+version: 1
+description: Once local is the active need, "solo el espacio" should not trigger a re-ask about what local means.
+tags:
+  - domain-knowledge
+  - local
+  - solo-el-espacio
+inputs:
+  - text: solo el espacio
+seedPlan:
+  current_node: refinar_criterios
+  event_type: baby shower
+  location: La Molina, Lima, Perú
+  guest_range: 21-50
+  active_need_category: local
+  vendor_category: local
+  provider_needs:
+    - category: local
+      status: identified
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: []
+      recommended_providers: []
+      selected_provider_id: null
+      selected_provider_hint: null
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: refinar_busqueda
+        intentConfidence: 0.92
+        eventType: baby shower
+        vendorCategory: local
+        vendorCategories:
+          - local
+        activeNeedCategory: local
+        location: La Molina, Lima, Perú
+        budgetSignal: null
+        guestRange: 21-50
+        preferences:
+          - solo el espacio
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere solo el espacio para el local.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Perfecto, buscamos solo el espacio. Ahora dime el presupuesto para afinar mejor el local.
+expectations:
+  - id: no-local-reask
+    type: text_not_contains
+    phrases:
+      - salón/local para eventos
+      - te refieres a un salón
+  - id: preserve-local
+    type: plan_field_equals
+    path: active_need_category
+    expected: local

@@ -1,8 +1,12 @@
 Herramientas permitidas:
-- search_providers
+- search_providers_from_plan
+- search_providers_by_keyword
+- search_providers_by_category_location
 - get_relevant_providers
 
 Reglas:
-- usa search_providers solo si el plan ya tiene mínimos suficientes;
+- usa search_providers_from_plan cuando el plan ya esté completo y consistente;
+- usa search_providers_by_keyword cuando el usuario pida una marca, estilo o término puntual;
+- usa search_providers_by_category_location cuando debas forzar categoría + ubicación explícitas;
 - usa get_relevant_providers como fallback o exploración cuando la búsqueda filtrada no alcanza;
 - no uses list_categories ni list_locations para improvisar entrevista aquí.

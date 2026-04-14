@@ -355,6 +355,30 @@ function renderReply(message: string, node: string, durationMs: number) {
 }
 
 function renderTrace(trace: TurnTrace) {
+  const hasToolInputsField = Object.prototype.hasOwnProperty.call(
+    trace,
+    'tool_inputs',
+  );
+  const toolInputs = trace.tool_inputs ?? [];
+  const toolOutputs = trace.tool_outputs ?? [];
+  const providerResults = trace.provider_results ?? [];
+  const toolsCalled = trace.tools_called ?? [];
+  const toolInputsSummary =
+    toolInputs.length > 0
+      ? toolInputs
+          .map(
+            (entry, index) =>
+              `${index + 1}. ${entry.tool}\n${entry.input}`,
+          )
+          .join('\n\n')
+      : hasToolInputsField
+        ? toolsCalled.length > 0
+          ? 'No tool input payloads were captured for this turn.'
+          : 'No tools were called in this turn.'
+        : toolsCalled.length > 0
+          ? 'Tool inputs are not available in this runtime response. Redeploy Lambda with the latest trace schema.'
+          : 'No tools were called in this turn.';
+
   const table = new Table({
     head: [pc.bold('Trace'), pc.bold('Value')],
     style: { head: [], border: [] },
@@ -374,7 +398,30 @@ function renderTrace(trace: TurnTrace) {
     ['Prompt Bundle', trace.prompt_bundle_id],
     ['Prompt Files', trace.prompt_file_paths.join('\n')],
     ['Tools Considered', trace.tools_considered.join(', ') || 'none'],
-    ['Tools Called', trace.tools_called.join(', ') || 'none'],
+    ['Tools Called', toolsCalled.join(', ') || 'none'],
+    [
+      'Tool Inputs',
+      toolInputsSummary,
+    ],
+    [
+      'Tool Outputs',
+      toolOutputs.length > 0
+        ? toolOutputs
+            .map(
+              (entry, index) =>
+                `${index + 1}. ${entry.tool}\n${entry.output}`,
+            )
+            .join('\n\n')
+        : 'none',
+    ],
+    [
+      'Provider Results',
+      providerResults.length > 0
+        ? providerResults
+            .map((provider, index) => formatProviderDebug(provider, index))
+            .join('\n\n')
+        : 'none',
+    ],
     ['Plan Persisted', String(trace.plan_persisted)],
     ['Persist Reason', trace.plan_persist_reason ?? 'null'],
   );
@@ -417,7 +464,7 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
     [
       'Recommended Providers',
       plan.recommended_providers
-        .map((provider, index) => `${index + 1}. ${provider.title} (${provider.id})`)
+        .map((provider, index) => formatProviderDebug(provider, index))
         .join('\n') || 'none',
     ],
     ['Summary', plan.conversation_summary || ''],
@@ -440,4 +487,47 @@ function renderError(message: string, durationMs: number) {
       titleAlignment: 'left',
     })}\n`,
   );
+}
+
+function formatProviderDebug(
+  provider: PlanSnapshot['recommended_providers'][number],
+  index: number,
+): string {
+  const lines = [
+    `${index + 1}. ${provider.title} (${provider.id})`,
+    `category=${provider.category ?? 'null'} | location=${provider.location ?? 'null'} | price=${provider.priceLevel ?? 'null'} | rating=${provider.rating ?? 'null'}`,
+    `reason=${provider.reason ?? 'null'}`,
+  ];
+
+  if (provider.promoBadge || provider.promoSummary) {
+    lines.push(
+      `promo=${provider.promoBadge ?? 'null'} | promo_summary=${provider.promoSummary ?? 'null'}`,
+    );
+  }
+
+  if (provider.minPrice || provider.maxPrice) {
+    lines.push(
+      `min_price=${provider.minPrice ?? 'null'} | max_price=${provider.maxPrice ?? 'null'}`,
+    );
+  }
+
+  if (provider.descriptionSnippet) {
+    lines.push(`description=${provider.descriptionSnippet}`);
+  }
+
+  if (provider.serviceHighlights.length > 0) {
+    lines.push(`services=${provider.serviceHighlights.join(' | ')}`);
+  }
+
+  if (provider.termsHighlights.length > 0) {
+    lines.push(`terms=${provider.termsHighlights.join(' | ')}`);
+  }
+
+  if (provider.detailUrl || provider.websiteUrl) {
+    lines.push(
+      `detail=${provider.detailUrl ?? 'null'} | website=${provider.websiteUrl ?? 'null'}`,
+    );
+  }
+
+  return lines.join('\n');
 }

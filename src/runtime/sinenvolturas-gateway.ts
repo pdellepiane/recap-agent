@@ -1,14 +1,19 @@
 import { getActiveNeed, type PersistedPlan } from '../core/plan';
-import type { ProviderDetail, ProviderSummary } from '../core/provider';
+import {
+  normalizeProviderSummary,
+  type ProviderDetail,
+  type ProviderSummary,
+} from '../core/provider';
 import type {
+  CategoryLocationProviderSearchInput,
   CreateProviderReviewInput,
   FavoriteRequestInput,
+  KeywordProviderSearchInput,
   MarketplaceCategory,
   MarketplaceLocation,
   ProviderGateway,
   ProviderGatewaySearchResult,
   ProviderReview,
-  ProviderSearchQuery,
   QuoteRequestInput,
 } from './provider-gateway';
 
@@ -41,10 +46,15 @@ type ProviderApiItem = {
   slug?: string | null;
   rating?: string | null;
   price_level?: string | null;
+  min_price?: string | null;
+  max_price?: string | null;
   translations?: Array<{
     title?: string | null;
     language?: { locale?: string | null };
   }>;
+  promos?: PromoApiItem[] | null;
+  info_translations?: ProviderInfoTranslation[] | null;
+  social_networks?: SocialNetworkApiItem[] | null;
   category?: {
     translations?: Array<{ name?: string | null; language?: { locale?: string | null } }>;
   };
@@ -53,6 +63,29 @@ type ProviderApiItem = {
   description?: string | null;
   event_types?: Array<{ name?: string | null }> | null;
   [key: string]: unknown;
+};
+
+type ProviderInfoTranslation = {
+  title?: string | null;
+  description?: string | null;
+  language?: { locale?: string | null } | null;
+};
+
+type PromoApiItem = {
+  url?: string | null;
+  translations?: Array<{
+    title?: string | null;
+    subtitle?: string | null;
+    badge?: string | null;
+    language?: { locale?: string | null } | null;
+  }> | null;
+};
+
+type SocialNetworkApiItem = {
+  url?: string | null;
+  social_network?: {
+    name?: string | null;
+  } | null;
 };
 
 type PaginatedProviders = {
@@ -100,17 +133,21 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
     const activeNeed = getActiveNeed(plan);
-    const searchTerms = [
-      activeNeed?.category ?? plan.vendor_category,
-      plan.event_type,
-      plan.location,
-      plan.conversation_summary
-        .split(/\s+/)
-        .slice(0, this.options.summarySearchWordLimit)
-        .join(' '),
-    ]
-      .map((value) => value?.trim())
-      .filter((value): value is string => Boolean(value));
+    const searchTerms = Array.from(
+      new Set(
+        [
+          ...this.categoryAliases(activeNeed?.category ?? plan.vendor_category),
+          plan.event_type,
+          plan.location,
+          plan.conversation_summary
+            .split(/\s+/)
+            .slice(0, this.options.summarySearchWordLimit)
+            .join(' '),
+        ]
+          .map((value) => value?.trim())
+          .filter((value): value is string => Boolean(value)),
+      ),
+    );
 
     let paginated: ProviderApiItem[] = [];
 
@@ -144,42 +181,27 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return { providers };
   }
 
-  async searchProvidersByQuery(
-    query: ProviderSearchQuery,
+  async searchProvidersByKeyword(
+    input: KeywordProviderSearchInput,
   ): Promise<ProviderGatewaySearchResult> {
-    const search = query.search?.trim();
-    const page = query.page ?? 1;
-    const searchParams = new URLSearchParams();
+    return this.searchProvidersWithAllowedParams({
+      search: input.keyword.trim(),
+      page: input.page ?? 1,
+    });
+  }
 
-    if (search) {
-      searchParams.set('search', search);
-    }
-    searchParams.set('page', String(page));
+  async searchProvidersByCategoryLocation(
+    input: CategoryLocationProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult> {
+    const composedSearch = [input.category, input.location ?? null]
+      .map((value) => value?.trim())
+      .filter((value): value is string => Boolean(value))
+      .join(' ');
 
-    for (const [key, value] of Object.entries(query.query ?? {})) {
-      if (value === null || value === undefined) {
-        continue;
-      }
-
-      if (Array.isArray(value)) {
-        for (const entry of value) {
-          searchParams.append(key, String(entry));
-        }
-        continue;
-      }
-
-      searchParams.set(key, String(value));
-    }
-
-    const response = await this.fetchJson<ApiEnvelope<PaginatedProviders>>(
-      `/filtered?${searchParams.toString()}`,
-    );
-
-    return {
-      providers: (response.data.data ?? []).map((provider) =>
-        this.toProviderSummary(provider),
-      ),
-    };
+    return this.searchProvidersWithAllowedParams({
+      search: composedSearch,
+      page: input.page ?? 1,
+    });
   }
 
   async getRelevantProviders(): Promise<ProviderSummary[]> {
@@ -328,19 +350,21 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
     activeCategory: string | null,
   ): boolean {
-    const haystack = [
+    const haystack = this.normalizeText([
       provider.title,
       provider.category ?? '',
       provider.location ?? '',
-    ]
-      .join(' ')
-      .toLowerCase();
+    ].join(' '));
+    const categoryAliases = this.categoryAliases(activeCategory ?? plan.vendor_category);
+    const categoryMatches =
+      categoryAliases.length === 0 ||
+      categoryAliases.some((alias) => haystack.includes(this.normalizeText(alias)));
+    const locationAliases = this.locationAliases(plan.location);
+    const locationMatches =
+      locationAliases.length === 0 ||
+      locationAliases.some((alias) => haystack.includes(this.normalizeText(alias)));
 
-    const mustContain = [activeCategory ?? plan.vendor_category, plan.location]
-      .map((value) => value?.toLowerCase())
-      .filter((value): value is string => Boolean(value));
-
-    return mustContain.every((term) => haystack.includes(term));
+    return categoryMatches && locationMatches;
   }
 
   private reasonForProvider(
@@ -386,7 +410,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
         ? provider.country
         : provider.country?.name ?? null;
 
-    return {
+    return normalizeProviderSummary({
       id: provider.id,
       title,
       slug: provider.slug ?? null,
@@ -394,18 +418,39 @@ export class SinEnvolturasGateway implements ProviderGateway {
       location: [city, country].filter(Boolean).join(', ') || null,
       priceLevel: provider.price_level ?? null,
       rating: provider.rating ?? null,
-    };
+      detailUrl: this.buildDetailUrl(provider.slug ?? null),
+      websiteUrl: this.findWebsiteUrl(provider.social_networks ?? null),
+      minPrice: provider.min_price ?? null,
+      maxPrice: provider.max_price ?? null,
+      promoBadge: null,
+      promoSummary: null,
+      descriptionSnippet: null,
+      serviceHighlights: [],
+      termsHighlights: [],
+    });
   }
 
   private toProviderDetail(provider: ProviderApiItem): ProviderDetail {
     const summary = this.toProviderSummary(provider);
+    const infoSections = this.extractInfoSections(provider.info_translations ?? null);
+    const promo = this.extractPromo(provider.promos ?? null);
+
     return {
       ...summary,
       description:
-        typeof provider.description === 'string' ? provider.description : null,
+        infoSections.description ??
+        (typeof provider.description === 'string' ? provider.description : null),
       eventTypes:
         provider.event_types?.map((item) => item.name).filter(Boolean) as string[] ??
         [],
+      promoBadge: promo.badge,
+      promoSummary: promo.summary,
+      descriptionSnippet: this.firstSentence(
+        infoSections.description ??
+          (typeof provider.description === 'string' ? provider.description : null),
+      ),
+      serviceHighlights: infoSections.serviceHighlights,
+      termsHighlights: infoSections.termsHighlights,
       raw: provider,
     };
   }
@@ -457,6 +502,25 @@ export class SinEnvolturasGateway implements ProviderGateway {
     };
   }
 
+  private async searchProvidersWithAllowedParams(input: {
+    search: string;
+    page: number;
+  }): Promise<ProviderGatewaySearchResult> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('search', input.search);
+    searchParams.set('page', String(input.page));
+
+    const response = await this.fetchJson<ApiEnvelope<PaginatedProviders>>(
+      `/filtered?${searchParams.toString()}`,
+    );
+
+    return {
+      providers: (response.data.data ?? []).map((provider) =>
+        this.toProviderSummary(provider),
+      ),
+    };
+  }
+
   private async fetchJson<T>(pathname: string): Promise<T> {
     const response = await fetch(`${this.options.baseUrl}${pathname}`);
 
@@ -484,5 +548,278 @@ export class SinEnvolturasGateway implements ProviderGateway {
     }
 
     return (await response.json()) as T;
+  }
+
+  private buildDetailUrl(slug: string | null): string | null {
+    if (!slug) {
+      return null;
+    }
+
+    return `https://sinenvolturas.com/proveedores/${slug}`;
+  }
+
+  private findWebsiteUrl(
+    socialNetworks: SocialNetworkApiItem[] | null,
+  ): string | null {
+    if (!socialNetworks) {
+      return null;
+    }
+
+    const website = socialNetworks.find(
+      (network) => network.social_network?.name?.toLowerCase() === 'web',
+    );
+
+    return website?.url?.trim() || null;
+  }
+
+  private extractInfoSections(
+    translations: ProviderInfoTranslation[] | null,
+  ): {
+    description: string | null;
+    serviceHighlights: string[];
+    termsHighlights: string[];
+  } {
+    if (!translations || translations.length === 0) {
+      return {
+        description: null,
+        serviceHighlights: [],
+        termsHighlights: [],
+      };
+    }
+
+    const localizedTranslations = translations
+      .filter((translation) => {
+        const locale = translation.language?.locale?.toLowerCase() ?? '';
+        return locale.startsWith('es');
+      });
+    const source = localizedTranslations.length > 0 ? localizedTranslations : translations;
+
+    let description: string | null = null;
+    let serviceHighlights: string[] = [];
+    let termsHighlights: string[] = [];
+
+    for (const translation of source) {
+      const title = translation.title?.toLowerCase() ?? '';
+      const lines = this.htmlToLines(translation.description ?? null);
+
+      if (lines.length === 0) {
+        continue;
+      }
+
+      if (!description && (title.includes('acerca') || title.includes('about'))) {
+        description = lines.join(' ');
+        continue;
+      }
+
+      if (serviceHighlights.length === 0 && title.includes('servicios')) {
+        serviceHighlights = lines.slice(0, 3);
+        continue;
+      }
+
+      if (termsHighlights.length === 0 && title.includes('términos')) {
+        termsHighlights = lines.slice(0, 2);
+      }
+    }
+
+    if (serviceHighlights.length === 0 || termsHighlights.length === 0) {
+      const combinedLines = source.flatMap((translation) =>
+        this.htmlToLines(translation.description ?? null),
+      );
+
+      if (serviceHighlights.length === 0) {
+        serviceHighlights = this.extractLinesAfterHeading(
+          combinedLines,
+          ['servicios que ofrece', 'services offered'],
+          3,
+        );
+      }
+
+      if (termsHighlights.length === 0) {
+        termsHighlights = this.extractLinesAfterHeading(
+          combinedLines,
+          ['términos y condiciones', 'términos  y condiciones', 'terms and conditions'],
+          2,
+        );
+      }
+    }
+
+    if (!description) {
+      description =
+        this.htmlToLines(source[0]?.description ?? null).join(' ').trim() || null;
+    }
+
+    return {
+      description,
+      serviceHighlights,
+      termsHighlights,
+    };
+  }
+
+  private extractPromo(
+    promos: PromoApiItem[] | null,
+  ): {
+    badge: string | null;
+    summary: string | null;
+  } {
+    if (!promos || promos.length === 0) {
+      return {
+        badge: null,
+        summary: null,
+      };
+    }
+
+    for (const promo of promos) {
+      const localizedTranslations = promo.translations?.filter((translation) => {
+        const locale = translation.language?.locale?.toLowerCase() ?? '';
+        return locale.startsWith('es');
+      });
+      const source =
+        localizedTranslations && localizedTranslations.length > 0
+          ? localizedTranslations
+          : promo.translations ?? [];
+      const translation = source[0];
+
+      if (!translation) {
+        continue;
+      }
+
+      return {
+        badge: translation.badge?.trim() || null,
+        summary: translation.subtitle?.trim() || null,
+      };
+    }
+
+    return {
+      badge: null,
+      summary: null,
+    };
+  }
+
+  private htmlToLines(html: string | null): string[] {
+    if (!html) {
+      return [];
+    }
+
+    const withBreaks = html
+      .replace(/<\/(p|li|h1|h2|h3|h4|h5|h6)>/gi, '\n')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li>/gi, '- ')
+      .replace(/<[^>]+>/g, ' ');
+
+    return this.decodeHtmlEntities(withBreaks)
+      .split('\n')
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .map((line) => line.replace(/^-+\s*/, ''));
+  }
+
+  private decodeHtmlEntities(value: string): string {
+    return value
+      .replace(/&amp;/g, '&')
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .replace(/&aacute;/g, 'á')
+      .replace(/&eacute;/g, 'é')
+      .replace(/&iacute;/g, 'í')
+      .replace(/&oacute;/g, 'ó')
+      .replace(/&uacute;/g, 'ú')
+      .replace(/&ntilde;/g, 'ñ')
+      .replace(/&Aacute;/g, 'Á')
+      .replace(/&Eacute;/g, 'É')
+      .replace(/&Iacute;/g, 'Í')
+      .replace(/&Oacute;/g, 'Ó')
+      .replace(/&Uacute;/g, 'Ú')
+      .replace(/&Ntilde;/g, 'Ñ');
+  }
+
+  private firstSentence(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    const normalized = value.trim();
+    if (!normalized) {
+      return null;
+    }
+
+    const sentence = normalized.match(/.+?[.!?](\s|$)/)?.[0] ?? normalized;
+    return sentence.trim();
+  }
+
+  private extractLinesAfterHeading(
+    lines: string[],
+    headings: string[],
+    limit: number,
+  ): string[] {
+    const normalizedHeadings = headings.map((heading) => heading.toLowerCase());
+    const startIndex = lines.findIndex((line) =>
+      normalizedHeadings.includes(line.toLowerCase().replace(/:$/, '')),
+    );
+
+    if (startIndex < 0) {
+      return [];
+    }
+
+    return lines
+      .slice(startIndex + 1)
+      .filter((line) => !normalizedHeadings.includes(line.toLowerCase().replace(/:$/, '')))
+      .slice(0, limit);
+  }
+
+  private categoryAliases(category: string | null | undefined): string[] {
+    const normalized = this.normalizeText(category ?? '');
+    if (!normalized) {
+      return [];
+    }
+
+    const aliases = new Set<string>([category?.trim() ?? '']);
+
+    switch (normalized) {
+      case 'local':
+      case 'venue':
+        aliases.add('salón');
+        aliases.add('salon');
+        aliases.add('venue');
+        aliases.add('espacio para eventos');
+        aliases.add('recepciones');
+        break;
+      case 'fotografia':
+        aliases.add('fotografía');
+        aliases.add('fotografia y video');
+        aliases.add('foto');
+        break;
+      case 'catering':
+        aliases.add('catering');
+        aliases.add('mesa gastronómica');
+        break;
+      default:
+        break;
+    }
+
+    return Array.from(aliases).filter(Boolean);
+  }
+
+  private locationAliases(location: string | null | undefined): string[] {
+    if (!location) {
+      return [];
+    }
+
+    const parts = location
+      .split(',')
+      .map((part) => part.trim())
+      .filter((part) => part.length >= 3);
+
+    return Array.from(new Set([location.trim(), ...parts]));
+  }
+
+  private normalizeText(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .replace(/[^\p{Letter}\p{Number}\s]/gu, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
   }
 }

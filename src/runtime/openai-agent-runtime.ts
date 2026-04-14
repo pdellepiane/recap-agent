@@ -48,18 +48,8 @@ const extractionSchema = z.object({
 });
 
 type RuntimeContext = {
-  toolUsage: {
-    considered: string[];
-    called: string[];
-  };
+  toolUsage: ComposeReplyRequest['toolUsage'];
 };
-
-const queryPrimitiveSchema = z.union([z.string(), z.number(), z.boolean()]);
-const queryValueSchema = z.union([
-  queryPrimitiveSchema,
-  z.array(queryPrimitiveSchema),
-  z.null(),
-]);
 
 export class OpenAiAgentRuntime implements AgentRuntime {
   private readonly client: OpenAI;
@@ -89,7 +79,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     const input = [
       `Mensaje del usuario:\n${request.userMessage}`,
-      `Plan actual:\n${JSON.stringify(request.plan, null, 2)}`,
+      `Plan resumido:\n${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
       `Necesidades de proveedores:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
       `Proveedores recomendados actuales:\n${summarizeRecommendedProviders(
         request.plan.recommended_providers,
@@ -158,7 +148,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Nodo previo: ${request.previousNode}`,
       `Nodo actual: ${request.currentNode}`,
       `Mensaje del usuario: ${request.userMessage}`,
-      `Plan estructurado: ${JSON.stringify(request.plan, null, 2)}`,
+      `Plan resumido: ${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
       `Necesidad activa: ${activeNeed?.category ?? 'ninguna todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
@@ -185,10 +175,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         name: 'list_categories',
         description:
           'Lista categorías reales del marketplace para aclarar ambigüedad.',
-        parameters: z.object({}),
+        parameters: z.object({}).strict(),
         execute: async () => {
+          this.recordToolInput(toolUsage, 'list_categories', {});
           toolUsage.called.push('list_categories');
-          return await this.options.providerGateway.listCategories();
+          const result = await this.options.providerGateway.listCategories();
+          this.recordToolOutput(toolUsage, 'list_categories', result);
+          return result;
         },
       }),
       get_category_by_slug: tool({
@@ -199,8 +192,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           slug: z.string().min(1),
         }),
         execute: async ({ slug }) => {
+          this.recordToolInput(toolUsage, 'get_category_by_slug', { slug });
           toolUsage.called.push('get_category_by_slug');
-          return await this.options.providerGateway.getCategoryBySlug(slug);
+          const result = await this.options.providerGateway.getCategoryBySlug(slug);
+          this.recordToolOutput(toolUsage, 'get_category_by_slug', result);
+          return result;
         },
       }),
       list_locations: tool({
@@ -209,35 +205,81 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           'Lista ubicaciones reales del marketplace para normalizar la ciudad o país.',
         parameters: z.object({}),
         execute: async () => {
+          this.recordToolInput(toolUsage, 'list_locations', {});
           toolUsage.called.push('list_locations');
-          return await this.options.providerGateway.listLocations();
+          const result = await this.options.providerGateway.listLocations();
+          this.recordToolOutput(toolUsage, 'list_locations', result);
+          return result;
         },
       }),
-      search_providers: tool({
-        name: 'search_providers',
+      search_providers_from_plan: tool({
+        name: 'search_providers_from_plan',
         description:
-          'Busca proveedores reales con el plan vigente o con filtros explícitos cuando se necesite controlar la búsqueda.',
-        parameters: z.object({
-          search: z.string().nullish(),
-          page: z.number().int().positive().nullish(),
-          query: z.record(z.string(), queryValueSchema).optional(),
-        }),
-        execute: async ({ page, query, search }) => {
-          toolUsage.called.push('search_providers');
-          const hasExplicitQuery =
-            Boolean(search?.trim()) ||
-            (page !== null && page !== undefined) ||
-            Object.keys(query ?? {}).length > 0;
-
-          if (hasExplicitQuery) {
-            return await this.options.providerGateway.searchProvidersByQuery({
-              search: search ?? null,
+          'Busca proveedores usando únicamente el plan vigente ya validado.',
+        parameters: z.object({}),
+        execute: async () => {
+          this.recordToolInput(toolUsage, 'search_providers_from_plan', {});
+          toolUsage.called.push('search_providers_from_plan');
+          const result = await this.options.providerGateway.searchProviders(plan);
+          this.recordToolOutput(toolUsage, 'search_providers_from_plan', result);
+          return result;
+        },
+      }),
+      search_providers_by_keyword: tool({
+        name: 'search_providers_by_keyword',
+        description:
+          'Busca proveedores por palabra clave exacta con paginación controlada.',
+        parameters: z
+          .object({
+            keyword: z.string().min(2),
+            page: z.number().int().positive().nullish(),
+          })
+          .strict(),
+        execute: async ({ keyword, page }) => {
+          this.recordToolInput(toolUsage, 'search_providers_by_keyword', {
+            keyword,
+            page: page ?? null,
+          });
+          toolUsage.called.push('search_providers_by_keyword');
+          const result = await this.options.providerGateway.searchProvidersByKeyword({
+            keyword,
+            page: page ?? null,
+          });
+          this.recordToolOutput(toolUsage, 'search_providers_by_keyword', result);
+          return result;
+        },
+      }),
+      search_providers_by_category_location: tool({
+        name: 'search_providers_by_category_location',
+        description:
+          'Busca proveedores combinando categoría y ubicación en una consulta controlada.',
+        parameters: z
+          .object({
+            category: z.string().min(2),
+            location: z.string().min(2).nullish(),
+            page: z.number().int().positive().nullish(),
+          })
+          .strict(),
+        execute: async ({ category, location, page }) => {
+          this.recordToolInput(toolUsage, 'search_providers_by_category_location', {
+            category,
+            location: location ?? null,
+            page: page ?? null,
+          });
+          toolUsage.called.push('search_providers_by_category_location');
+          const result = await this.options.providerGateway.searchProvidersByCategoryLocation(
+            {
+              category,
+              location: location ?? null,
               page: page ?? null,
-              query,
-            });
-          }
-
-          return await this.options.providerGateway.searchProviders(plan);
+            },
+          );
+          this.recordToolOutput(
+            toolUsage,
+            'search_providers_by_category_location',
+            result,
+          );
+          return result;
         },
       }),
       get_relevant_providers: tool({
@@ -246,8 +288,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           'Trae proveedores relevantes del marketplace para exploración o fallback.',
         parameters: z.object({}),
         execute: async () => {
+          this.recordToolInput(toolUsage, 'get_relevant_providers', {});
           toolUsage.called.push('get_relevant_providers');
-          return await this.options.providerGateway.getRelevantProviders();
+          const result = await this.options.providerGateway.getRelevantProviders();
+          this.recordToolOutput(toolUsage, 'get_relevant_providers', result);
+          return result;
         },
       }),
       get_provider_detail: tool({
@@ -258,13 +303,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           provider_id: z.number(),
         }),
         execute: async ({ provider_id }) => {
+          this.recordToolInput(toolUsage, 'get_provider_detail', { provider_id });
           if (remainingProviderDetailLookups <= 0) {
             return null;
           }
 
           remainingProviderDetailLookups -= 1;
           toolUsage.called.push('get_provider_detail');
-          return await this.options.providerGateway.getProviderDetail(provider_id);
+          const result = await this.options.providerGateway.getProviderDetail(provider_id);
+          const safeResult = this.stripRawFields(result);
+          this.recordToolOutput(toolUsage, 'get_provider_detail', safeResult);
+          return safeResult;
         },
       }),
       get_provider_detail_and_track_view: tool({
@@ -275,10 +324,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           provider_id: z.number(),
         }),
         execute: async ({ provider_id }) => {
+          this.recordToolInput(toolUsage, 'get_provider_detail_and_track_view', {
+            provider_id,
+          });
           toolUsage.called.push('get_provider_detail_and_track_view');
-          return await this.options.providerGateway.getProviderDetailAndTrackView(
+          const result = await this.options.providerGateway.getProviderDetailAndTrackView(
             provider_id,
           );
+          const safeResult = this.stripRawFields(result);
+          this.recordToolOutput(
+            toolUsage,
+            'get_provider_detail_and_track_view',
+            safeResult,
+          );
+          return safeResult;
         },
       }),
       get_related_providers: tool({
@@ -289,8 +348,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           provider_id: z.number(),
         }),
         execute: async ({ provider_id }) => {
+          this.recordToolInput(toolUsage, 'get_related_providers', { provider_id });
           toolUsage.called.push('get_related_providers');
-          return await this.options.providerGateway.getRelatedProviders(provider_id);
+          const result = await this.options.providerGateway.getRelatedProviders(provider_id);
+          this.recordToolOutput(toolUsage, 'get_related_providers', result);
+          return result;
         },
       }),
       list_provider_reviews: tool({
@@ -301,8 +363,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           provider_id: z.number(),
         }),
         execute: async ({ provider_id }) => {
+          this.recordToolInput(toolUsage, 'list_provider_reviews', { provider_id });
           toolUsage.called.push('list_provider_reviews');
-          return await this.options.providerGateway.listProviderReviews(provider_id);
+          const result = await this.options.providerGateway.listProviderReviews(provider_id);
+          const safeResult = this.stripRawFields(result);
+          this.recordToolOutput(toolUsage, 'list_provider_reviews', safeResult);
+          return safeResult;
         },
       }),
       get_event_vendor_context: tool({
@@ -313,8 +379,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           event_id: z.number(),
         }),
         execute: async ({ event_id }) => {
+          this.recordToolInput(toolUsage, 'get_event_vendor_context', { event_id });
           toolUsage.called.push('get_event_vendor_context');
-          return await this.options.providerGateway.getEventVendorContext(event_id);
+          const result = await this.options.providerGateway.getEventVendorContext(event_id);
+          this.recordToolOutput(toolUsage, 'get_event_vendor_context', result);
+          return result;
         },
       }),
       list_event_favorite_providers: tool({
@@ -328,13 +397,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           category_id: z.number().int().positive().nullish(),
         }),
         execute: async ({ category_id, event_id, page, sort_by }) => {
+          this.recordToolInput(toolUsage, 'list_event_favorite_providers', {
+            event_id,
+            sort_by: sort_by ?? null,
+            page: page ?? null,
+            category_id: category_id ?? null,
+          });
           toolUsage.called.push('list_event_favorite_providers');
-          return await this.options.providerGateway.listEventFavoriteProviders({
+          const result = await this.options.providerGateway.listEventFavoriteProviders({
             eventId: event_id,
             sortBy: sort_by ?? null,
             page: page ?? null,
             categoryId: category_id ?? null,
           });
+          this.recordToolOutput(toolUsage, 'list_event_favorite_providers', result);
+          return result;
         },
       }),
       list_user_events_vendor_context: tool({
@@ -345,10 +422,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           user_id: z.number(),
         }),
         execute: async ({ user_id }) => {
+          this.recordToolInput(toolUsage, 'list_user_events_vendor_context', {
+            user_id,
+          });
           toolUsage.called.push('list_user_events_vendor_context');
-          return await this.options.providerGateway.listUserEventsVendorContext(
+          const result = await this.options.providerGateway.listUserEventsVendorContext(
             user_id,
           );
+          this.recordToolOutput(toolUsage, 'list_user_events_vendor_context', result);
+          return result;
         },
       }),
       create_quote_request: tool({
@@ -377,8 +459,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           provider_id,
           user_id,
         }) => {
+          this.recordToolInput(toolUsage, 'create_quote_request', {
+            provider_id,
+            user_id,
+            name,
+            email,
+            phone,
+            phone_extension,
+            event_date,
+            guests_range,
+            description,
+          });
           toolUsage.called.push('create_quote_request');
-          return await this.options.providerGateway.createQuoteRequest({
+          const result = await this.options.providerGateway.createQuoteRequest({
             providerId: provider_id,
             userId: user_id,
             name,
@@ -389,6 +482,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             guestsRange: guests_range,
             description,
           });
+          this.recordToolOutput(toolUsage, 'create_quote_request', result);
+          return result;
         },
       }),
       add_vendor_to_event_favorites: tool({
@@ -401,12 +496,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           event_id: z.number(),
         }),
         execute: async ({ event_id, provider_id, user_id }) => {
+          this.recordToolInput(toolUsage, 'add_vendor_to_event_favorites', {
+            provider_id,
+            user_id,
+            event_id,
+          });
           toolUsage.called.push('add_vendor_to_event_favorites');
-          return await this.options.providerGateway.addVendorToEventFavorites({
+          const result = await this.options.providerGateway.addVendorToEventFavorites({
             providerId: provider_id,
             userId: user_id,
             eventId: event_id,
           });
+          this.recordToolOutput(toolUsage, 'add_vendor_to_event_favorites', result);
+          return result;
         },
       }),
       create_provider_review: tool({
@@ -421,18 +523,103 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           comment: z.string().nullish(),
         }),
         execute: async ({ comment, name, provider_id, rating, user_id }) => {
+          this.recordToolInput(toolUsage, 'create_provider_review', {
+            provider_id,
+            user_id,
+            name,
+            rating,
+            comment: comment ?? null,
+          });
           toolUsage.called.push('create_provider_review');
-          return await this.options.providerGateway.createProviderReview({
+          const result = await this.options.providerGateway.createProviderReview({
             providerId: provider_id,
             userId: user_id,
             name,
             rating,
             comment: comment ?? null,
           });
+          this.recordToolOutput(toolUsage, 'create_provider_review', result);
+          return result;
         },
       }),
     } satisfies Record<ToolName, ReturnType<typeof tool>>;
 
     return allowedTools.map((name) => toolMap[name]);
+  }
+
+  private recordToolOutput(
+    toolUsage: RuntimeContext['toolUsage'],
+    tool: string,
+    output: unknown,
+  ): void {
+    toolUsage.outputs.push({
+      tool,
+      output: JSON.stringify(output, null, 2) ?? 'null',
+    });
+  }
+
+  private recordToolInput(
+    toolUsage: RuntimeContext['toolUsage'],
+    tool: string,
+    input: Record<string, unknown>,
+  ): void {
+    toolUsage.inputs.push({
+      tool,
+      input: JSON.stringify(input, null, 2) ?? 'null',
+    });
+  }
+
+  private buildPromptPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
+    return {
+      current_node: plan.current_node,
+      intent: plan.intent,
+      event_type: plan.event_type,
+      active_need_category: plan.active_need_category,
+      vendor_category: plan.vendor_category,
+      location: plan.location,
+      budget_signal: plan.budget_signal,
+      guest_range: plan.guest_range,
+      missing_fields: plan.missing_fields,
+      provider_needs: plan.provider_needs.map((need) => ({
+        category: need.category,
+        status: need.status,
+        missing_fields: need.missing_fields,
+        selected_provider_id: need.selected_provider_id,
+        recommended_provider_ids: need.recommended_provider_ids.slice(0, 6),
+      })),
+      selected_provider_id: plan.selected_provider_id,
+      selected_provider_hint: plan.selected_provider_hint,
+      conversation_summary: this.truncateText(plan.conversation_summary, 300),
+      open_questions: plan.open_questions.slice(0, 5),
+    };
+  }
+
+  private stripRawFields(value: unknown): unknown {
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.stripRawFields(entry));
+    }
+
+    if (value && typeof value === 'object') {
+      const objectValue = value as Record<string, unknown>;
+      const next: Record<string, unknown> = {};
+
+      for (const [key, entry] of Object.entries(objectValue)) {
+        if (key === 'raw') {
+          continue;
+        }
+        next[key] = this.stripRawFields(entry);
+      }
+      return next;
+    }
+
+    return value;
+  }
+
+  private truncateText(value: string, maxLength: number): string {
+    if (value.length <= maxLength) {
+      return value;
+    }
+
+    return `${value.slice(0, maxLength)}...`;
   }
 }

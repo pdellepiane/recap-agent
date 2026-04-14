@@ -1,0 +1,123 @@
+template: template.base-offline
+id: recommendation.default_four_results_with_links
+suite: recommendation
+version: 1
+description: Recommendation output should keep four results when available and include detail links and differentiators.
+tags:
+  - recommendation
+  - differentiators
+  - links
+inputs:
+  - text: son 100 invitados, que fotografos me recomiendas?
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.95
+        eventType: boda
+        vendorCategory: fotografía
+        vendorCategories:
+          - fotografía
+        activeNeedCategory: fotografía
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Boda en Lima con 100 invitados; busca fotografía.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - |
+        1. Spotlight Studio - 10% de descuento. Ficha: https://sinenvolturas.com/proveedores/spotlight-studio
+        2. Ojo de Uva - sesión pre boda gratis. Ficha: https://sinenvolturas.com/proveedores/ojo-de-uva
+        3. Fotostory - desde S/ 150. Ficha: https://sinenvolturas.com/proveedores/fotostory
+        4. Carlos Schult - sesión pre boda incluida. Ficha: https://sinenvolturas.com/proveedores/carlos-schult
+    providerGateway:
+      searchProvidersByTurn:
+        - value:
+            providers:
+              - id: 33
+                title: Spotlight Studio
+                slug: spotlight-studio
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: null
+                rating: "0.0"
+                reason: coincide con la categoría fotografía
+                detailUrl: https://sinenvolturas.com/proveedores/spotlight-studio
+                websiteUrl: https://www.spotlight.com.pe/
+                minPrice: null
+                maxPrice: null
+                promoBadge: 10% Off
+                promoSummary: 10% de descuento en bodas.
+                descriptionSnippet: Cobertura para bodas.
+                serviceHighlights: [Cobertura de boda]
+                termsHighlights: [Sujeto a disponibilidad]
+              - id: 13
+                title: Ojo de Uva
+                slug: ojo-de-uva
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: null
+                rating: "0.0"
+                reason: coincide con la categoría fotografía
+                detailUrl: https://sinenvolturas.com/proveedores/ojo-de-uva
+                websiteUrl: https://ojodeuvape.wixsite.com/ojodeuva
+                minPrice: null
+                maxPrice: null
+                promoBadge: Gratis
+                promoSummary: Sesión pre boda gratis.
+                descriptionSnippet: Propuesta audiovisual natural.
+                serviceHighlights: [Cobertura audiovisual para matrimonios]
+                termsHighlights: [Válido de lunes a viernes]
+              - id: 54
+                title: Fotostory
+                slug: fotostory
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: $$
+                rating: "0.0"
+                reason: coincide con la categoría fotografía
+                detailUrl: https://sinenvolturas.com/proveedores/fotostory
+                websiteUrl: https://fotostory.pe/
+                minPrice: "150.00"
+                maxPrice: null
+                promoBadge: 10% Off
+                promoSummary: 10% de descuento en fotobooks.
+                descriptionSnippet: Recuerdos personalizados.
+                serviceHighlights: [Fotobooks]
+                termsHighlights: [Preguntar por términos y condiciones]
+              - id: 90
+                title: Carlos Schult
+                slug: carlos-schult
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: null
+                rating: "0.0"
+                reason: coincide con la categoría fotografía
+                detailUrl: https://sinenvolturas.com/proveedores/carlos-schult
+                websiteUrl: https://goo.su/9rmDCWQ
+                minPrice: null
+                maxPrice: null
+                promoBadge: Gratis
+                promoSummary: Sesión pre boda incluida.
+                descriptionSnippet: Captura momentos reales y memorables.
+                serviceHighlights: [Sesión pre boda]
+                termsHighlights: [No transferible]
+expectations:
+  - id: four-providers
+    type: provider_results_contains
+    providers:
+      - id: 33
+      - id: 13
+      - id: 54
+      - id: 90
+  - id: text-has-links
+    type: text_contains
+    allOf:
+      - https://sinenvolturas.com/proveedores/spotlight-studio
+      - https://sinenvolturas.com/proveedores/ojo-de-uva
+      - https://sinenvolturas.com/proveedores/fotostory
+      - https://sinenvolturas.com/proveedores/carlos-schult

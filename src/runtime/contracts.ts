@@ -1,6 +1,8 @@
 import type { DecisionNode } from '../core/decision-nodes';
 import type { PersistedPlan, PlanIntent } from '../core/plan';
 import type { ProviderSummary } from '../core/provider';
+import type { ToolOutputTrace } from '../core/trace';
+import type { ToolInputTrace } from '../core/trace';
 
 export type ExtractionResult = {
   intent: PlanIntent | null;
@@ -46,6 +48,8 @@ export type ComposeReplyResult = {
 export type ToolUsage = {
   considered: string[];
   called: string[];
+  inputs: ToolInputTrace[];
+  outputs: ToolOutputTrace[];
 };
 
 export interface AgentRuntime {

@@ -9,7 +9,7 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
   const activeNeed = getActiveNeed(plan);
 
   if (activeNeed?.selected_provider_id) {
-    return 'usuario_elige_proveedor';
+    return 'seguir_refinando_guardar_plan';
   }
 
   if ((activeNeed?.recommended_provider_ids ?? []).length > 0) {

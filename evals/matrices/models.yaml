@@ -1,0 +1,13 @@
+configs:
+  - label: offline-baseline
+    target: offline
+    replyModel: fixture-reply
+    extractorModel: fixture-extractor
+    notes:
+      - Deterministic offline harness for regression work.
+  - label: live-dev-lambda
+    target: live_lambda
+    notes:
+      - Uses the deployed Lambda function URL from AGENT_FUNCTION_URL or runtime config.
+    liveLambda:
+      channel: terminal_whatsapp_eval

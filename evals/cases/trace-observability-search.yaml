@@ -1,0 +1,61 @@
+template: template.base-offline
+id: trace.search_tool_outputs_exposed
+suite: trace_observability
+version: 1
+description: Search traces should expose tool outputs and provider results for debugging.
+tags:
+  - trace
+  - observability
+inputs:
+  - text: quiero fotografos en lima
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.9
+        eventType: boda
+        vendorCategory: fotografía
+        vendorCategories:
+          - fotografía
+        activeNeedCategory: fotografía
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Busca fotógrafos en Lima.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Tengo opciones de fotografía en Lima.
+    providerGateway:
+      searchProvidersByTurn:
+        - value:
+            providers:
+              - id: 33
+                title: Spotlight Studio
+                slug: spotlight-studio
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: null
+                rating: "0.0"
+                reason: coincide con la categoría fotografía
+                detailUrl: https://sinenvolturas.com/proveedores/spotlight-studio
+                websiteUrl: https://www.spotlight.com.pe/
+                minPrice: null
+                maxPrice: null
+                promoBadge: 10% Off
+                promoSummary: 10% de descuento en bodas.
+                descriptionSnippet: Cobertura para bodas.
+                serviceHighlights: [Cobertura de boda]
+                termsHighlights: [Sujeto a disponibilidad]
+expectations:
+  - id: search-called
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+  - id: provider-debug
+    type: provider_results_contains
+    providers:
+      - id: 33

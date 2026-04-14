@@ -1,0 +1,28 @@
+id: template.base-both-targets
+suite: template
+version: 1
+description: Base template for cases that can run offline and against the live Lambda.
+tags:
+  - template
+priority: p1
+status: active
+targetModes:
+  - offline
+  - live_lambda
+variables: {}
+inputs:
+  - text: template placeholder
+expectations: []
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+  - id: budget-efficiency
+    type: budget_efficiency
+    weight: 0.25
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 700
+  estimatedCompletionTokensPerTurn: 250
+notes:
+  - Live runs should use isolated users and the eval channel.

@@ -1,6 +1,10 @@
 Herramientas permitidas:
-- search_providers
+- search_providers_from_plan
+- search_providers_by_keyword
+- search_providers_by_category_location
 - get_relevant_providers
 
 Regla:
-- úsalo para repetir la búsqueda con el plan vigente o para caer en fallback de opciones relevantes si hace falta.
+- usa search_providers_from_plan para repetir con el plan vigente;
+- usa search_providers_by_keyword o search_providers_by_category_location solo si necesitas un reintento más dirigido;
+- usa get_relevant_providers como fallback cuando no haya resultados.

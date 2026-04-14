@@ -45,6 +45,15 @@ const providerSummarySchema = z.object({
   priceLevel: z.string().nullish(),
   rating: z.string().nullish(),
   reason: z.string().nullish(),
+  detailUrl: z.string().nullish(),
+  websiteUrl: z.string().nullish(),
+  minPrice: z.string().nullish(),
+  maxPrice: z.string().nullish(),
+  promoBadge: z.string().nullish(),
+  promoSummary: z.string().nullish(),
+  descriptionSnippet: z.string().nullish(),
+  serviceHighlights: z.array(z.string()).default([]),
+  termsHighlights: z.array(z.string()).default([]),
 });
 
 export const providerNeedSchema = z.object({
@@ -399,7 +408,13 @@ export function summarizeRecommendedProviders(providers: ProviderSummary[]): str
       const location = provider.location ? ` en ${provider.location}` : '';
       const category = provider.category ? ` [${provider.category}]` : '';
       const price = provider.priceLevel ? ` (${provider.priceLevel})` : '';
-      return `${index + 1}. ${provider.title}${category}${location}${price}`;
+      const differentiators = [
+        provider.promoBadge ?? provider.promoSummary ?? null,
+        provider.serviceHighlights?.slice(0, 2).join(', ') || null,
+        provider.descriptionSnippet,
+      ].filter((value): value is string => Boolean(value));
+      const detailUrl = provider.detailUrl ? ` | ficha: ${provider.detailUrl}` : '';
+      return `${index + 1}. ${provider.title}${category}${location}${price}${differentiators.length > 0 ? ` | detalles: ${differentiators.join(' | ')}` : ''}${detailUrl}`;
     })
     .join('\n');
 }

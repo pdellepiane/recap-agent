@@ -1,0 +1,54 @@
+template: template.base-offline
+id: clarification.missing_location_for_active_need
+suite: clarification
+version: 1
+description: The agent should ask for location when the active need is known but location is missing.
+tags:
+  - clarification
+  - missing-field
+variables:
+  event_type: boda
+  active_need: catering
+inputs:
+  - text: quiero {{active_need}} para mi {{event_type}}
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.9
+        eventType: boda
+        vendorCategory: catering
+        vendorCategories:
+          - catering
+        activeNeedCategory: catering
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Quiere catering para su boda.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Para buscar bien el catering, dime en qué distrito o zona lo quieres.
+expectations:
+  - id: missing-location-node
+    type: node_transition
+    to: aclarar_pedir_faltante
+  - id: active-need
+    type: plan_field_equals
+    path: active_need_category
+    expected: catering
+  - id: missing-fields
+    type: plan_field_subset
+    path: missing_fields
+    expected:
+      - location
+      - budget_or_guest_range
+  - id: asks-location
+    type: text_contains
+    anyOf:
+      - distrito
+      - zona
+      - ubicación

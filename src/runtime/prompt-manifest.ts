@@ -3,6 +3,7 @@ import type { DecisionNode } from '../core/decision-nodes';
 export const conversationSharedPromptFiles = [
   'shared/base_system.txt',
   'shared/domain_scope.txt',
+  'shared/domain_knowledge.txt',
   'shared/output_style.txt',
   'shared/flow_discipline.txt',
   'shared/question_strategy.txt',
@@ -13,6 +14,7 @@ export const extractorPromptFiles = [
   'extractors/system.txt',
   'extractors/field_definitions.txt',
   'extractors/conflict_resolution.txt',
+  'extractors/domain_knowledge.txt',
   'extractors/normalization_rules.txt',
   'extractors/examples.md',
 ] as const;
@@ -21,7 +23,9 @@ export const toolNames = [
   'list_categories',
   'get_category_by_slug',
   'list_locations',
-  'search_providers',
+  'search_providers_from_plan',
+  'search_providers_by_keyword',
+  'search_providers_by_category_location',
   'get_relevant_providers',
   'get_provider_detail',
   'get_provider_detail_and_track_view',
@@ -86,7 +90,12 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   buscar_proveedores: {
     files: buildNodeFiles('buscar_proveedores'),
-    allowedTools: ['search_providers', 'get_relevant_providers'],
+    allowedTools: [
+      'search_providers_from_plan',
+      'search_providers_by_keyword',
+      'search_providers_by_category_location',
+      'get_relevant_providers',
+    ],
   },
   busqueda_exitosa: {
     files: buildNodeFiles('busqueda_exitosa'),
@@ -118,7 +127,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   seguir_refinando_guardar_plan: {
     files: buildNodeFiles('seguir_refinando_guardar_plan'),
-    allowedTools: [],
+    allowedTools: ['get_provider_detail'],
   },
   continua: {
     files: buildNodeFiles('continua'),
@@ -150,6 +159,11 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   reintentar: {
     files: buildNodeFiles('reintentar'),
-    allowedTools: ['search_providers', 'get_relevant_providers'],
+    allowedTools: [
+      'search_providers_from_plan',
+      'search_providers_by_keyword',
+      'search_providers_by_category_location',
+      'get_relevant_providers',
+    ],
   },
 };

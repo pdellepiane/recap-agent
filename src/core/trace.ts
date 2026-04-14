@@ -1,4 +1,15 @@
 import type { DecisionNode } from './decision-nodes';
+import type { ProviderSummary } from './provider';
+
+export type ToolOutputTrace = {
+  tool: string;
+  output: string;
+};
+
+export type ToolInputTrace = {
+  tool: string;
+  input: string;
+};
 
 export type TurnTrace = {
   trace_id: string;
@@ -14,7 +25,9 @@ export type TurnTrace = {
   prompt_file_paths: string[];
   tools_considered: string[];
   tools_called: string[];
+  tool_inputs: ToolInputTrace[];
+  tool_outputs: ToolOutputTrace[];
+  provider_results: ProviderSummary[];
   plan_persisted: boolean;
   plan_persist_reason: string | null;
 };
-

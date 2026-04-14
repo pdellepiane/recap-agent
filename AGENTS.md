@@ -12,3 +12,5 @@
 - Treat the agent as event-plan-first: the primary artifact is an event plan that can contain multiple provider needs, while single-provider search remains a natural subset of that behavior.
 - Keep the runtime channel-agnostic. WhatsApp-specific behavior belongs in adapters, not in core flow logic.
 - Streaming responses are out of scope for now because WhatsApp does not support them. The terminal client should emulate WhatsApp behavior directly rather than introducing capabilities that the real channel cannot use.
+- Do not build or preserve backward-compatibility shims while this project remains in active development. Prefer clean breaks and redevelop from the current design when needed.
+- After any Lambda-impacting change (runtime, handler, prompts consumed by Lambda, infrastructure, or dependencies), redeploy the Lambda in development so local validation always runs against current behavior.
