@@ -58,6 +58,8 @@ run(
     `OpenAISecretArn=${secretArn}`,
     `OpenAIModel=${process.env.OPENAI_MODEL ?? env.OPENAI_MODEL ?? 'gpt-5.4-mini'}`,
     `OpenAIExtractorModel=${process.env.OPENAI_EXTRACTOR_MODEL ?? env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.4-nano'}`,
+    `OpenAIPromptCacheRetention=${process.env.OPENAI_PROMPT_CACHE_RETENTION ?? env.OPENAI_PROMPT_CACHE_RETENTION ?? 'in-memory'}`,
+    `PerfRetentionDays=${process.env.PERF_RETENTION_DAYS ?? env.PERF_RETENTION_DAYS ?? '30'}`,
   ],
   { env: awsEnv },
 );

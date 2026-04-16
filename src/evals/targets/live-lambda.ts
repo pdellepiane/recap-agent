@@ -48,6 +48,7 @@ export async function runLiveLambdaCase(args: {
         text: input.text,
         message_id: `${args.currentCase.id}-${turnIndex}`,
         received_at: input.receivedAt ?? new Date().toISOString(),
+        client_mode: 'cli',
       }),
     });
 
@@ -67,6 +68,7 @@ export async function runLiveLambdaCase(args: {
       outputText: parsed.message,
       currentNode: parsed.current_node,
       trace: parsed.trace,
+      perf: parsed.perf ?? null,
       plan:
         persistedPlan ??
         planSchema.parse({

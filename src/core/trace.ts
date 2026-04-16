@@ -48,16 +48,19 @@ export type TurnTrace = {
       input_tokens: number;
       output_tokens: number;
       total_tokens: number;
+      cached_input_tokens?: number;
     } | null;
     reply: {
       input_tokens: number;
       output_tokens: number;
       total_tokens: number;
+      cached_input_tokens?: number;
     } | null;
     total: {
       input_tokens: number;
       output_tokens: number;
       total_tokens: number;
+      cached_input_tokens?: number;
     } | null;
   };
 };

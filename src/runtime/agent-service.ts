@@ -441,6 +441,8 @@ export class AgentService {
       input_tokens: (first?.input_tokens ?? 0) + (second?.input_tokens ?? 0),
       output_tokens: (first?.output_tokens ?? 0) + (second?.output_tokens ?? 0),
       total_tokens: (first?.total_tokens ?? 0) + (second?.total_tokens ?? 0),
+      cached_input_tokens:
+        (first?.cached_input_tokens ?? 0) + (second?.cached_input_tokens ?? 0),
     };
   }
 

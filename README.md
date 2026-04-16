@@ -25,6 +25,7 @@ Serverless conversational agent runtime for Sin Envolturas.
 - `infra/cloudformation`: serverless infrastructure template
 - `docs/implementation-log.md`: change log with reasons and decisions
 - `docs/evaluation-framework.md`: authoring and operating guide for the eval harness
+- `docs/channel-integration.md`: channel-agnostic contract and new-channel implementation guide
 
 ## Local checks
 
@@ -91,8 +92,26 @@ After every turn the CLI can show:
 
 - the rendered agent reply
 - the full node transition trace
+- the persisted perf snapshot for latency, tools, providers, and token efficiency
 - the persisted DynamoDB plan snapshot
 - the raw Lambda JSON payload when `--show-raw` is enabled
+
+## Channel-Agnostic Runtime and Telemetry
+
+The core runtime is channel-agnostic:
+
+- `AgentService` and runtime orchestration are transport-independent.
+- channel identity is treated as input data (`channel` + `user_id`) and used for plan scoping.
+- traces and perf records are captured server-side on every successful turn, regardless of client type.
+
+Response payload visibility is client-mode dependent:
+
+- `client_mode=cli` returns debug diagnostics (`trace`, `perf`) for developer tooling.
+- consumer channels should use `client_mode=channel` (or omit it) and receive user-facing fields only.
+
+This means feedback from non-technical channels can still be correlated to hard telemetry data without exposing debug internals to end users.
+
+For full details and implementation guidance, see [channel-integration.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/docs/channel-integration.md).
 
 ## Purge terminal test plans
 
@@ -160,6 +179,7 @@ Full usage guidance is documented in [evaluation-framework.md](/Users/leonardoca
 ```bash
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano
+OPENAI_PROMPT_CACHE_RETENTION=in-memory
 AWS_REGION=us-east-1
 PLANS_TABLE_NAME=recap-agent-runtime-plans
 PROMPTS_DIR=/var/task/prompts
@@ -169,6 +189,8 @@ PROVIDER_SEARCH_LIMIT=5
 SEARCH_SUMMARY_WORD_LIMIT=5
 REPLY_PROVIDER_LIMIT=4
 PROVIDER_DETAIL_LOOKUP_LIMIT=3
+PERF_TABLE_NAME=recap-agent-runtime-perf
+PERF_RETENTION_DAYS=30
 ```
 
 These env vars are read through one validated runtime config module in [config.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/config.ts). `stack.yaml` supplies the Lambda environment at deploy time, so the CloudFormation defaults and deploy script must stay aligned with `config.ts`. That file is the central place for:
@@ -193,12 +215,11 @@ CloudFormation template:
 Deployment script:
 
 - `node scripts/deploy.mjs`
-- `node scripts/deploy.mjs`
 
 The deploy script passes model parameter overrides to CloudFormation from `.env` or the shell when present:
 
 ```bash
-OPENAI_MODEL=gpt-5.4-mini OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano node scripts/deploy.mjs
+OPENAI_MODEL=gpt-5.4-mini OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano OPENAI_PROMPT_CACHE_RETENTION=in-memory PERF_RETENTION_DAYS=30 node scripts/deploy.mjs
 ```
 
 Secret handling:

@@ -110,18 +110,36 @@ const turnTraceSchema = z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
+      cached_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
     reply: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
+      cached_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
     total: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
+      cached_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
   }),
+});
+
+const cliPerfSummarySchema = z.object({
+  trace_id: z.string(),
+  conversation_id: z.string().nullable(),
+  runtime_latency_ms: z.number().nonnegative(),
+  extraction_latency_ms: z.number().nonnegative(),
+  compose_latency_ms: z.number().nonnegative(),
+  tools_called_count: z.number().int().nonnegative(),
+  provider_results_count: z.number().int().nonnegative(),
+  total_tokens: z.number().nonnegative().nullable(),
+  cached_input_tokens: z.number().nonnegative().nullable(),
+  cache_hit_rate: z.number().min(0).max(1).nullable(),
+  extraction_to_compose_ratio: z.number().nonnegative().nullable(),
+  captured_at: z.string(),
 });
 
 const turnInputSchema = z.object({
@@ -415,6 +433,7 @@ export const lambdaTurnResponseSchema = z.object({
   plan_id: z.string(),
   current_node: z.string(),
   trace: turnTraceSchema,
+  perf: cliPerfSummarySchema.nullable().optional(),
 });
 
 export const evalTurnResultSchema = z.object({
@@ -423,6 +442,7 @@ export const evalTurnResultSchema = z.object({
   outputText: z.string(),
   currentNode: z.string(),
   trace: turnTraceSchema,
+  perf: cliPerfSummarySchema.nullable().optional(),
   plan: planSchema,
   latencyMs: z.number().nonnegative(),
   rawTargetResponse: z.record(z.string(), jsonValueSchema).optional(),

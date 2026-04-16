@@ -480,3 +480,75 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because latency instrumentation wraps the full turn pipeline regardless of the active decision node.
+
+## 2026-04-16
+
+### Optimize extraction token usage and wire prompt-cache controls
+- Reduced extraction input payload size by switching to a compact plan snapshot and removing verbose recommended-provider summaries from the extractor prompt context.
+- Added Agents SDK model settings for both extractor and reply calls to set prompt cache retention and send stable prompt cache keys.
+- Added GPT-5-specific low-latency defaults (`reasoning.effort: none`, `text.verbosity: low`) through runtime model settings.
+- Extended token usage parsing and trace/eval schemas to capture cached input token counts when available.
+- Added runtime/deployment configuration for `OPENAI_PROMPT_CACHE_RETENTION` across config parsing, CloudFormation, deploy script wiring, and docs.
+
+Reason:
+- Live runs showed extraction taking longer than reply in several turns, with high prompt overhead and poor visibility into cache-hit effectiveness.
+
+Decision:
+- Prioritize non-invasive latency/cost reduction by shrinking dynamic extraction context and improving cache routing/retention without changing flow logic or user-facing node contracts.
+
+Flow nodes affected:
+- All nodes indirectly, because extraction and reply model calls run on every conversational turn.
+
+### Add CLI cache and latency efficiency insights
+- Extended the terminal CLI trace output with a dedicated `Performance Insights` section that reports extraction-vs-compose ratio, pipeline-vs-transport share, and cache-hit-driven savings indicators.
+- Enhanced token usage rendering to include cached input tokens, cache hit rate, estimated input-token savings, and effective billed input tokens per extraction/reply/overall bucket.
+- Added a compact cache-hit hint in the reply header so optimization impact is visible without scrolling through full traces.
+
+Reason:
+- Runtime telemetry now includes cached-token data, but operators still needed a turn-level view that quickly translates raw counters into actionable signals about savings and bottlenecks.
+
+Decision:
+- Keep instrumentation in the existing CLI trace surface so optimization validation stays in the normal debugging workflow, without adding separate analysis scripts.
+
+Flow nodes affected:
+- All nodes indirectly, because the CLI renders traces for every conversational turn regardless of node.
+
+### Document channel-agnostic architecture and channel adapter contract
+- Added `docs/channel-integration.md` with a thorough guide covering:
+  - current channel-agnostic boundaries in runtime orchestration,
+  - Lambda request/response contract by `client_mode`,
+  - telemetry guarantees for all channels,
+  - low-cost retention strategy,
+  - step-by-step process to implement new consumer-facing channels.
+- Updated `README.md` to include a dedicated channel-agnostic and telemetry section, link the new integration guide, and align deployment examples with telemetry retention configuration.
+- Updated `docs/evaluation-framework.md` to explicitly document why live eval runs set `client_mode=cli` and how that interacts with telemetry visibility versus telemetry persistence.
+
+Reason:
+- The runtime now captures telemetry broadly but only surfaces diagnostics selectively; contributors need one explicit, consistent source of truth for how to implement non-debug channels without losing observability.
+
+Decision:
+- Keep channel behavior documented as a strict adapter-layer concern while preserving a channel-agnostic core runtime and always-on server-side telemetry.
+
+Flow nodes affected:
+- None directly. This change updates architecture and integration documentation without modifying flow logic.
+
+### Add low-cost turn-level performance telemetry with CLI-only surfacing
+- Added a dedicated `logs/trace/perf` module that converts each turn trace into a normalized performance record with derived metrics such as cache-hit rate, extraction-to-compose ratio, tool-call volume, provider-result volume, and hashed user identifiers.
+- Added a low-cost telemetry persistence path backed by a dedicated on-demand DynamoDB table with TTL retention (`PERF_RETENTION_DAYS`), plus a no-op fallback store when the table is not configured.
+- Updated the Lambda handler to persist telemetry on every turn while only exposing trace and perf diagnostics in the response when the caller explicitly declares `client_mode=cli`, keeping these metrics opaque for non-CLI clients.
+- Updated CloudFormation and deployment wiring to provision and configure the perf table and retention controls.
+- Updated the CLI to send `client_mode=cli` and render the returned perf snapshot inside debug output.
+- Extended the live-eval response schema and live target normalization so end-to-end test runs can validate telemetry payloads on the deployed path.
+- Added perf module unit tests plus a live-target test assertion for perf hydration.
+- Added an SDK/API compatibility guard for prompt cache retention, translating the configured `in-memory` option into the currently accepted API wire value so deployed runs remain stable.
+
+Reason:
+- Feedback quality and runtime cost or latency tuning need durable, structured hard data per turn; trace-only console output was not enough for comparative analysis.
+- The project needed this observability with minimal operational cost for a small user base.
+
+Decision:
+- Use an always-on per-turn telemetry record persisted to a PAY_PER_REQUEST + TTL DynamoDB table to keep storage and operations inexpensive.
+- Keep telemetry output gated behind explicit CLI mode in Lambda responses so runtime observability does not leak by default to non-development clients.
+
+Flow nodes affected:
+- All nodes indirectly, because telemetry wraps the full turn lifecycle regardless of active decision node.

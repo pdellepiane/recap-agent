@@ -5,6 +5,7 @@ export type AppConfig = {
   openAi: {
     apiKey: string | null;
     secretId: string | null;
+    promptCacheRetention: 'in-memory' | '24h';
     models: {
       reply: string;
       extractor: string;
@@ -34,11 +35,16 @@ export type AppConfig = {
   lambda: {
     functionUrl: string | null;
   };
+  performance: {
+    tableName: string | null;
+    retentionDays: number;
+  };
 };
 
 const environmentSchema = z.object({
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_SECRET_ID: z.string().min(1).optional(),
+  OPENAI_PROMPT_CACHE_RETENTION: z.enum(['in-memory', '24h']).default('in-memory'),
   OPENAI_MODEL: z.string().min(1).default('gpt-5.4-mini'),
   OPENAI_EXTRACTOR_MODEL: z.string().min(1).default('gpt-5.4-nano'),
   AWS_REGION: z.string().min(1).default('us-east-1'),
@@ -54,6 +60,8 @@ const environmentSchema = z.object({
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
   REPLY_PROVIDER_LIMIT: z.coerce.number().int().positive().default(4),
   PROVIDER_DETAIL_LOOKUP_LIMIT: z.coerce.number().int().positive().default(3),
+  PERF_TABLE_NAME: z.string().min(1).optional(),
+  PERF_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
 });
 
 export function getConfig(): AppConfig {
@@ -63,6 +71,7 @@ export function getConfig(): AppConfig {
     openAi: {
       apiKey: environment.OPENAI_API_KEY ?? null,
       secretId: environment.OPENAI_SECRET_ID ?? null,
+      promptCacheRetention: environment.OPENAI_PROMPT_CACHE_RETENTION,
       models: {
         reply: environment.OPENAI_MODEL,
         extractor:
@@ -92,6 +101,10 @@ export function getConfig(): AppConfig {
     },
     lambda: {
       functionUrl: environment.AGENT_FUNCTION_URL ?? null,
+    },
+    performance: {
+      tableName: environment.PERF_TABLE_NAME ?? null,
+      retentionDays: environment.PERF_RETENTION_DAYS,
     },
   };
 }

@@ -20,9 +20,20 @@ Parameters:
   OpenAIExtractorModel:
     Type: String
     Default: gpt-5.4-nano
+  OpenAIPromptCacheRetention:
+    Type: String
+    Default: in-memory
+    AllowedValues:
+      - in-memory
+      - 24h
   SinEnvolturasBaseUrl:
     Type: String
     Default: https://api.sinenvolturas.com/api-web/vendor
+  PerfRetentionDays:
+    Type: Number
+    Default: 30
+    MinValue: 1
+    MaxValue: 365
 
 Resources:
   PlansTable:
@@ -40,6 +51,38 @@ Resources:
         - AttributeName: sk
           KeyType: RANGE
       TableName: !Sub '${FunctionName}-plans'
+
+  PerfTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: pk
+          AttributeType: S
+        - AttributeName: sk
+          AttributeType: S
+        - AttributeName: gsi1pk
+          AttributeType: S
+        - AttributeName: gsi1sk
+          AttributeType: S
+      KeySchema:
+        - AttributeName: pk
+          KeyType: HASH
+        - AttributeName: sk
+          KeyType: RANGE
+      GlobalSecondaryIndexes:
+        - IndexName: channel-user-turns
+          KeySchema:
+            - AttributeName: gsi1pk
+              KeyType: HASH
+            - AttributeName: gsi1sk
+              KeyType: RANGE
+          Projection:
+            ProjectionType: ALL
+      TimeToLiveSpecification:
+        Enabled: true
+        AttributeName: ttl_epoch_seconds
+      TableName: !Sub '${FunctionName}-perf'
 
   RuntimeRole:
     Type: AWS::IAM::Role
@@ -65,6 +108,10 @@ Resources:
                 Resource: !GetAtt PlansTable.Arn
               - Effect: Allow
                 Action:
+                  - dynamodb:PutItem
+                Resource: !GetAtt PerfTable.Arn
+              - Effect: Allow
+                Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref OpenAISecretArn
 
@@ -85,7 +132,10 @@ Resources:
           OPENAI_SECRET_ID: !Ref OpenAISecretArn
           OPENAI_MODEL: !Ref OpenAIModel
           OPENAI_EXTRACTOR_MODEL: !Ref OpenAIExtractorModel
+          OPENAI_PROMPT_CACHE_RETENTION: !Ref OpenAIPromptCacheRetention
           PLANS_TABLE_NAME: !Ref PlansTable
+          PERF_TABLE_NAME: !Ref PerfTable
+          PERF_RETENTION_DAYS: !Ref PerfRetentionDays
           PROMPTS_DIR: /var/task/prompts
           SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
 
@@ -121,5 +171,7 @@ Outputs:
     Value: !GetAtt RuntimeFunctionUrl.FunctionUrl
   PlansTableName:
     Value: !Ref PlansTable
+  PerfTableName:
+    Value: !Ref PerfTable
   OpenAISecretArn:
     Value: !Ref OpenAISecretArn

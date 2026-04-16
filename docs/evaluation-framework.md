@@ -92,6 +92,12 @@ Use offline runs for:
 
 The live target calls the deployed Lambda Function URL and then hydrates the persisted plan from DynamoDB so the result envelope matches the offline shape as closely as possible.
 
+By contract, live eval requests are sent in CLI mode so diagnostics are returned:
+
+- request includes `client_mode=cli`;
+- response includes `trace` and optional `perf` fields for evaluation assertions;
+- telemetry persistence still happens server-side for all channels, including non-CLI traffic.
+
 Use live runs for:
 
 - contract verification against the deployed runtime

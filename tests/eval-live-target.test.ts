@@ -98,6 +98,38 @@ describe('live lambda eval target', () => {
               ],
               plan_persisted: true,
               plan_persist_reason: 'recomendar',
+              timing_ms: {
+                total: 1200,
+                load_plan: 10,
+                prepare_working_plan: 5,
+                extraction: 350,
+                apply_extraction: 10,
+                compute_sufficiency: 5,
+                provider_search: 200,
+                provider_enrichment: 120,
+                prompt_bundle_load: 10,
+                compose_reply: 450,
+                save_plan: 40,
+              },
+              token_usage: {
+                extraction: null,
+                reply: null,
+                total: null,
+              },
+            },
+            perf: {
+              trace_id: 'trace-live',
+              conversation_id: 'conv-live',
+              runtime_latency_ms: 1200,
+              extraction_latency_ms: 350,
+              compose_latency_ms: 450,
+              tools_called_count: 1,
+              provider_results_count: 1,
+              total_tokens: null,
+              cached_input_tokens: null,
+              cache_hit_rate: null,
+              extraction_to_compose_ratio: 0.7777777778,
+              captured_at: new Date().toISOString(),
             },
           };
         },
@@ -136,6 +168,7 @@ describe('live lambda eval target', () => {
 
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0]?.trace.tools_called).toEqual(['search_providers_from_plan']);
+    expect(result.turns[0]?.perf?.runtime_latency_ms).toBe(1200);
     expect(result.turns[0]?.plan.event_type).toBe('boda');
   });
 });

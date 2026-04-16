@@ -60,6 +60,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       apiKey: string;
       replyModel: string;
       extractorModel: string;
+      promptCacheRetention: 'in-memory' | '24h';
       replyProviderLimit: number;
       providerDetailLookupLimit: number;
       promptLoader: PromptLoader;
@@ -76,17 +77,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       model: this.options.extractorModel,
       instructions: bundle.instructions,
       outputType: extractionSchema,
+      modelSettings: this.buildModelSettings({
+        model: this.options.extractorModel,
+        cacheKey: `extractor:${bundle.id}`,
+      }),
     });
 
-    const input = [
-      `Mensaje del usuario:\n${request.userMessage}`,
-      `Plan resumido:\n${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
-      `Necesidades de proveedores:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
-      `Proveedores recomendados actuales:\n${summarizeRecommendedProviders(
-        request.plan.recommended_providers,
-      )}`,
-      'Extrae solo cambios relevantes y normaliza al esquema pedido.',
-    ].join('\n\n');
+    const input = this.composeExtractorInput(request);
 
     const result = await run(extractor, input);
     return {
@@ -114,6 +111,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       model: this.options.replyModel,
       instructions: () => bundle.instructions,
       tools,
+      modelSettings: this.buildModelSettings({
+        model: this.options.replyModel,
+        cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
+      }),
     });
 
     const session = new OpenAIConversationsSession({
@@ -194,8 +195,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       usage,
       ['total_tokens', 'totalTokenCount'],
     );
+    const cachedInputTokens = this.resolveCachedInputTokens(usage);
 
-    if (inputTokens === null && outputTokens === null && totalTokens === null) {
+    if (
+      inputTokens === null &&
+      outputTokens === null &&
+      totalTokens === null &&
+      cachedInputTokens === null
+    ) {
       return null;
     }
 
@@ -207,6 +214,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       input_tokens: safeInput,
       output_tokens: safeOutput,
       total_tokens: safeTotal,
+      cached_input_tokens: cachedInputTokens ?? 0,
     };
   }
 
@@ -222,6 +230,106 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     return null;
+  }
+
+  private resolveCachedInputTokens(source: Record<string, unknown>): number | null {
+    const topLevel = this.readNumericField(source, ['cached_tokens', 'cached_input_tokens']);
+    if (topLevel !== null) {
+      return topLevel;
+    }
+
+    const promptTokenDetails = source.prompt_tokens_details;
+    if (promptTokenDetails && typeof promptTokenDetails === 'object') {
+      const nested = promptTokenDetails as Record<string, unknown>;
+      const promptCached = this.readNumericField(nested, ['cached_tokens']);
+      if (promptCached !== null) {
+        return promptCached;
+      }
+    }
+
+    const inputTokenDetails = source.input_tokens_details;
+    if (inputTokenDetails && typeof inputTokenDetails === 'object') {
+      const nested = inputTokenDetails as Record<string, unknown>;
+      const inputCached = this.readNumericField(nested, ['cached_tokens']);
+      if (inputCached !== null) {
+        return inputCached;
+      }
+    }
+
+    return null;
+  }
+
+  private composeExtractorInput(request: ExtractRequest): string {
+    return [
+      `Mensaje del usuario: ${request.userMessage}`,
+      `Plan base (JSON compacto): ${JSON.stringify(this.buildExtractorPlanSnapshot(request.plan))}`,
+      'Extrae solo cambios nuevos del turno. Si un dato no cambia, mantenlo como null/vacio para no sobreescribir sin evidencia.',
+    ].join('\n');
+  }
+
+  private buildExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
+    return {
+      current_node: plan.current_node,
+      intent: plan.intent,
+      event_type: plan.event_type,
+      active_need_category: plan.active_need_category,
+      vendor_category: plan.vendor_category,
+      location: plan.location,
+      budget_signal: plan.budget_signal,
+      guest_range: plan.guest_range,
+      missing_fields: plan.missing_fields,
+      provider_needs: plan.provider_needs.map((need) => ({
+        category: need.category,
+        status: need.status,
+        missing_fields: need.missing_fields,
+        selected_provider_id: need.selected_provider_id,
+        selected_provider_hint: need.selected_provider_hint,
+      })),
+      selected_provider_id: plan.selected_provider_id,
+      selected_provider_hint: plan.selected_provider_hint,
+      conversation_summary: this.truncateText(plan.conversation_summary, 180),
+      open_questions: plan.open_questions.slice(0, 3),
+    };
+  }
+
+  private buildModelSettings(args: {
+    model: string;
+    cacheKey: string;
+  }): {
+    promptCacheRetention: 'in-memory' | '24h';
+    providerData: Record<string, string>;
+    reasoning?: { effort: 'none' };
+    text?: { verbosity: 'low' };
+  } {
+    const baseSettings: {
+      promptCacheRetention: 'in-memory' | '24h';
+      providerData: Record<string, string>;
+      reasoning?: { effort: 'none' };
+      text?: { verbosity: 'low' };
+    } = {
+      // The API currently expects "in_memory", while the SDK type still says "in-memory".
+      promptCacheRetention:
+        this.options.promptCacheRetention === 'in-memory'
+          ? ('in_memory' as unknown as 'in-memory')
+          : '24h',
+      providerData: {
+        prompt_cache_key: args.cacheKey,
+      },
+    };
+
+    if (this.isGpt5Model(args.model)) {
+      return {
+        ...baseSettings,
+        reasoning: { effort: 'none' },
+        text: { verbosity: 'low' },
+      };
+    }
+
+    return baseSettings;
+  }
+
+  private isGpt5Model(model: string): boolean {
+    return model.toLowerCase().startsWith('gpt-5');
   }
 
   private composeConversationInput(request: ComposeReplyRequest): string {

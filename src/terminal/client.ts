@@ -12,6 +12,7 @@ import pc from 'picocolors';
 
 import type { PlanSnapshot } from '../core/plan';
 import type { TurnTrace } from '../core/trace';
+import type { CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPlanStore } from '../storage/dynamo-plan-store';
 
 dotenv.config({ quiet: true });
@@ -52,6 +53,7 @@ type LambdaSuccessPayload = {
   plan_id: string;
   current_node: string;
   trace: TurnTrace;
+  perf?: CliPerfSummary | null;
 };
 
 type LambdaErrorPayload = {
@@ -166,6 +168,7 @@ async function main() {
       channel: config.channel,
       user_id: config.userId,
       text: line,
+      client_mode: 'cli',
     }, config.timeoutMs);
     const durationMs = Date.now() - startedAt;
 
@@ -178,10 +181,16 @@ async function main() {
       continue;
     }
 
-    renderReply(result.body.message, result.body.current_node, durationMs, result.body.trace);
+    renderReply(
+      result.body.message,
+      result.body.current_node,
+      durationMs,
+      result.body.trace,
+      result.body.perf ?? null,
+    );
 
     if (config.showTrace) {
-      renderTrace(result.body.trace, result.timing);
+      renderTrace(result.body.trace, result.timing, result.body.perf ?? null);
     }
 
     if (config.showPlan) {
@@ -370,26 +379,39 @@ function renderReply(
   node: string,
   durationMs: number,
   trace: TurnTrace,
+  perf: CliPerfSummary | null,
 ) {
   const runtimeTiming = trace.timing_ms;
   const runtimeTokens = trace.token_usage.total;
+  const totalCacheHitRate = runtimeTokens
+    ? calculateCacheHitRate(runtimeTokens.input_tokens, runtimeTokens.cached_input_tokens ?? 0)
+    : null;
   const timingHint = runtimeTiming
     ? ` · extract ${runtimeTiming.extraction}ms · compose ${runtimeTiming.compose_reply}ms`
     : '';
   const tokensHint = runtimeTokens
     ? ` · tokens ${runtimeTokens.total_tokens}`
     : '';
+  const cacheHint =
+    totalCacheHitRate !== null
+      ? ` · cache ${(totalCacheHitRate * 100).toFixed(1)}%`
+      : '';
+  const perfHint = perf ? ` · perf ${perf.runtime_latency_ms}ms` : '';
   output.write(
     `${boxen(message, {
       padding: 1,
       borderColor: 'green',
-      title: `agent reply · ${node} · ${durationMs}ms${timingHint}${tokensHint}`,
+      title: `agent reply · ${node} · ${durationMs}ms${timingHint}${tokensHint}${cacheHint}${perfHint}`,
       titleAlignment: 'left',
     })}\n`,
   );
 }
 
-function renderTrace(trace: TurnTrace, invokeTiming?: InvokeTiming) {
+function renderTrace(
+  trace: TurnTrace,
+  invokeTiming?: InvokeTiming,
+  perf?: CliPerfSummary | null,
+) {
   const hasToolInputsField = Object.prototype.hasOwnProperty.call(
     trace,
     'tool_inputs',
@@ -482,16 +504,42 @@ function renderTrace(trace: TurnTrace, invokeTiming?: InvokeTiming) {
         : 'not captured',
     ],
     [
+      'Performance Insights',
+      formatPerformanceInsights(trace, invokeTiming),
+    ],
+    [
+      'Perf Record',
+      perf
+        ? [
+            `trace_id=${perf.trace_id}`,
+            `captured_at=${perf.captured_at}`,
+            `runtime=${perf.runtime_latency_ms}ms extraction=${perf.extraction_latency_ms}ms compose=${perf.compose_latency_ms}ms`,
+            `tools=${perf.tools_called_count} providers=${perf.provider_results_count}`,
+            `total_tokens=${perf.total_tokens ?? 'n/a'} cached_input=${perf.cached_input_tokens ?? 'n/a'}`,
+            `cache_hit_rate=${
+              perf.cache_hit_rate === null
+                ? 'n/a'
+                : `${(perf.cache_hit_rate * 100).toFixed(1)}%`
+            }`,
+            `extract_compose_ratio=${
+              perf.extraction_to_compose_ratio === null
+                ? 'n/a'
+                : `${perf.extraction_to_compose_ratio.toFixed(2)}x`
+            }`,
+          ].join('\n')
+        : 'not available in response',
+    ],
+    [
       'Token Usage',
       [
         trace.token_usage.extraction
-          ? `extraction: input=${trace.token_usage.extraction.input_tokens} output=${trace.token_usage.extraction.output_tokens} total=${trace.token_usage.extraction.total_tokens}`
+          ? `extraction: ${formatTokenUsageWithCache(trace.token_usage.extraction)}`
           : 'extraction: not available',
         trace.token_usage.reply
-          ? `reply: input=${trace.token_usage.reply.input_tokens} output=${trace.token_usage.reply.output_tokens} total=${trace.token_usage.reply.total_tokens}`
+          ? `reply: ${formatTokenUsageWithCache(trace.token_usage.reply)}`
           : 'reply: not available',
         trace.token_usage.total
-          ? `overall: input=${trace.token_usage.total.input_tokens} output=${trace.token_usage.total.output_tokens} total=${trace.token_usage.total.total_tokens}`
+          ? `overall: ${formatTokenUsageWithCache(trace.token_usage.total)}`
           : 'overall: not available',
       ].join('\n'),
     ],
@@ -608,4 +656,82 @@ function formatProviderDebug(
   }
 
   return lines.join('\n');
+}
+
+function formatTokenUsageWithCache(usage: {
+  input_tokens: number;
+  output_tokens: number;
+  total_tokens: number;
+  cached_input_tokens?: number;
+}): string {
+  const cachedInput = usage.cached_input_tokens ?? 0;
+  const cacheHitRate = calculateCacheHitRate(usage.input_tokens, cachedInput);
+  const estimatedInputSavings = cachedInput * 0.5;
+  const effectiveInputTokens = usage.input_tokens - estimatedInputSavings;
+  const cacheDetails =
+    cacheHitRate !== null
+      ? ` cached_input=${cachedInput} cache_hit_rate=${(cacheHitRate * 100).toFixed(1)}% est_input_savings=${estimatedInputSavings.toFixed(1)} effective_input=${effectiveInputTokens.toFixed(1)}`
+      : '';
+  return `input=${usage.input_tokens} output=${usage.output_tokens} total=${usage.total_tokens}${cacheDetails}`;
+}
+
+function formatPerformanceInsights(
+  trace: TurnTrace,
+  invokeTiming?: InvokeTiming,
+): string {
+  const insights: string[] = [];
+  const extractionMs = trace.timing_ms.extraction;
+  const composeMs = trace.timing_ms.compose_reply;
+  const pipelineMs = trace.timing_ms.total;
+  const transportMs = invokeTiming?.total ?? 0;
+  const endToEndMs = pipelineMs + transportMs;
+
+  const extractionToComposeRatio =
+    composeMs > 0 ? extractionMs / composeMs : null;
+  if (extractionToComposeRatio !== null) {
+    insights.push(
+      `extract_vs_compose_ratio=${extractionToComposeRatio.toFixed(2)}x`,
+    );
+  }
+
+  if (endToEndMs > 0) {
+    const pipelineShare = pipelineMs / endToEndMs;
+    const transportShare = transportMs / endToEndMs;
+    insights.push(
+      `pipeline_share=${(pipelineShare * 100).toFixed(1)}% transport_share=${(transportShare * 100).toFixed(1)}%`,
+    );
+  }
+
+  const totalUsage = trace.token_usage.total;
+  if (totalUsage) {
+    const cacheHitRate = calculateCacheHitRate(
+      totalUsage.input_tokens,
+      totalUsage.cached_input_tokens ?? 0,
+    );
+    if (cacheHitRate !== null) {
+      const estimatedInputSavings = (totalUsage.cached_input_tokens ?? 0) * 0.5;
+      const fullInputCost = totalUsage.input_tokens;
+      const savingsPct =
+        fullInputCost > 0 ? (estimatedInputSavings / fullInputCost) * 100 : 0;
+      insights.push(
+        `cache_hit_rate=${(cacheHitRate * 100).toFixed(1)}% est_input_cost_savings=${savingsPct.toFixed(1)}%`,
+      );
+    }
+  }
+
+  if (insights.length === 0) {
+    return 'not enough telemetry yet';
+  }
+
+  return insights.join('\n');
+}
+
+function calculateCacheHitRate(
+  inputTokens: number,
+  cachedInputTokens: number,
+): number | null {
+  if (inputTokens <= 0) {
+    return null;
+  }
+  return Math.min(Math.max(cachedInputTokens / inputTokens, 0), 1);
 }

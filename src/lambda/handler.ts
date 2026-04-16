@@ -9,6 +9,9 @@ import { OpenAiAgentRuntime } from '../runtime/openai-agent-runtime';
 import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
 import { AgentService } from '../runtime/agent-service';
 import { resolveOpenAiApiKey } from '../runtime/secrets';
+import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
+import { DynamoPerfStore } from '../storage/dynamo-perf-store';
+import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
 
 type TerminalRequestBody = {
   text: string;
@@ -16,17 +19,21 @@ type TerminalRequestBody = {
   channel?: string;
   message_id?: string;
   received_at?: string;
+  client_mode?: 'cli' | 'channel';
 };
 
 const config = getConfig();
 
-let servicePromise: Promise<AgentService> | null = null;
+let runtimePromise: Promise<{
+  service: AgentService;
+  perfStore: PerfStore;
+}> | null = null;
 
 export async function handler(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyStructuredResultV2> {
   try {
-    const service = await getService();
+    const runtime = await getRuntime();
 
     if (!event.body) {
       return json(400, { error: 'Missing request body.' });
@@ -38,20 +45,50 @@ export async function handler(
       return json(400, { error: 'text and user_id are required.' });
     }
 
-    const response = await service.handleTurn({
-      channel: body.channel ?? config.conversation.defaultChannel,
+    const channel = body.channel ?? config.conversation.defaultChannel;
+    const messageId = body.message_id ?? crypto.randomUUID();
+    const receivedAt = body.received_at ?? new Date().toISOString();
+    const response = await runtime.service.handleTurn({
+      channel,
       externalUserId: body.user_id,
       text: body.text,
-      messageId: body.message_id ?? crypto.randomUUID(),
-      receivedAt: body.received_at ?? new Date().toISOString(),
+      messageId,
+      receivedAt,
     });
+    const perfRecord = buildTurnPerfRecord({
+      trace: response.trace,
+      channel,
+      externalUserId: body.user_id,
+      messageId,
+      userMessage: body.text,
+      retentionDays: config.performance.retentionDays,
+    });
+    let perf: CliPerfSummary | undefined;
+    try {
+      await runtime.perfStore.saveTurn(perfRecord);
+      if (body.client_mode === 'cli') {
+        perf = toCliPerfSummary(perfRecord);
+      }
+    } catch (error) {
+      console.error('Failed to persist perf trace.', error);
+      if (body.client_mode === 'cli') {
+        perf = toCliPerfSummary(perfRecord);
+      }
+    }
+
+    const includeDiagnostics = body.client_mode === 'cli';
 
     return json(200, {
       message: response.outbound.text,
       conversation_id: response.outbound.conversationId,
       plan_id: response.plan.plan_id,
       current_node: response.plan.current_node,
-      trace: response.trace,
+      ...(includeDiagnostics
+        ? {
+            trace: response.trace,
+            perf: perf ?? null,
+          }
+        : {}),
     });
   } catch (error) {
     return json(500, {
@@ -60,9 +97,12 @@ export async function handler(
   }
 }
 
-async function getService(): Promise<AgentService> {
-  if (!servicePromise) {
-    servicePromise = (async () => {
+async function getRuntime(): Promise<{
+  service: AgentService;
+  perfStore: PerfStore;
+}> {
+  if (!runtimePromise) {
+    runtimePromise = (async () => {
       const apiKey = await resolveOpenAiApiKey({
         directApiKey: config.openAi.apiKey,
         secretId: config.openAi.secretId,
@@ -80,6 +120,7 @@ async function getService(): Promise<AgentService> {
         apiKey,
         replyModel: config.openAi.models.reply,
         extractorModel: config.openAi.models.extractor,
+        promptCacheRetention: config.openAi.promptCacheRetention,
         replyProviderLimit: config.recommendation.replyProviderLimit,
         providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,
         promptLoader,
@@ -88,17 +129,25 @@ async function getService(): Promise<AgentService> {
       const planStore = new DynamoPlanStore(config.storage.plansTableName, {
         region: config.aws.region,
       });
+      const perfStore = config.performance.tableName
+        ? new DynamoPerfStore(config.performance.tableName, {
+            region: config.aws.region,
+          })
+        : new NoopPerfStore();
 
-      return new AgentService({
-        planStore,
-        runtime,
-        providerGateway,
-        promptLoader,
-      });
+      return {
+        service: new AgentService({
+          planStore,
+          runtime,
+          providerGateway,
+          promptLoader,
+        }),
+        perfStore,
+      };
     })();
   }
 
-  return servicePromise;
+  return runtimePromise;
 }
 
 function json(
