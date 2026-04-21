@@ -6,6 +6,8 @@ Resolución de conflictos:
 - No elimines categorías de vendorCategories solo porque en este turno el usuario se enfoque en otra.
 - Si el usuario cambia una preferencia por una restricción dura, mueve la información al campo correcto.
 - Si el usuario menciona una opción por orden, como "la primera" o "la segunda", llena selectedProviderHint con ese índice textual.
+- Si el usuario menciona una característica de una opción ya vista, como "la de queso", "la del coro", "la de violín" o "la música en vivo", busca esa característica en la shortlist del plan base y llena selectedProviderHint con el proveedor correspondiente si hay una única coincidencia clara.
 - Si el usuario menciona varios servicios pero aclara por cuál quiere empezar, conserva todos en vendorCategories y usa activeNeedCategory para el foco actual.
 - Si el usuario confirma un proveedor ya visto y además pide avanzar con otra categoría, no pierdas la selección previa: llena selectedProviderHint y usa activeNeedCategory para la nueva categoría si queda clara.
+- Si el usuario confirma una opción previa y pide "qué falta", "qué sigue" u otra necesidad, no trates esa pregunta como refinamiento que borra la selección; conserva selectedProviderHint y actualiza activeNeedCategory solo si aparece una nueva necesidad explícita.
 - Si el usuario pide pausar aunque también dé más información, pauseRequested debe ser true.

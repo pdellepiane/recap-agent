@@ -9,6 +9,15 @@ Ejemplos breves:
 - location: Lima
 - budgetSignal: null
 
+1b. Usuario: "Quiero planear una boda en Lima para 120 personas, todavía no sé qué proveedores necesito."
+- intent: buscar_proveedores
+- eventType: boda
+- vendorCategory: null
+- vendorCategories: []
+- activeNeedCategory: null
+- location: Lima
+- guestRange: 101-200
+
 2. Usuario: "Empecemos por fotógrafos en Lima, de presupuesto medio."
 - intent: buscar_proveedores
 - eventType: null
@@ -43,3 +52,13 @@ Ejemplos breves:
 - vendorCategories: [fotografía, catering]
 - activeNeedCategory: catering
 - selectedProviderHint: Carlos
+
+7. Usuario: "Dame la de tablas de queso y también necesito música."
+- intent: confirmar_proveedor
+- vendorCategories: [música]
+- activeNeedCategory: música
+- selectedProviderHint: proveedor de la shortlist relacionado con tablas de queso
+
+8. Usuario: "Me interesa la propuesta en vivo, ¿qué seguiría?"
+- intent: confirmar_proveedor
+- selectedProviderHint: proveedor de la shortlist relacionado con música en vivo, solo si hay una única coincidencia clara

@@ -17,6 +17,8 @@ Reglas de normalización:
   - en este dominio, "local" y "solo el espacio" deben mapearse a la necesidad de venue o salón/local para eventos, no a una ubicación comercial cualquiera.
 - selección de proveedor:
   - si el usuario elige una opción por nombre parcial, conserva ese nombre breve en selectedProviderHint;
+  - si el usuario elige por referencia descriptiva a una opción ya vista ("la de tablas de queso", "la de coro", "la opción con violín", "la propuesta en vivo"), usa los títulos, servicios, promociones y descripciones de la shortlist del plan base para llenar selectedProviderHint con el nombre o referencia más específica;
+  - si el usuario elige por pronombre o referencia contextual y hay una única opción plausible en la shortlist activa ("esa", "ese", "esa opción", "esa propuesta"), llena selectedProviderHint con esa opción; si hay más de una opción plausible, deja selectedProviderHint en null para pedir aclaración;
   - si combina elección y pregunta puntual sobre esa opción, mantén intent=confirmar_proveedor.
   - si combina elección de un proveedor previo con una nueva necesidad, conserva selectedProviderHint y usa activeNeedCategory para la nueva necesidad si queda clara.
 - resumen:
