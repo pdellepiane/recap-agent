@@ -2,7 +2,13 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import { createEmptyPlan, mergePlan, type PersistedPlan } from '../src/core/plan';
+import {
+  createEmptyPlan,
+  getActiveNeed,
+  mergePlan,
+  type PersistedPlan,
+  type PlanSnapshot,
+} from '../src/core/plan';
 import type { ProviderDetail } from '../src/core/provider';
 import type {
   AgentRuntime,
@@ -26,6 +32,7 @@ import type {
   QuoteRequestInput,
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+import type { PlanStore, SavePlanInput } from '../src/storage/plan-store';
 
 class FakeRuntime implements AgentRuntime {
   public readonly composeRequests: ComposeReplyRequest[] = [];
@@ -290,6 +297,29 @@ class FakeGateway implements ProviderGateway {
   }
 }
 
+class RecordingPlanStore implements PlanStore {
+  public currentPlan: PlanSnapshot | null = null;
+
+  public readonly saves: SavePlanInput[] = [];
+
+  public readonly ttls: Array<number | undefined> = [];
+
+  async getByExternalUser(
+    channel: string,
+    externalUserId: string,
+  ): Promise<PlanSnapshot | null> {
+    void channel;
+    void externalUserId;
+    return this.currentPlan;
+  }
+
+  async save(input: SavePlanInput): Promise<void> {
+    this.currentPlan = input.plan;
+    this.saves.push(input);
+    this.ttls.push(input.ttlEpochSeconds);
+  }
+}
+
 describe('AgentService', () => {
   const promptsDir = path.resolve(process.cwd(), 'prompts');
   const promptLoader = new PromptLoader(promptsDir);
@@ -484,7 +514,7 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(0);
   });
 
-  it('preserves known event context when the extractor returns null for unchanged fields', async () => {
+  it('preserves known event context when the extractor returns null or unknown for unchanged fields', async () => {
     class PreserveContextRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
@@ -496,7 +526,7 @@ describe('AgentService', () => {
           activeNeedCategory: 'local',
           location: null,
           budgetSignal: 'medio',
-          guestRange: null,
+          guestRange: 'unknown',
           preferences: [],
           hardConstraints: [],
           assumptions: [],
@@ -757,6 +787,529 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(1);
   });
 
+  it('selects a provider whose name starts with a number while opening another need', async () => {
+    class NumericNameSelectionRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'confirmar_proveedor',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: 'música',
+          vendorCategories: ['música'],
+          activeNeedCategory: 'música',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '21-50',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary:
+            'El usuario eligió 4Foodies para catering y ahora necesita música.',
+          selectedProviderHint: '4Foodies',
+          pauseRequested: false,
+        };
+      }
+    }
+
+    class MusicGateway extends FakeGateway {
+      override async searchProviders(
+        plan: PersistedPlan,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.searchCalls += 1;
+        expect(plan.vendor_category).toBe('música');
+        return {
+          providers: [
+            {
+              id: 115,
+              title: 'Dj Naoki',
+              category: 'música',
+              location: 'Perú',
+              priceLevel: '$$$',
+              reason: 'coincide con el plan',
+              serviceHighlights: ['Servicio de DJ para bodas'],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+    }
+
+    const runtime = new NumericNameSelectionRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new MusicGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-numeric-provider',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-numeric-provider',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '21-50',
+        active_need_category: 'catering',
+        vendor_category: 'catering',
+        provider_needs: [
+          {
+            category: 'catering',
+            status: 'shortlisted',
+            preferences: ['tablas de queso'],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [136],
+            recommended_providers: [
+              {
+                id: 136,
+                title: '4Foodies',
+                slug: '4foodies',
+                category: 'catering',
+                location: 'Lima',
+                priceLevel: '$$$',
+                rating: '0.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
+                websiteUrl: 'https://www.4foodies.pe',
+                minPrice: null,
+                maxPrice: null,
+                promoBadge: '10% Off',
+                promoSummary: '10% de descuento.',
+                descriptionSnippet: 'Tablas de quesos para eventos.',
+                serviceHighlights: ['Tablas de quesos'],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-numeric-provider',
+      text: 'quiero la opcion de 4Foodies. necesito musica tambien',
+      messageId: 'msg-numeric-provider',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'catering',
+    );
+    const musicNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'música',
+    );
+
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(response.plan.active_need_category).toBe('música');
+    expect(cateringNeed?.status).toBe('selected');
+    expect(cateringNeed?.selected_provider_id).toBe(136);
+    expect(musicNeed?.status).toBe('shortlisted');
+    expect(musicNeed?.selected_provider_hint).toBeNull();
+    expect(gateway.searchCalls).toBe(1);
+  });
+
+  it('selects a prior provider from a descriptive reference when opening another need', async () => {
+    class DescriptiveSelectionRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'confirmar_proveedor',
+          intentConfidence: 0.93,
+          eventType: 'boda',
+          vendorCategory: 'música',
+          vendorCategories: ['música'],
+          activeNeedCategory: 'música',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '21-50',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary:
+            'El usuario eligió el catering de tablas de queso y ahora necesita música.',
+          selectedProviderHint: null,
+          pauseRequested: false,
+        };
+      }
+    }
+
+    class MusicGateway extends FakeGateway {
+      override async searchProviders(): Promise<ProviderGatewaySearchResult> {
+        this.searchCalls += 1;
+        return {
+          providers: [
+            {
+              id: 115,
+              title: 'Dj Naoki',
+              category: 'música',
+              location: 'Perú',
+              priceLevel: '$$$',
+              reason: 'coincide con el plan',
+              serviceHighlights: ['Servicio de DJ para bodas'],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+    }
+
+    const runtime = new DescriptiveSelectionRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new MusicGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-descriptive-provider',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-descriptive-provider',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '21-50',
+        active_need_category: 'catering',
+        vendor_category: 'catering',
+        provider_needs: [
+          {
+            category: 'catering',
+            status: 'shortlisted',
+            preferences: ['tablas de queso'],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [109, 136],
+            recommended_providers: [
+              {
+                id: 109,
+                title: 'Edo Sushi Bar',
+                slug: 'edo-sushi-bar',
+                category: 'catering',
+                location: 'Lima',
+                priceLevel: '$$$',
+                rating: '5.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
+                websiteUrl: null,
+                minPrice: '1200.00',
+                maxPrice: null,
+                promoBadge: '10% Off',
+                promoSummary: '10% de descuento.',
+                descriptionSnippet: 'Catering de sushi para eventos.',
+                serviceHighlights: ['Catering de sushi'],
+                termsHighlights: [],
+              },
+              {
+                id: 136,
+                title: '4Foodies',
+                slug: '4foodies',
+                category: 'catering',
+                location: 'Lima',
+                priceLevel: '$$$',
+                rating: '0.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
+                websiteUrl: 'https://www.4foodies.pe',
+                minPrice: null,
+                maxPrice: null,
+                promoBadge: '10% Off',
+                promoSummary: '10% de descuento.',
+                descriptionSnippet: 'Tablas de quesos para eventos.',
+                serviceHighlights: ['Tablas de quesos', 'Mesas gastronómicas'],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-descriptive-provider',
+      text: 'dame la de tablas de queso y tambien necesito musica',
+      messageId: 'msg-descriptive-provider',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'catering',
+    );
+    const musicNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'música',
+    );
+
+    expect(response.plan.active_need_category).toBe('música');
+    expect(cateringNeed?.status).toBe('selected');
+    expect(cateringNeed?.selected_provider_id).toBe(136);
+    expect(musicNeed?.status).toBe('shortlisted');
+    expect(gateway.searchCalls).toBe(1);
+  });
+
+  it('does not match short provider aliases inside unrelated words', async () => {
+    class EmbeddedAliasRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'confirmar_proveedor',
+          intentConfidence: 0.94,
+          eventType: 'boda',
+          vendorCategory: 'catering',
+          vendorCategories: ['catering'],
+          activeNeedCategory: 'catering',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '21-50',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario eligió el proveedor de tablas de queso.',
+          selectedProviderHint:
+            'proveedor de la shortlist de catering con servicio en tablas de quesos (4Foodies)',
+          pauseRequested: false,
+        };
+      }
+    }
+
+    const runtime = new EmbeddedAliasRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-embedded-alias',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-embedded-alias',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '21-50',
+        active_need_category: 'catering',
+        vendor_category: 'catering',
+        provider_needs: [
+          {
+            category: 'catering',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [109, 136],
+            recommended_providers: [
+              {
+                id: 109,
+                title: 'Edo Sushi Bar',
+                slug: 'edo-sushi-bar',
+                category: 'catering',
+                location: 'Lima',
+                priceLevel: '$$$',
+                rating: '5.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
+                websiteUrl: null,
+                minPrice: '1200.00',
+                maxPrice: null,
+                promoBadge: '10% Off',
+                promoSummary: '10% de descuento.',
+                descriptionSnippet: 'Catering de sushi para eventos.',
+                serviceHighlights: ['Catering de sushi'],
+                termsHighlights: [],
+              },
+              {
+                id: 136,
+                title: '4Foodies',
+                slug: '4foodies',
+                category: 'catering',
+                location: 'Lima',
+                priceLevel: '$$$',
+                rating: '0.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/4foodies',
+                websiteUrl: 'https://www.4foodies.pe',
+                minPrice: null,
+                maxPrice: null,
+                promoBadge: '10% Off',
+                promoSummary: '10% de descuento.',
+                descriptionSnippet: 'Tablas de quesos para eventos.',
+                serviceHighlights: ['Tablas de quesos'],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-embedded-alias',
+      text: 'me quedo con el proveedor de tablas de queso',
+      messageId: 'msg-embedded-alias',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.selected_provider_id).toBe(136);
+    expect(gateway.searchCalls).toBe(0);
+  });
+
+  it('resolves ordinal words against the active shortlist without searching again', async () => {
+    class OrdinalSelectionRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'confirmar_proveedor',
+          intentConfidence: 0.95,
+          eventType: 'boda',
+          vendorCategory: 'música',
+          vendorCategories: ['música'],
+          activeNeedCategory: 'música',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '21-50',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario eligió la primera opción de música.',
+          selectedProviderHint: 'primera opción',
+          pauseRequested: false,
+        };
+      }
+    }
+
+    const runtime = new OrdinalSelectionRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-ordinal-provider',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-ordinal-provider',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '21-50',
+        active_need_category: 'música',
+        vendor_category: 'música',
+        provider_needs: [
+          {
+            category: 'música',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [115, 119],
+            recommended_providers: [
+              {
+                id: 115,
+                title: 'Dj Naoki',
+                slug: 'dj-naoki',
+                category: 'música',
+                location: 'Perú',
+                priceLevel: '$$$',
+                rating: '0.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/dj-naoki',
+                websiteUrl: null,
+                minPrice: null,
+                maxPrice: null,
+                promoBadge: '15% Off',
+                promoSummary: '15% de descuento.',
+                descriptionSnippet: 'DJ para bodas.',
+                serviceHighlights: ['Servicio de DJ para bodas'],
+                termsHighlights: [],
+              },
+              {
+                id: 119,
+                title: 'Dj Siles',
+                slug: 'dj-siles',
+                category: 'música',
+                location: 'Perú',
+                priceLevel: '$$',
+                rating: '0.0',
+                reason: 'coincide con el plan',
+                detailUrl: 'https://sinenvolturas.com/proveedores/dj-siles',
+                websiteUrl: null,
+                minPrice: null,
+                maxPrice: null,
+                promoBadge: '15% Off',
+                promoSummary: '15% de descuento.',
+                descriptionSnippet: 'DJ y sonido para eventos.',
+                serviceHighlights: ['Alquiler de equipos de sonido'],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-ordinal-provider',
+      text: 'dame la primera opcion',
+      messageId: 'msg-ordinal-provider',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
+    expect(response.plan.selected_provider_id).toBe(115);
+    expect(getActiveNeed(response.plan)?.status).toBe('selected');
+    expect(gateway.searchCalls).toBe(0);
+  });
+
   it('keeps broad planning in entrevista when the event is known but no provider need is active yet', async () => {
     class PlanningRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
@@ -802,6 +1355,53 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(0);
   });
 
+  it('ignores implicit venue extraction for broad event-planning openers', async () => {
+    class ImplicitVenueRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.82,
+          eventType: 'boda',
+          vendorCategory: 'local',
+          vendorCategories: ['local'],
+          activeNeedCategory: 'local',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '101-200',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: ['El tipo de evento podría necesitar local.'],
+          conversationSummary: 'El usuario quiere planear una boda en Lima.',
+          selectedProviderHint: null,
+          pauseRequested: false,
+        };
+      }
+    }
+
+    const runtime = new ImplicitVenueRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-implicit-venue',
+      text: 'hola, me gustaria planear un matrimonio en lima para 120 personas',
+      messageId: 'msg-implicit-venue',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('entrevista');
+    expect(response.plan.active_need_category).toBeNull();
+    expect(response.plan.provider_needs).toHaveLength(0);
+    expect(gateway.searchCalls).toBe(0);
+  });
+
   it('maps an explicit guest count of 100 into the 51-100 range', async () => {
     class GuestCountRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
@@ -843,5 +1443,86 @@ describe('AgentService', () => {
     });
 
     expect(response.plan.guest_range).toBe('51-100');
+  });
+
+  it('returns a deterministic reply when the stored plan is already finished', async () => {
+    const runtime = new FakeRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const finishedPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-done',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-finished',
+      }),
+      {
+        current_node: 'necesidad_cubierta',
+        lifecycle_state: 'finished',
+        contact_name: 'Ada',
+        contact_email: 'ada@example.com',
+        conversation_summary: 'Cierre confirmado.',
+      },
+    );
+
+    await planStore.save({ plan: finishedPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-finished',
+      text: 'Quiero otra boda',
+      messageId: 'msg-done',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.prompt_bundle_id).toBe('skipped_finished_plan');
+    expect(response.outbound.text).toContain('24 horas');
+    expect(response.plan.lifecycle_state).toBe('finished');
+  });
+
+  it('persists a finish TTL when runtime marks plan as finished', async () => {
+    class FinishingRuntime extends FakeRuntime {
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        request.onPlanFinished?.(1_750_000_000);
+        const finished = mergePlan(request.plan as PlanSnapshot, {
+          lifecycle_state: 'finished',
+          contact_name: 'Lin',
+          contact_email: 'lin@example.com',
+          current_node: 'necesidad_cubierta',
+          intent: 'cerrar',
+        });
+        Object.assign(request.plan, finished);
+        return { text: 'Plan finalizado.' };
+      }
+    }
+
+    const runtime = new FinishingRuntime();
+    const planStore = new RecordingPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+    });
+
+    await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-finish-tool',
+      text: 'listo, cierra el plan',
+      messageId: 'msg-finish',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(planStore.ttls.some((value) => value === 1_750_000_000)).toBe(true);
+    expect(planStore.currentPlan?.lifecycle_state).toBe('finished');
+    expect(planStore.currentPlan?.contact_email).toBe('lin@example.com');
   });
 });

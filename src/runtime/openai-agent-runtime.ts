@@ -2,9 +2,11 @@ import { Agent, OpenAIConversationsSession, run, tool } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-import type { PersistedPlan } from '../core/plan';
+import type { PersistedPlan, PlanSnapshot } from '../core/plan';
 import {
+  FINISHED_PLAN_TTL_SECONDS,
   getActiveNeed,
+  mergePlan,
   summarizeProviderNeeds,
   summarizeRecommendedProviders,
 } from '../core/plan';
@@ -19,6 +21,7 @@ import type {
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { ToolName } from './prompt-manifest';
+import type { RecommendationFunnelTrace } from '../core/trace';
 
 const extractionSchema = z.object({
   intent: z
@@ -62,6 +65,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       extractorModel: string;
       promptCacheRetention: 'in-memory' | '24h';
       replyProviderLimit: number;
+      presentationProviderLimit: number;
       providerDetailLookupLimit: number;
       promptLoader: PromptLoader;
       providerGateway: ProviderGateway;
@@ -98,11 +102,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const bundle = await this.options.promptLoader.loadNodeBundle(
       request.currentNode,
     );
-    const tools = this.createTools(
-      request.toolUsage,
-      request.plan,
-      bundle.allowedTools,
-    );
+    const tools = this.createTools(request, bundle.allowedTools);
 
     request.toolUsage.considered.push(...bundle.allowedTools);
 
@@ -122,7 +122,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       conversationId: request.plan.conversation_id ?? undefined,
     });
 
-    const input = this.composeConversationInput(request);
+    const recommendationFunnel: RecommendationFunnelTrace = {
+      available_candidates: request.providerResults.length,
+      context_candidates: Math.min(
+        request.providerResults.length,
+        this.options.replyProviderLimit,
+      ),
+      context_candidate_ids: request.providerResults
+        .slice(0, this.options.replyProviderLimit)
+        .map((provider) => provider.id),
+      presentation_limit: this.options.presentationProviderLimit,
+    };
+
+    const input = this.composeConversationInput(request, recommendationFunnel);
 
     const result = await run(agent, input, {
       session,
@@ -136,6 +148,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return {
       text: String(result.finalOutput ?? '').trim(),
       tokenUsage: this.extractTokenUsage(result),
+      recommendationFunnel,
     };
   }
 
@@ -157,8 +170,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     const root = value as Record<string, unknown>;
-    const nestedKeys = ['usage', 'response', 'rawResponse', 'finalResponse', 'result'];
-    const candidates: unknown[] = [];
+    const nestedKeys = [
+      'usage',
+      'response',
+      'rawResponse',
+      'finalResponse',
+      'result',
+      'state',
+      'runContext',
+      'lastTurnResponse',
+    ];
+    const candidates: unknown[] = [root];
 
     for (const key of nestedKeys) {
       const entry = root[key];
@@ -170,6 +192,57 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         const nested = entry as Record<string, unknown>;
         if (nested.usage) {
           candidates.push(nested.usage);
+        }
+        if (nested.response) {
+          candidates.push(nested.response);
+        }
+        if (nested.lastTurnResponse) {
+          candidates.push(nested.lastTurnResponse);
+        }
+        const nestedRawResponses = nested.rawResponses;
+        if (Array.isArray(nestedRawResponses)) {
+          for (const entry of nestedRawResponses) {
+            candidates.push(entry);
+          }
+        }
+      }
+    }
+
+    if (Array.isArray(root.rawResponses)) {
+      for (const response of root.rawResponses) {
+        candidates.push(response);
+        if (response && typeof response === 'object') {
+          const typedResponse = response as Record<string, unknown>;
+          if (typedResponse.usage) {
+            candidates.push(typedResponse.usage);
+          }
+          if (typedResponse.providerData && typeof typedResponse.providerData === 'object') {
+            const providerData = typedResponse.providerData as Record<string, unknown>;
+            if (providerData.usage) {
+              candidates.push(providerData.usage);
+            }
+            if (providerData.response && typeof providerData.response === 'object') {
+              const providerResponse = providerData.response as Record<string, unknown>;
+              if (providerResponse.usage) {
+                candidates.push(providerResponse.usage);
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (typeof root.state === 'object' && root.state) {
+      const state = root.state as Record<string, unknown>;
+      if (Array.isArray(state.rawResponses)) {
+        for (const response of state.rawResponses) {
+          candidates.push(response);
+          if (response && typeof response === 'object') {
+            const typedResponse = response as Record<string, unknown>;
+            if (typedResponse.usage) {
+              candidates.push(typedResponse.usage);
+            }
+          }
         }
       }
     }
@@ -185,15 +258,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const usage = value as Record<string, unknown>;
     const inputTokens = this.readNumericField(
       usage,
-      ['input_tokens', 'prompt_tokens', 'inputTokenCount'],
+      ['input_tokens', 'prompt_tokens', 'inputTokenCount', 'inputTokens'],
     );
     const outputTokens = this.readNumericField(
       usage,
-      ['output_tokens', 'completion_tokens', 'outputTokenCount'],
+      ['output_tokens', 'completion_tokens', 'outputTokenCount', 'outputTokens'],
     );
     const totalTokens = this.readNumericField(
       usage,
-      ['total_tokens', 'totalTokenCount'],
+      ['total_tokens', 'totalTokenCount', 'totalTokens'],
     );
     const cachedInputTokens = this.resolveCachedInputTokens(usage);
 
@@ -233,27 +306,79 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private resolveCachedInputTokens(source: Record<string, unknown>): number | null {
-    const topLevel = this.readNumericField(source, ['cached_tokens', 'cached_input_tokens']);
+    const topLevel = this.readNumericField(source, [
+      'cached_tokens',
+      'cached_input_tokens',
+      'cachedInputTokens',
+    ]);
     if (topLevel !== null) {
       return topLevel;
     }
 
-    const promptTokenDetails = source.prompt_tokens_details;
-    if (promptTokenDetails && typeof promptTokenDetails === 'object') {
-      const nested = promptTokenDetails as Record<string, unknown>;
-      const promptCached = this.readNumericField(nested, ['cached_tokens']);
-      if (promptCached !== null) {
-        return promptCached;
+    const detailsCandidates = [
+      source.prompt_tokens_details,
+      source.input_tokens_details,
+      source.promptTokenDetails,
+      source.inputTokenDetails,
+      source.inputTokensDetails,
+    ];
+    for (const details of detailsCandidates) {
+      const cached = this.readCachedTokensFromDetails(details);
+      if (cached !== null) {
+        return cached;
       }
     }
 
-    const inputTokenDetails = source.input_tokens_details;
-    if (inputTokenDetails && typeof inputTokenDetails === 'object') {
-      const nested = inputTokenDetails as Record<string, unknown>;
-      const inputCached = this.readNumericField(nested, ['cached_tokens']);
-      if (inputCached !== null) {
-        return inputCached;
+    const requestUsageEntries = source.request_usage_entries ?? source.requestUsageEntries;
+    if (Array.isArray(requestUsageEntries)) {
+      let aggregateCachedTokens = 0;
+      let foundCachedTokens = false;
+      for (const entry of requestUsageEntries) {
+        if (!entry || typeof entry !== 'object') {
+          continue;
+        }
+        const requestEntry = entry as Record<string, unknown>;
+        const requestCached = this.readCachedTokensFromDetails(
+          requestEntry.input_tokens_details ?? requestEntry.inputTokensDetails,
+        );
+        if (requestCached !== null) {
+          aggregateCachedTokens += requestCached;
+          foundCachedTokens = true;
+        }
       }
+      if (foundCachedTokens) {
+        return aggregateCachedTokens;
+      }
+    }
+
+    return null;
+  }
+
+  private readCachedTokensFromDetails(details: unknown): number | null {
+    if (!details) {
+      return null;
+    }
+
+    if (Array.isArray(details)) {
+      let aggregateCachedTokens = 0;
+      let foundCachedTokens = false;
+      for (const entry of details) {
+        if (!entry || typeof entry !== 'object') {
+          continue;
+        }
+        const nested = entry as Record<string, unknown>;
+        const cached = this.readNumericField(nested, ['cached_tokens', 'cachedTokens']);
+        if (cached !== null) {
+          aggregateCachedTokens += cached;
+          foundCachedTokens = true;
+        }
+      }
+      return foundCachedTokens ? aggregateCachedTokens : null;
+    }
+
+    if (typeof details === 'object') {
+      const nested = details as Record<string, unknown>;
+      return this.readNumericField(nested, ['cached_tokens', 'cachedTokens']);
     }
 
     return null;
@@ -284,6 +409,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         missing_fields: need.missing_fields,
         selected_provider_id: need.selected_provider_id,
         selected_provider_hint: need.selected_provider_hint,
+        recommended_providers: need.recommended_providers.slice(0, 8).map((provider) => ({
+          id: provider.id,
+          title: provider.title,
+          slug: provider.slug,
+          category: provider.category,
+          services: provider.serviceHighlights.slice(0, 4),
+          promo: provider.promoBadge ?? provider.promoSummary,
+          description: this.truncateText(provider.descriptionSnippet ?? '', 140),
+        })),
       })),
       selected_provider_id: plan.selected_provider_id,
       selected_provider_hint: plan.selected_provider_hint,
@@ -332,7 +466,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return model.toLowerCase().startsWith('gpt-5');
   }
 
-  private composeConversationInput(request: ComposeReplyRequest): string {
+  private composeConversationInput(
+    request: ComposeReplyRequest,
+    recommendationFunnel: RecommendationFunnelTrace,
+  ): string {
     const allowedTools =
       request.toolUsage.considered.length > 0
         ? request.toolUsage.considered.join(', ')
@@ -354,6 +491,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
       `Herramientas autorizadas en este nodo: ${allowedTools}`,
       `Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`,
+      `Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`,
       request.errorMessage ? `Error operativo: ${request.errorMessage}` : '',
       'Responde únicamente con el próximo mensaje para el usuario.',
     ]
@@ -362,10 +500,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private createTools(
-    toolUsage: RuntimeContext['toolUsage'],
-    plan: PersistedPlan,
+    request: ComposeReplyRequest,
     allowedTools: readonly ToolName[],
   ) {
+    const toolUsage = request.toolUsage;
+    const plan = request.plan;
     let remainingProviderDetailLookups =
       this.options.providerDetailLookupLimit;
 
@@ -741,6 +880,39 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           return result;
         },
       }),
+      finish_plan: tool({
+        name: 'finish_plan',
+        description:
+          'Cierra el plan de evento tras obtener nombre y email del usuario para la secuencia de contacto a proveedores. El canal de correo hacia proveedores aún no está implementado; esta herramienta persiste el cierre, guarda contacto y programa la expiración del plan en almacenamiento.',
+        parameters: z
+          .object({
+            name: z.string().min(1),
+            email: z.string().email(),
+          })
+          .strict(),
+        execute: async ({ email, name }) => {
+          this.recordToolInput(toolUsage, 'finish_plan', { name, email });
+          toolUsage.called.push('finish_plan');
+          const ttlEpochSeconds = Math.floor(Date.now() / 1000) + FINISHED_PLAN_TTL_SECONDS;
+          const snapshot = mergePlan(plan as PlanSnapshot, {
+            lifecycle_state: 'finished',
+            contact_name: name,
+            contact_email: email,
+            current_node: 'necesidad_cubierta',
+            intent: 'cerrar',
+            updated_at: new Date().toISOString(),
+          });
+          Object.assign(plan, snapshot);
+          request.onPlanFinished?.(ttlEpochSeconds);
+          const result = {
+            status: 'queued',
+            detail: 'provider_contact_flow_not_implemented_yet',
+            ttl_epoch_seconds: ttlEpochSeconds,
+          };
+          this.recordToolOutput(toolUsage, 'finish_plan', result);
+          return result;
+        },
+      }),
     } satisfies Record<ToolName, ReturnType<typeof tool>>;
 
     return allowedTools.map((name) => toolMap[name]);
@@ -770,6 +942,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private buildPromptPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
     return {
+      lifecycle_state: plan.lifecycle_state,
+      contact_name: plan.contact_name,
+      contact_email: plan.contact_email,
       current_node: plan.current_node,
       intent: plan.intent,
       event_type: plan.event_type,
