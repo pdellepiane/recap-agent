@@ -552,3 +552,265 @@ Decision:
 
 Flow nodes affected:
 - All nodes indirectly, because telemetry wraps the full turn lifecycle regardless of active decision node.
+
+### Harden token and cache usage extraction from Agents SDK run results
+- Expanded token-usage extraction in `OpenAiAgentRuntime` to parse SDK-native camelCase usage shapes (`state.usage`, `runContext.usage`, and `rawResponses[].usage`) in addition to existing snake_case fields.
+- Added fallback parsing for cached tokens from `inputTokensDetails` arrays and `requestUsageEntries`, reducing false `null` usage in traces and CLI perf output.
+- Added focused regression tests for run-state usage parsing and request-level cached-token aggregation.
+
+Reason:
+- Live CLI sessions still showed `n/a` token and cache fields in turns where model usage should have been available, indicating the parser missed current Agents SDK usage shapes.
+
+Decision:
+- Prefer extracting usage from SDK run objects first-class, while keeping existing snake_case compatibility to avoid regressions across provider payload variants.
+
+Flow nodes affected:
+- All nodes indirectly, because token and cache telemetry is collected for every runtime turn regardless of active node.
+
+## 2026-04-20
+
+### Implement mixed provider search strategy to maximize coverage
+- Updated `SinEnvolturasGateway` search flows to query both `GET /filtered` and `GET /filtered/full` for the same allowlisted search inputs and merge results by provider id.
+- Added endpoint-specific normalization for `/filtered/full` items so the runtime can preserve richer promo and description snippets when present.
+- Added deterministic merge rules that prefer richer metadata from `/filtered/full` while backfilling higher-availability location and website fields from `/filtered`.
+- Kept the strict tool input surface unchanged (`keyword`, `category+location`, and plan-driven search) while improving recall and field completeness under the same tool contracts.
+- Updated gateway unit tests to assert both endpoint calls are made for typed search tools.
+
+Reason:
+- Coverage analysis showed `/filtered/full` has stronger descriptive and promo fields, while `/filtered` currently has better practical location population for matching and explanation quality.
+
+Decision:
+- Use a mixed endpoint strategy at the gateway layer so tools stay strict and simple for the model, while runtime search results gain both recall and metadata completeness without adding new model-facing tool complexity.
+
+Flow nodes affected:
+- `buscar_proveedores` and `reintentar` indirectly, because both rely on provider search tools backed by this gateway.
+
+### Add two-stage recommendation funnel (top 15 context -> top 5 presented)
+- Increased runtime provider candidate limits so up to 15 shortlisted providers are persisted and passed into reply composition context.
+- Updated `SinEnvolturasGateway` search retrieval to auto-fetch up to 4 sequential pages per query window, dedupe by provider id, and merge field completeness before final plan-aware ranking.
+- Kept deterministic ranking in gateway and prompt-level presentation constraints in `recomendar` so the LLM receives a richer top-15 pool and is instructed to present only the best 5 options to the user.
+- Updated shared output style rules to cap displayed recommendation shortlists at five options.
+
+Reason:
+- The recommendation flow needed broader candidate recall to improve quality while preserving concise user-facing shortlists and avoiding full LLM-side reranking over raw endpoint pages.
+
+Decision:
+- Use a hybrid two-stage funnel: deterministic retrieval/ranking for breadth and consistency, then LLM final selection/narration over a bounded top-15 context into a top-5 response.
+
+Flow nodes affected:
+- `recomendar` directly for presentation policy, plus `buscar_proveedores` and `reintentar` indirectly through expanded retrieval depth and shortlist persistence.
+
+### Extend trace diagnostics and perf persistence observability
+- Added a `recommendation_funnel` block to turn traces with candidate availability, candidate ids sent in reply context, and presentation target limit.
+- Extended Lambda perf summaries returned to CLI with persistence status (`persisted`) and target store (`storage_target`) so runtime diagnostics can confirm whether Dynamo writes actually succeeded.
+- Extended persisted perf records in DynamoDB with recommendation-funnel counts/ids to support downstream analysis of retrieval breadth versus presentation constraints.
+- Updated CLI trace rendering to print the recommendation funnel and persistence status inside the trace/perf sections.
+- Updated eval schemas and perf unit tests to validate the new observability fields.
+
+Reason:
+- Existing CLI diagnostics showed latency and token data but did not explicitly confirm persistence success or expose the retrieval-to-presentation funnel needed to audit top-15 to top-5 behavior.
+
+Decision:
+- Keep these diagnostics lightweight, always structured, and available in CLI mode so operators can verify both live execution and persisted telemetry without ad hoc scripts.
+
+Flow nodes affected:
+- All nodes indirectly, because trace and perf capture wrap every turn regardless of active node.
+
+### Add non-cluttering live progress indicator for Lambda turn buffering
+- Updated the terminal CLI invocation flow to render a single in-place dynamic progress line while waiting for each Lambda turn response.
+- Added exact progress phases for request send, runtime wait, response parse, reply render, trace render, Dynamo plan load, and plan render, plus a near-timeout hint when turn latency approaches the configured timeout.
+- Kept the dynamic `\r` progress line active through the full post-response lifecycle (trace rendering and plan loading/rendering), not only through network wait, so stalls after reply are visible in real time.
+- Added local CLI timing telemetry (`render_reply`, `render_trace`, `load_plan`, `render_plan`, `render_raw`) to diagnose delays that happen after the agent reply is already available.
+- Added trace-output truncation guards for large tool payloads and provider lists so oversized debug blocks do not freeze terminal rendering.
+- Added graceful handling for invocation failures (including timeout aborts) so the CLI reports a clear error instead of appearing silently stuck.
+
+Reason:
+- Live usage showed long waits with little feedback, making it hard to tell whether buffering came from extraction, provider search, compose, transport, or a true timeout.
+
+Decision:
+- Keep output clean by using a single rewritten line (no log spam) with exact observable phases only, then clear the line before normal reply rendering.
+
+Flow nodes affected:
+- None directly in flow logic. This is a CLI observability and UX improvement for all runtime turns.
+
+### Audit and harden venue/local/place provider search consistency
+- Added a dedicated analysis dossier at `analysis/venue-local-search-audit` with live endpoint evidence, reproducible commands, and dated findings for venue-category inconsistency.
+- Updated `SinEnvolturasGateway.categoryAliases()` to normalize a wider family of venue-like inputs (`local`, `locales`, `venue`, `place`, `lugar`, `salon`, `espacio`, `recepcion`) into robust search aliases.
+- Updated `searchProvidersByCategoryLocation()` to try alias-based composed terms first, then retry category-only terms when strict `category + location` queries return empty.
+- Added `searchProvidersBySearchTerms()` helper to keep fallback search behavior deterministic and bounded.
+- Added regression coverage in `tests/sinenvolturas-gateway.test.ts` for the case where `venue + Lima` fails but alias fallback (`local`) succeeds.
+
+Reason:
+- Live behavior showed recurring zero-results for venue-like phrasing even when `local` returned valid `Locales` providers, causing inconsistent recommendations for the same intent.
+
+Decision:
+- Keep the model-facing tools unchanged and fix inconsistency in gateway query normalization and fallback strategy, backed by reproducible analysis artifacts.
+
+Flow nodes affected:
+- `buscar_proveedores` and `reintentar` indirectly, because both rely on gateway-backed provider search and category/location retrieval logic.
+
+## 2026-04-20
+
+### Finish-plan tool, lifecycle persistence, and plan-row TTL
+- Extended the persisted plan schema with `lifecycle_state` (`active` | `finished`), `contact_name`, and `contact_email` to support a post-selection closeout path.
+- Added `finish_plan` to the OpenAI runtime tools: it requires `name` and `email`, marks the plan finished, moves the node to `necesidad_cubierta`, returns a stub payload (`provider_contact_flow_not_implemented_yet`), and signals a 24-hour DynamoDB TTL via `onPlanFinished`.
+- Wired `AgentService` to pass TTL through every plan persist after `finish_plan`, and to short-circuit new turns when a stored plan is already finished (deterministic Spanish reply, no extractor or compose).
+- Enabled DynamoDB TTL on the plans table (`ttl_epoch_seconds`) and taught `DynamoPlanStore` to write and strip that attribute separately from the Zod plan payload.
+- Updated `crear_lead_cerrar` prompts to authorize and describe `finish_plan`.
+- Added tests for lifecycle parsing, merge behavior, finished-plan short-circuit, and eval live-lambda seed alignment.
+
+Reason:
+- The product needs an explicit “contact providers and close” step with inbox persistence later; today we only persist closure metadata and enforce a cooldown before a fresh plan can be stored again.
+
+Decision:
+- Use DynamoDB item TTL on the same `PLAN` row so finished rows disappear after 24 hours and `getByExternalUser` naturally returns null for a new `createEmptyPlan` session.
+
+Flow nodes affected:
+- `crear_lead_cerrar`, `necesidad_cubierta`, and `existe_plan_guardado` (read path for finished plans).
+
+### Lint hygiene (token usage + gateway test)
+- Replaced an unsafe spread in `OpenAiAgentRuntime.collectUsageCandidates` with an explicit loop.
+- Added `urlFromVitestFetchMockCall` in `tests/sinenvolturas-gateway.test.ts` so Vitest fetch mock assertions stay strictly typed.
+
+Reason:
+- `npm run lint` must stay clean after the runtime changes touched nearby code paths.
+
+### Finish-plan state-model hardening + SOTA-style eval metrics
+- Added `isPlanFinished()` in `src/core/plan.ts` and wired it into `AgentService` and `resolveResumeNode()` so lifecycle closure is represented as a first-class state-model guard, not ad-hoc string checks.
+- Extended eval result/report schemas with benchmark metrics (`tool_precision/recall/F1`, branch coverage, state and trajectory pass rates, plan persistence rate, cache hit rate, token totals, latency distribution).
+- Implemented automatic benchmark metric computation per case in `src/evals/runner.ts` and aggregate benchmark summaries in `src/evals/reporting.ts`, including Markdown rendering.
+- Added a new offline eval case `state.finished_plan_short_circuits_turn` and included it in `dev_regression` and `benchmark_full` suites to validate finished-plan branch behavior and closure messaging.
+- Added deterministic unit coverage for finished-state resume semantics (`tests/decision-flow.test.ts`) and TTL persistence callback plumbing in `tests/agent-service.test.ts`.
+
+Reason:
+- The finish flow needs to be integrated with the plan lifecycle model and validated with richer, benchmark-oriented quality signals instead of only pass/fail checks.
+
+Decision:
+- Keep the existing expectation/scorer framework and augment it with always-on benchmark KPIs so every run yields standardized state, tool-use, and trajectory metrics without requiring per-case boilerplate.
+
+### Live Lambda eval expansion for finished-plan lifecycle
+- Extended `runLiveLambdaCase` to preload `seedPlan` into Dynamo before sending turn inputs, mirroring offline seeding behavior for branch validation.
+- Promoted `state.finished_plan_short_circuits_turn` to `template.base-both-targets` so the same lifecycle branch runs in both offline and live modes.
+- Added the new lifecycle case to `evals/suites/live_smoke.yaml` to keep a low-cost live assertion for the finished-plan short-circuit.
+- Expanded `tests/eval-live-target.test.ts` with a dedicated seeded-plan test that verifies persisted finished lifecycle fields are used during live target normalization.
+
+Reason:
+- The finished-plan branch should be validated under real Lambda transport with Dynamo-backed state, not only via offline fixtures.
+
+### Parallel eval execution + dashboard artifacts
+- Added configurable eval concurrency via `parallelism` in `runEvaluation` and CLI flag `--parallel <n>`, using a bounded worker pool while preserving deterministic result ordering.
+- Added `dashboard.json` and `dashboard.csv` artifacts per run with objective case-level KPIs and report-level benchmark summaries for BI ingestion.
+- Documented parallel run usage and dashboard outputs in `README.md`.
+
+Reason:
+- Large benchmark suites need faster turnaround and machine-consumable metrics output suitable for dashboards beyond markdown reports.
+
+### Eval-case diversity expansion for state and failure branches
+- Added `state.resume_from_temporal_close_goes_to_entrevista` to validate resume behavior from `guardar_cerrar_temporalmente`.
+- Added `state.close_intent_saves_temporal_node` to distinguish generic close intent from final finished lifecycle state.
+- Added `search_error.provider_failure_moves_to_retry_node` to cover provider search exception routing into `informar_error_reintento`.
+- Included the new scenarios in `dev_regression` and `benchmark_full` suites.
+
+Reason:
+- The benchmark needed broader behavioral coverage across resume, close, and operational error branches to reduce blind spots in quality metrics.
+
+### Flow fixes after benchmark feedback
+- When continuing to another need after selecting a provider in a mixed turn, search-result projection now clears `selected_provider_id` and `selected_provider_hint` for the newly active shortlisted need to avoid stale cross-need selection hints.
+- Provider search failures now record `search_providers_from_plan` in `tools_called` plus an error payload in `tool_outputs`, so observability and tool-usage expectations reflect attempted calls that failed upstream.
+
+Reason:
+- Benchmark failures revealed two instrumentation/state-quality issues: stale selection hints on a different active need and missing tool-call trace data on failed provider searches.
+
+### Live-target skip classification fix
+- Updated eval result finalization to preserve runtime `skipped` outcomes explicitly (instead of coercing them into `failed` via unmet expectations when no turns are available).
+- Added deterministic skipped-case artifact output with baseline benchmark metrics so dashboard ingestion remains stable even when live target configuration is unavailable.
+
+Reason:
+- Live benchmark runs without a configured Function URL were being misreported as failures, creating false negatives in dashboard KPIs.
+
+### Cross-target expectation normalization for live OpenAI variability
+- Relaxed `entrypoint.event_known_no_active_need` by removing strict plan-field equality checks (`event_type`, `location`) that are deterministic offline but model-variable in live extraction.
+- Relaxed `domain.guest_range_boundary_100` to accept either `recomendar` or `aclarar_pedir_faltante` transitions, reflecting valid live behavior when location is still missing.
+
+Reason:
+- Live Lambda/OpenAI runs should validate behavior envelopes without overfitting to fixture-deterministic extraction outputs.
+
+### Live Lambda benchmark hardening
+- Added trace-level expectation types (`trace_field_equals`, `trace_field_subset`, `trace_field_number`) and `provider_result_count` so live cases can assert structured runtime behavior beyond broad node envelopes.
+- Tightened existing live comprehensive cases to check search readiness, persistence, provider search usage, provider result counts, and null selection state where appropriate.
+- Expanded `live_comprehensive` with four multi-turn and negative-control cases covering event-first planning, follow-up catering search, multi-need capture, refinement after recommendations, and vague requests that must not search.
+- Added latency/tool-call targets to the base live scorer so budget efficiency is no longer an automatic perfect score.
+- Fixed live target plan hydration to resolve the deployed plans table from CloudFormation outputs unless `PLANS_TABLE_NAME` is explicitly set, avoiding false null-field failures from the local default table name.
+- Updated live local-space and photography search-path cases to include guest counts so their strict search expectations align with the runtime sufficiency rule that requires category, location, and budget or guest range.
+- Tightened the event-first multi-need live case wording so the opening turn explicitly has no chosen provider category, reducing stochastic misclassification as a venue search.
+- Raised the event-plan-to-catering tool ceilings to allow normal recommendation enrichment/review calls while still bounding runaway tool usage.
+
+Reason:
+- The live Lambda suite was too permissive: broad allowed transitions and missing trace assertions let integrations score 100% while still hiding search readiness, persistence, and state-continuity regressions.
+- The first hardened live run also exposed an eval-adapter defect: Dynamo had the correct persisted plan, while artifacts showed fallback trace-only plans because the adapter read the wrong table.
+
+Decision:
+- Keep text checks tolerant, but make the primary gates structured: plan fields, trace fields, provider counts, tool calls, and multi-turn continuity.
+
+### Preserve known guest range when extraction returns unknown
+- Updated runtime plan merge behavior so extractor output `guestRange: "unknown"` is treated like no new information and cannot overwrite an already known guest range.
+- Extended `AgentService` regression coverage to preserve a seeded `guest_range` when a follow-up extraction returns null/unknown fields.
+
+Reason:
+- The hardened live suite found a real state-continuity bug: a second turn in a multi-need flow degraded `guest_range` from `21-50` to `unknown`, weakening subsequent provider search context.
+
+Decision:
+- Keep explicit guest counts inferred from the user message highest priority, keep concrete extractor ranges second, and reserve the prior plan value whenever the extractor only emits `unknown`.
+
+### Guard broad event planning against implicit venue inference
+- Added a deterministic runtime guard that drops venue-like extracted categories when there is no active need and the user message does not explicitly mention local, salón, espacio, venue, or equivalent wording.
+- Updated extractor domain knowledge and examples to distinguish broad event-planning openers from explicit venue/local requests.
+- Added regression coverage for an extractor that incorrectly returns `local` from a broad planning opener.
+
+Reason:
+- Live reruns showed stochastic false venue searches for messages like “quiero planear un matrimonio en Lima”, which violates the event-plan-first behavior and creates premature provider searches.
+
+Decision:
+- Keep explicit venue requests fully supported, but require explicit venue wording before opening a local/salón need from an otherwise broad event-planning turn.
+
+### Preserve numeric-leading provider selections and avoid post-turn plan fetches
+- Updated provider selection resolution to match provider names before interpreting a hint as an ordinal, so names such as `4Foodies` are not mistaken for option numbers.
+- Added ordinal-word support for selections such as `primera opción`, allowing active shortlists to be confirmed without re-running provider search.
+- Stopped persisting unresolved `selected_provider_hint` values onto shortlisted needs; hints now become durable only when they resolve to a selected provider.
+- Added the current plan snapshot to CLI-mode Lambda responses and updated the terminal/eval clients to use it instead of doing a second DynamoDB plan read after every turn.
+- Updated terminal plan diagnostics to show selected providers inside each provider need and moved local timing calculation so plan-render time is visible in the trace diagnostics.
+- Added regression coverage for numeric-leading provider names and ordinal-word selection.
+
+Reason:
+- A live terminal conversation showed two linked failures: selecting `4Foodies` while opening music left catering as merely shortlisted, and later `primera opción` did not persist the music selection.
+- The same run showed runtime perf records in DynamoDB were fast enough while the terminal spent tens of seconds after the reply waiting on an extra plan fetch, making diagnostics misleading.
+
+Decision:
+- Treat the Lambda response as the authoritative post-turn debug envelope for CLI mode, while keeping `/plan` available for explicit out-of-band DynamoDB inspection.
+
+### Align conversational provider selection across prompts and reducer
+- Extended the extractor input snapshot with compact shortlisted provider context: title, slug, category, services, promo, and short description.
+- Updated extractor prompts to resolve conversational references to prior shortlist items, including descriptive references like `la de tablas de queso`, `la de violín`, or `la propuesta en vivo` when exactly one provider is plausible.
+- Tightened recommendation and provider-selection response contracts so replies only claim a provider is selected when the plan has `selected_provider_id`.
+- Added deterministic reducer fallback for descriptive references by scoring the user message against known provider titles, services, promos, descriptions, and other shortlist text.
+- Changed provider alias matching to require token boundaries so short aliases such as `edo` cannot match unrelated words like `proveedor`.
+- Added regression coverage where the extractor emits no `selectedProviderHint`, but the reducer still selects the cheese-table catering option and continues to the next need.
+- Added regression coverage for model-generated descriptive hints that mention `4Foodies` while also containing the word `proveedor`.
+
+Reason:
+- A planning agent should understand natural follow-ups, not only exact names and option numbers. The previous extractor context lacked provider names/differentiators, and persistence could fail when the structured hint was absent.
+
+Decision:
+- Let the model interpret conversational references with richer context, but keep durable plan mutation deterministic and conservative: select only on a unique, clear match; otherwise ask for clarification instead of guessing.
+
+## 2026-04-21
+
+### Expand channel integration contract
+- Rewrote `docs/channel-integration.md` as a thorough adapter guide with the current live Lambda Function URL, CloudFormation output names, request and response contracts, channel and CLI response examples, error handling, state identity rules, telemetry correlation, provider endpoint dependencies, runtime configuration, validation commands, and adapter completion checklist.
+- Included the currently deployed development endpoint (`https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/`) and DynamoDB tables (`recap-agent-runtime-plans`, `recap-agent-runtime-perf`) resolved from CloudFormation on 2026-04-21.
+
+Reason:
+- The previous guide explained the high-level channel-agnostic intent but did not give enough concrete detail for someone to implement or validate a real channel adapter.
+
+Decision:
+- Keep the guide focused on the runtime boundary and live integration contract, while making clear that webhook auth, retries, formatting, deduplication, and delivery callbacks belong in channel adapters rather than `src/runtime`.
