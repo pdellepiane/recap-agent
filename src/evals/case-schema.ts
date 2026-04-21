@@ -90,6 +90,17 @@ const turnTraceSchema = z.object({
   tool_inputs: z.array(toolInputTraceSchema).default([]),
   tool_outputs: z.array(toolOutputTraceSchema),
   provider_results: z.array(providerSummarySchema),
+  recommendation_funnel: z.object({
+    available_candidates: z.number().int().nonnegative(),
+    context_candidates: z.number().int().nonnegative(),
+    context_candidate_ids: z.array(z.number().int().nonnegative()),
+    presentation_limit: z.number().int().positive(),
+  }).default({
+    available_candidates: 0,
+    context_candidates: 0,
+    context_candidate_ids: [],
+    presentation_limit: 5,
+  }),
   plan_persisted: z.boolean(),
   plan_persist_reason: z.string().nullable(),
   timing_ms: z.object({
@@ -135,11 +146,15 @@ const cliPerfSummarySchema = z.object({
   compose_latency_ms: z.number().nonnegative(),
   tools_called_count: z.number().int().nonnegative(),
   provider_results_count: z.number().int().nonnegative(),
+  recommendation_context_candidates: z.number().int().nonnegative().default(0),
+  recommendation_presentation_limit: z.number().int().positive().default(5),
   total_tokens: z.number().nonnegative().nullable(),
   cached_input_tokens: z.number().nonnegative().nullable(),
   cache_hit_rate: z.number().min(0).max(1).nullable(),
   extraction_to_compose_ratio: z.number().nonnegative().nullable(),
   captured_at: z.string(),
+  persisted: z.boolean().default(true),
+  storage_target: z.string().nullable().default(null),
 });
 
 const turnInputSchema = z.object({
@@ -257,6 +272,43 @@ const providerResultsContainsExpectationSchema = z.object({
   severity: z.enum(['hard', 'soft']).default('hard'),
 });
 
+const providerResultCountExpectationSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('provider_result_count'),
+  min: z.number().int().nonnegative().optional(),
+  max: z.number().int().nonnegative().optional(),
+  turnIndex: z.number().int().nonnegative().optional(),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+});
+
+const traceFieldEqualsExpectationSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('trace_field_equals'),
+  path: z.string().min(1),
+  expected: jsonValueSchema,
+  turnIndex: z.number().int().nonnegative().optional(),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+});
+
+const traceFieldSubsetExpectationSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('trace_field_subset'),
+  path: z.string().min(1),
+  expected: jsonValueSchema,
+  turnIndex: z.number().int().nonnegative().optional(),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+});
+
+const traceFieldNumberExpectationSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('trace_field_number'),
+  path: z.string().min(1),
+  min: z.number().optional(),
+  max: z.number().optional(),
+  turnIndex: z.number().int().nonnegative().optional(),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+});
+
 const toolUsageExpectationSchema = z.object({
   id: z.string().optional(),
   type: z.literal('tool_usage'),
@@ -320,6 +372,10 @@ export const expectationSchema = z.discriminatedUnion('type', [
   planFieldExpectationSchema,
   planFieldSubsetExpectationSchema,
   providerResultsContainsExpectationSchema,
+  providerResultCountExpectationSchema,
+  traceFieldEqualsExpectationSchema,
+  traceFieldSubsetExpectationSchema,
+  traceFieldNumberExpectationSchema,
   toolUsageExpectationSchema,
   textContainsExpectationSchema,
   textNotContainsExpectationSchema,
@@ -433,6 +489,7 @@ export const lambdaTurnResponseSchema = z.object({
   plan_id: z.string(),
   current_node: z.string(),
   trace: turnTraceSchema,
+  plan: planSchema.optional(),
   perf: cliPerfSummarySchema.nullable().optional(),
 });
 
@@ -469,6 +526,25 @@ export const scorerResultSchema = z.object({
 });
 export type ScorerResult = z.infer<typeof scorerResultSchema>;
 
+const benchmarkMetricsSchema = z.object({
+  turn_count: z.number().int().nonnegative(),
+  avg_latency_ms: z.number().nonnegative(),
+  p95_latency_ms: z.number().nonnegative(),
+  tool_calls_total: z.number().int().nonnegative(),
+  unique_tools_called: z.number().int().nonnegative(),
+  tool_call_rate_per_turn: z.number().nonnegative(),
+  tool_precision: z.number().min(0).max(1),
+  tool_recall: z.number().min(0).max(1),
+  tool_f1: z.number().min(0).max(1),
+  branch_coverage: z.number().min(0).max(1),
+  state_expectation_pass_rate: z.number().min(0).max(1),
+  trajectory_expectation_pass_rate: z.number().min(0).max(1),
+  plan_persistence_rate: z.number().min(0).max(1),
+  total_tokens: z.number().int().nonnegative(),
+  cache_hit_rate: z.number().min(0).max(1),
+});
+export type BenchmarkMetrics = z.infer<typeof benchmarkMetricsSchema>;
+
 export const evalResultSchema = z.object({
   runId: z.string(),
   caseId: z.string(),
@@ -487,6 +563,7 @@ export const evalResultSchema = z.object({
   }),
   expectationResults: z.array(expectationResultSchema),
   scorerResults: z.array(scorerResultSchema),
+  benchmarkMetrics: benchmarkMetricsSchema.optional(),
   turns: z.array(evalTurnResultSchema),
   startedAt: z.string(),
   completedAt: z.string(),
@@ -514,6 +591,19 @@ const flakyCandidateSchema = z.object({
 });
 export type EvalFlakyCandidate = z.infer<typeof flakyCandidateSchema>;
 
+const benchmarkSummarySchema = z.object({
+  avg_tool_precision: z.number().min(0).max(1),
+  avg_tool_recall: z.number().min(0).max(1),
+  avg_tool_f1: z.number().min(0).max(1),
+  avg_branch_coverage: z.number().min(0).max(1),
+  avg_state_expectation_pass_rate: z.number().min(0).max(1),
+  avg_trajectory_expectation_pass_rate: z.number().min(0).max(1),
+  avg_plan_persistence_rate: z.number().min(0).max(1),
+  avg_cache_hit_rate: z.number().min(0).max(1),
+  total_tokens: z.number().int().nonnegative(),
+});
+export type BenchmarkSummary = z.infer<typeof benchmarkSummarySchema>;
+
 export const evalReportSchema = z.object({
   runId: z.string(),
   generatedAt: z.string(),
@@ -528,6 +618,7 @@ export const evalReportSchema = z.object({
   configSummaries: z.array(evalAggregateSummarySchema),
   targetSummaries: z.array(evalAggregateSummarySchema),
   flakyCandidates: z.array(flakyCandidateSchema),
+  benchmarkSummary: benchmarkSummarySchema,
   results: z.array(evalResultSchema),
 });
 export type EvalReport = z.infer<typeof evalReportSchema>;

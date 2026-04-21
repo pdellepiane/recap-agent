@@ -93,8 +93,10 @@ After every turn the CLI can show:
 - the rendered agent reply
 - the full node transition trace
 - the persisted perf snapshot for latency, tools, providers, and token efficiency
-- the persisted DynamoDB plan snapshot
+- the post-turn plan snapshot returned by Lambda
 - the raw Lambda JSON payload when `--show-raw` is enabled
+
+Use `/plan` when you specifically want to fetch the current DynamoDB plan row out of band.
 
 ## Channel-Agnostic Runtime and Telemetry
 
@@ -106,7 +108,7 @@ The core runtime is channel-agnostic:
 
 Response payload visibility is client-mode dependent:
 
-- `client_mode=cli` returns debug diagnostics (`trace`, `perf`) for developer tooling.
+- `client_mode=cli` returns debug diagnostics (`trace`, `perf`, `plan`) for developer tooling.
 - consumer channels should use `client_mode=channel` (or omit it) and receive user-facing fields only.
 
 This means feedback from non-technical channels can still be correlated to hard telemetry data without exposing debug internals to end users.
@@ -148,6 +150,7 @@ Primary commands:
 ```bash
 npm run eval:list
 npm run eval -- --suite smoke --target offline
+npm run eval -- --suite benchmark_full --target live_lambda --parallel 4
 npm run eval -- --case selection.choose_edo_from_shortlist --target offline
 npm run eval -- --suite benchmark_full --matrix evals/matrices/models.yaml --dry-run
 npm run eval:report -- --input .eval-runs/<run-id>
@@ -162,6 +165,12 @@ Dataset layout:
 - `evals/matrices`: benchmarking matrices
 
 Run artifacts are written to `.eval-runs/` and are intentionally gitignored.
+
+Each run now emits dashboard-friendly artifacts:
+
+- `report.json` and `report.md` (human-readable summary)
+- `dashboard.json` (structured KPI payload for BI ingestion)
+- `dashboard.csv` (flat per-case metric table for spreadsheets/dashboards)
 
 The framework is designed around layered expectations rather than transcript snapshots:
 
@@ -185,9 +194,10 @@ PLANS_TABLE_NAME=recap-agent-runtime-plans
 PROMPTS_DIR=/var/task/prompts
 SINENVOLTURAS_BASE_URL=https://api.sinenvolturas.com/api-web/vendor
 DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
-PROVIDER_SEARCH_LIMIT=5
+PROVIDER_SEARCH_LIMIT=15
 SEARCH_SUMMARY_WORD_LIMIT=5
-REPLY_PROVIDER_LIMIT=4
+REPLY_PROVIDER_LIMIT=15
+PRESENTATION_PROVIDER_LIMIT=5
 PROVIDER_DETAIL_LOOKUP_LIMIT=3
 PERF_TABLE_NAME=recap-agent-runtime-perf
 PERF_RETENTION_DAYS=30

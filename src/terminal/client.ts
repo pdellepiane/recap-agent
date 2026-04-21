@@ -28,8 +28,10 @@ type CliOptions = {
   timeoutMs: number;
   showRaw: boolean;
   fullPlan: boolean;
-  noPlan: boolean;
-  noTrace: boolean;
+  noPlan?: boolean;
+  noTrace?: boolean;
+  plan?: boolean;
+  trace?: boolean;
 };
 
 type ResolvedCliConfig = {
@@ -53,6 +55,7 @@ type LambdaSuccessPayload = {
   plan_id: string;
   current_node: string;
   trace: TurnTrace;
+  plan?: PlanSnapshot;
   perf?: CliPerfSummary | null;
 };
 
@@ -64,6 +67,29 @@ type InvokeTiming = {
   total: number;
   fetch: number;
   parse: number;
+};
+
+type ProgressPhase =
+  | 'sending_request'
+  | 'waiting_response'
+  | 'parsing_response'
+  | 'rendering_reply'
+  | 'rendering_trace'
+  | 'loading_plan'
+  | 'rendering_plan'
+  | 'rendering_raw';
+
+type TurnProgressReporter = {
+  setPhase: (phase: ProgressPhase) => void;
+  stop: () => void;
+};
+
+type LocalTurnTiming = {
+  render_reply_ms: number;
+  render_trace_ms: number;
+  load_plan_ms: number;
+  render_plan_ms: number;
+  render_raw_ms: number;
 };
 
 const program = new Command();
@@ -164,42 +190,89 @@ async function main() {
     }
 
     const startedAt = Date.now();
-    const result = await invokeLambda(config.functionUrl, {
-      channel: config.channel,
-      user_id: config.userId,
-      text: line,
-      client_mode: 'cli',
-    }, config.timeoutMs);
-    const durationMs = Date.now() - startedAt;
-
-    if (!result.ok) {
-      renderError(
-        result.body.error ?? 'Unknown runtime error.',
-        durationMs,
-        result.timing,
+    const progressReporter = createTurnProgressReporter({
+      timeoutMs: config.timeoutMs,
+    });
+    const localTiming: LocalTurnTiming = {
+      render_reply_ms: 0,
+      render_trace_ms: 0,
+      load_plan_ms: 0,
+      render_plan_ms: 0,
+      render_raw_ms: 0,
+    };
+    let result:
+      | { ok: true; body: LambdaSuccessPayload; timing: InvokeTiming }
+      | { ok: false; body: LambdaErrorPayload; timing: InvokeTiming };
+    try {
+      result = await invokeLambda(
+        config.functionUrl,
+        {
+          channel: config.channel,
+          user_id: config.userId,
+          text: line,
+          client_mode: 'cli',
+        },
+        config.timeoutMs,
+        progressReporter,
       );
+      const durationMs = Date.now() - startedAt;
+
+      if (!result.ok) {
+        renderError(
+          result.body.error ?? 'Unknown runtime error.',
+          durationMs,
+          result.timing,
+        );
+        continue;
+      }
+      progressReporter.setPhase('rendering_reply');
+      const renderReplyStartedAt = Date.now();
+      renderReply(
+        result.body.message,
+        result.body.current_node,
+        durationMs,
+        result.body.trace,
+        result.body.perf ?? null,
+      );
+      localTiming.render_reply_ms = Date.now() - renderReplyStartedAt;
+
+      let planForRender = result.body.plan ?? null;
+
+      if (config.showPlan) {
+        if (!planForRender) {
+          progressReporter.setPhase('loading_plan');
+          const loadPlanStartedAt = Date.now();
+          planForRender = await planStore.getByExternalUser(config.channel, config.userId);
+          localTiming.load_plan_ms = Date.now() - loadPlanStartedAt;
+        }
+        progressReporter.setPhase('rendering_plan');
+        const renderPlanStartedAt = Date.now();
+        renderPlan(planForRender, config.fullPlan);
+        localTiming.render_plan_ms = Date.now() - renderPlanStartedAt;
+      }
+
+      if (config.showTrace) {
+        progressReporter.setPhase('rendering_trace');
+        localTiming.render_trace_ms = renderTrace(
+          result.body.trace,
+          result.timing,
+          result.body.perf ?? null,
+          localTiming,
+        );
+      }
+
+      if (config.showRaw) {
+        progressReporter.setPhase('rendering_raw');
+        const renderRawStartedAt = Date.now();
+        output.write(`${pc.gray(JSON.stringify(result.body, null, 2))}\n`);
+        localTiming.render_raw_ms = Date.now() - renderRawStartedAt;
+      }
+    } catch (error) {
+      const durationMs = Date.now() - startedAt;
+      renderError(formatInvokeFailure(error), durationMs);
       continue;
-    }
-
-    renderReply(
-      result.body.message,
-      result.body.current_node,
-      durationMs,
-      result.body.trace,
-      result.body.perf ?? null,
-    );
-
-    if (config.showTrace) {
-      renderTrace(result.body.trace, result.timing, result.body.perf ?? null);
-    }
-
-    if (config.showPlan) {
-      const plan = await planStore.getByExternalUser(config.channel, config.userId);
-      renderPlan(plan, config.fullPlan);
-    }
-
-    if (config.showRaw) {
-      output.write(`${pc.gray(JSON.stringify(result.body, null, 2))}\n`);
+    } finally {
+      progressReporter.stop();
     }
   }
 }
@@ -232,6 +305,9 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
     );
   }
 
+  const showPlan = resolveBooleanToggle(options, 'plan', 'noPlan', true);
+  const showTrace = resolveBooleanToggle(options, 'trace', 'noTrace', true);
+
   return {
     functionUrl,
     plansTableName,
@@ -242,10 +318,29 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
     channel: options.channel,
     timeoutMs: options.timeoutMs,
     showRaw: options.showRaw,
-    showPlan: !options.noPlan,
-    showTrace: !options.noTrace,
+    showPlan,
+    showTrace,
     fullPlan: options.fullPlan,
   };
+}
+
+function resolveBooleanToggle(
+  options: CliOptions,
+  positiveKey: 'plan' | 'trace',
+  legacyNegativeKey: 'noPlan' | 'noTrace',
+  defaultValue: boolean,
+): boolean {
+  const positiveValue = options[positiveKey];
+  if (typeof positiveValue === 'boolean') {
+    return positiveValue;
+  }
+
+  const legacyNegativeValue = options[legacyNegativeKey];
+  if (typeof legacyNegativeValue === 'boolean') {
+    return !legacyNegativeValue;
+  }
+
+  return defaultValue;
 }
 
 async function getStackOutputs(stackName: string, region: string) {
@@ -268,6 +363,7 @@ async function invokeLambda(
   functionUrl: string,
   body: Record<string, unknown>,
   timeoutMs: number,
+  progressReporter?: TurnProgressReporter,
 ): Promise<
   | { ok: true; body: LambdaSuccessPayload; timing: InvokeTiming }
   | { ok: false; body: LambdaErrorPayload; timing: InvokeTiming }
@@ -278,7 +374,9 @@ async function invokeLambda(
   let fetchCompletedAt = startedAt;
 
   try {
+    progressReporter?.setPhase('sending_request');
     const fetchStartedAt = Date.now();
+    progressReporter?.setPhase('waiting_response');
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -290,6 +388,7 @@ async function invokeLambda(
     fetchCompletedAt = Date.now();
 
     const parseStartedAt = Date.now();
+    progressReporter?.setPhase('parsing_response');
     const json = (await response.json()) as LambdaSuccessPayload | LambdaErrorPayload;
     const parseCompletedAt = Date.now();
     const timing: InvokeTiming = {
@@ -411,7 +510,9 @@ function renderTrace(
   trace: TurnTrace,
   invokeTiming?: InvokeTiming,
   perf?: CliPerfSummary | null,
-) {
+  localTiming?: LocalTurnTiming,
+): number {
+  const renderTraceStartedAt = Date.now();
   const hasToolInputsField = Object.prototype.hasOwnProperty.call(
     trace,
     'tool_inputs',
@@ -420,12 +521,18 @@ function renderTrace(
   const toolOutputs = trace.tool_outputs ?? [];
   const providerResults = trace.provider_results ?? [];
   const toolsCalled = trace.tools_called ?? [];
+  const recommendationFunnel = trace.recommendation_funnel ?? {
+    available_candidates: providerResults.length,
+    context_candidates: providerResults.length,
+    context_candidate_ids: providerResults.map((provider) => provider.id),
+    presentation_limit: 5,
+  };
   const toolInputsSummary =
     toolInputs.length > 0
       ? toolInputs
           .map(
             (entry, index) =>
-              `${index + 1}. ${entry.tool}\n${entry.input}`,
+              `${index + 1}. ${entry.tool}\n${truncateForTrace(entry.input, 1200)}`,
           )
           .join('\n\n')
       : hasToolInputsField
@@ -442,6 +549,12 @@ function renderTrace(
     colWidths: [24, 86],
     wordWrap: true,
   });
+  const localTimingForDisplay = localTiming
+    ? {
+        ...localTiming,
+        render_trace_ms: Date.now() - renderTraceStartedAt,
+      }
+    : null;
 
   table.push(
     ['Trace ID', trace.trace_id],
@@ -466,7 +579,7 @@ function renderTrace(
         ? toolOutputs
             .map(
               (entry, index) =>
-                `${index + 1}. ${entry.tool}\n${entry.output}`,
+                `${index + 1}. ${entry.tool}\n${truncateForTrace(entry.output, 1200)}`,
             )
             .join('\n\n')
         : 'none',
@@ -474,10 +587,26 @@ function renderTrace(
     [
       'Provider Results',
       providerResults.length > 0
-        ? providerResults
-            .map((provider, index) => formatProviderDebug(provider, index))
+        ? [
+            ...providerResults
+              .slice(0, 10)
+              .map((provider, index) => formatProviderDebug(provider, index)),
+            providerResults.length > 10
+              ? `... ${providerResults.length - 10} more providers not shown`
+              : null,
+          ]
+            .filter(Boolean)
             .join('\n\n')
         : 'none',
+    ],
+    [
+      'Recommendation Funnel',
+      [
+        `available_candidates=${recommendationFunnel.available_candidates}`,
+        `context_candidates=${recommendationFunnel.context_candidates}`,
+        `presentation_limit=${recommendationFunnel.presentation_limit}`,
+        `context_candidate_ids=${recommendationFunnel.context_candidate_ids.join(', ') || 'none'}`,
+      ].join('\n'),
     ],
     ['Plan Persisted', String(trace.plan_persisted)],
     ['Persist Reason', trace.plan_persist_reason ?? 'null'],
@@ -504,6 +633,18 @@ function renderTrace(
         : 'not captured',
     ],
     [
+      'Timing (local CLI)',
+      localTimingForDisplay
+        ? [
+            `render_reply=${localTimingForDisplay.render_reply_ms}ms`,
+            `render_trace=${localTimingForDisplay.render_trace_ms}ms`,
+            `load_plan=${localTimingForDisplay.load_plan_ms}ms`,
+            `render_plan=${localTimingForDisplay.render_plan_ms}ms`,
+            `render_raw=${localTimingForDisplay.render_raw_ms}ms`,
+          ].join('\n')
+        : 'not captured',
+    ],
+    [
       'Performance Insights',
       formatPerformanceInsights(trace, invokeTiming),
     ],
@@ -513,8 +654,10 @@ function renderTrace(
         ? [
             `trace_id=${perf.trace_id}`,
             `captured_at=${perf.captured_at}`,
+            `persisted=${perf.persisted ?? 'unknown'} target=${perf.storage_target ?? 'n/a'}`,
             `runtime=${perf.runtime_latency_ms}ms extraction=${perf.extraction_latency_ms}ms compose=${perf.compose_latency_ms}ms`,
             `tools=${perf.tools_called_count} providers=${perf.provider_results_count}`,
+            `funnel_context=${perf.recommendation_context_candidates ?? 'n/a'} presentation_limit=${perf.recommendation_presentation_limit ?? 'n/a'}`,
             `total_tokens=${perf.total_tokens ?? 'n/a'} cached_input=${perf.cached_input_tokens ?? 'n/a'}`,
             `cache_hit_rate=${
               perf.cache_hit_rate === null
@@ -546,6 +689,7 @@ function renderTrace(
   );
 
   output.write(`${table.toString()}\n`);
+  return Date.now() - renderTraceStartedAt;
 }
 
 function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
@@ -571,7 +715,7 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
     [
       'Provider Needs',
       plan.provider_needs
-        .map((need, index) => `${index + 1}. ${need.category} [${need.status}]`)
+        .map((need, index) => formatProviderNeedDebug(need, index))
         .join('\n') || 'none',
     ],
     ['Category', plan.vendor_category ?? 'null'],
@@ -613,6 +757,102 @@ function renderError(
       titleAlignment: 'left',
     })}\n`,
   );
+}
+
+function formatInvokeFailure(error: unknown): string {
+  if (error instanceof Error) {
+    if (error.name === 'AbortError') {
+      return 'Request timed out before Lambda returned a response.';
+    }
+    return error.message;
+  }
+  return 'Unknown runtime invocation failure.';
+}
+
+function createTurnProgressReporter(args: {
+  timeoutMs: number;
+}): TurnProgressReporter {
+  const spinnerFrames = ['-', '\\', '|', '/'];
+  const startedAt = Date.now();
+  let phase: ProgressPhase = 'sending_request';
+  let frameIndex = 0;
+  let wroteLine = false;
+  const interval = setInterval(() => {
+    const elapsedMs = Date.now() - startedAt;
+    const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+    const spinner = spinnerFrames[frameIndex % spinnerFrames.length];
+    frameIndex += 1;
+
+    const stageText = formatProgressPhase(phase);
+
+    const timeoutShare = elapsedMs / args.timeoutMs;
+    const timeoutHint =
+      timeoutShare >= 0.85 ? ' [near timeout]' : '';
+    const line = `${pc.gray(
+      `${spinner} waiting ${elapsedSeconds}s · stage: ${stageText}${timeoutHint}`,
+    )}`;
+    output.write(`\r\x1b[2K${line}`);
+    wroteLine = true;
+  }, 250);
+
+  return {
+    setPhase(nextPhase: ProgressPhase) {
+      phase = nextPhase;
+    },
+    stop() {
+      clearInterval(interval);
+      if (wroteLine) {
+        output.write('\r\x1b[2K');
+      }
+    },
+  };
+}
+
+function formatProgressPhase(phase: ProgressPhase): string {
+  switch (phase) {
+    case 'sending_request':
+      return 'sending request';
+    case 'waiting_response':
+      return 'waiting lambda response';
+    case 'parsing_response':
+      return 'parsing response';
+    case 'rendering_reply':
+      return 'rendering agent reply';
+    case 'rendering_trace':
+      return 'rendering trace table';
+    case 'loading_plan':
+      return 'loading plan from dynamo';
+    case 'rendering_plan':
+      return 'rendering plan table';
+    case 'rendering_raw':
+      return 'rendering raw payload';
+  }
+}
+
+function truncateForTrace(value: string, maxChars: number): string {
+  if (value.length <= maxChars) {
+    return value;
+  }
+  const omitted = value.length - maxChars;
+  return `${value.slice(0, maxChars)}\n... [truncated ${omitted} chars]`;
+}
+
+function formatProviderNeedDebug(
+  need: PlanSnapshot['provider_needs'][number],
+  index: number,
+): string {
+  const selectedProvider =
+    need.selected_provider_id !== null
+      ? need.recommended_providers.find(
+          (provider) => provider.id === need.selected_provider_id,
+        ) ?? null
+      : null;
+  const selectedText =
+    need.selected_provider_id !== null
+      ? ` | selected=${selectedProvider?.title ?? need.selected_provider_id}`
+      : '';
+
+  return `${index + 1}. ${need.category} [${need.status}]${selectedText}`;
 }
 
 function formatProviderDebug(

@@ -64,15 +64,23 @@ export async function handler(
       retentionDays: config.performance.retentionDays,
     });
     let perf: CliPerfSummary | undefined;
+    let perfPersisted = false;
     try {
       await runtime.perfStore.saveTurn(perfRecord);
+      perfPersisted = true;
       if (body.client_mode === 'cli') {
-        perf = toCliPerfSummary(perfRecord);
+        perf = toCliPerfSummary(perfRecord, {
+          persisted: perfPersisted,
+          storageTarget: config.performance.tableName ?? null,
+        });
       }
     } catch (error) {
       console.error('Failed to persist perf trace.', error);
       if (body.client_mode === 'cli') {
-        perf = toCliPerfSummary(perfRecord);
+        perf = toCliPerfSummary(perfRecord, {
+          persisted: perfPersisted,
+          storageTarget: config.performance.tableName ?? null,
+        });
       }
     }
 
@@ -87,6 +95,7 @@ export async function handler(
         ? {
             trace: response.trace,
             perf: perf ?? null,
+            plan: response.plan,
           }
         : {}),
     });
@@ -122,6 +131,7 @@ async function getRuntime(): Promise<{
         extractorModel: config.openAi.models.extractor,
         promptCacheRetention: config.openAi.promptCacheRetention,
         replyProviderLimit: config.recommendation.replyProviderLimit,
+        presentationProviderLimit: config.recommendation.presentationProviderLimit,
         providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,
         promptLoader,
         providerGateway,
