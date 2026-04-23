@@ -814,3 +814,178 @@ Reason:
 
 Decision:
 - Keep the guide focused on the runtime boundary and live integration contract, while making clear that webhook auth, retries, formatting, deduplication, and delivery callbacks belong in channel adapters rather than `src/runtime`.
+
+## 2026-04-23
+
+### Wire `finish_plan` to real `/api-web/vendor/quote` endpoint
+- Replaced the stub `finish_plan` implementation with a real integration against the Sin Envolturas `POST /api-web/vendor/quote` endpoint.
+- Changed `finish_plan` tool parameters from `(name, email)` to no parameters; it now reads `contact_name`, `contact_email`, and `contact_phone` from the persisted plan.
+- Added `contact_phone` to the persisted plan schema, extraction schema, and extractor field definitions.
+- `finish_plan` now iterates over every `provider_needs` entry with `selected_provider_id` set, calling `createQuoteRequest` per selected provider with:
+  - `name`, `email`, `phone` from the plan contact fields
+  - `phoneExtension: '+51'`
+  - `eventDate: today`
+  - `guestsRange` from `plan.guest_range`
+  - `description` from `plan.conversation_summary`
+  - `userId` omitted (guest user path)
+- Returns per-provider outcomes (`success` | `error`) plus an overall `status` (`success`, `partial`, `failed`) and the 24h TTL epoch.
+- On success, mutates the plan to `lifecycle_state: finished`, `current_node: necesidad_cubierta`, and invokes `onPlanFinished` so DynamoDB TTL is written.
+
+### Split pause vs close routing in `AgentService`
+- Separated `pausar` (pause) from `cerrar` (close) intent handling:
+  - `pausar` / `pauseRequested` routes to `guardar_cerrar_temporalmente` (temporary save).
+  - `cerrar` routes to `crear_lead_cerrar` (real close flow).
+- This fixes the previous behavior where both intents were collapsed into a temporary close, which did not make sense for a definitive close action.
+
+### Rewrite `crear_lead_cerrar` prompts for multi-turn close flow
+- Rewrote all four prompt files (`system`, `response_contract`, `tool_policy`, `transition_policy`) to implement a three-step close flow:
+  1. Collect contact info (name, email, phone) if missing.
+  2. Show a summary of selected providers per need and ask for explicit confirmation.
+  3. Upon confirmation, call `finish_plan` to send quote requests and close.
+- The agent must not close without explicit user confirmation.
+- Users can edit contact info or provider selections at the confirmation step; normal extraction handles corrections next turn.
+
+### Update related prompts
+- Updated `seguir_refinando_guardar_plan` system and response contract to proactively suggest closing the plan when all needs have selected providers.
+- Updated `guardar_cerrar_temporalmente` system prompt to only mention pause (no longer close).
+- Updated extractor system and field definitions to extract `contactName`, `contactEmail`, `contactPhone` from any turn.
+
+### Type and contract updates
+- Added `onPlanFinished?: (ttlEpochSeconds: number) => void` to `ComposeReplyRequest` in `src/runtime/contracts.ts`.
+- Added `contactName`, `contactEmail`, `contactPhone` to the runtime extraction schema and `ExtractionResult` contract.
+- Updated `buildExtractorPlanSnapshot` and `buildPromptPlanSnapshot` to include contact fields in model context.
+- Added `finish_plan` to `toolNames` and `crear_lead_cerrar.allowedTools` in the prompt manifest.
+- Rewrote `src/runtime/finish-plan-tool.ts` as an async shared function that calls the provider gateway per selected provider.
+
+### Tests
+- Added `contactName`, `contactEmail`, `contactPhone: null` to all `ExtractionResult` objects in `tests/agent-service.test.ts`.
+- Verified all 20 core tests pass (agent-service, decision-flow, plan-lifecycle, sufficiency).
+
+Reason:
+- The `finish_plan` tool was a stub (`provider_contact_flow_not_implemented_yet`) even though the Sin Envolturas API already exposes `POST /api-web/vendor/quote`. The product needs a real close flow that contacts selected vendors and marks the plan finished.
+- The previous `cerrar` intent routing to `guardar_cerrar_temporalmente` was confusing because temporary save and definitive close are semantically different actions.
+
+Decision:
+- Use the existing `createQuoteRequest` gateway method (already typed for `/quote`) inside a loop over selected providers, keeping the model-facing tool surface minimal (`finish_plan` with no params).
+- Persist contact info to the plan so the multi-turn close flow survives across turns without requiring the agent to re-ask.
+- Keep user editing flexible at the confirmation step: normal extraction and flow routing handle corrections without special-case logic.
+
+Flow nodes affected:
+- `crear_lead_cerrar` (complete rewrite of close flow)
+- `guardar_cerrar_temporalmente` (clarified as pause-only)
+- `seguir_refinando_guardar_plan` (proactive close suggestion)
+- `necesidad_cubierta` (post-finish close node)
+- All nodes indirectly through extraction schema changes
+
+### Fix broaden-search and close-contact confusion after recommendation
+- Added an AgentService broaden-search branch for refinement turns like `busca más` / `más opciones`.
+- The service now calls `search_providers_by_category_location` with `page: 2` for the active need and location, persists unseen providers when found, and carries a user-facing note when no additional distinct options exist.
+- Changed the runtime conversation envelope label from `Error operativo` to `Nota operativa` so the model can safely communicate search exhaustion without treating it as a system failure.
+- Updated `recomendar` prompts so the reply must explicitly say when no more options were found and must not claim provider contact is impossible when the close flow can send quote requests.
+- Updated extractor guidance so requests like `puedes contactar al proveedor` map to `intent: cerrar`, and contextual pronoun selections after a single highlighted recommendation are treated as provider selections instead of ambiguous chatter.
+- Added regression tests for both broaden-search outcomes: new providers on page 2 and no-additional-options fallback.
+
+### Expand broaden-search beyond a single extra page
+- Replaced the page-2-only widen logic with an aggregated unseen-provider search in `AgentService`.
+- `busca más` / `más opciones` now collect providers across up to 5 pages of `search_providers_by_category_location` for:
+  - the active category plus current location, then
+  - the active category without location as a wider fallback.
+- The service deduplicates provider IDs across all fetched pages and excludes providers already shown in the active shortlist before persisting the next batch.
+- The target is now a fresh unseen batch of up to 5 providers instead of trusting a single upstream page boundary.
+- Added regression coverage for:
+  - collecting unseen providers from later pages after earlier duplicates,
+  - no-new-results exhaustion,
+  - fallback from location-scoped search to category-wide search.
+
+Reason:
+- A single `page: 2` call was still too dependent on upstream ranking and could keep surfacing the same providers, which did not satisfy user requests to widen the search meaningfully.
+
+Decision:
+- Keep the change in `AgentService` so broaden-search behavior remains deterministic and easy to observe in trace logs without expanding the provider gateway surface area yet.
+
+### Make broaden-search intent-driven instead of phrase-driven
+- Removed the manual widen-phrase parser from `AgentService.shouldBroadenProviderSearch(...)`.
+- Broadening now depends primarily on extractor output and existing recommendation context:
+  - `intent === refinar_busqueda`
+  - there is already an active shortlist to expand
+  - the extractor did not introduce a real search-criteria change versus the baseline plan
+- Criteria changes that keep the flow on the normal `search_providers_from_plan` path include changes to category, location, budget, event type, guest range, preferences, or hard constraints.
+- Added a regression test proving that a budget refinement (`más económicas`) reuses the original search path instead of broadening the old shortlist.
+
+Reason:
+- Phrase matching was brittle and could drift from the extractor's intent model, creating inconsistent behavior between similar refinement turns.
+
+Decision:
+- Let the extractor decide whether the user is refining, and let runtime logic decide whether that refinement means "expand current shortlist" or "rerun search with new constraints".
+
+### Add richer perf diagnostics for failed interaction analysis
+- Expanded `TurnTrace` with structured debugging summaries instead of relying only on counters:
+  - `search_strategy` (`none`, `search_from_plan`, `broaden_existing_shortlist`)
+  - `extraction_summary` (intent confidence, extracted category/location/budget/guest range, preferences, hard constraints, selected hint, pause flag, contact presence)
+  - `plan_summary` (current node, lifecycle state, event type, active need, location, budget, guest range, provider-need categories/statuses, contact presence)
+  - explicit `recommendation_funnel` typing in the core trace contract
+- Expanded `TurnPerfRecord` so Dynamo perf rows now persist the key data needed to reconstruct failures without fetching ephemeral runtime output:
+  - `user_message_hash`
+  - truncated `user_message_preview`
+  - `previous_node`
+  - `node_path`
+  - `intent`
+  - `prompt_bundle_id`
+  - `tools_considered`
+  - `search_strategy`
+  - `extraction_summary`
+  - `plan_summary`
+  - `provider_result_ids`
+  - full `missing_fields`
+- Kept these as compact summaries rather than dumping full raw plan blobs or model internals, so the records remain queryable and useful for debugging interaction failures like web-chat stalls or repeated recommendation loops.
+- Added perf-trace tests covering the new persisted fields and updated runtime tests to stay aligned with the richer trace schema.
+
+Reason:
+- The previous perf records were too thin to explain why a turn stayed in `entrevista`, why a refine request broadened versus reran search, or what extracted criteria led to a failed interaction. Debugging required correlating multiple tables and guessing at missing context.
+
+Decision:
+- Persist concise, searchable summaries of extraction and plan state directly into the perf table so a single Dynamo query can explain most interaction failures.
+
+### Push more need-switching behavior into extractor semantics
+- Strengthened extractor instructions so mid-recommendation pivots like `y qué djs tienes`, `y de foto?`, `también quiero ver música`, or `ahora muéstrame catering` are interpreted as switching `activeNeedCategory`, even if the previous provider need was not selected yet.
+- Expanded extractor field definitions and normalization rules so:
+  - `vendorCategory` follows the new provider class mentioned in the current turn,
+  - `activeNeedCategory` can switch immediately without forcing closure of the previous need,
+  - entertainment labels like `dj`, `djs`, `música`, `banda`, and `orquesta` normalize into the music family.
+- Added explicit extractor examples for:
+  - switching from one need to another mid-flow,
+  - asking for a different category with conversational phrasing,
+  - distinguishing `muéstrame otras opciones` (refine current need) from `y qué djs tienes` (switch need).
+- Extended debug persistence further so perf rows now also capture:
+  - `operational_note`
+  - `prompt_file_paths`
+  - richer `extraction_summary` (`vendor_categories`, `assumptions`, summary preview)
+  - richer `plan_summary` (`provider_need_count`, summary preview, open question count)
+
+Reason:
+- Category switching is subtle and language-dependent. Deterministic parsing quickly becomes brittle here, while the extractor already has the plan context and shortlist needed to make the right semantic call.
+
+Decision:
+- Keep deterministic runtime parsing minimal and focused on narrow structural cases (selection references, explicit guest-number inference, venue guardrails), while moving need-switch interpretation and category normalization further into the extractor LLM and storing the resulting reasoning context in perf.
+
+### Move provider-choice interpretation from runtime parsing into extractor context
+- Enriched the extractor plan snapshot so each shortlisted provider now carries explicit ordered context (`rank`) plus location and price-level summary, giving the extractor enough information to resolve references like `la segunda`, `ese`, or `la de tablas de queso` from the plan snapshot itself.
+- Strengthened extractor instructions and examples to treat `selectedProviderHint` as a required structured output whenever the user is clearly choosing from a visible shortlist.
+- Reduced runtime provider-selection heuristics to a near-zero fallback layer:
+  - the runtime now trusts `selectedProviderHint` from the extractor,
+  - resolves it by exact/partial provider alias or ordinal only,
+  - and only auto-selects when there is exactly one candidate and the intent is already `confirmar_proveedor`.
+- Removed the previous raw-message salvage path that tried to infer provider choice directly in the runtime from pronouns and descriptive phrases.
+
+Reason:
+- Provider-choice parsing in the runtime was one of the largest remaining heuristic fronts. It duplicated semantic work that the extractor can do better because it already sees the ordered shortlist and the full plan context.
+
+Decision:
+- Let the extractor own almost all provider-reference interpretation and keep the runtime to structural resolution of the extractor's explicit hint.
+
+Reason:
+- The live interaction showed two user-facing failures: asking for a wider search just replayed the same shortlist, and asking to contact a provider from the recommendation phase incorrectly claimed the product could not do something that `finish_plan` already supports.
+
+Decision:
+- Keep the fix minimal and deterministic in the runtime by owning widen-scope behavior in `AgentService`, instead of hoping the reply model will infer pagination or search exhaustion from prompts alone.
+- Keep close/contact routing model-driven through extractor guidance, but add guardrails in `recomendar` so the reply stays truthful even if the turn has not yet transitioned into `crear_lead_cerrar`.

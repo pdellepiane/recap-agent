@@ -55,6 +55,9 @@ class FakeRuntime implements AgentRuntime {
         conversationSummary: 'Pausa solicitada por el usuario.',
         selectedProviderHint: null,
         pauseRequested: true,
+        contactName: null,
+        contactEmail: null,
+        contactPhone: null,
       };
     }
 
@@ -75,6 +78,9 @@ class FakeRuntime implements AgentRuntime {
         conversationSummary: 'El usuario elige el proveedor 1.',
         selectedProviderHint: '1',
         pauseRequested: false,
+        contactName: null,
+        contactEmail: null,
+        contactPhone: null,
       };
     }
 
@@ -94,6 +100,9 @@ class FakeRuntime implements AgentRuntime {
       conversationSummary: 'Boda en Lima con presupuesto medio.',
       selectedProviderHint: null,
       pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
     };
   }
 
@@ -407,6 +416,9 @@ describe('AgentService', () => {
             conversationSummary: 'El usuario quiere seguir con EDO para catering.',
             selectedProviderHint: null,
             pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
           };
         }
 
@@ -533,6 +545,9 @@ describe('AgentService', () => {
           conversationSummary: 'El usuario confirmó presupuesto medio.',
           selectedProviderHint: null,
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -595,6 +610,540 @@ describe('AgentService', () => {
     expect(response.plan.budget_signal).toBe('medio');
   });
 
+  it('broadens the active shortlist when the user asks for more options', async () => {
+    class BroadenRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'refinar_busqueda',
+          intentConfidence: 0.94,
+          eventType: 'boda',
+          vendorCategory: 'fotografía',
+          vendorCategories: ['fotografía'],
+          activeNeedCategory: 'fotografía',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
+          selectedProviderHint: null,
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+        };
+      }
+    }
+
+    class BroadenGateway extends FakeGateway {
+      public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+
+      override async searchProvidersByCategoryLocation(
+        input: CategoryLocationProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.categoryLocationCalls.push(input);
+        expect(input.category).toBe('fotografía');
+
+        if (input.location === 'Lima' && input.page === 1) {
+          return {
+            providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+          };
+        }
+
+        if (input.location === 'Lima' && input.page === 2) {
+          return {
+            providers: [
+              {
+                id: 2,
+                title: 'Foto Dos',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$$',
+                reason: 'más opciones en la misma categoría',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+          };
+        }
+
+        return {
+          providers: [],
+        };
+      }
+    }
+
+    const runtime = new BroadenRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new BroadenGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-broaden',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-broaden',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-broaden',
+      text: 'busca más',
+      messageId: 'msg-broaden',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([2]);
+    expect(response.trace.tools_called).toContain('search_providers_by_category_location');
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+    expect(gateway.categoryLocationCalls).toEqual([
+      { category: 'fotografía', location: 'Lima', page: 1 },
+      { category: 'fotografía', location: 'Lima', page: 2 },
+      { category: 'fotografía', location: 'Lima', page: 3 },
+      { category: 'fotografía', location: null, page: 1 },
+    ]);
+  });
+
+  it('keeps the current shortlist and records that there are no more options when broadened search is empty', async () => {
+    class BroadenRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'refinar_busqueda',
+          intentConfidence: 0.94,
+          eventType: 'boda',
+          vendorCategory: 'fotografía',
+          vendorCategories: ['fotografía'],
+          activeNeedCategory: 'fotografía',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
+          selectedProviderHint: null,
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+        };
+      }
+    }
+
+    class EmptyBroadenGateway extends FakeGateway {
+      public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+
+      override async searchProvidersByCategoryLocation(
+        input: CategoryLocationProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.categoryLocationCalls.push(input);
+        return { providers: [] };
+      }
+    }
+
+    const runtime = new BroadenRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new EmptyBroadenGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-broaden-empty',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-broaden-empty',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-broaden-empty',
+      text: 'busca más',
+      messageId: 'msg-broaden-empty',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([1]);
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toBe(
+      'No encontré más opciones distintas con los criterios actuales.',
+    );
+    expect(gateway.categoryLocationCalls).toEqual([
+      { category: 'fotografía', location: 'Lima', page: 1 },
+      { category: 'fotografía', location: null, page: 1 },
+    ]);
+  });
+
+  it('falls back to category-wide search when location-scoped pages add no unseen providers', async () => {
+    class BroadenRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'refinar_busqueda',
+          intentConfidence: 0.94,
+          eventType: 'boda',
+          vendorCategory: 'fotografía',
+          vendorCategories: ['fotografía'],
+          activeNeedCategory: 'fotografía',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere ampliar la búsqueda de fotógrafos.',
+          selectedProviderHint: null,
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+        };
+      }
+    }
+
+    class FallbackBroadenGateway extends FakeGateway {
+      public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+
+      override async searchProvidersByCategoryLocation(
+        input: CategoryLocationProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.categoryLocationCalls.push(input);
+
+        if (input.location === 'Lima') {
+          if (input.page && input.page > 1) {
+            return { providers: [] };
+          }
+
+          return {
+            providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+          };
+        }
+
+        if (input.location === null && input.page === 1) {
+          return {
+            providers: [
+              {
+                id: 3,
+                title: 'Foto Tres',
+                category: 'fotografía',
+                location: 'Miraflores, Perú',
+                priceLevel: '$$$',
+                reason: 'ampliación por categoría',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+          };
+        }
+
+        return { providers: [] };
+      }
+    }
+
+    const runtime = new BroadenRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FallbackBroadenGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-broaden-fallback',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-broaden-fallback',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-broaden-fallback',
+      text: 'más opciones',
+      messageId: 'msg-broaden-fallback',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([3]);
+    expect(gateway.categoryLocationCalls).toEqual([
+      { category: 'fotografía', location: 'Lima', page: 1 },
+      { category: 'fotografía', location: 'Lima', page: 2 },
+      { category: 'fotografía', location: null, page: 1 },
+      { category: 'fotografía', location: null, page: 2 },
+    ]);
+  });
+
+  it('keeps using the normal search path when refinement changes criteria', async () => {
+    class CriteriaChangeRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'refinar_busqueda',
+          intentConfidence: 0.95,
+          eventType: 'boda',
+          vendorCategory: 'fotografía',
+          vendorCategories: ['fotografía'],
+          activeNeedCategory: 'fotografía',
+          location: 'Lima',
+          budgetSignal: 'económico',
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere opciones de fotografía más económicas.',
+          selectedProviderHint: null,
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+        };
+      }
+    }
+
+    class CriteriaChangeGateway extends FakeGateway {
+      public readonly categoryLocationCalls: CategoryLocationProviderSearchInput[] = [];
+
+      override async searchProvidersByCategoryLocation(
+        input: CategoryLocationProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.categoryLocationCalls.push(input);
+        return super.searchProvidersByCategoryLocation(input);
+      }
+
+      override async searchProviders(plan: PersistedPlan): Promise<ProviderGatewaySearchResult> {
+        this.searchCalls += 1;
+        expect(plan.budget_signal).toBe('económico');
+        return {
+          providers: [
+            {
+              id: 4,
+              title: 'Foto Ahorro',
+              category: 'fotografía',
+              location: 'Lima',
+              priceLevel: '$',
+              reason: 'alineado al nuevo presupuesto',
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+    }
+
+    const runtime = new CriteriaChangeRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new CriteriaChangeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-broaden-criteria-change',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-broaden-criteria-change',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        budget_signal: 'medio',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({
+      plan: seededPlan,
+      reason: 'seed',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-broaden-criteria-change',
+      text: 'muéstrame opciones más económicas',
+      messageId: 'msg-broaden-criteria-change',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([4]);
+    expect(response.trace.tools_called).toContain('search_providers_from_plan');
+    expect(response.trace.tools_called).not.toContain('search_providers_by_category_location');
+    expect(gateway.categoryLocationCalls).toEqual([]);
+  });
+
   it('keeps a prior provider selection while opening a different active need in the same turn', async () => {
     class MixedTurnRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
@@ -615,6 +1164,9 @@ describe('AgentService', () => {
             'El usuario quiere tomar a Carlos para fotografía y ahora necesita catering.',
           selectedProviderHint: 'Carlos',
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -807,6 +1359,9 @@ describe('AgentService', () => {
             'El usuario eligió 4Foodies para catering y ahora necesita música.',
           selectedProviderHint: '4Foodies',
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -922,7 +1477,7 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(1);
   });
 
-  it('selects a prior provider from a descriptive reference when opening another need', async () => {
+  it('selects a prior provider from extractor-resolved hint when opening another need', async () => {
     class DescriptiveSelectionRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
@@ -940,8 +1495,11 @@ describe('AgentService', () => {
           assumptions: [],
           conversationSummary:
             'El usuario eligió el catering de tablas de queso y ahora necesita música.',
-          selectedProviderHint: null,
+          selectedProviderHint: '4Foodies',
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -1091,6 +1649,9 @@ describe('AgentService', () => {
           selectedProviderHint:
             'proveedor de la shortlist de catering con servicio en tablas de quesos (4Foodies)',
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -1209,6 +1770,9 @@ describe('AgentService', () => {
           conversationSummary: 'El usuario eligió la primera opción de música.',
           selectedProviderHint: 'primera opción',
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -1329,6 +1893,9 @@ describe('AgentService', () => {
           conversationSummary: 'El usuario quiere planear una boda en Lima.',
           selectedProviderHint: null,
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -1374,6 +1941,9 @@ describe('AgentService', () => {
           conversationSummary: 'El usuario quiere planear una boda en Lima.',
           selectedProviderHint: null,
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }
@@ -1421,6 +1991,9 @@ describe('AgentService', () => {
           conversationSummary: 'Boda en Lima con 100 invitados.',
           selectedProviderHint: null,
           pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
         };
       }
     }

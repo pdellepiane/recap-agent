@@ -1,7 +1,11 @@
 Herramientas permitidas:
-- create_quote_request
-- add_vendor_to_event_favorites
+- finish_plan
 
-Regla:
-- usa estas herramientas solo si el runtime ya cuenta con los datos operativos necesarios para ejecutar el cierre;
-- si falta información obligatoria, no finjas que el lead fue creado.
+Reglas de uso:
+- finish_plan se llama ÚNICAMENTE cuando:
+  1. contact_name, contact_email y contact_phone están presentes en el plan;
+  2. el usuario confirmó explícitamente que quiere enviar las solicitudes;
+  3. al menos una necesidad tiene un proveedor seleccionado (selected_provider_id no nulo).
+- Si falta información de contacto, NO llames finish_plan. En su lugar, pide los datos faltantes.
+- Si no hay proveedores seleccionados, informa al usuario que primero debe elegir proveedores y ofrece ayuda para hacerlo.
+- Si el usuario quiere editar algo antes de confirmar, NO llames finish_plan. Responde naturalmente y deja que la extracción del siguiente turno capture los cambios.

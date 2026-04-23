@@ -18,8 +18,14 @@ import {
 } from '../core/plan';
 import { normalizeProviderSummary, type ProviderSummary } from '../core/provider';
 import { computeSearchSufficiency } from '../core/sufficiency';
-import type { TurnTrace } from '../core/trace';
-import type { AgentRuntime, ExtractionResult } from './contracts';
+import type {
+  ExtractionDebugSummary,
+  PlanDebugSummary,
+  RecommendationFunnelTrace,
+  SearchStrategyTrace,
+  TurnTrace,
+} from '../core/trace';
+import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
@@ -45,9 +51,14 @@ type ProviderSelectionMatch = {
   selectedProvider: ProviderSummary;
 };
 
-type ProviderSelectionCandidate = ProviderSelectionMatch & {
-  searchableText: string;
+type ProviderSearchExecutionResult = {
+  providers: ProviderSummary[];
+  note: string | null;
+  strategy: SearchStrategyTrace;
 };
+
+const MAX_BROADEN_SEARCH_PAGES = 5;
+const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 
 export class AgentService {
   constructor(
@@ -110,40 +121,53 @@ export class AgentService {
           text: 'Este plan de evento ya está cerrado y en la fase de contacto con proveedores. Cuando expire el período de enfriamiento de 24 horas podrás iniciar un plan nuevo desde cero.',
           conversationId: finishedPlan.conversation_id,
         },
-        trace: {
-          trace_id: ulid(),
-          conversation_id: finishedPlan.conversation_id,
-          plan_id: finishedPlan.plan_id,
-          previous_node: finishedPlan.current_node,
-          next_node: finishedPlan.current_node,
-          node_path: [
+        trace: this.buildTrace({
+          plan: finishedPlan,
+          previousNode: finishedPlan.current_node,
+          currentNode: finishedPlan.current_node,
+          nodePath: [
             finishedPlan.current_node,
             'existe_plan_guardado',
             finishedPlan.current_node,
           ],
-          intent: finishedPlan.intent,
-          missing_fields: finishedSufficiency.missingFields,
-          search_ready: finishedSufficiency.searchReady,
-          prompt_bundle_id: 'skipped_finished_plan',
-          prompt_file_paths: [],
-          tools_considered: toolUsage.considered,
-          tools_called: toolUsage.called,
-          tool_inputs: toolUsage.inputs,
-          tool_outputs: toolUsage.outputs,
-          provider_results: finishedProviders,
-          recommendation_funnel: this.resolveRecommendationFunnel(
-            null,
-            finishedProviders,
-          ),
-          plan_persisted: false,
-          plan_persist_reason: null,
-          timing_ms: timingMs,
-          token_usage: {
+          extraction: {
+            intent: finishedPlan.intent,
+            intentConfidence: finishedPlan.intent_confidence,
+            eventType: finishedPlan.event_type,
+            vendorCategory: finishedPlan.vendor_category,
+            vendorCategories: finishedPlan.provider_needs.map((need) => need.category),
+            activeNeedCategory: finishedPlan.active_need_category,
+            location: finishedPlan.location,
+            budgetSignal: finishedPlan.budget_signal,
+            guestRange: finishedPlan.guest_range,
+            preferences: finishedPlan.preferences,
+            hardConstraints: finishedPlan.hard_constraints,
+            assumptions: finishedPlan.assumptions,
+            conversationSummary: finishedPlan.conversation_summary,
+            selectedProviderHint: finishedPlan.selected_provider_hint,
+            pauseRequested: false,
+            contactName: finishedPlan.contact_name,
+            contactEmail: finishedPlan.contact_email,
+            contactPhone: finishedPlan.contact_phone,
+          },
+          missingFields: finishedSufficiency.missingFields,
+          searchReady: finishedSufficiency.searchReady,
+          promptBundleId: 'skipped_finished_plan',
+          promptFilePaths: [],
+          toolUsage,
+          providerResults: finishedProviders,
+          recommendationFunnel: this.resolveRecommendationFunnel(null, finishedProviders),
+          planPersisted: false,
+          planPersistReason: null,
+          timingMs,
+          tokenUsage: {
             extraction: null,
             reply: null,
             total: null,
           },
-        },
+          searchStrategy: 'none',
+          operationalNote: null,
+        }),
       };
     }
 
@@ -196,6 +220,7 @@ export class AgentService {
     let currentNode = extractionNode;
     let providerResults: ProviderSummary[] =
       getActiveNeed(mergedPlan)?.recommended_providers ?? [];
+    let searchStrategy: SearchStrategyTrace = 'none';
     let errorMessage: string | null = null;
     let planPersistReason: string | null = null;
     let planPersisted = false;
@@ -212,13 +237,78 @@ export class AgentService {
       timingMs.save_plan += Date.now() - savePlanStartedAt;
     };
 
-    if (extraction.pauseRequested || extraction.intent === 'pausar' || extraction.intent === 'cerrar') {
+    if (extraction.pauseRequested || extraction.intent === 'pausar') {
       currentNode = 'guardar_cerrar_temporalmente';
       nodePath.push(currentNode);
       const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
       await persistPlan(planToSave, 'guardar_cerrar_temporalmente');
       planPersisted = true;
       planPersistReason = 'guardar_cerrar_temporalmente';
+
+      const promptBundleStartedAt = Date.now();
+      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+      const composeReplyStartedAt = Date.now();
+      const reply = await this.dependencies.runtime.composeReply({
+        currentNode,
+        previousNode,
+        userMessage: inbound.text,
+        plan: planToSave,
+        missingFields: sufficiency.missingFields,
+        searchReady: sufficiency.searchReady,
+        providerResults,
+        errorMessage,
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
+        toolUsage,
+      });
+      tokenUsage.reply = reply.tokenUsage ?? null;
+      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      const recommendationFunnel = this.resolveRecommendationFunnel(
+        reply.recommendationFunnel ?? null,
+        providerResults,
+      );
+      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+
+      await persistPlan(planToSave, planPersistReason ?? currentNode);
+      timingMs.total = Date.now() - handleTurnStartedAt;
+
+      return {
+        plan: planToSave,
+        outbound: {
+          text: reply.text,
+          conversationId: planToSave.conversation_id,
+        },
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode,
+          currentNode,
+          nodePath,
+          extraction,
+          missingFields: sufficiency.missingFields,
+          searchReady: sufficiency.searchReady,
+          promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage,
+          providerResults,
+          recommendationFunnel: recommendationFunnel,
+          planPersisted: true,
+          planPersistReason: planPersistReason,
+          timingMs,
+          tokenUsage,
+          searchStrategy,
+          operationalNote: errorMessage,
+        }),
+      };
+    }
+
+    if (extraction.intent === 'cerrar') {
+      currentNode = 'crear_lead_cerrar';
+      nodePath.push(currentNode);
+      const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
+      await persistPlan(planToSave, 'crear_lead_cerrar');
+      planPersisted = true;
+      planPersistReason = 'crear_lead_cerrar';
 
       const promptBundleStartedAt = Date.now();
       const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
@@ -257,29 +347,26 @@ export class AgentService {
           text: reply.text,
           conversationId: planToSave.conversation_id,
         },
-        trace: {
-          trace_id: ulid(),
-          conversation_id: planToSave.conversation_id,
-          plan_id: planToSave.plan_id,
-          previous_node: previousNode,
-          next_node: currentNode,
-          node_path: nodePath,
-          intent: planToSave.intent,
-          missing_fields: sufficiency.missingFields,
-          search_ready: sufficiency.searchReady,
-          prompt_bundle_id: bundle.id,
-          prompt_file_paths: bundle.filePaths,
-          tools_considered: toolUsage.considered,
-          tools_called: toolUsage.called,
-          tool_inputs: toolUsage.inputs,
-          tool_outputs: toolUsage.outputs,
-          provider_results: providerResults,
-          recommendation_funnel: recommendationFunnel,
-          plan_persisted: true,
-          plan_persist_reason: planPersistReason,
-          timing_ms: timingMs,
-          token_usage: tokenUsage,
-        },
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode,
+          currentNode,
+          nodePath,
+          extraction,
+          missingFields: sufficiency.missingFields,
+          searchReady: sufficiency.searchReady,
+          promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage,
+          providerResults,
+          recommendationFunnel: recommendationFunnel,
+          planPersisted: true,
+          planPersistReason: planPersistReason,
+          timingMs,
+          tokenUsage,
+          searchStrategy,
+          operationalNote: errorMessage,
+        }),
       };
     }
 
@@ -314,12 +401,11 @@ export class AgentService {
           : [],
       });
     } else {
-      const selectionResolution = this.tryResolveSelection(
-        planAfterFlow,
-        extraction.selectedProviderHint,
-        extraction.intent,
-        inbound.text,
-      );
+        const selectionResolution = this.tryResolveSelection(
+          planAfterFlow,
+          extraction.selectedProviderHint,
+          extraction.intent,
+        );
 
       if (
         selectionResolution.resolved &&
@@ -337,29 +423,15 @@ export class AgentService {
       } else {
         nodePath.push('minimos_para_buscar', 'buscar_proveedores');
         try {
-          toolUsage.considered.push('search_providers_from_plan');
-          toolUsage.inputs.push({
-            tool: 'search_providers_from_plan',
-            input: JSON.stringify(
-              {
-                source: 'agent_service',
-                activeNeedCategory: planAfterFlow.active_need_category,
-                location: planAfterFlow.location,
-              },
-              null,
-              2,
-            ),
+          const searchResult = await this.executeProviderSearch({
+            baselinePlan: workingPlan,
+            plan: planAfterFlow,
+            extraction,
+            toolUsage,
+            timingMs,
           });
-          const providerSearchStartedAt = Date.now();
-          const searchResult = await this.dependencies.providerGateway.searchProviders(
-            planAfterFlow,
-          );
-          timingMs.provider_search += Date.now() - providerSearchStartedAt;
-          toolUsage.called.push('search_providers_from_plan');
-          toolUsage.outputs.push({
-            tool: 'search_providers_from_plan',
-            output: JSON.stringify(searchResult, null, 2),
-          });
+          errorMessage = searchResult.note;
+          searchStrategy = searchResult.strategy;
           const providerEnrichmentStartedAt = Date.now();
           providerResults = await this.enrichProviders(searchResult.providers);
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
@@ -470,29 +542,26 @@ export class AgentService {
         text: reply.text,
         conversationId: planAfterFlow.conversation_id,
       },
-      trace: {
-        trace_id: ulid(),
-        conversation_id: planAfterFlow.conversation_id,
-        plan_id: planAfterFlow.plan_id,
-        previous_node: previousNode,
-        next_node: currentNode,
-        node_path: nodePath,
-        intent: planAfterFlow.intent,
-        missing_fields: sufficiency.missingFields,
-        search_ready: sufficiency.searchReady,
-        prompt_bundle_id: promptBundle.id,
-        prompt_file_paths: promptBundle.filePaths,
-        tools_considered: toolUsage.considered,
-        tools_called: toolUsage.called,
-        tool_inputs: toolUsage.inputs,
-        tool_outputs: toolUsage.outputs,
-        provider_results: providerResults,
-        recommendation_funnel: recommendationFunnel,
-        plan_persisted: planPersisted,
-        plan_persist_reason: planPersistReason,
-        timing_ms: timingMs,
-        token_usage: tokenUsage,
-      },
+      trace: this.buildTrace({
+        plan: planAfterFlow,
+        previousNode,
+        currentNode,
+        nodePath,
+        extraction,
+        missingFields: sufficiency.missingFields,
+        searchReady: sufficiency.searchReady,
+        promptBundleId: promptBundle.id,
+        promptFilePaths: promptBundle.filePaths,
+        toolUsage,
+        providerResults,
+        recommendationFunnel: recommendationFunnel,
+        planPersisted,
+        planPersistReason,
+        timingMs,
+        tokenUsage,
+        searchStrategy,
+        operationalNote: errorMessage,
+      }),
     };
   }
 
@@ -538,6 +607,110 @@ export class AgentService {
       context_candidates: providerResults.length,
       context_candidate_ids: providerResults.map((provider) => provider.id),
       presentation_limit: 5,
+    };
+  }
+
+  private buildTrace(args: {
+    traceId?: string;
+    plan: PlanSnapshot;
+    previousNode: DecisionNode;
+    currentNode: DecisionNode;
+    nodePath: DecisionNode[];
+    extraction: ExtractionResult;
+    missingFields: string[];
+    searchReady: boolean;
+    promptBundleId: string;
+    promptFilePaths: string[];
+    toolUsage: ToolUsage;
+    providerResults: ProviderSummary[];
+    recommendationFunnel: RecommendationFunnelTrace;
+    planPersisted: boolean;
+    planPersistReason: string | null;
+    timingMs: TurnTrace['timing_ms'];
+    tokenUsage: TurnTrace['token_usage'];
+    searchStrategy: SearchStrategyTrace;
+    operationalNote: string | null;
+  }): TurnTrace {
+    return {
+      trace_id: args.traceId ?? ulid(),
+      conversation_id: args.plan.conversation_id,
+      plan_id: args.plan.plan_id,
+      previous_node: args.previousNode,
+      next_node: args.currentNode,
+      node_path: args.nodePath,
+      intent: args.plan.intent,
+      missing_fields: args.missingFields,
+      search_ready: args.searchReady,
+      prompt_bundle_id: args.promptBundleId,
+      prompt_file_paths: args.promptFilePaths,
+      tools_considered: args.toolUsage.considered,
+      tools_called: args.toolUsage.called,
+      tool_inputs: args.toolUsage.inputs,
+      tool_outputs: args.toolUsage.outputs,
+      provider_results: args.providerResults,
+      recommendation_funnel: args.recommendationFunnel,
+      search_strategy: args.searchStrategy,
+      operational_note: args.operationalNote,
+      extraction_summary: this.summarizeExtraction(args.extraction),
+      plan_summary: this.summarizePlan(args.plan),
+      plan_persisted: args.planPersisted,
+      plan_persist_reason: args.planPersistReason,
+      timing_ms: args.timingMs,
+      token_usage: args.tokenUsage,
+    };
+  }
+
+  private summarizeExtraction(extraction: ExtractionResult): ExtractionDebugSummary {
+    return {
+      intent_confidence: extraction.intentConfidence,
+      event_type: extraction.eventType,
+      vendor_category: extraction.vendorCategory,
+      vendor_categories: extraction.vendorCategories,
+      active_need_category: extraction.activeNeedCategory,
+      location: extraction.location,
+      budget_signal: extraction.budgetSignal,
+      guest_range: extraction.guestRange,
+      selected_provider_hint: extraction.selectedProviderHint,
+      preferences: extraction.preferences,
+      hard_constraints: extraction.hardConstraints,
+      assumptions: extraction.assumptions,
+      conversation_summary_preview: this.truncateDebugText(extraction.conversationSummary, 160),
+      pause_requested: extraction.pauseRequested,
+      contact_fields_present: {
+        name: Boolean(extraction.contactName),
+        email: Boolean(extraction.contactEmail),
+        phone: Boolean(extraction.contactPhone),
+      },
+    };
+  }
+
+  private summarizePlan(plan: PlanSnapshot): PlanDebugSummary {
+    return {
+      current_node: plan.current_node,
+      lifecycle_state: plan.lifecycle_state,
+      event_type: plan.event_type,
+      vendor_category: plan.vendor_category,
+      active_need_category: plan.active_need_category,
+      location: plan.location,
+      budget_signal: plan.budget_signal,
+      guest_range: plan.guest_range,
+      provider_need_categories: plan.provider_needs.map((need) => need.category),
+      provider_need_count: plan.provider_needs.length,
+      provider_need_statuses: plan.provider_needs.map((need) => ({
+        category: need.category,
+        status: need.status,
+        has_recommendations: need.recommended_provider_ids.length > 0,
+        selected_provider_id: need.selected_provider_id,
+      })),
+      selected_provider_id: plan.selected_provider_id,
+      missing_fields: plan.missing_fields,
+      conversation_summary_preview: this.truncateDebugText(plan.conversation_summary, 160),
+      open_question_count: plan.open_questions.length,
+      contact_fields_present: {
+        name: Boolean(plan.contact_name),
+        email: Boolean(plan.contact_email),
+        phone: Boolean(plan.contact_phone),
+      },
     };
   }
 
@@ -595,6 +768,9 @@ export class AgentService {
       assumptions: guardedExtraction.assumptions,
       conversation_summary: guardedExtraction.conversationSummary,
       selected_provider_hint: plan.selected_provider_hint,
+      contact_name: guardedExtraction.contactName ?? plan.contact_name,
+      contact_email: guardedExtraction.contactEmail ?? plan.contact_email,
+      contact_phone: guardedExtraction.contactPhone ?? plan.contact_phone,
       provider_needs: this.buildNeedUpdates(plan, guardedExtraction),
       last_user_goal: guardedExtraction.intent ?? plan.last_user_goal,
     });
@@ -644,7 +820,6 @@ export class AgentService {
     plan: PlanSnapshot,
     selectedProviderHint: string | null,
     intent: ExtractionResult['intent'],
-    userMessage: string,
   ): SelectionResolution {
     const activeNeed = getActiveNeed(plan);
     const needsWithProviders = [
@@ -660,34 +835,15 @@ export class AgentService {
       return { resolved: false };
     }
 
-    const inferredHint = this.inferSelectionHint(
-      needsWithProviders.flatMap((need) => need.recommended_providers),
-      intent,
-      userMessage,
-    );
-    const effectiveHint =
-      selectedProviderHint?.trim() ||
-      inferredHint;
+    const effectiveHint = selectedProviderHint?.trim() ?? null;
 
-    const selection =
-      effectiveHint
-        ? (
-            this.resolveProviderSelection(
-              needsWithProviders,
-              activeNeed,
-              effectiveHint,
-            ) ??
-            this.inferDescriptiveSelection(
-              needsWithProviders,
-              intent,
-              userMessage,
-            )
-          )
-        : this.inferDescriptiveSelection(
-            needsWithProviders,
-            intent,
-            userMessage,
-          );
+    const selection = effectiveHint
+      ? this.resolveProviderSelection(
+          needsWithProviders,
+          activeNeed,
+          effectiveHint,
+        )
+      : this.resolveSingleProviderSelection(needsWithProviders, intent);
 
     if (!selection) {
       return { resolved: false };
@@ -750,6 +906,28 @@ export class AgentService {
     };
   }
 
+  private resolveSingleProviderSelection(
+    needsWithProviders: ProviderNeed[],
+    intent: ExtractionResult['intent'],
+  ): ProviderSelectionMatch | null {
+    if (intent !== 'confirmar_proveedor') {
+      return null;
+    }
+
+    const candidates = needsWithProviders.flatMap((need) =>
+      need.recommended_providers.map((provider) => ({
+        selectedNeed: need,
+        selectedProvider: provider,
+      })),
+    );
+
+    if (candidates.length !== 1) {
+      return null;
+    }
+
+    return candidates[0] ?? null;
+  }
+
   private resolveProviderSelectionByName(
     needsWithProviders: ProviderNeed[],
     effectiveHint: string,
@@ -808,194 +986,279 @@ export class AgentService {
     return null;
   }
 
-  private inferSelectionHint(
-    providers: ProviderSummary[],
+  private shouldBroadenProviderSearch(
+    baselinePlan: PlanSnapshot,
     intent: ExtractionResult['intent'],
-    userMessage: string,
-  ): string | null {
-    const normalizedMessage = this.normalizeSelectionText(userMessage);
-    if (!this.hasSelectionIntent(intent, normalizedMessage)) {
-      return null;
+    extraction: ExtractionResult,
+  ): boolean {
+    if (intent !== 'refinar_busqueda') {
+      return false;
     }
 
-    const matches = providers.filter((provider) =>
-      this.providerAliases(provider).some((alias) =>
-        this.normalizedTextContainsAlias(normalizedMessage, alias),
-      ),
-    );
-
-    if (matches.length === 1) {
-      const preferredAlias =
-        this.providerAliases(matches[0]).find((alias) =>
-          this.normalizedTextContainsAlias(normalizedMessage, alias),
-        ) ??
-        matches[0].title;
-      return preferredAlias;
+    const activeNeed = getActiveNeed(baselinePlan);
+    if (!activeNeed || activeNeed.recommended_providers.length === 0) {
+      return false;
     }
 
-    const ordinalChoice = this.parseSelectionOrdinal(normalizedMessage);
-    if (ordinalChoice) {
-      return String(ordinalChoice);
-    }
-
-    return null;
+    return !this.hasSearchCriteriaChange(baselinePlan, extraction);
   }
 
-  private inferDescriptiveSelection(
-    needsWithProviders: ProviderNeed[],
-    intent: ExtractionResult['intent'],
-    userMessage: string,
-  ): ProviderSelectionMatch | null {
-    const normalizedMessage = this.normalizeSelectionText(userMessage);
-    if (!this.hasSelectionIntent(intent, normalizedMessage)) {
-      return null;
+  private async executeProviderSearch(args: {
+    baselinePlan: PlanSnapshot;
+    plan: PlanSnapshot;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: {
+      provider_search: number;
+    };
+  }): Promise<ProviderSearchExecutionResult> {
+    const { baselinePlan, extraction, plan, timingMs, toolUsage } = args;
+
+    if (this.shouldBroadenProviderSearch(baselinePlan, extraction.intent, extraction)) {
+      const broadenedResult = await this.searchMoreProviders({
+        plan,
+        toolUsage,
+        timingMs,
+      });
+      if (broadenedResult) {
+        return broadenedResult;
+      }
     }
 
-    const tokens = this.selectionReferenceTokens(normalizedMessage);
-    if (tokens.length === 0) {
-      return null;
-    }
-
-    const candidates = this.buildSelectionCandidates(needsWithProviders);
-    const scored = candidates
-      .map((candidate) => ({
-        candidate,
-        score: this.scoreSelectionCandidate(candidate.searchableText, tokens),
-      }))
-      .filter((entry) => entry.score > 0)
-      .sort((left, right) => right.score - left.score);
-
-    const best = scored[0] ?? null;
-    if (!best || best.score < 2) {
-      return null;
-    }
-
-    const secondScore = scored[1]?.score ?? 0;
-    if (secondScore > 0 && best.score - secondScore < 2) {
-      return null;
-    }
+    toolUsage.considered.push('search_providers_from_plan');
+    toolUsage.inputs.push({
+      tool: 'search_providers_from_plan',
+      input: JSON.stringify(
+        {
+          source: 'agent_service',
+          activeNeedCategory: plan.active_need_category,
+          location: plan.location,
+        },
+        null,
+        2,
+      ),
+    });
+    const providerSearchStartedAt = Date.now();
+    const result = await this.dependencies.providerGateway.searchProviders(plan);
+    timingMs.provider_search += Date.now() - providerSearchStartedAt;
+    toolUsage.called.push('search_providers_from_plan');
+    toolUsage.outputs.push({
+      tool: 'search_providers_from_plan',
+      output: JSON.stringify(result, null, 2),
+    });
 
     return {
-      selectedNeed: best.candidate.selectedNeed,
-      selectedProvider: best.candidate.selectedProvider,
+      providers: result.providers,
+      note: null,
+      strategy: 'search_from_plan',
     };
   }
 
-  private hasSelectionIntent(
-    intent: ExtractionResult['intent'],
-    normalizedMessage: string,
+  private hasSearchCriteriaChange(
+    baselinePlan: PlanSnapshot,
+    extraction: ExtractionResult,
   ): boolean {
-    return (
-      intent === 'confirmar_proveedor' ||
-      [
-        'quiero ',
-        'usar ',
-        'utilizar ',
-        'vamos con',
-        'me quedo con',
-        'elijo',
-        'escogo',
-        'dame ',
-        'tomo ',
-        'tomemos ',
-        'prefiero ',
-        'me gusta ',
-        'me interesa ',
-        'elige ',
-        'selecciona ',
-        'dejame ',
-        'dejemos ',
-      ].some((pattern) => normalizedMessage.includes(pattern))
+    const activeNeed = getActiveNeed(baselinePlan);
+    const baselineCategory = this.normalizeCategoryValue(
+      activeNeed?.category ?? baselinePlan.active_need_category ?? baselinePlan.vendor_category,
     );
+    const extractedCategory = this.normalizeCategoryValue(
+      extraction.activeNeedCategory ?? extraction.vendorCategory,
+    );
+
+    if (extractedCategory && extractedCategory !== baselineCategory) {
+      return true;
+    }
+
+    if (
+      extraction.location &&
+      this.normalizeSelectionText(extraction.location) !==
+        this.normalizeSelectionText(baselinePlan.location ?? '')
+    ) {
+      return true;
+    }
+
+    if (
+      extraction.budgetSignal &&
+      this.normalizeSelectionText(extraction.budgetSignal) !==
+        this.normalizeSelectionText(baselinePlan.budget_signal ?? '')
+    ) {
+      return true;
+    }
+
+    if (
+      extraction.eventType &&
+      this.normalizeSelectionText(extraction.eventType) !==
+        this.normalizeSelectionText(baselinePlan.event_type ?? '')
+    ) {
+      return true;
+    }
+
+    if (
+      extraction.guestRange &&
+      extraction.guestRange !== 'unknown' &&
+      extraction.guestRange !== baselinePlan.guest_range
+    ) {
+      return true;
+    }
+
+    if (
+      this.hasArrayCriteriaChange(extraction.preferences, activeNeed?.preferences ?? []) ||
+      this.hasArrayCriteriaChange(
+        extraction.hardConstraints,
+        activeNeed?.hard_constraints ?? [],
+      )
+    ) {
+      return true;
+    }
+
+    return false;
   }
 
-  private buildSelectionCandidates(
-    needsWithProviders: ProviderNeed[],
-  ): ProviderSelectionCandidate[] {
-    return needsWithProviders.flatMap((need) =>
-      need.recommended_providers.map((provider) => ({
-        selectedNeed: need,
-        selectedProvider: provider,
-        searchableText: this.normalizeSelectionText(
-          [
-            provider.title,
-            provider.slug,
-            provider.category,
-            provider.reason,
-            provider.promoBadge,
-            provider.promoSummary,
-            provider.descriptionSnippet,
-            provider.serviceHighlights.join(' '),
-            provider.termsHighlights.join(' '),
-          ]
-            .filter((value): value is string => Boolean(value))
-            .join(' '),
-        ),
-      })),
+  private hasArrayCriteriaChange(nextValues: string[], currentValues: string[]): boolean {
+    if (nextValues.length === 0) {
+      return false;
+    }
+
+    const normalizedCurrent = new Set(
+      currentValues.map((value) => this.normalizeSelectionText(value)).filter(Boolean),
     );
+    const normalizedNext = new Set(
+      nextValues.map((value) => this.normalizeSelectionText(value)).filter(Boolean),
+    );
+
+    if (normalizedCurrent.size !== normalizedNext.size) {
+      return true;
+    }
+
+    for (const value of normalizedNext) {
+      if (!normalizedCurrent.has(value)) {
+        return true;
+      }
+    }
+
+    return false;
   }
 
-  private scoreSelectionCandidate(
-    searchableText: string,
-    tokens: string[],
-  ): number {
-    return tokens.reduce(
-      (score, token) => score + (searchableText.includes(token) ? 1 : 0),
-      0,
-    );
+  private truncateDebugText(value: string, maxLength: number): string {
+    const normalized = value.replace(/\s+/g, ' ').trim();
+    if (normalized.length <= maxLength) {
+      return normalized;
+    }
+
+    return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`;
   }
 
-  private selectionReferenceTokens(normalizedMessage: string): string[] {
-    const ignored = new Set([
-      'quiero',
-      'usar',
-      'utilizar',
-      'vamos',
-      'quedo',
-      'con',
-      'elijo',
-      'escogo',
-      'dame',
-      'tomo',
-      'tomemos',
-      'prefiero',
-      'gusta',
-      'interesa',
-      'elige',
-      'selecciona',
-      'dejame',
-      'dejemos',
-      'opcion',
-      'proveedor',
-      'propuesta',
-      'servicio',
-      'servicios',
-      'alternativa',
-      'necesito',
-      'tambien',
-      'para',
-      'una',
-      'uno',
-      'ese',
-      'esa',
-      'eso',
-      'este',
-      'esta',
-      'tipo',
-      'mas',
-      'del',
-      'por',
-      'favor',
-    ]);
+  private async searchMoreProviders(args: {
+    plan: PlanSnapshot;
+    toolUsage: ToolUsage;
+    timingMs: {
+      provider_search: number;
+    };
+  }): Promise<ProviderSearchExecutionResult | null> {
+    const { plan, timingMs, toolUsage } = args;
+    const activeNeed = getActiveNeed(plan);
+    const category = activeNeed?.category ?? plan.active_need_category ?? plan.vendor_category;
+    const currentProviders = activeNeed?.recommended_providers ?? [];
 
-    return Array.from(
-      new Set(
-        normalizedMessage
-          .split(' ')
-          .map((token) => token.trim())
-          .filter((token) => token.length >= 3 && !ignored.has(token)),
-      ),
-    );
+    if (!category || currentProviders.length === 0) {
+      return null;
+    }
+
+    const existingProviderIds = new Set(currentProviders.map((provider) => provider.id));
+    const unseenProviders = await this.collectBroadenedProviders({
+      category,
+      existingProviderIds,
+      location: plan.location,
+      timingMs,
+      toolUsage,
+    });
+
+    if (unseenProviders.length > 0) {
+      return {
+        providers: unseenProviders.slice(0, TARGET_BROADEN_UNSEEN_RESULTS),
+        note: null,
+        strategy: 'broaden_existing_shortlist',
+      };
+    }
+
+    return {
+      providers: currentProviders,
+      note: 'No encontré más opciones distintas con los criterios actuales.',
+      strategy: 'broaden_existing_shortlist',
+    };
+  }
+
+  private async collectBroadenedProviders(args: {
+    category: string;
+    existingProviderIds: Set<number>;
+    location: string | null;
+    timingMs: {
+      provider_search: number;
+    };
+    toolUsage: ToolUsage;
+  }): Promise<ProviderSummary[]> {
+    const { category, existingProviderIds, location, timingMs, toolUsage } = args;
+    const unseenProviders: ProviderSummary[] = [];
+    const collectedProviderIds = new Set(existingProviderIds);
+
+    const collectFromSearch = async (searchLocation: string | null, source: string) => {
+      for (let page = 1; page <= MAX_BROADEN_SEARCH_PAGES; page += 1) {
+        toolUsage.considered.push('search_providers_by_category_location');
+        toolUsage.inputs.push({
+          tool: 'search_providers_by_category_location',
+          input: JSON.stringify(
+            {
+              source,
+              category,
+              location: searchLocation,
+              page,
+            },
+            null,
+            2,
+          ),
+        });
+        const providerSearchStartedAt = Date.now();
+        const result = await this.dependencies.providerGateway.searchProvidersByCategoryLocation({
+          category,
+          location: searchLocation,
+          page,
+        });
+        timingMs.provider_search += Date.now() - providerSearchStartedAt;
+        toolUsage.called.push('search_providers_by_category_location');
+        toolUsage.outputs.push({
+          tool: 'search_providers_by_category_location',
+          output: JSON.stringify(result, null, 2),
+        });
+
+        const pageProviders = result.providers;
+        for (const provider of pageProviders) {
+          if (collectedProviderIds.has(provider.id)) {
+            continue;
+          }
+
+          collectedProviderIds.add(provider.id);
+          unseenProviders.push(provider);
+        }
+
+        if (
+          unseenProviders.length >= TARGET_BROADEN_UNSEEN_RESULTS ||
+          pageProviders.length === 0
+        ) {
+          break;
+        }
+      }
+    };
+
+    if (location) {
+      await collectFromSearch(location, 'agent_service_broaden_location');
+    }
+
+    if (unseenProviders.length < TARGET_BROADEN_UNSEEN_RESULTS) {
+      await collectFromSearch(null, 'agent_service_broaden_category');
+    }
+
+    return unseenProviders;
   }
 
   private providerAliases(provider: ProviderSummary): string[] {

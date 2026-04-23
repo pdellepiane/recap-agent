@@ -15,11 +15,16 @@ Reglas de normalización:
   - si el usuario menciona varias categorías, devuélvelas en vendorCategories sin perder ninguna.
   - vendorCategory debe reflejar la categoría activa del turno si está clara.
   - en este dominio, "local" y "solo el espacio" deben mapearse a la necesidad de venue o salón/local para eventos, no a una ubicación comercial cualquiera.
+  - normaliza expresiones como "dj", "djs", "música", "musica", "banda", "orquesta", "show musical" a la familia de música cuando el usuario esté pidiendo proveedores de entretenimiento musical.
+  - si el usuario abre una categoría nueva con conectores como "y", "ahora", "también", "de", o una pregunta directa por otra clase de proveedor, trátalo como cambio de activeNeedCategory aunque la necesidad anterior siga sin selección.
 - selección de proveedor:
   - si el usuario elige una opción por nombre parcial, conserva ese nombre breve en selectedProviderHint;
   - si el usuario elige por referencia descriptiva a una opción ya vista ("la de tablas de queso", "la de coro", "la opción con violín", "la propuesta en vivo"), usa los títulos, servicios, promociones y descripciones de la shortlist del plan base para llenar selectedProviderHint con el nombre o referencia más específica;
   - si el usuario elige por pronombre o referencia contextual y hay una única opción plausible en la shortlist activa ("esa", "ese", "esa opción", "esa propuesta"), llena selectedProviderHint con esa opción; si hay más de una opción plausible, deja selectedProviderHint en null para pedir aclaración;
+  - si en el turno previo se destacó una sola opción como la recomendación más alineada y el usuario responde con "ese/esa", úsala como selectedProviderHint aunque la shortlist completa tenga más opciones;
   - si combina elección y pregunta puntual sobre esa opción, mantén intent=confirmar_proveedor.
   - si combina elección de un proveedor previo con una nueva necesidad, conserva selectedProviderHint y usa activeNeedCategory para la nueva necesidad si queda clara.
+ - cierre:
+   - si el usuario pide contactar al proveedor, enviar la solicitud, mandar cotización o cerrar para avanzar con los elegidos, usa intent=cerrar;
 - resumen:
   - incluye solo lo más relevante para continuar la conversación y el avance general del evento.

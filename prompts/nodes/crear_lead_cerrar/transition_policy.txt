@@ -1,2 +1,5 @@
 Transición esperada:
-- conducir a un cierre temporal elegante con el plan guardado.
+- tras éxito de finish_plan: el plan queda con lifecycle_state: finished y current_node: necesidad_cubierta.
+- si el usuario decide editar contacto o proveedores: permanece en crear_lead_cerrar (la extracción actualiza los campos y se vuelve a mostrar el resumen en el siguiente turno).
+- si el usuario abandona el cierre y quiere seguir buscando: la extracción de intención (refinar_busqueda, buscar_proveedores, etc.) lo sacará de este nodo al nodo correspondiente.
+- si no hay proveedores seleccionados: informar al usuario y ofrecer transición hacia recomendar o entrevista para completar selecciones.

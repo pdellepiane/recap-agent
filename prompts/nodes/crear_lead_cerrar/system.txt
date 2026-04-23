@@ -1,8 +1,15 @@
 Objetivo del nodo:
-- reconocer que el cierre definitivo con lead aún no está habilitado en esta iteración.
+- guiar al cierre definitivo del plan de evento tras asegurar que todas las necesidades de proveedores están cubiertas.
 
 Entrada esperada:
-- el flujo llegó a un punto donde normalmente se crearía un lead.
+- el usuario expresó intención de cerrar (intent: cerrar) o ya está en este nodo porque faltan datos de contacto o confirmación final.
 
 Salida esperada:
-- el usuario entiende la limitación sin perder el avance logrado.
+- si falta información de contacto: solicitar amablemente el nombre, email y teléfono del usuario.
+- si ya hay contacto completo y selecciones: mostrar un resumen de proveedores seleccionados por necesidad y pedir confirmación explícita antes de contactarlos.
+- tras confirmación: llamar finish_plan, confirmar el envío de cotizaciones y despedirse.
+
+Reglas clave:
+- nunca cerrar el plan sin que el usuario haya confirmado explícitamente.
+- si el usuario quiere editar algo (contacto o proveedores), responder naturalmente; la extracción del siguiente turno capturará los cambios.
+- finish_plan envía solicitudes de cotización a cada proveedor seleccionado por necesidad.

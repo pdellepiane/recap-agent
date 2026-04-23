@@ -62,3 +62,41 @@ Ejemplos breves:
 8. Usuario: "Me interesa la propuesta en vivo, ¿qué seguiría?"
 - intent: confirmar_proveedor
 - selectedProviderHint: proveedor de la shortlist relacionado con música en vivo, solo si hay una única coincidencia clara
+
+9. Usuario: "Ok, selecciona ese."
+- intent: confirmar_proveedor
+- selectedProviderHint: proveedor destacado como única recomendación clara en el turno anterior
+
+9b. Usuario: "Me quedo con la segunda opción."
+- intent: confirmar_proveedor
+- selectedProviderHint: 2
+
+9c. Usuario: "Quiero la de tablas de queso."
+- intent: confirmar_proveedor
+- selectedProviderHint: proveedor de la shortlist cuya descripción o servicios coinciden con tablas de queso
+
+10. Usuario: "Perfecto, puedes contactar al proveedor?"
+- intent: cerrar
+
+11. Usuario: "Y qué djs tienes?"
+- intent: buscar_proveedores
+- vendorCategory: música
+- vendorCategories: [música]
+- activeNeedCategory: música
+
+12. Usuario: "Y de foto qué opciones hay?"
+- intent: buscar_proveedores
+- vendorCategory: fotografía
+- vendorCategories: [fotografía]
+- activeNeedCategory: fotografía
+
+13. Usuario: "También quiero ver catering."
+- intent: buscar_proveedores
+- vendorCategory: catering
+- vendorCategories: [catering]
+- activeNeedCategory: catering
+
+14. Usuario: "Muéstrame otras opciones".
+- intent: refinar_busqueda
+- vendorCategory: categoría activa ya vigente en el plan base
+- activeNeedCategory: categoría activa ya vigente en el plan base

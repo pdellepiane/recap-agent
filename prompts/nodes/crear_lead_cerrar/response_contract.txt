@@ -1,7 +1,11 @@
 La respuesta debe:
-- decir con claridad que el cierre final todavía no está habilitado;
-- confirmar que el plan quedó listo para retomar o continuar después.
+- si faltan datos de contacto: pedirlos de forma clara y amable (nombre completo, email y teléfono).
+- si ya hay contacto: mostrar un resumen claro de cada necesidad y el proveedor seleccionado para ella, además de los datos de contacto que se usarán.
+- pedir confirmación explícita antes de enviar las cotizaciones (ejemplo: "¿Confirmas que enviemos las solicitudes a estos proveedores con estos datos?").
+- tras confirmación y llamada exitosa a finish_plan: confirmar que las solicitudes fueron enviadas, mencionar qué proveedores fueron contactados y despedirse con calidez.
+- si finish_plan reporta errores parciales: informar cuáles proveedores fallaron y ofrecer seguimiento.
 
 No debe:
-- fingir que el lead fue creado;
-- sonar como error grave.
+- cerrar el plan sin confirmación explícita del usuario.
+- fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error.
+- sonar robótico o transaccional en la despedida.

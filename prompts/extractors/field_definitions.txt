@@ -2,11 +2,11 @@ Definiciones de campos:
 
 - intent:
   - buscar_proveedores: quiere iniciar o continuar una búsqueda con intención de ver opciones.
-  - refinar_busqueda: quiere ajustar criterios, ampliar o acotar resultados.
+  - refinar_busqueda: quiere ajustar criterios, ampliar o acotar resultados, incluyendo pedir más opciones dentro de la misma necesidad.
   - ver_opciones: quiere revisar alternativas sin expresar refinamiento claro.
   - confirmar_proveedor: quiere elegir un proveedor o pedir avanzar con una opción específica.
   - retomar_plan: quiere seguir desde un plan ya guardado.
-  - cerrar: quiere terminar la conversación.
+  - cerrar: quiere cerrar el plan o avanzar a contactar/cotizar con proveedores ya elegidos.
   - pausar: quiere dejarlo para después o retomarlo luego.
 
 - intentConfidence:
@@ -19,6 +19,7 @@ Definiciones de campos:
 
 - vendorCategory:
   - necesidad activa o principal del turno actual, por ejemplo fotografía, catering, música, flores.
+  - si el usuario nombra una nueva categoría mientras había otra necesidad activa en el plan, úsala como vendorCategory del turno actual.
 
 - vendorCategories:
   - lista de necesidades de proveedores mencionadas en este turno o claramente vigentes.
@@ -26,6 +27,7 @@ Definiciones de campos:
 
 - activeNeedCategory:
   - categoría con la que el usuario quiere avanzar ahora.
+  - si el usuario cambia de tema dentro del mismo plan hacia otro proveedor (ejemplo: "y qué djs tienes"), actualízala a esa nueva categoría aunque no haya cerrado la necesidad anterior.
   - si el usuario menciona varias categorías pero no prioriza ninguna, déjalo en null.
 
 - location:
@@ -52,6 +54,21 @@ Definiciones de campos:
 
 - selectedProviderHint:
   - índice, nombre parcial o referencia clara a un proveedor ya recomendado.
+  - si el usuario está eligiendo desde una shortlist visible y la referencia es resoluble con el plan base, debes llenarlo.
+  - solo déjalo en null si la referencia sigue siendo genuinamente ambigua incluso con la shortlist del plan base.
 
 - pauseRequested:
-  - true si el usuario quiere pausar, cerrar o retomar más tarde.
+  - true si el usuario quiere pausar o retomar más tarde.
+  - false si quiere cerrar definitivamente (esos casos van en intent: cerrar).
+
+- contactName:
+  - nombre completo del usuario cuando lo proporciona explícitamente para el cierre del plan.
+  - null si no se menciona en este turno.
+
+- contactEmail:
+  - dirección de correo electrónico del usuario cuando la proporciona para el cierre.
+  - null si no se menciona en este turno.
+
+- contactPhone:
+  - número de teléfono del usuario cuando lo proporciona para el cierre.
+  - null si no se menciona en este turno.

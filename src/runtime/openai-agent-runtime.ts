@@ -49,6 +49,9 @@ const extractionSchema = z.object({
   conversationSummary: z.string(),
   selectedProviderHint: z.string().nullable(),
   pauseRequested: z.boolean(),
+  contactName: z.string().nullable(),
+  contactEmail: z.string().nullable(),
+  contactPhone: z.string().nullable(),
 });
 
 type RuntimeContext = {
@@ -409,11 +412,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         missing_fields: need.missing_fields,
         selected_provider_id: need.selected_provider_id,
         selected_provider_hint: need.selected_provider_hint,
-        recommended_providers: need.recommended_providers.slice(0, 8).map((provider) => ({
+        recommended_providers: need.recommended_providers.slice(0, 8).map((provider, index) => ({
+          rank: index + 1,
           id: provider.id,
           title: provider.title,
           slug: provider.slug,
           category: provider.category,
+          location: provider.location,
+          price_level: provider.priceLevel,
           services: provider.serviceHighlights.slice(0, 4),
           promo: provider.promoBadge ?? provider.promoSummary,
           description: this.truncateText(provider.descriptionSnippet ?? '', 140),
@@ -421,6 +427,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       })),
       selected_provider_id: plan.selected_provider_id,
       selected_provider_hint: plan.selected_provider_hint,
+      contact_name: plan.contact_name,
+      contact_email: plan.contact_email,
+      contact_phone: plan.contact_phone,
       conversation_summary: this.truncateText(plan.conversation_summary, 180),
       open_questions: plan.open_questions.slice(0, 3),
     };
@@ -492,7 +501,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Herramientas autorizadas en este nodo: ${allowedTools}`,
       `Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`,
       `Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`,
-      request.errorMessage ? `Error operativo: ${request.errorMessage}` : '',
+      request.errorMessage ? `Nota operativa: ${request.errorMessage}` : '',
       'Responde únicamente con el próximo mensaje para el usuario.',
     ]
       .filter(Boolean)
@@ -883,30 +892,107 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       finish_plan: tool({
         name: 'finish_plan',
         description:
-          'Cierra el plan de evento tras obtener nombre y email del usuario para la secuencia de contacto a proveedores. El canal de correo hacia proveedores aún no está implementado; esta herramienta persiste el cierre, guarda contacto y programa la expiración del plan en almacenamiento.',
-        parameters: z
-          .object({
-            name: z.string().min(1),
-            email: z.string().email(),
-          })
-          .strict(),
-        execute: async ({ email, name }) => {
-          this.recordToolInput(toolUsage, 'finish_plan', { name, email });
+          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere que al menos un proveedor esté seleccionado y que los datos de contacto estén completos.',
+        parameters: z.object({}).strict(),
+        execute: async () => {
+          this.recordToolInput(toolUsage, 'finish_plan', {});
           toolUsage.called.push('finish_plan');
-          const ttlEpochSeconds = Math.floor(Date.now() / 1000) + FINISHED_PLAN_TTL_SECONDS;
-          const snapshot = mergePlan(plan as PlanSnapshot, {
-            lifecycle_state: 'finished',
-            contact_name: name,
-            contact_email: email,
-            current_node: 'necesidad_cubierta',
-            intent: 'cerrar',
-            updated_at: new Date().toISOString(),
-          });
-          Object.assign(plan, snapshot);
-          request.onPlanFinished?.(ttlEpochSeconds);
+
+          if (!plan.contact_name || !plan.contact_email || !plan.contact_phone) {
+            const errorResult = {
+              status: 'failed',
+              error: 'missing_contact_info',
+              detail: 'Faltan datos de contacto. Solicita nombre, email y teléfono antes de llamar finish_plan.',
+              ttl_epoch_seconds: 0,
+            };
+            this.recordToolOutput(toolUsage, 'finish_plan', errorResult);
+            return errorResult;
+          }
+
+          const selectedProviders = plan.provider_needs
+            .filter((need) => need.selected_provider_id !== null)
+            .map((need) => ({
+              providerId: need.selected_provider_id!,
+              category: need.category,
+            }));
+
+          if (selectedProviders.length === 0) {
+            const errorResult = {
+              status: 'failed',
+              error: 'no_selected_providers',
+              detail: 'No hay proveedores seleccionados. El usuario debe elegir al menos un proveedor antes de cerrar.',
+              ttl_epoch_seconds: 0,
+            };
+            this.recordToolOutput(toolUsage, 'finish_plan', errorResult);
+            return errorResult;
+          }
+
+          const today = new Date().toISOString().split('T')[0];
+          const guestsRange = plan.guest_range ?? '';
+
+          const fallbackDescription = `Solicitud de cotización para ${plan.event_type ?? 'evento'} en ${plan.location ?? 'su ubicación'}.`;
+          const description = plan.conversation_summary && plan.conversation_summary.trim().length >= 10
+            ? plan.conversation_summary.trim()
+            : fallbackDescription;
+
+          const contactedProviders: Array<{
+            providerId: number;
+            category: string;
+            success: boolean;
+            error?: string;
+          }> = [];
+
+          for (const entry of selectedProviders) {
+            try {
+              await this.options.providerGateway.createQuoteRequest({
+                providerId: entry.providerId,
+                name: plan.contact_name,
+                email: plan.contact_email,
+                phone: plan.contact_phone,
+                phoneExtension: '+51',
+                eventDate: today,
+                guestsRange,
+                description,
+              });
+              contactedProviders.push({
+                providerId: entry.providerId,
+                category: entry.category,
+                success: true,
+              });
+            } catch (error) {
+              contactedProviders.push({
+                providerId: entry.providerId,
+                category: entry.category,
+                success: false,
+                error: error instanceof Error ? error.message : String(error),
+              });
+            }
+          }
+
+          const allSucceeded = contactedProviders.every((p) => p.success);
+          const someSucceeded = contactedProviders.some((p) => p.success);
+          const overallStatus = allSucceeded
+            ? 'success'
+            : someSucceeded
+              ? 'partial'
+              : 'failed';
+
+          let ttlEpochSeconds = 0;
+          if (overallStatus !== 'failed') {
+            ttlEpochSeconds = Math.floor(Date.now() / 1000) + FINISHED_PLAN_TTL_SECONDS;
+            const snapshot = mergePlan(plan as PlanSnapshot, {
+              lifecycle_state: 'finished',
+              current_node: 'necesidad_cubierta',
+              intent: 'cerrar',
+              updated_at: new Date().toISOString(),
+            });
+            Object.assign(plan, snapshot);
+            request.onPlanFinished?.(ttlEpochSeconds);
+          }
+
           const result = {
-            status: 'queued',
-            detail: 'provider_contact_flow_not_implemented_yet',
+            status: overallStatus,
+            contacted_providers: contactedProviders,
             ttl_epoch_seconds: ttlEpochSeconds,
           };
           this.recordToolOutput(toolUsage, 'finish_plan', result);
@@ -945,6 +1031,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       lifecycle_state: plan.lifecycle_state,
       contact_name: plan.contact_name,
       contact_email: plan.contact_email,
+      contact_phone: plan.contact_phone,
       current_node: plan.current_node,
       intent: plan.intent,
       event_type: plan.event_type,
