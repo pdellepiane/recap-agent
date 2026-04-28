@@ -1,0 +1,30 @@
+id: template.base-live
+suite: template
+version: 1
+description: Base template for live Lambda only benchmark cases.
+tags:
+  - template
+  - live
+priority: p1
+status: active
+targetModes:
+  - live_lambda
+variables: {}
+inputs:
+  - text: template placeholder
+expectations: []
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+  - id: budget-efficiency
+    type: budget_efficiency
+    weight: 0.25
+    targetLatencyMs: 20000
+    targetToolCalls: 4
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 800
+  estimatedCompletionTokensPerTurn: 300
+notes:
+  - Live-only cases avoid seed plans to stay executable without Dynamo write access.

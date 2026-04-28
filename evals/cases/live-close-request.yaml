@@ -1,0 +1,36 @@
+template: template.base-live
+id: live.close_request_temporal_save
+suite: live_comprehensive
+version: 1
+description: Generic close intent should remain a temporal save branch.
+tags:
+  - live
+  - state
+  - close
+inputs:
+  - text: gracias, cerramos por ahora
+expectations:
+  - id: close-transition
+    type: node_transition
+    to: guardar_cerrar_temporalmente
+  - id: plan-current-node
+    type: plan_field_equals
+    path: current_node
+    expected: guardar_cerrar_temporalmente
+  - id: close-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+  - id: no-provider-tools
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+    maxTotalCalls: 1
+  - id: text-has-retomar-tone
+    type: text_contains
+    anyOf:
+      - retom
+      - cuando quieras
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1

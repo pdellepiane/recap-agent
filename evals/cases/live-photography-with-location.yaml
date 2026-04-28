@@ -1,0 +1,41 @@
+template: template.base-live
+id: live.photography_with_location_search_path
+suite: live_comprehensive
+version: 1
+description: Photography ask with event and location should move into recommend/clarify search envelope.
+tags:
+  - live
+  - search
+  - photography
+inputs:
+  - text: quiero fotógrafos para mi boda en Lima para 100 invitados
+expectations:
+  - id: search-envelope
+    type: node_transition
+    to: recomendar
+  - id: search-path
+    type: node_path_contains
+    requiredNodes:
+      - buscar_proveedores
+      - recomendar
+  - id: search-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: true
+  - id: provider-results-present
+    type: provider_result_count
+    min: 1
+  - id: recommendation-funnel-has-candidates
+    type: trace_field_number
+    path: recommendation_funnel.context_candidates
+    min: 1
+  - id: search-tool-called
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    maxTotalCalls: 6
+  - id: no-ai-disclaimer
+    type: text_not_contains
+    phrases:
+      - as an ai
+      - language model

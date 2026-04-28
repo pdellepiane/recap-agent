@@ -1,0 +1,36 @@
+template: template.base-live
+id: live.pause_request_temporal_close
+suite: live_comprehensive
+version: 1
+description: Pause intent should route to temporal close in live runtime.
+tags:
+  - live
+  - state
+  - pause
+inputs:
+  - text: stop por ahora, seguimos luego
+expectations:
+  - id: temporal-close-node
+    type: node_transition
+    to: guardar_cerrar_temporalmente
+  - id: plan-current-node
+    type: plan_field_equals
+    path: current_node
+    expected: guardar_cerrar_temporalmente
+  - id: pause-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+  - id: no-provider-tools
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+    maxTotalCalls: 1
+  - id: no-ai-disclaimer
+    type: text_not_contains
+    phrases:
+      - as an ai
+      - language model
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1

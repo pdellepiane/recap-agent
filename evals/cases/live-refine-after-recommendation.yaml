@@ -1,0 +1,59 @@
+template: template.base-live
+id: live.refine_after_recommendation_preserves_need
+suite: live_comprehensive
+version: 1
+description: Refining after a recommendation should preserve the active venue need instead of reopening category ambiguity.
+tags:
+  - live
+  - multi-turn
+  - refinement
+inputs:
+  - text: busco locales para matrimonio en Lima para 150 invitados
+  - text: prefiero algo al aire libre y con estacionamiento
+expectations:
+  - id: turn0-recommends
+    type: node_transition
+    to: recomendar
+    turnIndex: 0
+  - id: turn0-search-called
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    maxTotalCalls: 6
+    turnIndex: 0
+  - id: turn0-provider-results
+    type: provider_result_count
+    min: 1
+    turnIndex: 0
+  - id: turn1-stays-in-search-envelope
+    type: node_transition
+    allowed:
+      - from: recomendar
+        to: recomendar
+      - from: recomendar
+        to: refinar_criterios
+      - from: recomendar
+        to: seguir_refinando_guardar_plan
+    turnIndex: 1
+  - id: no-category-reask
+    type: text_not_contains
+    phrases:
+      - qué categoría
+      - qué tipo de proveedor
+      - qué proveedor necesitas
+    turnIndex: 1
+  - id: venue-need-remains-active
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - status: shortlisted
+  - id: final-search-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: true
+    turnIndex: 1
+  - id: two-turn-budget
+    type: budget_constraints
+    maxTurns: 2
+    maxToolCalls: 12
+

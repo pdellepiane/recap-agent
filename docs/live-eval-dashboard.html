@@ -1,0 +1,479 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Dashboard de evaluaciones live Lambda</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f7f7f3;
+        --panel: #ffffff;
+        --ink: #202124;
+        --muted: #64665f;
+        --line: #dedfd7;
+        --green: #237a57;
+        --green-soft: #e5f2ea;
+        --blue: #245d8f;
+        --blue-soft: #e7eff7;
+        --amber: #9a681f;
+        --amber-soft: #f4ead8;
+        --shadow: 0 10px 30px rgba(32, 33, 36, 0.08);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        background: var(--bg);
+        color: var(--ink);
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+          sans-serif;
+        line-height: 1.45;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 40px;
+      }
+
+      header {
+        display: grid;
+        gap: 12px;
+        padding: 10px 0 22px;
+      }
+
+      h1,
+      h2,
+      p {
+        margin: 0;
+      }
+
+      h1 {
+        font-size: clamp(30px, 5vw, 56px);
+        line-height: 1;
+        letter-spacing: 0;
+      }
+
+      h2 {
+        font-size: 20px;
+        letter-spacing: 0;
+      }
+
+      .subtitulo {
+        max-width: 780px;
+        color: var(--muted);
+        font-size: 16px;
+      }
+
+      .run {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      .metricas {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        margin: 12px 0 22px;
+      }
+
+      .card {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        box-shadow: var(--shadow);
+      }
+
+      .metrica {
+        min-height: 112px;
+        padding: 18px;
+        display: grid;
+        align-content: space-between;
+        gap: 14px;
+      }
+
+      .etiqueta {
+        color: var(--muted);
+        font-size: 13px;
+        font-weight: 650;
+        text-transform: uppercase;
+      }
+
+      .valor {
+        font-size: 32px;
+        font-weight: 760;
+        line-height: 1;
+      }
+
+      .estado {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 28px;
+        padding: 4px 10px;
+        border-radius: 999px;
+        background: var(--green-soft);
+        color: var(--green);
+        font-size: 13px;
+        font-weight: 750;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1.05fr 1.95fr;
+        gap: 14px;
+        align-items: start;
+      }
+
+      .panel {
+        padding: 18px;
+      }
+
+      .lista {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .insight {
+        border-left: 4px solid var(--blue);
+        padding: 8px 0 8px 12px;
+        color: var(--muted);
+      }
+
+      .kpis {
+        display: grid;
+        gap: 12px;
+        margin-top: 14px;
+      }
+
+      .kpi {
+        display: grid;
+        gap: 6px;
+      }
+
+      .kpi-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 14px;
+      }
+
+      .barra {
+        height: 10px;
+        overflow: hidden;
+        border-radius: 999px;
+        background: #eceee6;
+      }
+
+      .barra span {
+        display: block;
+        height: 100%;
+        border-radius: inherit;
+        background: var(--green);
+      }
+
+      .tabla-wrap {
+        overflow-x: auto;
+        margin-top: 14px;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 860px;
+        background: var(--panel);
+      }
+
+      th,
+      td {
+        padding: 12px 14px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 14px;
+      }
+
+      th {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        background: #fbfbf8;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .id {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+      }
+
+      .desc {
+        color: var(--muted);
+        min-width: 280px;
+      }
+
+      .aprobado {
+        color: var(--green);
+        font-weight: 750;
+      }
+
+      .nota {
+        margin-top: 12px;
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .metricas,
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="run">Run live Lambda: eval-2026-04-21T15-57-38-255Z-9c2a1897</p>
+        <h1>Evaluación live Lambda</h1>
+        <p class="subtitulo">
+          Suite integral contra la Lambda desplegada. Mide flujo, persistencia de plan,
+          uso de herramientas, trazabilidad, cobertura de estados y continuidad multi-turno.
+        </p>
+      </header>
+
+      <section class="metricas" aria-label="Métricas principales">
+        <article class="card metrica">
+          <div class="etiqueta">Casos aprobados</div>
+          <div class="valor">14 / 14</div>
+          <span class="estado">100% aprobado</span>
+        </article>
+        <article class="card metrica">
+          <div class="etiqueta">Score promedio</div>
+          <div class="valor">0.999</div>
+          <span class="estado">alto</span>
+        </article>
+        <article class="card metrica">
+          <div class="etiqueta">Latencia promedio</div>
+          <div class="valor">7.18 s</div>
+          <span class="estado">live</span>
+        </article>
+        <article class="card metrica">
+          <div class="etiqueta">Tokens totales</div>
+          <div class="valor">85,940</div>
+          <span class="estado">medido</span>
+        </article>
+      </section>
+
+      <section class="grid">
+        <article class="card panel">
+          <h2>Lectura rápida</h2>
+          <div class="lista">
+            <p class="insight">
+              El primer falso negativo venía del evaluador: leía la tabla local por defecto en vez
+              de la tabla de planes del stack desplegado.
+            </p>
+            <p class="insight">
+              La suite endurecida encontró una regresión real: una extracción con rango
+              "unknown" podía borrar un rango de invitados ya conocido.
+            </p>
+            <p class="insight">
+              También se corrigió la inferencia prematura de local/salón en aperturas amplias
+              de planificación de evento.
+            </p>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <h2>Métricas de calidad</h2>
+          <div class="kpis">
+            <div class="kpi">
+              <div class="kpi-top"><span>Precisión de herramientas</span><strong>100%</strong></div>
+              <div class="barra"><span style="width: 100%"></span></div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-top"><span>Recall de herramientas</span><strong>100%</strong></div>
+              <div class="barra"><span style="width: 100%"></span></div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-top"><span>Cobertura de ramas</span><strong>100%</strong></div>
+              <div class="barra"><span style="width: 100%"></span></div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-top"><span>Expectativas de estado</span><strong>100%</strong></div>
+              <div class="barra"><span style="width: 100%"></span></div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-top"><span>Persistencia de plan</span><strong>100%</strong></div>
+              <div class="barra"><span style="width: 100%"></span></div>
+            </div>
+            <div class="kpi">
+              <div class="kpi-top"><span>Cache hit rate</span><strong>75.2%</strong></div>
+              <div class="barra"><span style="width: 75.2%"></span></div>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <section class="card panel" style="margin-top: 14px">
+        <h2>Casos evaluados</h2>
+        <div class="tabla-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Caso</th>
+                <th>Qué valida</th>
+                <th>Estado</th>
+                <th>Score</th>
+                <th>Latencia</th>
+                <th>Herramientas</th>
+                <th>Transiciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="id">domain.guest_range_boundary_100</td>
+                <td class="desc">Normalización de 100 invitados al rango correcto y aclaración si falta ubicación.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>5.39 s</td>
+                <td>1</td>
+                <td>contacto_inicial -> aclarar_pedir_faltante</td>
+              </tr>
+              <tr>
+                <td class="id">entrypoint.event_known_no_active_need</td>
+                <td class="desc">Inicio amplio con evento y ubicación, sin abrir una búsqueda prematura.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>7.07 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> entrevista</td>
+              </tr>
+              <tr>
+                <td class="id">live.catering_missing_location_clarifies</td>
+                <td class="desc">Catering sin ubicación debe pedir el dato faltante antes de buscar.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>5.98 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> aclarar_pedir_faltante</td>
+              </tr>
+              <tr>
+                <td class="id">live.close_request_temporal_save</td>
+                <td class="desc">Cierre temporal debe guardar el plan para retomarlo después.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>5.35 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> guardar_cerrar_temporalmente</td>
+              </tr>
+              <tr>
+                <td class="id">live.event_plan_then_catering_search</td>
+                <td class="desc">Plan de boda primero; luego búsqueda de catering usando contexto persistido.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>10.09 s</td>
+                <td>1</td>
+                <td>contacto_inicial -> entrevista; entrevista -> recomendar</td>
+              </tr>
+              <tr>
+                <td class="id">live.event_plan_then_two_needs</td>
+                <td class="desc">Plan de baby shower primero; luego captura decoración y catering como necesidades.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>9.99 s</td>
+                <td>1</td>
+                <td>contacto_inicial -> entrevista; entrevista -> recomendar</td>
+              </tr>
+              <tr>
+                <td class="id">live.local_space_only_request</td>
+                <td class="desc">Pedido explícito de solo espacio/local con invitados debe buscar proveedores.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>7.62 s</td>
+                <td>1</td>
+                <td>contacto_inicial -> recomendar</td>
+              </tr>
+              <tr>
+                <td class="id">live.multi_need_message_envelope</td>
+                <td class="desc">Mensaje mixto debe enfocar catering sin perder continuidad.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>3.85 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> aclarar_pedir_faltante</td>
+              </tr>
+              <tr>
+                <td class="id">live.pause_request_temporal_close</td>
+                <td class="desc">Pausa explícita debe guardar estado temporal.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>3.68 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> guardar_cerrar_temporalmente</td>
+              </tr>
+              <tr>
+                <td class="id">live.photography_with_location_search_path</td>
+                <td class="desc">Fotografía con ubicación e invitados debe activar búsqueda.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>7.31 s</td>
+                <td>1</td>
+                <td>contacto_inicial -> recomendar</td>
+              </tr>
+              <tr>
+                <td class="id">live.refine_after_recommendation_preserves_need</td>
+                <td class="desc">Refinar después de recomendar debe conservar la necesidad activa.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>0.980</td>
+                <td>13.82 s</td>
+                <td>5</td>
+                <td>contacto_inicial -> recomendar; recomendar -> recomendar</td>
+              </tr>
+              <tr>
+                <td class="id">live.selection_without_shortlist_fallback</td>
+                <td class="desc">Selección sin shortlist debe pedir contexto, no inventar proveedor.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>6.28 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> entrevista</td>
+              </tr>
+              <tr>
+                <td class="id">live.trace_tooling_envelope</td>
+                <td class="desc">Búsqueda directa debe exponer trazas, herramientas y resultados.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>8.62 s</td>
+                <td>1</td>
+                <td>contacto_inicial -> recomendar</td>
+              </tr>
+              <tr>
+                <td class="id">live.vague_provider_request_no_search</td>
+                <td class="desc">Pedido vago debe aclarar contexto antes de buscar.</td>
+                <td class="aprobado">Aprobado</td>
+                <td>1.000</td>
+                <td>5.53 s</td>
+                <td>0</td>
+                <td>contacto_inicial -> entrevista</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="nota">
+          Fuente: .eval-runs/eval-2026-04-21T15-57-38-255Z-9c2a1897/report.json
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

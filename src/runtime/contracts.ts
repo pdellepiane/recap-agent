@@ -20,6 +20,9 @@ export type ExtractionResult = {
   conversationSummary: string;
   selectedProviderHint: string | null;
   pauseRequested: boolean;
+  contactName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
 };
 
 export type ExtractRequest = {
@@ -39,6 +42,7 @@ export type ComposeReplyRequest = {
   promptBundleId: string;
   promptFilePaths: string[];
   toolUsage: ToolUsage;
+  onPlanFinished?: (ttlEpochSeconds: number) => void;
 };
 
 export type ComposeReplyResult = {

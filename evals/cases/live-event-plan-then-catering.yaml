@@ -1,0 +1,65 @@
+template: template.base-live
+id: live.event_plan_then_catering_search
+suite: live_comprehensive
+version: 1
+description: Event-first planning should persist context and use it for a follow-up catering search.
+tags:
+  - live
+  - multi-turn
+  - event-plan-first
+inputs:
+  - text: hola, estoy organizando una boda en Lima para 120 personas
+  - text: necesito catering con opciones vegetarianas
+expectations:
+  - id: turn0-planning-node
+    type: node_transition
+    to: entrevista
+    turnIndex: 0
+  - id: turn0-no-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+    maxTotalCalls: 1
+    turnIndex: 0
+  - id: turn0-search-not-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: false
+    turnIndex: 0
+  - id: event-type-persisted
+    type: plan_field_equals
+    path: event_type
+    expected: boda
+  - id: guest-range-persisted
+    type: plan_field_equals
+    path: guest_range
+    expected: 101-200
+  - id: final-catering-node
+    type: node_transition
+    to: recomendar
+    turnIndex: 1
+  - id: turn1-search-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: true
+    turnIndex: 1
+  - id: turn1-search-tool-called
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    maxTotalCalls: 8
+    turnIndex: 1
+  - id: provider-results-present
+    type: provider_result_count
+    min: 1
+    turnIndex: 1
+  - id: final-need-shortlisted
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: catering
+        status: shortlisted
+  - id: two-turn-budget
+    type: budget_constraints
+    maxTurns: 2
+    maxToolCalls: 9

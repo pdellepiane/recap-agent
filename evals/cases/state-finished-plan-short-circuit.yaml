@@ -1,0 +1,112 @@
+template: template.base-both-targets
+id: state.finished_plan_short_circuits_turn
+suite: state_and_resume
+version: 1
+description: A finished plan must short-circuit extraction and keep closed state semantics.
+tags:
+  - state
+  - lifecycle
+  - finish
+inputs:
+  - text: quiero planear otro evento ahora
+seedPlan:
+  current_node: necesidad_cubierta
+  lifecycle_state: finished
+  contact_name: Ada
+  contact_email: ada@example.com
+  event_type: boda
+  location: Lima
+  active_need_category: catering
+  vendor_category: catering
+  provider_needs:
+    - category: catering
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids:
+        - 109
+      recommended_providers:
+        - id: 109
+          title: EDO Sushi Bar
+          slug: edo-sushi-bar
+          category: catering
+          location: Lima
+          priceLevel: $$$
+          rating: '4.7'
+          reason: coincide con el plan
+          detailUrl: https://sinenvolturas.com/proveedores/edo-sushi-bar
+          websiteUrl: null
+          minPrice: '1200.00'
+          maxPrice: null
+          promoBadge: 10% Off
+          promoSummary: 10% de descuento en catering.
+          descriptionSnippet: Catering especializado en sushi.
+          serviceHighlights:
+            - Catering para eventos
+          termsHighlights:
+            - Pedidos de 300 piezas a más
+      selected_provider_id: 109
+      selected_provider_hint: EDO
+  recommended_provider_ids:
+    - 109
+  recommended_providers:
+    - id: 109
+      title: EDO Sushi Bar
+      slug: edo-sushi-bar
+      category: catering
+      location: Lima
+      priceLevel: $$$
+      rating: '4.7'
+      reason: coincide con el plan
+      detailUrl: https://sinenvolturas.com/proveedores/edo-sushi-bar
+      websiteUrl: null
+      minPrice: '1200.00'
+      maxPrice: null
+      promoBadge: 10% Off
+      promoSummary: 10% de descuento en catering.
+      descriptionSnippet: Catering especializado en sushi.
+      serviceHighlights:
+        - Catering para eventos
+      termsHighlights:
+        - Pedidos de 300 piezas a más
+  selected_provider_id: 109
+  selected_provider_hint: EDO
+expectations:
+  - id: stay-closed-node
+    type: node_transition
+    from: necesidad_cubierta
+    to: necesidad_cubierta
+  - id: lifecycle-finished
+    type: plan_field_equals
+    path: lifecycle_state
+    expected: finished
+  - id: contact-email-kept
+    type: plan_field_equals
+    path: contact_email
+    expected: ada@example.com
+  - id: provider-context-preserved
+    type: provider_results_contains
+    providers:
+      - id: 109
+    matchMode: all
+  - id: no-tools-on-short-circuit
+    type: tool_usage
+    mustCall: []
+    mustNotCall:
+      - search_providers_from_plan
+      - finish_plan
+    maxTotalCalls: 1
+  - id: cooldown-message
+    type: text_contains
+    allOf:
+      - 24 horas
+scorers:
+  - id: expectation-core
+    type: expectation_pass_rate
+    weight: 1
+  - id: budget-efficiency
+    type: budget_efficiency
+    weight: 0.25
+    targetLatencyMs: 400
+    targetToolCalls: 0

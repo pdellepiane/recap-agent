@@ -569,36 +569,42 @@ function renderTrace(
     ['Prompt Files', trace.prompt_file_paths.join('\n')],
     ['Tools Considered', trace.tools_considered.join(', ') || 'none'],
     ['Tools Called', toolsCalled.join(', ') || 'none'],
-    [
-      'Tool Inputs',
-      toolInputsSummary,
-    ],
-    [
-      'Tool Outputs',
-      toolOutputs.length > 0
-        ? toolOutputs
-            .map(
-              (entry, index) =>
-                `${index + 1}. ${entry.tool}\n${truncateForTrace(entry.output, 1200)}`,
-            )
-            .join('\n\n')
-        : 'none',
-    ],
-    [
-      'Provider Results',
-      providerResults.length > 0
-        ? [
-            ...providerResults
-              .slice(0, 10)
-              .map((provider, index) => formatProviderDebug(provider, index)),
-            providerResults.length > 10
-              ? `... ${providerResults.length - 10} more providers not shown`
-              : null,
-          ]
-            .filter(Boolean)
-            .join('\n\n')
-        : 'none',
-    ],
+    ...(toolInputs.length > 0
+      ? toolInputs.map((entry, index) => [
+          index === 0 ? 'Tool Inputs' : '',
+          `${index + 1}. ${entry.tool}\n${truncateForTrace(entry.input, 1200)}`,
+        ])
+      : [
+          [
+            'Tool Inputs',
+            hasToolInputsField
+              ? toolsCalled.length > 0
+                ? 'No tool input payloads were captured for this turn.'
+                : 'No tools were called in this turn.'
+              : toolsCalled.length > 0
+                ? 'Tool inputs are not available in this runtime response. Redeploy Lambda with the latest trace schema.'
+                : 'No tools were called in this turn.',
+          ],
+        ]),
+    ...(toolOutputs.length > 0
+      ? toolOutputs.map((entry, index) => [
+          index === 0 ? 'Tool Outputs' : '',
+          `${index + 1}. ${entry.tool}\n${truncateForTrace(entry.output, 1200)}`,
+        ])
+      : [['Tool Outputs', 'none']]),
+    ...(providerResults.length > 0
+      ? [
+          ...providerResults
+            .slice(0, 10)
+            .map((provider, index) => [
+              index === 0 ? 'Provider Results' : '',
+              formatProviderDebug(provider, index),
+            ]),
+          ...(providerResults.length > 10
+            ? [['', `... ${providerResults.length - 10} more providers not shown`]]
+            : []),
+        ]
+      : [['Provider Results', 'none']]),
     [
       'Recommendation Funnel',
       [
@@ -724,12 +730,12 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
     ['Guest Range', plan.guest_range ?? 'null'],
     ['Missing Fields', plan.missing_fields.join(', ') || 'none'],
     ['Selected Provider', String(plan.selected_provider_id ?? 'null')],
-    [
-      'Recommended Providers',
-      plan.recommended_providers
-        .map((provider, index) => formatProviderDebug(provider, index))
-        .join('\n') || 'none',
-    ],
+    ...(plan.recommended_providers.length > 0
+      ? plan.recommended_providers.map((provider, index) => [
+          index === 0 ? 'Recommended Providers' : '',
+          formatProviderDebug(provider, index),
+        ])
+      : [['Recommended Providers', 'none']]),
     ['Summary', plan.conversation_summary || ''],
     ['Updated At', plan.updated_at],
   );

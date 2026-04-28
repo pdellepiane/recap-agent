@@ -1,0 +1,46 @@
+template: template.base-live
+id: live.catering_missing_location_clarifies
+suite: live_comprehensive
+version: 1
+description: Catering ask without location should stay in clarification/planning envelope.
+tags:
+  - live
+  - clarification
+  - catering
+inputs:
+  - text: necesito catering para mi boda
+expectations:
+  - id: clarification-envelope
+    type: node_transition
+    to: aclarar_pedir_faltante
+  - id: plan-captures-catering-need
+    type: plan_field_equals
+    path: active_need_category
+    expected: catering
+  - id: location-still-missing
+    type: plan_field_equals
+    path: location
+    expected: null
+  - id: search-not-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: false
+  - id: plan-was-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+  - id: no-search-without-location
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+    maxTotalCalls: 1
+  - id: asks-location
+    type: text_contains
+    anyOf:
+      - dónde
+      - distrito
+      - zona
+      - ubicación
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1

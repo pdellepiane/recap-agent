@@ -1,0 +1,37 @@
+{
+  "checkedAt": "2026-04-20",
+  "endpoint": "POST /api-web/vendor/quote",
+  "requestTemplate": {
+    "name": "Test User",
+    "email": "test@example.com",
+    "phone": "987654321",
+    "phoneExtension": "+51",
+    "guestsRange": "80-150",
+    "description": "Solicitud de prueba para validar fechas en API",
+    "benefitId": 999999
+  },
+  "results": [
+    {
+      "eventDate": "2026-04-19",
+      "status": 400,
+      "errors": {
+        "eventDate": [
+          "El campo event date debe ser una fecha posterior o igual a today."
+        ],
+        "benefitId": [
+          "El campo benefit id seleccionado no existe."
+        ]
+      }
+    },
+    {
+      "eventDate": "2026-04-20",
+      "status": 400,
+      "errors": {
+        "benefitId": [
+          "El campo benefit id seleccionado no existe."
+        ]
+      }
+    }
+  ],
+  "conclusion": "eventDate is rejected for past date and accepted for current day, matching swagger constraint."
+}

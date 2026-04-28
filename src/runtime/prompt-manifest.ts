@@ -37,6 +37,7 @@ export const toolNames = [
   'create_quote_request',
   'add_vendor_to_event_favorites',
   'create_provider_review',
+  'finish_plan',
 ] as const;
 
 export type ToolName = (typeof toolNames)[number];
@@ -143,7 +144,7 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   crear_lead_cerrar: {
     files: buildNodeFiles('crear_lead_cerrar'),
-    allowedTools: ['create_quote_request', 'add_vendor_to_event_favorites'],
+    allowedTools: ['finish_plan'],
   },
   guardar_seleccion_reintentar_luego: {
     files: buildNodeFiles('guardar_seleccion_reintentar_luego'),

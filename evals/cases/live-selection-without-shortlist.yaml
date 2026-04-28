@@ -1,0 +1,38 @@
+template: template.base-live
+id: live.selection_without_shortlist_fallback
+suite: live_comprehensive
+version: 1
+description: Direct provider selection without shortlist context should trigger clarification/planning fallback.
+tags:
+  - live
+  - selection
+inputs:
+  - text: quiero ir con edo
+expectations:
+  - id: selection-fallback-envelope
+    type: node_transition
+    allowed:
+      - to: entrevista
+      - to: aclarar_pedir_faltante
+  - id: no-selection-persisted
+    type: plan_field_equals
+    path: selected_provider_id
+    expected: null
+  - id: search-not-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: false
+  - id: no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+    maxTotalCalls: 1
+  - id: asks-context
+    type: text_contains
+    anyOf:
+      - evento
+      - proveedor
+      - categoría
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1

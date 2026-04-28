@@ -1,0 +1,47 @@
+template: template.base-offline
+id: state.close_intent_saves_temporal_node
+suite: state_and_resume
+version: 1
+description: A close intent without finish tool execution should persist temporal close state.
+tags:
+  - state
+  - close
+  - temporal-save
+inputs:
+  - text: gracias, por ahora cerramos aquí
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: cerrar
+        intentConfidence: 0.96
+        eventType: null
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere cerrar temporalmente la conversación.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Listo, lo dejo guardado para retomarlo cuando quieras.
+expectations:
+  - id: close-node
+    type: node_transition
+    to: guardar_cerrar_temporalmente
+  - id: close-intent
+    type: plan_field_equals
+    path: intent
+    expected: cerrar
+  - id: still-active-lifecycle
+    type: plan_field_equals
+    path: lifecycle_state
+    expected: active
+  - id: no-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan

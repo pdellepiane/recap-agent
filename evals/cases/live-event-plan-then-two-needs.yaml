@@ -1,0 +1,52 @@
+template: template.base-live
+id: live.event_plan_then_two_needs
+suite: live_comprehensive
+version: 1
+description: A follow-up with two provider needs should preserve the event plan and represent multiple needs.
+tags:
+  - live
+  - multi-turn
+  - multi-need
+inputs:
+  - text: hola, mi baby shower será en Miraflores para 40 personas y todavía no sé qué proveedores necesito
+  - text: necesito decoración y catering
+expectations:
+  - id: turn0-planning-node
+    type: node_transition
+    to: entrevista
+    turnIndex: 0
+  - id: turn0-search-not-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: false
+    turnIndex: 0
+  - id: guest-range-persisted
+    type: plan_field_equals
+    path: guest_range
+    expected: 21-50
+  - id: location-persisted
+    type: plan_field_equals
+    path: location
+    expected: Miraflores
+  - id: multi-need-turn-envelope
+    type: node_transition
+    allowed:
+      - to: recomendar
+      - to: aclarar_pedir_faltante
+      - to: seguir_refinando_guardar_plan
+    turnIndex: 1
+  - id: multiple-needs-recorded
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: decoración
+      - category: catering
+  - id: no-empty-response
+    type: text_not_contains
+    phrases:
+      - '""'
+    turnIndex: 1
+  - id: two-turn-budget
+    type: budget_constraints
+    maxTurns: 2
+    maxToolCalls: 8

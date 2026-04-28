@@ -1,0 +1,38 @@
+template: template.base-live
+id: live.local_space_only_request
+suite: live_comprehensive
+version: 1
+description: Local/venue-only phrasing should stay in venue planning/search envelope.
+tags:
+  - live
+  - domain
+  - local
+inputs:
+  - text: solo quiero el espacio para un baby shower en La Molina para 45 invitados
+expectations:
+  - id: local-envelope
+    type: node_transition
+    to: recomendar
+  - id: search-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: true
+  - id: search-tool-called
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    maxTotalCalls: 6
+  - id: provider-results-present
+    type: provider_result_count
+    min: 1
+  - id: plan-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+  - id: no-local-reask-phrase
+    type: text_not_contains
+    phrases:
+      - te refieres a un salón
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1

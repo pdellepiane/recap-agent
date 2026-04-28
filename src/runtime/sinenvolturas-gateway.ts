@@ -297,19 +297,23 @@ export class SinEnvolturasGateway implements ProviderGateway {
   async createQuoteRequest(
     input: QuoteRequestInput,
   ): Promise<Record<string, unknown>> {
+    const body: Record<string, unknown> = {
+      name: input.name,
+      email: input.email,
+      phone: input.phone,
+      phoneExtension: input.phoneExtension,
+      eventDate: input.eventDate,
+      guestsRange: input.guestsRange,
+      description: input.description,
+      benefitId: input.providerId,
+    };
+    if (input.userId != null) {
+      body.userId = input.userId;
+    }
+
     const response = await this.postJson<ApiEnvelope<Record<string, unknown>>>(
       '/quote',
-      {
-        name: input.name,
-        email: input.email,
-        phone: input.phone,
-        phoneExtension: input.phoneExtension,
-        eventDate: input.eventDate,
-        guestsRange: input.guestsRange,
-        description: input.description,
-        benefitId: input.providerId,
-        userId: input.userId,
-      },
+      body,
     );
 
     return response.data;
@@ -638,7 +642,10 @@ export class SinEnvolturasGateway implements ProviderGateway {
     });
 
     if (!response.ok) {
-      throw new Error(`Provider API request failed with ${response.status}`);
+      const errorBody = await response.text().catch(() => 'unable to read error body');
+      throw new Error(
+        `Provider API request failed with ${response.status}: ${errorBody}`,
+      );
     }
 
     return (await response.json()) as T;

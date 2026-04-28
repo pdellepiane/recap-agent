@@ -1,0 +1,42 @@
+template: template.base-live
+id: live.vague_provider_request_no_search
+suite: live_comprehensive
+version: 1
+description: A vague provider ask should gather event/category/location context before searching.
+tags:
+  - live
+  - clarification
+  - vague
+inputs:
+  - text: necesito proveedores buenos y baratos
+expectations:
+  - id: clarification-node
+    type: node_transition
+    allowed:
+      - to: entrevista
+      - to: aclarar_pedir_faltante
+  - id: search-not-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: false
+  - id: no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+    maxTotalCalls: 1
+  - id: no-provider-results
+    type: provider_result_count
+    max: 0
+  - id: asks-for-planning-context
+    type: text_contains
+    anyOf:
+      - evento
+      - qué necesitas
+      - categoría
+      - rubro
+      - ciudad
+      - distrito
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
+

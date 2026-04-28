@@ -26,6 +26,13 @@ export const guestRangeValues = [
 
 export type GuestRange = (typeof guestRangeValues)[number];
 
+/** Cooldown after `finish_plan` before the DynamoDB plan row expires (new empty plan allowed). */
+export const FINISHED_PLAN_TTL_SECONDS = 24 * 60 * 60;
+
+export const planLifecycleValues = ['active', 'finished'] as const;
+
+export type PlanLifecycleState = (typeof planLifecycleValues)[number];
+
 export const providerNeedStatusValues = [
   'identified',
   'search_ready',
@@ -75,6 +82,10 @@ export const planSchema = z.object({
   channel: z.string(),
   external_user_id: z.string(),
   conversation_id: z.string().nullable(),
+  lifecycle_state: z.enum(planLifecycleValues).default('active'),
+  contact_name: z.string().nullable().default(null),
+  contact_email: z.string().nullable().default(null),
+  contact_phone: z.string().nullable().default(null),
   current_node: z.string(),
   intent: z.enum(planIntentValues).nullable(),
   intent_confidence: z.number().min(0).max(1).nullable(),
@@ -117,6 +128,10 @@ export function createEmptyPlan(args: {
     channel: args.channel,
     external_user_id: args.externalUserId,
     conversation_id: null,
+    lifecycle_state: 'active',
+    contact_name: null,
+    contact_email: null,
+    contact_phone: null,
     current_node: 'contacto_inicial',
     intent: null,
     intent_confidence: null,
@@ -140,6 +155,12 @@ export function createEmptyPlan(args: {
     open_questions: [],
     updated_at: new Date(0).toISOString(),
   };
+}
+
+export function isPlanFinished(
+  plan: Pick<PersistedPlan, 'lifecycle_state'> | null | undefined,
+): boolean {
+  return plan?.lifecycle_state === 'finished';
 }
 
 function uniqueStrings(values: Array<string | null | undefined>): string[] {

@@ -1,0 +1,52 @@
+template: template.base-offline
+id: state.resume_from_temporal_close_goes_to_entrevista
+suite: state_and_resume
+version: 1
+description: A saved temporary-close node should resume in entrevista instead of re-closing.
+tags:
+  - state
+  - resume
+  - paused
+inputs:
+  - text: seguimos con mi plan
+seedPlan:
+  current_node: guardar_cerrar_temporalmente
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: retomar_plan
+        intentConfidence: 0.93
+        eventType: boda
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere retomar el plan guardado.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Perfecto, retomamos tu planificación. ¿Qué proveedor quieres resolver primero?
+expectations:
+  - id: resumed-node
+    type: node_transition
+    to: entrevista
+  - id: no-reclose
+    type: plan_field_equals
+    path: current_node
+    expected: entrevista
+  - id: intent-retomar
+    type: plan_field_equals
+    path: intent
+    expected: retomar_plan
+  - id: no-search-on-resume
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan

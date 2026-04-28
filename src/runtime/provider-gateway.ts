@@ -44,7 +44,7 @@ export type ProviderReview = {
 
 export type QuoteRequestInput = {
   providerId: number;
-  userId: number;
+  userId?: number | null;
   name: string;
   email: string;
   phone: string;

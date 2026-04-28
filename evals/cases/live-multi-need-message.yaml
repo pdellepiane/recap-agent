@@ -1,0 +1,36 @@
+template: template.base-live
+id: live.multi_need_message_envelope
+suite: live_comprehensive
+version: 1
+description: Mixed need message should preserve planning continuity and avoid crashes.
+tags:
+  - live
+  - multi-need
+inputs:
+  - text: ya tengo fotógrafo pero también necesito catering en Lima
+expectations:
+  - id: mixed-envelope
+    type: node_transition
+    allowed:
+      - to: recomendar
+      - to: seguir_refinando_guardar_plan
+      - to: aclarar_pedir_faltante
+  - id: catering-need-captured
+    type: plan_field_equals
+    path: active_need_category
+    expected: catering
+  - id: no-stale-provider-selection
+    type: plan_field_equals
+    path: selected_provider_id
+    expected: null
+  - id: plan-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+  - id: no-empty-response
+    type: text_not_contains
+    phrases:
+      - '""'
+  - id: bounded-tools
+    type: tool_usage
+    maxTotalCalls: 6

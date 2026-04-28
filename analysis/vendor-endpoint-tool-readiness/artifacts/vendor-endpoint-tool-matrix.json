@@ -1,0 +1,82 @@
+{
+  "generatedAt": "2026-04-20",
+  "swaggerPath": "/Users/leonardocandio/Downloads/se-vendor-swagger.yaml",
+  "operations": [
+    {
+      "operationId": "getFilteredVendorsFull",
+      "method": "GET",
+      "path": "/api-web/vendor/filtered/full",
+      "toolCandidate": "search_providers_full",
+      "stability": "high",
+      "notes": [
+        "Read-only endpoint with explicit filter contracts.",
+        "Supports pagination and structured filters for event type, categories, location, budget, guests range, promotions, and favorites."
+      ],
+      "inputContract": {
+        "search": "string",
+        "eventTypes": {
+          "type": "string|string[]",
+          "enum": ["all", "wedding", "babyshower", "charity", "others"]
+        },
+        "categories": "string|string[]",
+        "location": {
+          "type": "string",
+          "pattern": "^(city|country)-\\\\d+$|^all$"
+        },
+        "budget": {
+          "type": "string",
+          "enum": ["$", "$$", "$$$", "$$$$"]
+        },
+        "guestsRange": {
+          "type": "string",
+          "pattern": "^(\\\\d+-\\\\d+|\\\\d+\\\\+)$"
+        },
+        "onlyPromotions": "boolean",
+        "onlyFavorites": "boolean",
+        "userId": "integer (required when onlyFavorites=true)",
+        "page": "integer>=1"
+      },
+      "responseEnvelope": "FilteredFullBenefitsResponse"
+    },
+    {
+      "operationId": "createVendorQuote",
+      "method": "POST",
+      "path": "/api-web/vendor/quote",
+      "toolCandidate": "create_quote_request",
+      "stability": "medium",
+      "notes": [
+        "Mutating endpoint with strict validation.",
+        "eventDate must be today or future date.",
+        "userId can be omitted for guest users."
+      ],
+      "inputContract": {
+        "required": [
+          "name",
+          "email",
+          "phone",
+          "phoneExtension",
+          "eventDate",
+          "guestsRange",
+          "description",
+          "benefitId"
+        ],
+        "eventDate": {
+          "type": "string",
+          "format": "date",
+          "constraint": "today_or_future"
+        }
+      },
+      "implementationPolicy": {
+        "eventDateStrategy": "hardcode to current date on tool side when user did not provide date"
+      },
+      "responseEnvelope": "VendorQuoteResponse"
+    }
+  ],
+  "recommendedTools": [
+    "search_providers_full",
+    "create_quote_request"
+  ],
+  "deprecateOrAvoid": [
+    "Legacy /api-web/vendor/filtered endpoint assumptions not defined in this swagger file."
+  ]
+}

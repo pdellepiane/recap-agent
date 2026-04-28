@@ -1,0 +1,69 @@
+template: template.base-offline
+id: search_error.provider_failure_moves_to_retry_node
+suite: search_failure_modes
+version: 1
+description: Provider search errors should route to informar_error_reintento and persist that node.
+tags:
+  - search
+  - error
+  - retry
+inputs:
+  - text: dame opciones de catering en lima
+seedPlan:
+  current_node: entrevista
+  event_type: boda
+  location: Lima
+  active_need_category: catering
+  vendor_category: catering
+  guest_range: 51-100
+  provider_needs:
+    - category: catering
+      status: search_ready
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: []
+      recommended_providers: []
+      selected_provider_id: null
+      selected_provider_hint: null
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: ver_opciones
+        intentConfidence: 0.94
+        eventType: boda
+        vendorCategory: catering
+        vendorCategories:
+          - catering
+        activeNeedCategory: catering
+        location: Lima
+        budgetSignal: medio
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere opciones de catering en Lima.
+        selectedProviderHint: null
+        pauseRequested: false
+    repliesByTurn:
+      - Hubo un problema al buscar opciones. ¿Quieres que lo intente de nuevo en un momento?
+    providerGateway:
+      searchProvidersByTurn:
+        - error: Upstream marketplace timeout.
+expectations:
+  - id: retry-node
+    type: node_transition
+    to: informar_error_reintento
+  - id: persisted-retry-reason
+    type: plan_field_equals
+    path: current_node
+    expected: informar_error_reintento
+  - id: search-tool-was-called
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+  - id: asks-retry
+    type: text_contains
+    anyOf:
+      - intente de nuevo
+      - lo intente

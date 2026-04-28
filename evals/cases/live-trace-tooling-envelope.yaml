@@ -1,0 +1,37 @@
+template: template.base-live
+id: live.trace_tooling_envelope
+suite: live_comprehensive
+version: 1
+description: Live trace should show a valid node transition and bounded tool usage for a direct search ask.
+tags:
+  - live
+  - trace
+inputs:
+  - text: dame opciones de catering en Lima para 80 invitados
+expectations:
+  - id: valid-transition-envelope
+    type: node_transition
+    to: recomendar
+  - id: search-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: true
+  - id: plan-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+  - id: bounded-tools
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    maxTotalCalls: 8
+  - id: provider-results-present
+    type: provider_result_count
+    min: 1
+  - id: recommendation-funnel-present
+    type: trace_field_number
+    path: recommendation_funnel.context_candidates
+    min: 1
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
