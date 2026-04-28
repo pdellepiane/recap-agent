@@ -569,6 +569,10 @@ async function evaluateExpectation(
         : failures.join('; ');
       return result;
     }
+    default: {
+      result.message = `Unknown expectation type: ${expectation.type}.`;
+      return result;
+    }
   }
 }
 

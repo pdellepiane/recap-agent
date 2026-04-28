@@ -3,6 +3,7 @@ import type { PlanSnapshot } from '../core/plan';
 export type SavePlanInput = {
   plan: PlanSnapshot;
   reason: string;
+  ttlEpochSeconds?: number;
 };
 
 export interface PlanStore {

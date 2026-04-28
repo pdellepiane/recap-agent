@@ -48,6 +48,12 @@ export type ComposeReplyRequest = {
 export type ComposeReplyResult = {
   text: string;
   tokenUsage?: TokenUsage | null;
+  recommendationFunnel?: {
+    available_candidates: number;
+    context_candidates: number;
+    context_candidate_ids: number[];
+    presentation_limit: number;
+  };
 };
 
 export type ToolUsage = {

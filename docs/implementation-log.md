@@ -989,3 +989,101 @@ Reason:
 Decision:
 - Keep the fix minimal and deterministic in the runtime by owning widen-scope behavior in `AgentService`, instead of hoping the reply model will infer pagination or search exhaustion from prompts alone.
 - Keep close/contact routing model-driven through extractor guidance, but add guardrails in `recomendar` so the reply stays truthful even if the turn has not yet transitioned into `crear_lead_cerrar`.
+
+## 2026-04-28
+
+### Recover repo after iCloud desync and deleted .git/node_modules
+- Removed ~170 duplicate files created by macOS iCloud (`* 2.*` pattern) after verifying non-"2" versions were newer via `diff` and `stat` mtime comparison.
+- Re-created `.git` from scratch: `git init`, `git remote add origin https://github.com/pdellepiane/recap-agent.git`, fetched `origin/main`, force-checked out tracking branch, then restored working tree from an rsync backup taken before checkout.
+- Verified 11 modified files and 20+ untracked files (uncommitted changes) were preserved.
+- Re-installed dependencies with `bun install` (409 packages, migrated from `package-lock.json`).
+- Added `.cursor/` to `.gitignore` alongside existing rules (`node_modules/`, `dist/`, `.env`, `.DS_Store`, eval runs, broken-git backups).
+- Committed all non-WIP changes as a single feature commit (`ade1910`).
+
+Reason:
+- The iCloud conflict created two copies of most files; without careful comparison we could have lost days of uncommitted work.
+
+Decision:
+- Use timestamp and diff comparison rather than heuristics to decide which copy to keep.
+- Create a filesystem backup before any destructive git operation.
+
+### Finish knowledge-sync WIP: connect scraped Tawk help center to agent runtime
+**What was already there before this session:**
+- `src/knowledge-sync/` — scraper (`TawkHelpScraper`), formatter (`articlesToMarkdown`), uploader (`OpenAiKnowledgeUploader`), sync orchestrator (`runKnowledgeBaseSync`), Lambda handler (`handler.ts`), and types.
+- `scripts/sync-knowledge-base.ts` — local CLI script to scrape and optionally upload.
+- `infra/knowledge-sync.yml` — standalone CloudFormation stack with a scheduled Lambda (`rate(1 day)`), EventBridge rule, and IAM role.
+- `scripts/build.mjs` — already built `src/knowledge-sync/handler.ts` into `dist/knowledge-sync/index.js`.
+
+**What was missing (the actual gap):**
+- The agent runtime (`OpenAiAgentRuntime`) never received the vector-store configuration and never exposed `file_search` as a tool to the reply agent. This meant the scraped knowledge base was uploaded to OpenAI but the agent could not query it.
+- The main CloudFormation stack (`infra/cloudformation/stack.yaml`) did not pass KB env vars (`KB_ENABLED`, `KB_VECTOR_STORE_ID`) to the runtime Lambda.
+- The deploy script (`scripts/deploy.mjs`) only deployed the main stack, not the knowledge-sync stack.
+
+**What was implemented/fixed:**
+1. **Runtime integration:**
+   - Added `knowledgeBase?: { enabled: boolean; vectorStoreId: string | null }` to `OpenAiAgentRuntime` constructor options.
+   - Added `createFileSearchTool()` method that returns a `HostedTool` with `type: 'hosted_tool'`, `name: 'file_search'`, and `providerData.vector_store_ids` when KB is enabled and a vector store ID is configured.
+   - The `file_search` tool is automatically appended to the reply agent's tool list on every `composeReply` call.
+   - `src/lambda/handler.ts` now passes `config.knowledgeBase` to the runtime constructor.
+2. **Infrastructure wiring:**
+   - Added `KB_ENABLED`, `KB_BASE_URL`, `KB_VECTOR_STORE_NAME`, `KB_VECTOR_STORE_ID` to `src/runtime/config.ts` environment schema and `AppConfig` type.
+   - Added `PRESENTATION_PROVIDER_LIMIT` env var to config (was referenced in handler but missing from schema, causing a pre-existing type error).
+3. **Uploader fix:**
+   - Fixed `openai-uploader.ts` `uploadAndPoll` call: the SDK expects `{ files: [...] }`, not a raw array. Was a type error that would have failed at runtime.
+4. **Pre-existing type-error cleanup (unrelated but blocking clean typecheck):**
+   - `src/evals/targets/offline.ts` — added missing `contactName/Email/Phone` fields to mock extractions.
+   - `src/evals/runner.ts` — added `default` case to `evaluateExpectation` switch.
+   - `src/evals/case-schema.ts` — made `benchmarkSummary` optional in `evalReportSchema`.
+   - `src/storage/plan-store.ts` — added `ttlEpochSeconds?: number` to `SavePlanInput`.
+   - `src/runtime/contracts.ts` — added `recommendationFunnel` to `ComposeReplyResult`.
+
+**Scraper validation:**
+- Ran `KB_SKIP_UPLOAD=true npx tsx scripts/sync-knowledge-base.ts` against `https://sinenvolturas.tawk.help`.
+- Result: **52 articles scraped**, output written to `dist/knowledge-base/sinenvolturas-kb.md` (1,213 lines).
+- Content categories observed: "Sobre Sin Envolturas", "Actualización Web", "FAQ", "Pagos", "Eventos". Articles cover pricing, gift lists, event planning, payment methods, commissions.
+- Build output verified: `dist/knowledge-sync/index.js` (652 KB) and sourcemap exist.
+
+**Vector store status:**
+- Quoted OpenAI API for existing vector stores: **none found** (`[]`).
+- No `KB_VECTOR_STORE_ID` configured in `.env`.
+- The knowledge-sync Lambda has never been deployed (no `.artifacts/` directory, no S3 zip history).
+
+**Deployment gaps still open:**
+1. `infra/cloudformation/stack.yaml` does **not** pass `KB_ENABLED` or `KB_VECTOR_STORE_ID` to the runtime Lambda's environment variables. The runtime will default to `enabled: true` with `vectorStoreId: null`, so `file_search` will not be attached until the env var is added.
+2. `scripts/deploy.mjs` does **not** deploy `infra/knowledge-sync.yml`. There is no automated path to:
+   - Create the knowledge-sync Lambda,
+   - Upload the `dist/knowledge-sync/` zip to the expected S3 key,
+   - Pass the OpenAI API key to the knowledge-sync Lambda (it expects `OPENAI_API_KEY` as a plain env var, not via Secrets Manager).
+3. No initial vector store creation + upload has been done. The first run requires:
+   - Creating a vector store via OpenAI API,
+   - Uploading `dist/knowledge-base/sinenvolturas-kb.md` to it,
+   - Recording the vector store ID into the runtime Lambda's env vars.
+
+**Recommended next steps (in order):**
+1. Add `KB_ENABLED` and `KB_VECTOR_STORE_ID` parameters to `infra/cloudformation/stack.yaml` and wire them into the `RuntimeFunction` environment block.
+2. Extend `scripts/deploy.mjs` (or create a separate deploy script) to:
+   - Zip `dist/knowledge-sync/` and upload to the S3 key expected by `infra/knowledge-sync.yml`,
+   - Deploy `infra/knowledge-sync.yml` with the OpenAI API key parameter,
+   - Run the knowledge-sync Lambda once manually (or wait for the scheduled trigger) to create the vector store,
+   - Capture the returned vector store ID and update the main stack's `KB_VECTOR_STORE_ID` parameter,
+   - Re-deploy the main stack so the runtime Lambda receives the vector store ID.
+3. Alternatively, do a one-time local upload to create the vector store, record the ID in `.env` and the main stack, then rely on the scheduled Lambda for subsequent updates.
+
+Reason:
+- The knowledge-sync feature was structurally complete (scraper, formatter, uploader, scheduler, build target) but lacked the final runtime integration that actually lets the agent query the knowledge base. Without this wiring, the vector store would have been a dead artifact.
+
+Decision:
+- Use the Agents SDK `HostedTool` mechanism for `file_search` rather than raw Responses API calls, because the reply agent is already instantiated through the SDK and `HostedTool` is the documented way to attach OpenAI-hosted tools.
+- Keep the knowledge-sync stack separate from the main runtime stack (as it was designed) because it has a different lifecycle, trigger pattern (scheduled vs on-demand), and S3 artifact path. But document the dependency: the main runtime needs the vector store ID that the sync stack creates.
+
+Files changed:
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/config.ts`
+- `src/runtime/contracts.ts`
+- `src/lambda/handler.ts`
+- `src/knowledge-sync/openai-uploader.ts`
+- `src/evals/targets/offline.ts`
+- `src/evals/runner.ts`
+- `src/evals/case-schema.ts`
+- `src/storage/plan-store.ts`
+- `docs/implementation-log.md`

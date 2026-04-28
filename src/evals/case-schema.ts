@@ -618,7 +618,7 @@ export const evalReportSchema = z.object({
   configSummaries: z.array(evalAggregateSummarySchema),
   targetSummaries: z.array(evalAggregateSummarySchema),
   flakyCandidates: z.array(flakyCandidateSchema),
-  benchmarkSummary: benchmarkSummarySchema,
+  benchmarkSummary: benchmarkSummarySchema.optional(),
   results: z.array(evalResultSchema),
 });
 export type EvalReport = z.infer<typeof evalReportSchema>;

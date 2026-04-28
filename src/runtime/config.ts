@@ -27,6 +27,7 @@ export type AppConfig = {
   };
   recommendation: {
     replyProviderLimit: number;
+    presentationProviderLimit: number;
     providerDetailLookupLimit: number;
   };
   conversation: {
@@ -38,6 +39,12 @@ export type AppConfig = {
   performance: {
     tableName: string | null;
     retentionDays: number;
+  };
+  knowledgeBase: {
+    baseUrl: string;
+    vectorStoreName: string;
+    vectorStoreId: string | null;
+    enabled: boolean;
   };
 };
 
@@ -59,9 +66,14 @@ const environmentSchema = z.object({
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(5),
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
   REPLY_PROVIDER_LIMIT: z.coerce.number().int().positive().default(4),
+  PRESENTATION_PROVIDER_LIMIT: z.coerce.number().int().positive().default(5),
   PROVIDER_DETAIL_LOOKUP_LIMIT: z.coerce.number().int().positive().default(3),
   PERF_TABLE_NAME: z.string().min(1).optional(),
   PERF_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  KB_BASE_URL: z.string().url().default('https://sinenvolturas.tawk.help'),
+  KB_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Knowledge Base'),
+  KB_VECTOR_STORE_ID: z.string().min(1).optional(),
+  KB_ENABLED: z.enum(['true', 'false']).default('true'),
 });
 
 export function getConfig(): AppConfig {
@@ -94,6 +106,7 @@ export function getConfig(): AppConfig {
     },
     recommendation: {
       replyProviderLimit: environment.REPLY_PROVIDER_LIMIT,
+      presentationProviderLimit: environment.PRESENTATION_PROVIDER_LIMIT,
       providerDetailLookupLimit: environment.PROVIDER_DETAIL_LOOKUP_LIMIT,
     },
     conversation: {
@@ -105,6 +118,12 @@ export function getConfig(): AppConfig {
     performance: {
       tableName: environment.PERF_TABLE_NAME ?? null,
       retentionDays: environment.PERF_RETENTION_DAYS,
+    },
+    knowledgeBase: {
+      baseUrl: environment.KB_BASE_URL,
+      vectorStoreName: environment.KB_VECTOR_STORE_NAME,
+      vectorStoreId: environment.KB_VECTOR_STORE_ID ?? null,
+      enabled: environment.KB_ENABLED === 'true',
     },
   };
 }

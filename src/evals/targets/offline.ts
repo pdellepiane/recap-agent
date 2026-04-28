@@ -113,7 +113,12 @@ class FixtureRuntime implements AgentRuntime {
 
     if (configured) {
       return {
-        extraction: configured,
+        extraction: {
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          ...configured,
+        },
         tokenUsage: null,
       };
     }
@@ -135,6 +140,9 @@ class FixtureRuntime implements AgentRuntime {
         conversationSummary: 'Offline fixture did not provide an extraction result.',
         selectedProviderHint: null,
         pauseRequested: false,
+        contactName: null,
+        contactEmail: null,
+        contactPhone: null,
       },
       tokenUsage: null,
     };

@@ -1,0 +1,90 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Scheduled knowledge base sync Lambda for Sin Envolturas help center
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Description: OpenAI API key for file upload and vector store management
+  KbBaseUrl:
+    Type: String
+    Default: https://sinenvolturas.tawk.help
+  KbVectorStoreName:
+    Type: String
+    Default: Sin Envolturas Knowledge Base
+  KbVectorStoreId:
+    Type: String
+    Default: ''
+    Description: Existing vector store ID (leave empty to create new)
+  ScheduleExpression:
+    Type: String
+    Default: rate(1 day)
+    Description: EventBridge schedule expression for sync frequency
+
+Conditions:
+  HasVectorStoreId: !Not [!Equals [!Ref KbVectorStoreId, '']]
+
+Resources:
+  KnowledgeSyncFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+
+  KnowledgeSyncFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Sub recap-agent-knowledge-sync-${Environment}
+      Runtime: nodejs24.x
+      Handler: index.handler
+      Role: !GetAtt KnowledgeSyncFunctionRole.Arn
+      Timeout: 300
+      MemorySize: 512
+      Environment:
+        Variables:
+          OPENAI_API_KEY: !Ref OpenAiApiKey
+          KB_BASE_URL: !Ref KbBaseUrl
+          KB_VECTOR_STORE_NAME: !Ref KbVectorStoreName
+          KB_VECTOR_STORE_ID: !If [HasVectorStoreId, !Ref KbVectorStoreId, !Ref AWS::NoValue]
+          NODE_OPTIONS: --enable-source-maps
+      Code:
+        S3Bucket: !Sub recap-agent-artifacts-${AWS::AccountId}-${AWS::Region}
+        S3Key: !Sub knowledge-sync/${Environment}/latest.zip
+
+  KnowledgeSyncSchedule:
+    Type: AWS::Events::Rule
+    Properties:
+      Name: !Sub recap-agent-knowledge-sync-schedule-${Environment}
+      Description: Trigger knowledge base sync on schedule
+      ScheduleExpression: !Ref ScheduleExpression
+      State: ENABLED
+      Targets:
+        - Id: KnowledgeSyncLambda
+          Arn: !GetAtt KnowledgeSyncFunction.Arn
+
+  KnowledgeSyncSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref KnowledgeSyncFunction
+      Action: lambda:InvokeFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt KnowledgeSyncSchedule.Arn
+
+Outputs:
+  KnowledgeSyncFunctionArn:
+    Description: ARN of the knowledge sync Lambda function
+    Value: !GetAtt KnowledgeSyncFunction.Arn
+  KnowledgeSyncFunctionName:
+    Description: Name of the knowledge sync Lambda function
+    Value: !Ref KnowledgeSyncFunction

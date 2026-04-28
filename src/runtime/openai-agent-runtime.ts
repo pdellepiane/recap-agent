@@ -1,4 +1,5 @@
 import { Agent, OpenAIConversationsSession, run, tool } from '@openai/agents';
+import type { HostedTool } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
@@ -72,6 +73,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       providerDetailLookupLimit: number;
       promptLoader: PromptLoader;
       providerGateway: ProviderGateway;
+      knowledgeBase?: {
+        enabled: boolean;
+        vectorStoreId: string | null;
+      };
     },
   ) {
     this.client = new OpenAI({ apiKey: options.apiKey });
@@ -109,11 +114,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     request.toolUsage.considered.push(...bundle.allowedTools);
 
+    const fileSearchTool = this.createFileSearchTool();
+    const agentTools = fileSearchTool ? [...tools, fileSearchTool] : tools;
+
     const agent = new Agent<RuntimeContext>({
       name: `reply_${request.currentNode}`,
       model: this.options.replyModel,
       instructions: () => bundle.instructions,
-      tools,
+      tools: agentTools,
       modelSettings: this.buildModelSettings({
         model: this.options.replyModel,
         cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
@@ -506,6 +514,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     ]
       .filter(Boolean)
       .join('\n\n');
+  }
+
+  private createFileSearchTool(): HostedTool | null {
+    const kb = this.options.knowledgeBase;
+    if (!kb?.enabled || !kb.vectorStoreId) {
+      return null;
+    }
+
+    return {
+      type: 'hosted_tool',
+      name: 'file_search',
+      providerData: {
+        vector_store_ids: [kb.vectorStoreId],
+      },
+    };
   }
 
   private createTools(

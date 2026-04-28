@@ -135,6 +135,7 @@ async function getRuntime(): Promise<{
         providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,
         promptLoader,
         providerGateway,
+        knowledgeBase: config.knowledgeBase,
       });
       const planStore = new DynamoPlanStore(config.storage.plansTableName, {
         region: config.aws.region,

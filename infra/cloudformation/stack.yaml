@@ -34,6 +34,16 @@ Parameters:
     Default: 30
     MinValue: 1
     MaxValue: 365
+  KbEnabled:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  KbVectorStoreId:
+    Type: String
+    Default: ''
+    Description: OpenAI vector store ID for file_search (empty to disable KB)
 
 Resources:
   PlansTable:
@@ -138,6 +148,8 @@ Resources:
           PERF_RETENTION_DAYS: !Ref PerfRetentionDays
           PROMPTS_DIR: /var/task/prompts
           SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
+          KB_ENABLED: !Ref KbEnabled
+          KB_VECTOR_STORE_ID: !Ref KbVectorStoreId
 
   RuntimeFunctionUrl:
     Type: AWS::Lambda::Url
