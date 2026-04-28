@@ -300,6 +300,23 @@ head dist/knowledge-base/cuanto-cuesta.md
 4. Check that `file_search` is in `tools_considered` in the trace.
 5. Review CloudWatch logs for `file_search_call` events.
 
+### Lambda sync fails with HTTP 403 from Tawk
+
+**Symptom:** The knowledge-sync Lambda fails immediately with `HTTP 403 for https://sinenvolturas.tawk.help/`.
+
+**Cause:** Tawk (and/or Cloudflare in front of it) blocks requests originating from AWS Lambda IP ranges.
+
+**Workaround:** Run the initial sync locally from a non-AWS IP (e.g., your laptop, GitHub Actions runner, or an EC2 with a NAT gateway):
+```bash
+OPENAI_API_KEY=sk-... npx tsx scripts/sync-knowledge-base.ts
+```
+
+Then update the knowledge-sync stack with the resulting `vectorStoreId` so the Lambda only needs to do updates (which still require scraping, so the same limitation applies).
+
+**Long-term fix:**
+- Ask Sin Envolturas to whitelist the AWS IP range in their Tawk/Cloudflare settings.
+- Or run the sync from a non-AWS environment (e.g., GitHub Actions, local cron with `aws lambda update-function-code` to push artifacts).
+
 ---
 
 ## TODO

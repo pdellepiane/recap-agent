@@ -1180,3 +1180,34 @@ Files changed:
 - `prompts/nodes/consultar_faq/transition_policy.txt`
 - `docs/knowledge-base-integration.md`
 - `docs/implementation-log.md`
+
+### Deploy knowledge-base infrastructure to AWS
+- Built and uploaded `dist/knowledge-sync/knowledge-sync.zip` to S3 (`recap-agent-artifacts-684516060775-us-east-1/knowledge-sync/dev/latest.zip`).
+- Deployed `infra/knowledge-sync.yml` as stack `recap-agent-knowledge-sync-dev` with:
+  - `OpenAiSecretArn`: `arn:aws:secretsmanager:us-east-1:684516060775:secret:recap-agent/openai-api-key-mtKG04`
+  - Weekly EventBridge schedule (`rate(7 days)`)
+- Initial Lambda invocation failed with HTTP 403 from `sinenvolturas.tawk.help` — Tawk blocks AWS Lambda IP ranges.
+- Added browser-like `User-Agent` header to scraper (`Mozilla/5.0...`), but Tawk still blocked Lambda IPs.
+- **Workaround:** Ran initial sync locally from macOS (which Tawk allows):
+  - Scraped 52 articles
+  - Created new vector store: `vs_69f0ed048b7c8191b037d68ed6e25956`
+  - Uploaded 52 files as batch `local-20260428`
+  - Batch completed successfully after ~20 polling cycles
+- Updated knowledge-sync stack with `KbVectorStoreId=vs_69f0ed048b7c8191b037d68ed6e25956`.
+- Rebuilt main runtime artifact with all KB code changes and uploaded to S3.
+- Deployed main runtime stack `recap-agent-runtime` with:
+  - `KbEnabled=true`
+  - `KbVectorStoreId=vs_69f0ed048b7c8191b037d68ed6e25956`
+- Added `KB_VECTOR_STORE_ID=vs_69f0ed048b7c8191b037d68ed6e25956` to local `.env`.
+
+Reason:
+- The infrastructure needed to be deployed so the agent runtime can actually use the vector store. Without deployment, the `file_search` tool would not be wired to any vector store.
+
+Decision:
+- Accept that Tawk blocks AWS Lambda IPs for scraping. The scheduled Lambda will need to run from a non-AWS IP (e.g., local machine, GitHub Actions, or an EC2 with a NAT gateway) until Tawk whitelists the IP or provides an API.
+- The Lambda is still valuable for scheduled triggers and manual invocation if the scraping step is skipped (e.g., if content is pushed to S3 first).
+- Document this limitation in `docs/knowledge-base-integration.md` as a known issue.
+
+Files changed:
+- `src/knowledge-sync/scraper.ts` (added User-Agent header)
+- `docs/implementation-log.md`
