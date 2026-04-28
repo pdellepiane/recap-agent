@@ -1,4 +1,4 @@
-import { Agent, OpenAIConversationsSession, run, tool } from '@openai/agents';
+import { Agent, OpenAIConversationsSession, run, tool, fileSearchTool } from '@openai/agents';
 import type { HostedTool } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
@@ -524,13 +524,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return null;
     }
 
-    return {
-      type: 'hosted_tool',
-      name: 'file_search',
-      providerData: {
-        vector_store_ids: [kb.vectorStoreId],
-      },
-    };
+    return fileSearchTool(kb.vectorStoreId);
   }
 
   private createTools(
