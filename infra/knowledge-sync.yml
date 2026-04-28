@@ -1,5 +1,5 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Scheduled knowledge base sync Lambda for Sin Envolturas help center
+Description: Knowledge base sync Lambda for Sin Envolturas help center (S3-triggered + scheduled)
 
 Parameters:
   Environment:
@@ -45,6 +45,14 @@ Resources:
                 Action:
                   - secretsmanager:GetSecretValue
                 Resource: !Ref OpenAiSecretArn
+        - PolicyName: recap-agent-knowledge-sync-s3
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub arn:aws:s3:::recap-agent-artifacts-${AWS::AccountId}-${AWS::Region}/knowledge-sync/${Environment}/*
 
   KnowledgeSyncFunction:
     Type: AWS::Lambda::Function
@@ -61,6 +69,8 @@ Resources:
           KB_BASE_URL: !Ref KbBaseUrl
           KB_VECTOR_STORE_NAME: !Ref KbVectorStoreName
           KB_VECTOR_STORE_ID: !If [HasVectorStoreId, !Ref KbVectorStoreId, !Ref AWS::NoValue]
+          ARTIFACT_BUCKET: !Sub recap-agent-artifacts-${AWS::AccountId}-${AWS::Region}
+          AWS_ACCOUNT_ID: !Ref AWS::AccountId
           NODE_OPTIONS: --enable-source-maps
       Code:
         S3Bucket: !Sub recap-agent-artifacts-${AWS::AccountId}-${AWS::Region}
@@ -70,7 +80,7 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub recap-agent-knowledge-sync-schedule-${Environment}
-      Description: Trigger knowledge base sync weekly
+      Description: Trigger knowledge base sync weekly from S3
       ScheduleExpression: rate(7 days)
       State: ENABLED
       Targets:
@@ -84,6 +94,16 @@ Resources:
       Action: lambda:InvokeFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt KnowledgeSyncSchedule.Arn
+
+  # S3 notification to trigger Lambda when articles are uploaded
+  KnowledgeSyncS3Permission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName: !Ref KnowledgeSyncFunction
+      Action: lambda:InvokeFunction
+      Principal: s3.amazonaws.com
+      SourceArn: !Sub arn:aws:s3:::recap-agent-artifacts-${AWS::AccountId}-${AWS::Region}
+      SourceAccount: !Ref AWS::AccountId
 
 Outputs:
   KnowledgeSyncFunctionArn:

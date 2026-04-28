@@ -1,9 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import { TawkHelpScraper } from './scraper';
-import { formatArticleToMarkdown } from './formatter';
 import { OpenAiKnowledgeUploader } from './openai-uploader';
-import type { KnowledgeBaseSyncConfig, FormattedArticle } from './types';
+import type { KnowledgeBaseSyncConfig } from './types';
 
 export interface SyncResult {
   articlesScraped: number;
@@ -12,54 +10,46 @@ export interface SyncResult {
   vectorStoreId: string;
 }
 
-export async function runKnowledgeBaseSync(config: KnowledgeBaseSyncConfig): Promise<SyncResult> {
-  const scraper = new TawkHelpScraper(config.baseUrl);
-  const articles = await scraper.scrapeAllArticles();
+export async function runKnowledgeBaseSyncFromDir(
+  config: KnowledgeBaseSyncConfig,
+  articleCount?: number,
+): Promise<SyncResult> {
+  const outputDir = config.outputDir;
+  fs.mkdirSync(outputDir, { recursive: true });
 
-  console.log(`Scraped ${articles.length} articles`);
+  const mdFiles = fs.readdirSync(outputDir).filter((f) => f.endsWith('.md'));
+  const articlesScraped = articleCount ?? mdFiles.length;
 
-  // Format each article as individual markdown file with YAML frontmatter
-  const formattedArticles: Array<{ article: FormattedArticle; tempPath: string; slug: string; category: string; articleType: string }> = [];
-
-  fs.mkdirSync(config.outputDir, { recursive: true });
-
-  for (const article of articles) {
-    const formatted = formatArticleToMarkdown(article, config.baseUrl);
-    const fileName = `${article.slug}.md`;
-    const tempPath = path.join(config.outputDir, fileName);
-    fs.writeFileSync(tempPath, formatted.markdown, 'utf-8');
-
-    formattedArticles.push({
-      article: formatted,
-      tempPath,
-      slug: article.slug,
-      category: formatted.metadata.category,
-      articleType: formatted.metadata.articleType,
-    });
+  if (mdFiles.length === 0) {
+    throw new Error(`No markdown files found in ${outputDir}`);
   }
 
-  console.log(`Wrote ${formattedArticles.length} articles to ${config.outputDir}`);
+  console.log(`Processing ${mdFiles.length} articles from ${outputDir}`);
 
-  // Generate a batch ID based on timestamp
   const batchId = `kb-${new Date().toISOString().split('T')[0].replace(/-/g, '')}`;
 
   const uploader = new OpenAiKnowledgeUploader(config);
 
-  const uploadResult = await uploader.uploadBatch(
-    formattedArticles.map((fa) => ({
-      filePath: fa.tempPath,
-      slug: fa.slug,
-      category: fa.category,
-      articleType: fa.articleType,
-    })),
-    batchId,
-  );
+  const articleFiles = mdFiles.map((fileName) => {
+    const slug = fileName.replace(/\.md$/, '');
+    const filePath = path.join(outputDir, fileName);
+    // Try to infer category from frontmatter if possible, otherwise use slug
+    const content = fs.readFileSync(filePath, 'utf-8');
+    const categoryMatch = content.match(/^category:\s*"([^"]+)"/m);
+    const typeMatch = content.match(/^article_type:\s*(\w+)/m);
+    return {
+      filePath,
+      slug,
+      category: categoryMatch?.[1] ?? 'General',
+      articleType: typeMatch?.[1] ?? 'faq',
+    };
+  });
 
-  // Clean up old batches from the vector store
+  const uploadResult = await uploader.uploadBatch(articleFiles, batchId);
   await uploader.cleanupOldBatches(uploadResult.vectorStoreId, batchId);
 
   return {
-    articlesScraped: articles.length,
+    articlesScraped,
     batchId: uploadResult.batchId,
     fileIds: uploadResult.fileIds,
     vectorStoreId: uploadResult.vectorStoreId,
