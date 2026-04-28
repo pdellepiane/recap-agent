@@ -1,0 +1,22 @@
+name: Test Tawk Access
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-tawk:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Test Tawk from GitHub Actions IP
+        run: |
+          echo "Testing Tawk access from GitHub Actions..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36" \
+            "https://sinenvolturas.tawk.help/")
+          echo "HTTP Status: $STATUS"
+          if [ "$STATUS" = "200" ]; then
+            echo "✅ Tawk is accessible from GitHub Actions"
+          else
+            echo "❌ Tawk blocks GitHub Actions (HTTP $STATUS)"
+          fi
+          exit 0
