@@ -200,28 +200,23 @@ npx tsx scripts/sync-knowledge-base.ts
 
 ---
 
-## Deployment (Serverless)
+## Deployment
 
-### Architecture
+### Current architecture
 
-The sync pipeline is split into two parts to bypass Tawk's AWS IP block:
+**Tawk blocks both AWS Lambda and GitHub Actions IPs** (confirmed via testing). Scraping must be done from a non-cloud IP (local machine, office network, etc.).
 
-1. **GitHub Actions** (non-AWS IP) scrapes Tawk articles weekly
-2. **GitHub Actions** uploads scraped articles as a zip to S3
-3. **GitHub Actions** invokes the knowledge-sync Lambda with `source: "github-actions"`
-4. **Lambda** (serverless) downloads the zip from S3, extracts articles, and uploads to OpenAI vector store
-5. **Lambda** also runs on a weekly EventBridge schedule as a fallback/re-sync
+The pipeline is:
 
 ```
-GitHub Actions (cron weekly)
-  │ scrapes sinenvolturas.tawk.help (non-blocked IP)
+Local machine (non-blocked IP)
+  │ scrapes sinenvolturas.tawk.help
   │ uploads articles zip to S3
   │ invokes Lambda
   ▼
 S3 bucket: knowledge-sync/dev/articles-latest.zip
-  │
   ▼
-Lambda: recap-agent-knowledge-sync-dev
+Lambda: recap-agent-knowledge-sync-dev (serverless)
   │ downloads zip from S3
   │ extracts markdown files
   │ uploads to OpenAI vector store
@@ -230,12 +225,13 @@ Lambda: recap-agent-knowledge-sync-dev
 OpenAI Vector Store
 ```
 
+The Lambda also runs on a weekly EventBridge schedule as a re-sync (pulls latest articles from S3 and re-uploads to OpenAI).
+
 ### Prerequisites
 
 - OpenAI API key stored in AWS Secrets Manager (same secret used by main runtime)
 - S3 bucket `recap-agent-artifacts-{accountId}-{region}` exists
-- GitHub repository with Actions enabled
-- AWS CLI access to create IAM resources (one-time setup)
+- AWS CLI credentials configured locally
 
 ### Deployment order
 
@@ -258,7 +254,7 @@ OpenAI Vector Store
        OpenAiSecretArn=arn:aws:secretsmanager:...:secret:recap-agent/openai-api-key
    ```
 
-3. **Run initial sync locally** (to create the vector store, since Tawk blocks AWS IPs):
+3. **Run initial sync locally** (to create the vector store):
    ```bash
    OPENAI_API_KEY=sk-... npx tsx scripts/sync-knowledge-base.ts
    ```
@@ -291,72 +287,27 @@ OpenAI Vector Store
        KbVectorStoreId=vs_xxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
-6. **Set up GitHub OIDC** (one-time, no secrets to rotate):
-   ```bash
-   # Create the OIDC identity provider for GitHub Actions
-   aws iam create-open-id-connect-provider \
-     --url https://token.actions.githubusercontent.com \
-     --thumbprint-list 6938fd4e98bab03faadb97b34396831e3780aea1 1c9a6db6b9184705c81af9f9d7b9a74245b79ef5 \
-     --client-id-list sts.amazonaws.com
+### Running a sync (manual)
 
-   # Create the IAM role (trust policy restricts to your repo only)
-   cat > /tmp/trust-policy.json << 'EOF'
-   {
-     "Version": "2012-10-17",
-     "Statement": [{
-       "Effect": "Allow",
-       "Principal": {
-         "Federated": "arn:aws:iam::{accountId}:oidc-provider/token.actions.githubusercontent.com"
-       },
-       "Action": "sts:AssumeRoleWithWebIdentity",
-       "Condition": {
-         "StringEquals": {
-           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
-         },
-         "StringLike": {
-           "token.actions.githubusercontent.com:sub": "repo:pdellepiane/recap-agent:*"
-         }
-       }
-     }]
-   }
-   EOF
-   aws iam create-role --role-name recap-agent-github-actions \
-     --assume-role-policy-document file:///tmp/trust-policy.json
+Since Tawk blocks cloud IPs, the scraping step must run locally:
 
-   # Attach permissions (S3 write, Lambda invoke, Secrets Manager read)
-   cat > /tmp/permissions-policy.json << 'EOF'
-   {
-     "Version": "2012-10-17",
-     "Statement": [
-       {
-         "Sid": "S3UploadKnowledgeBase",
-         "Effect": "Allow",
-         "Action": ["s3:PutObject"],
-         "Resource": "arn:aws:s3:::recap-agent-artifacts-{accountId}-{region}/knowledge-sync/dev/*"
-       },
-       {
-         "Sid": "LambdaInvokeKnowledgeSync",
-         "Effect": "Allow",
-         "Action": ["lambda:InvokeFunction"],
-         "Resource": "arn:aws:lambda:{region}:{accountId}:function:recap-agent-knowledge-sync-dev"
-       },
-       {
-         "Sid": "SecretsManagerReadOpenAI",
-         "Effect": "Allow",
-         "Action": ["secretsmanager:GetSecretValue"],
-         "Resource": "arn:aws:secretsmanager:{region}:{accountId}:secret:recap-agent/openai-api-key-*"
-       }
-     ]
-   }
-   EOF
-   aws iam put-role-policy --role-name recap-agent-github-actions \
-     --policy-name recap-agent-github-actions-policy \
-     --policy-document file:///tmp/permissions-policy.json
-   ```
+```bash
+# 1. Scrape locally
+OPENAI_API_KEY=sk-... npx tsx scripts/sync-knowledge-base.ts
+# Or skip OpenAI upload: KB_SKIP_UPLOAD=true npx tsx scripts/sync-knowledge-base.ts
 
-That's it. **No secrets to store in GitHub.** The workflow uses OIDC to assume the IAM role, and the Lambda reads the OpenAI key from Secrets Manager. No manual rotation needed.
+# 2. Upload articles to S3
+cd dist/knowledge-base && zip -r ../../knowledge-base-articles.zip . && cd ../..
+aws s3 cp knowledge-base-articles.zip \
+  s3://recap-agent-artifacts-{accountId}-{region}/knowledge-sync/dev/articles-latest.zip
 
-The GitHub Actions workflow (`.github/workflows/knowledge-sync.yml`) will run automatically every Sunday at 06:00 UTC.
+# 3. Trigger Lambda
+aws lambda invoke \
+  --function-name recap-agent-knowledge-sync-dev \
+  --payload '{"source":"manual"}' \
+  --cli-binary-format raw-in-base64-out \
+  response.json
+```
 
 ### IAM permissions
 
@@ -364,11 +315,6 @@ The knowledge-sync Lambda role needs:
 - `AWSLambdaBasicExecutionRole` (CloudWatch Logs)
 - `secretsmanager:GetSecretValue` for the OpenAI secret
 - `s3:GetObject` for the articles zip file
-
-The GitHub Actions IAM role (`recap-agent-github-actions`) has:
-- `s3:PutObject` for uploading articles to S3
-- `lambda:InvokeFunction` for triggering the sync Lambda
-- `secretsmanager:GetSecretValue` for reading the OpenAI key (if ever needed by the workflow itself)
 
 ---
 
@@ -421,24 +367,30 @@ head dist/knowledge-base/cuanto-cuesta.md
 
 **Symptom:** The knowledge-sync Lambda fails immediately with `HTTP 403 for https://sinenvolturas.tawk.help/`.
 
-**Cause:** Tawk (and/or Cloudflare in front of it) blocks requests originating from AWS Lambda IP ranges.
+**Cause:** Tawk (and/or Cloudflare in front of it) blocks requests originating from AWS Lambda and GitHub Actions IP ranges.
 
-**Solution:** The architecture intentionally separates scraping from upload:
-- **GitHub Actions** (non-AWS IPs) handles scraping weekly
-- **AWS Lambda** (serverless) handles OpenAI upload from S3
+**Solution:** Run the scraper locally from a non-blocked IP (your laptop, office network, etc.), then upload the articles to S3 and trigger the Lambda:
 
-If you need to run the scraper locally:
 ```bash
-OPENAI_API_KEY=sk-... npx tsx scripts/sync-knowledge-base.ts
+# 1. Scrape locally
+KB_SKIP_UPLOAD=true npx tsx scripts/sync-knowledge-base.ts
+
+# 2. Upload to S3
+cd dist/knowledge-base && zip -r ../../knowledge-base-articles.zip . && cd ../..
+aws s3 cp knowledge-base-articles.zip \
+  s3://recap-agent-artifacts-{accountId}-{region}/knowledge-sync/dev/articles-latest.zip
+
+# 3. Trigger Lambda
+aws lambda invoke \
+  --function-name recap-agent-knowledge-sync-dev \
+  --payload '{"source":"manual"}' \
+  --cli-binary-format raw-in-base64-out \
+  response.json
 ```
 
-If GitHub Actions is failing, check:
-1. The workflow run logs in the GitHub Actions tab
-2. AWS credentials in GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
-3. S3 upload permissions
-
 **Long-term fix:**
-- Ask Sin Envolturas to whitelist GitHub Actions IP ranges in their Tawk/Cloudflare settings (if blocking becomes an issue there too).
+- Ask Sin Envolturas to whitelist your office/IP range in their Tawk/Cloudflare settings.
+- Or request a Tawk API key or webhook for programmatic access to help center content.
 
 ---
 

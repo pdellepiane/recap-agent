@@ -1236,3 +1236,33 @@ Files changed:
 - `.github/workflows/knowledge-sync.yml`
 - `docs/knowledge-base-integration.md`
 - `docs/implementation-log.md`
+
+### Clean up: remove GitHub Actions automation after Tawk IP blocking confirmed
+**Problem:** Both AWS Lambda and GitHub Actions IPs are blocked by Tawk/Cloudflare (HTTP 403). The automated scraping pipeline via GitHub Actions + S3 + Lambda does not work.
+
+**What was cleaned up:**
+1. Removed `.github/workflows/test-tawk.yml` (test workflow).
+2. Removed `.github/workflows/knowledge-sync.yml` (automated sync workflow).
+3. Deleted `.github/workflows/` directory entirely.
+4. Updated `docs/knowledge-base-integration.md`:
+   - Removed GitHub Actions / OIDC sections
+   - Removed serverless architecture diagram with GitHub Actions
+   - Updated deployment instructions to manual local scrape + S3 upload + Lambda trigger
+   - Updated troubleshooting to reflect that both Lambda and GitHub Actions are blocked
+5. Kept the deployed infrastructure intact:
+   - `recap-agent-knowledge-sync-dev` Lambda (works for OpenAI upload from S3)
+   - `recap-agent-runtime` stack (works with KB enabled)
+   - Vector store `vs_69f0ed048b7c8191b037d68ed6e25956` (52 articles)
+
+**Current workflow:**
+1. Scrape locally: `KB_SKIP_UPLOAD=true npx tsx scripts/sync-knowledge-base.ts`
+2. Upload to S3: `aws s3 cp knowledge-base-articles.zip s3://.../articles-latest.zip`
+3. Trigger Lambda: `aws lambda invoke --function-name recap-agent-knowledge-sync-dev ...`
+
+**Note:** A weekly EventBridge schedule still triggers the Lambda, which will re-sync from S3 if articles are present. Without manual step 1-2, the scheduled run will fail gracefully (no articles in S3).
+
+Files changed:
+- `.github/workflows/test-tawk.yml` (deleted)
+- `.github/workflows/knowledge-sync.yml` (deleted)
+- `docs/knowledge-base-integration.md`
+- `docs/implementation-log.md`
