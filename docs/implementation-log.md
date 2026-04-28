@@ -1266,3 +1266,30 @@ Files changed:
 - `.github/workflows/knowledge-sync.yml` (deleted)
 - `docs/knowledge-base-integration.md`
 - `docs/implementation-log.md`
+
+### Fix KB intent detection and first-turn "plan or question" prompt
+**Problem:** Agent did not detect `consultar_faq` intent and did not offer "plan or question" on first turn. KB vector store was deployed correctly (`KbEnabled=true`, `KbVectorStoreId=vs_...`), but prompts lacked KB awareness.
+
+**Root causes:**
+1. `prompts/extractors/field_definitions.txt` did not list `consultar_faq` as a valid `intent`.
+2. `prompts/nodes/deteccion_intencion/system.txt` and `transition_policy.txt` did not mention FAQ / KB questions.
+3. `prompts/nodes/contacto_inicial/system.txt` and `response_contract.txt` only offered event planning, not KB questions.
+4. `prompts/nodes/entrevista/system.txt` and `response_contract.txt` did not offer "plan or question" when no plan context exists yet.
+
+**Fixes:**
+1. Added `consultar_faq` intent definition to `field_definitions.txt`.
+2. Updated `deteccion_intencion` prompts to recognize FAQ questions and transition to `consultar_faq`.
+3. Updated `contacto_inicial` prompts to offer both event planning and KB questions.
+4. Updated `entrevista` prompts to ask "plan or question" when no plan data exists yet.
+
+**Deployment:** Rebuilt and redeployed `recap-agent-runtime` stack via `node scripts/deploy.mjs`. KB parameters preserved (not overridden).
+
+Files changed:
+- `prompts/extractors/field_definitions.txt`
+- `prompts/nodes/deteccion_intencion/system.txt`
+- `prompts/nodes/deteccion_intencion/transition_policy.txt`
+- `prompts/nodes/contacto_inicial/system.txt`
+- `prompts/nodes/contacto_inicial/response_contract.txt`
+- `prompts/nodes/entrevista/system.txt`
+- `prompts/nodes/entrevista/response_contract.txt`
+- `docs/implementation-log.md`
