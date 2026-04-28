@@ -11,11 +11,13 @@ on:
         required: false
         default: 'false'
 
+permissions:
+  id-token: write
+  contents: read
+
 jobs:
   scrape-and-sync:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,11 +37,13 @@ jobs:
         run: |
           npx tsx scripts/sync-knowledge-base.ts
 
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::684516060775:role/recap-agent-github-actions
+          aws-region: us-east-1
+
       - name: Upload articles to S3
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
         run: |
           cd dist/knowledge-base
           zip -r ../../knowledge-base-articles.zip .
@@ -48,14 +52,10 @@ jobs:
             s3://recap-agent-artifacts-684516060775-us-east-1/knowledge-sync/dev/articles-latest.zip
 
       - name: Trigger knowledge-sync Lambda
-        env:
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          AWS_REGION: us-east-1
         run: |
-          echo '{"source":"github-actions","force":${{ github.event.inputs.force || 'false' }}}' | base64 > /tmp/payload.b64
           aws lambda invoke \
             --function-name recap-agent-knowledge-sync-dev \
-            --payload file:///tmp/payload.b64 \
+            --payload '{"source":"github-actions","force":${{ github.event.inputs.force || false }}}' \
+            --cli-binary-format raw-in-base64-out \
             response.json
           cat response.json | jq .

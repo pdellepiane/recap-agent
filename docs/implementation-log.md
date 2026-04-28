@@ -1211,3 +1211,28 @@ Decision:
 Files changed:
 - `src/knowledge-sync/scraper.ts` (added User-Agent header)
 - `docs/implementation-log.md`
+
+### Set up GitHub OIDC for secretless AWS authentication
+**Problem:** The GitHub Actions workflow required `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY` in GitHub Secrets, which need periodic rotation and are a security risk if leaked.
+
+**Solution:** Use AWS OIDC (OpenID Connect) so GitHub Actions can assume an IAM role directly via short-lived tokens — no long-lived credentials needed.
+
+**What was done:**
+1. Created OIDC identity provider `arn:aws:iam::684516060775:oidc-provider/token.actions.githubusercontent.com`.
+2. Created IAM role `recap-agent-github-actions` with a trust policy that only allows the `pdellepiane/recap-agent` repository to assume it.
+3. Attached least-privilege permissions:
+   - `s3:PutObject` on `knowledge-sync/dev/*` (upload scraped articles)
+   - `lambda:InvokeFunction` on `recap-agent-knowledge-sync-dev` (trigger sync)
+   - `secretsmanager:GetSecretValue` on `recap-agent/openai-api-key-*` (optional, if workflow ever needs the key)
+4. Updated `.github/workflows/knowledge-sync.yml`:
+   - Added `permissions: id-token: write, contents: read`
+   - Replaced static AWS credentials with `aws-actions/configure-aws-credentials@v4` using `role-to-assume`
+   - Added `--cli-binary-format raw-in-base64-out` to the Lambda invoke command
+5. Updated `docs/knowledge-base-integration.md` with OIDC setup instructions.
+
+**Result:** Zero secrets in GitHub. The workflow authenticates to AWS via OIDC, uploads articles to S3, and invokes the Lambda. The Lambda reads the OpenAI key from Secrets Manager. No manual rotation needed for any credential.
+
+Files changed:
+- `.github/workflows/knowledge-sync.yml`
+- `docs/knowledge-base-integration.md`
+- `docs/implementation-log.md`

@@ -235,7 +235,7 @@ OpenAI Vector Store
 - OpenAI API key stored in AWS Secrets Manager (same secret used by main runtime)
 - S3 bucket `recap-agent-artifacts-{accountId}-{region}` exists
 - GitHub repository with Actions enabled
-- AWS credentials stored in GitHub Secrets (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`)
+- AWS CLI access to create IAM resources (one-time setup)
 
 ### Deployment order
 
@@ -291,9 +291,70 @@ OpenAI Vector Store
        KbVectorStoreId=vs_xxxxxxxxxxxxxxxxxxxxxxxx
    ```
 
-6. **Configure GitHub Secrets** in your repository:
-   - `AWS_ACCESS_KEY_ID`
-   - `AWS_SECRET_ACCESS_KEY`
+6. **Set up GitHub OIDC** (one-time, no secrets to rotate):
+   ```bash
+   # Create the OIDC identity provider for GitHub Actions
+   aws iam create-open-id-connect-provider \
+     --url https://token.actions.githubusercontent.com \
+     --thumbprint-list 6938fd4e98bab03faadb97b34396831e3780aea1 1c9a6db6b9184705c81af9f9d7b9a74245b79ef5 \
+     --client-id-list sts.amazonaws.com
+
+   # Create the IAM role (trust policy restricts to your repo only)
+   cat > /tmp/trust-policy.json << 'EOF'
+   {
+     "Version": "2012-10-17",
+     "Statement": [{
+       "Effect": "Allow",
+       "Principal": {
+         "Federated": "arn:aws:iam::{accountId}:oidc-provider/token.actions.githubusercontent.com"
+       },
+       "Action": "sts:AssumeRoleWithWebIdentity",
+       "Condition": {
+         "StringEquals": {
+           "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+         },
+         "StringLike": {
+           "token.actions.githubusercontent.com:sub": "repo:pdellepiane/recap-agent:*"
+         }
+       }
+     }]
+   }
+   EOF
+   aws iam create-role --role-name recap-agent-github-actions \
+     --assume-role-policy-document file:///tmp/trust-policy.json
+
+   # Attach permissions (S3 write, Lambda invoke, Secrets Manager read)
+   cat > /tmp/permissions-policy.json << 'EOF'
+   {
+     "Version": "2012-10-17",
+     "Statement": [
+       {
+         "Sid": "S3UploadKnowledgeBase",
+         "Effect": "Allow",
+         "Action": ["s3:PutObject"],
+         "Resource": "arn:aws:s3:::recap-agent-artifacts-{accountId}-{region}/knowledge-sync/dev/*"
+       },
+       {
+         "Sid": "LambdaInvokeKnowledgeSync",
+         "Effect": "Allow",
+         "Action": ["lambda:InvokeFunction"],
+         "Resource": "arn:aws:lambda:{region}:{accountId}:function:recap-agent-knowledge-sync-dev"
+       },
+       {
+         "Sid": "SecretsManagerReadOpenAI",
+         "Effect": "Allow",
+         "Action": ["secretsmanager:GetSecretValue"],
+         "Resource": "arn:aws:secretsmanager:{region}:{accountId}:secret:recap-agent/openai-api-key-*"
+       }
+     ]
+   }
+   EOF
+   aws iam put-role-policy --role-name recap-agent-github-actions \
+     --policy-name recap-agent-github-actions-policy \
+     --policy-document file:///tmp/permissions-policy.json
+   ```
+
+That's it. **No secrets to store in GitHub.** The workflow uses OIDC to assume the IAM role, and the Lambda reads the OpenAI key from Secrets Manager. No manual rotation needed.
 
 The GitHub Actions workflow (`.github/workflows/knowledge-sync.yml`) will run automatically every Sunday at 06:00 UTC.
 
@@ -303,6 +364,11 @@ The knowledge-sync Lambda role needs:
 - `AWSLambdaBasicExecutionRole` (CloudWatch Logs)
 - `secretsmanager:GetSecretValue` for the OpenAI secret
 - `s3:GetObject` for the articles zip file
+
+The GitHub Actions IAM role (`recap-agent-github-actions`) has:
+- `s3:PutObject` for uploading articles to S3
+- `lambda:InvokeFunction` for triggering the sync Lambda
+- `secretsmanager:GetSecretValue` for reading the OpenAI key (if ever needed by the workflow itself)
 
 ---
 
