@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { TawkHelpScraper } from '../src/knowledge-sync/scraper';
-import { articlesToMarkdown } from '../src/knowledge-sync/formatter';
+import { formatArticleToMarkdown } from '../src/knowledge-sync/formatter';
 import { OpenAiKnowledgeUploader } from '../src/knowledge-sync/openai-uploader';
 
 async function main() {
@@ -19,13 +19,23 @@ async function main() {
 
   console.log(`Scraped ${articles.length} articles`);
 
-  const markdown = articlesToMarkdown(articles);
-
   fs.mkdirSync(outputDir, { recursive: true });
-  const outputPath = path.join(outputDir, 'sinenvolturas-kb.md');
-  fs.writeFileSync(outputPath, markdown, 'utf-8');
 
-  console.log(`Wrote markdown to ${outputPath}`);
+  const formattedArticles: Array<{ filePath: string; slug: string; category: string; articleType: string }> = [];
+
+  for (const article of articles) {
+    const formatted = formatArticleToMarkdown(article, baseUrl);
+    const filePath = path.join(outputDir, `${article.slug}.md`);
+    fs.writeFileSync(filePath, formatted.markdown, 'utf-8');
+    formattedArticles.push({
+      filePath,
+      slug: article.slug,
+      category: formatted.metadata.category,
+      articleType: formatted.metadata.articleType,
+    });
+  }
+
+  console.log(`Wrote ${formattedArticles.length} articles to ${outputDir}`);
 
   if (!skipUpload) {
     if (!openAiApiKey) {
@@ -33,15 +43,19 @@ async function main() {
       process.exit(1);
     }
 
+    const batchId = `local-${new Date().toISOString().split('T')[0].replace(/-/g, '')}`;
+
     const uploader = new OpenAiKnowledgeUploader({
       baseUrl,
-      outputPath,
+      outputDir,
       openAiApiKey,
       vectorStoreName,
       vectorStoreId,
     });
 
-    const result = await uploader.upload(outputPath);
+    const result = await uploader.uploadBatch(formattedArticles, batchId);
+    await uploader.cleanupOldBatches(result.vectorStoreId, batchId);
+
     console.log('Upload complete:', result);
   }
 }

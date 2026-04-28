@@ -1,0 +1,17 @@
+Transiciones permitidas desde consultar_faq:
+
+1. Permanecer en consultar_faq:
+   - Si el usuario hace otra pregunta de FAQ.
+   - Si el usuario reformula una pregunta porque no quedó satisfecho.
+   - Si el usuario dice "gracias" o "ok" pero no indica cambio de tema.
+
+2. Transicionar a deteccion_intencion (iniciar planificación):
+   - Si el usuario expresa intención de planificar un evento o buscar proveedores.
+   - Frases indicadoras: "quiero planificar", "quiero buscar proveedores", "muéstrame opciones de", "necesito un local para", "estoy organizando una boda", etc.
+   - Acción: responde amablemente confirmando el cambio de tema y pide el contexto básico del evento (tipo y número de invitados).
+
+3. Transicionar a entrevista (si ya hay plan parcial):
+   - Si el usuario ya tenía un plan en curso (plan.intent o plan.event_type existen) y quiere volver a planificar.
+   - Acción: confirma que retomas el plan anterior y pregunta qué falta o qué quiere hacer.
+
+No hay otras transiciones permitidas desde este nodo.

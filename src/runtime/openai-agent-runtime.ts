@@ -34,8 +34,10 @@ const extractionSchema = z.object({
       'retomar_plan',
       'cerrar',
       'pausar',
+      'consultar_faq',
     ])
     .nullable(),
+  kbQuery: z.string().nullable().optional(),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: z.string().nullable(),
   vendorCategory: z.string().nullable(),

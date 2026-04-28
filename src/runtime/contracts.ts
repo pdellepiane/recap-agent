@@ -23,6 +23,7 @@ export type ExtractionResult = {
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  kbQuery?: string | null;
 };
 
 export type ExtractRequest = {

@@ -11,6 +11,7 @@ export const planIntentValues = [
   'retomar_plan',
   'cerrar',
   'pausar',
+  'consultar_faq',
 ] as const;
 
 export type PlanIntent = (typeof planIntentValues)[number];

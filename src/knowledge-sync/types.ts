@@ -12,9 +12,25 @@ export interface ScrapedCategory {
   articleCount: number;
 }
 
+export interface ArticleMetadata {
+  title: string;
+  slug: string;
+  category: string;
+  articleType: string;
+  tags: string[];
+  sourceUrl: string;
+  lastUpdated: string | null;
+  relatedTopics: string[];
+}
+
+export interface FormattedArticle {
+  metadata: ArticleMetadata;
+  markdown: string;
+}
+
 export interface KnowledgeBaseSyncConfig {
   baseUrl: string;
-  outputPath: string;
+  outputDir: string;
   openAiApiKey: string;
   vectorStoreName: string;
   vectorStoreId: string | null;

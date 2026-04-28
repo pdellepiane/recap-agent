@@ -167,4 +167,8 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
       'get_relevant_providers',
     ],
   },
+  consultar_faq: {
+    files: buildNodeFiles('consultar_faq'),
+    allowedTools: [],
+  },
 };

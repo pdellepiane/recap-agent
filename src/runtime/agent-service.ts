@@ -149,6 +149,7 @@ export class AgentService {
             contactName: finishedPlan.contact_name,
             contactEmail: finishedPlan.contact_email,
             contactPhone: finishedPlan.contact_phone,
+            kbQuery: null,
           },
           missingFields: finishedSufficiency.missingFields,
           searchReady: finishedSufficiency.searchReady,
@@ -329,6 +330,72 @@ export class AgentService {
         onPlanFinished: (epoch) => {
           planFinishTtlEpochSeconds = epoch;
         },
+      });
+      tokenUsage.reply = reply.tokenUsage ?? null;
+      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      const recommendationFunnel = this.resolveRecommendationFunnel(
+        reply.recommendationFunnel ?? null,
+        providerResults,
+      );
+      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+
+      await persistPlan(planToSave, planPersistReason ?? currentNode);
+      timingMs.total = Date.now() - handleTurnStartedAt;
+
+      return {
+        plan: planToSave,
+        outbound: {
+          text: reply.text,
+          conversationId: planToSave.conversation_id,
+        },
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode,
+          currentNode,
+          nodePath,
+          extraction,
+          missingFields: sufficiency.missingFields,
+          searchReady: sufficiency.searchReady,
+          promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage,
+          providerResults,
+          recommendationFunnel: recommendationFunnel,
+          planPersisted: true,
+          planPersistReason: planPersistReason,
+          timingMs,
+          tokenUsage,
+          searchStrategy,
+          operationalNote: errorMessage,
+        }),
+      };
+    }
+
+    if (extraction.intent === 'consultar_faq') {
+      currentNode = 'consultar_faq';
+      nodePath.push(currentNode);
+      // Preserve the planning state: only update current_node so resume works.
+      const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
+      await persistPlan(planToSave, 'consultar_faq');
+      planPersisted = true;
+      planPersistReason = 'consultar_faq';
+
+      const promptBundleStartedAt = Date.now();
+      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+      const composeReplyStartedAt = Date.now();
+      const reply = await this.dependencies.runtime.composeReply({
+        currentNode,
+        previousNode,
+        userMessage: inbound.text,
+        plan: planToSave,
+        missingFields: sufficiency.missingFields,
+        searchReady: sufficiency.searchReady,
+        providerResults,
+        errorMessage,
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
+        toolUsage,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -728,6 +795,10 @@ export class AgentService {
 
     if (extraction.intent === 'confirmar_proveedor') {
       return 'usuario_elige_proveedor';
+    }
+
+    if (extraction.intent === 'consultar_faq') {
+      return 'consultar_faq';
     }
 
     if ((plan.missing_fields ?? []).length > 0) {

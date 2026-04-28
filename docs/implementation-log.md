@@ -1087,3 +1087,96 @@ Files changed:
 - `src/evals/case-schema.ts`
 - `src/storage/plan-store.ts`
 - `docs/implementation-log.md`
+
+### Redesign knowledge-base as first-class state-machine node
+**Problem with previous approach:**
+- `file_search` was an ambient tool injected on every reply agent call regardless of node. The LLM decided whether to use it, but there was no explicit KB intent, no dedicated prompt bundle, no tracking of KB mode vs planning mode, and no clean return path.
+- The scraper produced one monolithic markdown file with no per-article metadata.
+- The sync schedule was daily (too frequent) and used a plain `OPENAI_API_KEY` env var instead of Secrets Manager.
+
+**New state-machine node: `consultar_faq`**
+- Added `consultar_faq` to `decisionNodes`, `planIntentValues`, and extraction schema.
+- Added `kbQuery: string | null` to extraction schema and `ExtractionResult` contract.
+- Added KB intent branch in `AgentService.handleTurn()`:
+  - Sets `current_node = 'consultar_faq'`
+  - Persists the plan with `current_node` updated but NO changes to planning fields (`event_type`, `vendor_category`, `provider_needs`, etc.)
+  - Loads the `consultar_faq` prompt bundle
+  - Returns immediately (skips search/selection flow)
+- Added resume logic in `resolveResumeNode()`: if returning from `consultar_faq`, resume to `entrevista` (if plan has prior context) or `deteccion_intencion` (if fresh).
+- Added `resolveExtractionNode()` mapping: `extraction.intent === 'consultar_faq'` → `'consultar_faq'`.
+- Created prompt bundle `prompts/nodes/consultar_faq/`:
+  - `system.txt` — Node objective, constraints, exit behavior
+  - `response_contract.txt` — Tone, citation rules, re-ask support, transition to planning
+  - `tool_policy.txt` — Only `file_search` (no provider tools)
+  - `transition_policy.txt` — Rules for staying in KB vs switching to planning
+- Added `consultar_faq` to `nodePromptManifest` with empty `allowedTools` (file_search is a hosted tool injected by runtime, not a function tool).
+
+**Scraper redesign: per-article markdown with YAML frontmatter**
+- Rewrote `src/knowledge-sync/formatter.ts` to produce one file per article instead of a monolithic file.
+- Each article now has YAML frontmatter with:
+  - `title`, `slug`, `category` (scraped)
+  - `article_type` (heuristic mapper: `pricing`, `faq`, `tutorial`, `announcement`, `policy`, `event_guide`, `about`)
+  - `tags` (auto-extracted from content keywords, max 8)
+  - `source_url` (link back to Tawk)
+  - `last_updated` (scraped timestamp)
+  - `related_topics` (broader topic buckets, max 5)
+- Added `ArticleMetadata`, `FormattedArticle` types to `src/knowledge-sync/types.ts`.
+
+**Uploader redesign: batch rotation with cleanup**
+- Rewrote `OpenAiKnowledgeUploader` to support batch uploads:
+  - `uploadBatch()` uploads each article file individually, then creates a vector store file batch with `batch_id` and `source` attributes.
+  - `cleanupOldBatches()` lists all files in the vector store and deletes those whose `batch_id` does not match the current run.
+  - Polls batch status until `completed` (max 5 min wait).
+- This replaces the old single-file upload that would have accumulated stale content over time.
+
+**Sync handler improvements**
+- Updated `src/knowledge-sync/handler.ts` to support Secrets Manager (`OPENAI_SECRET_ID`) as the primary auth path, with `OPENAI_API_KEY` as fallback.
+- Added manual trigger support via `?force=true` query parameter or `{ "force": true }` body payload.
+- Updated `src/knowledge-sync/sync.ts` to orchestrate per-article formatting and batch upload.
+
+**CloudFormation updates**
+- `infra/knowledge-sync.yml`:
+  - Changed schedule from `rate(1 day)` to `rate(7 days)` (weekly).
+  - Replaced plain `OpenAiApiKey` parameter with `OpenAiSecretArn` (Secrets Manager).
+  - Added IAM policy `secretsmanager:GetSecretValue`.
+- `infra/cloudformation/stack.yaml` (main runtime):
+  - Already had `KbEnabled` and `KbVectorStoreId` parameters from previous commit.
+  - Verified they are wired into `RuntimeFunction` environment variables.
+
+**Documentation**
+- Created `docs/knowledge-base-integration.md` covering architecture, file rotation, metadata schema, state machine integration, scheduling, deployment guide, cost considerations, and troubleshooting.
+- Added TODO section for future `script_id` integration when response scripts are confirmed.
+
+**Verified:**
+- Scraper produces 52 individual `.md` files with YAML frontmatter.
+- Build succeeds (`dist/knowledge-sync/index.js` generated).
+- Typecheck and tests pass.
+
+Reason:
+- An ambient `file_search` tool created ambiguity: the LLM could invoke it during provider recommendation or extraction phases, leading to inconsistent behavior and no clear tracking of whether the user was in "FAQ mode" or "planning mode".
+
+Decision:
+- Make the knowledge base a first-class decision node with its own prompt bundle, explicit intent (`consultar_faq`), and clean entry/exit semantics. This aligns with the existing node-aligned architecture and makes KB interactions observable in traces and perf records.
+- Use per-article files with metadata to enable future filtering, script matching, and granular debugging.
+
+Files changed:
+- `src/core/decision-nodes.ts`
+- `src/core/decision-flow.ts`
+- `src/core/plan.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/prompt-manifest.ts`
+- `src/knowledge-sync/types.ts`
+- `src/knowledge-sync/formatter.ts`
+- `src/knowledge-sync/openai-uploader.ts`
+- `src/knowledge-sync/sync.ts`
+- `src/knowledge-sync/handler.ts`
+- `scripts/sync-knowledge-base.ts`
+- `infra/knowledge-sync.yml`
+- `prompts/nodes/consultar_faq/system.txt`
+- `prompts/nodes/consultar_faq/response_contract.txt`
+- `prompts/nodes/consultar_faq/tool_policy.txt`
+- `prompts/nodes/consultar_faq/transition_policy.txt`
+- `docs/knowledge-base-integration.md`
+- `docs/implementation-log.md`

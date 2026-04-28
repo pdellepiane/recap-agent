@@ -6,10 +6,9 @@ Parameters:
     Type: String
     Default: dev
     AllowedValues: [dev, prod]
-  OpenAiApiKey:
+  OpenAiSecretArn:
     Type: String
-    NoEcho: true
-    Description: OpenAI API key for file upload and vector store management
+    Description: ARN of the Secrets Manager secret containing the OpenAI API key
   KbBaseUrl:
     Type: String
     Default: https://sinenvolturas.tawk.help
@@ -20,10 +19,6 @@ Parameters:
     Type: String
     Default: ''
     Description: Existing vector store ID (leave empty to create new)
-  ScheduleExpression:
-    Type: String
-    Default: rate(1 day)
-    Description: EventBridge schedule expression for sync frequency
 
 Conditions:
   HasVectorStoreId: !Not [!Equals [!Ref KbVectorStoreId, '']]
@@ -41,6 +36,15 @@ Resources:
             Action: sts:AssumeRole
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: recap-agent-knowledge-sync-secrets
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - secretsmanager:GetSecretValue
+                Resource: !Ref OpenAiSecretArn
 
   KnowledgeSyncFunction:
     Type: AWS::Lambda::Function
@@ -53,7 +57,7 @@ Resources:
       MemorySize: 512
       Environment:
         Variables:
-          OPENAI_API_KEY: !Ref OpenAiApiKey
+          OPENAI_SECRET_ID: !Ref OpenAiSecretArn
           KB_BASE_URL: !Ref KbBaseUrl
           KB_VECTOR_STORE_NAME: !Ref KbVectorStoreName
           KB_VECTOR_STORE_ID: !If [HasVectorStoreId, !Ref KbVectorStoreId, !Ref AWS::NoValue]
@@ -66,8 +70,8 @@ Resources:
     Type: AWS::Events::Rule
     Properties:
       Name: !Sub recap-agent-knowledge-sync-schedule-${Environment}
-      Description: Trigger knowledge base sync on schedule
-      ScheduleExpression: !Ref ScheduleExpression
+      Description: Trigger knowledge base sync weekly
+      ScheduleExpression: rate(7 days)
       State: ENABLED
       Targets:
         - Id: KnowledgeSyncLambda
@@ -88,3 +92,6 @@ Outputs:
   KnowledgeSyncFunctionName:
     Description: Name of the knowledge sync Lambda function
     Value: !Ref KnowledgeSyncFunction
+  VectorStoreId:
+    Description: Vector store ID (if created by the sync job, this will be empty until first run)
+    Value: !If [HasVectorStoreId, !Ref KbVectorStoreId, 'created-on-first-run']

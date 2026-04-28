@@ -22,6 +22,7 @@ export const decisionNodes = [
   'guardar_cerrar_temporalmente',
   'informar_error_reintento',
   'reintentar',
+  'consultar_faq',
 ] as const;
 
 export type DecisionNode = (typeof decisionNodes)[number];
