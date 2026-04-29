@@ -432,11 +432,10 @@ export function summarizeRecommendedProviders(providers: ProviderSummary[]): str
       const price = provider.priceLevel ? ` (${provider.priceLevel})` : '';
       const differentiators = [
         provider.promoBadge ?? provider.promoSummary ?? null,
-        provider.serviceHighlights?.slice(0, 2).join(', ') || null,
+        provider.serviceHighlights?.slice(0, 1).join(', ') || null,
         provider.descriptionSnippet,
       ].filter((value): value is string => Boolean(value));
-      const detailUrl = provider.detailUrl ? ` | ficha: ${provider.detailUrl}` : '';
-      return `${index + 1}. ${provider.title}${category} | ubicación: ${location}${price}${differentiators.length > 0 ? ` | detalles: ${differentiators.join(' | ')}` : ''}${detailUrl}`;
+      return `${index + 1}. ${provider.title}${category} | ubicación: ${location}${price}${differentiators.length > 0 ? ` | detalles: ${differentiators.join(' | ')}` : ''}`;
     })
     .join('\n');
 }

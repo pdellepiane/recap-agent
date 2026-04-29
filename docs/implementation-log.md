@@ -1293,3 +1293,37 @@ Files changed:
 - `prompts/nodes/entrevista/system.txt`
 - `prompts/nodes/entrevista/response_contract.txt`
 - `docs/implementation-log.md`
+
+### Add TPM rate-limit retry mitigation
+
+- Increased `OpenAI` client `maxRetries` from 2 (default) to 3, giving the low-level SDK more room to absorb transient 429 bursts.
+- Added `ModelRetrySettings` to `buildModelSettings()` with `maxRetries: 3`, `backoff` (`initialDelayMs: 1000`, `maxDelayMs: 30_000`, `multiplier: 2`, `jitter: true`), and `policy: retryPolicies.any(retryPolicies.httpStatus([429]), retryPolicies.networkError())`.
+- This configures the agents SDK runner to retry 429 rate-limit errors and network errors up to 3 times with exponential backoff capped at 30 seconds, enough to cover the typical 20-second TPM windows reported by the OpenAI API.
+
+Reason:
+- A 429 error (`TPM Limit 200000, Used 164777, Requested 103461`) showed the agent hitting the gpt-5.4-mini tokens-per-minute ceiling mid-turn. The agents SDK's default retry policy was `maxRetries: 0` (no runner-level retries), and the raw OpenAI SDK capped backoff at 8 seconds—too short for a 20-second cooldown.
+
+Decision:
+- No behavior change: the agent still produces the same outputs. The only difference is that transient 429 responses now get retried with appropriate backoff instead of immediately failing the turn.
+
+Files changed:
+- `src/runtime/openai-agent-runtime.ts`
+- `docs/implementation-log.md`
+
+### Reduce token volume sent to extraction and reply models
+
+- `buildExtractorPlanSnapshot`: stripped provider details from the extraction prompt. Previously sent up to 8 providers with rank, id, title, slug, category, location, price_level, services (up to 4), promo, and description (140 chars). Now sends only rank, id, and title for up to 4 providers.
+  - Rationale: the extractor's job is to classify intent and extract plan fields. Knowing provider titles and IDs is enough to detect references like "el primero" or "me gusta el X"; descriptions and services do not improve extraction accuracy.
+- `summarizeRecommendedProviders`: removed `detailUrl` from every provider line and reduced `serviceHighlights` from 2 to 1.
+  - Rationale: `detailUrl` is never spoken to the user and URLs tokenize very inefficiently (~15–30 tokens each). One service highlight is sufficient to differentiate providers in the model context; two adds marginal value at non-trivial token cost.
+
+Reason:
+- The 429 TPM error indicated the agent was close to the 200k token-per-minute ceiling. Reducing prompt size lowers the per-request token footprint, decreasing the probability of hitting the limit and also reducing latency/cost.
+
+Decision:
+- These are safe cuts because none of the removed fields influence the model's behavioral contract: extraction still sees which providers exist, and reply still sees location, price, promo, description, and one service highlight for each provider.
+
+Files changed:
+- `src/runtime/openai-agent-runtime.ts`
+- `src/core/plan.ts`
+- `docs/implementation-log.md`

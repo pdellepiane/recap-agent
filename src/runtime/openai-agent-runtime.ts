@@ -1,4 +1,4 @@
-import { Agent, OpenAIConversationsSession, run, tool, fileSearchTool } from '@openai/agents';
+import { Agent, OpenAIConversationsSession, retryPolicies, run, tool, fileSearchTool } from '@openai/agents';
 import type { HostedTool } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
@@ -81,7 +81,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       };
     },
   ) {
-    this.client = new OpenAI({ apiKey: options.apiKey });
+    this.client = new OpenAI({ apiKey: options.apiKey, maxRetries: 3 });
   }
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
@@ -422,17 +422,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         missing_fields: need.missing_fields,
         selected_provider_id: need.selected_provider_id,
         selected_provider_hint: need.selected_provider_hint,
-        recommended_providers: need.recommended_providers.slice(0, 8).map((provider, index) => ({
+        recommended_providers: need.recommended_providers.slice(0, 4).map((provider, index) => ({
           rank: index + 1,
           id: provider.id,
           title: provider.title,
-          slug: provider.slug,
-          category: provider.category,
-          location: provider.location,
-          price_level: provider.priceLevel,
-          services: provider.serviceHighlights.slice(0, 4),
-          promo: provider.promoBadge ?? provider.promoSummary,
-          description: this.truncateText(provider.descriptionSnippet ?? '', 140),
         })),
       })),
       selected_provider_id: plan.selected_provider_id,
@@ -453,20 +446,37 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     providerData: Record<string, string>;
     reasoning?: { effort: 'none' };
     text?: { verbosity: 'low' };
+    retry?: {
+      maxRetries: number;
+      backoff: { initialDelayMs: number; maxDelayMs: number; multiplier: number; jitter: boolean };
+      policy: ReturnType<typeof retryPolicies.any>;
+    };
   } {
     const baseSettings: {
       promptCacheRetention: 'in-memory' | '24h';
       providerData: Record<string, string>;
       reasoning?: { effort: 'none' };
       text?: { verbosity: 'low' };
+      retry?: {
+        maxRetries: number;
+        backoff: { initialDelayMs: number; maxDelayMs: number; multiplier: number; jitter: boolean };
+        policy: ReturnType<typeof retryPolicies.any>;
+      };
     } = {
-      // The API currently expects "in_memory", while the SDK type still says "in-memory".
       promptCacheRetention:
         this.options.promptCacheRetention === 'in-memory'
           ? ('in_memory' as unknown as 'in-memory')
           : '24h',
       providerData: {
         prompt_cache_key: args.cacheKey,
+      },
+      retry: {
+        maxRetries: 3,
+        backoff: { initialDelayMs: 1000, maxDelayMs: 30_000, multiplier: 2, jitter: true },
+        policy: retryPolicies.any(
+          retryPolicies.httpStatus([429]),
+          retryPolicies.networkError(),
+        ),
       },
     };
 
