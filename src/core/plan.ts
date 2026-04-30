@@ -27,9 +27,6 @@ export const guestRangeValues = [
 
 export type GuestRange = (typeof guestRangeValues)[number];
 
-/** Cooldown after `finish_plan` before the DynamoDB plan row expires (new empty plan allowed). */
-export const FINISHED_PLAN_TTL_SECONDS = 24 * 60 * 60;
-
 export const planLifecycleValues = ['active', 'finished'] as const;
 
 export type PlanLifecycleState = (typeof planLifecycleValues)[number];
@@ -62,6 +59,11 @@ const providerSummarySchema = z.object({
   descriptionSnippet: z.string().nullish(),
   serviceHighlights: z.array(z.string()).default([]),
   termsHighlights: z.array(z.string()).default([]),
+  eventTypes: z.array(z.string()).optional(),
+  description: z.string().nullish(),
+  fitScore: z.number().min(0).max(100).nullish(),
+  fitWarnings: z.array(z.string()).optional(),
+  fitTags: z.array(z.string()).optional(),
 });
 
 export const providerNeedSchema = z.object({

@@ -16,6 +16,11 @@ export type ProviderSummary = {
   descriptionSnippet?: string | null;
   serviceHighlights: string[];
   termsHighlights: string[];
+  eventTypes?: string[];
+  description?: string | null;
+  fitScore?: number | null;
+  fitWarnings?: string[];
+  fitTags?: string[];
 };
 
 export type ProviderDetail = ProviderSummary & {

@@ -18,6 +18,7 @@ import type {
   ExtractionResult,
 } from '../src/runtime/contracts';
 import { AgentService } from '../src/runtime/agent-service';
+import { executeFinishPlanTool } from '../src/runtime/finish-plan-tool';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type {
   CategoryLocationProviderSearchInput,
@@ -33,6 +34,19 @@ import type {
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { PlanStore, SavePlanInput } from '../src/storage/plan-store';
+import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
+
+const testProviderFitCriteria = {
+  eventType: 'boda',
+  needCategory: 'fotografía',
+  location: 'Lima',
+  budgetAmount: null,
+  budgetCurrency: null,
+  budgetTier: 'medium' as const,
+  mustHave: ['natural'],
+  shouldAvoid: [],
+  rankingNotes: 'Priorizar proveedores alineados con la necesidad activa.',
+};
 
 class FakeRuntime implements AgentRuntime {
   public readonly composeRequests: ComposeReplyRequest[] = [];
@@ -58,6 +72,7 @@ class FakeRuntime implements AgentRuntime {
         contactName: null,
         contactEmail: null,
         contactPhone: null,
+        providerFitCriteria: testProviderFitCriteria,
       };
     }
 
@@ -81,6 +96,7 @@ class FakeRuntime implements AgentRuntime {
         contactName: null,
         contactEmail: null,
         contactPhone: null,
+        providerFitCriteria: testProviderFitCriteria,
       };
     }
 
@@ -103,6 +119,7 @@ class FakeRuntime implements AgentRuntime {
       contactName: null,
       contactEmail: null,
       contactPhone: null,
+      providerFitCriteria: testProviderFitCriteria,
     };
   }
 
@@ -311,8 +328,6 @@ class RecordingPlanStore implements PlanStore {
 
   public readonly saves: SavePlanInput[] = [];
 
-  public readonly ttls: Array<number | undefined> = [];
-
   async getByExternalUser(
     channel: string,
     externalUserId: string,
@@ -325,13 +340,16 @@ class RecordingPlanStore implements PlanStore {
   async save(input: SavePlanInput): Promise<void> {
     this.currentPlan = input.plan;
     this.saves.push(input);
-    this.ttls.push(input.ttlEpochSeconds);
   }
 }
 
 describe('AgentService', () => {
   const promptsDir = path.resolve(process.cwd(), 'prompts');
   const promptLoader = new PromptLoader(promptsDir);
+  const renderers = {
+    whatsapp: new WhatsAppMessageRenderer(),
+    terminal_whatsapp: new WhatsAppMessageRenderer(),
+  };
 
   it('persists the plan after extraction and moves to recommendation when search succeeds', async () => {
     const runtime = new FakeRuntime();
@@ -341,6 +359,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: new FakeGateway(),
       promptLoader,
+      renderers,
     });
 
     const response = await service.handleTurn({
@@ -382,6 +401,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: new FakeGateway(),
       promptLoader,
+      renderers,
     });
 
     const response = await service.handleTurn({
@@ -419,6 +439,7 @@ describe('AgentService', () => {
             contactName: null,
             contactEmail: null,
             contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
           };
         }
 
@@ -434,6 +455,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -548,6 +570,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -560,6 +583,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -632,6 +656,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -693,6 +718,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -782,6 +808,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -805,6 +832,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -892,6 +920,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -954,6 +983,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1040,6 +1070,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1082,6 +1113,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1167,6 +1199,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1260,6 +1293,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1362,6 +1396,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1397,6 +1432,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1500,6 +1536,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1532,6 +1569,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1652,6 +1690,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1664,6 +1703,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1773,6 +1813,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1785,6 +1826,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const seededPlan = mergePlan(
@@ -1896,6 +1938,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1908,6 +1951,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const response = await service.handleTurn({
@@ -1944,6 +1988,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -1956,6 +2001,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const response = await service.handleTurn({
@@ -1994,6 +2040,7 @@ describe('AgentService', () => {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
         };
       }
     }
@@ -2005,6 +2052,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: new FakeGateway(),
       promptLoader,
+      renderers,
     });
 
     const response = await service.handleTurn({
@@ -2018,7 +2066,7 @@ describe('AgentService', () => {
     expect(response.plan.guest_range).toBe('51-100');
   });
 
-  it('returns a deterministic reply when the stored plan is already finished', async () => {
+  it('resets a finished plan when the user starts a new planning request', async () => {
     const runtime = new FakeRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new FakeGateway();
@@ -2027,6 +2075,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: gateway,
       promptLoader,
+      renderers,
     });
 
     const finishedPlan = mergePlan(
@@ -2054,17 +2103,16 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(runtime.composeRequests).toHaveLength(0);
-    expect(gateway.searchCalls).toBe(0);
-    expect(response.trace.prompt_bundle_id).toBe('skipped_finished_plan');
-    expect(response.outbound.text).toContain('24 horas');
-    expect(response.plan.lifecycle_state).toBe('finished');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(gateway.searchCalls).toBe(1);
+    expect(response.outbound.text).not.toContain('24 horas');
+    expect(response.outbound.text).not.toContain('enfriamiento');
+    expect(response.plan.lifecycle_state).toBe('active');
   });
 
-  it('persists a finish TTL when runtime marks plan as finished', async () => {
+  it('persists finished plans without a TTL when runtime marks plan as finished', async () => {
     class FinishingRuntime extends FakeRuntime {
       override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
-        request.onPlanFinished?.(1_750_000_000);
         const finished = mergePlan(request.plan as PlanSnapshot, {
           lifecycle_state: 'finished',
           contact_name: 'Lin',
@@ -2084,6 +2132,7 @@ describe('AgentService', () => {
       runtime,
       providerGateway: new FakeGateway(),
       promptLoader,
+      renderers,
     });
 
     await service.handleTurn({
@@ -2094,8 +2143,430 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(planStore.ttls.some((value) => value === 1_750_000_000)).toBe(true);
+    expect(planStore.saves.every((save) => !('ttlEpochSeconds' in save))).toBe(true);
     expect(planStore.currentPlan?.lifecycle_state).toBe('finished');
     expect(planStore.currentPlan?.contact_email).toBe('lin@example.com');
+  });
+
+  it('rejects an invalid phone immediately and does not persist it', async () => {
+    class InvalidPhoneRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        if (request.userMessage.includes('967')) {
+          return {
+            intent: 'cerrar',
+            intentConfidence: 0.95,
+            eventType: 'boda',
+            vendorCategory: 'fotografía',
+            vendorCategories: ['fotografía'],
+            activeNeedCategory: 'fotografía',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario quiere cerrar y dio un teléfono inválido.',
+            selectedProviderHint: null,
+            pauseRequested: false,
+            contactName: 'Carolina',
+            contactEmail: 'carolina@example.com',
+            contactPhone: '967',
+          };
+        }
+
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new InvalidPhoneRuntime();
+    const planStore = new RecordingPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-invalid-phone',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-invalid-phone',
+      }),
+      {
+        current_node: 'crear_lead_cerrar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        contact_name: 'Carolina',
+        contact_email: 'carolina@example.com',
+        contact_phone: null,
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: 1,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-invalid-phone',
+      text: 'mi teléfono es 967',
+      messageId: 'msg-invalid-phone',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.contact_phone).toBeNull();
+    expect(response.plan.contact_name).toBe('Carolina');
+    expect(response.plan.contact_email).toBe('carolina@example.com');
+    expect(response.trace.operational_note).toContain('teléfono');
+    expect(response.trace.extraction_summary.contact_validation_error).toContain('teléfono');
+    expect(response.trace.plan_summary.contact_validation_error).toContain('teléfono');
+  });
+
+  it('rejects an invalid email immediately and does not persist it', async () => {
+    class InvalidEmailRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        if (request.userMessage.includes('carolina.gmail.com')) {
+          return {
+            intent: 'cerrar',
+            intentConfidence: 0.95,
+            eventType: 'boda',
+            vendorCategory: 'fotografía',
+            vendorCategories: ['fotografía'],
+            activeNeedCategory: 'fotografía',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario quiere cerrar y dio un email inválido.',
+            selectedProviderHint: null,
+            pauseRequested: false,
+            contactName: 'Carolina',
+            contactEmail: 'carolina.gmail.com',
+            contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new InvalidEmailRuntime();
+    const planStore = new RecordingPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-invalid-email',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-invalid-email',
+      }),
+      {
+        current_node: 'crear_lead_cerrar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        contact_name: 'Carolina',
+        contact_email: null,
+        contact_phone: null,
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: 1,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-invalid-email',
+      text: 'mi correo es carolina.gmail.com',
+      messageId: 'msg-invalid-email',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.contact_email).toBeNull();
+    expect(response.plan.contact_name).toBe('Carolina');
+    expect(response.trace.operational_note).toContain('correo');
+  });
+
+  it('accepts a standalone phone correction via regex fallback', async () => {
+    class StandalonePhoneRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        if (request.userMessage.includes('954779071')) {
+          return {
+            intent: 'cerrar',
+            intentConfidence: 0.95,
+            eventType: 'boda',
+            vendorCategory: 'fotografía',
+            vendorCategories: ['fotografía'],
+            activeNeedCategory: 'fotografía',
+            location: 'Lima',
+            budgetSignal: null,
+            guestRange: '51-100',
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario quiere cerrar y dio su teléfono.',
+            selectedProviderHint: null,
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new StandalonePhoneRuntime();
+    const planStore = new RecordingPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-standalone-phone',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-standalone-phone',
+      }),
+      {
+        current_node: 'crear_lead_cerrar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'fotografía',
+        vendor_category: 'fotografía',
+        contact_name: 'Carolina',
+        contact_email: 'carolina@example.com',
+        contact_phone: null,
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'fotografía',
+                location: 'Lima',
+                priceLevel: '$$',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_id: 1,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-standalone-phone',
+      text: '954779071',
+      messageId: 'msg-standalone-phone',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.contact_phone).toBe('954779071');
+    expect(response.plan.contact_name).toBe('Carolina');
+    expect(response.plan.contact_email).toBe('carolina@example.com');
+    expect(response.trace.operational_note).toBeNull();
+  });
+
+  it('seeds contact phone from webhook payload and skips asking for it', async () => {
+    const runtime = new FakeRuntime();
+    const planStore = new RecordingPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-webhook-phone',
+      text: 'Busco fotógrafo para mi boda en Lima',
+      messageId: 'msg-webhook',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51 954 779 071',
+    });
+
+    expect(response.plan.contact_phone).toBe('51954779071');
+    expect(response.trace.operational_note).toBeNull();
+  });
+
+  it('splits Peruvian phone numbers correctly in finish_plan', async () => {
+    class FinishGateway extends FakeGateway {
+      public lastQuoteRequest: QuoteRequestInput | null = null;
+
+      override async createQuoteRequest(
+        input: QuoteRequestInput,
+      ): Promise<Record<string, unknown>> {
+        this.lastQuoteRequest = input;
+        return { ok: true, input };
+      }
+    }
+
+    const gateway = new FinishGateway();
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-finish-pe',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-finish-pe',
+      }),
+      {
+        contact_name: 'Carolina',
+        contact_email: 'carolina@example.com',
+        contact_phone: '51954779071',
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'selected',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [],
+            selected_provider_id: 1,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    const result = await executeFinishPlanTool({
+      plan: plan as unknown as PersistedPlan,
+      providerGateway: gateway,
+    });
+
+    expect(result.status).toBe('success');
+    expect(gateway.lastQuoteRequest?.phone).toBe('954779071');
+    expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+51');
+  });
+
+  it('splits Mexican phone numbers correctly in finish_plan', async () => {
+    class FinishGateway extends FakeGateway {
+      public lastQuoteRequest: QuoteRequestInput | null = null;
+
+      override async createQuoteRequest(
+        input: QuoteRequestInput,
+      ): Promise<Record<string, unknown>> {
+        this.lastQuoteRequest = input;
+        return { ok: true, input };
+      }
+    }
+
+    const gateway = new FinishGateway();
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-finish-mx',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-finish-mx',
+      }),
+      {
+        contact_name: 'Carlos',
+        contact_email: 'carlos@example.com',
+        contact_phone: '5215512345678',
+        provider_needs: [
+          {
+            category: 'fotografía',
+            status: 'selected',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [],
+            selected_provider_id: 1,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    const result = await executeFinishPlanTool({
+      plan: plan as unknown as PersistedPlan,
+      providerGateway: gateway,
+    });
+
+    expect(result.status).toBe('success');
+    expect(gateway.lastQuoteRequest?.phone).toBe('15512345678');
+    expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+52');
   });
 });

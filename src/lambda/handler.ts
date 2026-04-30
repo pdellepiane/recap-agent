@@ -8,6 +8,7 @@ import { DynamoPlanStore } from '../storage/dynamo-plan-store';
 import { OpenAiAgentRuntime } from '../runtime/openai-agent-runtime';
 import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
 import { AgentService } from '../runtime/agent-service';
+import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
 import { resolveOpenAiApiKey } from '../runtime/secrets';
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
@@ -16,10 +17,12 @@ import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
 type TerminalRequestBody = {
   text: string;
   user_id: string;
-  channel?: string;
+  channel: string;
   message_id?: string;
   received_at?: string;
   client_mode?: 'cli' | 'channel';
+  /** Phone number provided by the channel payload (e.g. WhatsApp). */
+  contact_phone?: string | null;
 };
 
 const config = getConfig();
@@ -41,11 +44,11 @@ export async function handler(
 
     const body = JSON.parse(event.body) as TerminalRequestBody;
 
-    if (!body.text || !body.user_id) {
-      return json(400, { error: 'text and user_id are required.' });
+    if (!body.text || !body.user_id || !body.channel) {
+      return json(400, { error: 'text, user_id, and channel are required.' });
     }
 
-    const channel = body.channel ?? config.conversation.defaultChannel;
+    const channel = body.channel;
     const messageId = body.message_id ?? crypto.randomUUID();
     const receivedAt = body.received_at ?? new Date().toISOString();
     const response = await runtime.service.handleTurn({
@@ -54,6 +57,7 @@ export async function handler(
       text: body.text,
       messageId,
       receivedAt,
+      contactPhone: body.contact_phone ?? null,
     });
     const perfRecord = buildTurnPerfRecord({
       trace: response.trace,
@@ -152,6 +156,11 @@ async function getRuntime(): Promise<{
           runtime,
           providerGateway,
           promptLoader,
+          renderers: {
+            whatsapp: new WhatsAppMessageRenderer(),
+            webchat: new WebChatMessageRenderer(),
+            terminal_whatsapp: new WhatsAppMessageRenderer(),
+          },
         }),
         perfStore,
       };

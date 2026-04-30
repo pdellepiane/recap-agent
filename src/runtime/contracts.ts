@@ -4,6 +4,9 @@ import type { ProviderSummary } from '../core/provider';
 import type { ToolOutputTrace } from '../core/trace';
 import type { ToolInputTrace } from '../core/trace';
 
+import type { StructuredMessage } from './structured-message';
+import type { ProviderFitCriteria } from './provider-fit';
+
 export type ExtractionResult = {
   intent: PlanIntent | null;
   intentConfidence: number | null;
@@ -23,6 +26,7 @@ export type ExtractionResult = {
   contactName: string | null;
   contactEmail: string | null;
   contactPhone: string | null;
+  providerFitCriteria?: ProviderFitCriteria | null;
   kbQuery?: string | null;
 };
 
@@ -43,11 +47,11 @@ export type ComposeReplyRequest = {
   promptBundleId: string;
   promptFilePaths: string[];
   toolUsage: ToolUsage;
-  onPlanFinished?: (ttlEpochSeconds: number) => void;
 };
 
 export type ComposeReplyResult = {
   text: string;
+  structuredMessage?: StructuredMessage;
   tokenUsage?: TokenUsage | null;
   recommendationFunnel?: {
     available_candidates: number;

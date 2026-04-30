@@ -107,9 +107,10 @@ export class TawkHelpScraper {
     const texts: string[] = [];
 
     for (const child of node.childNodes) {
-      if (child.nodeType === 3) {
+      const nodeType = Number(child.nodeType);
+      if (nodeType === 3) {
         texts.push(child.text);
-      } else if (child.nodeType === 1) {
+      } else if (nodeType === 1) {
         const element = child as unknown as ReturnType<typeof parse>;
         const tag = element.tagName?.toLowerCase();
 

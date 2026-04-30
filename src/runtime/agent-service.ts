@@ -27,8 +27,11 @@ import type {
 } from '../core/trace';
 import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
+import type { MessageRenderer } from './message-renderer';
+import { rankProvidersForCriteria } from './provider-fit';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
+import type { StructuredMessage } from './structured-message';
 import type { PlanStore } from '../storage/plan-store';
 
 export type HandleTurnResponse = {
@@ -67,6 +70,7 @@ export class AgentService {
       runtime: AgentRuntime;
       providerGateway: ProviderGateway;
       promptLoader: PromptLoader;
+      renderers: Record<string, MessageRenderer>;
     },
   ) {}
 
@@ -103,73 +107,99 @@ export class AgentService {
       total: null,
     };
     const loadPlanStartedAt = Date.now();
-    const existingPlan = await this.dependencies.planStore.getByExternalUser(
+    let existingPlan = await this.dependencies.planStore.getByExternalUser(
       inbound.channel,
       inbound.externalUserId,
     );
     timingMs.load_plan += Date.now() - loadPlanStartedAt;
 
     if (existingPlan && isPlanFinished(existingPlan)) {
-      const finishedPlan = existingPlan;
-      const finishedSufficiency = computeSearchSufficiency(finishedPlan);
-      const finishedProviders =
-        getActiveNeed(finishedPlan)?.recommended_providers ?? [];
-      timingMs.total = Date.now() - handleTurnStartedAt;
-      return {
-        plan: finishedPlan,
-        outbound: {
-          text: 'Este plan de evento ya está cerrado y en la fase de contacto con proveedores. Cuando expire el período de enfriamiento de 24 horas podrás iniciar un plan nuevo desde cero.',
-          conversationId: finishedPlan.conversation_id,
-        },
-        trace: this.buildTrace({
-          plan: finishedPlan,
-          previousNode: finishedPlan.current_node,
-          currentNode: finishedPlan.current_node,
-          nodePath: [
-            finishedPlan.current_node,
-            'existe_plan_guardado',
-            finishedPlan.current_node,
-          ],
-          extraction: {
-            intent: finishedPlan.intent,
-            intentConfidence: finishedPlan.intent_confidence,
-            eventType: finishedPlan.event_type,
-            vendorCategory: finishedPlan.vendor_category,
-            vendorCategories: finishedPlan.provider_needs.map((need) => need.category),
-            activeNeedCategory: finishedPlan.active_need_category,
-            location: finishedPlan.location,
-            budgetSignal: finishedPlan.budget_signal,
-            guestRange: finishedPlan.guest_range,
-            preferences: finishedPlan.preferences,
-            hardConstraints: finishedPlan.hard_constraints,
-            assumptions: finishedPlan.assumptions,
-            conversationSummary: finishedPlan.conversation_summary,
-            selectedProviderHint: finishedPlan.selected_provider_hint,
-            pauseRequested: false,
-            contactName: finishedPlan.contact_name,
-            contactEmail: finishedPlan.contact_email,
-            contactPhone: finishedPlan.contact_phone,
-            kbQuery: null,
-          },
+      const extractionStartedAt = Date.now();
+      const rawExtractionResult = await this.dependencies.runtime.extract({
+        userMessage: inbound.text,
+        plan: existingPlan,
+      });
+      const finishedExtraction =
+        'extraction' in rawExtractionResult
+          ? rawExtractionResult.extraction
+          : rawExtractionResult;
+      tokenUsage.extraction =
+        'tokenUsage' in rawExtractionResult
+          ? (rawExtractionResult.tokenUsage ?? null)
+          : null;
+      timingMs.extraction += Date.now() - extractionStartedAt;
+
+      const isPlanningIntent =
+        finishedExtraction.intent === 'buscar_proveedores' ||
+        finishedExtraction.intent === 'retomar_plan' ||
+        finishedExtraction.intent === 'ver_opciones' ||
+        finishedExtraction.intent === 'refinar_busqueda' ||
+        finishedExtraction.intent === 'confirmar_proveedor';
+
+      if (isPlanningIntent) {
+        const freshPlan = createEmptyPlan({
+          planId: ulid(),
+          channel: inbound.channel,
+          externalUserId: inbound.externalUserId,
+        });
+        await this.dependencies.planStore.save({
+          plan: freshPlan,
+          reason: 'reset_after_finished',
+        });
+        existingPlan = freshPlan;
+      } else {
+        const finishedSufficiency = computeSearchSufficiency(existingPlan);
+        const finishedProviders =
+          getActiveNeed(existingPlan)?.recommended_providers ?? [];
+        const respondNode = finishedExtraction.intent === 'consultar_faq'
+          ? 'consultar_faq'
+          : 'necesidad_cubierta';
+        const bundle = await this.dependencies.promptLoader.loadNodeBundle(respondNode);
+        const reply = await this.dependencies.runtime.composeReply({
+          currentNode: respondNode,
+          previousNode: existingPlan.current_node,
+          userMessage: inbound.text,
+          plan: existingPlan,
           missingFields: finishedSufficiency.missingFields,
           searchReady: finishedSufficiency.searchReady,
-          promptBundleId: 'skipped_finished_plan',
-          promptFilePaths: [],
-          toolUsage,
           providerResults: finishedProviders,
-          recommendationFunnel: this.resolveRecommendationFunnel(null, finishedProviders),
-          planPersisted: false,
-          planPersistReason: null,
-          timingMs,
-          tokenUsage: {
-            extraction: null,
-            reply: null,
-            total: null,
+          errorMessage: null,
+          promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage,
+        });
+        tokenUsage.reply = reply.tokenUsage ?? null;
+        tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+        timingMs.compose_reply += Date.now() - extractionStartedAt;
+        timingMs.total = Date.now() - handleTurnStartedAt;
+        return {
+          plan: existingPlan,
+          outbound: {
+            text: this.renderReply(reply, finishedProviders, inbound.channel),
+            conversationId: existingPlan.conversation_id,
           },
-          searchStrategy: 'none',
-          operationalNote: null,
-        }),
-      };
+          trace: this.buildTrace({
+            plan: existingPlan,
+            previousNode: existingPlan.current_node,
+            currentNode: respondNode,
+            nodePath: [existingPlan.current_node, 'existe_plan_guardado', respondNode],
+            extraction: finishedExtraction,
+            missingFields: finishedSufficiency.missingFields,
+            searchReady: finishedSufficiency.searchReady,
+            promptBundleId: bundle.id,
+            promptFilePaths: bundle.filePaths,
+            toolUsage,
+            providerResults: finishedProviders,
+            recommendationFunnel: this.resolveRecommendationFunnel(null, finishedProviders),
+            planPersisted: false,
+            planPersistReason: null,
+            timingMs,
+            tokenUsage,
+            searchStrategy: 'none',
+            operationalNote: null,
+          }),
+        };
+      }
     }
 
     const previousNode = existingPlan?.current_node ?? 'contacto_inicial';
@@ -202,14 +232,19 @@ export class AgentService {
         : null;
     timingMs.extraction += Date.now() - extractionStartedAt;
 
+    let errorMessage: string | null = null;
     const applyExtractionStartedAt = Date.now();
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
-    const mergedPlan = this.applyExtraction(
+    const { plan: mergedPlan, validationError } = this.applyExtraction(
       workingPlan,
       extraction,
       extractionNode,
       inbound.text,
+      inbound.contactPhone,
     );
+    if (validationError) {
+      errorMessage = validationError;
+    }
     timingMs.apply_extraction += Date.now() - applyExtractionStartedAt;
     const sufficiencyStartedAt = Date.now();
     const sufficiency = computeSearchSufficiency(mergedPlan);
@@ -222,18 +257,13 @@ export class AgentService {
     let providerResults: ProviderSummary[] =
       getActiveNeed(mergedPlan)?.recommended_providers ?? [];
     let searchStrategy: SearchStrategyTrace = 'none';
-    let errorMessage: string | null = null;
     let planPersistReason: string | null = null;
     let planPersisted = false;
-    let planFinishTtlEpochSeconds: number | undefined;
     const persistPlan = async (plan: PlanSnapshot, reason: string) => {
       const savePlanStartedAt = Date.now();
       await this.dependencies.planStore.save({
         plan,
         reason,
-        ...(planFinishTtlEpochSeconds !== undefined
-          ? { ttlEpochSeconds: planFinishTtlEpochSeconds }
-          : {}),
       });
       timingMs.save_plan += Date.now() - savePlanStartedAt;
     };
@@ -277,7 +307,7 @@ export class AgentService {
       return {
         plan: planToSave,
         outbound: {
-          text: reply.text,
+          text: this.renderReply(reply, providerResults, inbound.channel),
           conversationId: planToSave.conversation_id,
         },
         trace: this.buildTrace({
@@ -327,9 +357,6 @@ export class AgentService {
         promptBundleId: bundle.id,
         promptFilePaths: bundle.filePaths,
         toolUsage,
-        onPlanFinished: (epoch) => {
-          planFinishTtlEpochSeconds = epoch;
-        },
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -345,7 +372,7 @@ export class AgentService {
       return {
         plan: planToSave,
         outbound: {
-          text: reply.text,
+          text: this.renderReply(reply, providerResults, inbound.channel),
           conversationId: planToSave.conversation_id,
         },
         trace: this.buildTrace({
@@ -411,7 +438,7 @@ export class AgentService {
       return {
         plan: planToSave,
         outbound: {
-          text: reply.text,
+          text: this.renderReply(reply, providerResults, inbound.channel),
           conversationId: planToSave.conversation_id,
         },
         trace: this.buildTrace({
@@ -500,7 +527,14 @@ export class AgentService {
           errorMessage = searchResult.note;
           searchStrategy = searchResult.strategy;
           const providerEnrichmentStartedAt = Date.now();
-          providerResults = await this.enrichProviders(searchResult.providers);
+          const enrichedProviders = await this.enrichProviders(searchResult.providers);
+          if (!extraction.providerFitCriteria) {
+            throw new Error('Extractor did not return provider fit criteria.');
+          }
+          providerResults = rankProvidersForCriteria(
+            enrichedProviders,
+            extraction.providerFitCriteria,
+          );
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
           const activeNeed = getActiveNeed(planAfterFlow);
           planAfterFlow = mergePlan(planAfterFlow, {
@@ -588,9 +622,6 @@ export class AgentService {
       promptBundleId: promptBundle.id,
       promptFilePaths: promptBundle.filePaths,
       toolUsage,
-      onPlanFinished: (epoch) => {
-        planFinishTtlEpochSeconds = epoch;
-      },
     });
     tokenUsage.reply = reply.tokenUsage ?? null;
     tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -606,7 +637,7 @@ export class AgentService {
     return {
       plan: planAfterFlow,
       outbound: {
-        text: reply.text,
+        text: this.renderReply(reply, providerResults, inbound.channel),
         conversationId: planAfterFlow.conversation_id,
       },
       trace: this.buildTrace({
@@ -718,8 +749,8 @@ export class AgentService {
       recommendation_funnel: args.recommendationFunnel,
       search_strategy: args.searchStrategy,
       operational_note: args.operationalNote,
-      extraction_summary: this.summarizeExtraction(args.extraction),
-      plan_summary: this.summarizePlan(args.plan),
+      extraction_summary: this.summarizeExtraction(args.extraction, args.operationalNote),
+      plan_summary: this.summarizePlan(args.plan, args.operationalNote),
       plan_persisted: args.planPersisted,
       plan_persist_reason: args.planPersistReason,
       timing_ms: args.timingMs,
@@ -727,7 +758,12 @@ export class AgentService {
     };
   }
 
-  private summarizeExtraction(extraction: ExtractionResult): ExtractionDebugSummary {
+  private summarizeExtraction(
+    extraction: ExtractionResult,
+    operationalNote: string | null,
+  ): ExtractionDebugSummary {
+    const isContactValidationError = operationalNote !== null &&
+      (operationalNote.includes('teléfono') || operationalNote.includes('correo'));
     return {
       intent_confidence: extraction.intentConfidence,
       event_type: extraction.eventType,
@@ -748,10 +784,13 @@ export class AgentService {
         email: Boolean(extraction.contactEmail),
         phone: Boolean(extraction.contactPhone),
       },
+      contact_validation_error: isContactValidationError ? operationalNote : null,
     };
   }
 
-  private summarizePlan(plan: PlanSnapshot): PlanDebugSummary {
+  private summarizePlan(plan: PlanSnapshot, operationalNote: string | null): PlanDebugSummary {
+    const isContactValidationError = operationalNote !== null &&
+      (operationalNote.includes('teléfono') || operationalNote.includes('correo'));
     return {
       current_node: plan.current_node,
       lifecycle_state: plan.lifecycle_state,
@@ -778,6 +817,7 @@ export class AgentService {
         email: Boolean(plan.contact_email),
         phone: Boolean(plan.contact_phone),
       },
+      contact_validation_error: isContactValidationError ? operationalNote : null,
     };
   }
 
@@ -813,7 +853,8 @@ export class AgentService {
     extraction: ExtractionResult,
     extractionNode: DecisionNode,
     userMessage: string,
-  ): PlanSnapshot {
+    channelPhone: string | null | undefined,
+  ): { plan: PlanSnapshot; validationError: string | null } {
     const guardedExtraction = this.guardImplicitVenueNeed(plan, extraction, userMessage);
     const extractedGuestRange =
       guardedExtraction.guestRange === 'unknown' ? null : guardedExtraction.guestRange;
@@ -821,6 +862,21 @@ export class AgentService {
       this.inferGuestRangeFromMessage(userMessage) ??
       extractedGuestRange ??
       plan.guest_range;
+
+    // Normalize and resolve contact fields independently (partial updates allowed)
+    const normalizedExtractorPhone = this.normalizePhone(guardedExtraction.contactPhone);
+    const normalizedChannelPhone = this.normalizePhone(channelPhone);
+    const inferredPhone = this.inferContactPhoneFromMessage(userMessage);
+
+    const nextPhone =
+      normalizedExtractorPhone ??
+      inferredPhone ??
+      normalizedChannelPhone ??
+      plan.contact_phone;
+
+    const nextEmail = guardedExtraction.contactEmail ?? plan.contact_email;
+    const nextName = guardedExtraction.contactName ?? plan.contact_name;
+
     const candidate = mergePlan(plan, {
       current_node: extractionNode,
       intent: guardedExtraction.intent ?? plan.intent,
@@ -839,17 +895,33 @@ export class AgentService {
       assumptions: guardedExtraction.assumptions,
       conversation_summary: guardedExtraction.conversationSummary,
       selected_provider_hint: plan.selected_provider_hint,
-      contact_name: guardedExtraction.contactName ?? plan.contact_name,
-      contact_email: guardedExtraction.contactEmail ?? plan.contact_email,
-      contact_phone: guardedExtraction.contactPhone ?? plan.contact_phone,
+      contact_name: nextName,
+      contact_email: nextEmail,
+      contact_phone: nextPhone,
       provider_needs: this.buildNeedUpdates(plan, guardedExtraction),
       last_user_goal: guardedExtraction.intent ?? plan.last_user_goal,
     });
 
     const sufficiency = computeSearchSufficiency(candidate);
-    return mergePlan(candidate, {
+    const merged = mergePlan(candidate, {
       missing_fields: sufficiency.missingFields,
     });
+
+    const validationError = this.validateContactFields(merged, plan);
+    if (validationError) {
+      // Revert invalid fields to previous plan values so we don't persist garbage
+      const reverted = mergePlan(merged, {
+        contact_phone: normalizedExtractorPhone !== null && !this.isValidPhone(normalizedExtractorPhone)
+          ? plan.contact_phone
+          : merged.contact_phone,
+        contact_email: guardedExtraction.contactEmail !== null && !this.isValidEmail(guardedExtraction.contactEmail)
+          ? plan.contact_email
+          : merged.contact_email,
+      });
+      return { plan: reverted, validationError };
+    }
+
+    return { plan: merged, validationError: null };
   }
 
   private guardImplicitVenueNeed(
@@ -1473,6 +1545,63 @@ export class AgentService {
     );
   }
 
+  // --- Contact field validation & normalization ---
+
+  private readonly SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
+  private readonly PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]+$/;
+
+  /**
+   * Normalize a phone number to digits-only international format (E.164 without +).
+   * Convention: contact_phone always stores the full international number as digits
+   * (e.g. "51954779071" for Peru, "5215551234567" for Mexico).
+   * Country code splitting happens at the gateway boundary.
+   */
+  private normalizePhone(value: string | null | undefined): string | null {
+    if (!value) return null;
+    const digits = value.replace(/\D/g, '');
+    return digits.length > 0 ? digits : null;
+  }
+
+  private isValidPhone(digits: string | null): boolean {
+    if (!digits) return false;
+    return digits.length >= 6 && digits.length <= 15;
+  }
+
+  private isValidEmail(value: string | null): boolean {
+    if (!value) return false;
+    return this.SIMPLE_EMAIL_REGEX.test(value);
+  }
+
+  private inferContactPhoneFromMessage(text: string): string | null {
+    const patterns = [
+      /\+?\d[\d\s().-]{5,14}\d/,
+      /\b\d{6,15}\b/,
+    ];
+    for (const pattern of patterns) {
+      const match = text.match(pattern);
+      if (match) {
+        const candidate = this.normalizePhone(match[0]);
+        if (this.isValidPhone(candidate)) {
+          return candidate;
+        }
+      }
+    }
+    return null;
+  }
+
+  private validateContactFields(plan: PlanSnapshot, previousPlan: PlanSnapshot): string | null {
+    const phoneChanged = plan.contact_phone !== previousPlan.contact_phone;
+    const emailChanged = plan.contact_email !== previousPlan.contact_email;
+
+    if (phoneChanged && plan.contact_phone !== null && !this.isValidPhone(plan.contact_phone)) {
+      return 'El teléfono debe tener entre 6 y 15 dígitos.';
+    }
+    if (emailChanged && plan.contact_email !== null && !this.isValidEmail(plan.contact_email)) {
+      return 'El correo electrónico no parece válido.';
+    }
+    return null;
+  }
+
   private inferGuestRangeFromMessage(text: string): PlanSnapshot['guest_range'] {
     const normalized = text.toLowerCase();
     const patterns = [
@@ -1548,5 +1677,24 @@ export class AgentService {
       'lugar para',
       'lugares para',
     ].some((keyword) => normalized.includes(keyword));
+  }
+
+  private renderReply(
+    reply: { text: string; structuredMessage?: StructuredMessage },
+    providerResults: ProviderSummary[],
+    channel: string,
+  ): string {
+    if (reply.structuredMessage) {
+      const renderer = this.dependencies.renderers[channel]
+        ?? this.dependencies.renderers['whatsapp'];
+      if (renderer) {
+        return renderer.render({
+          message: reply.structuredMessage,
+          providerResults,
+        });
+      }
+    }
+
+    return reply.text;
   }
 }

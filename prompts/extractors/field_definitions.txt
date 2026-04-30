@@ -72,4 +72,22 @@ Definiciones de campos:
 
 - contactPhone:
   - número de teléfono del usuario cuando lo proporciona para el cierre.
+  - si el usuario envía solo un número de teléfono mientras estamos pidiendo datos de contacto, extráelo como contactPhone aunque no haya otra intención explícita.
+  - el número debe tener al menos 6 dígitos; si es más corto, no lo extraigas.
   - null si no se menciona en este turno.
+
+- providerFitCriteria:
+  - objeto obligatorio con los criterios estructurados que se usarán para reordenar proveedores antes de responder.
+  - eventType: tipo de evento normalizado en lenguaje natural breve, por ejemplo "cumpleaños", "boda" o "evento corporativo"; null si no hay señal.
+  - needCategory: necesidad activa normalizada en lenguaje natural breve, por ejemplo "catering", "fotografía", "música" o "local"; null si no hay señal.
+  - location: ubicación útil para la búsqueda; null si no hay señal.
+  - budgetAmount: monto numérico si el usuario lo dijo; null si no hay monto.
+  - budgetCurrency: PEN o USD si se puede inferir; null si no hay moneda.
+  - budgetTier: uno de very_low, low, medium, high, very_high, unknown. Para Perú usa: hasta 1000 very_low; 1001-5000 low; 5001-10000 medium; 10001-25000 high; más de 25000 very_high.
+  - mustHave: atributos deseables o necesarios que deben favorecer a un proveedor.
+  - shouldAvoid: señales que deben penalizar a un proveedor.
+  - rankingNotes: una frase corta en español que explique qué debe privilegiar el reranking.
+
+Normas de extracción de contacto:
+- contactEmail, contactPhone y contactName se actualizan de forma independiente. Si el usuario corrige solo uno, devuelve null para los demás para preservar los valores anteriores.
+- Si el usuario proporciona un email, asegúrate de que contenga '@' y al menos un dominio con punto.

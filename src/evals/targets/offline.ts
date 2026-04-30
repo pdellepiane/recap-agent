@@ -25,6 +25,7 @@ import type {
 import { InMemoryPlanStore } from '../../storage/in-memory-plan-store';
 import type { EvalCase, EvalRunConfig, EvalTurnResult, OfflineFixture } from '../case-schema';
 import type { ProviderDetail, ProviderSummary } from '../../core/provider';
+import { WhatsAppMessageRenderer } from '../../runtime/message-renderer';
 
 export async function runOfflineCase(args: {
   currentCase: EvalCase;
@@ -41,6 +42,11 @@ export async function runOfflineCase(args: {
     runtime: new FixtureRuntime(fixture),
     providerGateway: new FixtureProviderGateway(fixture),
     promptLoader: new PromptLoader('prompts'),
+    renderers: {
+      whatsapp: new WhatsAppMessageRenderer(),
+      terminal_whatsapp: new WhatsAppMessageRenderer(),
+      terminal_whatsapp_eval: new WhatsAppMessageRenderer(),
+    },
   });
   const userId = `offline-${args.currentCase.id}`;
   const turns: EvalTurnResult[] = [];
@@ -117,6 +123,17 @@ class FixtureRuntime implements AgentRuntime {
           contactName: null,
           contactEmail: null,
           contactPhone: null,
+          providerFitCriteria: {
+            eventType: null,
+            needCategory: null,
+            location: null,
+            budgetAmount: null,
+            budgetCurrency: null,
+            budgetTier: 'unknown',
+            mustHave: [],
+            shouldAvoid: [],
+            rankingNotes: 'Fixture did not provide provider fit criteria.',
+          },
           ...configured,
         },
         tokenUsage: null,
@@ -143,6 +160,17 @@ class FixtureRuntime implements AgentRuntime {
         contactName: null,
         contactEmail: null,
         contactPhone: null,
+        providerFitCriteria: {
+          eventType: null,
+          needCategory: null,
+          location: null,
+          budgetAmount: null,
+          budgetCurrency: null,
+          budgetTier: 'unknown',
+          mustHave: [],
+          shouldAvoid: [],
+          rankingNotes: 'Offline fixture did not provide provider fit criteria.',
+        },
       },
       tokenUsage: null,
     };

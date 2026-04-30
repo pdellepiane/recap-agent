@@ -527,22 +527,6 @@ function renderTrace(
     context_candidate_ids: providerResults.map((provider) => provider.id),
     presentation_limit: 5,
   };
-  const toolInputsSummary =
-    toolInputs.length > 0
-      ? toolInputs
-          .map(
-            (entry, index) =>
-              `${index + 1}. ${entry.tool}\n${truncateForTrace(entry.input, 1200)}`,
-          )
-          .join('\n\n')
-      : hasToolInputsField
-        ? toolsCalled.length > 0
-          ? 'No tool input payloads were captured for this turn.'
-          : 'No tools were called in this turn.'
-        : toolsCalled.length > 0
-          ? 'Tool inputs are not available in this runtime response. Redeploy Lambda with the latest trace schema.'
-          : 'No tools were called in this turn.';
-
   const table = new Table({
     head: [pc.bold('Trace'), pc.bold('Value')],
     style: { head: [], border: [] },

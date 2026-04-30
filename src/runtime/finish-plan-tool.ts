@@ -1,9 +1,4 @@
-import {
-  FINISHED_PLAN_TTL_SECONDS,
-  mergePlan,
-  type PersistedPlan,
-  type PlanSnapshot,
-} from '../core/plan';
+import { mergePlan, type PersistedPlan, type PlanSnapshot } from '../core/plan';
 import type { ProviderGateway } from './provider-gateway';
 
 export type FinishPlanToolResult = {
@@ -14,29 +9,37 @@ export type FinishPlanToolResult = {
     success: boolean;
     error?: string;
   }>;
-  ttl_epoch_seconds: number;
 };
 
 export type FinishPlanToolErrorResult = {
   status: 'failed';
   error: 'missing_contact_info' | 'no_selected_providers';
   detail: string;
-  ttl_epoch_seconds: number;
 };
 
 export type FinishPlanToolOutput = FinishPlanToolResult | FinishPlanToolErrorResult;
 
 /**
- * Shared implementation for `finish_plan`: sends quote requests to all selected
- * providers (one per need) via the provider gateway, mutates the persisted plan
- * to finished state, and returns per-provider outcomes.
+ * Split a digits-only international phone into { phone, phoneExtension }.
+ * Known country codes are tried in longest-match order.
+ * Falls back to empty extension if no known prefix matches.
  */
+function splitPhoneExtension(digits: string): { phone: string; phoneExtension: string } {
+  // Known country codes, longest first to avoid prefix ambiguity
+  const countryCodes = ['52', '51', '1'];
+  for (const code of countryCodes) {
+    if (digits.startsWith(code) && digits.length > code.length) {
+      return { phone: digits.slice(code.length), phoneExtension: `+${code}` };
+    }
+  }
+  return { phone: digits, phoneExtension: '' };
+}
+
 export async function executeFinishPlanTool(args: {
   plan: PersistedPlan;
   providerGateway: ProviderGateway;
-  onPlanFinished?: (ttlEpochSeconds: number) => void;
 }): Promise<FinishPlanToolOutput> {
-  const { plan, providerGateway, onPlanFinished } = args;
+  const { plan, providerGateway } = args;
 
   if (!plan.contact_name || !plan.contact_email || !plan.contact_phone) {
     return {
@@ -44,7 +47,6 @@ export async function executeFinishPlanTool(args: {
       error: 'missing_contact_info',
       detail:
         'Faltan datos de contacto. Solicita nombre, email y teléfono antes de llamar finish_plan.',
-      ttl_epoch_seconds: 0,
     };
   }
 
@@ -61,7 +63,6 @@ export async function executeFinishPlanTool(args: {
       error: 'no_selected_providers',
       detail:
         'No hay proveedores seleccionados. El usuario debe elegir al menos un proveedor antes de cerrar.',
-      ttl_epoch_seconds: 0,
     };
   }
 
@@ -74,6 +75,7 @@ export async function executeFinishPlanTool(args: {
     : fallbackDescription;
 
   const contactedProviders: FinishPlanToolResult['contacted_providers'] = [];
+  const { phone, phoneExtension } = splitPhoneExtension(plan.contact_phone);
 
   for (const entry of selectedProviders) {
     try {
@@ -81,8 +83,8 @@ export async function executeFinishPlanTool(args: {
         providerId: entry.providerId,
         name: plan.contact_name,
         email: plan.contact_email,
-        phone: plan.contact_phone,
-        phoneExtension: '+51',
+        phone,
+        phoneExtension,
         eventDate: today,
         guestsRange,
         description,
@@ -110,9 +112,7 @@ export async function executeFinishPlanTool(args: {
       ? 'partial'
       : 'failed';
 
-  let ttlEpochSeconds = 0;
   if (overallStatus !== 'failed') {
-    ttlEpochSeconds = Math.floor(Date.now() / 1000) + FINISHED_PLAN_TTL_SECONDS;
     const snapshot = mergePlan(plan as PlanSnapshot, {
       lifecycle_state: 'finished',
       current_node: 'necesidad_cubierta',
@@ -120,12 +120,10 @@ export async function executeFinishPlanTool(args: {
       updated_at: new Date().toISOString(),
     });
     Object.assign(plan, snapshot);
-    onPlanFinished?.(ttlEpochSeconds);
   }
 
   return {
     status: overallStatus,
     contacted_providers: contactedProviders,
-    ttl_epoch_seconds: ttlEpochSeconds,
   };
 }

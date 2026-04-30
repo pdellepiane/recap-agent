@@ -3,14 +3,13 @@ import type { HostedTool } from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-import type { PersistedPlan, PlanSnapshot } from '../core/plan';
+import type { PersistedPlan } from '../core/plan';
 import {
-  FINISHED_PLAN_TTL_SECONDS,
   getActiveNeed,
-  mergePlan,
   summarizeProviderNeeds,
   summarizeRecommendedProviders,
 } from '../core/plan';
+import { executeFinishPlanTool } from './finish-plan-tool';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -23,6 +22,8 @@ import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
+import { structuredMessageSchema } from './structured-message';
+import { providerFitCriteriaSchema } from './provider-fit';
 
 const extractionSchema = z.object({
   intent: z
@@ -55,6 +56,7 @@ const extractionSchema = z.object({
   contactName: z.string().nullable(),
   contactEmail: z.string().nullable(),
   contactPhone: z.string().nullable(),
+  providerFitCriteria: providerFitCriteriaSchema,
 });
 
 type RuntimeContext = {
@@ -119,11 +121,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const fileSearchTool = this.createFileSearchTool();
     const agentTools = fileSearchTool ? [...tools, fileSearchTool] : tools;
 
-    const agent = new Agent<RuntimeContext>({
+    const agent = new Agent<RuntimeContext, typeof structuredMessageSchema>({
       name: `reply_${request.currentNode}`,
       model: this.options.replyModel,
       instructions: () => bundle.instructions,
       tools: agentTools,
+      outputType: structuredMessageSchema,
       modelSettings: this.buildModelSettings({
         model: this.options.replyModel,
         cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
@@ -158,8 +161,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     request.plan.conversation_id = await session.getSessionId();
 
+    const structured = structuredMessageSchema.parse(result.finalOutput);
+
     return {
-      text: String(result.finalOutput ?? '').trim(),
+      text: '',
+      structuredMessage: structured,
       tokenUsage: this.extractTokenUsage(result),
       recommendationFunnel,
     };
@@ -508,6 +514,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       this.options.replyProviderLimit,
     );
     const activeNeed = getActiveNeed(request.plan);
+    const messageTypeHint = this.resolveMessageTypeHint(request.currentNode);
 
     return [
       `Nodo previo: ${request.previousNode}`,
@@ -522,10 +529,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`,
       `Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`,
       request.errorMessage ? `Nota operativa: ${request.errorMessage}` : '',
-      'Responde únicamente con el próximo mensaje para el usuario.',
+      messageTypeHint,
     ]
       .filter(Boolean)
       .join('\n\n');
+  }
+
+  private resolveMessageTypeHint(node: string): string {
+    const typeMap: Record<string, string> = {
+      contacto_inicial: 'welcome',
+      recomendar: 'recommendation',
+    };
+    const messageType = typeMap[node] ?? 'generic';
+
+    return `Tipo de mensaje estructurado esperado: ${messageType}. Devuelve el JSON correspondiente a este tipo.`;
   }
 
   private createFileSearchTool(): HostedTool | null {
@@ -926,104 +943,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         execute: async () => {
           this.recordToolInput(toolUsage, 'finish_plan', {});
           toolUsage.called.push('finish_plan');
-
-          if (!plan.contact_name || !plan.contact_email || !plan.contact_phone) {
-            const errorResult = {
-              status: 'failed',
-              error: 'missing_contact_info',
-              detail: 'Faltan datos de contacto. Solicita nombre, email y teléfono antes de llamar finish_plan.',
-              ttl_epoch_seconds: 0,
-            };
-            this.recordToolOutput(toolUsage, 'finish_plan', errorResult);
-            return errorResult;
-          }
-
-          const selectedProviders = plan.provider_needs
-            .filter((need) => need.selected_provider_id !== null)
-            .map((need) => ({
-              providerId: need.selected_provider_id!,
-              category: need.category,
-            }));
-
-          if (selectedProviders.length === 0) {
-            const errorResult = {
-              status: 'failed',
-              error: 'no_selected_providers',
-              detail: 'No hay proveedores seleccionados. El usuario debe elegir al menos un proveedor antes de cerrar.',
-              ttl_epoch_seconds: 0,
-            };
-            this.recordToolOutput(toolUsage, 'finish_plan', errorResult);
-            return errorResult;
-          }
-
-          const today = new Date().toISOString().split('T')[0];
-          const guestsRange = plan.guest_range ?? '';
-
-          const fallbackDescription = `Solicitud de cotización para ${plan.event_type ?? 'evento'} en ${plan.location ?? 'su ubicación'}.`;
-          const description = plan.conversation_summary && plan.conversation_summary.trim().length >= 10
-            ? plan.conversation_summary.trim()
-            : fallbackDescription;
-
-          const contactedProviders: Array<{
-            providerId: number;
-            category: string;
-            success: boolean;
-            error?: string;
-          }> = [];
-
-          for (const entry of selectedProviders) {
-            try {
-              await this.options.providerGateway.createQuoteRequest({
-                providerId: entry.providerId,
-                name: plan.contact_name,
-                email: plan.contact_email,
-                phone: plan.contact_phone,
-                phoneExtension: '+51',
-                eventDate: today,
-                guestsRange,
-                description,
-              });
-              contactedProviders.push({
-                providerId: entry.providerId,
-                category: entry.category,
-                success: true,
-              });
-            } catch (error) {
-              contactedProviders.push({
-                providerId: entry.providerId,
-                category: entry.category,
-                success: false,
-                error: error instanceof Error ? error.message : String(error),
-              });
-            }
-          }
-
-          const allSucceeded = contactedProviders.every((p) => p.success);
-          const someSucceeded = contactedProviders.some((p) => p.success);
-          const overallStatus = allSucceeded
-            ? 'success'
-            : someSucceeded
-              ? 'partial'
-              : 'failed';
-
-          let ttlEpochSeconds = 0;
-          if (overallStatus !== 'failed') {
-            ttlEpochSeconds = Math.floor(Date.now() / 1000) + FINISHED_PLAN_TTL_SECONDS;
-            const snapshot = mergePlan(plan as PlanSnapshot, {
-              lifecycle_state: 'finished',
-              current_node: 'necesidad_cubierta',
-              intent: 'cerrar',
-              updated_at: new Date().toISOString(),
-            });
-            Object.assign(plan, snapshot);
-            request.onPlanFinished?.(ttlEpochSeconds);
-          }
-
-          const result = {
-            status: overallStatus,
-            contacted_providers: contactedProviders,
-            ttl_epoch_seconds: ttlEpochSeconds,
-          };
+          const result = await executeFinishPlanTool({
+            plan,
+            providerGateway: this.options.providerGateway,
+          });
           this.recordToolOutput(toolUsage, 'finish_plan', result);
           return result;
         },

@@ -1,5 +1,4 @@
 import fs from 'node:fs';
-import path from 'node:path';
 import OpenAI from 'openai';
 import type { KnowledgeBaseSyncConfig } from './types';
 

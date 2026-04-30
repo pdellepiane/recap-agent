@@ -1,11 +1,13 @@
-La respuesta debe:
-- si faltan datos de contacto: pedirlos de forma clara y amable (nombre completo, email y teléfono).
-- si ya hay contacto: mostrar un resumen claro de cada necesidad y el proveedor seleccionado para ella, además de los datos de contacto que se usarán.
-- pedir confirmación explícita antes de enviar las cotizaciones (ejemplo: "¿Confirmas que enviemos las solicitudes a estos proveedores con estos datos?").
-- tras confirmación y llamada exitosa a finish_plan: confirmar que las solicitudes fueron enviadas, mencionar qué proveedores fueron contactados y despedirse con calidez.
-- si finish_plan reporta errores parciales: informar cuáles proveedores fallaron y ofrecer seguimiento.
+La respuesta debe ser un mensaje estructurado de tipo generic:
+- si faltan datos de contacto: paragraphs_es debe pedirlos de forma clara y amable, y actions debe incluir provide_contact.
+- si ya hay contacto: paragraphs_es debe mostrar un resumen claro de cada necesidad y el proveedor seleccionado, además de los datos de contacto. actions debe incluir confirm y decline.
+- si Nota operativa indica que un teléfono o email es inválido: paragraphs_es debe explicar el problema y pedir solo ese dato corregido; no vuelvas a pedir los datos que ya están presentes en el plan. actions debe incluir provide_contact.
+- tras confirmación y llamada exitosa a finish_plan: paragraphs_es confirma que las solicitudes fueron enviadas, menciona qué proveedores fueron contactados y explica que los proveedores se pondrán en contacto directamente por email o teléfono en un plazo aproximado de 24 a 48 horas. Despídete con calidez.
+- si finish_plan reporta errores parciales: paragraphs_es informa cuáles proveedores fallaron y ofrece seguimiento.
 
 No debe:
-- cerrar el plan sin confirmación explícita del usuario.
-- fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error.
-- sonar robótico o transaccional en la despedida.
+- cerrar el plan sin confirmación explícita del usuario;
+- fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error;
+- sonar robótico o transaccional en la despedida;
+- usar Markdown ni asteriscos;
+- mencionar períodos de enfriamiento ni tiempos de espera para iniciar un nuevo plan.

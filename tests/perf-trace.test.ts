@@ -47,6 +47,7 @@ describe('perf trace module', () => {
           conversation_summary_preview: 'Boda en Lima con catering.',
           pause_requested: false,
           contact_fields_present: { name: false, email: false, phone: false },
+          contact_validation_error: null,
         },
         plan_summary: {
           current_node: 'recomendar',
@@ -72,6 +73,7 @@ describe('perf trace module', () => {
           conversation_summary_preview: 'Boda en Lima con catering.',
           open_question_count: 0,
           contact_fields_present: { name: false, email: false, phone: false },
+          contact_validation_error: null,
         },
         plan_persisted: true,
         plan_persist_reason: 'recomendar',
@@ -189,6 +191,7 @@ describe('perf trace module', () => {
         conversation_summary_preview: 'Boda en Lima con catering.',
         pause_requested: false,
         contact_fields_present: { name: false, email: false, phone: false },
+        contact_validation_error: null,
       },
       plan_summary: {
         current_node: 'recomendar',
@@ -214,6 +217,7 @@ describe('perf trace module', () => {
         conversation_summary_preview: 'Boda en Lima con catering.',
         open_question_count: 0,
         contact_fields_present: { name: false, email: false, phone: false },
+        contact_validation_error: null,
       },
       provider_results_count: 2,
       provider_result_ids: [1, 2],

@@ -38,6 +38,7 @@ export type ExtractionDebugSummary = {
     email: boolean;
     phone: boolean;
   };
+  contact_validation_error: string | null;
 };
 
 export type PlanDebugSummary = {
@@ -66,6 +67,7 @@ export type PlanDebugSummary = {
     email: boolean;
     phone: boolean;
   };
+  contact_validation_error: string | null;
 };
 
 export type SearchStrategyTrace = 'none' | 'search_from_plan' | 'broaden_existing_shortlist';

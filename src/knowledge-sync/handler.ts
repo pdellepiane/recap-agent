@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
-import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2, Context, S3Event } from 'aws-lambda';
+import type { APIGatewayProxyEventV2, APIGatewayProxyResultV2, S3Event } from 'aws-lambda';
 import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager';
 import { S3Client, GetObjectCommand } from '@aws-sdk/client-s3';
 import { runKnowledgeBaseSyncFromDir } from './sync';
@@ -11,7 +11,6 @@ const s3Client = new S3Client({ region: process.env.AWS_REGION ?? 'us-east-1' })
 
 export async function handler(
   event: APIGatewayProxyEventV2 | S3Event | Record<string, unknown>,
-  _context: Context,
 ): Promise<APIGatewayProxyResultV2 | { statusCode: number; body: string }> {
   console.log('Event type:', detectEventType(event));
 
@@ -91,9 +90,10 @@ export async function handler(
 
     if (eventType === 'api') {
       const apiEvent = event as APIGatewayProxyEventV2;
+      const body = parseBodyRecord(apiEvent.body);
       const force =
         apiEvent.queryStringParameters?.force === 'true' ||
-        (apiEvent.body && JSON.parse(apiEvent.body ?? '{}').force === true);
+        body?.force === true;
 
       if (force) {
         console.log('Manual force trigger received');
@@ -166,6 +166,17 @@ function detectEventType(event: unknown): string {
   if (e.source === 'github-actions') return 'github-actions';
 
   return 'unknown';
+}
+
+function parseBodyRecord(body: string | undefined): Record<string, unknown> | null {
+  if (!body) {
+    return null;
+  }
+
+  const parsed: unknown = JSON.parse(body);
+  return parsed && typeof parsed === 'object'
+    ? parsed as Record<string, unknown>
+    : null;
 }
 
 function successResponse(body: unknown): { statusCode: number; body: string } {

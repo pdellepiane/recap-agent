@@ -1327,3 +1327,113 @@ Files changed:
 - `src/runtime/openai-agent-runtime.ts`
 - `src/core/plan.ts`
 - `docs/implementation-log.md`
+
+## 2026-04-30
+
+### Add structured channel-specific reply rendering
+
+- Added structured reply contracts so model output is parsed into typed presentation data before it reaches channel adapters.
+- Added deterministic WhatsApp and webchat renderers, with webchat using plain text bullets and direct URLs instead of Markdown or HTML assumptions.
+- Required inbound Lambda requests to include `channel`, and registered renderers for `whatsapp`, `webchat`, and `terminal_whatsapp`.
+- Updated offline evals and agent service tests to pass explicit renderer maps.
+- Added message renderer tests and a repo `npm run deploy` command that runs checks before deployment.
+
+Reason:
+- Batch 1 feedback identified presentation drift: Markdown leakage, inconsistent bullets, and channel-specific formatting decisions being left to the model. The runtime needed a typed, deterministic rendering layer to keep business logic channel-agnostic while producing stable outbound text.
+
+Decision:
+- Keep Lambda responses as a plain `message` string for client compatibility, but make the generated content structured internally. Use plain-text webchat output until the frontend explicitly supports Markdown or HTML.
+
+Flow nodes affected:
+- All conversational nodes indirectly, because every reply can now be rendered from structured output.
+- `contacto_inicial`
+- `recomendar`
+- `crear_lead_cerrar`
+
+Files changed:
+- `src/runtime/structured-message.ts`
+- `src/runtime/message-renderer.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/agent-service.ts`
+- `src/lambda/handler.ts`
+- `src/evals/targets/offline.ts`
+- `tests/agent-service.test.ts`
+- `tests/message-renderer.test.ts`
+- `prompts/shared/output_style.txt`
+- `prompts/shared/common_anti_patterns.txt`
+- `prompts/nodes/contacto_inicial/response_contract.txt`
+- `prompts/nodes/recomendar/response_contract.txt`
+- `prompts/nodes/crear_lead_cerrar/response_contract.txt`
+- `package.json`
+- `docs/implementation-log.md`
+
+### Restore Batch 2 no-cooling lifecycle behavior
+
+- Removed the finished-plan TTL contract from plan storage, runtime reply requests, and finish-plan tool output.
+- Updated finished-plan tests so new planning intents reset the plan immediately instead of showing a 24-hour cooling message.
+- Kept telemetry TTL untouched; only the voluntary finished-plan cooldown mechanism was removed.
+
+Reason:
+- Batch 2 requires closed plans to stop mentioning cooling periods and to allow a fresh plan when the user asks for a new planning flow.
+
+Decision:
+- Treat finished plans as retained context unless the next user intent is planning-related; do not persist a DynamoDB TTL for finished plans.
+
+Files changed:
+- `src/core/plan.ts`
+- `src/storage/plan-store.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/finish-plan-tool.ts`
+- `src/runtime/agent-service.ts`
+- `tests/agent-service.test.ts`
+- `tests/plan-lifecycle.test.ts`
+- `prompts/nodes/crear_lead_cerrar/response_contract.txt`
+- `prompts/nodes/necesidad_cubierta/response_contract.txt`
+- `docs/implementation-log.md`
+
+### Restore Batch 3 contact validation consistency
+
+- Verified that the runtime Batch 3 contact plumbing is present: `NormalizedInboundMessage.contactPhone`, Lambda `contact_phone` wiring, `contact_validation_error` trace fields, runtime contact normalization/validation, and finish-plan phone splitting.
+- Restored dedicated Batch 3 regression tests in `tests/agent-service.test.ts` for invalid phone rejection, invalid email rejection, standalone phone correction, webhook phone seeding, Peruvian finish-plan splitting, and Mexican finish-plan splitting.
+- Kept the phone storage convention aligned with WhatsApp-style payloads: `contact_phone` stores the full international number as digits-only (E.164 without `+`), and finish-plan splits country code at the gateway boundary.
+- Confirmed `tests/perf-trace.test.ts` fixtures include `contact_validation_error` for both extraction and plan summaries.
+- Fixed restored Batch 5 provider-fit utilities enough to keep `npm run check` green: Spanish `mil soles` budget parsing, accented photography category normalization, plural dessert category normalization, and birthday-vs-wedding ranking penalty behavior.
+
+Reason:
+- A restore left Batch 3 runtime code mostly present but dropped its regression coverage, which made contact validation vulnerable to silent regression. The same check run exposed restored Batch 5 tests that no longer matched the implementation.
+
+Decision:
+- Treat Batch 3 as consistent only when both runtime behavior and regression coverage are present.
+- Keep phone handling country-agnostic and WhatsApp-compatible rather than Peruvian-local-only.
+- Preserve the repository rule that every code/test/doc change must finish with `npm run check` passing.
+
+Files changed:
+- `tests/agent-service.test.ts`
+- `src/runtime/provider-fit.ts`
+- `docs/implementation-log.md`
+
+### Implement Batch 5 structured provider-fit reranking
+
+- Added `providerFitCriteria` to the extractor output contract so the LLM turns the user request into structured ranking criteria before provider reranking.
+- Replaced provider intent keyword classification with deterministic scoring driven by those extracted criteria plus provider detail fields: event types, category, descriptions, service highlights, terms, promos, and price level.
+- Wired `AgentService` to enrich provider search results, require extractor criteria, rerank the enriched list, and persist/send the reranked shortlist to the final reply LLM.
+- Added provider-fit regression coverage for the low-budget birthday catering case where La Botanería should outrank wedding-only or high-price options.
+
+Reason:
+- Batch 5 feedback showed search results could contain providers that technically matched a category but were poor fits for the user's actual event and budget. The extractor must define the user's ranking intent once, then the runtime should apply it consistently before asking the reply model to present final options.
+
+Decision:
+- Do not run a second LLM over providers and do not silently fallback when criteria are missing. The extractor owns structured intent/criteria extraction; the runtime owns deterministic provider reranking; the reply LLM only chooses how to present from the already reranked shortlist.
+
+Files changed:
+- `src/runtime/provider-fit.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/agent-service.ts`
+- `src/core/plan.ts`
+- `src/evals/targets/offline.ts`
+- `tests/provider-fit.test.ts`
+- `tests/agent-service.test.ts`
+- `prompts/extractors/field_definitions.txt`
+- `docs/implementation-log.md`

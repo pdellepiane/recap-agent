@@ -4,6 +4,8 @@ export type NormalizedInboundMessage = {
   text: string;
   messageId: string;
   receivedAt: string;
+  /** Optional phone number provided by the channel (e.g. WhatsApp webhook). */
+  contactPhone?: string | null;
 };
 
 export type NormalizedOutboundMessage = {

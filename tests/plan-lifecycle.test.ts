@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 
 import {
   createEmptyPlan,
-  FINISHED_PLAN_TTL_SECONDS,
   mergePlan,
   planSchema,
 } from '../src/core/plan';
@@ -59,9 +58,5 @@ describe('plan lifecycle', () => {
     expect(finished.lifecycle_state).toBe('finished');
     expect(finished.contact_name).toBe('Test User');
     expect(finished.contact_email).toBe('test@example.com');
-  });
-
-  it('exposes a 24h TTL constant for finished plans', () => {
-    expect(FINISHED_PLAN_TTL_SECONDS).toBe(86_400);
   });
 });
