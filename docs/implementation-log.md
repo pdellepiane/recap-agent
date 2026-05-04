@@ -1497,3 +1497,21 @@ Decision:
 Files changed:
 - `package.json`
 - `docs/implementation-log.md`
+
+### Add native guardrails for email integrity and jailbreak attempts
+
+- Added an OpenAI Agents SDK output guardrail that trips when generated replies contain corrupted or non-canonical Sin Envolturas support emails, then normalizes the final structured output to `hola@sinenvolturas.com`.
+- Added a blocking OpenAI Agents SDK input guardrail for direct jailbreak and prompt-injection attempts such as ignoring system/developer instructions or revealing internal prompts.
+- Added regression coverage for support email normalization and jailbreak detection.
+
+Reason:
+- Live FAQ output produced `[email protected]` instead of the real support email. Support emails must remain truthful and exact.
+- The same guardrail layer should also reject obvious attempts to override system/developer instructions.
+
+Decision:
+- Use native Agents SDK guardrails at the generation boundary and keep deterministic normalization as the recovery path so users receive a correct answer instead of a server error.
+
+Files changed:
+- `src/runtime/openai-agent-runtime.ts`
+- `tests/openai-agent-runtime-token-usage.test.ts`
+- `docs/implementation-log.md`

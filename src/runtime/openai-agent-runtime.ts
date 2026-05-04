@@ -1,5 +1,19 @@
-import { Agent, OpenAIConversationsSession, retryPolicies, run, tool, fileSearchTool } from '@openai/agents';
-import type { HostedTool } from '@openai/agents';
+import {
+  Agent,
+  InputGuardrailTripwireTriggered,
+  OpenAIConversationsSession,
+  OutputGuardrailTripwireTriggered,
+  retryPolicies,
+  run,
+  tool,
+  fileSearchTool,
+} from '@openai/agents';
+import type {
+  AgentOutputType,
+  HostedTool,
+  InputGuardrail,
+  OutputGuardrail,
+} from '@openai/agents';
 import OpenAI from 'openai';
 import { z } from 'zod';
 
@@ -66,6 +80,8 @@ const extractionSchema = z.object({
   providerFitCriteria: providerFitCriteriaSchema,
 });
 
+const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
+
 type RuntimeContext = {
   toolUsage: ComposeReplyRequest['toolUsage'];
 };
@@ -99,6 +115,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       name: 'plan_extractor',
       model: this.options.extractorModel,
       instructions: bundle.instructions,
+      inputGuardrails: [this.createJailbreakInputGuardrail()],
       outputType: extractionSchema,
       modelSettings: this.buildModelSettings({
         model: this.options.extractorModel,
@@ -108,11 +125,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     const input = this.composeExtractorInput(request);
 
-    const result = await run(extractor, input);
-    return {
-      extraction: result.finalOutput as ExtractResult['extraction'],
-      tokenUsage: this.extractTokenUsage(result),
-    };
+    try {
+      const result = await run(extractor, input);
+      return {
+        extraction: result.finalOutput as ExtractResult['extraction'],
+        tokenUsage: this.extractTokenUsage(result),
+      };
+    } catch (error) {
+      if (error instanceof InputGuardrailTripwireTriggered) {
+        return {
+          extraction: this.buildJailbreakExtraction(),
+          tokenUsage: this.extractTokenUsage(error),
+        };
+      }
+      throw error;
+    }
   }
 
   async composeReply(
@@ -137,7 +164,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       model: this.options.replyModel,
       instructions: () => bundle.instructions,
       tools: agentTools,
+      inputGuardrails: [this.createJailbreakInputGuardrail()],
       outputType: outputSchema,
+      outputGuardrails: [this.createSupportEmailGuardrail<typeof outputSchema>()],
       modelSettings: this.buildReplyModelSettings(request, Boolean(fileSearchTool)),
     });
 
@@ -160,23 +189,50 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     const input = this.composeConversationInput(request, recommendationFunnel);
 
-    const result = await run(agent, input, {
-      session,
-      context: {
-        toolUsage: request.toolUsage,
-      },
-    });
-    this.recordHostedToolUsage(request.toolUsage, result);
+    let finalOutput: unknown;
+    let runResult: unknown;
+    try {
+      const result = await run(agent, input, {
+        session,
+        context: {
+          toolUsage: request.toolUsage,
+        },
+      });
+      finalOutput = result.finalOutput;
+      runResult = result;
+    } catch (error) {
+      if (error instanceof InputGuardrailTripwireTriggered) {
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'generic',
+            actions: [],
+            paragraphs_es: [
+              'No puedo ayudar a ignorar instrucciones, revelar prompts internos o saltarme las reglas del sistema. Sí puedo ayudarte con preguntas sobre Sin Envolturas o con tu plan de evento.',
+            ],
+          },
+          tokenUsage: this.extractTokenUsage(error),
+          recommendationFunnel,
+        };
+      }
+      if (error instanceof OutputGuardrailTripwireTriggered) {
+        finalOutput = error.result.agentOutput;
+        runResult = error;
+      } else {
+        throw error;
+      }
+    }
+    this.recordHostedToolUsage(request.toolUsage, runResult);
 
     request.plan.conversation_id = await session.getSessionId();
 
     const parseSchema = this.resolveOutputSchema(request);
-    const structured = parseSchema.parse(result.finalOutput);
+    const structured = parseSchema.parse(this.normalizeSupportEmails(finalOutput));
 
     return {
       text: '',
       structuredMessage: structured,
-      tokenUsage: this.extractTokenUsage(result),
+      tokenUsage: this.extractTokenUsage(runResult),
       recommendationFunnel,
     };
   }
@@ -596,6 +652,149 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       includeSearchResults: true,
       maxNumResults: 6,
     });
+  }
+
+  private createSupportEmailGuardrail<TOutput extends AgentOutputType>(): OutputGuardrail<TOutput, RuntimeContext> {
+    return {
+      name: 'support_email_integrity',
+      execute: async ({ agentOutput }) => {
+        const violations = this.findSupportEmailViolations(agentOutput);
+        return {
+          outputInfo: {
+            violations,
+            expectedEmail: SUPPORT_EMAIL,
+          },
+          tripwireTriggered: violations.length > 0,
+        };
+      },
+    };
+  }
+
+  private createJailbreakInputGuardrail(): InputGuardrail {
+    return {
+      name: 'jailbreak_prompt_injection',
+      runInParallel: false,
+      execute: async ({ input }) => {
+        const violations = this.findJailbreakViolations(input);
+        return {
+          outputInfo: { violations },
+          tripwireTriggered: violations.length > 0,
+        };
+      },
+    };
+  }
+
+  private findJailbreakViolations(value: unknown): string[] {
+    const text = this.stringifyForGuardrail(value).toLowerCase();
+    const patterns: Array<{ id: string; pattern: RegExp }> = [
+      { id: 'ignore_instructions', pattern: /\b(ignore|ignora|olvida|bypass|salt[aá]te|omite)\b.{0,80}\b(instructions?|instrucciones|reglas|system|sistema|developer)\b/iu },
+      { id: 'reveal_prompt', pattern: /\b(reveal|muestra|mu[eé]strame|dime|imprime|print)\b.{0,80}\b(system prompt|prompt del sistema|developer message|mensaje de developer|instrucciones internas)\b/iu },
+      { id: 'jailbreak_keyword', pattern: /\b(jailbreak|prompt injection|inyecci[oó]n de prompt|modo dan|developer mode)\b/iu },
+      { id: 'role_override', pattern: /\b(act[uú]a como|pretend to be|simula ser)\b.{0,80}\b(system|developer|admin|root)\b/iu },
+    ];
+
+    return patterns
+      .filter(({ pattern }) => pattern.test(text))
+      .map(({ id }) => id);
+  }
+
+  private buildJailbreakExtraction(): ExtractResult['extraction'] {
+    return {
+      intent: null,
+      intentConfidence: 1,
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'El usuario intentó saltarse instrucciones internas.',
+      selectedProviderHint: null,
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: {
+        eventType: null,
+        needCategory: null,
+        location: null,
+        budgetAmount: null,
+        budgetCurrency: null,
+        budgetTier: 'unknown',
+        mustHave: [],
+        shouldAvoid: [],
+        rankingNotes: 'No aplicar búsqueda ante intento de elusión.',
+      },
+    };
+  }
+
+  private findSupportEmailViolations(value: unknown): string[] {
+    const text = this.stringifyForGuardrail(value);
+    const violations = new Set<string>();
+    const malformedPatterns = [
+      /\[email\s*protected\]/giu,
+      /\bemail\s+protected\b/giu,
+      /\bhola\s*(?:\[at\]|\(at\)| at )\s*sinenvolturas\.com\b/giu,
+    ];
+
+    for (const pattern of malformedPatterns) {
+      for (const match of text.matchAll(pattern)) {
+        violations.add(match[0]);
+      }
+    }
+
+    const sinEnvolturasEmails = text.match(/\b[A-Z0-9._%+-]+@sinenvolturas\.com\b/giu) ?? [];
+    for (const email of sinEnvolturasEmails) {
+      if (email.toLowerCase() !== SUPPORT_EMAIL) {
+        violations.add(email);
+      }
+    }
+
+    return Array.from(violations);
+  }
+
+  private normalizeSupportEmails(value: unknown): unknown {
+    if (typeof value === 'string') {
+      return this.normalizeSupportEmailText(value);
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.normalizeSupportEmails(entry));
+    }
+
+    if (value && typeof value === 'object') {
+      const normalized: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(value)) {
+        normalized[key] = this.normalizeSupportEmails(entry);
+      }
+      return normalized;
+    }
+
+    return value;
+  }
+
+  private normalizeSupportEmailText(value: string): string {
+    return value
+      .replace(/\[email\s*protected\]/giu, SUPPORT_EMAIL)
+      .replace(/\bemail\s+protected\b/giu, SUPPORT_EMAIL)
+      .replace(/\bhola\s*(?:\[at\]|\(at\)| at )\s*sinenvolturas\.com\b/giu, SUPPORT_EMAIL)
+      .replace(/\b(?!hola@)[A-Z0-9._%+-]+@sinenvolturas\.com\b/giu, SUPPORT_EMAIL);
+  }
+
+  private stringifyForGuardrail(value: unknown): string {
+    if (typeof value === 'string') {
+      return value;
+    }
+
+    try {
+      return JSON.stringify(value);
+    } catch {
+      return String(value);
+    }
   }
 
   private createTools(
