@@ -1,0 +1,54 @@
+template: template.base-live
+id: live.faq_from_recommendation_node
+suite: live_comprehensive
+version: 1
+description: A user in a recommendation flow should be able to ask a FAQ and force KB retrieval instead of provider search.
+tags:
+  - live
+  - faq
+  - knowledge-base
+  - state-machine
+seedPlan:
+  current_node: recomendar
+  intent: buscar_proveedores
+  event_type: boda
+  vendor_category: catering
+  active_need_category: catering
+  location: Lima
+  guest_range: 51-100
+  conversation_summary: Boda en Lima con catering como necesidad activa.
+inputs:
+  - text: antes de elegir, ¿qué comisión cobra Sin Envolturas por los regalos?
+expectations:
+  - id: recommendation-to-faq
+    type: node_transition
+    from: recomendar
+    to: consultar_faq
+  - id: faq-file-search-called
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+  - id: no-provider-results-in-faq
+    type: provider_result_count
+    max: 0
+  - id: commission-answer
+    type: text_contains
+    anyOf:
+      - comisión
+      - tarjeta
+      - transferencia
+      - regalos
+  - id: no-missing-kb-fallback
+    type: text_not_contains
+    phrases:
+      - No tengo esa información específica en mi base de conocimiento
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
+    maxToolCalls: 2

@@ -1466,3 +1466,20 @@ Files changed:
 - `evals/cases/live-faq-reask-then-planning.yaml`
 - `evals/suites/live_comprehensive.yaml`
 - `docs/implementation-log.md`
+
+### Verify FAQ interruption from all nodes
+
+- Added an `AgentService` regression that seeds every active decision node and sends a FAQ turn, asserting the service routes to `consultar_faq`, persists that node, and does not run provider search.
+- Added a live Lambda eval seeded from `recomendar` to verify a mid-recommendation user can ask a FAQ and trigger real `file_search` retrieval.
+
+Reason:
+- Runtime routing supported FAQ as a global intent, but "from every node" was only inferred from control flow. The migration needs an explicit safety net.
+
+Decision:
+- Cover every active node deterministically in unit tests, then cover the highest-risk mid-flow interruption with real live generation.
+
+Files changed:
+- `tests/agent-service.test.ts`
+- `evals/cases/live-faq-from-recommendation.yaml`
+- `evals/suites/live_comprehensive.yaml`
+- `docs/implementation-log.md`

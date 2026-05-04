@@ -9,6 +9,7 @@ import {
   type PersistedPlan,
   type PlanSnapshot,
 } from '../src/core/plan';
+import { decisionNodes } from '../src/core/decision-nodes';
 import type { ProviderDetail } from '../src/core/provider';
 import type {
   AgentRuntime,
@@ -126,6 +127,33 @@ class FakeRuntime implements AgentRuntime {
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     this.composeRequests.push(request);
     return { text: `reply:${request.currentNode}` };
+  }
+}
+
+class FaqRuntime extends FakeRuntime {
+  override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    void request;
+    return {
+      intent: 'consultar_faq',
+      intentConfidence: 0.98,
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'El usuario pregunta por Sin Envolturas.',
+      selectedProviderHint: null,
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: testProviderFitCriteria,
+    };
   }
 }
 
@@ -350,6 +378,59 @@ describe('AgentService', () => {
     whatsapp: new WhatsAppMessageRenderer(),
     terminal_whatsapp: new WhatsAppMessageRenderer(),
   };
+
+  it('routes FAQ questions to consultar_faq from every saved active node', async () => {
+    for (const node of decisionNodes) {
+      const runtime = new FaqRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+      const externalUserId = `faq-from-${node}`;
+      await planStore.save({
+        plan: mergePlan(
+          createEmptyPlan({
+            planId: `plan-${node}`,
+            channel: 'terminal_whatsapp',
+            externalUserId,
+          }),
+          {
+            current_node: node,
+            intent: 'buscar_proveedores',
+            event_type: 'boda',
+            vendor_category: 'fotografía',
+            active_need_category: 'fotografía',
+            location: 'Lima',
+            guest_range: '51-100',
+          },
+        ),
+        reason: 'seed-faq-node',
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId,
+        text: '¿Cuánto cobra Sin Envolturas por los regalos?',
+        messageId: `msg-${node}`,
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node, node).toBe('consultar_faq');
+      expect(response.trace.next_node, node).toBe('consultar_faq');
+      expect(response.trace.intent, node).toBe('consultar_faq');
+      expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe('consultar_faq');
+      expect(gateway.searchCalls, node).toBe(0);
+      expect(response.trace.tools_called, node).not.toContain(
+        'search_providers_from_plan',
+      );
+      expect(response.trace.plan_persist_reason, node).toBe('consultar_faq');
+    }
+  });
 
   it('persists the plan after extraction and moves to recommendation when search succeeds', async () => {
     const runtime = new FakeRuntime();
