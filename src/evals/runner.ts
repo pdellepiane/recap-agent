@@ -453,6 +453,18 @@ async function evaluateExpectation(
         : `Matched ${matched.length} of ${expectation.providers.length} provider expectations.`;
       return result;
     }
+    case 'provider_result_count': {
+      const turn = selectTurn(context.turns, expectation.turnIndex);
+      const count = turn?.trace.provider_results.length ?? 0;
+      const minPassed = expectation.min === undefined || count >= expectation.min;
+      const maxPassed = expectation.max === undefined || count <= expectation.max;
+      result.passed = minPassed && maxPassed;
+      result.score = result.passed ? 1 : 0;
+      result.message = result.passed
+        ? `Provider result count ${count} matched expectation.`
+        : `Provider result count ${count} outside expected range min=${expectation.min ?? '*'} max=${expectation.max ?? '*'}.`;
+      return result;
+    }
     case 'tool_usage': {
       const turn = selectTurn(context.turns, expectation.turnIndex);
       const toolsCalled = turn?.trace.tools_called ?? [];

@@ -1,0 +1,43 @@
+template: template.base-live
+id: live.faq_commission_uses_kb
+suite: live_comprehensive
+version: 1
+description: FAQ questions should enter KB mode, call file_search, and answer with commission details from the knowledge base.
+tags:
+  - live
+  - faq
+  - knowledge-base
+inputs:
+  - text: ¿Qué comisión cobra Sin Envolturas si el invitado paga con tarjeta?
+expectations:
+  - id: enters-faq-node
+    type: node_transition
+    to: consultar_faq
+  - id: faq-tool-called
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+  - id: no-provider-results
+    type: provider_result_count
+    max: 0
+  - id: answer-from-kb
+    type: text_contains
+    anyOf:
+      - 3.70%
+      - 3,70%
+      - tarjeta
+      - comisión
+  - id: no-kb-missing-fallback
+    type: text_not_contains
+    phrases:
+      - No tengo esa información específica en mi base de conocimiento
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
+    maxToolCalls: 2

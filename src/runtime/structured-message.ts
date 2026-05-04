@@ -56,3 +56,53 @@ export const structuredMessageSchema = z.object({
 export type StructuredMessage = z.infer<typeof structuredMessageSchema>;
 
 export type MessageType = StructuredMessage['type'];
+
+export const welcomeMessageSchema = z.object({
+  type: z.literal('welcome'),
+  greeting_es: z.string(),
+  ask_es: z.string(),
+  requested_fields_es: z.array(z.string()),
+  actions: z.array(structuredActionSchema).max(0),
+});
+
+export const recommendationMessageSchema = z.object({
+  type: z.literal('recommendation'),
+  intro_es: z.string(),
+  providers: z.array(providerRecommendationSchema),
+  actions: z.array(structuredActionSchema),
+});
+
+export const contactRequestMessageSchema = z.object({
+  type: z.literal('contact_request'),
+  intro_es: z.string(),
+  requested_fields_es: z.array(z.string()),
+  actions: z.array(structuredActionSchema).max(0),
+});
+
+export const closeConfirmationMessageSchema = z.object({
+  type: z.literal('close_confirmation'),
+  summary_es: z.string(),
+  selected_providers_es: z.array(z.string()),
+  unselected_needs_es: z.array(z.string()),
+  actions: z.array(structuredActionSchema),
+});
+
+export const closeResultMessageSchema = z.object({
+  type: z.literal('close_result'),
+  success_es: z.string(),
+  contact_explanation_es: z.string(),
+  actions: z.array(structuredActionSchema).max(0),
+});
+
+export const genericMessageSchema = z.object({
+  type: z.literal('generic'),
+  actions: z.array(structuredActionSchema).max(0),
+  paragraphs_es: z.array(z.string()),
+});
+
+export type WelcomeMessage = z.infer<typeof welcomeMessageSchema>;
+export type RecommendationMessage = z.infer<typeof recommendationMessageSchema>;
+export type ContactRequestMessage = z.infer<typeof contactRequestMessageSchema>;
+export type CloseConfirmationMessage = z.infer<typeof closeConfirmationMessageSchema>;
+export type CloseResultMessage = z.infer<typeof closeResultMessageSchema>;
+export type GenericMessage = z.infer<typeof genericMessageSchema>;

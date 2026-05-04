@@ -1,0 +1,85 @@
+template: template.base-live
+id: live.faq_reask_then_planning
+suite: live_comprehensive
+version: 1
+description: Consecutive FAQ turns should each consult KB, then a planning request should leave FAQ mode and search providers.
+tags:
+  - live
+  - faq
+  - multi-turn
+  - knowledge-base
+inputs:
+  - text: ¿Qué medios de pago aceptan para regalos en una lista en soles?
+  - text: ¿Y cuánto demora validar un pago por transferencia o Yape?
+  - text: perfecto, ahora necesito catering vegetariano en Lima para mi boda de 80 personas
+expectations:
+  - id: turn0-faq-node
+    type: node_transition
+    to: consultar_faq
+    turnIndex: 0
+  - id: turn0-file-search
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+    maxTotalCalls: 2
+    turnIndex: 0
+  - id: turn0-payment-methods-answer
+    type: text_contains
+    anyOf:
+      - Yape
+      - Plin
+      - transferencia
+      - tarjeta
+    turnIndex: 0
+  - id: turn1-stays-faq
+    type: node_transition
+    to: consultar_faq
+    turnIndex: 1
+  - id: turn1-file-search-again
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+    maxTotalCalls: 2
+    turnIndex: 1
+  - id: turn1-validation-time-answer
+    type: text_contains
+    anyOf:
+      - "24"
+      - "72"
+      - hábiles
+      - validación
+    turnIndex: 1
+  - id: turn2-leaves-faq-for-planning
+    type: node_transition
+    to: recomendar
+    turnIndex: 2
+  - id: turn2-provider-search
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    mustNotCall:
+      - file_search
+    maxTotalCalls: 8
+    turnIndex: 2
+  - id: turn2-provider-results-present
+    type: provider_result_count
+    min: 1
+    turnIndex: 2
+  - id: final-plan-catering
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: catering
+        status: shortlisted
+  - id: three-turn-budget
+    type: budget_constraints
+    maxTurns: 3
+    maxToolCalls: 12

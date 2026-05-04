@@ -1437,3 +1437,32 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `prompts/extractors/field_definitions.txt`
 - `docs/implementation-log.md`
+
+### Make FAQ retrieval observable and required
+
+- Restricted the hosted OpenAI `file_search` tool to the `consultar_faq` node instead of injecting it into every reply node.
+- Made FAQ replies require a tool call when the KB vector store is configured, and enabled included search results for trace diagnostics.
+- Added hosted-tool trace extraction so live evals can assert that `file_search` was actually called, not merely available.
+- Scoped hosted-tool trace extraction to current-turn SDK items so prior FAQ session history does not appear as a tool call after returning to planning.
+- Implemented the existing `provider_result_count` eval expectation so FAQ cases can assert that provider search stayed out of KB turns.
+- Strengthened the FAQ tool policy so the first FAQ action is always a faithful KB search rather than an answer from model memory.
+- Added live Lambda eval cases for direct FAQ commission questions and a multi-turn FAQ re-ask followed by provider planning.
+- Replaced reply output schemas with node-specific required fields after live validation exposed unsupported optional fields in the shared structured schema.
+- Locally scraped the current Tawk KB with `KB_SKIP_UPLOAD=true` to confirm stable article content for eval assertions.
+
+Reason:
+- FAQ mode could previously appear configured while production replies were not provably consulting the KB. The migration needs evidence that FAQ answers are retrieval-backed and honest when the answer is missing.
+
+Decision:
+- Treat `file_search` as a FAQ-only, traceable runtime dependency. Tests now verify both wiring and live behavior through real generation turns.
+
+Files changed:
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/structured-message.ts`
+- `prompts/nodes/consultar_faq/tool_policy.txt`
+- `tests/openai-agent-runtime-token-usage.test.ts`
+- `src/evals/runner.ts`
+- `evals/cases/live-faq-commission-uses-kb.yaml`
+- `evals/cases/live-faq-reask-then-planning.yaml`
+- `evals/suites/live_comprehensive.yaml`
+- `docs/implementation-log.md`

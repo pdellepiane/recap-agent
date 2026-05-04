@@ -22,7 +22,14 @@ import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
-import { structuredMessageSchema } from './structured-message';
+import {
+  closeConfirmationMessageSchema,
+  closeResultMessageSchema,
+  contactRequestMessageSchema,
+  genericMessageSchema,
+  recommendationMessageSchema,
+  welcomeMessageSchema,
+} from './structured-message';
 import { providerFitCriteriaSchema } from './provider-fit';
 
 const extractionSchema = z.object({
@@ -118,19 +125,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     request.toolUsage.considered.push(...bundle.allowedTools);
 
-    const fileSearchTool = this.createFileSearchTool();
+    const fileSearchTool = this.createFileSearchTool(request);
+    if (fileSearchTool) {
+      request.toolUsage.considered.push(fileSearchTool.name);
+    }
     const agentTools = fileSearchTool ? [...tools, fileSearchTool] : tools;
 
-    const agent = new Agent<RuntimeContext, typeof structuredMessageSchema>({
+    const outputSchema = this.resolveOutputSchema(request);
+    const agent = new Agent<RuntimeContext, typeof outputSchema>({
       name: `reply_${request.currentNode}`,
       model: this.options.replyModel,
       instructions: () => bundle.instructions,
       tools: agentTools,
-      outputType: structuredMessageSchema,
-      modelSettings: this.buildModelSettings({
-        model: this.options.replyModel,
-        cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
-      }),
+      outputType: outputSchema,
+      modelSettings: this.buildReplyModelSettings(request, Boolean(fileSearchTool)),
     });
 
     const session = new OpenAIConversationsSession({
@@ -158,10 +166,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         toolUsage: request.toolUsage,
       },
     });
+    this.recordHostedToolUsage(request.toolUsage, result);
 
     request.plan.conversation_id = await session.getSessionId();
 
-    const structured = structuredMessageSchema.parse(result.finalOutput);
+    const parseSchema = this.resolveOutputSchema(request);
+    const structured = parseSchema.parse(result.finalOutput);
 
     return {
       text: '',
@@ -514,7 +524,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       this.options.replyProviderLimit,
     );
     const activeNeed = getActiveNeed(request.plan);
-    const messageTypeHint = this.resolveMessageTypeHint(request.currentNode);
 
     return [
       `Nodo previo: ${request.previousNode}`,
@@ -529,29 +538,64 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`,
       `Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`,
       request.errorMessage ? `Nota operativa: ${request.errorMessage}` : '',
-      messageTypeHint,
     ]
       .filter(Boolean)
       .join('\n\n');
   }
 
-  private resolveMessageTypeHint(node: string): string {
-    const typeMap: Record<string, string> = {
-      contacto_inicial: 'welcome',
-      recomendar: 'recommendation',
-    };
-    const messageType = typeMap[node] ?? 'generic';
-
-    return `Tipo de mensaje estructurado esperado: ${messageType}. Devuelve el JSON correspondiente a este tipo.`;
+  private resolveOutputSchema(request: ComposeReplyRequest) {
+    const node = request.currentNode;
+    if (node === 'contacto_inicial') {
+      return welcomeMessageSchema;
+    }
+    if (node === 'recomendar') {
+      return recommendationMessageSchema;
+    }
+    if (node === 'crear_lead_cerrar') {
+      const hasContact =
+        request.plan.contact_name &&
+        request.plan.contact_email &&
+        request.plan.contact_phone;
+      if (!hasContact) {
+        return contactRequestMessageSchema;
+      }
+      if (request.plan.lifecycle_state === 'finished') {
+        return closeResultMessageSchema;
+      }
+      return closeConfirmationMessageSchema;
+    }
+    return genericMessageSchema;
   }
 
-  private createFileSearchTool(): HostedTool | null {
+  private buildReplyModelSettings(
+    request: ComposeReplyRequest,
+    hasFileSearchTool: boolean,
+  ) {
+    const settings = this.buildModelSettings({
+      model: this.options.replyModel,
+      cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
+    });
+
+    if (request.currentNode === 'consultar_faq' && hasFileSearchTool) {
+      return {
+        ...settings,
+        toolChoice: 'required' as const,
+      };
+    }
+
+    return settings;
+  }
+
+  private createFileSearchTool(request: ComposeReplyRequest): HostedTool | null {
     const kb = this.options.knowledgeBase;
-    if (!kb?.enabled || !kb.vectorStoreId) {
+    if (request.currentNode !== 'consultar_faq' || !kb?.enabled || !kb.vectorStoreId) {
       return null;
     }
 
-    return fileSearchTool(kb.vectorStoreId);
+    return fileSearchTool(kb.vectorStoreId, {
+      includeSearchResults: true,
+      maxNumResults: 6,
+    });
   }
 
   private createTools(
@@ -976,6 +1020,110 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       tool,
       input: JSON.stringify(input, null, 2) ?? 'null',
     });
+  }
+
+  private recordHostedToolUsage(
+    toolUsage: RuntimeContext['toolUsage'],
+    result: unknown,
+  ): void {
+    const resultRecord = result && typeof result === 'object'
+      ? result as Record<string, unknown>
+      : null;
+    const currentTurnItems = Array.isArray(resultRecord?.newItems)
+      ? resultRecord.newItems
+      : result;
+    const hostedCalls = this.collectHostedToolCalls(currentTurnItems);
+    for (const call of hostedCalls) {
+      if (!toolUsage.called.includes(call.name)) {
+        toolUsage.called.push(call.name);
+      }
+      this.recordToolInput(toolUsage, call.name, {
+        arguments: call.arguments ?? null,
+        queries: call.queries,
+      });
+      toolUsage.outputs.push({
+        tool: call.name,
+        output: JSON.stringify({
+          status: call.status ?? null,
+          result_count: call.resultCount,
+        }, null, 2),
+      });
+    }
+  }
+
+  private collectHostedToolCalls(value: unknown): Array<{
+    name: string;
+    arguments: string | null;
+    queries: string[];
+    status: string | null;
+    resultCount: number | null;
+  }> {
+    const calls: Array<{
+      name: string;
+      arguments: string | null;
+      queries: string[];
+      status: string | null;
+      resultCount: number | null;
+    }> = [];
+    const seen = new Set<unknown>();
+    const visit = (entry: unknown): void => {
+      if (!entry || typeof entry !== 'object' || seen.has(entry)) {
+        return;
+      }
+      seen.add(entry);
+      const record = entry as Record<string, unknown>;
+      const providerData = record.providerData && typeof record.providerData === 'object'
+        ? record.providerData as Record<string, unknown>
+        : null;
+      const type = typeof record.type === 'string'
+        ? record.type
+        : typeof providerData?.type === 'string'
+          ? providerData.type
+          : null;
+      const rawName = typeof record.name === 'string'
+        ? record.name
+        : typeof providerData?.name === 'string'
+          ? providerData.name
+          : type === 'file_search_call'
+            ? 'file_search'
+            : null;
+
+      if (type === 'hosted_tool_call' || type === 'file_search_call') {
+        const queries = this.extractStringArray(providerData?.queries ?? record.queries);
+        const results = Array.isArray(providerData?.results)
+          ? providerData.results
+          : Array.isArray(record.results)
+            ? record.results
+            : null;
+        calls.push({
+          name: rawName === 'file_search_call' ? 'file_search' : rawName ?? 'hosted_tool',
+          arguments: typeof record.arguments === 'string' ? record.arguments : null,
+          queries,
+          status: typeof record.status === 'string' ? record.status : null,
+          resultCount: results ? results.length : null,
+        });
+      }
+
+      for (const nested of Object.values(record)) {
+        if (Array.isArray(nested)) {
+          for (const item of nested) {
+            visit(item);
+          }
+        } else {
+          visit(nested);
+        }
+      }
+    };
+
+    visit(value);
+    return calls;
+  }
+
+  private extractStringArray(value: unknown): string[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter((entry): entry is string => typeof entry === 'string');
   }
 
   private buildPromptPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
