@@ -1483,3 +1483,17 @@ Files changed:
 - `evals/cases/live-faq-from-recommendation.yaml`
 - `evals/suites/live_comprehensive.yaml`
 - `docs/implementation-log.md`
+
+### Add npm deploy script
+
+- Added `npm run deploy` as the canonical package script for `node scripts/deploy.mjs`.
+
+Reason:
+- Deployment previously required knowing the underlying script path. The project should support a standard npm deploy command.
+
+Decision:
+- Keep deployment behavior unchanged and expose the existing script through `package.json`.
+
+Files changed:
+- `package.json`
+- `docs/implementation-log.md`
