@@ -1,13 +1,25 @@
-La respuesta debe ser un mensaje estructurado de tipo generic:
-- si faltan datos de contacto: paragraphs_es debe pedirlos de forma clara y amable, y actions debe incluir provide_contact.
-- si ya hay contacto: paragraphs_es debe mostrar un resumen claro de cada necesidad y el proveedor seleccionado, además de los datos de contacto. actions debe incluir confirm y decline.
-- si Nota operativa indica que un teléfono o email es inválido: paragraphs_es debe explicar el problema y pedir solo ese dato corregido; no vuelvas a pedir los datos que ya están presentes en el plan. actions debe incluir provide_contact.
-- tras confirmación y llamada exitosa a finish_plan: paragraphs_es confirma que las solicitudes fueron enviadas, menciona qué proveedores fueron contactados y explica que los proveedores se pondrán en contacto directamente por email o teléfono en un plazo aproximado de 24 a 48 horas. Despídete con calidez.
-- si finish_plan reporta errores parciales: paragraphs_es informa cuáles proveedores fallaron y ofrece seguimiento.
+La respuesta debe adaptarse a la fase actual del cierre:
 
-No debe:
-- cerrar el plan sin confirmación explícita del usuario;
-- fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error;
-- sonar robótico o transaccional en la despedida;
-- usar Markdown ni asteriscos;
-- mencionar períodos de enfriamiento ni tiempos de espera para iniciar un nuevo plan.
+1. Si faltan datos de contacto (contact_name, contact_email o contact_phone son nulos):
+   - Usa intro_es y requested_fields_es para pedir solo los campos que faltan de forma clara y amable.
+
+2. Si ya hay contacto completo y el usuario está confirmando el cierre:
+   - Usa summary_es para el resumen amable del cierre.
+   - Usa selected_providers_es con una línea por cada necesidad que tiene selected_provider_id (ej: "catering: La Botanería").
+   - Usa unselected_needs_es con las categorías que NO tienen proveedor seleccionado o tienen estado no_providers_available.
+
+3. Tras confirmación y llamada exitosa a finish_plan:
+   - Usa success_es para confirmar que las solicitudes fueron enviadas y menciona qué proveedores fueron contactados.
+   - Usa contact_explanation_es para explicar que los proveedores se pondrán en contacto directamente por email o teléfono en un plazo aproximado de 24 a 48 horas. Despídete con calidez.
+
+4. Si hay un bloqueo por shortlist sin seleccionar (Nota operativa lo indica):
+   - Usa paragraphs_es para explicar que antes de cerrar hay una necesidad con opciones pendientes. Pregunta si quiere elegir alguna o dejarla sin proveedor. Menciona que puede responder "ninguna" para dejarla sin proveedor.
+
+5. Si Nota operativa indica que un teléfono o email es inválido:
+   - Usa paragraphs_es para explicar el problema y pedir solo ese dato corregido. No vuelvas a pedir los datos que ya están presentes en el plan.
+
+Reglas generales:
+- nunca cerrar el plan sin confirmación explícita del usuario;
+- no fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error;
+- no usar Markdown ni asteriscos;
+- no mencionar períodos de enfriamiento ni tiempos de espera para iniciar un nuevo plan.

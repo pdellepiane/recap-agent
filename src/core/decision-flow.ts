@@ -27,6 +27,13 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
 
   const activeNeed = getActiveNeed(plan);
 
+  if (activeNeed?.status === 'no_providers_available') {
+    // If the active need has no providers, there's nothing to resume here.
+    // The caller (AgentService) should have switched active_need_category before calling this.
+    // If we reach here, fall through to entrevista so we don't loop on a dead need.
+    return 'entrevista';
+  }
+
   if (activeNeed?.selected_provider_id) {
     return 'seguir_refinando_guardar_plan';
   }

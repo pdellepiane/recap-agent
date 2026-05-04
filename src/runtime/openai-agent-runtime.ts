@@ -1345,6 +1345,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         status: need.status,
         missing_fields: need.missing_fields,
         selected_provider_id: need.selected_provider_id,
+        selected_provider_title: need.recommended_providers.find(p => p.id === need.selected_provider_id)?.title ?? null,
         recommended_provider_ids: need.recommended_provider_ids.slice(0, 6),
       })),
       selected_provider_id: plan.selected_provider_id,

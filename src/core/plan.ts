@@ -37,6 +37,7 @@ export const providerNeedStatusValues = [
   'shortlisted',
   'selected',
   'deferred',
+  'no_providers_available',
 ] as const;
 
 export type ProviderNeedStatus = (typeof providerNeedStatusValues)[number];
@@ -193,8 +194,18 @@ function mergeProviderNeed(
     update.recommended_providers ?? current?.recommended_providers ?? [];
 
   let status = update.status ?? current?.status ?? 'identified';
-  if (selectedProviderId) {
+
+  if (update.status) {
+    // Explicit status update always wins
+    status = update.status;
+  } else if (selectedProviderId) {
     status = 'selected';
+  } else if (current?.status === 'no_providers_available' && recommendedProviders.length === 0) {
+    // Preserve terminal "no providers" status unless new results arrived
+    status = 'no_providers_available';
+  } else if (current?.status === 'deferred') {
+    // Preserve deferred unless explicitly changed or selected
+    status = 'deferred';
   } else if (recommendedProviders.length > 0 || recommendedProviderIds.length > 0) {
     status = 'shortlisted';
   } else if ((update.missing_fields ?? current?.missing_fields ?? []).length === 0) {
@@ -339,7 +350,10 @@ export function summarizeProviderNeeds(providerNeeds: ProviderNeed[]): string {
       const selected = need.selected_provider_id
         ? `, proveedor elegido ${need.selected_provider_id}`
         : '';
-      return `${index + 1}. ${need.category} [${need.status}]${selected}`;
+      const unavailable = need.status === 'no_providers_available'
+        ? ' (sin proveedores disponibles)'
+        : '';
+      return `${index + 1}. ${need.category} [${need.status}]${selected}${unavailable}`;
     })
     .join('\n');
 }

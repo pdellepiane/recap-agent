@@ -34,4 +34,33 @@ describe('resolveResumeNode', () => {
 
     expect(resolveResumeNode(plan)).toBe('entrevista');
   });
+
+  it('falls back to entrevista when the active need has no_providers_available', () => {
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'p-unavailable',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'u-unavailable',
+      }),
+      {
+        current_node: 'refinar_criterios',
+        active_need_category: 'organización',
+        provider_needs: [
+          {
+            category: 'organización',
+            status: 'no_providers_available',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [],
+            recommended_providers: [],
+            selected_provider_id: null,
+            selected_provider_hint: null,
+          },
+        ],
+      },
+    );
+
+    expect(resolveResumeNode(plan)).toBe('entrevista');
+  });
 });

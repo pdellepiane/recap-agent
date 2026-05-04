@@ -17,6 +17,7 @@ import {
   type ProviderNeed,
 } from '../core/plan';
 import { normalizeProviderSummary, type ProviderSummary } from '../core/provider';
+import { inferExtractionDefaults, inferProviderFitContext, inferProviderFitContextFromExtraction, rankProvidersForPlan } from './provider-fit';
 import { computeSearchSufficiency } from '../core/sufficiency';
 import type {
   ExtractionDebugSummary,
@@ -26,9 +27,9 @@ import type {
   TurnTrace,
 } from '../core/trace';
 import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
+import type { ProviderFitContext } from './provider-fit';
 import type { TokenUsage } from './contracts';
 import type { MessageRenderer } from './message-renderer';
-import { rankProvidersForCriteria } from './provider-fit';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
@@ -212,22 +213,8 @@ export class AgentService {
       });
 
     const prepareWorkingPlanStartedAt = Date.now();
-    let planToResume = loadedPlan;
-    if (loadedPlan.active_need_category) {
-      const activeNeed = getActiveNeed(loadedPlan);
-      if (activeNeed?.status === 'no_providers_available') {
-        const nextNeed = loadedPlan.provider_needs.find(
-          (need) => need.status !== 'no_providers_available',
-        );
-        if (nextNeed) {
-          planToResume = mergePlan(loadedPlan, {
-            active_need_category: nextNeed.category,
-          });
-        }
-      }
-    }
-    const workingPlan = mergePlan(planToResume, {
-      current_node: existingPlan ? resolveResumeNode(planToResume) : 'deteccion_intencion',
+    const workingPlan = mergePlan(loadedPlan, {
+      current_node: existingPlan ? resolveResumeNode(existingPlan) : 'deteccion_intencion',
     });
     timingMs.prepare_working_plan += Date.now() - prepareWorkingPlanStartedAt;
 
@@ -348,91 +335,9 @@ export class AgentService {
     }
 
     if (extraction.intent === 'cerrar') {
-      const unselected = this.hasUnselectedShortlist(mergedPlan);
-      const userDeclinedShortlist = inbound.text.toLowerCase().includes('ninguna');
-
-      if (unselected && !userDeclinedShortlist) {
-        currentNode = 'crear_lead_cerrar';
-        nodePath.push(currentNode);
-        errorMessage = `Antes de cerrar, necesito saber: ¿quieres elegir alguna opción de ${unselected.category} o prefieres dejarla sin proveedor? Responde "ninguna" si no quieres ninguna.`;
-        const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
-        await persistPlan(planToSave, 'crear_lead_cerrar');
-        planPersisted = true;
-        planPersistReason = 'crear_lead_cerrar';
-
-        const promptBundleStartedAt = Date.now();
-        const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-        timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
-        const composeReplyStartedAt = Date.now();
-        const reply = await this.dependencies.runtime.composeReply({
-          currentNode,
-          previousNode,
-          userMessage: inbound.text,
-          plan: planToSave,
-          missingFields: sufficiency.missingFields,
-          searchReady: sufficiency.searchReady,
-          providerResults,
-          errorMessage,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
-          toolUsage,
-        });
-        tokenUsage.reply = reply.tokenUsage ?? null;
-        tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
-        const recommendationFunnel = this.resolveRecommendationFunnel(
-          reply.recommendationFunnel ?? null,
-          providerResults,
-        );
-        timingMs.compose_reply += Date.now() - composeReplyStartedAt;
-
-        await persistPlan(planToSave, planPersistReason ?? currentNode);
-        timingMs.total = Date.now() - handleTurnStartedAt;
-
-        return {
-          plan: planToSave,
-          outbound: {
-            text: this.renderReply(reply, providerResults, inbound.channel),
-            conversationId: planToSave.conversation_id,
-          },
-          trace: this.buildTrace({
-            plan: planToSave,
-            previousNode,
-            currentNode,
-            nodePath,
-            extraction,
-            missingFields: sufficiency.missingFields,
-            searchReady: sufficiency.searchReady,
-            promptBundleId: bundle.id,
-            promptFilePaths: bundle.filePaths,
-            toolUsage,
-            providerResults,
-            recommendationFunnel: recommendationFunnel,
-            planPersisted: true,
-            planPersistReason: planPersistReason,
-            timingMs,
-            tokenUsage,
-            searchStrategy,
-            operationalNote: errorMessage,
-          }),
-        };
-      }
-
-      let planToClose = mergedPlan;
-      if (unselected && userDeclinedShortlist) {
-        const deferredNeed: ProviderNeed = {
-          ...unselected,
-          status: 'deferred',
-          selected_provider_id: null,
-          selected_provider_hint: null,
-        };
-        planToClose = mergePlan(mergedPlan, {
-          provider_needs: [deferredNeed],
-        });
-      }
-
       currentNode = 'crear_lead_cerrar';
       nodePath.push(currentNode);
-      const planToSave = mergePlan(planToClose, { current_node: currentNode });
+      const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
       await persistPlan(planToSave, 'crear_lead_cerrar');
       planPersisted = true;
       planPersistReason = 'crear_lead_cerrar';
@@ -623,13 +528,9 @@ export class AgentService {
           errorMessage = searchResult.note;
           searchStrategy = searchResult.strategy;
           const providerEnrichmentStartedAt = Date.now();
-          const enrichedProviders = await this.enrichProviders(searchResult.providers);
-          if (!extraction.providerFitCriteria) {
-            throw new Error('Extractor did not return provider fit criteria.');
-          }
-          providerResults = rankProvidersForCriteria(
-            enrichedProviders,
-            extraction.providerFitCriteria,
+          providerResults = rankProvidersForPlan(
+            await this.enrichProviders(searchResult.providers),
+            inferProviderFitContext(planAfterFlow),
           );
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
           const activeNeed = getActiveNeed(planAfterFlow);
@@ -640,16 +541,15 @@ export class AgentService {
               ? [
                   {
                     ...activeNeed,
-                    recommended_provider_ids:
-                      providerResults.length > 0
-                        ? providerResults.map((provider) => provider.id)
-                        : [],
+                    recommended_provider_ids: providerResults.map(
+                      (provider) => provider.id,
+                    ),
                     recommended_providers: providerResults,
                     missing_fields: [],
                     selected_provider_id: null,
                     selected_provider_hint: null,
                     status:
-                      providerResults.length > 0 ? 'shortlisted' : 'no_providers_available',
+                      providerResults.length > 0 ? 'shortlisted' : 'search_ready',
                   },
                 ]
               : [],
@@ -871,6 +771,9 @@ export class AgentService {
       budget_signal: extraction.budgetSignal,
       guest_range: extraction.guestRange,
       selected_provider_hint: extraction.selectedProviderHint,
+      budget_tier: extraction.budgetTier ?? null,
+      event_type_normalized: extraction.eventTypeNormalized ?? null,
+      active_need_category_normalized: extraction.activeNeedCategoryNormalized ?? null,
       preferences: extraction.preferences,
       hard_constraints: extraction.hardConstraints,
       assumptions: extraction.assumptions,
@@ -926,7 +829,7 @@ export class AgentService {
       return 'deteccion_intencion';
     }
 
-    if (extraction.intent === 'refinar_busqueda' || extraction.intent === 'ver_opciones') {
+    if (extraction.intent === 'refinar_busqueda') {
       return 'refinar_criterios';
     }
 
@@ -952,7 +855,9 @@ export class AgentService {
     userMessage: string,
     channelPhone: string | null | undefined,
   ): { plan: PlanSnapshot; validationError: string | null } {
-    const guardedExtraction = this.guardImplicitVenueNeed(plan, extraction, userMessage);
+    const guardedExtraction = this.normalizeExtractionDefaults(
+      this.guardImplicitVenueNeed(plan, extraction, userMessage),
+    );
     const extractedGuestRange =
       guardedExtraction.guestRange === 'unknown' ? null : guardedExtraction.guestRange;
     const normalizedGuestRange =
@@ -1056,515 +961,8 @@ export class AgentService {
     };
   }
 
-  private tryResolveSelection(
-    plan: PlanSnapshot,
-    selectedProviderHint: string | null,
-    intent: ExtractionResult['intent'],
-  ): SelectionResolution {
-    const activeNeed = getActiveNeed(plan);
-    const needsWithProviders = [
-      ...(activeNeed?.recommended_providers.length ? [activeNeed] : []),
-      ...plan.provider_needs.filter(
-        (need) =>
-          need.category !== activeNeed?.category &&
-          need.recommended_providers.length > 0,
-      ),
-    ];
-
-    if (needsWithProviders.length === 0) {
-      return { resolved: false };
-    }
-
-    const effectiveHint = selectedProviderHint?.trim() ?? null;
-
-    const selection = effectiveHint
-      ? this.resolveProviderSelection(
-          needsWithProviders,
-          activeNeed,
-          effectiveHint,
-        )
-      : this.resolveSingleProviderSelection(needsWithProviders, intent);
-
-    if (!selection) {
-      return { resolved: false };
-    }
-
-    const updatedNeed: ProviderNeed = {
-      ...selection.selectedNeed,
-      status: 'selected',
-      selected_provider_id: selection.selectedProvider.id,
-      selected_provider_hint: effectiveHint ?? selection.selectedProvider.title,
-    };
-
-    const updatedPlan = mergePlan(plan, {
-      current_node: 'usuario_elige_proveedor',
-      active_need_category: plan.active_need_category ?? selection.selectedNeed.category,
-      provider_needs: [updatedNeed],
-    });
-
-    Object.assign(plan, updatedPlan);
-    return {
-      resolved: true,
-      selectedCategory: selection.selectedNeed.category,
-    };
-  }
-
-  private resolveProviderSelection(
-    needsWithProviders: ProviderNeed[],
-    activeNeed: ProviderNeed | null,
-    effectiveHint: string,
-  ): ProviderSelectionMatch | null {
-    const byName = this.resolveProviderSelectionByName(
-      needsWithProviders,
-      effectiveHint,
-    );
-    if (byName) {
-      return byName;
-    }
-
-    const ordinalChoice = this.parseSelectionOrdinal(effectiveHint);
-    if (!ordinalChoice) {
-      return null;
-    }
-
-    const ordinalNeed =
-      activeNeed?.recommended_providers.length
-        ? activeNeed
-        : needsWithProviders.length === 1
-          ? needsWithProviders[0] ?? null
-          : null;
-    const selectedProvider =
-      ordinalNeed?.recommended_providers[ordinalChoice - 1] ?? null;
-
-    if (!ordinalNeed || !selectedProvider) {
-      return null;
-    }
-
-    return {
-      selectedNeed: ordinalNeed,
-      selectedProvider,
-    };
-  }
-
-  private resolveSingleProviderSelection(
-    needsWithProviders: ProviderNeed[],
-    intent: ExtractionResult['intent'],
-  ): ProviderSelectionMatch | null {
-    if (intent !== 'confirmar_proveedor') {
-      return null;
-    }
-
-    const candidates = needsWithProviders.flatMap((need) =>
-      need.recommended_providers.map((provider) => ({
-        selectedNeed: need,
-        selectedProvider: provider,
-      })),
-    );
-
-    if (candidates.length !== 1) {
-      return null;
-    }
-
-    return candidates[0] ?? null;
-  }
-
-  private resolveProviderSelectionByName(
-    needsWithProviders: ProviderNeed[],
-    effectiveHint: string,
-  ): ProviderSelectionMatch | null {
-    const lowered = this.normalizeSelectionText(effectiveHint);
-    if (!lowered) {
-      return null;
-    }
-
-    for (const need of needsWithProviders) {
-      const matchedProvider =
-        need.recommended_providers.find((provider) =>
-          this.providerAliases(provider).some((alias) =>
-            this.normalizedTextContainsAlias(lowered, alias),
-          ),
-        ) ?? null;
-
-      if (matchedProvider) {
-        return {
-          selectedNeed: need,
-          selectedProvider: matchedProvider,
-        };
-      }
-    }
-
-    return null;
-  }
-
-  private parseSelectionOrdinal(value: string): number | null {
-    const normalized = this.normalizeSelectionText(value);
-    const ordinalWords: Array<[RegExp, number]> = [
-      [/\b(?:primer|primera|primero|1er|1era|1ero|1ra|1ro|uno|una)\b/u, 1],
-      [/\b(?:segunda|segundo|2da|2do|dos)\b/u, 2],
-      [/\b(?:tercera|tercero|tercer|3ra|3ro|tres)\b/u, 3],
-      [/\b(?:cuarta|cuarto|4ta|4to|cuatro)\b/u, 4],
-      [/\b(?:quinta|quinto|5ta|5to|cinco)\b/u, 5],
-      [/\b(?:sexta|sexto|6ta|6to|seis)\b/u, 6],
-      [/\b(?:septima|septimo|7ma|7mo|siete)\b/u, 7],
-      [/\b(?:octava|octavo|8va|8vo|ocho)\b/u, 8],
-      [/\b(?:novena|noveno|9na|9no|nueve)\b/u, 9],
-      [/\b(?:decima|decimo|10ma|10mo|diez)\b/u, 10],
-    ];
-
-    const match = ordinalWords.find(([pattern]) => pattern.test(normalized));
-    if (match) {
-      return match[1];
-    }
-
-    const numericMatch = normalized.match(
-      /\b(?:opcion|alternativa|proveedor|numero|nro|num)?\s*(\d{1,2})\b/u,
-    );
-    if (numericMatch?.[1]) {
-      return Number.parseInt(numericMatch[1], 10);
-    }
-
-    return null;
-  }
-
-  private shouldBroadenProviderSearch(
-    baselinePlan: PlanSnapshot,
-    intent: ExtractionResult['intent'],
-    extraction: ExtractionResult,
-  ): boolean {
-    if (intent !== 'refinar_busqueda' && intent !== 'ver_opciones') {
-      return false;
-    }
-
-    const activeNeed = getActiveNeed(baselinePlan);
-    if (!activeNeed || activeNeed.recommended_providers.length === 0) {
-      return false;
-    }
-
-    return !this.hasSearchCriteriaChange(baselinePlan, extraction);
-  }
-
-  private async executeProviderSearch(args: {
-    baselinePlan: PlanSnapshot;
-    plan: PlanSnapshot;
-    extraction: ExtractionResult;
-    toolUsage: ToolUsage;
-    timingMs: {
-      provider_search: number;
-    };
-  }): Promise<ProviderSearchExecutionResult> {
-    const { baselinePlan, extraction, plan, timingMs, toolUsage } = args;
-
-    if (this.shouldBroadenProviderSearch(baselinePlan, extraction.intent, extraction)) {
-      const broadenedResult = await this.searchMoreProviders({
-        plan,
-        toolUsage,
-        timingMs,
-      });
-      if (broadenedResult) {
-        return broadenedResult;
-      }
-    }
-
-    toolUsage.considered.push('search_providers_from_plan');
-    toolUsage.inputs.push({
-      tool: 'search_providers_from_plan',
-      input: JSON.stringify(
-        {
-          source: 'agent_service',
-          activeNeedCategory: plan.active_need_category,
-          location: plan.location,
-        },
-        null,
-        2,
-      ),
-    });
-    const providerSearchStartedAt = Date.now();
-    const result = await this.dependencies.providerGateway.searchProviders(plan);
-    timingMs.provider_search += Date.now() - providerSearchStartedAt;
-    toolUsage.called.push('search_providers_from_plan');
-    toolUsage.outputs.push({
-      tool: 'search_providers_from_plan',
-      output: JSON.stringify(result, null, 2),
-    });
-
-    return {
-      providers: result.providers,
-      note: null,
-      strategy: 'search_from_plan',
-    };
-  }
-
-  private hasSearchCriteriaChange(
-    baselinePlan: PlanSnapshot,
-    extraction: ExtractionResult,
-  ): boolean {
-    const activeNeed = getActiveNeed(baselinePlan);
-    const baselineCategory = this.normalizeCategoryValue(
-      activeNeed?.category ?? baselinePlan.active_need_category ?? baselinePlan.vendor_category,
-    );
-    const extractedCategory = this.normalizeCategoryValue(
-      extraction.activeNeedCategory ?? extraction.vendorCategory,
-    );
-
-    if (extractedCategory && extractedCategory !== baselineCategory) {
-      return true;
-    }
-
-    if (
-      extraction.location &&
-      this.normalizeSelectionText(extraction.location) !==
-        this.normalizeSelectionText(baselinePlan.location ?? '')
-    ) {
-      return true;
-    }
-
-    if (
-      extraction.budgetSignal &&
-      this.normalizeSelectionText(extraction.budgetSignal) !==
-        this.normalizeSelectionText(baselinePlan.budget_signal ?? '')
-    ) {
-      return true;
-    }
-
-    if (
-      extraction.eventType &&
-      this.normalizeSelectionText(extraction.eventType) !==
-        this.normalizeSelectionText(baselinePlan.event_type ?? '')
-    ) {
-      return true;
-    }
-
-    if (
-      extraction.guestRange &&
-      extraction.guestRange !== 'unknown' &&
-      extraction.guestRange !== baselinePlan.guest_range
-    ) {
-      return true;
-    }
-
-    if (
-      this.hasArrayCriteriaChange(extraction.preferences, activeNeed?.preferences ?? []) ||
-      this.hasArrayCriteriaChange(
-        extraction.hardConstraints,
-        activeNeed?.hard_constraints ?? [],
-      )
-    ) {
-      return true;
-    }
-
-    return false;
-  }
-
-  private hasArrayCriteriaChange(nextValues: string[], currentValues: string[]): boolean {
-    if (nextValues.length === 0) {
-      return false;
-    }
-
-    const normalizedCurrent = new Set(
-      currentValues.map((value) => this.normalizeSelectionText(value)).filter(Boolean),
-    );
-    const normalizedNext = new Set(
-      nextValues.map((value) => this.normalizeSelectionText(value)).filter(Boolean),
-    );
-
-    if (normalizedCurrent.size !== normalizedNext.size) {
-      return true;
-    }
-
-    for (const value of normalizedNext) {
-      if (!normalizedCurrent.has(value)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  private truncateDebugText(value: string, maxLength: number): string {
-    const normalized = value.replace(/\s+/g, ' ').trim();
-    if (normalized.length <= maxLength) {
-      return normalized;
-    }
-
-    return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`;
-  }
-
-  private async searchMoreProviders(args: {
-    plan: PlanSnapshot;
-    toolUsage: ToolUsage;
-    timingMs: {
-      provider_search: number;
-    };
-  }): Promise<ProviderSearchExecutionResult | null> {
-    const { plan, timingMs, toolUsage } = args;
-    const activeNeed = getActiveNeed(plan);
-    const category = activeNeed?.category ?? plan.active_need_category ?? plan.vendor_category;
-    const currentProviders = activeNeed?.recommended_providers ?? [];
-
-    if (!category || currentProviders.length === 0) {
-      return null;
-    }
-
-    const existingProviderIds = new Set(currentProviders.map((provider) => provider.id));
-    const unseenProviders = await this.collectBroadenedProviders({
-      category,
-      existingProviderIds,
-      location: plan.location,
-      timingMs,
-      toolUsage,
-    });
-
-    if (unseenProviders.length > 0) {
-      return {
-        providers: unseenProviders.slice(0, TARGET_BROADEN_UNSEEN_RESULTS),
-        note: null,
-        strategy: 'broaden_existing_shortlist',
-      };
-    }
-
-    return {
-      providers: currentProviders,
-      note: 'No encontré más opciones distintas con los criterios actuales.',
-      strategy: 'broaden_existing_shortlist',
-    };
-  }
-
-  private async collectBroadenedProviders(args: {
-    category: string;
-    existingProviderIds: Set<number>;
-    location: string | null;
-    timingMs: {
-      provider_search: number;
-    };
-    toolUsage: ToolUsage;
-  }): Promise<ProviderSummary[]> {
-    const { category, existingProviderIds, location, timingMs, toolUsage } = args;
-    const unseenProviders: ProviderSummary[] = [];
-    const collectedProviderIds = new Set(existingProviderIds);
-
-    const collectFromSearch = async (searchLocation: string | null, source: string) => {
-      for (let page = 1; page <= MAX_BROADEN_SEARCH_PAGES; page += 1) {
-        toolUsage.considered.push('search_providers_by_category_location');
-        toolUsage.inputs.push({
-          tool: 'search_providers_by_category_location',
-          input: JSON.stringify(
-            {
-              source,
-              category,
-              location: searchLocation,
-              page,
-            },
-            null,
-            2,
-          ),
-        });
-        const providerSearchStartedAt = Date.now();
-        const result = await this.dependencies.providerGateway.searchProvidersByCategoryLocation({
-          category,
-          location: searchLocation,
-          page,
-        });
-        timingMs.provider_search += Date.now() - providerSearchStartedAt;
-        toolUsage.called.push('search_providers_by_category_location');
-        toolUsage.outputs.push({
-          tool: 'search_providers_by_category_location',
-          output: JSON.stringify(result, null, 2),
-        });
-
-        const pageProviders = result.providers;
-        for (const provider of pageProviders) {
-          if (collectedProviderIds.has(provider.id)) {
-            continue;
-          }
-
-          collectedProviderIds.add(provider.id);
-          unseenProviders.push(provider);
-        }
-
-        if (
-          unseenProviders.length >= TARGET_BROADEN_UNSEEN_RESULTS ||
-          pageProviders.length === 0
-        ) {
-          break;
-        }
-      }
-    };
-
-    if (location) {
-      await collectFromSearch(location, 'agent_service_broaden_location');
-    }
-
-    if (unseenProviders.length < TARGET_BROADEN_UNSEEN_RESULTS) {
-      await collectFromSearch(null, 'agent_service_broaden_category');
-    }
-
-    return unseenProviders;
-  }
-
-  private providerAliases(provider: ProviderSummary): string[] {
-    const aliases = new Set<string>();
-    const title = provider.title.split('|')[0]?.trim() ?? provider.title;
-    const normalizedTitle = this.normalizeSelectionText(title);
-    if (normalizedTitle) {
-      aliases.add(normalizedTitle);
-      aliases.add(
-        normalizedTitle
-          .replace(/(\d)(?=\p{Letter})/gu, '$1 ')
-          .replace(/(?<=\p{Letter})(\d)/gu, ' $1'),
-      );
-    }
-
-    const firstToken = normalizedTitle.split(/\s+/)[0] ?? '';
-    if (firstToken.length >= 3) {
-      aliases.add(firstToken);
-    }
-
-    if (provider.slug) {
-      aliases.add(this.normalizeSelectionText(provider.slug.replace(/-/g, ' ')));
-    }
-
-    return Array.from(aliases).filter(Boolean);
-  }
-
-  private normalizeSelectionText(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/\p{Diacritic}/gu, '')
-      .toLowerCase()
-      .replace(/[^\p{Letter}\p{Number}\s]/gu, ' ')
-      .replace(/\s+/g, ' ')
-      .trim();
-  }
-
-  private normalizedTextContainsAlias(text: string, alias: string): boolean {
-    return ` ${text} `.includes(` ${alias} `);
-  }
-
-  private async enrichProviders(
-    providers: ProviderSummary[],
-  ): Promise<ProviderSummary[]> {
-    const details = await Promise.all(
-      providers.map(async (provider) => {
-        const detail = await this.dependencies.providerGateway.getProviderDetail(
-          provider.id,
-        );
-
-        if (!detail) {
-          return normalizeProviderSummary(provider);
-        }
-
-        return normalizeProviderSummary({
-          ...provider,
-          ...detail,
-          reason: provider.reason ?? detail.reason ?? null,
-        });
-      }),
-    );
-
-    return details;
-  }
-
   private buildNeedUpdates(
+
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): ProviderNeed[] {
@@ -1639,17 +1037,6 @@ export class AgentService {
       Boolean(selectedCategory) &&
       activeCategory !== selectedCategory &&
       !activeNeed?.selected_provider_id
-    );
-  }
-
-  private hasUnselectedShortlist(plan: PlanSnapshot): ProviderNeed | null {
-    return (
-      plan.provider_needs.find(
-        (need) =>
-          need.status === 'shortlisted' &&
-          need.recommended_providers.length > 0 &&
-          need.selected_provider_id === null,
-      ) ?? null
     );
   }
 
