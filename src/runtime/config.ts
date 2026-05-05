@@ -73,7 +73,7 @@ const environmentSchema = z.object({
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
   PROVIDER_SEARCH_MODE: z.enum(['api', 'vector', 'hybrid']).default('hybrid'),
   PROVIDER_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Provider Search'),
-  PROVIDER_VECTOR_STORE_ID: z.string().min(1).optional(),
+  PROVIDER_VECTOR_STORE_ID: z.string().optional(),
   PROVIDER_VECTOR_MAX_RESULTS: z.coerce.number().int().min(1).max(50).default(12),
   PROVIDER_VECTOR_SCORE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.2),
   REPLY_PROVIDER_LIMIT: z.coerce.number().int().positive().default(4),
@@ -83,7 +83,7 @@ const environmentSchema = z.object({
   PERF_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
   KB_BASE_URL: z.string().url().default('https://sinenvolturas.tawk.help'),
   KB_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Knowledge Base'),
-  KB_VECTOR_STORE_ID: z.string().min(1).optional(),
+  KB_VECTOR_STORE_ID: z.string().optional(),
   KB_ENABLED: z.enum(['true', 'false']).default('true'),
 });
 
