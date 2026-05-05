@@ -87,7 +87,7 @@ const functionUrl = execFileSync(
 console.log(`Deployed stack: ${stackName}`);
 console.log(`Function URL: ${functionUrl}`);
 
-const providerSyncStackName = process.env.PROVIDER_SYNC_STACK_NAME ?? 'recap-agent-provider-sync';
+const providerSyncStackName = process.env.PROVIDER_SYNC_STACK_NAME ?? 'recap-agent-provider-sync-dev';
 run(
   'aws',
   [
