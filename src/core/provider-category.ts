@@ -116,3 +116,45 @@ export function normalizeToProviderCategory(
 
   return null;
 }
+
+export type CategoryBucket = {
+  name: string;
+  categories: ProviderCategory[];
+};
+
+export const categoryBuckets: CategoryBucket[] = [
+  { name: 'Bebés', categories: ['Bebés'] },
+  { name: 'Fotografía y video', categories: ['Fotografía y video'] },
+  { name: 'Hogar y deco', categories: ['Hogar y deco'] },
+  { name: 'Wedding planners', categories: ['Wedding planners'] },
+  { name: 'Catering', categories: ['Catering', 'Licores'] },
+  { name: 'Entretenimiento', categories: ['Música', 'Baile'] },
+  { name: 'Belleza', categories: ['Salud y belleza', 'Maquillaje'] },
+  { name: 'Florería y papelería', categories: ['Florería y papelería'] },
+  { name: 'Locales', categories: ['Locales'] },
+  { name: 'Vestuario', categories: ['Vestidos', 'Accesorios y zapatos', 'Ternos y camisas'] },
+  { name: 'Otros', categories: ['Otros', 'Viajes'] },
+];
+
+export const categoryBucketNames = categoryBuckets.map((bucket) => bucket.name);
+
+export function isBucketName(value: string): boolean {
+  return categoryBucketNames.includes(value);
+}
+
+export function resolveSearchCategories(value: string | null | undefined): ProviderCategory[] {
+  if (!value) return [];
+  const normalized = normalizeForComparison(value);
+  if (!normalized) return [];
+
+  for (const bucket of categoryBuckets) {
+    if (normalized === normalizeForComparison(bucket.name)) {
+      return [...bucket.categories];
+    }
+  }
+
+  const canonical = normalizeToProviderCategory(value);
+  if (canonical) return [canonical];
+
+  return [];
+}

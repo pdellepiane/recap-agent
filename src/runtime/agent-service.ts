@@ -19,6 +19,7 @@ import {
 import { normalizeProviderSummary, type ProviderSummary } from '../core/provider';
 import {
   normalizeToProviderCategory,
+  resolveSearchCategories,
   type ProviderCategory,
 } from '../core/provider-category';
 import { computeSearchSufficiency } from '../core/sufficiency';
@@ -288,7 +289,9 @@ export class AgentService {
 
     if (extraction.pauseRequested || extraction.intent === 'pausar') {
       currentNode = 'guardar_cerrar_temporalmente';
-      nodePath.push(currentNode);
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
       const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
       await persistPlan(planToSave, 'guardar_cerrar_temporalmente');
       planPersisted = true;
@@ -500,7 +503,9 @@ export class AgentService {
 
     if (extraction.intent === 'consultar_faq') {
       currentNode = 'consultar_faq';
-      nodePath.push(currentNode);
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
       // Preserve the planning state: only update current_node so resume works.
       const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
       await persistPlan(planToSave, 'consultar_faq');
@@ -1748,7 +1753,10 @@ export class AgentService {
   }
 
   private normalizeCategoryValue(value: string | null | undefined): string | null {
-    return normalizeToProviderCategory(value);
+    const canonical = normalizeToProviderCategory(value);
+    if (canonical) return canonical;
+    const categories = resolveSearchCategories(value);
+    return categories[0] ?? null;
   }
 
   private isVenueLikeCategory(value: string | null | undefined): boolean {

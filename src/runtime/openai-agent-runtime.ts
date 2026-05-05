@@ -45,7 +45,7 @@ import {
   welcomeMessageSchema,
 } from './structured-message';
 import { providerFitCriteriaSchema } from './provider-fit';
-import { providerCategorySchema } from '../core/provider-category';
+import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 
 const extractionSchema = z.object({
   intent: z
@@ -576,13 +576,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.toolUsage.considered.length > 0
         ? request.toolUsage.considered.join(', ')
         : 'ninguna';
-    const providerResults = request.providerResults.slice(
-      0,
-      this.options.replyProviderLimit,
-    );
+    const stripProviders = request.currentNode === 'consultar_faq';
+    const providerResults = stripProviders
+      ? []
+      : request.providerResults.slice(
+          0,
+          this.options.replyProviderLimit,
+        );
     const activeNeed = getActiveNeed(request.plan);
 
-    return [
+    const parts: Array<string | null> = [
       `Nodo previo: ${request.previousNode}`,
       `Nodo actual: ${request.currentNode}`,
       `Mensaje del usuario: ${request.userMessage}`,
@@ -591,13 +594,24 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
       `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
-      `Herramientas autorizadas en este nodo: ${allowedTools}`,
-      `Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`,
-      `Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`,
-      request.errorMessage ? `Nota operativa: ${request.errorMessage}` : '',
-    ]
-      .filter(Boolean)
-      .join('\n\n');
+    ];
+
+    if (request.currentNode === 'entrevista') {
+      parts.push(`Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}. No inventar categorías fuera de esta lista.`);
+    }
+
+    parts.push(`Herramientas autorizadas en este nodo: ${allowedTools}`);
+
+    if (!stripProviders) {
+      parts.push(`Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`);
+      parts.push(`Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`);
+    }
+
+    if (request.errorMessage) {
+      parts.push(`Nota operativa: ${request.errorMessage}`);
+    }
+
+    return parts.filter(Boolean).join('\n\n');
   }
 
   private resolveOutputSchema(request: ComposeReplyRequest) {
@@ -1316,7 +1330,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     };
 
     visit(value);
-    return calls;
+    const dedupedKeys = new Set<string>();
+    return calls.filter((call) => {
+      const key = `${call.name}:${call.arguments ?? ''}:${call.queries.join(',')}`;
+      if (dedupedKeys.has(key)) return false;
+      dedupedKeys.add(key);
+      return true;
+    });
   }
 
   private extractStringArray(value: unknown): string[] {

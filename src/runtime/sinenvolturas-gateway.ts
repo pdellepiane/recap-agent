@@ -4,7 +4,7 @@ import {
   type ProviderDetail,
   type ProviderSummary,
 } from '../core/provider';
-import { normalizeToProviderCategory } from '../core/provider-category';
+import { normalizeToProviderCategory, resolveSearchCategories } from '../core/provider-category';
 import type { ProviderVectorSearchGateway, ProviderVectorSearchResult } from './provider-vector-search';
 import type {
   CategoryLocationProviderSearchInput,
@@ -137,7 +137,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
   async searchProviders(
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
-    const searchMode = this.options.searchMode ?? 'api';
+    const searchMode = this.options.searchMode ?? 'hybrid';
     if (searchMode === 'api' || !this.options.vectorSearchGateway) {
       return this.searchProvidersFromApi(plan);
     }
@@ -151,13 +151,13 @@ export class SinEnvolturasGateway implements ProviderGateway {
 
   private async searchProvidersFromApi(
     plan: PersistedPlan,
+    activeCategory?: string | null,
   ): Promise<ProviderGatewaySearchResult> {
-    const activeNeed = getActiveNeed(plan);
-    const activeCategory = activeNeed?.category ?? plan.vendor_category;
+    const resolvedCategory = activeCategory ?? this.resolveActiveCategory(plan);
     const searchTerms = Array.from(
       new Set(
         [
-          activeCategory,
+          resolvedCategory,
           plan.event_type,
           plan.location,
           plan.conversation_summary
@@ -193,12 +193,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const providers = this.selectProvidersForPlan(
       paginated.map((provider) => this.toProviderSummary(provider)),
       plan,
-      activeNeed?.category ?? null,
+      resolvedCategory ?? null,
     )
       .slice(0, this.options.persistedSearchLimit)
       .map((provider) => ({
         ...provider,
-        reason: this.reasonForProvider(provider, plan, activeNeed?.category ?? null),
+        reason: this.reasonForProvider(provider, plan, resolvedCategory ?? null),
       }));
 
     return { providers };
@@ -217,15 +217,18 @@ export class SinEnvolturasGateway implements ProviderGateway {
   private async searchProvidersHybrid(
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
-    const [apiResult, vectorResults] = await Promise.all([
-      this.searchProvidersFromApi(plan),
-      this.options.vectorSearchGateway?.search(plan) ?? Promise.resolve([]),
-    ]);
+    const vectorResults = await this.options.vectorSearchGateway?.search(plan) ?? [];
     const vectorProviders = await this.enrichVectorResults(vectorResults);
-    const merged = this.mergeProviderCandidates(apiResult.providers, vectorProviders);
+
+    if (vectorProviders.length === 0) {
+      const apiResult = await this.searchProvidersFromApi(plan);
+      return {
+        providers: apiResult.providers.slice(0, this.options.persistedSearchLimit),
+      };
+    }
 
     return {
-      providers: merged.slice(0, this.options.persistedSearchLimit),
+      providers: vectorProviders.slice(0, this.options.persistedSearchLimit),
     };
   }
 
@@ -464,6 +467,13 @@ export class SinEnvolturasGateway implements ProviderGateway {
     );
 
     return response.data;
+  }
+
+  private resolveActiveCategory(plan: PersistedPlan): string | null {
+    const raw = getActiveNeed(plan)?.category ?? plan.active_need_category ?? plan.vendor_category;
+    if (!raw) return null;
+    const categories = resolveSearchCategories(raw);
+    return categories[0] ?? raw;
   }
 
   private selectProvidersForPlan(

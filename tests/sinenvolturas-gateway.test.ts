@@ -263,7 +263,7 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     const result = await gateway.searchProviders(plan);
 
-    expect(result.providers.map((provider) => provider.id)).toEqual([2, 1]);
+    expect(result.providers.map((provider) => provider.id)).toEqual([2]);
     expect(result.providers[0]?.retrievalSource).toBe('vector');
     expect(result.providers[0]?.descriptionSnippet).toContain('Fotografía documental');
   });

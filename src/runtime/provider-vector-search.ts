@@ -2,6 +2,7 @@ import OpenAI from 'openai';
 import type { ComparisonFilter, CompoundFilter } from 'openai/resources/shared';
 import type { PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
+import { resolveSearchCategories } from '../core/provider-category';
 
 export type ProviderVectorSearchResult = {
   providerId: number;
@@ -55,14 +56,6 @@ export function parseProviderVectorSearchResult(
   };
 }
 
-export function buildProviderVectorSearchRequest(
-  plan: PersistedPlan,
-): ProviderVectorSearchRequest {
-  const query = buildProviderVectorSearchQueries(plan);
-  const filters = buildProviderVectorSearchFilters(plan);
-  return { query, filters };
-}
-
 export function buildProviderVectorSearchQueries(plan: PersistedPlan): string[] {
   const activeNeed = getActiveNeed(plan);
   const category = activeNeed?.category ?? plan.active_need_category ?? plan.vendor_category;
@@ -106,28 +99,37 @@ export function buildProviderVectorSearchQueries(plan: PersistedPlan): string[] 
 }
 
 export function buildProviderVectorSearchFilters(
-  plan: PersistedPlan,
+  categories: string[],
+  location: string | null,
 ): ComparisonFilter | CompoundFilter | null {
-  const activeNeed = getActiveNeed(plan);
-  const filters: ComparisonFilter[] = [];
-  const category = activeNeed?.category ?? plan.active_need_category ?? plan.vendor_category;
+  const filters: Array<ComparisonFilter | CompoundFilter> = [];
 
-  if (category) {
+  if (categories.length === 1) {
     filters.push({
       type: 'eq',
       key: 'category_key',
-      value: category,
+      value: normalizeKey(categories[0]!),
+    });
+  } else if (categories.length > 1) {
+    filters.push({
+      type: 'or',
+      filters: categories.map((category) => ({
+        type: 'eq' as const,
+        key: 'category_key',
+        value: normalizeKey(category),
+      })),
     });
   }
 
-  const location = plan.location?.trim();
   if (location) {
     const country = countryFromLocation(location);
     if (country) {
       filters.push({
-        type: 'eq',
-        key: 'country_key',
-        value: normalizeKey(country),
+        type: 'or',
+        filters: [
+          { type: 'eq', key: 'country_key', value: normalizeKey(country) },
+          { type: 'eq', key: 'country_key', value: '' },
+        ],
       });
     }
   }
@@ -153,14 +155,19 @@ export class ProviderVectorSearchGateway {
   }
 
   async search(plan: PersistedPlan): Promise<ProviderVectorSearchResult[]> {
-    const request = buildProviderVectorSearchRequest(plan);
+    const activeNeed = getActiveNeed(plan);
+    const categoryValue = activeNeed?.category ?? plan.active_need_category ?? plan.vendor_category;
+    const categories = resolveSearchCategories(categoryValue);
+    const queries = buildProviderVectorSearchQueries(plan);
+    const filters = buildProviderVectorSearchFilters(categories, plan.location ?? null);
+
     const response = await this.client.vectorStores.search(
       this.options.vectorStoreId,
       {
-        query: request.query,
+        query: queries,
         max_num_results: this.options.maxResults,
         rewrite_query: true,
-        ...(request.filters ? { filters: request.filters } : {}),
+        ...(filters ? { filters } : {}),
         ranking_options: {
           ranker: 'auto',
           score_threshold: this.options.scoreThreshold,
@@ -168,9 +175,12 @@ export class ProviderVectorSearchGateway {
       },
     );
 
+    const seen = new Set<number>();
     return response.data.flatMap((item) => {
       const parsed = parseProviderVectorSearchResult(item);
-      return parsed ? [parsed] : [];
+      if (!parsed || seen.has(parsed.providerId)) return [];
+      seen.add(parsed.providerId);
+      return [parsed];
     });
   }
 }

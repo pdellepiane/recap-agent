@@ -28,6 +28,7 @@ type CliOptions = {
   timeoutMs: number;
   showRaw: boolean;
   fullPlan: boolean;
+  showSlugs: boolean;
   noPlan?: boolean;
   noTrace?: boolean;
   plan?: boolean;
@@ -47,6 +48,7 @@ type ResolvedCliConfig = {
   showPlan: boolean;
   showTrace: boolean;
   fullPlan: boolean;
+  showSlugs: boolean;
 };
 
 type LambdaSuccessPayload = {
@@ -138,6 +140,7 @@ program
   )
   .option('--show-raw', 'Print the raw Lambda JSON after each turn', false)
   .option('--full-plan', 'Print the full persisted plan JSON after each turn', false)
+  .option('--show-slugs', 'Show provider slugs alongside categories in trace output', false)
   .option('--no-plan', 'Do not fetch the persisted plan from DynamoDB after each turn')
   .option('--no-trace', 'Do not print the trace summary after each turn');
 
@@ -182,7 +185,7 @@ async function main() {
         continue;
       case '/plan': {
         const plan = await planStore.getByExternalUser(config.channel, config.userId);
-        renderPlan(plan, config.fullPlan);
+        renderPlan(plan, config.fullPlan, config.showSlugs);
         continue;
       }
       default:
@@ -247,7 +250,7 @@ async function main() {
         }
         progressReporter.setPhase('rendering_plan');
         const renderPlanStartedAt = Date.now();
-        renderPlan(planForRender, config.fullPlan);
+        renderPlan(planForRender, config.fullPlan, config.showSlugs);
         localTiming.render_plan_ms = Date.now() - renderPlanStartedAt;
       }
 
@@ -258,6 +261,7 @@ async function main() {
           result.timing,
           result.body.perf ?? null,
           localTiming,
+          config.showSlugs,
         );
       }
 
@@ -321,6 +325,7 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
     showPlan,
     showTrace,
     fullPlan: options.fullPlan,
+    showSlugs: options.showSlugs,
   };
 }
 
@@ -468,6 +473,7 @@ function renderConfig(config: ResolvedCliConfig) {
     ['Show Plan', String(config.showPlan)],
     ['Show Raw', String(config.showRaw)],
     ['Full Plan', String(config.fullPlan)],
+    ['Show Slugs', String(config.showSlugs)],
   );
 
   output.write(`${table.toString()}\n`);
@@ -511,6 +517,7 @@ function renderTrace(
   invokeTiming?: InvokeTiming,
   perf?: CliPerfSummary | null,
   localTiming?: LocalTurnTiming,
+  showSlugs?: boolean,
 ): number {
   const renderTraceStartedAt = Date.now();
   const hasToolInputsField = Object.prototype.hasOwnProperty.call(
@@ -582,7 +589,7 @@ function renderTrace(
             .slice(0, 10)
             .map((provider, index) => [
               index === 0 ? 'Provider Results' : '',
-              formatProviderDebug(provider, index),
+              formatProviderDebug(provider, index, showSlugs ?? false),
             ]),
           ...(providerResults.length > 10
             ? [['', `... ${providerResults.length - 10} more providers not shown`]]
@@ -682,7 +689,7 @@ function renderTrace(
   return Date.now() - renderTraceStartedAt;
 }
 
-function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
+function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean, showSlugs: boolean) {
   if (!plan) {
     output.write(pc.yellow('No persisted plan found for this user.\n'));
     return;
@@ -705,7 +712,7 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
     [
       'Provider Needs',
       plan.provider_needs
-        .map((need, index) => formatProviderNeedDebug(need, index))
+        .map((need, index) => formatProviderNeedDebug(need, index, showSlugs))
         .join('\n') || 'none',
     ],
     ['Category', plan.vendor_category ?? 'null'],
@@ -717,7 +724,7 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean) {
     ...(plan.recommended_providers.length > 0
       ? plan.recommended_providers.map((provider, index) => [
           index === 0 ? 'Recommended Providers' : '',
-          formatProviderDebug(provider, index),
+          formatProviderDebug(provider, index, showSlugs),
         ])
       : [['Recommended Providers', 'none']]),
     ['Summary', plan.conversation_summary || ''],
@@ -830,6 +837,7 @@ function truncateForTrace(value: string, maxChars: number): string {
 function formatProviderNeedDebug(
   need: PlanSnapshot['provider_needs'][number],
   index: number,
+  showSlugs: boolean,
 ): string {
   const selectedProvider =
     need.selected_provider_id !== null
@@ -848,10 +856,14 @@ function formatProviderNeedDebug(
 function formatProviderDebug(
   provider: PlanSnapshot['recommended_providers'][number],
   index: number,
+  showSlugs: boolean,
 ): string {
+  const categoryDisplay = showSlugs && provider.slug
+    ? `${provider.slug} / ${provider.category ?? 'null'}`
+    : provider.category ?? 'null';
   const lines = [
     `${index + 1}. ${provider.title} (${provider.id})`,
-    `category=${provider.category ?? 'null'} | location=${provider.location ?? 'null'} | price=${provider.priceLevel ?? 'null'} | rating=${provider.rating ?? 'null'}`,
+    `category=${categoryDisplay} | location=${provider.location ?? 'null'} | price=${provider.priceLevel ?? 'null'} | rating=${provider.rating ?? 'null'}`,
     `reason=${provider.reason ?? 'null'}`,
   ];
 

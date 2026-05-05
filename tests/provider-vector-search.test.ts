@@ -5,6 +5,7 @@ import {
   buildProviderVectorSearchQueries,
   parseProviderVectorSearchResult,
 } from '../src/runtime/provider-vector-search';
+import { resolveSearchCategories } from '../src/core/provider-category';
 
 describe('provider vector search result parser', () => {
   it('parses valid provider ids and matched text', () => {
@@ -92,7 +93,8 @@ describe('provider vector search request formulation', () => {
     );
 
     const queries = buildProviderVectorSearchQueries(plan);
-    const filters = buildProviderVectorSearchFilters(plan);
+    const categories = resolveSearchCategories(plan.active_need_category);
+    const filters = buildProviderVectorSearchFilters(categories, plan.location ?? null);
 
     expect(queries.length).toBeGreaterThan(1);
     expect(queries[0]).toContain('Necesidad activa de proveedor: Fotografía y video');
@@ -111,19 +113,21 @@ describe('provider vector search request formulation', () => {
       (filter) =>
         typeof filter === 'object' &&
         filter !== null &&
-        'key' in filter &&
-        filter.key === 'country_key',
+        'type' in filter &&
+        filter.type === 'or',
     );
 
     expect(categoryFilter).toMatchObject({
       type: 'eq',
       key: 'category_key',
-      value: 'Fotografía y video',
+      value: 'fotografia y video',
     });
     expect(countryFilter).toMatchObject({
-      type: 'eq',
-      key: 'country_key',
-      value: 'peru',
+      type: 'or',
+      filters: [
+        { type: 'eq', key: 'country_key', value: 'peru' },
+        { type: 'eq', key: 'country_key', value: '' },
+      ],
     });
   });
 });
