@@ -10,6 +10,7 @@ import type { ProviderFitCriteria } from './provider-fit';
 
 export type ExtractionResult = {
   intent: PlanIntent | null;
+  secondaryIntents: PlanIntent[];
   intentConfidence: number | null;
   eventType: string | null;
   vendorCategory: ProviderCategory | null;

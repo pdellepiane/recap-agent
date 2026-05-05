@@ -10,6 +10,12 @@ Definiciones de campos:
   - pausar: quiere dejarlo para después o retomarlo luego.
   - consultar_faq: quiere hacer una pregunta sobre Sin Envolturas, precios, comisiones, funcionalidades, pagos, listas de regalo o cualquier tema de la base de conocimiento.
 
+- secondaryIntents:
+  - lista opcional de ints adicionales presentes en el mensaje, además del intent principal.
+  - Úsalo cuando el mensaje combina intenciones claras. Ejemplo: "ok, elijo a DJ Pulga. Ahora necesito catering para tortas" tiene intent=buscar_proveedores y secondaryIntents=["confirmar_proveedor"] porque el usuario está cambiando de necesidad pero también seleccionó un proveedor de la shortlist.
+  - Si el usuario elige un proveedor Y pide algo más (otra categoría, otra búsqueda, cerrar), incluye confirmar_proveedor en secondaryIntents y llena selectedProviderHint con la referencia al proveedor elegido.
+  - Puede estar vacío si el mensaje tiene una sola intención clara.
+
 - intentConfidence:
   - alto si el mensaje es directo;
   - medio si hay inferencia razonable;

@@ -60,6 +60,20 @@ const extractionSchema = z.object({
       'consultar_faq',
     ])
     .nullable(),
+  secondaryIntents: z
+    .array(
+      z.enum([
+        'buscar_proveedores',
+        'refinar_busqueda',
+        'ver_opciones',
+        'confirmar_proveedor',
+        'retomar_plan',
+        'cerrar',
+        'pausar',
+        'consultar_faq',
+      ]),
+    )
+    .default([]),
   kbQuery: z.string().nullable().optional(),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: z.string().nullable(),

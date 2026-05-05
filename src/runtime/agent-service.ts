@@ -600,9 +600,15 @@ export class AgentService {
           : [],
       });
     } else {
+        const effectiveSelectionHint = this.resolveEffectiveSelectionHint(
+          extraction,
+          inbound.text,
+          planAfterFlow,
+        );
+
         const selectionResolution = this.tryResolveSelection(
           planAfterFlow,
-          extraction.selectedProviderHint,
+          effectiveSelectionHint,
           extraction.intent,
         );
 
@@ -1761,6 +1767,41 @@ export class AgentService {
 
   private isVenueLikeCategory(value: string | null | undefined): boolean {
     return normalizeToProviderCategory(value) === 'Locales';
+  }
+
+  private resolveEffectiveSelectionHint(
+    extraction: ExtractionResult,
+    userMessage: string,
+    plan: PlanSnapshot,
+  ): string | null {
+    if (extraction.selectedProviderHint) {
+      return extraction.selectedProviderHint;
+    }
+
+    const hasSelectionIntent =
+      extraction.intent === 'confirmar_proveedor' ||
+      extraction.secondaryIntents?.includes('confirmar_proveedor');
+
+    if (!hasSelectionIntent) {
+      return null;
+    }
+
+    const normalizedMessage = this.normalizeSelectionText(userMessage);
+
+    const allProviders = plan.provider_needs.flatMap(
+      (need) => need.recommended_providers,
+    );
+
+    for (const provider of allProviders) {
+      const aliases = this.providerAliases(provider);
+      for (const alias of aliases) {
+        if (alias.length >= 3 && normalizedMessage.includes(alias)) {
+          return provider.title;
+        }
+      }
+    }
+
+    return null;
   }
 
   private messageHasVenueCue(value: string): boolean {
