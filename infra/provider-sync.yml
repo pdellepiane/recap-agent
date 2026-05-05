@@ -19,6 +19,9 @@ Parameters:
     Type: String
     Default: ''
     Description: Existing provider vector store ID (leave empty to create new)
+  CodeS3Bucket:
+    Type: String
+    Description: S3 bucket containing the zipped Lambda artifact.
   CodeS3Key:
     Type: String
     Default: provider-sync/dev/latest.zip
@@ -68,7 +71,7 @@ Resources:
           PROVIDER_VECTOR_STORE_ID: !If [HasVectorStoreId, !Ref ProviderVectorStoreId, !Ref AWS::NoValue]
           NODE_OPTIONS: --enable-source-maps
       Code:
-        S3Bucket: !Sub recap-agent-artifacts-${AWS::AccountId}-${AWS::Region}
+        S3Bucket: !Ref CodeS3Bucket
         S3Key: !Ref CodeS3Key
 
   ProviderSyncSchedule:
