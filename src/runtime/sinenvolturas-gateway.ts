@@ -828,12 +828,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
       }
 
       if (serviceHighlights.length === 0 && title.includes('servicios')) {
-        serviceHighlights = lines.slice(0, 3);
+        serviceHighlights = lines;
         continue;
       }
 
       if (termsHighlights.length === 0 && title.includes('términos')) {
-        termsHighlights = lines.slice(0, 2);
+        termsHighlights = lines;
       }
     }
 
@@ -846,7 +846,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
         serviceHighlights = this.extractLinesAfterHeading(
           combinedLines,
           ['servicios que ofrece', 'services offered'],
-          3,
+          Number.MAX_SAFE_INTEGER,
         );
       }
 
@@ -854,7 +854,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
         termsHighlights = this.extractLinesAfterHeading(
           combinedLines,
           ['términos y condiciones', 'términos  y condiciones', 'terms and conditions'],
-          2,
+          Number.MAX_SAFE_INTEGER,
         );
       }
     }
