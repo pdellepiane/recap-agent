@@ -10,6 +10,9 @@
 - Fixed `buildProviderVectorSearchFilters` in `provider-vector-search.ts`: removed `normalizeKey()` from category filter values, using exact canonical values returned by `resolveSearchCategories()` instead. The `country_key` filter continues using `normalizeKey()` since the uploader stores country keys lowercased via `attributeKey()`.
 - Added search funnel debug logging (`[search-funnel]` prefix) throughout `sinenvolturas-gateway.ts` and `provider-vector-search.ts`: logs vector query details, raw hit count, enriched provider count, and API fallback triggers.
 - Strengthened category enforcement in `prompts/extractors/field_definitions.txt`: `vendorCategory`, `vendorCategories`, and `activeNeedCategory` now explicitly list the 17 canonical category values and require exact matches. Added known user-expression mappings (e.g., "decoración" → "Hogar y deco").
+- Implemented true parallel vector search in `ProviderVectorSearchGateway.search()`: when `resolveSearchCategories` returns multiple categories (bucket expansion like "Catering" → `["Catering","Licores"]`), each category fires its own vector search with the FULL `maxResults` budget. Results are merged, deduplicated, and sorted globally by score so representation is score-driven, not quota-driven.
+- Added `buildLocationFilter()` helper and updated `buildProviderVectorSearchFilters()` to reuse it.
+- Updated `prompts/nodes/recomendar/response_contract.txt`: agent must mention actual canonical categories represented in results (e.g., "Catering y Licores") instead of bucket names.
 
 ## 2026-05-06
 

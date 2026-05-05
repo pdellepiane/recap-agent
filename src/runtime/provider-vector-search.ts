@@ -206,10 +206,10 @@ export class ProviderVectorSearchGateway {
       return results;
     }
 
-    // Parallel search: one query per category so each gets its own result budget
-    const perCategoryLimit = Math.ceil(this.options.maxResults / categories.length);
+    // Parallel search: each category gets the full result budget;
+    // final representation is determined by relevance scores, not quotas.
     console.log('[search-funnel] parallel search for', categories.length,
-      'categories, limit each:', perCategoryLimit);
+      'categories, budget each:', this.options.maxResults);
 
     const locationFilter = buildLocationFilter(plan.location ?? null);
     const searchPromises = categories.map(async (category) => {
@@ -226,7 +226,7 @@ export class ProviderVectorSearchGateway {
         this.options.vectorStoreId,
         {
           query: queries,
-          max_num_results: perCategoryLimit,
+          max_num_results: this.options.maxResults,
           rewrite_query: true,
           filters,
           ranking_options: {
@@ -251,7 +251,9 @@ export class ProviderVectorSearchGateway {
 
     const categoryResults = await Promise.all(searchPromises);
 
-    // Merge and deduplicate across categories, keeping highest score
+    // Merge and deduplicate across categories, keeping highest score.
+    // Score-based merging means categories with stronger results naturally
+    // claim more slots in the final ranked list.
     const bestById = new Map<number, ProviderVectorSearchResult>();
     for (const results of categoryResults) {
       for (const result of results) {
