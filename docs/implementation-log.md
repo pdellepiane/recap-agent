@@ -2,6 +2,27 @@
 
 ## 2026-05-06
 
+### Vector-first provider search, category buckets, and trace fixes
+
+**Reason:** Provider search returned only 3 results when 6 existed because API-first hybrid search used a single-page term-iteration fallback and strict country filtering excluded providers without location metadata. Category suggestions were unanchored, leading to non-canonical names. FAQ node injected full provider context unnecessarily, wasting tokens.
+
+**Changes:**
+- Restructured `searchProvidersHybrid` to vector-first: run vector search, enrich results, return if any found; API fallback only when vector returns 0 results.
+- Added `categoryBuckets` to `provider-category.ts` with 10 categories + Otros, mapping merged buckets to underlying canonical categories (e.g., "Belleza" → ["Salud y belleza", "Maquillaje"]).
+- Added `resolveSearchCategories()` function to expand bucket or canonical names into search categories for parallel vector queries.
+- Updated `buildProviderVectorSearchFilters` in `provider-vector-search.ts` to accept `categories[]` array instead of single plan, supporting OR filters for merged categories. Made `country_key` filter inclusive: matches providers with the target country OR with empty country (no location set).
+- Increased search limits: `PROVIDER_SEARCH_LIMIT` 5→12, `PROVIDER_VECTOR_MAX_RESULTS` 12→24, `REPLY_PROVIDER_LIMIT` 4→6, `PRESENTATION_PROVIDER_LIMIT` 5→6.
+- Injected category bucket names into `entrevista` prompts dynamically via `composeConversationInput`.
+- Updated `entrevista/response_contract.txt` to reference canonical bucket list.
+- Stripped `providerResults` from `consultar_faq` context to reduce token usage (~3-5K tokens saved per FAQ turn).
+- Deduplicated `collectHostedToolCalls` in `openai-agent-runtime.ts` by composite key to prevent duplicate `file_search` traces.
+- Fixed duplicate `consultar_faq` node in path by checking if last path entry matches current node before pushing.
+- Added `--show-slugs` flag to terminal client for debug output showing provider slugs alongside categories.
+- Purged all DynamoDB plans (clean break, no backward compatibility).
+- Deployed both runtime and provider sync stacks.
+
+## 2026-05-06
+
 ### Fix config validation and wire provider vector store ID end-to-end
 - Fixed `src/runtime/config.ts` schema: removed `.min(1)` from `PROVIDER_VECTOR_STORE_ID` and `KB_VECTOR_STORE_ID` so empty strings passed by CloudFormation do not crash Lambda initialization.
 - Set `ProviderVectorStoreId` parameter in the `recap-agent-runtime` CloudFormation stack to the active OpenAI vector store (`vs_69f939de45708191bebc5879baba8b8c`).
