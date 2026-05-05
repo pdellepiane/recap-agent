@@ -56,7 +56,7 @@ Resources:
     Properties:
       FunctionName: !Sub recap-agent-provider-sync-${Environment}
       Runtime: nodejs24.x
-      Handler: index.handler
+      Handler: provider-sync/index.handler
       Role: !GetAtt ProviderSyncFunctionRole.Arn
       Timeout: 300
       MemorySize: 1024

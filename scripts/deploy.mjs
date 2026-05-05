@@ -87,6 +87,31 @@ const functionUrl = execFileSync(
 console.log(`Deployed stack: ${stackName}`);
 console.log(`Function URL: ${functionUrl}`);
 
+const providerSyncStackName = process.env.PROVIDER_SYNC_STACK_NAME ?? 'recap-agent-provider-sync';
+run(
+  'aws',
+  [
+    'cloudformation',
+    'deploy',
+    '--stack-name',
+    providerSyncStackName,
+    '--template-file',
+    'infra/provider-sync.yml',
+    '--capabilities',
+    'CAPABILITY_NAMED_IAM',
+    '--parameter-overrides',
+    `Environment=${process.env.ENVIRONMENT ?? 'dev'}`,
+    `OpenAiSecretArn=${secretArn}`,
+    `SinEnvolturasBaseUrl=${process.env.SINENVOLTURAS_BASE_URL ?? env.SINENVOLTURAS_BASE_URL ?? 'https://api.sinenvolturas.com/api-web/vendor'}`,
+    `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
+    `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,
+    `CodeS3Key=${artifactKey}`,
+  ],
+  { env: awsEnv },
+);
+
+console.log(`Deployed provider sync stack: ${providerSyncStackName}`);
+
 function loadDotEnv(filePath) {
   if (!fs.existsSync(filePath)) {
     return {};
