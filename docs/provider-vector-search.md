@@ -43,6 +43,8 @@ PROVIDER_VECTOR_MAX_RESULTS=12
 PROVIDER_VECTOR_SCORE_THRESHOLD=0.2
 ```
 
+**Important:** `PROVIDER_VECTOR_STORE_ID` must be set as a CloudFormation stack parameter (`ProviderVectorStoreId`) so the Lambda environment receives it. Without this ID, the runtime falls back to API-only search even in `hybrid` mode. The value is persisted in the Lambda function's environment variables and survives deployments as long as the parameter is passed.
+
 ## Sync Pipeline
 
 The provider sync pipeline mirrors the FAQ knowledge-base sync pattern:

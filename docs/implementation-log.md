@@ -2,6 +2,19 @@
 
 ## 2026-05-06
 
+### Fix config validation and wire provider vector store ID end-to-end
+- Fixed `src/runtime/config.ts` schema: removed `.min(1)` from `PROVIDER_VECTOR_STORE_ID` and `KB_VECTOR_STORE_ID` so empty strings passed by CloudFormation do not crash Lambda initialization.
+- Set `ProviderVectorStoreId` parameter in the `recap-agent-runtime` CloudFormation stack to the active OpenAI vector store (`vs_69f939de45708191bebc5879baba8b8c`).
+- Updated `recap-agent-provider-sync-dev` stack to use the same vector store ID so scheduled syncs update the correct store.
+- Updated `.env.example` to document `PROVIDER_VECTOR_STORE_ID` and `KB_VECTOR_STORE_ID` as required configurations.
+- Updated `docs/provider-vector-search.md` to emphasize that `PROVIDER_VECTOR_STORE_ID` must be set as a CloudFormation parameter and is persisted in the Lambda environment.
+
+Reason:
+- CloudFormation passes empty strings for unset parameters, which caused `z.string().min(1)` to throw during Lambda cold start. More importantly, without the ID being persisted in the stack, every deployment would lose the vector store reference and silently fall back to API-only search.
+
+Decision:
+- Keep the vector store ID as a first-class CloudFormation parameter. Do not rely on `.env` inside the Lambda — env files are not packaged in the deployment artifact. The ID must flow through CloudFormation → Lambda environment variable → runtime config.
+
 ### Enforce shared canonical provider category schema across extraction, KB, and API search
 - Created `src/core/provider-category.ts` with a single source of truth: `providerCategoryValues` enum derived from the actual marketplace API category slugs and display names.
 - Categories are now exact canonical strings (e.g., `"Fotografía y video"`, `"Catering"`, `"Locales"`) everywhere.
