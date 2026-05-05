@@ -46,7 +46,7 @@ describe('eval runner', () => {
     expect(firstResult?.planDiffSummary).toEqual(
       expect.arrayContaining([
         'selected_provider_id=109',
-        'provider_needs=catering:selected',
+        'provider_needs=Catering:selected',
       ]),
     );
   });

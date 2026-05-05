@@ -8,11 +8,13 @@ const distDir = path.join(root, 'dist');
 const lambdaOutfile = path.join(distDir, 'lambda', 'index.js');
 const terminalOutfile = path.join(distDir, 'terminal', 'client.js');
 const knowledgeSyncOutfile = path.join(distDir, 'knowledge-sync', 'index.js');
+const providerSyncOutfile = path.join(distDir, 'provider-sync', 'index.js');
 
 await rm(distDir, { recursive: true, force: true });
 await mkdir(path.dirname(lambdaOutfile), { recursive: true });
 await mkdir(path.dirname(terminalOutfile), { recursive: true });
 await mkdir(path.dirname(knowledgeSyncOutfile), { recursive: true });
+await mkdir(path.dirname(providerSyncOutfile), { recursive: true });
 
 await esbuild.build({
   entryPoints: ['src/lambda/handler.ts'],
@@ -38,6 +40,17 @@ await esbuild.build({
 await esbuild.build({
   entryPoints: ['src/knowledge-sync/handler.ts'],
   outfile: knowledgeSyncOutfile,
+  bundle: true,
+  platform: 'node',
+  target: 'node24',
+  format: 'cjs',
+  sourcemap: true,
+  external: ['aws-sdk'],
+});
+
+await esbuild.build({
+  entryPoints: ['src/provider-sync/handler.ts'],
+  outfile: providerSyncOutfile,
   bundle: true,
   platform: 'node',
   target: 'node24',

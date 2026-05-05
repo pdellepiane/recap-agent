@@ -7,6 +7,7 @@ import { getConfig } from '../runtime/config';
 import { DynamoPlanStore } from '../storage/dynamo-plan-store';
 import { OpenAiAgentRuntime } from '../runtime/openai-agent-runtime';
 import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
+import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
 import { resolveOpenAiApiKey } from '../runtime/secrets';
@@ -124,10 +125,21 @@ async function getRuntime(): Promise<{
       process.env.OPENAI_API_KEY = apiKey;
 
       const promptLoader = new PromptLoader(config.prompts.dir);
+      const providerVectorSearchGateway =
+        config.providerApi.searchMode !== 'api' && config.providerApi.vectorStoreId
+          ? new ProviderVectorSearchGateway({
+              apiKey,
+              vectorStoreId: config.providerApi.vectorStoreId,
+              maxResults: config.providerApi.vectorMaxResults,
+              scoreThreshold: config.providerApi.vectorScoreThreshold,
+            })
+          : null;
       const providerGateway = new SinEnvolturasGateway({
         baseUrl: config.providerApi.baseUrl,
         persistedSearchLimit: config.providerApi.persistedSearchLimit,
         summarySearchWordLimit: config.providerApi.summarySearchWordLimit,
+        searchMode: config.providerApi.searchMode,
+        vectorSearchGateway: providerVectorSearchGateway,
       });
       const runtime = new OpenAiAgentRuntime({
         apiKey,

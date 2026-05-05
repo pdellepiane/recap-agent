@@ -11,11 +11,12 @@ Reglas de normalización:
 - ubicación:
   - conserva el texto útil más específico que sirva para buscar.
 - categoría:
-  - normaliza a una etiqueta breve en singular cuando sea posible.
+  - normaliza SIEMPRE a uno de los valores canónicos exactos del marketplace: Accesorios y zapatos, Catering, Hogar y deco, Florería y papelería, Fotografía y video, Maquillaje, Música, Vestidos, Wedding planners, Otros, Bebés, Salud y belleza, Ternos y camisas, Baile, Viajes, Locales, Licores.
   - si el usuario menciona varias categorías, devuélvelas en vendorCategories sin perder ninguna.
   - vendorCategory debe reflejar la categoría activa del turno si está clara.
-  - en este dominio, "local" y "solo el espacio" deben mapearse a la necesidad de venue o salón/local para eventos, no a una ubicación comercial cualquiera.
-  - normaliza expresiones como "dj", "djs", "música", "musica", "banda", "orquesta", "show musical" a la familia de música cuando el usuario esté pidiendo proveedores de entretenimiento musical.
+  - en este dominio, "local" y "solo el espacio" deben mapearse a "Locales", no a una ubicación comercial cualquiera.
+  - normaliza expresiones como "dj", "djs", "música", "musica", "banda", "orquesta", "show musical" a "Música".
+  - normaliza "foto", "fotógrafo", "fotografía", "video" a "Fotografía y video".
   - si el usuario abre una categoría nueva con conectores como "y", "ahora", "también", "de", o una pregunta directa por otra clase de proveedor, trátalo como cambio de activeNeedCategory aunque la necesidad anterior siga sin selección.
 - selección de proveedor:
   - si el usuario elige una opción por nombre parcial, conserva ese nombre breve en selectedProviderHint;

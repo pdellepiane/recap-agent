@@ -11,7 +11,7 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
     id: 1,
     title: 'La Botanería',
     slug: 'la-botaneria',
-    category: 'catering',
+    category: 'Catering',
     location: 'Lima, Perú',
     priceLevel: '$$',
     rating: '4.5',

@@ -2,10 +2,10 @@ template: template.base-offline
 id: domain.local_solo_espacio_no_category_reask
 suite: domain_knowledge
 version: 1
-description: Once local is the active need, "solo el espacio" should not trigger a re-ask about what local means.
+description: Once Locales is the active need, "solo el espacio" should not trigger a re-ask about what Locales means.
 tags:
   - domain-knowledge
-  - local
+  - Locales
   - solo-el-espacio
 inputs:
   - text: solo el espacio
@@ -14,10 +14,10 @@ seedPlan:
   event_type: baby shower
   location: La Molina, Lima, Perú
   guest_range: 21-50
-  active_need_category: local
-  vendor_category: local
+  active_need_category: Locales
+  vendor_category: Locales
   provider_needs:
-    - category: local
+    - category: Locales
       status: identified
       preferences: []
       hard_constraints: []
@@ -32,10 +32,10 @@ fixtures:
       - intent: refinar_busqueda
         intentConfidence: 0.92
         eventType: baby shower
-        vendorCategory: local
+        vendorCategory: Locales
         vendorCategories:
-          - local
-        activeNeedCategory: local
+          - Locales
+        activeNeedCategory: Locales
         location: La Molina, Lima, Perú
         budgetSignal: null
         guestRange: 21-50
@@ -43,18 +43,18 @@ fixtures:
           - solo el espacio
         hardConstraints: []
         assumptions: []
-        conversationSummary: El usuario quiere solo el espacio para el local.
+        conversationSummary: El usuario quiere solo el espacio para el Locales.
         selectedProviderHint: null
         pauseRequested: false
     repliesByTurn:
-      - Perfecto, buscamos solo el espacio. Ahora dime el presupuesto para afinar mejor el local.
+      - Perfecto, buscamos solo el espacio. Ahora dime el presupuesto para afinar mejor el Locales.
 expectations:
-  - id: no-local-reask
+  - id: no-Locales-reask
     type: text_not_contains
     phrases:
-      - salón/local para eventos
+      - salón/Locales para eventos
       - te refieres a un salón
-  - id: preserve-local
+  - id: preserve-Locales
     type: plan_field_equals
     path: active_need_category
-    expected: local
+    expected: Locales

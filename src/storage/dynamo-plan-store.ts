@@ -8,7 +8,7 @@ import {
   PutCommand,
 } from '@aws-sdk/lib-dynamodb';
 
-import { planSchema, type PlanSnapshot } from '../core/plan';
+import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import type { PlanStore, SavePlanInput } from './plan-store';
 
 type StoredItem = {
@@ -52,7 +52,7 @@ export class DynamoPlanStore implements PlanStore {
 
     const rawPlan = this.stripStorageEnvelope(response.Item as StoredItem);
 
-    return planSchema.parse(rawPlan) as PlanSnapshot;
+    return planSchema.parse(normalizeRawPlan(rawPlan)) as PlanSnapshot;
   }
 
   async save(input: SavePlanInput): Promise<void> {

@@ -17,7 +17,7 @@ describe('computeSearchSufficiency', () => {
     });
 
     const ready = mergePlan(empty, {
-      vendor_category: 'fotografía',
+      vendor_category: 'Fotografía y video',
       location: 'Lima',
       budget_signal: '$$',
     });

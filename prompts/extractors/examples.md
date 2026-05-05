@@ -4,7 +4,7 @@ Ejemplos breves:
 - intent: buscar_proveedores
 - eventType: boda
 - vendorCategory: null
-- vendorCategories: [local, catering, fotografía]
+- vendorCategories: [Locales, Catering, Fotografía y video]
 - activeNeedCategory: null
 - location: Lima
 - budgetSignal: null
@@ -21,17 +21,17 @@ Ejemplos breves:
 2. Usuario: "Empecemos por fotógrafos en Lima, de presupuesto medio."
 - intent: buscar_proveedores
 - eventType: null
-- vendorCategory: fotografía
-- vendorCategories: [fotografía]
-- activeNeedCategory: fotografía
+- vendorCategory: Fotografía y video
+- vendorCategories: [Fotografía y video]
+- activeNeedCategory: Fotografía y video
 - location: Lima
 - budgetSignal: medio
 
 3. Usuario: "Muéstrame otras opciones pero más económicas para catering."
 - intent: refinar_busqueda
-- vendorCategory: catering
-- vendorCategories: [catering]
-- activeNeedCategory: catering
+- vendorCategory: Catering
+- vendorCategories: [Catering]
+- activeNeedCategory: Catering
 - preferences: []
 - hardConstraints: []
 - budgetSignal: económico
@@ -43,20 +43,20 @@ Ejemplos breves:
 
 5. Usuario: "Quiero usar EDO para el catering."
 - intent: confirmar_proveedor
-- vendorCategory: catering
-- activeNeedCategory: catering
+- vendorCategory: Catering
+- activeNeedCategory: Catering
 - selectedProviderHint: EDO
 
 6. Usuario: "Quiero utilizar los servicios de Carlos y también necesito catering."
 - intent: confirmar_proveedor
-- vendorCategories: [fotografía, catering]
-- activeNeedCategory: catering
+- vendorCategories: [Fotografía y video, Catering]
+- activeNeedCategory: Catering
 - selectedProviderHint: Carlos
 
 7. Usuario: "Dame la de tablas de queso y también necesito música."
 - intent: confirmar_proveedor
-- vendorCategories: [música]
-- activeNeedCategory: música
+- vendorCategories: [Música]
+- activeNeedCategory: Música
 - selectedProviderHint: proveedor de la shortlist relacionado con tablas de queso
 
 8. Usuario: "Me interesa la propuesta en vivo, ¿qué seguiría?"
@@ -80,21 +80,21 @@ Ejemplos breves:
 
 11. Usuario: "Y qué djs tienes?"
 - intent: buscar_proveedores
-- vendorCategory: música
-- vendorCategories: [música]
-- activeNeedCategory: música
+- vendorCategory: Música
+- vendorCategories: [Música]
+- activeNeedCategory: Música
 
 12. Usuario: "Y de foto qué opciones hay?"
 - intent: buscar_proveedores
-- vendorCategory: fotografía
-- vendorCategories: [fotografía]
-- activeNeedCategory: fotografía
+- vendorCategory: Fotografía y video
+- vendorCategories: [Fotografía y video]
+- activeNeedCategory: Fotografía y video
 
 13. Usuario: "También quiero ver catering."
 - intent: buscar_proveedores
-- vendorCategory: catering
-- vendorCategories: [catering]
-- activeNeedCategory: catering
+- vendorCategory: Catering
+- vendorCategories: [Catering]
+- activeNeedCategory: Catering
 
 14. Usuario: "Muéstrame otras opciones".
 - intent: refinar_busqueda

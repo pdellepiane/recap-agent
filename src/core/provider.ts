@@ -21,6 +21,8 @@ export type ProviderSummary = {
   fitScore?: number | null;
   fitWarnings?: string[];
   fitTags?: string[];
+  retrievalScore?: number | null;
+  retrievalSource?: 'api' | 'vector' | 'hybrid' | null;
 };
 
 export type ProviderDetail = ProviderSummary & {

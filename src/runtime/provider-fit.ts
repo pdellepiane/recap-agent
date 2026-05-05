@@ -174,6 +174,11 @@ export function scoreProviderForCriteria(
     warnings.push('La ficha contiene una señal que el usuario quería evitar.');
   }
 
+  if (provider.retrievalScore !== null && provider.retrievalScore !== undefined) {
+    score += Math.round(provider.retrievalScore * 8);
+    tags.push('semantic_match');
+  }
+
   return {
     ...provider,
     reason: buildRationale(provider, criteria, warnings),

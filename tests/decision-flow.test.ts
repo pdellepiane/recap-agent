@@ -44,10 +44,10 @@ describe('resolveResumeNode', () => {
       }),
       {
         current_node: 'refinar_criterios',
-        active_need_category: 'organización',
+        active_need_category: 'Wedding planners',
         provider_needs: [
           {
-            category: 'organización',
+            category: 'Wedding planners',
             status: 'no_providers_available',
             preferences: [],
             hard_constraints: [],

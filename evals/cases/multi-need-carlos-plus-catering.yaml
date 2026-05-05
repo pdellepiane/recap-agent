@@ -2,54 +2,54 @@ template: template.base-offline
 id: multi_need.select_photography_and_open_catering
 suite: multi_need_planning
 version: 1
-description: Confirm one provider on photography while opening catering in the same turn.
+description: Confirm one provider on photography while opening Catering in the same turn.
 imports:
   - ../fixtures/seed-plans/recommend-photography-shortlist-carlos.yaml
-  - ../fixtures/offline/search-results/catering-shortlist-top-three.yaml
+  - ../fixtures/offline/search-results/Catering-shortlist-top-three.yaml
 tags:
   - mixed-turn
   - multi-need
   - regression
 inputs:
-  - text: quiero utilizar los servicios de Carlos, tambien necesito catering
+  - text: quiero utilizar los servicios de Carlos, tambien necesito Catering
 fixtures:
   offline:
     extractionsByTurn:
       - intent: confirmar_proveedor
         intentConfidence: 0.95
         eventType: boda
-        vendorCategory: catering
+        vendorCategory: Catering
         vendorCategories:
-          - fotografía
-          - catering
-        activeNeedCategory: catering
+          - Fotografía y video
+          - Catering
+        activeNeedCategory: Catering
         location: Lima
         budgetSignal: null
         guestRange: 51-100
         preferences: []
         hardConstraints: []
         assumptions: []
-        conversationSummary: El usuario quiere a Carlos para fotografía y ahora necesita catering.
+        conversationSummary: El usuario quiere a Carlos para Fotografía y video y ahora necesita Catering.
         selectedProviderHint: Carlos
         pauseRequested: false
     repliesByTurn:
-      - Perfecto. Tomo a Carlos para fotografía y ahora te muestro catering en Lima.
+      - Perfecto. Tomo a Carlos para Fotografía y video y ahora te muestro Catering en Lima.
 expectations:
   - id: final-node
     type: node_transition
     to: recomendar
-  - id: active-need-catering
+  - id: active-need-Catering
     type: plan_field_equals
     path: active_need_category
-    expected: catering
+    expected: Catering
   - id: preserve-selection
     type: plan_field_subset
     path: provider_needs
     expected:
-      - category: fotografía
+      - category: Fotografía y video
         status: selected
         selected_provider_id: 90
-      - category: catering
+      - category: Catering
         status: shortlisted
   - id: mixed-turn-invariant
     type: trajectory_invariants

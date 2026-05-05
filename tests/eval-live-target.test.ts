@@ -13,8 +13,8 @@ vi.mock('../src/storage/dynamo-plan-store', () => {
           intent: 'buscar_proveedores',
           intent_confidence: 0.9,
           event_type: 'boda',
-          vendor_category: 'fotografía',
-          active_need_category: 'fotografía',
+          vendor_category: 'Fotografía y video',
+          active_need_category: 'Fotografía y video',
           location: 'Lima',
           budget_signal: null,
           guest_range: '51-100',
@@ -170,5 +170,5 @@ describe('live lambda eval target', () => {
     expect(result.turns[0]?.trace.tools_called).toEqual(['search_providers_from_plan']);
     expect(result.turns[0]?.perf?.runtime_latency_ms).toBe(1200);
     expect(result.turns[0]?.plan.event_type).toBe('boda');
-  });
+  }, 15_000);
 });

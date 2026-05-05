@@ -2,14 +2,14 @@ template: template.base-live
 id: live.event_plan_then_catering_search
 suite: live_comprehensive
 version: 1
-description: Event-first planning should persist context and use it for a follow-up catering search.
+description: Event-first planning should persist context and use it for a follow-up Catering search.
 tags:
   - live
   - multi-turn
   - event-plan-first
 inputs:
   - text: hola, estoy organizando una boda en Lima para 120 personas
-  - text: necesito catering con opciones vegetarianas
+  - text: necesito Catering con opciones vegetarianas
 expectations:
   - id: turn0-planning-node
     type: node_transition
@@ -34,7 +34,7 @@ expectations:
     type: plan_field_equals
     path: guest_range
     expected: 101-200
-  - id: final-catering-node
+  - id: final-Catering-node
     type: node_transition
     to: recomendar
     turnIndex: 1
@@ -57,7 +57,7 @@ expectations:
     type: plan_field_subset
     path: provider_needs
     expected:
-      - category: catering
+      - category: Catering
         status: shortlisted
   - id: two-turn-budget
     type: budget_constraints

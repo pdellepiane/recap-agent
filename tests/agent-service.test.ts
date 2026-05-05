@@ -39,7 +39,7 @@ import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 
 const testProviderFitCriteria = {
   eventType: 'boda',
-  needCategory: 'fotografía',
+  needCategory: 'Fotografía y video',
   location: 'Lima',
   budgetAmount: null,
   budgetCurrency: null,
@@ -82,9 +82,9 @@ class FakeRuntime implements AgentRuntime {
         intent: 'confirmar_proveedor',
         intentConfidence: 0.92,
         eventType: 'boda',
-        vendorCategory: 'fotografía',
-        vendorCategories: ['fotografía', 'catering'],
-        activeNeedCategory: 'fotografía',
+        vendorCategory: 'Fotografía y video',
+        vendorCategories: ['Fotografía y video', 'Catering'],
+        activeNeedCategory: 'Fotografía y video',
         location: 'Lima',
         budgetSignal: '$$',
         guestRange: '51-100',
@@ -105,9 +105,9 @@ class FakeRuntime implements AgentRuntime {
       intent: 'buscar_proveedores',
       intentConfidence: 0.91,
       eventType: 'boda',
-      vendorCategory: 'fotografía',
-      vendorCategories: ['fotografía', 'catering'],
-      activeNeedCategory: 'fotografía',
+      vendorCategory: 'Fotografía y video',
+      vendorCategories: ['Fotografía y video', 'Catering'],
+      activeNeedCategory: 'Fotografía y video',
       location: 'Lima',
       budgetSignal: '$$',
       guestRange: '51-100',
@@ -164,7 +164,7 @@ class FakeGateway implements ProviderGateway {
     return [
       {
         id: 1,
-        name: 'fotografía',
+        name: 'Fotografía y video',
         slug: 'fotografia',
         color: null,
         eventTypes: ['boda'],
@@ -200,7 +200,7 @@ class FakeGateway implements ProviderGateway {
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
     this.searchCalls += 1;
-    if (plan.vendor_category === 'sin-resultados') {
+    if ((plan.vendor_category as string) === 'sin-resultados') {
       return { providers: [] };
     }
 
@@ -209,7 +209,7 @@ class FakeGateway implements ProviderGateway {
         {
           id: 1,
           title: 'Foto Uno',
-          category: 'fotografía',
+          category: 'Fotografía y video',
           location: 'Lima',
           priceLevel: '$$',
           reason: 'coincide con el plan',
@@ -229,7 +229,7 @@ class FakeGateway implements ProviderGateway {
         {
           id: 1,
           title: 'Foto Uno',
-          category: 'fotografía',
+          category: 'Fotografía y video',
           location: 'Lima',
           priceLevel: '$$',
           reason: 'coincide con el plan',
@@ -249,7 +249,7 @@ class FakeGateway implements ProviderGateway {
         {
           id: 1,
           title: 'Foto Uno',
-          category: 'fotografía',
+          category: 'Fotografía y video',
           location: 'Lima',
           priceLevel: '$$',
           reason: 'coincide con el plan',
@@ -276,7 +276,7 @@ class FakeGateway implements ProviderGateway {
       id: providerId,
       title: 'Foto Uno',
       slug: 'foto-uno',
-      category: 'fotografía',
+      category: 'Fotografía y video',
       location: 'Lima',
       priceLevel: '$$',
       rating: '4.8',
@@ -403,8 +403,8 @@ describe('AgentService', () => {
             current_node: node,
             intent: 'buscar_proveedores',
             event_type: 'boda',
-            vendor_category: 'fotografía',
-            active_need_category: 'fotografía',
+            vendor_category: 'Fotografía y video',
+            active_need_category: 'Fotografía y video',
             location: 'Lima',
             guest_range: '51-100',
           },
@@ -456,7 +456,7 @@ describe('AgentService', () => {
     expect(response.trace.plan_persisted).toBe(true);
     expect(response.trace.plan_persist_reason).toBe('recomendar');
     expect(response.plan.provider_needs).toHaveLength(2);
-    expect(response.plan.active_need_category).toBe('fotografía');
+    expect(response.plan.active_need_category).toBe('Fotografía y video');
     expect(response.plan.recommended_providers[0]?.detailUrl).toBe(
       'https://sinenvolturas.com/proveedores/foto-uno',
     );
@@ -466,11 +466,11 @@ describe('AgentService', () => {
     ]);
 
     const saved = await planStore.getByExternalUser('terminal_whatsapp', 'user-1');
-    expect(saved?.vendor_category).toBe('fotografía');
+    expect(saved?.vendor_category).toBe('Fotografía y video');
     expect(saved?.location).toBe('Lima');
     expect(saved?.provider_needs.map((need) => need.category)).toEqual([
-      'fotografía',
-      'catering',
+      'Fotografía y video',
+      'Catering',
     ]);
   });
 
@@ -505,9 +505,9 @@ describe('AgentService', () => {
             intent: 'confirmar_proveedor',
             intentConfidence: 0.97,
             eventType: 'cumpleaños',
-            vendorCategory: 'catering',
-            vendorCategories: ['catering'],
-            activeNeedCategory: 'catering',
+            vendorCategory: 'Catering',
+            vendorCategories: ['Catering'],
+            activeNeedCategory: 'Catering',
             location: 'Lima',
             budgetSignal: null,
             guestRange: '21-50',
@@ -550,11 +550,11 @@ describe('AgentService', () => {
         event_type: 'cumpleaños',
         location: 'Lima',
         guest_range: '21-50',
-        active_need_category: 'catering',
-        vendor_category: 'catering',
+        active_need_category: 'Catering',
+        vendor_category: 'Catering',
         provider_needs: [
           {
-            category: 'catering',
+            category: 'Catering',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -565,7 +565,7 @@ describe('AgentService', () => {
                 id: 109,
                 title: 'EDO Sushi Bar',
                 slug: 'edo-sushi-bar',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 rating: '4.7',
@@ -591,7 +591,7 @@ describe('AgentService', () => {
             id: 109,
             title: 'EDO Sushi Bar',
             slug: 'edo-sushi-bar',
-            category: 'catering',
+            category: 'Catering',
             location: 'Lima',
             priceLevel: '$$$',
             rating: '4.7',
@@ -637,8 +637,8 @@ describe('AgentService', () => {
           intentConfidence: 0.85,
           eventType: null,
           vendorCategory: null,
-          vendorCategories: ['local'],
-          activeNeedCategory: 'local',
+          vendorCategories: ['Locales'],
+          activeNeedCategory: 'Locales',
           location: null,
           budgetSignal: 'medio',
           guestRange: 'unknown',
@@ -678,11 +678,11 @@ describe('AgentService', () => {
         event_type: 'baby shower',
         location: 'La Molina, Lima, Perú',
         guest_range: '21-50',
-        active_need_category: 'local',
-        vendor_category: 'local',
+        active_need_category: 'Locales',
+        vendor_category: 'Locales',
         provider_needs: [
           {
-            category: 'local',
+            category: 'Locales',
             status: 'identified',
             preferences: [],
             hard_constraints: [],
@@ -722,9 +722,9 @@ describe('AgentService', () => {
           intent: 'refinar_busqueda',
           intentConfidence: 0.94,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -749,7 +749,7 @@ describe('AgentService', () => {
         input: CategoryLocationProviderSearchInput,
       ): Promise<ProviderGatewaySearchResult> {
         this.categoryLocationCalls.push(input);
-        expect(input.category).toBe('fotografía');
+        expect(input.category).toBe('Fotografía y video');
 
         if (input.location === 'Lima' && input.page === 1) {
           return {
@@ -757,7 +757,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -774,7 +774,7 @@ describe('AgentService', () => {
               {
                 id: 2,
                 title: 'Foto Dos',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$$',
                 reason: 'más opciones en la misma categoría',
@@ -813,11 +813,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -827,7 +827,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -860,10 +860,10 @@ describe('AgentService', () => {
     expect(response.trace.tools_called).toContain('search_providers_by_category_location');
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
     expect(gateway.categoryLocationCalls).toEqual([
-      { category: 'fotografía', location: 'Lima', page: 1 },
-      { category: 'fotografía', location: 'Lima', page: 2 },
-      { category: 'fotografía', location: 'Lima', page: 3 },
-      { category: 'fotografía', location: null, page: 1 },
+      { category: 'Fotografía y video', location: 'Lima', page: 1 },
+      { category: 'Fotografía y video', location: 'Lima', page: 2 },
+      { category: 'Fotografía y video', location: 'Lima', page: 3 },
+      { category: 'Fotografía y video', location: null, page: 1 },
     ]);
   });
 
@@ -874,9 +874,9 @@ describe('AgentService', () => {
           intent: 'refinar_busqueda',
           intentConfidence: 0.94,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -927,11 +927,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -941,7 +941,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -974,8 +974,8 @@ describe('AgentService', () => {
       'No encontré más opciones distintas con los criterios actuales.',
     );
     expect(gateway.categoryLocationCalls).toEqual([
-      { category: 'fotografía', location: 'Lima', page: 1 },
-      { category: 'fotografía', location: null, page: 1 },
+      { category: 'Fotografía y video', location: 'Lima', page: 1 },
+      { category: 'Fotografía y video', location: null, page: 1 },
     ]);
   });
 
@@ -986,9 +986,9 @@ describe('AgentService', () => {
           intent: 'refinar_busqueda',
           intentConfidence: 0.94,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -1024,7 +1024,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -1041,7 +1041,7 @@ describe('AgentService', () => {
               {
                 id: 3,
                 title: 'Foto Tres',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Miraflores, Perú',
                 priceLevel: '$$$',
                 reason: 'ampliación por categoría',
@@ -1078,11 +1078,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -1092,7 +1092,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -1122,10 +1122,10 @@ describe('AgentService', () => {
 
     expect(getActiveNeed(response.plan)?.recommended_provider_ids).toEqual([3]);
     expect(gateway.categoryLocationCalls).toEqual([
-      { category: 'fotografía', location: 'Lima', page: 1 },
-      { category: 'fotografía', location: 'Lima', page: 2 },
-      { category: 'fotografía', location: null, page: 1 },
-      { category: 'fotografía', location: null, page: 2 },
+      { category: 'Fotografía y video', location: 'Lima', page: 1 },
+      { category: 'Fotografía y video', location: 'Lima', page: 2 },
+      { category: 'Fotografía y video', location: null, page: 1 },
+      { category: 'Fotografía y video', location: null, page: 2 },
     ]);
   });
 
@@ -1136,9 +1136,9 @@ describe('AgentService', () => {
           intent: 'refinar_busqueda',
           intentConfidence: 0.95,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: 'económico',
           guestRange: '51-100',
@@ -1174,7 +1174,7 @@ describe('AgentService', () => {
             {
               id: 4,
               title: 'Foto Ahorro',
-              category: 'fotografía',
+              category: 'Fotografía y video',
               location: 'Lima',
               priceLevel: '$',
               reason: 'alineado al nuevo presupuesto',
@@ -1209,11 +1209,11 @@ describe('AgentService', () => {
         location: 'Lima',
         budget_signal: 'medio',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -1223,7 +1223,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -1264,9 +1264,9 @@ describe('AgentService', () => {
           intent: 'confirmar_proveedor',
           intentConfidence: 0.96,
           eventType: 'boda',
-          vendorCategory: 'catering',
-          vendorCategories: ['fotografía', 'catering'],
-          activeNeedCategory: 'catering',
+          vendorCategory: 'Catering',
+          vendorCategories: ['Fotografía y video', 'Catering'],
+          activeNeedCategory: 'Catering',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -1291,13 +1291,13 @@ describe('AgentService', () => {
       ): Promise<ProviderGatewaySearchResult> {
         this.searchCalls += 1;
 
-        if (plan.vendor_category === 'catering') {
+        if (plan.vendor_category === 'Catering') {
           return {
             providers: [
               {
                 id: 109,
                 title: 'EDO Sushi Bar',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 reason: 'coincide con el plan',
@@ -1317,7 +1317,7 @@ describe('AgentService', () => {
             id: 109,
             title: 'EDO Sushi Bar',
             slug: 'edo-sushi-bar',
-            category: 'catering',
+            category: 'Catering',
             location: 'Lima',
             priceLevel: '$$$',
             rating: '4.7',
@@ -1342,7 +1342,7 @@ describe('AgentService', () => {
             id: 90,
             title: 'Carlos Schult',
             slug: 'carlos-schult',
-            category: 'fotografía',
+            category: 'Fotografía y video',
             location: 'Lima',
             priceLevel: null,
             rating: '4.9',
@@ -1388,11 +1388,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -1403,7 +1403,7 @@ describe('AgentService', () => {
                 id: 90,
                 title: 'Carlos Schult',
                 slug: 'carlos-schult',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: null,
                 rating: '4.9',
@@ -1440,14 +1440,14 @@ describe('AgentService', () => {
     });
 
     const photographyNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'fotografía',
+      (need) => need.category === 'Fotografía y video',
     );
     const cateringNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'catering',
+      (need) => need.category === 'Catering',
     );
 
     expect(response.plan.current_node).toBe('recomendar');
-    expect(response.plan.active_need_category).toBe('catering');
+    expect(response.plan.active_need_category).toBe('Catering');
     expect(photographyNeed?.selected_provider_id).toBe(90);
     expect(photographyNeed?.status).toBe('selected');
     expect(cateringNeed?.recommended_provider_ids).toEqual([109]);
@@ -1461,9 +1461,9 @@ describe('AgentService', () => {
           intent: 'confirmar_proveedor',
           intentConfidence: 0.96,
           eventType: 'boda',
-          vendorCategory: 'música',
-          vendorCategories: ['música'],
-          activeNeedCategory: 'música',
+          vendorCategory: 'Música',
+          vendorCategories: ['Música'],
+          activeNeedCategory: 'Música',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '21-50',
@@ -1487,13 +1487,13 @@ describe('AgentService', () => {
         plan: PersistedPlan,
       ): Promise<ProviderGatewaySearchResult> {
         this.searchCalls += 1;
-        expect(plan.vendor_category).toBe('música');
+        expect(plan.vendor_category).toBe('Música');
         return {
           providers: [
             {
               id: 115,
               title: 'Dj Naoki',
-              category: 'música',
+              category: 'Música',
               location: 'Perú',
               priceLevel: '$$$',
               reason: 'coincide con el plan',
@@ -1527,11 +1527,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '21-50',
-        active_need_category: 'catering',
-        vendor_category: 'catering',
+        active_need_category: 'Catering',
+        vendor_category: 'Catering',
         provider_needs: [
           {
-            category: 'catering',
+            category: 'Catering',
             status: 'shortlisted',
             preferences: ['tablas de queso'],
             hard_constraints: [],
@@ -1542,7 +1542,7 @@ describe('AgentService', () => {
                 id: 136,
                 title: '4Foodies',
                 slug: '4foodies',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 rating: '0.0',
@@ -1579,14 +1579,14 @@ describe('AgentService', () => {
     });
 
     const cateringNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'catering',
+      (need) => need.category === 'Catering',
     );
     const musicNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'música',
+      (need) => need.category === 'Música',
     );
 
     expect(response.plan.current_node).toBe('recomendar');
-    expect(response.plan.active_need_category).toBe('música');
+    expect(response.plan.active_need_category).toBe('Música');
     expect(cateringNeed?.status).toBe('selected');
     expect(cateringNeed?.selected_provider_id).toBe(136);
     expect(musicNeed?.status).toBe('shortlisted');
@@ -1601,9 +1601,9 @@ describe('AgentService', () => {
           intent: 'confirmar_proveedor',
           intentConfidence: 0.93,
           eventType: 'boda',
-          vendorCategory: 'música',
-          vendorCategories: ['música'],
-          activeNeedCategory: 'música',
+          vendorCategory: 'Música',
+          vendorCategories: ['Música'],
+          activeNeedCategory: 'Música',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '21-50',
@@ -1630,7 +1630,7 @@ describe('AgentService', () => {
             {
               id: 115,
               title: 'Dj Naoki',
-              category: 'música',
+              category: 'Música',
               location: 'Perú',
               priceLevel: '$$$',
               reason: 'coincide con el plan',
@@ -1664,11 +1664,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '21-50',
-        active_need_category: 'catering',
-        vendor_category: 'catering',
+        active_need_category: 'Catering',
+        vendor_category: 'Catering',
         provider_needs: [
           {
-            category: 'catering',
+            category: 'Catering',
             status: 'shortlisted',
             preferences: ['tablas de queso'],
             hard_constraints: [],
@@ -1679,7 +1679,7 @@ describe('AgentService', () => {
                 id: 109,
                 title: 'Edo Sushi Bar',
                 slug: 'edo-sushi-bar',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 rating: '5.0',
@@ -1698,7 +1698,7 @@ describe('AgentService', () => {
                 id: 136,
                 title: '4Foodies',
                 slug: '4foodies',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 rating: '0.0',
@@ -1735,13 +1735,13 @@ describe('AgentService', () => {
     });
 
     const cateringNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'catering',
+      (need) => need.category === 'Catering',
     );
     const musicNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'música',
+      (need) => need.category === 'Música',
     );
 
-    expect(response.plan.active_need_category).toBe('música');
+    expect(response.plan.active_need_category).toBe('Música');
     expect(cateringNeed?.status).toBe('selected');
     expect(cateringNeed?.selected_provider_id).toBe(136);
     expect(musicNeed?.status).toBe('shortlisted');
@@ -1755,9 +1755,9 @@ describe('AgentService', () => {
           intent: 'confirmar_proveedor',
           intentConfidence: 0.94,
           eventType: 'boda',
-          vendorCategory: 'catering',
-          vendorCategories: ['catering'],
-          activeNeedCategory: 'catering',
+          vendorCategory: 'Catering',
+          vendorCategories: ['Catering'],
+          activeNeedCategory: 'Catering',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '21-50',
@@ -1798,11 +1798,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '21-50',
-        active_need_category: 'catering',
-        vendor_category: 'catering',
+        active_need_category: 'Catering',
+        vendor_category: 'Catering',
         provider_needs: [
           {
-            category: 'catering',
+            category: 'Catering',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -1813,7 +1813,7 @@ describe('AgentService', () => {
                 id: 109,
                 title: 'Edo Sushi Bar',
                 slug: 'edo-sushi-bar',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 rating: '5.0',
@@ -1832,7 +1832,7 @@ describe('AgentService', () => {
                 id: 136,
                 title: '4Foodies',
                 slug: '4foodies',
-                category: 'catering',
+                category: 'Catering',
                 location: 'Lima',
                 priceLevel: '$$$',
                 rating: '0.0',
@@ -1879,9 +1879,9 @@ describe('AgentService', () => {
           intent: 'confirmar_proveedor',
           intentConfidence: 0.95,
           eventType: 'boda',
-          vendorCategory: 'música',
-          vendorCategories: ['música'],
-          activeNeedCategory: 'música',
+          vendorCategory: 'Música',
+          vendorCategories: ['Música'],
+          activeNeedCategory: 'Música',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '21-50',
@@ -1921,11 +1921,11 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '21-50',
-        active_need_category: 'música',
-        vendor_category: 'música',
+        active_need_category: 'Música',
+        vendor_category: 'Música',
         provider_needs: [
           {
-            category: 'música',
+            category: 'Música',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -1936,7 +1936,7 @@ describe('AgentService', () => {
                 id: 115,
                 title: 'Dj Naoki',
                 slug: 'dj-naoki',
-                category: 'música',
+                category: 'Música',
                 location: 'Perú',
                 priceLevel: '$$$',
                 rating: '0.0',
@@ -1955,7 +1955,7 @@ describe('AgentService', () => {
                 id: 119,
                 title: 'Dj Siles',
                 slug: 'dj-siles',
-                category: 'música',
+                category: 'Música',
                 location: 'Perú',
                 priceLevel: '$$',
                 rating: '0.0',
@@ -2054,9 +2054,9 @@ describe('AgentService', () => {
           intent: 'buscar_proveedores',
           intentConfidence: 0.82,
           eventType: 'boda',
-          vendorCategory: 'local',
-          vendorCategories: ['local'],
-          activeNeedCategory: 'local',
+          vendorCategory: 'Locales',
+          vendorCategories: ['Locales'],
+          activeNeedCategory: 'Locales',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '101-200',
@@ -2106,9 +2106,9 @@ describe('AgentService', () => {
           intent: 'buscar_proveedores',
           intentConfidence: 0.9,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: null,
@@ -2237,9 +2237,9 @@ describe('AgentService', () => {
             intent: 'cerrar',
             intentConfidence: 0.95,
             eventType: 'boda',
-            vendorCategory: 'fotografía',
-            vendorCategories: ['fotografía'],
-            activeNeedCategory: 'fotografía',
+            vendorCategory: 'Fotografía y video',
+            vendorCategories: ['Fotografía y video'],
+            activeNeedCategory: 'Fotografía y video',
             location: 'Lima',
             budgetSignal: null,
             guestRange: '51-100',
@@ -2280,14 +2280,14 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         contact_name: 'Carolina',
         contact_email: 'carolina@example.com',
         contact_phone: null,
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -2297,7 +2297,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -2338,9 +2338,9 @@ describe('AgentService', () => {
             intent: 'cerrar',
             intentConfidence: 0.95,
             eventType: 'boda',
-            vendorCategory: 'fotografía',
-            vendorCategories: ['fotografía'],
-            activeNeedCategory: 'fotografía',
+            vendorCategory: 'Fotografía y video',
+            vendorCategories: ['Fotografía y video'],
+            activeNeedCategory: 'Fotografía y video',
             location: 'Lima',
             budgetSignal: null,
             guestRange: '51-100',
@@ -2382,14 +2382,14 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         contact_name: 'Carolina',
         contact_email: null,
         contact_phone: null,
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -2399,7 +2399,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -2437,9 +2437,9 @@ describe('AgentService', () => {
             intent: 'cerrar',
             intentConfidence: 0.95,
             eventType: 'boda',
-            vendorCategory: 'fotografía',
-            vendorCategories: ['fotografía'],
-            activeNeedCategory: 'fotografía',
+            vendorCategory: 'Fotografía y video',
+            vendorCategories: ['Fotografía y video'],
+            activeNeedCategory: 'Fotografía y video',
             location: 'Lima',
             budgetSignal: null,
             guestRange: '51-100',
@@ -2481,14 +2481,14 @@ describe('AgentService', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         contact_name: 'Carolina',
         contact_email: 'carolina@example.com',
         contact_phone: null,
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -2498,7 +2498,7 @@ describe('AgentService', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -2578,7 +2578,7 @@ describe('AgentService', () => {
         contact_phone: '51954779071',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],
@@ -2627,7 +2627,7 @@ describe('AgentService', () => {
         contact_phone: '5215512345678',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],

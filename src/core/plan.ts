@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 import type { DecisionNode } from './decision-nodes';
 import type { ProviderSummary } from './provider';
+import {
+  normalizeToProviderCategory,
+  providerCategorySchema,
+  type ProviderCategory,
+} from './provider-category';
 
 export const planIntentValues = [
   'buscar_proveedores',
@@ -68,7 +73,7 @@ const providerSummarySchema = z.object({
 });
 
 export const providerNeedSchema = z.object({
-  category: z.string(),
+  category: providerCategorySchema,
   status: z.enum(providerNeedStatusValues),
   preferences: z.array(z.string()),
   hard_constraints: z.array(z.string()),
@@ -94,8 +99,8 @@ export const planSchema = z.object({
   intent: z.enum(planIntentValues).nullable(),
   intent_confidence: z.number().min(0).max(1).nullable(),
   event_type: z.string().nullable(),
-  vendor_category: z.string().nullable(),
-  active_need_category: z.string().nullable(),
+  vendor_category: providerCategorySchema.nullable(),
+  active_need_category: providerCategorySchema.nullable(),
   location: z.string().nullable(),
   budget_signal: z.string().nullable(),
   guest_range: z.enum(guestRangeValues).nullable(),
@@ -121,6 +126,38 @@ export type PlanSnapshot = PersistedPlan & { current_node: DecisionNode };
 export type PlanUpdate = Partial<
   Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id'>
 >;
+
+export function normalizeRawPlan(raw: unknown): unknown {
+  if (!raw || typeof raw !== 'object') {
+    return raw;
+  }
+
+  const plan = { ...(raw as Record<string, unknown>) };
+
+  const normalizeField = (field: string): void => {
+    if (typeof plan[field] === 'string') {
+      plan[field] = normalizeToProviderCategory(plan[field] as string);
+    }
+  };
+
+  normalizeField('vendor_category');
+  normalizeField('active_need_category');
+
+  if (Array.isArray(plan.provider_needs)) {
+    plan.provider_needs = plan.provider_needs.map((need) => {
+      if (!need || typeof need !== 'object') {
+        return need;
+      }
+      const needObj = { ...(need as Record<string, unknown>) };
+      if (typeof needObj.category === 'string') {
+        needObj.category = normalizeToProviderCategory(needObj.category);
+      }
+      return needObj;
+    });
+  }
+
+  return plan;
+}
 
 export function createEmptyPlan(args: {
   planId: string;
@@ -173,13 +210,8 @@ function uniqueStrings(values: Array<string | null | undefined>): string[] {
   );
 }
 
-function normalizeCategory(value: string | null | undefined): string | null {
-  const trimmed = value?.trim();
-  if (!trimmed) {
-    return null;
-  }
-
-  return trimmed.toLowerCase();
+function normalizeCategory(value: string | null | undefined): ProviderCategory | null {
+  return normalizeToProviderCategory(value);
 }
 
 function mergeProviderNeed(
@@ -263,7 +295,7 @@ function ensureActiveNeed(
   providerNeeds: ProviderNeed[],
   activeNeedCategory: string | null,
   fallbackCategory: string | null,
-): { providerNeeds: ProviderNeed[]; activeNeedCategory: string | null } {
+): { providerNeeds: ProviderNeed[]; activeNeedCategory: ProviderCategory | null } {
   const candidate =
     normalizeCategory(activeNeedCategory) ??
     normalizeCategory(fallbackCategory) ??
@@ -301,7 +333,7 @@ function ensureActiveNeed(
 
 function projectActiveNeed(
   providerNeeds: ProviderNeed[],
-  activeNeedCategory: string | null,
+  activeNeedCategory: ProviderCategory | null,
 ): Partial<PersistedPlan> {
   const activeNeed =
     providerNeeds.find(

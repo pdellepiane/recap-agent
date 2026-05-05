@@ -5,20 +5,20 @@ version: 1
 description: Zero-result venue searches should move to refinement without reopening settled terminology.
 tags:
   - no-results
-  - local
+  - Locales
   - refinement
 inputs:
-  - text: quiero que me digas el local
+  - text: quiero que me digas el Locales
 seedPlan:
   current_node: refinar_criterios
   event_type: baby shower
   location: La Molina
   budget_signal: medio
   guest_range: 21-50
-  active_need_category: local
-  vendor_category: local
+  active_need_category: Locales
+  vendor_category: Locales
   provider_needs:
-    - category: local
+    - category: Locales
       status: search_ready
       preferences: []
       hard_constraints: []
@@ -33,21 +33,21 @@ fixtures:
       - intent: ver_opciones
         intentConfidence: 0.9
         eventType: baby shower
-        vendorCategory: local
+        vendorCategory: Locales
         vendorCategories:
-          - local
-        activeNeedCategory: local
+          - Locales
+        activeNeedCategory: Locales
         location: La Molina
         budgetSignal: medio
         guestRange: 21-50
         preferences: []
         hardConstraints: []
         assumptions: []
-        conversationSummary: Quiere que se le muestren opciones de local en La Molina.
+        conversationSummary: Quiere que se le muestren opciones de Locales en La Molina.
         selectedProviderHint: null
         pauseRequested: false
     repliesByTurn:
-      - No encontré opciones claras con esos criterios. Puedo afinar por presupuesto o nivel de servicio del local.
+      - No encontré opciones claras con esos criterios. Puedo afinar por presupuesto o nivel de servicio del Locales.
     providerGateway:
       searchProvidersByTurn:
         - value:
@@ -63,5 +63,5 @@ expectations:
   - id: no-category-reask
     type: text_not_contains
     phrases:
-      - salón/local para eventos
+      - salón/Locales para eventos
       - te refieres a un salón

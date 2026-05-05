@@ -1,4 +1,4 @@
-import { planSchema, type PlanSnapshot } from '../core/plan';
+import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import type { PlanStore, SavePlanInput } from './plan-store';
 
 export class InMemoryPlanStore implements PlanStore {
@@ -12,7 +12,7 @@ export class InMemoryPlanStore implements PlanStore {
   }
 
   async save(input: SavePlanInput): Promise<void> {
-    const parsed = planSchema.parse(input.plan) as PlanSnapshot;
+    const parsed = planSchema.parse(normalizeRawPlan(input.plan)) as PlanSnapshot;
     this.items.set(this.key(parsed.channel, parsed.external_user_id), parsed);
   }
 

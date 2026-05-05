@@ -1,9 +1,12 @@
 import type { PersistedPlan } from '../core/plan';
+import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderDetail, ProviderSummary } from '../core/provider';
 
 export type ProviderGatewaySearchResult = {
   providers: ProviderSummary[];
 };
+
+export type ProviderSearchMode = 'api' | 'vector' | 'hybrid';
 
 export type KeywordProviderSearchInput = {
   keyword: string;
@@ -11,7 +14,7 @@ export type KeywordProviderSearchInput = {
 };
 
 export type CategoryLocationProviderSearchInput = {
-  category: string;
+  category: ProviderCategory;
   location?: string | null;
   page?: number | null;
 };

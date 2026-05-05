@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 
-import { createEmptyPlan, mergePlan, planIntentValues, planSchema } from '../../core/plan';
+import { createEmptyPlan, mergePlan, normalizeRawPlan, planIntentValues, planSchema } from '../../core/plan';
 import { getConfig } from '../../runtime/config';
 import { DynamoPlanStore } from '../../storage/dynamo-plan-store';
 import type { EvalCase, EvalRunConfig, EvalTurnResult, LambdaTurnResponse } from '../case-schema';
@@ -110,14 +110,16 @@ export async function runLiveLambdaCase(args: {
       perf: parsed.perf ?? null,
       plan:
         turnPlan ??
-        planSchema.parse({
-          ...seedPlanFallback(input.channel ?? channel, input.externalUserId ?? externalUserId),
-          ...normalizePlanFromTrace(
-            parsed,
-            input.channel ?? channel,
-            input.externalUserId ?? externalUserId,
-          ),
-        }),
+        planSchema.parse(
+          normalizeRawPlan({
+            ...seedPlanFallback(input.channel ?? channel, input.externalUserId ?? externalUserId),
+            ...normalizePlanFromTrace(
+              parsed,
+              input.channel ?? channel,
+              input.externalUserId ?? externalUserId,
+            ),
+          }),
+        ),
       latencyMs: Date.now() - startedAt,
       rawTargetResponse: parsed as unknown as Record<string, unknown>,
     });

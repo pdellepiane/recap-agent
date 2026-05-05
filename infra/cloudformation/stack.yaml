@@ -29,6 +29,30 @@ Parameters:
   SinEnvolturasBaseUrl:
     Type: String
     Default: https://api.sinenvolturas.com/api-web/vendor
+  ProviderSearchMode:
+    Type: String
+    Default: hybrid
+    AllowedValues:
+      - api
+      - vector
+      - hybrid
+  ProviderVectorStoreName:
+    Type: String
+    Default: Sin Envolturas Provider Search
+  ProviderVectorStoreId:
+    Type: String
+    Default: ''
+    Description: OpenAI vector store ID for provider semantic search.
+  ProviderVectorMaxResults:
+    Type: Number
+    Default: 12
+    MinValue: 1
+    MaxValue: 50
+  ProviderVectorScoreThreshold:
+    Type: Number
+    Default: 0.2
+    MinValue: 0
+    MaxValue: 1
   PerfRetentionDays:
     Type: Number
     Default: 30
@@ -148,6 +172,11 @@ Resources:
           PERF_RETENTION_DAYS: !Ref PerfRetentionDays
           PROMPTS_DIR: /var/task/prompts
           SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
+          PROVIDER_SEARCH_MODE: !Ref ProviderSearchMode
+          PROVIDER_VECTOR_STORE_NAME: !Ref ProviderVectorStoreName
+          PROVIDER_VECTOR_STORE_ID: !Ref ProviderVectorStoreId
+          PROVIDER_VECTOR_MAX_RESULTS: !Ref ProviderVectorMaxResults
+          PROVIDER_VECTOR_SCORE_THRESHOLD: !Ref ProviderVectorScoreThreshold
           KB_ENABLED: !Ref KbEnabled
           KB_VECTOR_STORE_ID: !Ref KbVectorStoreId
 

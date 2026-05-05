@@ -27,16 +27,16 @@ describe('offline eval target', () => {
     });
 
     const finalPlan = result.turns.at(-1)?.plan;
-    expect(finalPlan?.active_need_category).toBe('catering');
+    expect(finalPlan?.active_need_category).toBe('Catering');
     expect(finalPlan?.provider_needs).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
-          category: 'fotografía',
+          category: 'Fotografía y video',
           status: 'selected',
           selected_provider_id: 90,
         }),
         expect.objectContaining({
-          category: 'catering',
+          category: 'Catering',
           status: 'shortlisted',
         }),
       ]),

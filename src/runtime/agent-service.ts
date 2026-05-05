@@ -17,6 +17,10 @@ import {
   type ProviderNeed,
 } from '../core/plan';
 import { normalizeProviderSummary, type ProviderSummary } from '../core/provider';
+import {
+  normalizeToProviderCategory,
+  type ProviderCategory,
+} from '../core/provider-category';
 import { computeSearchSufficiency } from '../core/sufficiency';
 import type {
   ExtractionDebugSummary,
@@ -1430,7 +1434,7 @@ export class AgentService {
   }
 
   private async collectBroadenedProviders(args: {
-    category: string;
+    category: ProviderCategory;
     existingProviderIds: Set<number>;
     location: string | null;
     timingMs: {
@@ -1574,14 +1578,12 @@ export class AgentService {
           extraction.activeNeedCategory,
           extraction.vendorCategory,
           ...extraction.vendorCategories,
-        ]
-          .map((category) => category?.trim().toLowerCase())
-          .filter((category): category is string => Boolean(category)),
+        ].filter((category): category is ProviderCategory => Boolean(category)),
       ),
     );
     const currentActiveCategory =
-      plan.active_need_category?.trim().toLowerCase() ??
-      getActiveNeed(plan)?.category?.trim().toLowerCase() ??
+      plan.active_need_category ??
+      getActiveNeed(plan)?.category ??
       null;
 
     if (categories.length === 0 && currentActiveCategory) {
@@ -1597,7 +1599,7 @@ export class AgentService {
     return categories.map((category) => {
       const currentNeed =
         currentNeeds.find(
-          (need) => need.category.trim().toLowerCase() === category,
+          (need) => need.category === category,
         ) ?? null;
 
       return {
@@ -1746,28 +1748,11 @@ export class AgentService {
   }
 
   private normalizeCategoryValue(value: string | null | undefined): string | null {
-    const normalized = value?.trim().toLowerCase() ?? '';
-    return normalized || null;
+    return normalizeToProviderCategory(value);
   }
 
   private isVenueLikeCategory(value: string | null | undefined): boolean {
-    const normalized = this.normalizeSelectionText(value ?? '');
-    if (!normalized) {
-      return false;
-    }
-
-    return [
-      'local',
-      'locales',
-      'salon',
-      'salones',
-      'venue',
-      'venues',
-      'espacio',
-      'espacios',
-      'lugar',
-      'lugares',
-    ].some((keyword) => normalized.includes(keyword));
+    return normalizeToProviderCategory(value) === 'Locales';
   }
 
   private messageHasVenueCue(value: string): boolean {

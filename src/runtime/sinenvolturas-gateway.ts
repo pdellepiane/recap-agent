@@ -4,6 +4,8 @@ import {
   type ProviderDetail,
   type ProviderSummary,
 } from '../core/provider';
+import { normalizeToProviderCategory } from '../core/provider-category';
+import type { ProviderVectorSearchGateway, ProviderVectorSearchResult } from './provider-vector-search';
 import type {
   CategoryLocationProviderSearchInput,
   CreateProviderReviewInput,
@@ -13,6 +15,7 @@ import type {
   MarketplaceLocation,
   ProviderGateway,
   ProviderGatewaySearchResult,
+  ProviderSearchMode,
   ProviderReview,
   QuoteRequestInput,
 } from './provider-gateway';
@@ -100,6 +103,8 @@ export class SinEnvolturasGateway implements ProviderGateway {
       baseUrl: string;
       persistedSearchLimit: number;
       summarySearchWordLimit: number;
+      searchMode?: ProviderSearchMode;
+      vectorSearchGateway?: Pick<ProviderVectorSearchGateway, 'search'> | null;
     },
   ) {}
 
@@ -132,11 +137,27 @@ export class SinEnvolturasGateway implements ProviderGateway {
   async searchProviders(
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
+    const searchMode = this.options.searchMode ?? 'api';
+    if (searchMode === 'api' || !this.options.vectorSearchGateway) {
+      return this.searchProvidersFromApi(plan);
+    }
+
+    if (searchMode === 'vector') {
+      return this.searchProvidersFromVector(plan);
+    }
+
+    return this.searchProvidersHybrid(plan);
+  }
+
+  private async searchProvidersFromApi(
+    plan: PersistedPlan,
+  ): Promise<ProviderGatewaySearchResult> {
     const activeNeed = getActiveNeed(plan);
+    const activeCategory = activeNeed?.category ?? plan.vendor_category;
     const searchTerms = Array.from(
       new Set(
         [
-          ...this.categoryAliases(activeNeed?.category ?? plan.vendor_category),
+          activeCategory,
           plan.event_type,
           plan.location,
           plan.conversation_summary
@@ -181,6 +202,100 @@ export class SinEnvolturasGateway implements ProviderGateway {
       }));
 
     return { providers };
+  }
+
+  private async searchProvidersFromVector(
+    plan: PersistedPlan,
+  ): Promise<ProviderGatewaySearchResult> {
+    const vectorResults = await this.options.vectorSearchGateway?.search(plan) ?? [];
+    const providers = await this.enrichVectorResults(vectorResults);
+    return {
+      providers: providers.slice(0, this.options.persistedSearchLimit),
+    };
+  }
+
+  private async searchProvidersHybrid(
+    plan: PersistedPlan,
+  ): Promise<ProviderGatewaySearchResult> {
+    const [apiResult, vectorResults] = await Promise.all([
+      this.searchProvidersFromApi(plan),
+      this.options.vectorSearchGateway?.search(plan) ?? Promise.resolve([]),
+    ]);
+    const vectorProviders = await this.enrichVectorResults(vectorResults);
+    const merged = this.mergeProviderCandidates(apiResult.providers, vectorProviders);
+
+    return {
+      providers: merged.slice(0, this.options.persistedSearchLimit),
+    };
+  }
+
+  private async enrichVectorResults(
+    vectorResults: ProviderVectorSearchResult[],
+  ): Promise<ProviderSummary[]> {
+    const providers: ProviderSummary[] = [];
+    const seenIds = new Set<number>();
+
+    for (const result of vectorResults) {
+      if (seenIds.has(result.providerId)) {
+        continue;
+      }
+
+      seenIds.add(result.providerId);
+      const detail = await this.getProviderDetail(result.providerId);
+      if (!detail) {
+        continue;
+      }
+      const { raw: _raw, ...summary } = detail;
+      void _raw;
+
+      providers.push({
+        ...summary,
+        retrievalScore: result.score,
+        retrievalSource: 'vector',
+        reason: detail.reason ?? 'coincide semánticamente con la búsqueda',
+      });
+    }
+
+    return providers;
+  }
+
+  private mergeProviderCandidates(
+    apiProviders: ProviderSummary[],
+    vectorProviders: ProviderSummary[],
+  ): ProviderSummary[] {
+    const merged = new Map<number, ProviderSummary>();
+
+    for (const provider of apiProviders) {
+      merged.set(provider.id, {
+        ...provider,
+        retrievalSource: provider.retrievalSource ?? 'api',
+      });
+    }
+
+    for (const provider of vectorProviders) {
+      const existing = merged.get(provider.id);
+      if (!existing) {
+        merged.set(provider.id, provider);
+        continue;
+      }
+
+      merged.set(provider.id, {
+        ...provider,
+        reason: existing.reason ?? provider.reason,
+        retrievalScore: provider.retrievalScore,
+        retrievalSource: 'hybrid',
+      });
+    }
+
+    return Array.from(merged.values()).sort((left, right) => {
+      const leftSource = left.retrievalSource === 'hybrid' ? 1 : 0;
+      const rightSource = right.retrievalSource === 'hybrid' ? 1 : 0;
+      if (rightSource !== leftSource) {
+        return rightSource - leftSource;
+      }
+
+      return (right.retrievalScore ?? 0) - (left.retrievalScore ?? 0);
+    });
   }
 
   async searchProvidersByKeyword(
@@ -356,11 +471,10 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
     activeCategory: string | null,
   ): ProviderSummary[] {
-    const categoryAliases = this.categoryAliases(activeCategory ?? plan.vendor_category);
     const locationAliases = this.locationAliases(plan.location);
     const evaluated = providers
       .map((provider) => {
-        const categoryScore = this.categoryMatchScore(provider, categoryAliases);
+        const categoryScore = this.categoryMatchScore(provider, activeCategory);
         const locationScore = this.locationMatchScore(provider, locationAliases);
         return {
           provider,
@@ -369,7 +483,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
           hasLocation: Boolean(provider.location),
         };
       })
-      .filter((entry) => categoryAliases.length === 0 || entry.categoryScore > 0);
+      .filter((entry) => !activeCategory || entry.categoryScore > 0);
 
     const categoryScoped = evaluated.length > 0 ? evaluated : providers.map((provider) => ({
       provider,
@@ -403,22 +517,21 @@ export class SinEnvolturasGateway implements ProviderGateway {
 
   private categoryMatchScore(
     provider: ProviderSummary,
-    categoryAliases: string[],
+    activeCategory: string | null,
   ): number {
-    if (categoryAliases.length === 0) {
+    if (!activeCategory) {
       return 1;
+    }
+
+    if (provider.category === activeCategory) {
+      return 2;
     }
 
     const haystack = this.normalizeText([
       provider.title,
       provider.category ?? '',
     ].join(' '));
-    const categoryText = this.normalizeText(provider.category ?? '');
-
-    if (categoryAliases.some((alias) => categoryText.includes(this.normalizeText(alias)))) {
-      return 2;
-    }
-    if (categoryAliases.some((alias) => haystack.includes(this.normalizeText(alias)))) {
+    if (haystack.includes(this.normalizeText(activeCategory))) {
       return 1;
     }
 
@@ -492,12 +605,14 @@ export class SinEnvolturasGateway implements ProviderGateway {
       provider.translations?.[0]?.title ??
       `Proveedor ${provider.id}`;
 
-    const category =
+    const rawCategory =
       provider.category?.translations?.find((translation) =>
         translation.language?.locale?.startsWith('es'),
       )?.name ??
       provider.category?.translations?.[0]?.name ??
       null;
+
+    const category = normalizeToProviderCategory(rawCategory);
 
     const city =
       typeof provider.city === 'string'
@@ -868,37 +983,9 @@ export class SinEnvolturasGateway implements ProviderGateway {
       .slice(0, limit);
   }
 
-  private categoryAliases(category: string | null | undefined): string[] {
-    const normalized = this.normalizeText(category ?? '');
-    if (!normalized) {
-      return [];
-    }
-
-    const aliases = new Set<string>([category?.trim() ?? '']);
-
-    switch (normalized) {
-      case 'local':
-      case 'venue':
-        aliases.add('salón');
-        aliases.add('salon');
-        aliases.add('venue');
-        aliases.add('espacio para eventos');
-        aliases.add('recepciones');
-        break;
-      case 'fotografia':
-        aliases.add('fotografía');
-        aliases.add('fotografia y video');
-        aliases.add('foto');
-        break;
-      case 'catering':
-        aliases.add('catering');
-        aliases.add('mesa gastronómica');
-        break;
-      default:
-        break;
-    }
-
-    return Array.from(aliases).filter(Boolean);
+  private categorySearchTerms(category: string | null | undefined): string[] {
+    const canonical = normalizeToProviderCategory(category);
+    return canonical ? [canonical] : [];
   }
 
   private locationAliases(location: string | null | undefined): string[] {

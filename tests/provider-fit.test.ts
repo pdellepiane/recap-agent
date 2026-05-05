@@ -12,7 +12,7 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
   return {
     id: 1,
     title: 'Proveedor',
-    category: 'catering',
+    category: 'Catering',
     location: 'Lima',
     priceLevel: '$$',
     eventTypes: ['others'],
@@ -47,7 +47,7 @@ describe('provider fit normalization', () => {
   it('builds criteria from extractor fields', () => {
     expect(createProviderFitCriteria({
       eventType: 'cumpleaños',
-      needCategory: 'catering',
+      needCategory: 'Catering',
       location: 'Miraflores',
       budgetSignal: 'mil soles',
       preferences: ['tablas de quesos'],
@@ -55,7 +55,7 @@ describe('provider fit normalization', () => {
       rankingNotes: 'Priorizar comida para cumpleaños con bajo presupuesto.',
     })).toEqual({
       eventType: 'cumpleaños',
-      needCategory: 'catering',
+      needCategory: 'Catering',
       location: 'Miraflores',
       budgetAmount: 1000,
       budgetCurrency: 'PEN',
@@ -72,7 +72,7 @@ describe('rankProvidersForCriteria', () => {
     const laBotaneria = createProvider({
       id: 17,
       title: 'La Botanería',
-      category: 'catering',
+      category: 'Catering',
       priceLevel: '$$',
       eventTypes: ['others'],
       description: 'Espacio gastronómico ideal para compartir.',
@@ -80,7 +80,7 @@ describe('rankProvidersForCriteria', () => {
     const farola = createProvider({
       id: 4,
       title: 'Farola',
-      category: 'catering',
+      category: 'Catering',
       priceLevel: '$$$',
       eventTypes: ['wedding', 'others'],
       description: 'Servicios enfocados en eventos.',
@@ -88,7 +88,7 @@ describe('rankProvidersForCriteria', () => {
     const dulcefina = createProvider({
       id: 94,
       title: 'Dulcefina',
-      category: 'catering',
+      category: 'Catering',
       priceLevel: '$$$$',
       eventTypes: ['others'],
       description: 'Tortas de boda personalizadas.',
@@ -96,7 +96,7 @@ describe('rankProvidersForCriteria', () => {
     const paolaPuerta = createProvider({
       id: 135,
       title: 'Paola Puerta Catering',
-      category: 'catering',
+      category: 'Catering',
       priceLevel: '$$$$',
       eventTypes: ['wedding'],
       description: 'Experiencias gastronómicas para matrimonios y eventos.',
@@ -104,7 +104,7 @@ describe('rankProvidersForCriteria', () => {
     const fourFoodies = createProvider({
       id: 136,
       title: '4Foodies',
-      category: 'catering',
+      category: 'Catering',
       priceLevel: '$$$',
       eventTypes: ['wedding', 'others'],
       description: 'Catering para eventos y tablas de quesos.',
@@ -114,7 +114,7 @@ describe('rankProvidersForCriteria', () => {
       [laBotaneria, farola, dulcefina, paolaPuerta, fourFoodies],
       {
         eventType: 'cumpleaños',
-        needCategory: 'catering',
+        needCategory: 'Catering',
         location: 'Lima Miraflores',
         budgetAmount: 1000,
         budgetCurrency: 'PEN',

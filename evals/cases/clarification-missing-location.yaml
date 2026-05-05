@@ -8,7 +8,7 @@ tags:
   - missing-field
 variables:
   event_type: boda
-  active_need: catering
+  active_need: Catering
 inputs:
   - text: quiero {{active_need}} para mi {{event_type}}
 fixtures:
@@ -17,21 +17,21 @@ fixtures:
       - intent: buscar_proveedores
         intentConfidence: 0.9
         eventType: boda
-        vendorCategory: catering
+        vendorCategory: Catering
         vendorCategories:
-          - catering
-        activeNeedCategory: catering
+          - Catering
+        activeNeedCategory: Catering
         location: null
         budgetSignal: null
         guestRange: null
         preferences: []
         hardConstraints: []
         assumptions: []
-        conversationSummary: Quiere catering para su boda.
+        conversationSummary: Quiere Catering para su boda.
         selectedProviderHint: null
         pauseRequested: false
     repliesByTurn:
-      - Para buscar bien el catering, dime en qué distrito o zona lo quieres.
+      - Para buscar bien el Catering, dime en qué distrito o zona lo quieres.
 expectations:
   - id: missing-location-node
     type: node_transition
@@ -39,7 +39,7 @@ expectations:
   - id: active-need
     type: plan_field_equals
     path: active_need_category
-    expected: catering
+    expected: Catering
   - id: missing-fields
     type: plan_field_subset
     path: missing_fields

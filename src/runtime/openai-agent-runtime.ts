@@ -45,6 +45,7 @@ import {
   welcomeMessageSchema,
 } from './structured-message';
 import { providerFitCriteriaSchema } from './provider-fit';
+import { providerCategorySchema } from '../core/provider-category';
 
 const extractionSchema = z.object({
   intent: z
@@ -62,9 +63,9 @@ const extractionSchema = z.object({
   kbQuery: z.string().nullable().optional(),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: z.string().nullable(),
-  vendorCategory: z.string().nullable(),
-  vendorCategories: z.array(z.string()),
-  activeNeedCategory: z.string().nullable(),
+  vendorCategory: providerCategorySchema.nullable(),
+  vendorCategories: z.array(providerCategorySchema),
+  activeNeedCategory: providerCategorySchema.nullable(),
   location: z.string().nullable(),
   budgetSignal: z.string().nullable(),
   guestRange: z.enum(['1-20', '21-50', '51-100', '101-200', '201+', 'unknown']).nullable(),
@@ -891,7 +892,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           'Busca proveedores combinando categoría y ubicación en una consulta controlada.',
         parameters: z
           .object({
-            category: z.string().min(2),
+            category: providerCategorySchema,
             location: z.string().min(2).nullish(),
             page: z.number().int().positive().nullish(),
           })

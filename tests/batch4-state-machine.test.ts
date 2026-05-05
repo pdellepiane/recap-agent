@@ -30,7 +30,7 @@ import type { ProviderDetail } from '../src/core/provider';
 
 const testProviderFitCriteria = {
   eventType: 'boda',
-  needCategory: 'fotografía',
+  needCategory: 'Fotografía y video',
   location: 'Lima',
   budgetAmount: null,
   budgetCurrency: null,
@@ -49,9 +49,9 @@ class FakeRuntime implements AgentRuntime {
       intent: 'buscar_proveedores',
       intentConfidence: 0.91,
       eventType: 'boda',
-      vendorCategory: 'fotografía',
-      vendorCategories: ['fotografía'],
-      activeNeedCategory: 'fotografía',
+      vendorCategory: 'Fotografía y video',
+      vendorCategories: ['Fotografía y video'],
+      activeNeedCategory: 'Fotografía y video',
       location: 'Lima',
       budgetSignal: '$$',
       guestRange: '51-100',
@@ -81,7 +81,7 @@ class FakeGateway implements ProviderGateway {
     return [
       {
         id: 1,
-        name: 'fotografía',
+        name: 'Fotografía y video',
         slug: 'fotografia',
         color: null,
         eventTypes: ['boda'],
@@ -120,7 +120,7 @@ class FakeGateway implements ProviderGateway {
         {
           id: 1,
           title: 'Foto Uno',
-          category: 'fotografía',
+          category: 'Fotografía y video',
           location: 'Lima',
           priceLevel: '$$',
           reason: 'coincide con el plan',
@@ -137,7 +137,7 @@ class FakeGateway implements ProviderGateway {
         {
           id: 1,
           title: 'Foto Uno',
-          category: 'fotografía',
+          category: 'Fotografía y video',
           location: 'Lima',
           priceLevel: '$$',
           reason: 'coincide con el plan',
@@ -154,7 +154,7 @@ class FakeGateway implements ProviderGateway {
         {
           id: 1,
           title: 'Foto Uno',
-          category: 'fotografía',
+          category: 'Fotografía y video',
           location: 'Lima',
           priceLevel: '$$',
           reason: 'coincide con el plan',
@@ -181,7 +181,7 @@ class FakeGateway implements ProviderGateway {
       id: providerId,
       title: 'Foto Uno',
       slug: 'foto-uno',
-      category: 'fotografía',
+      category: 'Fotografía y video',
       location: 'Lima',
       priceLevel: '$$',
       rating: '4.8',
@@ -263,9 +263,9 @@ describe('Batch 4 — State machine fixes', () => {
           intent: 'buscar_proveedores',
           intentConfidence: 0.9,
           eventType: 'boda',
-          vendorCategory: 'organización',
-          vendorCategories: ['organización'],
-          activeNeedCategory: 'organización',
+          vendorCategory: 'Wedding planners',
+          vendorCategories: ['Wedding planners'],
+          activeNeedCategory: 'Wedding planners',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -310,7 +310,7 @@ describe('Batch 4 — State machine fixes', () => {
     });
 
     const orgNeed = response.plan.provider_needs.find(
-      (need) => need.category === 'organización',
+      (need) => need.category === 'Wedding planners',
     );
     expect(orgNeed?.status).toBe('no_providers_available');
     expect(orgNeed?.recommended_providers).toHaveLength(0);
@@ -328,7 +328,7 @@ describe('Batch 4 — State machine fixes', () => {
       {
         provider_needs: [
           {
-            category: 'organización',
+            category: 'Wedding planners',
             status: 'no_providers_available',
             preferences: [],
             hard_constraints: [],
@@ -347,7 +347,7 @@ describe('Batch 4 — State machine fixes', () => {
     });
 
     const orgNeed = merged.provider_needs.find(
-      (need) => need.category === 'organización',
+      (need) => need.category === 'Wedding planners',
     );
     expect(orgNeed?.status).toBe('no_providers_available');
   });
@@ -375,11 +375,11 @@ describe('Batch 4 — State machine fixes', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'organización',
-        vendor_category: 'organización',
+        active_need_category: 'Wedding planners',
+        vendor_category: 'Wedding planners',
         provider_needs: [
           {
-            category: 'organización',
+            category: 'Wedding planners',
             status: 'no_providers_available',
             preferences: [],
             hard_constraints: [],
@@ -390,7 +390,7 @@ describe('Batch 4 — State machine fixes', () => {
             selected_provider_hint: null,
           },
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],
@@ -400,7 +400,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -425,9 +425,9 @@ describe('Batch 4 — State machine fixes', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.active_need_category).toBe('fotografía');
+    expect(response.plan.active_need_category).toBe('Fotografía y video');
     // current_node depends on extraction intent; we only care that the active need was switched
-    expect(response.plan.provider_needs.find((n) => n.category === 'fotografía')).toBeDefined();
+    expect(response.plan.provider_needs.find((n) => n.category === 'Fotografía y video')).toBeDefined();
   });
 
   it('blocks close when an unselected shortlist exists', async () => {
@@ -437,9 +437,9 @@ describe('Batch 4 — State machine fixes', () => {
           intent: 'cerrar',
           intentConfidence: 0.95,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía', 'música'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video', 'Música'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -479,11 +479,11 @@ describe('Batch 4 — State machine fixes', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],
@@ -493,7 +493,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -505,7 +505,7 @@ describe('Batch 4 — State machine fixes', () => {
             selected_provider_hint: null,
           },
           {
-            category: 'música',
+            category: 'Música',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -515,7 +515,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 115,
                 title: 'Dj Naoki',
-                category: 'música',
+                category: 'Música',
                 location: 'Perú',
                 priceLevel: '$$$',
                 reason: 'coincide con el plan',
@@ -541,9 +541,9 @@ describe('Batch 4 — State machine fixes', () => {
     });
 
     expect(response.plan.current_node).toBe('crear_lead_cerrar');
-    expect(response.trace.operational_note).toContain('música');
+    expect(response.trace.operational_note).toContain('Música');
     expect(response.trace.operational_note).toContain('ninguna');
-    expect(response.plan.provider_needs.find((n) => n.category === 'música')?.status).toBe(
+    expect(response.plan.provider_needs.find((n) => n.category === 'Música')?.status).toBe(
       'shortlisted',
     );
   });
@@ -555,9 +555,9 @@ describe('Batch 4 — State machine fixes', () => {
           intent: 'cerrar',
           intentConfidence: 0.95,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía', 'música'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video', 'Música'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -597,11 +597,11 @@ describe('Batch 4 — State machine fixes', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],
@@ -611,7 +611,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -623,7 +623,7 @@ describe('Batch 4 — State machine fixes', () => {
             selected_provider_hint: null,
           },
           {
-            category: 'música',
+            category: 'Música',
             status: 'shortlisted',
             preferences: [],
             hard_constraints: [],
@@ -633,7 +633,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 115,
                 title: 'Dj Naoki',
-                category: 'música',
+                category: 'Música',
                 location: 'Perú',
                 priceLevel: '$$$',
                 reason: 'coincide con el plan',
@@ -658,7 +658,7 @@ describe('Batch 4 — State machine fixes', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.provider_needs.find((n) => n.category === 'música')?.status).toBe(
+    expect(response.plan.provider_needs.find((n) => n.category === 'Música')?.status).toBe(
       'deferred',
     );
     expect(response.plan.current_node).toBe('crear_lead_cerrar');
@@ -671,9 +671,9 @@ describe('Batch 4 — State machine fixes', () => {
           intent: 'cerrar',
           intentConfidence: 0.95,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía', 'organización'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video', 'Wedding planners'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -713,11 +713,11 @@ describe('Batch 4 — State machine fixes', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],
@@ -727,7 +727,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -739,7 +739,7 @@ describe('Batch 4 — State machine fixes', () => {
             selected_provider_hint: null,
           },
           {
-            category: 'organización',
+            category: 'Wedding planners',
             status: 'no_providers_available',
             preferences: [],
             hard_constraints: [],
@@ -777,9 +777,9 @@ describe('Batch 4 — State machine fixes', () => {
           intent: 'cerrar',
           intentConfidence: 0.95,
           eventType: 'boda',
-          vendorCategory: 'fotografía',
-          vendorCategories: ['fotografía'],
-          activeNeedCategory: 'fotografía',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
           location: 'Lima',
           budgetSignal: null,
           guestRange: '51-100',
@@ -824,11 +824,11 @@ describe('Batch 4 — State machine fixes', () => {
         event_type: 'boda',
         location: 'Lima',
         guest_range: '51-100',
-        active_need_category: 'fotografía',
-        vendor_category: 'fotografía',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
         provider_needs: [
           {
-            category: 'fotografía',
+            category: 'Fotografía y video',
             status: 'selected',
             preferences: [],
             hard_constraints: [],
@@ -838,7 +838,7 @@ describe('Batch 4 — State machine fixes', () => {
               {
                 id: 1,
                 title: 'Foto Uno',
-                category: 'fotografía',
+                category: 'Fotografía y video',
                 location: 'Lima',
                 priceLevel: '$$',
                 reason: 'coincide con el plan',
@@ -864,7 +864,7 @@ describe('Batch 4 — State machine fixes', () => {
     });
 
     const snapshot = runtime.lastRequest?.plan;
-    const photoNeed = snapshot?.provider_needs.find((n) => n.category === 'fotografía');
+    const photoNeed = snapshot?.provider_needs.find((n) => n.category === 'Fotografía y video');
     expect(photoNeed?.selected_provider_id).toBe(1);
     // selected_provider_title is added by OpenAiAgentRuntime.buildPromptPlanSnapshot,
     // not by AgentService. The AgentService passes the raw plan to the runtime,

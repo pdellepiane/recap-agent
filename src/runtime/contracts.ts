@@ -1,5 +1,6 @@
 import type { DecisionNode } from '../core/decision-nodes';
 import type { PersistedPlan, PlanIntent } from '../core/plan';
+import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderSummary } from '../core/provider';
 import type { ToolOutputTrace } from '../core/trace';
 import type { ToolInputTrace } from '../core/trace';
@@ -11,9 +12,9 @@ export type ExtractionResult = {
   intent: PlanIntent | null;
   intentConfidence: number | null;
   eventType: string | null;
-  vendorCategory: string | null;
-  vendorCategories: string[];
-  activeNeedCategory: string | null;
+  vendorCategory: ProviderCategory | null;
+  vendorCategories: ProviderCategory[];
+  activeNeedCategory: ProviderCategory | null;
   location: string | null;
   budgetSignal: string | null;
   guestRange: PersistedPlan['guest_range'];

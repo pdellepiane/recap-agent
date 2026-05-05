@@ -6,11 +6,11 @@ description: Local/venue-only phrasing should stay in venue planning/search enve
 tags:
   - live
   - domain
-  - local
+  - Locales
 inputs:
   - text: solo quiero el espacio para un baby shower en La Molina para 45 invitados
 expectations:
-  - id: local-envelope
+  - id: Locales-envelope
     type: node_transition
     to: recomendar
   - id: search-ready
@@ -29,7 +29,7 @@ expectations:
     type: trace_field_equals
     path: plan_persisted
     expected: true
-  - id: no-local-reask-phrase
+  - id: no-Locales-reask-phrase
     type: text_not_contains
     phrases:
       - te refieres a un salón

@@ -1,5 +1,54 @@
 # Implementation Log
 
+## 2026-05-06
+
+### Enforce shared canonical provider category schema across extraction, KB, and API search
+- Created `src/core/provider-category.ts` with a single source of truth: `providerCategoryValues` enum derived from the actual marketplace API category slugs and display names.
+- Categories are now exact canonical strings (e.g., `"Fotografía y video"`, `"Catering"`, `"Locales"`) everywhere.
+- Changed the OpenAI extractor schema (`extractionSchema`) to use `providerCategorySchema` for `vendorCategory`, `vendorCategories`, and `activeNeedCategory`. The model is now forced to output exact canonical values.
+- Updated `src/core/plan.ts` to store `vendor_category`, `active_need_category`, and `providerNeed.category` as the canonical enum.
+- Added `normalizeRawPlan` boundary normalization in `src/core/plan.ts` so old plans and API responses are mapped to canonical values at load time.
+- Updated `src/runtime/provider-vector-search.ts` to remove the heuristic `categoryAliasKeys` function. Vector search now uses an exact `eq` filter on `category_key`.
+- Updated `src/runtime/sinenvolturas-gateway.ts` to normalize API category names to canonical values in `toProviderSummary`. Removed `categoryAliases` heuristic. `categoryMatchScore` now does exact canonical comparison.
+- Updated `src/provider-sync/uploader.ts` to store the exact canonical category as `category_key` in vector store metadata.
+- Updated `src/runtime/agent-service.ts` to use canonical values in `buildNeedUpdates`, `normalizeCategoryValue`, and `isVenueLikeCategory`.
+- Updated `src/evals/case-schema.ts` to enforce canonical categories in offline eval fixtures.
+- Updated all test fixtures, eval cases, and prompts to use canonical category values.
+- Updated extractor prompts (`prompts/extractors/examples.md`, `prompts/extractors/normalization_rules.txt`) to instruct the model to emit exact canonical category names.
+
+Reason:
+- Heuristic alias mapping (`categoryAliasKeys`, `categoryAliases`) was a shortcut that created drift between what the extractor output, what the KB stored, and what the API returned. This led to missed matches and cross-category bleed. A shared enum guarantees that every layer speaks the same category language.
+
+Decision:
+- Use the official marketplace display names as canonical values rather than slugs. They are human-readable, stable, and work naturally for both API text search and user-facing rendering. No separate display-name mapping is needed.
+- Accept a clean break: old plans with non-canonical categories are normalized at the storage boundary. The KB must be recreated with the new `category_key` values.
+
+Flow nodes affected:
+- All nodes that touch provider search or extraction (`entrevista`, `buscar_proveedores`, `refinar_criterios`, `reintentar`, `recomendar`).
+
+## 2026-05-05
+
+### Add hybrid provider vector search
+- Added a provider sync pipeline that fetches all provider details, formats one Markdown file per provider, and uploads those files to a dedicated OpenAI vector store with provider metadata attributes.
+- Added direct vector-store search for provider retrieval, with configurable `api`, `vector`, and `hybrid` modes.
+- Updated the Sin Envolturas gateway to merge API candidates and semantic candidates by provider ID, enrich vector-only hits through the provider detail endpoint, and preserve typed provider summaries before final provider-fit ranking.
+- Added provider vector search configuration to runtime config, Lambda bootstrap, deployment parameters, and CloudFormation.
+- Added a scheduled provider sync CloudFormation template and local `npm run sync:providers` command.
+- Updated the provider sync stack to accept a versioned code artifact key so CloudFormation deploys Lambda code updates reliably.
+- Tightened provider vector query formulation with active-need-only multi-query search and category alias metadata filters to improve recall without mixing provider types.
+- Documented the provider vector-search architecture in `docs/provider-vector-search.md`.
+
+Reason:
+- Filter-based provider search misses matches that are semantically relevant but do not share exact keywords with the user request. Provider details already contain richer descriptions, services, promos, and terms that are better suited for vector retrieval.
+
+Decision:
+- Keep the provider API as the source of truth and default to hybrid retrieval. The runtime only uses vector search when a provider vector store ID is configured, so deployments can fall back safely to API-only behavior.
+
+Flow nodes affected:
+- `buscar_proveedores`
+- `reintentar`
+- `recomendar`
+
 ## 2026-04-05
 
 ### Bootstrap runtime skeleton

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { z } from 'zod';
+import type { ProviderSearchMode } from './provider-gateway';
 
 export type AppConfig = {
   openAi: {
@@ -24,6 +25,11 @@ export type AppConfig = {
     baseUrl: string;
     persistedSearchLimit: number;
     summarySearchWordLimit: number;
+    searchMode: ProviderSearchMode;
+    vectorStoreName: string;
+    vectorStoreId: string | null;
+    vectorMaxResults: number;
+    vectorScoreThreshold: number;
   };
   recommendation: {
     replyProviderLimit: number;
@@ -65,6 +71,11 @@ const environmentSchema = z.object({
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(5),
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
+  PROVIDER_SEARCH_MODE: z.enum(['api', 'vector', 'hybrid']).default('hybrid'),
+  PROVIDER_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Provider Search'),
+  PROVIDER_VECTOR_STORE_ID: z.string().min(1).optional(),
+  PROVIDER_VECTOR_MAX_RESULTS: z.coerce.number().int().min(1).max(50).default(12),
+  PROVIDER_VECTOR_SCORE_THRESHOLD: z.coerce.number().min(0).max(1).default(0.2),
   REPLY_PROVIDER_LIMIT: z.coerce.number().int().positive().default(4),
   PRESENTATION_PROVIDER_LIMIT: z.coerce.number().int().positive().default(5),
   PROVIDER_DETAIL_LOOKUP_LIMIT: z.coerce.number().int().positive().default(3),
@@ -103,6 +114,11 @@ export function getConfig(): AppConfig {
       baseUrl: environment.SINENVOLTURAS_BASE_URL,
       persistedSearchLimit: environment.PROVIDER_SEARCH_LIMIT,
       summarySearchWordLimit: environment.SEARCH_SUMMARY_WORD_LIMIT,
+      searchMode: environment.PROVIDER_SEARCH_MODE,
+      vectorStoreName: environment.PROVIDER_VECTOR_STORE_NAME,
+      vectorStoreId: environment.PROVIDER_VECTOR_STORE_ID ?? null,
+      vectorMaxResults: environment.PROVIDER_VECTOR_MAX_RESULTS,
+      vectorScoreThreshold: environment.PROVIDER_VECTOR_SCORE_THRESHOLD,
     },
     recommendation: {
       replyProviderLimit: environment.REPLY_PROVIDER_LIMIT,
