@@ -98,6 +98,23 @@ export function buildProviderVectorSearchQueries(plan: PersistedPlan): string[] 
   return Array.from(new Set(queries));
 }
 
+export function buildLocationFilter(location: string | null): ComparisonFilter | CompoundFilter | null {
+  if (!location) {
+    return null;
+  }
+  const country = countryFromLocation(location);
+  if (!country) {
+    return null;
+  }
+  return {
+    type: 'or',
+    filters: [
+      { type: 'eq', key: 'country_key', value: normalizeKey(country) },
+      { type: 'eq', key: 'country_key', value: '' },
+    ],
+  };
+}
+
 export function buildProviderVectorSearchFilters(
   categories: string[],
   location: string | null,
@@ -108,7 +125,7 @@ export function buildProviderVectorSearchFilters(
     filters.push({
       type: 'eq',
       key: 'category_key',
-      value: normalizeKey(categories[0]!),
+      value: categories[0]!,
     });
   } else if (categories.length > 1) {
     filters.push({
@@ -116,22 +133,14 @@ export function buildProviderVectorSearchFilters(
       filters: categories.map((category) => ({
         type: 'eq' as const,
         key: 'category_key',
-        value: normalizeKey(category),
+        value: category,
       })),
     });
   }
 
-  if (location) {
-    const country = countryFromLocation(location);
-    if (country) {
-      filters.push({
-        type: 'or',
-        filters: [
-          { type: 'eq', key: 'country_key', value: normalizeKey(country) },
-          { type: 'eq', key: 'country_key', value: '' },
-        ],
-      });
-    }
+  const locationFilter = buildLocationFilter(location);
+  if (locationFilter) {
+    filters.push(locationFilter);
   }
 
   if (filters.length === 0) {
@@ -159,29 +168,105 @@ export class ProviderVectorSearchGateway {
     const categoryValue = activeNeed?.category ?? plan.active_need_category ?? plan.vendor_category;
     const categories = resolveSearchCategories(categoryValue);
     const queries = buildProviderVectorSearchQueries(plan);
-    const filters = buildProviderVectorSearchFilters(categories, plan.location ?? null);
 
-    const response = await this.client.vectorStores.search(
-      this.options.vectorStoreId,
-      {
-        query: queries,
-        max_num_results: this.options.maxResults,
-        rewrite_query: true,
-        ...(filters ? { filters } : {}),
-        ranking_options: {
-          ranker: 'auto',
-          score_threshold: this.options.scoreThreshold,
+    console.log('[search-funnel] vector search categories:', categories,
+      'location:', plan.location ?? '(none)',
+      'queries:', queries.length);
+
+    if (categories.length <= 1) {
+      const filters = buildProviderVectorSearchFilters(categories, plan.location ?? null);
+      console.log('[search-funnel] single-category filter:', filters ? JSON.stringify(filters) : 'none');
+
+      const response = await this.client.vectorStores.search(
+        this.options.vectorStoreId,
+        {
+          query: queries,
+          max_num_results: this.options.maxResults,
+          rewrite_query: true,
+          ...(filters ? { filters } : {}),
+          ranking_options: {
+            ranker: 'auto',
+            score_threshold: this.options.scoreThreshold,
+          },
         },
-      },
-    );
+      );
 
-    const seen = new Set<number>();
-    return response.data.flatMap((item) => {
-      const parsed = parseProviderVectorSearchResult(item);
-      if (!parsed || seen.has(parsed.providerId)) return [];
-      seen.add(parsed.providerId);
-      return [parsed];
+      const seen = new Set<number>();
+      const results = response.data.flatMap((item) => {
+        const parsed = parseProviderVectorSearchResult(item);
+        if (!parsed || seen.has(parsed.providerId)) return [];
+        seen.add(parsed.providerId);
+        return [parsed];
+      });
+
+      console.log('[search-funnel] vector raw hits:', response.data.length,
+        'after dedup:', results.length,
+        'scores:', results.map((r) => r.score.toFixed(3)).join(', '));
+
+      return results;
+    }
+
+    // Parallel search: one query per category so each gets its own result budget
+    const perCategoryLimit = Math.ceil(this.options.maxResults / categories.length);
+    console.log('[search-funnel] parallel search for', categories.length,
+      'categories, limit each:', perCategoryLimit);
+
+    const locationFilter = buildLocationFilter(plan.location ?? null);
+    const searchPromises = categories.map(async (category) => {
+      const categoryFilter: ComparisonFilter = {
+        type: 'eq',
+        key: 'category_key',
+        value: category,
+      };
+      const filters: CompoundFilter = locationFilter
+        ? { type: 'and', filters: [categoryFilter, locationFilter] }
+        : categoryFilter;
+
+      const response = await this.client.vectorStores.search(
+        this.options.vectorStoreId,
+        {
+          query: queries,
+          max_num_results: perCategoryLimit,
+          rewrite_query: true,
+          filters,
+          ranking_options: {
+            ranker: 'auto',
+            score_threshold: this.options.scoreThreshold,
+          },
+        },
+      );
+
+      const seen = new Set<number>();
+      const results = response.data.flatMap((item) => {
+        const parsed = parseProviderVectorSearchResult(item);
+        if (!parsed || seen.has(parsed.providerId)) return [];
+        seen.add(parsed.providerId);
+        return [parsed];
+      });
+
+      console.log(`[search-funnel] category "${category}": raw=${response.data.length} dedup=${results.length} scores=[${results.map((r) => r.score.toFixed(3)).join(', ')}]`);
+
+      return results;
     });
+
+    const categoryResults = await Promise.all(searchPromises);
+
+    // Merge and deduplicate across categories, keeping highest score
+    const bestById = new Map<number, ProviderVectorSearchResult>();
+    for (const results of categoryResults) {
+      for (const result of results) {
+        const existing = bestById.get(result.providerId);
+        if (!existing || result.score > existing.score) {
+          bestById.set(result.providerId, result);
+        }
+      }
+    }
+
+    const merged = Array.from(bestById.values()).sort((a, b) => b.score - a.score);
+    console.log('[search-funnel] merged parallel results:', merged.length,
+      'scores:', merged.map((r) => r.score.toFixed(3)).join(', '));
+
+    return merged;
   }
 }
 

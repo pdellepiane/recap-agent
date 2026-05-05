@@ -120,7 +120,7 @@ describe('provider vector search request formulation', () => {
     expect(categoryFilter).toMatchObject({
       type: 'eq',
       key: 'category_key',
-      value: 'fotografia y video',
+      value: 'Fotografía y video',
     });
     expect(countryFilter).toMatchObject({
       type: 'or',

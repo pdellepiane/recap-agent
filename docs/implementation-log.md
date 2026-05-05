@@ -1,5 +1,16 @@
 # Implementation Log
 
+## 2026-05-05
+
+### Fix vector search category filter case mismatch, search funnel transparency, and category prompt enforcement
+
+**Reason:** Vector search for providers returned 0 results when category filters were applied because `buildProviderVectorSearchFilters` used `normalizeKey()` on category values (lowercasing them, e.g., "catering") while the vector store stored `category_key` as the exact canonical value (e.g., "Catering"). OpenAI's vector store filter matching is case-sensitive, so the filter never matched. Dulcefina (id=94, Catering category, tortas specialist) was consistently missed. Additionally, the agent was inventing non-canonical category names like "decoración" instead of using canonical names like "Hogar y deco".
+
+**Changes:**
+- Fixed `buildProviderVectorSearchFilters` in `provider-vector-search.ts`: removed `normalizeKey()` from category filter values, using exact canonical values returned by `resolveSearchCategories()` instead. The `country_key` filter continues using `normalizeKey()` since the uploader stores country keys lowercased via `attributeKey()`.
+- Added search funnel debug logging (`[search-funnel]` prefix) throughout `sinenvolturas-gateway.ts` and `provider-vector-search.ts`: logs vector query details, raw hit count, enriched provider count, and API fallback triggers.
+- Strengthened category enforcement in `prompts/extractors/field_definitions.txt`: `vendorCategory`, `vendorCategories`, and `activeNeedCategory` now explicitly list the 17 canonical category values and require exact matches. Added known user-expression mappings (e.g., "decoración" → "Hogar y deco").
+
 ## 2026-05-06
 
 ### Vector-first provider search, category buckets, and trace fixes

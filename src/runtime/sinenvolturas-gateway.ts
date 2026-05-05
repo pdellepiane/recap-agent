@@ -208,7 +208,11 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
     const vectorResults = await this.options.vectorSearchGateway?.search(plan) ?? [];
+    console.log('[search-funnel] vector results:', vectorResults.length,
+      vectorResults.map((r) => `#${r.providerId}(${r.score.toFixed(3)})`).join(', '));
     const providers = await this.enrichVectorResults(vectorResults);
+    console.log('[search-funnel] enriched providers:', providers.length,
+      providers.map((p) => `#${p.id}(${p.slug ?? '?'})`).join(', '));
     return {
       providers: providers.slice(0, this.options.persistedSearchLimit),
     };
@@ -218,10 +222,16 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
   ): Promise<ProviderGatewaySearchResult> {
     const vectorResults = await this.options.vectorSearchGateway?.search(plan) ?? [];
+    console.log('[search-funnel] hybrid vector results:', vectorResults.length,
+      vectorResults.map((r) => `#${r.providerId}(${r.score.toFixed(3)})`).join(', '));
     const vectorProviders = await this.enrichVectorResults(vectorResults);
+    console.log('[search-funnel] hybrid enriched providers:', vectorProviders.length);
 
     if (vectorProviders.length === 0) {
+      console.log('[search-funnel] no vector results, falling back to API');
       const apiResult = await this.searchProvidersFromApi(plan);
+      console.log('[search-funnel] API results:', apiResult.providers.length,
+        apiResult.providers.map((p) => `#${p.id}(${p.slug ?? '?'})`).join(', '));
       return {
         providers: apiResult.providers.slice(0, this.options.persistedSearchLimit),
       };
