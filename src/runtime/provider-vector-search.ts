@@ -1,5 +1,6 @@
 import OpenAI from 'openai';
 import type { ComparisonFilter, CompoundFilter } from 'openai/resources/shared';
+import { locationCountryKey } from '../core/location';
 import type { PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
 import { resolveSearchCategories } from '../core/provider-category';
@@ -102,14 +103,14 @@ export function buildLocationFilter(location: string | null): ComparisonFilter |
   if (!location) {
     return null;
   }
-  const country = countryFromLocation(location);
+  const country = locationCountryKey(location);
   if (!country) {
     return null;
   }
   return {
     type: 'or',
     filters: [
-      { type: 'eq', key: 'country_key', value: normalizeKey(country) },
+      { type: 'eq', key: 'country_key', value: country },
       { type: 'eq', key: 'country_key', value: '' },
     ],
   };
@@ -274,26 +275,4 @@ export class ProviderVectorSearchGateway {
 
 function compactJoin(parts: Array<string | null>): string {
   return parts.filter((value): value is string => Boolean(value?.trim())).join('\n');
-}
-
-function countryFromLocation(location: string): string | null {
-  const normalized = normalizeKey(location);
-
-  if (normalized.includes('peru') || normalized.includes('lima')) {
-    return 'Perú';
-  }
-  if (normalized.includes('mexico') || normalized.includes('queretaro') || normalized.includes('tulum')) {
-    return 'México';
-  }
-  return null;
-}
-
-function normalizeKey(value: string): string {
-  return value
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .replace(/[^\p{Letter}\p{Number}\s]/gu, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
 }

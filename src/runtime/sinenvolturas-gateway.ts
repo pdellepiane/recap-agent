@@ -4,6 +4,8 @@ import {
   type ProviderDetail,
   type ProviderSummary,
 } from '../core/provider';
+import { locationCountryKey } from '../core/location';
+import { normalizeToPriceLevel } from '../core/price-level';
 import { normalizeToProviderCategory, resolveSearchCategories } from '../core/provider-category';
 import type { ProviderVectorSearchGateway, ProviderVectorSearchResult } from './provider-vector-search';
 import type {
@@ -491,11 +493,11 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
     activeCategory: string | null,
   ): ProviderSummary[] {
-    const locationAliases = this.locationAliases(plan.location);
+    const locationCountry = locationCountryKey(plan.location);
     const evaluated = providers
       .map((provider) => {
         const categoryScore = this.categoryMatchScore(provider, activeCategory);
-        const locationScore = this.locationMatchScore(provider, locationAliases);
+        const locationScore = this.locationMatchScore(provider, locationCountry);
         return {
           provider,
           categoryScore,
@@ -508,12 +510,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const categoryScoped = evaluated.length > 0 ? evaluated : providers.map((provider) => ({
       provider,
       categoryScore: 0,
-      locationScore: this.locationMatchScore(provider, locationAliases),
+      locationScore: this.locationMatchScore(provider, locationCountry),
       hasLocation: Boolean(provider.location),
     }));
 
     const exactLocationMatches =
-      locationAliases.length === 0
+      !locationCountry
         ? categoryScoped
         : categoryScoped.filter((entry) => entry.locationScore >= 3);
 
@@ -560,22 +562,17 @@ export class SinEnvolturasGateway implements ProviderGateway {
 
   private locationMatchScore(
     provider: ProviderSummary,
-    locationAliases: string[],
+    locationCountry: string | null,
   ): number {
     if (!provider.location) {
       return 0;
     }
 
-    if (locationAliases.length === 0) {
+    if (!locationCountry) {
       return 1;
     }
 
-    const normalizedLocation = this.normalizeText(provider.location);
-    if (
-      locationAliases.some((alias) =>
-        normalizedLocation.includes(this.normalizeText(alias)),
-      )
-    ) {
+    if (locationCountryKey(provider.location) === locationCountry) {
       return 3;
     }
 
@@ -584,9 +581,9 @@ export class SinEnvolturasGateway implements ProviderGateway {
 
   private hasExactLocationMatch(
     provider: ProviderSummary,
-    locationAliases: string[],
+    locationCountry: string | null,
   ): boolean {
-    return this.locationMatchScore(provider, locationAliases) >= 3;
+    return this.locationMatchScore(provider, locationCountry) >= 3;
   }
 
   private reasonForProvider(
@@ -598,9 +595,9 @@ export class SinEnvolturasGateway implements ProviderGateway {
     if (activeCategory && provider.category) {
       reasons.push(`coincide con la categoría ${activeCategory}`);
     }
-    const locationAliases = this.locationAliases(plan.location);
+    const locationCountry = locationCountryKey(plan.location);
     if (plan.location && provider.location) {
-      if (this.hasExactLocationMatch(provider, locationAliases)) {
+      if (this.hasExactLocationMatch(provider, locationCountry)) {
         reasons.push(`opera en ${provider.location}`);
       } else {
         reasons.push(
@@ -649,7 +646,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       slug: provider.slug ?? null,
       category,
       location: [city, country].filter(Boolean).join(', ') || null,
-      priceLevel: provider.price_level ?? null,
+      priceLevel: normalizeToPriceLevel(provider.price_level),
       rating: provider.rating ?? null,
       detailUrl: this.buildDetailUrl(provider.slug ?? null),
       websiteUrl: this.findWebsiteUrl(provider.social_networks ?? null),
@@ -1006,19 +1003,6 @@ export class SinEnvolturasGateway implements ProviderGateway {
   private categorySearchTerms(category: string | null | undefined): string[] {
     const canonical = normalizeToProviderCategory(category);
     return canonical ? [canonical] : [];
-  }
-
-  private locationAliases(location: string | null | undefined): string[] {
-    if (!location) {
-      return [];
-    }
-
-    const parts = location
-      .split(',')
-      .map((part) => part.trim())
-      .filter((part) => part.length >= 3);
-
-    return Array.from(new Set([location.trim(), ...parts]));
   }
 
   private normalizeText(value: string): string {

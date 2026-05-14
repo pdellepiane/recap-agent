@@ -1,4 +1,5 @@
 import type { DecisionNode } from '../core/decision-nodes';
+import type { EventType } from '../core/event-type';
 import type { PersistedPlan, PlanIntent } from '../core/plan';
 import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderSummary } from '../core/provider';
@@ -12,7 +13,7 @@ export type ExtractionResult = {
   intent: PlanIntent | null;
   secondaryIntents?: PlanIntent[];
   intentConfidence: number | null;
-  eventType: string | null;
+  eventType: EventType | null;
   vendorCategory: ProviderCategory | null;
   vendorCategories: ProviderCategory[];
   activeNeedCategory: ProviderCategory | null;

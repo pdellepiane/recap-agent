@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
-import type { DecisionNode } from './decision-nodes';
-import type { ProviderSummary } from './provider';
+import { decisionNodeSchema, type DecisionNode } from './decision-nodes';
+import { eventTypeSchema, normalizeToEventType } from './event-type';
+import { formatPriceLevel } from './price-level';
+import { providerSummarySchema, type ProviderSummary } from './provider';
 import {
   normalizeToProviderCategory,
   providerCategorySchema,
@@ -47,31 +49,6 @@ export const providerNeedStatusValues = [
 
 export type ProviderNeedStatus = (typeof providerNeedStatusValues)[number];
 
-const providerSummarySchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  slug: z.string().nullish(),
-  category: z.string().nullish(),
-  location: z.string().nullish(),
-  priceLevel: z.string().nullish(),
-  rating: z.string().nullish(),
-  reason: z.string().nullish(),
-  detailUrl: z.string().nullish(),
-  websiteUrl: z.string().nullish(),
-  minPrice: z.string().nullish(),
-  maxPrice: z.string().nullish(),
-  promoBadge: z.string().nullish(),
-  promoSummary: z.string().nullish(),
-  descriptionSnippet: z.string().nullish(),
-  serviceHighlights: z.array(z.string()).default([]),
-  termsHighlights: z.array(z.string()).default([]),
-  eventTypes: z.array(z.string()).optional(),
-  description: z.string().nullish(),
-  fitScore: z.number().min(0).max(100).nullish(),
-  fitWarnings: z.array(z.string()).optional(),
-  fitTags: z.array(z.string()).optional(),
-});
-
 export const providerNeedSchema = z.object({
   category: providerCategorySchema,
   status: z.enum(providerNeedStatusValues),
@@ -95,10 +72,10 @@ export const planSchema = z.object({
   contact_name: z.string().nullable().default(null),
   contact_email: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
-  current_node: z.string(),
+  current_node: decisionNodeSchema,
   intent: z.enum(planIntentValues).nullable(),
   intent_confidence: z.number().min(0).max(1).nullable(),
-  event_type: z.string().nullable(),
+  event_type: eventTypeSchema.nullable(),
   vendor_category: providerCategorySchema.nullable(),
   active_need_category: providerCategorySchema.nullable(),
   location: z.string().nullable(),
@@ -142,6 +119,10 @@ export function normalizeRawPlan(raw: unknown): unknown {
 
   normalizeField('vendor_category');
   normalizeField('active_need_category');
+
+  if (typeof plan.event_type === 'string') {
+    plan.event_type = normalizeToEventType(plan.event_type);
+  }
 
   if (typeof plan.selected_provider_id === 'number' && !Array.isArray(plan.selected_provider_ids)) {
     plan.selected_provider_ids = [plan.selected_provider_id];
@@ -511,7 +492,7 @@ export function summarizeRecommendedProviders(providers: ProviderSummary[]): str
     .map((provider, index) => {
       const location = provider.location ?? 'ubicación no especificada';
       const category = provider.category ? ` [${provider.category}]` : '';
-      const price = provider.priceLevel ? ` (${provider.priceLevel})` : '';
+      const price = provider.priceLevel ? ` (${formatPriceLevel(provider.priceLevel)})` : '';
       const differentiators = [
         provider.promoBadge ?? provider.promoSummary ?? null,
         provider.serviceHighlights?.slice(0, 1).join(', ') || null,

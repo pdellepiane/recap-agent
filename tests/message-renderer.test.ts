@@ -13,7 +13,7 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
     slug: 'la-botaneria',
     category: 'Catering',
     location: 'Lima, Perú',
-    priceLevel: '$$',
+    priceLevel: 'mid',
     rating: '4.5',
     reason: 'coincide con el plan',
     detailUrl: 'https://sinenvolturas.com/proveedores/la-botaneria',
@@ -41,7 +41,6 @@ describe('WhatsAppMessageRenderer', () => {
           'ubicación',
           'invitados aproximados',
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });
@@ -56,7 +55,6 @@ describe('WhatsAppMessageRenderer', () => {
         type: 'welcome',
         greeting_es: '¡Hola!',
         ask_es: '¿En qué te ayudo?',
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });
@@ -74,7 +72,6 @@ describe('WhatsAppMessageRenderer', () => {
         providers: [
           { provider_id: 1, rationale_es: 'Buena relación calidad-precio.', caveat_es: null },
         ],
-        actions: [{ type: 'select_provider', label_es: 'Elige un proveedor' }],
       };
 
       const result = renderer.render({ message, providerResults: [provider] });
@@ -84,7 +81,7 @@ describe('WhatsAppMessageRenderer', () => {
       expect(result).toContain('Ubicación: Lima, Perú.');
       expect(result).toContain('Precio: $$.');
       expect(result).toContain('Ficha: https://sinenvolturas.com/proveedores/la-botaneria');
-      expect(result).toContain('Elige un proveedor');
+      expect(result).not.toContain('Elige un proveedor');
     });
 
     it('places Ficha link on its own line', () => {
@@ -95,7 +92,6 @@ describe('WhatsAppMessageRenderer', () => {
         providers: [
           { provider_id: 1, rationale_es: 'Opción destacada.', caveat_es: null },
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [provider] });
@@ -118,7 +114,6 @@ describe('WhatsAppMessageRenderer', () => {
             caveat_es: 'No incluye decoración.',
           },
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [provider] });
@@ -134,7 +129,6 @@ describe('WhatsAppMessageRenderer', () => {
         providers: [
           { provider_id: 1, rationale_es: 'Con promo.', caveat_es: null },
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [provider] });
@@ -149,7 +143,6 @@ describe('WhatsAppMessageRenderer', () => {
         providers: [
           { provider_id: 999, rationale_es: 'No existe.', caveat_es: null },
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });
@@ -165,7 +158,6 @@ describe('WhatsAppMessageRenderer', () => {
         providers: [
           { provider_id: 1, rationale_es: 'Sin ubicación.', caveat_es: null },
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [provider] });
@@ -180,7 +172,6 @@ describe('WhatsAppMessageRenderer', () => {
         type: 'contact_request',
         intro_es: 'Para continuar, necesito tus datos.',
         requested_fields_es: ['full_name', 'email', 'phone'],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });
@@ -197,7 +188,6 @@ describe('WhatsAppMessageRenderer', () => {
         summary_es: 'Resumen del cierre:',
         selected_providers_es: ['fotografía: Foto Uno'],
         unselected_needs_es: ['organización'],
-        actions: [{ type: 'confirm', label_es: 'Confirmar' }],
       };
 
       const result = renderer.render({ message, providerResults: [] });
@@ -207,7 +197,7 @@ describe('WhatsAppMessageRenderer', () => {
       expect(result).toContain('- Fotografía: Foto Uno.');
       expect(result).toContain('Se dejarán sin proveedor:');
       expect(result).toContain('- Organización.');
-      expect(result).toContain('Confirmar');
+      expect(result).not.toContain('Confirmar');
     });
   });
 
@@ -217,7 +207,6 @@ describe('WhatsAppMessageRenderer', () => {
         type: 'close_result',
         success_es: '¡Listo! Las solicitudes fueron enviadas.',
         contact_explanation_es: 'Los proveedores te contactarán en 24-48 horas.',
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });
@@ -228,60 +217,17 @@ describe('WhatsAppMessageRenderer', () => {
   });
 
   describe('generic messages', () => {
-    it('renders paragraphs and actions', () => {
+    it('renders paragraphs without generated actions', () => {
       const message: StructuredMessage = {
         type: 'generic',
         paragraphs_es: ['Primera parte del mensaje.', 'Segunda parte.'],
-        actions: [
-          { type: 'adjust_criteria', label_es: 'Ajustar criterios' },
-          { type: 'switch_need', label_es: 'Pasar a otra necesidad' },
-        ],
       };
 
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toContain('Primera parte del mensaje.');
       expect(result).toContain('Segunda parte.');
-      expect(result).toContain('Ajustar criterios, Pasar a otra necesidad.');
-    });
-
-    it('renders single action without comma', () => {
-      const message: StructuredMessage = {
-        type: 'generic',
-        paragraphs_es: ['Mensaje.'],
-        actions: [{ type: 'pause', label_es: 'Dejarlo por ahora' }],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('Dejarlo por ahora');
-      expect(result).not.toContain(',');
-    });
-  });
-
-  describe('action label mapping', () => {
-    it('uses canonical label when label_es matches canonical', () => {
-      const message: StructuredMessage = {
-        type: 'generic',
-        paragraphs_es: ['Mensaje.'],
-        actions: [{ type: 'adjust_criteria', label_es: 'Ajustar criterios' }],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('Ajustar criterios');
-    });
-
-    it('uses custom label when label_es differs from canonical', () => {
-      const message: StructuredMessage = {
-        type: 'generic',
-        paragraphs_es: ['Mensaje.'],
-        actions: [{ type: 'adjust_criteria', label_es: 'Cambiar búsqueda' }],
-      };
-
-      const result = renderer.render({ message, providerResults: [] });
-
-      expect(result).toContain('Cambiar búsqueda');
+      expect(result).not.toContain('Ajustar criterios');
     });
   });
 
@@ -294,7 +240,6 @@ describe('WhatsAppMessageRenderer', () => {
         providers: [
           { provider_id: 1, rationale_es: 'Razón.', caveat_es: null },
         ],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [provider] });
@@ -306,7 +251,6 @@ describe('WhatsAppMessageRenderer', () => {
       const message: StructuredMessage = {
         type: 'generic',
         paragraphs_es: ['Texto de ejemplo.'],
-        actions: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });

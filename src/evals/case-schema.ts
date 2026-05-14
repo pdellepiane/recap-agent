@@ -1,7 +1,10 @@
 import { z } from 'zod';
 
+import { decisionNodeSchema } from '../core/decision-nodes';
+import { eventTypeSchema } from '../core/event-type';
 import { planIntentValues, planSchema } from '../core/plan';
 import type { PlanSnapshot } from '../core/plan';
+import { providerSummarySchema } from '../core/provider';
 import { providerCategorySchema } from '../core/provider-category';
 
 const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
@@ -20,26 +23,6 @@ const scalarVariableSchema = z.union([z.string(), z.number(), z.boolean()]);
 export const evalTargetModeSchema = z.enum(['offline', 'live_lambda']);
 export type EvalTargetMode = z.infer<typeof evalTargetModeSchema>;
 
-const providerSummarySchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  slug: z.string().nullish(),
-  category: z.string().nullish(),
-  location: z.string().nullish(),
-  priceLevel: z.string().nullish(),
-  rating: z.string().nullish(),
-  reason: z.string().nullish(),
-  detailUrl: z.string().nullish(),
-  websiteUrl: z.string().nullish(),
-  minPrice: z.string().nullish(),
-  maxPrice: z.string().nullish(),
-  promoBadge: z.string().nullish(),
-  promoSummary: z.string().nullish(),
-  descriptionSnippet: z.string().nullish(),
-  serviceHighlights: z.array(z.string()).default([]),
-  termsHighlights: z.array(z.string()).default([]),
-});
-
 const providerDetailSchema = providerSummarySchema.extend({
   description: z.string().nullish(),
   eventTypes: z.array(z.string()).default([]),
@@ -50,7 +33,7 @@ const extractionResultSchema = z.object({
   intent: z.enum(planIntentValues).nullable(),
   secondaryIntents: z.array(z.enum(planIntentValues)).default([]),
   intentConfidence: z.number().min(0).max(1).nullable(),
-  eventType: z.string().nullable(),
+  eventType: eventTypeSchema.nullable(),
   vendorCategory: providerCategorySchema.nullable(),
   vendorCategories: z.array(providerCategorySchema),
   activeNeedCategory: providerCategorySchema.nullable(),
@@ -79,9 +62,9 @@ const turnTraceSchema = z.object({
   trace_id: z.string(),
   conversation_id: z.string().nullable(),
   plan_id: z.string(),
-  previous_node: z.string(),
-  next_node: z.string(),
-  node_path: z.array(z.string()),
+  previous_node: decisionNodeSchema,
+  next_node: decisionNodeSchema,
+  node_path: z.array(decisionNodeSchema),
   intent: z.string().nullable(),
   missing_fields: z.array(z.string()),
   search_ready: z.boolean(),
@@ -242,9 +225,9 @@ const planFieldSubsetExpectationSchema = z.object({
 const nodeTransitionExpectationSchema = z.object({
   id: z.string().optional(),
   type: z.literal('node_transition'),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  allowed: z.array(z.object({ from: z.string().optional(), to: z.string().optional() })).optional(),
+  from: decisionNodeSchema.optional(),
+  to: decisionNodeSchema.optional(),
+  allowed: z.array(z.object({ from: decisionNodeSchema.optional(), to: decisionNodeSchema.optional() })).optional(),
   turnIndex: z.number().int().nonnegative().optional(),
   severity: z.enum(['hard', 'soft']).default('hard'),
 });
@@ -252,7 +235,7 @@ const nodeTransitionExpectationSchema = z.object({
 const nodePathContainsExpectationSchema = z.object({
   id: z.string().optional(),
   type: z.literal('node_path_contains'),
-  requiredNodes: z.array(z.string()).min(1),
+  requiredNodes: z.array(decisionNodeSchema).min(1),
   turnIndex: z.number().int().nonnegative().optional(),
   severity: z.enum(['hard', 'soft']).default('hard'),
 });
@@ -489,7 +472,7 @@ export const lambdaTurnResponseSchema = z.object({
   message: z.string(),
   conversation_id: z.string().nullable(),
   plan_id: z.string(),
-  current_node: z.string(),
+  current_node: decisionNodeSchema,
   trace: turnTraceSchema,
   plan: planSchema.optional(),
   perf: cliPerfSummarySchema.nullable().optional(),

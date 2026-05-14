@@ -228,7 +228,6 @@ describe('OpenAiAgentRuntime guardrails', () => {
     const output = {
       type: 'generic',
       paragraphs_es: ['Escríbenos a [email protected] para ayudarte.'],
-      actions: [],
     };
 
     expect(typedRuntime.findSupportEmailViolations(output)).toContain(
@@ -237,7 +236,6 @@ describe('OpenAiAgentRuntime guardrails', () => {
     expect(typedRuntime.normalizeSupportEmails(output)).toEqual({
       type: 'generic',
       paragraphs_es: ['Escríbenos a hola@sinenvolturas.com para ayudarte.'],
-      actions: [],
     });
   });
 

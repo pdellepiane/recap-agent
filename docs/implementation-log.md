@@ -1,5 +1,46 @@
 # Implementation Log
 
+## 2026-05-14
+
+### Canonical schema normalization
+
+**Reason:** Event type, provider price level, decision nodes, provider summaries,
+location matching, and generated actions were still crossing module boundaries as
+loose strings. That allowed prompt variation such as "matrimonio", "baby shower",
+or "$$$" to drift into stored plans, eval fixtures, ranking logic, and rendered
+messages without a single canonical parse boundary.
+
+**Changes:**
+- Added canonical Zod-backed modules for event types, price levels, and
+  country-only location keys.
+- Changed plan, extraction, eval, and provider-fit contracts to use canonical
+  event type ids instead of free-form event strings.
+- Changed provider summaries to use the shared `providerSummarySchema` from
+  `core/provider.ts`, with canonical provider categories and price levels.
+- Normalized Sin Envolturas API price symbols into `low`, `mid`, `high`, and
+  `very_high`; rendering converts them back to user-friendly symbols.
+- Replaced budget-fit scoring based on string length with scoring over the
+  canonical price-level schema.
+- Centralized country-key matching for vector filters, provider sync attributes,
+  and provider gateway location scoring.
+- Added `decisionNodeSchema` and made plan/eval node fields fail fast on invalid
+  decision node strings.
+- Removed generated `actions` from structured message schemas, renderer output,
+  and prompt response contracts. Flow control now stays driven by typed intents,
+  selected provider hints, node state, and persisted plan state.
+- Removed model authority over `providerFitCriteria.budgetTier`; runtime budget
+  parsing now computes the ranking tier from `budgetSignal`.
+- Migrated tests and eval fixtures atomically to canonical event and price values.
+
+**Decision:**
+- Use the existing repo pattern of const tuple values plus `z.enum(...)` and
+  inferred TypeScript types as the runtime contract. No backward compatibility
+  shim was added for non-canonical enum strings.
+
+Validation:
+- `npm run check`
+- `npm run eval -- --suite dev_regression --target offline`
+
 ## 2026-05-07
 
 ### Multiple providers per need

@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import OpenAI from 'openai';
+import { locationKey, locationCountryKey } from '../core/location';
 import type { ProviderSyncConfig } from './types';
 
 export type ProviderUploadFile = {
@@ -23,17 +24,7 @@ function attributeString(value: string | null): string {
 }
 
 function attributeKey(value: string | null): string {
-  return attributeString(
-    value
-      ? value
-          .normalize('NFD')
-          .replace(/\p{Diacritic}/gu, '')
-          .toLowerCase()
-          .replace(/[^\p{Letter}\p{Number}\s]/gu, ' ')
-          .replace(/\s+/g, ' ')
-          .trim()
-      : null,
-  );
+  return attributeString(locationKey(value));
 }
 
 export class OpenAiProviderUploader {
@@ -67,7 +58,7 @@ export class OpenAiProviderUploader {
           city: attributeString(provider.city),
           city_key: attributeKey(provider.city),
           country: attributeString(provider.country),
-          country_key: attributeKey(provider.country),
+          country_key: attributeString(locationCountryKey(provider.country)),
           price_level: attributeString(provider.priceLevel),
           batch_id: batchId,
           source: 'recap-agent-provider-sync',

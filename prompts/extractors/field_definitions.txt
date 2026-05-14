@@ -22,7 +22,9 @@ Definiciones de campos:
   - bajo si hay ambigüedad.
 
 - eventType:
-  - tipo de evento o contexto general, por ejemplo boda, cumpleaños, evento corporativo.
+  - tipo de evento canónico.
+  - DEBE ser exactamente uno de estos valores: boda, cumpleanos, corporativo, baby_shower, graduacion, bautizo, aniversario, quinceanos, otro.
+  - Usa razonamiento semántico, no solo palabras exactas: "matrimonio" y "wedding" -> boda; "cumple" -> cumpleanos; "15 años" -> quinceanos.
 
 - vendorCategory:
   - necesidad activa o principal del turno actual.
@@ -87,12 +89,11 @@ Definiciones de campos:
 
 - providerFitCriteria:
   - objeto obligatorio con los criterios estructurados que se usarán para reordenar proveedores antes de responder.
-  - eventType: tipo de evento normalizado en lenguaje natural breve, por ejemplo "cumpleaños", "boda" o "evento corporativo"; null si no hay señal.
+  - eventType: el mismo valor canónico de eventType; null si no hay señal.
   - needCategory: necesidad activa normalizada en lenguaje natural breve, por ejemplo "catering", "fotografía", "música" o "local"; null si no hay señal.
   - location: ubicación útil para la búsqueda; null si no hay señal.
   - budgetAmount: monto numérico si el usuario lo dijo; null si no hay monto.
   - budgetCurrency: PEN o USD si se puede inferir; null si no hay moneda.
-  - budgetTier: uno de very_low, low, medium, high, very_high, unknown. Para Perú usa: hasta 1000 very_low; 1001-5000 low; 5001-10000 medium; 10001-25000 high; más de 25000 very_high.
   - mustHave: atributos deseables o necesarios que deben favorecer a un proveedor.
   - shouldAvoid: señales que deben penalizar a un proveedor.
   - rankingNotes: una frase corta en español que explique qué debe privilegiar el reranking.

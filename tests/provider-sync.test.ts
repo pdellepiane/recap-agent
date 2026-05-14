@@ -12,7 +12,7 @@ describe('provider sync formatter', () => {
       location: 'Lima, Perú',
       city: 'Lima',
       country: 'Perú',
-      priceLevel: '$$',
+      priceLevel: 'mid',
       rating: '4.8',
       reason: null,
       detailUrl: 'https://sinenvolturas.com/proveedores/dj-naoki',

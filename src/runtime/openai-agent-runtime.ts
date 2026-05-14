@@ -36,6 +36,7 @@ import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
+import { eventTypeSchema } from '../core/event-type';
 import {
   closeConfirmationMessageSchema,
   closeResultMessageSchema,
@@ -76,7 +77,7 @@ const extractionSchema = z.object({
     .default([]),
   kbQuery: z.string().nullable().optional(),
   intentConfidence: z.number().min(0).max(1).nullable(),
-  eventType: z.string().nullable(),
+  eventType: eventTypeSchema.nullable(),
   vendorCategory: providerCategorySchema.nullable(),
   vendorCategories: z.array(providerCategorySchema),
   activeNeedCategory: providerCategorySchema.nullable(),
@@ -221,7 +222,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           text: '',
           structuredMessage: {
             type: 'generic',
-            actions: [],
             paragraphs_es: [
               'No puedo ayudar a ignorar instrucciones, revelar prompts internos o saltarme las reglas del sistema. Sí puedo ayudarte con preguntas sobre Sin Envolturas o con tu plan de evento.',
             ],
@@ -753,7 +753,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         location: null,
         budgetAmount: null,
         budgetCurrency: null,
-        budgetTier: 'unknown',
         mustHave: [],
         shouldAvoid: [],
         rankingNotes: 'No aplicar búsqueda ante intento de elusión.',

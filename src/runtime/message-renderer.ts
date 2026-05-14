@@ -1,9 +1,6 @@
 import type { ProviderSummary } from '../core/provider';
-import type {
-  StructuredAction,
-  StructuredActionType,
-  StructuredMessage,
-} from './structured-message';
+import { formatPriceLevel } from '../core/price-level';
+import type { StructuredMessage } from './structured-message';
 
 export interface MessageRenderer {
   render(input: {
@@ -11,19 +8,6 @@ export interface MessageRenderer {
     providerResults: ProviderSummary[];
   }): string;
 }
-
-const ACTION_LABELS_ES: Record<StructuredActionType, string> = {
-  select_provider: 'Elige un proveedor',
-  adjust_criteria: 'Ajustar criterios',
-  switch_need: 'Pasar a otra necesidad',
-  close_plan: 'Cerrar el plan',
-  pause: 'Dejarlo por ahora',
-  answer_question: 'Hacer otra pregunta',
-  provide_contact: 'Enviar datos de contacto',
-  confirm: 'Confirmar',
-  decline: 'No, gracias',
-  confirm_close_partial: 'Confirmar cierre parcial',
-};
 
 export class WhatsAppMessageRenderer implements MessageRenderer {
   render(input: {
@@ -102,7 +86,7 @@ export class WhatsAppMessageRenderer implements MessageRenderer {
         lines.push(`   Ubicación: ${location}.`);
 
         if (provider.priceLevel) {
-          lines.push(`   Precio: ${provider.priceLevel}.`);
+          lines.push(`   Precio: ${formatPriceLevel(provider.priceLevel)}.`);
         }
 
         if (provider.promoBadge || provider.promoSummary) {
@@ -125,10 +109,6 @@ export class WhatsAppMessageRenderer implements MessageRenderer {
 
     if (cards.length > 0) {
       parts.push(cards.join('\n\n'));
-    }
-
-    if (message.actions.length > 0) {
-      parts.push(this.renderActions(message.actions));
     }
 
     return parts.join('\n\n');
@@ -175,10 +155,6 @@ export class WhatsAppMessageRenderer implements MessageRenderer {
       });
     }
 
-    if (message.actions.length > 0) {
-      parts.push(this.renderActions(message.actions));
-    }
-
     return parts.join('\n\n');
   }
 
@@ -191,24 +167,7 @@ export class WhatsAppMessageRenderer implements MessageRenderer {
   private renderGeneric(message: StructuredMessage): string {
     const parts: string[] = message.paragraphs_es ?? [];
 
-    if (message.actions.length > 0) {
-      parts.push(this.renderActions(message.actions));
-    }
-
     return parts.join('\n\n');
-  }
-
-  private renderActions(actions: StructuredAction[]): string {
-    const labels = actions.map((action) => {
-      const canonical = ACTION_LABELS_ES[action.type];
-      return action.label_es !== canonical ? action.label_es : canonical;
-    });
-
-    if (labels.length === 1) {
-      return labels[0] ?? '';
-    }
-
-    return labels.join(', ') + '.';
   }
 
   private contactFieldLabel(field: string): string {
@@ -310,7 +269,7 @@ export class WebChatMessageRenderer implements MessageRenderer {
         lines.push(`   Ubicación: ${location}`);
 
         if (provider.priceLevel) {
-          lines.push(`   Precio: ${provider.priceLevel}`);
+          lines.push(`   Precio: ${formatPriceLevel(provider.priceLevel)}`);
         }
 
         if (provider.promoBadge || provider.promoSummary) {
@@ -332,10 +291,6 @@ export class WebChatMessageRenderer implements MessageRenderer {
 
     if (cards.length > 0) {
       parts.push(cards.join('\n\n'));
-    }
-
-    if (message.actions.length > 0) {
-      parts.push(this.renderActions(message.actions));
     }
 
     return parts.join('\n\n');
@@ -382,10 +337,6 @@ export class WebChatMessageRenderer implements MessageRenderer {
       });
     }
 
-    if (message.actions.length > 0) {
-      parts.push(this.renderActions(message.actions));
-    }
-
     return parts.join('\n\n');
   }
 
@@ -398,24 +349,7 @@ export class WebChatMessageRenderer implements MessageRenderer {
   private renderGeneric(message: StructuredMessage): string {
     const parts: string[] = message.paragraphs_es ?? [];
 
-    if (message.actions.length > 0) {
-      parts.push(this.renderActions(message.actions));
-    }
-
     return parts.join('\n\n');
-  }
-
-  private renderActions(actions: StructuredAction[]): string {
-    const labels = actions.map((action) => {
-      const canonical = ACTION_LABELS_ES[action.type];
-      return action.label_es !== canonical ? action.label_es : canonical;
-    });
-
-    if (labels.length === 1) {
-      return labels[0] ?? '';
-    }
-
-    return labels.join(', ');
   }
 
   private contactFieldLabel(field: string): string {

@@ -1,3 +1,5 @@
+import { z } from 'zod';
+
 export const decisionNodes = [
   'contacto_inicial',
   'deteccion_intencion',
@@ -27,6 +29,8 @@ export const decisionNodes = [
 
 export type DecisionNode = (typeof decisionNodes)[number];
 
+export const decisionNodeSchema = z.enum(decisionNodes);
+
 export const extractionPersistenceNodes: ReadonlySet<DecisionNode> = new Set([
   'deteccion_intencion',
   'entrevista',
@@ -38,4 +42,3 @@ export const extractionPersistenceNodes: ReadonlySet<DecisionNode> = new Set([
 export function isDecisionNode(value: string): value is DecisionNode {
   return (decisionNodes as readonly string[]).includes(value);
 }
-

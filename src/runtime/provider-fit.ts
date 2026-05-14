@@ -1,5 +1,7 @@
 import { z } from 'zod';
 
+import { eventTypeSchema, eventTypeRecommendationHintsEs, type EventType } from '../core/event-type';
+import { normalizeToPriceLevel, type PriceLevel } from '../core/price-level';
 import type { ProviderSummary } from '../core/provider';
 
 export const budgetTierValues = [
@@ -14,12 +16,11 @@ export const budgetTierValues = [
 export type BudgetTier = (typeof budgetTierValues)[number];
 
 export const providerFitCriteriaSchema = z.object({
-  eventType: z.string().nullable(),
+  eventType: eventTypeSchema.nullable(),
   needCategory: z.string().nullable(),
   location: z.string().nullable(),
   budgetAmount: z.number().positive().nullable(),
   budgetCurrency: z.enum(['PEN', 'USD']).nullable(),
-  budgetTier: z.enum(budgetTierValues),
   mustHave: z.array(z.string()),
   shouldAvoid: z.array(z.string()),
   rankingNotes: z.string(),
@@ -98,7 +99,7 @@ export function inferCurrencyFromBudget(raw: string | null | undefined): 'PEN' |
 }
 
 export function createProviderFitCriteria(input: {
-  eventType: string | null;
+  eventType: EventType | null;
   needCategory: string | null;
   location: string | null;
   budgetSignal: string | null;
@@ -114,10 +115,12 @@ export function createProviderFitCriteria(input: {
     location: input.location,
     budgetAmount,
     budgetCurrency: inferCurrencyFromBudget(input.budgetSignal),
-    budgetTier: normalizeBudgetTier(budgetAmount),
     mustHave: input.preferences,
     shouldAvoid: input.hardConstraints,
-    rankingNotes: input.rankingNotes ?? '',
+    rankingNotes: [
+      input.rankingNotes,
+      input.eventType ? eventTypeRecommendationHintsEs[input.eventType].join(' ') : null,
+    ].filter(Boolean).join(' '),
   };
 }
 
@@ -148,7 +151,7 @@ export function scoreProviderForCriteria(
   const criteriaEvent = normalizeText(criteria.eventType);
   const criteriaNeed = normalizeText(criteria.needCategory);
 
-  const budget = scoreBudgetFit(provider.priceLevel, criteria.budgetTier);
+  const budget = scoreBudgetFit(provider.priceLevel, normalizeBudgetTier(criteria.budgetAmount));
   score += budget.score;
   if (budget.warning) warnings.push(budget.warning);
   if (budget.tag) tags.push(budget.tag);
@@ -189,17 +192,20 @@ export function scoreProviderForCriteria(
 }
 
 function scoreBudgetFit(
-  priceLevel: string | null | undefined,
+  priceLevel: PriceLevel | null | undefined,
   budgetTier: BudgetTier,
 ): { score: number; warning: string | null; tag: string | null } {
   if (!priceLevel || budgetTier === 'unknown') {
     return { score: 0, warning: null, tag: null };
   }
 
-  const price = priceLevel.trim();
-  const expensive = price.length >= 4;
-  const mediumHigh = price.length === 3;
-  const accessible = price.length <= 2;
+  const price = normalizeToPriceLevel(priceLevel);
+  if (!price) {
+    return { score: 0, warning: null, tag: null };
+  }
+  const expensive = price === 'very_high';
+  const mediumHigh = price === 'high';
+  const accessible = price === 'low' || price === 'mid';
 
   if (budgetTier === 'very_low' && expensive) {
     return { score: -35, warning: 'Precio muy alto para el presupuesto indicado.', tag: 'budget_risk' };

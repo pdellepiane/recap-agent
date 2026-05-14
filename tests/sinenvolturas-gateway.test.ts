@@ -133,7 +133,7 @@ describe('SinEnvolturasGateway strict search mapping', () => {
         externalUserId: 'user-1',
       }),
       {
-        event_type: 'matrimonio',
+        event_type: 'boda',
         active_need_category: 'Música',
         vendor_category: 'Música',
         location: 'Lima',

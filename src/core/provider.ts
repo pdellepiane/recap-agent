@@ -1,29 +1,36 @@
-export type ProviderSummary = {
-  id: number;
-  title: string;
-  slug?: string | null;
-  category?: string | null;
-  location?: string | null;
-  priceLevel?: string | null;
-  rating?: string | null;
-  reason?: string | null;
-  detailUrl?: string | null;
-  websiteUrl?: string | null;
-  minPrice?: string | null;
-  maxPrice?: string | null;
-  promoBadge?: string | null;
-  promoSummary?: string | null;
-  descriptionSnippet?: string | null;
-  serviceHighlights: string[];
-  termsHighlights: string[];
-  eventTypes?: string[];
-  description?: string | null;
-  fitScore?: number | null;
-  fitWarnings?: string[];
-  fitTags?: string[];
-  retrievalScore?: number | null;
-  retrievalSource?: 'api' | 'vector' | 'hybrid' | null;
-};
+import { z } from 'zod';
+
+import { priceLevelSchema } from './price-level';
+import { providerCategorySchema } from './provider-category';
+
+export const providerSummarySchema = z.object({
+  id: z.number(),
+  title: z.string(),
+  slug: z.string().nullish(),
+  category: providerCategorySchema.nullish(),
+  location: z.string().nullish(),
+  priceLevel: priceLevelSchema.nullish(),
+  rating: z.string().nullish(),
+  reason: z.string().nullish(),
+  detailUrl: z.string().nullish(),
+  websiteUrl: z.string().nullish(),
+  minPrice: z.string().nullish(),
+  maxPrice: z.string().nullish(),
+  promoBadge: z.string().nullish(),
+  promoSummary: z.string().nullish(),
+  descriptionSnippet: z.string().nullish(),
+  serviceHighlights: z.array(z.string()).default([]),
+  termsHighlights: z.array(z.string()).default([]),
+  eventTypes: z.array(z.string()).optional(),
+  description: z.string().nullish(),
+  fitScore: z.number().min(0).max(100).nullish(),
+  fitWarnings: z.array(z.string()).optional(),
+  fitTags: z.array(z.string()).optional(),
+  retrievalScore: z.number().nullish(),
+  retrievalSource: z.enum(['api', 'vector', 'hybrid']).nullish(),
+});
+
+export type ProviderSummary = z.infer<typeof providerSummarySchema>;
 
 export type ProviderDetail = ProviderSummary & {
   description?: string | null;
@@ -37,9 +44,9 @@ export function normalizeProviderSummary(
     termsHighlights?: string[] | null;
   },
 ): ProviderSummary {
-  return {
+  return providerSummarySchema.parse({
     ...provider,
     serviceHighlights: provider.serviceHighlights ?? [],
     termsHighlights: provider.termsHighlights ?? [],
-  };
+  });
 }

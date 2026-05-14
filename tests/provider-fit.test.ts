@@ -14,7 +14,7 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
     title: 'Proveedor',
     category: 'Catering',
     location: 'Lima',
-    priceLevel: '$$',
+    priceLevel: 'mid',
     eventTypes: ['others'],
     description: 'Servicios para eventos.',
     serviceHighlights: [],
@@ -46,7 +46,7 @@ describe('provider fit normalization', () => {
 
   it('builds criteria from extractor fields', () => {
     expect(createProviderFitCriteria({
-      eventType: 'cumpleaños',
+      eventType: 'cumpleanos',
       needCategory: 'Catering',
       location: 'Miraflores',
       budgetSignal: 'mil soles',
@@ -54,15 +54,14 @@ describe('provider fit normalization', () => {
       hardConstraints: ['solo bodas'],
       rankingNotes: 'Priorizar comida para cumpleaños con bajo presupuesto.',
     })).toEqual({
-      eventType: 'cumpleaños',
+      eventType: 'cumpleanos',
       needCategory: 'Catering',
       location: 'Miraflores',
       budgetAmount: 1000,
       budgetCurrency: 'PEN',
-      budgetTier: 'very_low',
       mustHave: ['tablas de quesos'],
       shouldAvoid: ['solo bodas'],
-      rankingNotes: 'Priorizar comida para cumpleaños con bajo presupuesto.',
+      rankingNotes: 'Priorizar comida para cumpleaños con bajo presupuesto. prioriza proveedores flexibles para celebraciones sociales y grupos del tamaño indicado',
     });
   });
 });
@@ -73,7 +72,7 @@ describe('rankProvidersForCriteria', () => {
       id: 17,
       title: 'La Botanería',
       category: 'Catering',
-      priceLevel: '$$',
+      priceLevel: 'mid',
       eventTypes: ['others'],
       description: 'Espacio gastronómico ideal para compartir.',
     });
@@ -81,7 +80,7 @@ describe('rankProvidersForCriteria', () => {
       id: 4,
       title: 'Farola',
       category: 'Catering',
-      priceLevel: '$$$',
+      priceLevel: 'high',
       eventTypes: ['wedding', 'others'],
       description: 'Servicios enfocados en eventos.',
     });
@@ -89,7 +88,7 @@ describe('rankProvidersForCriteria', () => {
       id: 94,
       title: 'Dulcefina',
       category: 'Catering',
-      priceLevel: '$$$$',
+      priceLevel: 'very_high',
       eventTypes: ['others'],
       description: 'Tortas de boda personalizadas.',
     });
@@ -97,7 +96,7 @@ describe('rankProvidersForCriteria', () => {
       id: 135,
       title: 'Paola Puerta Catering',
       category: 'Catering',
-      priceLevel: '$$$$',
+      priceLevel: 'very_high',
       eventTypes: ['wedding'],
       description: 'Experiencias gastronómicas para matrimonios y eventos.',
     });
@@ -105,7 +104,7 @@ describe('rankProvidersForCriteria', () => {
       id: 136,
       title: '4Foodies',
       category: 'Catering',
-      priceLevel: '$$$',
+      priceLevel: 'high',
       eventTypes: ['wedding', 'others'],
       description: 'Catering para eventos y tablas de quesos.',
     });
@@ -113,12 +112,11 @@ describe('rankProvidersForCriteria', () => {
     const ranked = rankProvidersForCriteria(
       [laBotaneria, farola, dulcefina, paolaPuerta, fourFoodies],
       {
-        eventType: 'cumpleaños',
+        eventType: 'cumpleanos',
         needCategory: 'Catering',
         location: 'Lima Miraflores',
         budgetAmount: 1000,
         budgetCurrency: 'PEN',
-        budgetTier: 'very_low',
         mustHave: ['comida'],
         shouldAvoid: ['solo bodas'],
         rankingNotes: 'Priorizar comida para cumpleaños con bajo presupuesto.',
