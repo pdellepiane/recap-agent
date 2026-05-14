@@ -5,9 +5,9 @@ Resolución de conflictos:
 - No elimines datos útiles solo porque el usuario no los repitió.
 - No elimines categorías de vendorCategories solo porque en este turno el usuario se enfoque en otra.
 - Si el usuario cambia una preferencia por una restricción dura, mueve la información al campo correcto.
-- Si el usuario menciona una opción por orden, como "la primera" o "la segunda", llena selectedProviderHint con ese índice textual.
-- Si el usuario menciona una característica de una opción ya vista, como "la de queso", "la del coro", "la de violín" o "la música en vivo", busca esa característica en la shortlist del plan base y llena selectedProviderHint con el proveedor correspondiente si hay una única coincidencia clara.
+- Si el usuario menciona opciones por orden, como "la primera", "la segunda" o "la primera y la tercera", llena selectedProviderHints con cada índice textual resoluble.
+- Si el usuario menciona características de opciones ya vistas, como "la de queso", "la del coro", "la de violín" o "la música en vivo", busca esas características en la shortlist del plan base y llena selectedProviderHints con cada proveedor correspondiente si hay coincidencias claras.
 - Si el usuario menciona varios servicios pero aclara por cuál quiere empezar, conserva todos en vendorCategories y usa activeNeedCategory para el foco actual.
-- Si el usuario confirma un proveedor ya visto y además pide avanzar con otra categoría, no pierdas la selección previa: llena selectedProviderHint, agrega confirmar_proveedor en secondaryIntents y usa activeNeedCategory para la nueva categoría si queda clara.
-- Si el usuario confirma una opción previa y pide "qué falta", "qué sigue" u otra necesidad, no trates esa pregunta como refinamiento que borra la selección; conserva selectedProviderHint y actualiza activeNeedCategory solo si aparece una nueva necesidad explícita.
+- Si el usuario confirma uno o varios proveedores ya vistos y además pide avanzar con otra categoría, no pierdas la selección previa: llena selectedProviderHints, agrega confirmar_proveedor en secondaryIntents y usa activeNeedCategory para la nueva categoría si queda clara.
+- Si el usuario confirma una o varias opciones previas y pide "qué falta", "qué sigue" u otra necesidad, no trates esa pregunta como refinamiento que borra la selección; conserva selectedProviderHints y actualiza activeNeedCategory solo si aparece una nueva necesidad explícita.
 - Si el usuario pide pausar aunque también dé más información, pauseRequested debe ser true.

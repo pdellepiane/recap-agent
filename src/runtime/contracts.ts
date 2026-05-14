@@ -10,7 +10,7 @@ import type { ProviderFitCriteria } from './provider-fit';
 
 export type ExtractionResult = {
   intent: PlanIntent | null;
-  secondaryIntents: PlanIntent[];
+  secondaryIntents?: PlanIntent[];
   intentConfidence: number | null;
   eventType: string | null;
   vendorCategory: ProviderCategory | null;
@@ -23,7 +23,7 @@ export type ExtractionResult = {
   hardConstraints: string[];
   assumptions: string[];
   conversationSummary: string;
-  selectedProviderHint: string | null;
+  selectedProviderHints: string[];
   pauseRequested: boolean;
   contactName: string | null;
   contactEmail: string | null;

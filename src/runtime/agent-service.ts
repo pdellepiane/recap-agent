@@ -51,12 +51,13 @@ type SelectionResolution =
     }
   | {
       resolved: true;
-      selectedCategory: string;
+      selectedCategories: string[];
     };
 
 type ProviderSelectionMatch = {
   selectedNeed: ProviderNeed;
   selectedProvider: ProviderSummary;
+  hint: string;
 };
 
 type ProviderSearchExecutionResult = {
@@ -429,8 +430,8 @@ export class AgentService {
         const deferredNeed: ProviderNeed = {
           ...unselected,
           status: 'deferred',
-          selected_provider_id: null,
-          selected_provider_hint: null,
+          selected_provider_ids: [],
+          selected_provider_hints: [],
         };
         planToClose = mergePlan(mergedPlan, {
           provider_needs: [deferredNeed],
@@ -600,7 +601,7 @@ export class AgentService {
           : [],
       });
     } else {
-        const effectiveSelectionHint = this.resolveEffectiveSelectionHint(
+        const effectiveSelectionHints = this.resolveEffectiveSelectionHints(
           extraction,
           inbound.text,
           planAfterFlow,
@@ -608,7 +609,7 @@ export class AgentService {
 
         const selectionResolution = this.tryResolveSelection(
           planAfterFlow,
-          effectiveSelectionHint,
+          effectiveSelectionHints,
           extraction.intent,
         );
 
@@ -661,8 +662,8 @@ export class AgentService {
                         : [],
                     recommended_providers: providerResults,
                     missing_fields: [],
-                    selected_provider_id: null,
-                    selected_provider_hint: null,
+                    selected_provider_ids: [],
+                    selected_provider_hints: [],
                     status:
                       providerResults.length > 0 ? 'shortlisted' : 'no_providers_available',
                   },
@@ -885,7 +886,7 @@ export class AgentService {
       location: extraction.location,
       budget_signal: extraction.budgetSignal,
       guest_range: extraction.guestRange,
-      selected_provider_hint: extraction.selectedProviderHint,
+      selected_provider_hints: extraction.selectedProviderHints,
       preferences: extraction.preferences,
       hard_constraints: extraction.hardConstraints,
       assumptions: extraction.assumptions,
@@ -918,9 +919,9 @@ export class AgentService {
         category: need.category,
         status: need.status,
         has_recommendations: need.recommended_provider_ids.length > 0,
-        selected_provider_id: need.selected_provider_id,
+        selected_provider_ids: need.selected_provider_ids,
       })),
-      selected_provider_id: plan.selected_provider_id,
+      selected_provider_ids: plan.selected_provider_ids,
       missing_fields: plan.missing_fields,
       conversation_summary_preview: this.truncateDebugText(plan.conversation_summary, 160),
       open_question_count: plan.open_questions.length,
@@ -1006,7 +1007,7 @@ export class AgentService {
       hard_constraints: guardedExtraction.hardConstraints,
       assumptions: guardedExtraction.assumptions,
       conversation_summary: guardedExtraction.conversationSummary,
-      selected_provider_hint: plan.selected_provider_hint,
+      selected_provider_hints: plan.selected_provider_hints,
       contact_name: nextName,
       contact_email: nextEmail,
       contact_phone: nextPhone,
@@ -1073,7 +1074,7 @@ export class AgentService {
 
   private tryResolveSelection(
     plan: PlanSnapshot,
-    selectedProviderHint: string | null,
+    selectedProviderHints: string[],
     intent: ExtractionResult['intent'],
   ): SelectionResolution {
     const activeNeed = getActiveNeed(plan);
@@ -1090,56 +1091,76 @@ export class AgentService {
       return { resolved: false };
     }
 
-    const effectiveHint = selectedProviderHint?.trim() ?? null;
-
-    const selection = effectiveHint
-      ? this.resolveProviderSelection(
-          needsWithProviders,
-          activeNeed,
-          effectiveHint,
+    const selections = selectedProviderHints.length > 0
+      ? selectedProviderHints.flatMap((hint) =>
+          this.resolveProviderSelections(
+            needsWithProviders,
+            activeNeed,
+            hint,
+          ),
         )
       : this.resolveSingleProviderSelection(needsWithProviders, intent);
+    const uniqueSelections = this.dedupeSelections(selections);
 
-    if (!selection) {
+    if (uniqueSelections.length === 0) {
       return { resolved: false };
     }
 
-    const updatedNeed: ProviderNeed = {
-      ...selection.selectedNeed,
-      status: 'selected',
-      selected_provider_id: selection.selectedProvider.id,
-      selected_provider_hint: effectiveHint ?? selection.selectedProvider.title,
-    };
+    const selectionsByCategory = new Map<string, ProviderSelectionMatch[]>();
+    for (const selection of uniqueSelections) {
+      const existing = selectionsByCategory.get(selection.selectedNeed.category) ?? [];
+      existing.push(selection);
+      selectionsByCategory.set(selection.selectedNeed.category, existing);
+    }
+
+    const updatedNeeds = Array.from(selectionsByCategory.entries()).map(
+      ([category, selectionsForNeed]) => {
+        const selectedNeed = selectionsForNeed[0]?.selectedNeed;
+        if (!selectedNeed) {
+          throw new Error(`Selection group for ${category} had no need.`);
+        }
+        return {
+          ...selectedNeed,
+          status: 'selected' as const,
+          selected_provider_ids: selectionsForNeed.map(
+            (selection) => selection.selectedProvider.id,
+          ),
+          selected_provider_hints: selectionsForNeed.map(
+            (selection) => selection.hint,
+          ),
+        };
+      },
+    );
 
     const updatedPlan = mergePlan(plan, {
       current_node: 'usuario_elige_proveedor',
-      active_need_category: plan.active_need_category ?? selection.selectedNeed.category,
-      provider_needs: [updatedNeed],
+      active_need_category: plan.active_need_category ?? uniqueSelections[0]?.selectedNeed.category,
+      provider_needs: updatedNeeds,
     });
 
     Object.assign(plan, updatedPlan);
     return {
       resolved: true,
-      selectedCategory: selection.selectedNeed.category,
+      selectedCategories: uniqueSelections.map((selection) => selection.selectedNeed.category),
     };
   }
 
-  private resolveProviderSelection(
+  private resolveProviderSelections(
     needsWithProviders: ProviderNeed[],
     activeNeed: ProviderNeed | null,
     effectiveHint: string,
-  ): ProviderSelectionMatch | null {
-    const byName = this.resolveProviderSelectionByName(
+  ): ProviderSelectionMatch[] {
+    const byName = this.resolveProviderSelectionsByName(
       needsWithProviders,
       effectiveHint,
     );
-    if (byName) {
+    if (byName.length > 0) {
       return byName;
     }
 
-    const ordinalChoice = this.parseSelectionOrdinal(effectiveHint);
-    if (!ordinalChoice) {
-      return null;
+    const ordinalChoices = this.parseSelectionOrdinals(effectiveHint);
+    if (ordinalChoices.length === 0) {
+      return [];
     }
 
     const ordinalNeed =
@@ -1148,70 +1169,75 @@ export class AgentService {
         : needsWithProviders.length === 1
           ? needsWithProviders[0] ?? null
           : null;
-    const selectedProvider =
-      ordinalNeed?.recommended_providers[ordinalChoice - 1] ?? null;
-
-    if (!ordinalNeed || !selectedProvider) {
-      return null;
+    if (!ordinalNeed) {
+      return [];
     }
 
-    return {
-      selectedNeed: ordinalNeed,
-      selectedProvider,
-    };
+    return ordinalChoices.flatMap((ordinalChoice) => {
+      const selectedProvider = ordinalNeed.recommended_providers[ordinalChoice - 1] ?? null;
+      return selectedProvider
+        ? [{
+            selectedNeed: ordinalNeed,
+            selectedProvider,
+            hint: selectedProvider.title,
+          }]
+        : [];
+    });
   }
 
   private resolveSingleProviderSelection(
     needsWithProviders: ProviderNeed[],
     intent: ExtractionResult['intent'],
-  ): ProviderSelectionMatch | null {
+  ): ProviderSelectionMatch[] {
     if (intent !== 'confirmar_proveedor') {
-      return null;
+      return [];
     }
 
     const candidates = needsWithProviders.flatMap((need) =>
       need.recommended_providers.map((provider) => ({
         selectedNeed: need,
         selectedProvider: provider,
+        hint: provider.title,
       })),
     );
 
     if (candidates.length !== 1) {
-      return null;
+      return [];
     }
 
-    return candidates[0] ?? null;
+    return candidates;
   }
 
-  private resolveProviderSelectionByName(
+  private resolveProviderSelectionsByName(
     needsWithProviders: ProviderNeed[],
     effectiveHint: string,
-  ): ProviderSelectionMatch | null {
+  ): ProviderSelectionMatch[] {
     const lowered = this.normalizeSelectionText(effectiveHint);
     if (!lowered) {
-      return null;
+      return [];
     }
 
+    const matches: ProviderSelectionMatch[] = [];
     for (const need of needsWithProviders) {
-      const matchedProvider =
-        need.recommended_providers.find((provider) =>
+      for (const provider of need.recommended_providers) {
+        const matched =
           this.providerAliases(provider).some((alias) =>
             this.normalizedTextContainsAlias(lowered, alias),
-          ),
-        ) ?? null;
-
-      if (matchedProvider) {
-        return {
-          selectedNeed: need,
-          selectedProvider: matchedProvider,
-        };
+          );
+        if (matched) {
+          matches.push({
+            selectedNeed: need,
+            selectedProvider: provider,
+            hint: provider.title,
+          });
+        }
       }
     }
 
-    return null;
+    return matches;
   }
 
-  private parseSelectionOrdinal(value: string): number | null {
+  private parseSelectionOrdinals(value: string): number[] {
     const normalized = this.normalizeSelectionText(value);
     const ordinalWords: Array<[RegExp, number]> = [
       [/\b(?:primer|primera|primero|1er|1era|1ero|1ra|1ro|uno|una)\b/u, 1],
@@ -1226,19 +1252,34 @@ export class AgentService {
       [/\b(?:decima|decimo|10ma|10mo|diez)\b/u, 10],
     ];
 
-    const match = ordinalWords.find(([pattern]) => pattern.test(normalized));
-    if (match) {
-      return match[1];
+    const ordinals = new Set<number>();
+    for (const [pattern, ordinal] of ordinalWords) {
+      if (pattern.test(normalized)) {
+        ordinals.add(ordinal);
+      }
     }
 
-    const numericMatch = normalized.match(
-      /\b(?:opcion|alternativa|proveedor|numero|nro|num)?\s*(\d{1,2})\b/u,
-    );
-    if (numericMatch?.[1]) {
-      return Number.parseInt(numericMatch[1], 10);
+    for (const numericMatch of normalized.matchAll(
+      /\b(?:opcion|alternativa|proveedor|numero|nro|num)?\s*(\d{1,2})\b/gu,
+    )) {
+      if (numericMatch[1]) {
+        ordinals.add(Number.parseInt(numericMatch[1], 10));
+      }
     }
 
-    return null;
+    return Array.from(ordinals).sort((a, b) => a - b);
+  }
+
+  private dedupeSelections(selections: ProviderSelectionMatch[]): ProviderSelectionMatch[] {
+    const seen = new Set<string>();
+    return selections.filter((selection) => {
+      const key = `${selection.selectedNeed.category}:${selection.selectedProvider.id}`;
+      if (seen.has(key)) {
+        return false;
+      }
+      seen.add(key);
+      return true;
+    });
   }
 
   private shouldBroadenProviderSearch(
@@ -1623,8 +1664,8 @@ export class AgentService {
         missing_fields: [],
         recommended_provider_ids: currentNeed?.recommended_provider_ids ?? [],
         recommended_providers: currentNeed?.recommended_providers ?? [],
-        selected_provider_id: currentNeed?.selected_provider_id ?? null,
-        selected_provider_hint: currentNeed?.selected_provider_hint ?? null,
+        selected_provider_ids: currentNeed?.selected_provider_ids ?? [],
+        selected_provider_hints: currentNeed?.selected_provider_hints ?? [],
       };
     });
   }
@@ -1645,13 +1686,15 @@ export class AgentService {
     const activeCategory = this.normalizeCategoryValue(
       activeNeed?.category ?? plan.active_need_category,
     );
-    const selectedCategory = this.normalizeCategoryValue(selection.selectedCategory);
+    const selectedCategories = selection.selectedCategories
+      .map((category) => this.normalizeCategoryValue(category))
+      .filter((category): category is string => Boolean(category));
 
     return (
       Boolean(activeCategory) &&
-      Boolean(selectedCategory) &&
-      activeCategory !== selectedCategory &&
-      !activeNeed?.selected_provider_id
+      selectedCategories.length > 0 &&
+      selectedCategories.every((selectedCategory) => activeCategory !== selectedCategory) &&
+      (activeNeed?.selected_provider_ids.length ?? 0) === 0
     );
   }
 
@@ -1661,7 +1704,7 @@ export class AgentService {
         (need) =>
           need.status === 'shortlisted' &&
           need.recommended_providers.length > 0 &&
-          need.selected_provider_id === null,
+          need.selected_provider_ids.length === 0,
       ) ?? null
     );
   }
@@ -1769,13 +1812,13 @@ export class AgentService {
     return normalizeToProviderCategory(value) === 'Locales';
   }
 
-  private resolveEffectiveSelectionHint(
+  private resolveEffectiveSelectionHints(
     extraction: ExtractionResult,
     userMessage: string,
     plan: PlanSnapshot,
-  ): string | null {
-    if (extraction.selectedProviderHint) {
-      return extraction.selectedProviderHint;
+  ): string[] {
+    if (extraction.selectedProviderHints.length > 0) {
+      return extraction.selectedProviderHints;
     }
 
     const hasSelectionIntent =
@@ -1783,7 +1826,7 @@ export class AgentService {
       extraction.secondaryIntents?.includes('confirmar_proveedor');
 
     if (!hasSelectionIntent) {
-      return null;
+      return [];
     }
 
     const normalizedMessage = this.normalizeSelectionText(userMessage);
@@ -1792,16 +1835,18 @@ export class AgentService {
       (need) => need.recommended_providers,
     );
 
+    const hints: string[] = [];
     for (const provider of allProviders) {
       const aliases = this.providerAliases(provider);
       for (const alias of aliases) {
         if (alias.length >= 3 && normalizedMessage.includes(alias)) {
-          return provider.title;
+          hints.push(provider.title);
+          break;
         }
       }
     }
 
-    return null;
+    return hints;
   }
 
   private messageHasVenueCue(value: string): boolean {

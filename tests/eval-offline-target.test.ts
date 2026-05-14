@@ -33,7 +33,7 @@ describe('offline eval target', () => {
         expect.objectContaining({
           category: 'Fotografía y video',
           status: 'selected',
-          selected_provider_id: 90,
+          selected_provider_ids: [90],
         }),
         expect.objectContaining({
           category: 'Catering',

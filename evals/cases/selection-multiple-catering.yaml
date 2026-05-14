@@ -1,0 +1,102 @@
+template: template.base-offline
+id: selection.choose_multiple_catering_from_shortlist
+suite: selection_continuity
+version: 1
+description: Choosing two Catering providers from one shortlist should persist both selections on the same need.
+tags:
+  - selection
+  - multi-provider
+  - Catering
+seedPlan:
+  current_node: recomendar
+  event_type: cumpleaños
+  location: Lima
+  guest_range: 21-50
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [109, 136]
+      recommended_providers:
+        - id: 109
+          title: EDO Sushi Bar
+          slug: edo-sushi-bar
+          category: Catering
+          location: Lima
+          priceLevel: $$$
+          rating: "4.7"
+          reason: coincide con el plan
+          detailUrl: https://sinenvolturas.com/proveedores/edo-sushi-bar
+          websiteUrl: https://www.edosushibar.com/Catering
+          minPrice: "1200.00"
+          maxPrice: null
+          promoBadge: 10% Off
+          promoSummary: 10% de descuento en Catering.
+          descriptionSnippet: Catering especializado en sushi.
+          serviceHighlights:
+            - Catering para eventos
+          termsHighlights:
+            - Pedidos de 300 piezas a más
+        - id: 136
+          title: 4Foodies
+          slug: 4foodies
+          category: Catering
+          location: Lima
+          priceLevel: null
+          rating: "0.0"
+          reason: coincide con la categoría Catering
+          detailUrl: https://sinenvolturas.com/proveedores/4foodies
+          websiteUrl: https://www.4foodies.pe
+          minPrice: null
+          maxPrice: null
+          promoBadge: 10% Off
+          promoSummary: 10% de descuento en el servicio de Catering.
+          descriptionSnippet: Tablas de quesos y mesas gastronómicas.
+          serviceHighlights:
+            - Tablas de quesos
+          termsHighlights:
+            - Pedido con 2 meses de anticipación
+      selected_provider_ids: []
+      selected_provider_hints: []
+inputs:
+  - text: quiero EDO y 4Foodies
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: confirmar_proveedor
+        intentConfidence: 0.97
+        eventType: cumpleaños
+        vendorCategory: Catering
+        vendorCategories:
+          - Catering
+        activeNeedCategory: Catering
+        location: Lima
+        budgetSignal: null
+        guestRange: 21-50
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere EDO y 4Foodies para Catering.
+        selectedProviderHints: [EDO, 4Foodies]
+        pauseRequested: false
+    repliesByTurn:
+      - Perfecto, EDO y 4Foodies quedaron como opciones elegidas para Catering.
+expectations:
+  - id: continue-node
+    type: node_transition
+    to: seguir_refinando_guardar_plan
+  - id: selected-providers
+    type: plan_field_equals
+    path: selected_provider_ids
+    expected: [109, 136]
+  - id: need-selected-status
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        status: selected
+        selected_provider_ids: [109, 136]

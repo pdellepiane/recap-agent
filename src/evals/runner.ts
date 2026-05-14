@@ -536,7 +536,7 @@ async function evaluateExpectation(
       if (
         expectation.preservePriorSelection &&
         finalPlan(context.turns)?.provider_needs.some(
-          (need) => need.status === 'shortlisted' && need.selected_provider_hint,
+          (need) => need.status === 'shortlisted' && need.selected_provider_hints.length > 0,
         )
       ) {
         failures.push('selected provider hint did not become a selected need');
@@ -639,7 +639,7 @@ function summarizePlanDiff(turns: EvalTurnResult[]): string[] {
     'location',
     'budget_signal',
     'guest_range',
-    'selected_provider_id',
+    'selected_provider_ids',
   ];
 
   for (const key of keys) {

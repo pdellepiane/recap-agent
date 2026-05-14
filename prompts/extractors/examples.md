@@ -38,42 +38,54 @@ Ejemplos breves:
 
 4. Usuario: "Me quedo con la segunda. Si no, lo veo luego."
 - intent: confirmar_proveedor
-- selectedProviderHint: 2
+- selectedProviderHints: [2]
 - pauseRequested: true
 
 5. Usuario: "Quiero usar EDO para el catering."
 - intent: confirmar_proveedor
 - vendorCategory: Catering
 - activeNeedCategory: Catering
-- selectedProviderHint: EDO
+- selectedProviderHints: [EDO]
 
 6. Usuario: "Quiero utilizar los servicios de Carlos y también necesito catering."
 - intent: confirmar_proveedor
 - vendorCategories: [Fotografía y video, Catering]
 - activeNeedCategory: Catering
-- selectedProviderHint: Carlos
+- selectedProviderHints: [Carlos]
 
 7. Usuario: "Dame la de tablas de queso y también necesito música."
 - intent: confirmar_proveedor
 - vendorCategories: [Música]
 - activeNeedCategory: Música
-- selectedProviderHint: proveedor de la shortlist relacionado con tablas de queso
+- selectedProviderHints: [proveedor de la shortlist relacionado con tablas de queso]
 
 8. Usuario: "Me interesa la propuesta en vivo, ¿qué seguiría?"
 - intent: confirmar_proveedor
-- selectedProviderHint: proveedor de la shortlist relacionado con música en vivo, solo si hay una única coincidencia clara
+- selectedProviderHints: [proveedor de la shortlist relacionado con música en vivo, solo si hay una única coincidencia clara]
 
 9. Usuario: "Ok, selecciona ese."
 - intent: confirmar_proveedor
-- selectedProviderHint: proveedor destacado como única recomendación clara en el turno anterior
+- selectedProviderHints: [proveedor destacado como única recomendación clara en el turno anterior]
 
 9b. Usuario: "Me quedo con la segunda opción."
 - intent: confirmar_proveedor
-- selectedProviderHint: 2
+- selectedProviderHints: [2]
 
 9c. Usuario: "Quiero la de tablas de queso."
 - intent: confirmar_proveedor
-- selectedProviderHint: proveedor de la shortlist cuya descripción o servicios coinciden con tablas de queso
+- selectedProviderHints: [proveedor de la shortlist cuya descripción o servicios coinciden con tablas de queso]
+
+9d. Usuario: "Me quedo con la primera y la tercera."
+- intent: confirmar_proveedor
+- selectedProviderHints: [1, 3]
+
+9e. Usuario: "Quiero EDO y Dulcefina, y ahora veamos música."
+- intent: buscar_proveedores
+- secondaryIntents: [confirmar_proveedor]
+- vendorCategory: Música
+- vendorCategories: [Música]
+- activeNeedCategory: Música
+- selectedProviderHints: [EDO, Dulcefina]
 
 10. Usuario: "Perfecto, puedes contactar al proveedor?"
 - intent: cerrar

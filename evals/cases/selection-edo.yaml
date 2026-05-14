@@ -29,7 +29,7 @@ fixtures:
         hardConstraints: []
         assumptions: []
         conversationSummary: El usuario quiere seguir con EDO para Catering.
-        selectedProviderHint: EDO
+        selectedProviderHints: [EDO]
         pauseRequested: false
     repliesByTurn:
       - Perfecto, EDO quedó como tu Catering elegido y ya seguimos desde tu plan guardado.
@@ -39,12 +39,12 @@ expectations:
     to: seguir_refinando_guardar_plan
   - id: selected-provider
     type: plan_field_equals
-    path: selected_provider_id
-    expected: 109
+    path: selected_provider_ids
+    expected: [109]
   - id: provider-selected-status
     type: plan_field_subset
     path: provider_needs
     expected:
       - category: Catering
         status: selected
-        selected_provider_id: 109
+        selected_provider_ids: [109]

@@ -34,7 +34,7 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
     return 'entrevista';
   }
 
-  if (activeNeed?.selected_provider_id) {
+  if ((activeNeed?.selected_provider_ids.length ?? 0) > 0) {
     return 'seguir_refinando_guardar_plan';
   }
 

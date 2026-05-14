@@ -45,7 +45,7 @@ describe('eval runner', () => {
     expect(firstResult?.scorerResults).toHaveLength(2);
     expect(firstResult?.planDiffSummary).toEqual(
       expect.arrayContaining([
-        'selected_provider_id=109',
+        'selected_provider_ids=[109]',
         'provider_needs=Catering:selected',
       ]),
     );

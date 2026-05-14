@@ -155,7 +155,7 @@ class FixtureRuntime implements AgentRuntime {
         hardConstraints: [],
         assumptions: [],
         conversationSummary: 'Offline fixture did not provide an extraction result.',
-        selectedProviderHint: null,
+        selectedProviderHints: [],
         pauseRequested: false,
         contactName: null,
         contactEmail: null,

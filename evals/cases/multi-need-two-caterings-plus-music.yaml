@@ -1,0 +1,132 @@
+template: template.base-offline
+id: multi_need.select_two_caterings_and_open_music
+suite: multi_need_planning
+version: 1
+description: Confirm two Catering providers while opening Música in the same turn.
+tags:
+  - mixed-turn
+  - multi-need
+  - multi-provider
+  - regression
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [109, 136]
+      recommended_providers:
+        - id: 109
+          title: EDO Sushi Bar
+          slug: edo-sushi-bar
+          category: Catering
+          location: Lima
+          priceLevel: $$$
+          rating: "4.7"
+          reason: coincide con el plan
+          detailUrl: https://sinenvolturas.com/proveedores/edo-sushi-bar
+          websiteUrl: https://www.edosushibar.com/Catering
+          minPrice: "1200.00"
+          maxPrice: null
+          promoBadge: 10% Off
+          promoSummary: 10% de descuento en Catering.
+          descriptionSnippet: Catering especializado en sushi.
+          serviceHighlights:
+            - Catering para eventos
+          termsHighlights:
+            - Pedidos de 300 piezas a más
+        - id: 136
+          title: 4Foodies
+          slug: 4foodies
+          category: Catering
+          location: Lima
+          priceLevel: null
+          rating: "0.0"
+          reason: coincide con la categoría Catering
+          detailUrl: https://sinenvolturas.com/proveedores/4foodies
+          websiteUrl: https://www.4foodies.pe
+          minPrice: null
+          maxPrice: null
+          promoBadge: 10% Off
+          promoSummary: 10% de descuento en el servicio de Catering.
+          descriptionSnippet: Tablas de quesos y mesas gastronómicas.
+          serviceHighlights:
+            - Tablas de quesos
+          termsHighlights:
+            - Pedido con 2 meses de anticipación
+      selected_provider_ids: []
+      selected_provider_hints: []
+inputs:
+  - text: quiero EDO y 4Foodies, ahora necesito música
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        secondaryIntents:
+          - confirmar_proveedor
+        intentConfidence: 0.97
+        eventType: boda
+        vendorCategory: Música
+        vendorCategories:
+          - Música
+        activeNeedCategory: Música
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario eligió EDO y 4Foodies para Catering y ahora necesita Música.
+        selectedProviderHints: [EDO, 4Foodies]
+        pauseRequested: false
+    providerGateway:
+      searchProvidersByTurn:
+        - value:
+            providers:
+              - id: 201
+                title: DJ Pulga
+                slug: dj-pulga
+                category: Música
+                location: Lima
+                priceLevel: $$
+                rating: "4.8"
+                reason: coincide con el plan
+                detailUrl: https://sinenvolturas.com/proveedores/dj-pulga
+                websiteUrl: null
+                minPrice: null
+                maxPrice: null
+                promoBadge: null
+                promoSummary: null
+                descriptionSnippet: DJ para eventos.
+                serviceHighlights:
+                  - DJ para bodas
+                termsHighlights: []
+    repliesByTurn:
+      - Perfecto. EDO y 4Foodies quedan elegidos para Catering; ahora te muestro opciones de Música en Lima.
+expectations:
+  - id: final-node
+    type: node_transition
+    to: recomendar
+  - id: active-need-music
+    type: plan_field_equals
+    path: active_need_category
+    expected: Música
+  - id: preserve-two-caterings
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        status: selected
+        selected_provider_ids: [109, 136]
+      - category: Música
+        status: shortlisted
+  - id: mixed-turn-invariant
+    type: trajectory_invariants
+    preservePriorSelection: true

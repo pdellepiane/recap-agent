@@ -51,11 +51,10 @@ export async function executeFinishPlanTool(args: {
   }
 
   const selectedProviders = plan.provider_needs
-    .filter((need) => need.selected_provider_id !== null)
-    .map((need) => ({
-      providerId: need.selected_provider_id!,
+    .flatMap((need) => need.selected_provider_ids.map((providerId) => ({
+      providerId,
       category: need.category,
-    }));
+    })));
 
   if (selectedProviders.length === 0) {
     return {

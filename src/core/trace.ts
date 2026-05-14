@@ -27,7 +27,7 @@ export type ExtractionDebugSummary = {
   location: string | null;
   budget_signal: string | null;
   guest_range: string | null;
-  selected_provider_hint: string | null;
+  selected_provider_hints: string[];
   preferences: string[];
   hard_constraints: string[];
   assumptions: string[];
@@ -56,9 +56,9 @@ export type PlanDebugSummary = {
     category: string;
     status: string;
     has_recommendations: boolean;
-    selected_provider_id: number | null;
+    selected_provider_ids: number[];
   }>;
-  selected_provider_id: number | null;
+  selected_provider_ids: number[];
   missing_fields: string[];
   conversation_summary_preview: string;
   open_question_count: number;

@@ -1,6 +1,83 @@
 # Implementation Log
 
+## 2026-05-07
+
+### Multiple providers per need
+
+**Reason:** A single event need can naturally require contacting more than one
+provider, but the plan model stored only one `selected_provider_id` and one
+`selectedProviderHint`. That made plural choices like "EDO y 4Foodies" lossy and
+kept the multi-intent path focused on one provider even when the user selected
+several before opening another need.
+
+**Changes:**
+- Replaced singular selected-provider plan fields with arrays:
+  `selected_provider_ids` and `selected_provider_hints` on both each
+  `provider_needs` entry and the active-need top-level projection.
+- Updated extraction contracts, prompt snapshots, trace summaries, terminal debug
+  output, and eval schemas to use `selectedProviderHints` / selected-provider arrays.
+- Reworked provider selection resolution in `agent-service.ts` to support multiple
+  ordinal choices, multiple name/alias matches, fallback alias scanning for
+  secondary-intent selection turns, grouped selections by need, and deduped appends.
+- Updated shortlist replacement behavior so a fresh shortlist can clear previous
+  selections for that need, while unrelated need updates preserve existing selections.
+- Updated `finish_plan` to create one quote request per selected provider across
+  every selected need; `no_selected_providers` now only applies when all arrays are
+  empty.
+- Updated Spanish extractor and node prompts for plural selection, including
+  examples like "la primera y la tercera" and "EDO y Dulcefina".
+- Added unit, service, finish-tool, and offline eval coverage for multi-provider
+  selection and selection-plus-new-need turns.
+- Added new eval cases:
+  `selection.choose_multiple_catering_from_shortlist` and
+  `multi_need.select_two_caterings_and_open_music`; both are included in
+  `dev_regression`.
+
+**Decision:**
+- Use a clean array-based plan shape as the durable model. A narrow load-boundary
+  normalization remains only to tolerate legacy persisted/local seed objects while
+  converting them into the new array shape immediately.
+
+Flow nodes affected:
+- `deteccion_intencion`
+- `usuario_elige_proveedor`
+- `anadir_a_proveedores_recomendados`
+- `seguir_refinando_guardar_plan`
+- `recomendar`
+- `crear_lead_cerrar`
+
 ## 2026-05-05
+
+### Multi-intent extraction with provider selection heuristics
+
+**Reason:** When a user combines provider selection with a new need in one message
+(e.g., "ok quiero a dj pulga. ahora ayudame con catering. tienes algo para tortas?"),
+the extractor only supports a single `intent` field, forcing the LLM to choose one
+primary intent. This caused `selectedProviderHint` to be lost when the primary intent
+was `buscar_proveedores` instead of `confirmar_proveedor`. The provider selection
+was not captured, and the system failed to mark DJ Pulga as selected for Música.
+
+**Changes:**
+- Added `secondaryIntents` field to extraction schema (`ExtractionResult`, Zod schema,
+  and `openai-agent-runtime.ts`): allows the LLM to express additional intents beyond
+  the primary one. For example, `intent: buscar_proveedores` with
+  `secondaryIntents: ["confirmar_proveedor"]` when a user selects a provider AND
+  requests a new need.
+- Added `resolveEffectiveSelectionHint()` heuristic in `agent-service.ts`: when
+  `confirmar_proveedor` appears in primary or secondary intents but
+  `selectedProviderHint` is null, scans the user message for provider name aliases
+  from the shortlist using existing `providerAliases()` and
+  `normalizeSelectionText()` matching. Auto-fills the hint as a fallback.
+- Updated `tryResolveSelection` call site to use effective hint instead of raw
+  extraction field.
+- Strengthened multi-intent guidance in `prompts/extractors/normalization_rules.txt`:
+  new "multi-intención" section with explicit examples for combined selection + need
+  switch messages. Instructs the LLM to always fill `selectedProviderHint` when
+  referencing a shortlist provider, regardless of primary intent.
+- Updated `prompts/extractors/field_definitions.txt`: added `secondaryIntents` field
+  definition with usage guidance.
+- Updated `prompts/extractors/conflict_resolution.txt`: references `secondaryIntents`
+  for combined selection + need switch scenarios.
 
 ### Fix vector search category filter case mismatch, search funnel transparency, and category prompt enforcement
 

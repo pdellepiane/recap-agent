@@ -13,7 +13,7 @@ Definiciones de campos:
 - secondaryIntents:
   - lista opcional de ints adicionales presentes en el mensaje, además del intent principal.
   - Úsalo cuando el mensaje combina intenciones claras. Ejemplo: "ok, elijo a DJ Pulga. Ahora necesito catering para tortas" tiene intent=buscar_proveedores y secondaryIntents=["confirmar_proveedor"] porque el usuario está cambiando de necesidad pero también seleccionó un proveedor de la shortlist.
-  - Si el usuario elige un proveedor Y pide algo más (otra categoría, otra búsqueda, cerrar), incluye confirmar_proveedor en secondaryIntents y llena selectedProviderHint con la referencia al proveedor elegido.
+  - Si el usuario elige uno o varios proveedores Y pide algo más (otra categoría, otra búsqueda, cerrar), incluye confirmar_proveedor en secondaryIntents y llena selectedProviderHints con cada referencia elegida.
   - Puede estar vacío si el mensaje tiene una sola intención clara.
 
 - intentConfidence:
@@ -61,10 +61,11 @@ Definiciones de campos:
 - conversationSummary:
   - resumen corto, acumulativo y actualizado del plan del evento y del frente activo.
 
-- selectedProviderHint:
-  - índice, nombre parcial o referencia clara a un proveedor ya recomendado.
-  - si el usuario está eligiendo desde una shortlist visible y la referencia es resoluble con el plan base, debes llenarlo.
-  - solo déjalo en null si la referencia sigue siendo genuinamente ambigua incluso con la shortlist del plan base.
+- selectedProviderHints:
+  - lista de índices, nombres parciales o referencias claras a proveedores ya recomendados.
+  - si el usuario elige una o varias opciones desde una shortlist visible y la referencia es resoluble con el plan base, incluye cada referencia como un elemento.
+  - captura selecciones plurales como "la primera y la tercera", "EDO y Dulcefina" o "estos dos".
+  - usa [] solo si la referencia sigue siendo genuinamente ambigua incluso con la shortlist del plan base.
 
 - pauseRequested:
   - true si el usuario quiere pausar o retomar más tarde.

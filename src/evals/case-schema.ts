@@ -48,6 +48,7 @@ const providerDetailSchema = providerSummarySchema.extend({
 
 const extractionResultSchema = z.object({
   intent: z.enum(planIntentValues).nullable(),
+  secondaryIntents: z.array(z.enum(planIntentValues)).default([]),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: z.string().nullable(),
   vendorCategory: providerCategorySchema.nullable(),
@@ -60,7 +61,7 @@ const extractionResultSchema = z.object({
   hardConstraints: z.array(z.string()),
   assumptions: z.array(z.string()),
   conversationSummary: z.string(),
-  selectedProviderHint: z.string().nullable(),
+  selectedProviderHints: z.array(z.string()).default([]),
   pauseRequested: z.boolean(),
 });
 

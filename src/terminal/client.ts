@@ -712,7 +712,7 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean, showSlugs: boo
     [
       'Provider Needs',
       plan.provider_needs
-        .map((need, index) => formatProviderNeedDebug(need, index, showSlugs))
+        .map((need, index) => formatProviderNeedDebug(need, index))
         .join('\n') || 'none',
     ],
     ['Category', plan.vendor_category ?? 'null'],
@@ -720,7 +720,7 @@ function renderPlan(plan: PlanSnapshot | null, fullPlan: boolean, showSlugs: boo
     ['Budget', plan.budget_signal ?? 'null'],
     ['Guest Range', plan.guest_range ?? 'null'],
     ['Missing Fields', plan.missing_fields.join(', ') || 'none'],
-    ['Selected Provider', String(plan.selected_provider_id ?? 'null')],
+    ['Selected Providers', plan.selected_provider_ids.join(', ') || 'none'],
     ...(plan.recommended_providers.length > 0
       ? plan.recommended_providers.map((provider, index) => [
           index === 0 ? 'Recommended Providers' : '',
@@ -837,17 +837,17 @@ function truncateForTrace(value: string, maxChars: number): string {
 function formatProviderNeedDebug(
   need: PlanSnapshot['provider_needs'][number],
   index: number,
-  showSlugs: boolean,
 ): string {
-  const selectedProvider =
-    need.selected_provider_id !== null
-      ? need.recommended_providers.find(
-          (provider) => provider.id === need.selected_provider_id,
-        ) ?? null
-      : null;
+  const selectedTitles = need.selected_provider_ids.map((selectedProviderId) => {
+    const selectedProvider =
+      need.recommended_providers.find(
+        (provider) => provider.id === selectedProviderId,
+      ) ?? null;
+    return selectedProvider?.title ?? String(selectedProviderId);
+  });
   const selectedText =
-    need.selected_provider_id !== null
-      ? ` | selected=${selectedProvider?.title ?? need.selected_provider_id}`
+    selectedTitles.length > 0
+      ? ` | selected=${selectedTitles.join(', ')}`
       : '';
 
   return `${index + 1}. ${need.category} [${need.status}]${selectedText}`;

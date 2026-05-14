@@ -125,7 +125,7 @@ export function buildProviderVectorSearchFilters(
     filters.push({
       type: 'eq',
       key: 'category_key',
-      value: categories[0]!,
+      value: categories[0],
     });
   } else if (categories.length > 1) {
     filters.push({
@@ -218,7 +218,7 @@ export class ProviderVectorSearchGateway {
         key: 'category_key',
         value: category,
       };
-      const filters: CompoundFilter = locationFilter
+      const filters: ComparisonFilter | CompoundFilter = locationFilter
         ? { type: 'and', filters: [categoryFilter, locationFilter] }
         : categoryFilter;
 

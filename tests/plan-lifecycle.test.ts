@@ -28,8 +28,8 @@ describe('plan lifecycle', () => {
       provider_needs: [],
       recommended_provider_ids: [],
       recommended_providers: [],
-      selected_provider_id: null,
-      selected_provider_hint: null,
+      selected_provider_ids: [],
+      selected_provider_hints: [],
       assumptions: [],
       conversation_summary: '',
       last_user_goal: null,
@@ -58,5 +58,145 @@ describe('plan lifecycle', () => {
     expect(finished.lifecycle_state).toBe('finished');
     expect(finished.contact_name).toBe('Test User');
     expect(finished.contact_email).toBe('test@example.com');
+  });
+
+  it('appends and deduplicates selected providers for a need', () => {
+    const base = mergePlan(
+      createEmptyPlan({
+        planId: 'p3',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'u3',
+      }),
+      {
+        active_need_category: 'Catering',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1, 2],
+            recommended_providers: [],
+            selected_provider_ids: [1],
+            selected_provider_hints: ['EDO'],
+          },
+        ],
+      },
+    );
+
+    const updated = mergePlan(base, {
+      provider_needs: [
+        {
+          category: 'Catering',
+          status: 'selected',
+          preferences: [],
+          hard_constraints: [],
+          missing_fields: [],
+          recommended_provider_ids: [1, 2],
+          recommended_providers: [],
+          selected_provider_ids: [1, 2],
+          selected_provider_hints: ['EDO', 'Dulcefina'],
+        },
+      ],
+    });
+
+    expect(updated.provider_needs[0]?.selected_provider_ids).toEqual([1, 2]);
+    expect(updated.provider_needs[0]?.selected_provider_hints).toEqual([
+      'EDO',
+      'Dulcefina',
+    ]);
+    expect(updated.provider_needs[0]?.status).toBe('selected');
+  });
+
+  it('preserves selected providers on unrelated need changes', () => {
+    const base = mergePlan(
+      createEmptyPlan({
+        planId: 'p4',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'u4',
+      }),
+      {
+        active_need_category: 'Catering',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'selected',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [],
+            selected_provider_ids: [1],
+            selected_provider_hints: ['EDO'],
+          },
+        ],
+      },
+    );
+
+    const updated = mergePlan(base, {
+      active_need_category: 'Música',
+      provider_needs: [
+        {
+          category: 'Música',
+          status: 'identified',
+          preferences: ['dj'],
+          hard_constraints: [],
+          missing_fields: [],
+          recommended_provider_ids: [],
+          recommended_providers: [],
+          selected_provider_ids: [],
+          selected_provider_hints: [],
+        },
+      ],
+    });
+
+    const cateringNeed = updated.provider_needs.find((need) => need.category === 'Catering');
+    expect(cateringNeed?.selected_provider_ids).toEqual([1]);
+  });
+
+  it('clears selected providers when a replacement shortlist is stored', () => {
+    const base = mergePlan(
+      createEmptyPlan({
+        planId: 'p5',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'u5',
+      }),
+      {
+        active_need_category: 'Catering',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'selected',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [],
+            selected_provider_ids: [1],
+            selected_provider_hints: ['EDO'],
+          },
+        ],
+      },
+    );
+
+    const updated = mergePlan(base, {
+      provider_needs: [
+        {
+          category: 'Catering',
+          status: 'shortlisted',
+          preferences: [],
+          hard_constraints: [],
+          missing_fields: [],
+          recommended_provider_ids: [2],
+          recommended_providers: [],
+          selected_provider_ids: [],
+          selected_provider_hints: [],
+        },
+      ],
+    });
+
+    expect(updated.provider_needs[0]?.selected_provider_ids).toEqual([]);
+    expect(updated.provider_needs[0]?.status).toBe('shortlisted');
   });
 });

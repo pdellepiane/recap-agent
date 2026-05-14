@@ -80,8 +80,8 @@ export const providerNeedSchema = z.object({
   missing_fields: z.array(z.string()),
   recommended_provider_ids: z.array(z.number()),
   recommended_providers: z.array(providerSummarySchema),
-  selected_provider_id: z.number().nullable(),
-  selected_provider_hint: z.string().nullable(),
+  selected_provider_ids: z.array(z.number()),
+  selected_provider_hints: z.array(z.string()),
 });
 
 export type ProviderNeed = z.infer<typeof providerNeedSchema>;
@@ -110,8 +110,8 @@ export const planSchema = z.object({
   provider_needs: z.array(providerNeedSchema),
   recommended_provider_ids: z.array(z.number()),
   recommended_providers: z.array(providerSummarySchema),
-  selected_provider_id: z.number().nullable(),
-  selected_provider_hint: z.string().nullable(),
+  selected_provider_ids: z.array(z.number()),
+  selected_provider_hints: z.array(z.string()),
   assumptions: z.array(z.string()),
   conversation_summary: z.string(),
   last_user_goal: z.string().nullable(),
@@ -136,15 +136,25 @@ export function normalizeRawPlan(raw: unknown): unknown {
 
   const normalizeField = (field: string): void => {
     if (typeof plan[field] === 'string') {
-      plan[field] = normalizeToProviderCategory(plan[field] as string);
+      plan[field] = normalizeToProviderCategory(plan[field]);
     }
   };
 
   normalizeField('vendor_category');
   normalizeField('active_need_category');
 
+  if (typeof plan.selected_provider_id === 'number' && !Array.isArray(plan.selected_provider_ids)) {
+    plan.selected_provider_ids = [plan.selected_provider_id];
+  }
+  if (typeof plan.selected_provider_hint === 'string' && !Array.isArray(plan.selected_provider_hints)) {
+    plan.selected_provider_hints = [plan.selected_provider_hint];
+  }
+  delete plan.selected_provider_id;
+  delete plan.selected_provider_hint;
+
   if (Array.isArray(plan.provider_needs)) {
-    plan.provider_needs = plan.provider_needs.map((need) => {
+    const providerNeeds: unknown[] = plan.provider_needs;
+    plan.provider_needs = providerNeeds.map((need) => {
       if (!need || typeof need !== 'object') {
         return need;
       }
@@ -152,6 +162,14 @@ export function normalizeRawPlan(raw: unknown): unknown {
       if (typeof needObj.category === 'string') {
         needObj.category = normalizeToProviderCategory(needObj.category);
       }
+      if (typeof needObj.selected_provider_id === 'number' && !Array.isArray(needObj.selected_provider_ids)) {
+        needObj.selected_provider_ids = [needObj.selected_provider_id];
+      }
+      if (typeof needObj.selected_provider_hint === 'string' && !Array.isArray(needObj.selected_provider_hints)) {
+        needObj.selected_provider_hints = [needObj.selected_provider_hint];
+      }
+      delete needObj.selected_provider_id;
+      delete needObj.selected_provider_hint;
       return needObj;
     });
   }
@@ -188,8 +206,8 @@ export function createEmptyPlan(args: {
     provider_needs: [],
     recommended_provider_ids: [],
     recommended_providers: [],
-    selected_provider_id: null,
-    selected_provider_hint: null,
+    selected_provider_ids: [],
+    selected_provider_hints: [],
     assumptions: [],
     conversation_summary: '',
     last_user_goal: null,
@@ -220,8 +238,25 @@ function mergeProviderNeed(
 ): ProviderNeed {
   const recommendedProviderIds =
     update.recommended_provider_ids ?? current?.recommended_provider_ids ?? [];
-  const selectedProviderId =
-    update.selected_provider_id ?? current?.selected_provider_id ?? null;
+  const isExplicitSelectionClear =
+    update.selected_provider_ids !== undefined &&
+    update.selected_provider_ids.length === 0 &&
+    update.selected_provider_hints !== undefined &&
+    update.selected_provider_hints.length === 0;
+  const selectedProviderIds = isExplicitSelectionClear
+    ? []
+    : Array.from(
+        new Set([
+          ...(current?.selected_provider_ids ?? []),
+          ...(update.selected_provider_ids ?? []),
+        ]),
+      );
+  const selectedProviderHints = isExplicitSelectionClear
+    ? []
+    : uniqueStrings([
+        ...(current?.selected_provider_hints ?? []),
+        ...(update.selected_provider_hints ?? []),
+      ]);
   const recommendedProviders =
     update.recommended_providers ?? current?.recommended_providers ?? [];
 
@@ -230,7 +265,7 @@ function mergeProviderNeed(
   if (update.status) {
     // Explicit status update always wins
     status = update.status;
-  } else if (selectedProviderId) {
+  } else if (selectedProviderIds.length > 0) {
     status = 'selected';
   } else if (current?.status === 'no_providers_available' && recommendedProviders.length === 0) {
     // Preserve terminal "no providers" status unless new results arrived
@@ -258,9 +293,8 @@ function mergeProviderNeed(
     missing_fields: update.missing_fields ?? current?.missing_fields ?? [],
     recommended_provider_ids: recommendedProviderIds,
     recommended_providers: recommendedProviders,
-    selected_provider_id: selectedProviderId,
-    selected_provider_hint:
-      update.selected_provider_hint ?? current?.selected_provider_hint ?? null,
+    selected_provider_ids: selectedProviderIds,
+    selected_provider_hints: selectedProviderHints,
   });
 }
 
@@ -345,8 +379,8 @@ function projectActiveNeed(
       vendor_category: activeNeedCategory,
       recommended_provider_ids: [],
       recommended_providers: [],
-      selected_provider_id: null,
-      selected_provider_hint: null,
+      selected_provider_ids: [],
+      selected_provider_hints: [],
     };
   }
 
@@ -354,8 +388,8 @@ function projectActiveNeed(
     vendor_category: activeNeed.category,
     recommended_provider_ids: activeNeed.recommended_provider_ids,
     recommended_providers: activeNeed.recommended_providers,
-    selected_provider_id: activeNeed.selected_provider_id,
-    selected_provider_hint: activeNeed.selected_provider_hint,
+    selected_provider_ids: activeNeed.selected_provider_ids,
+    selected_provider_hints: activeNeed.selected_provider_hints,
   };
 }
 
@@ -379,8 +413,8 @@ export function summarizeProviderNeeds(providerNeeds: ProviderNeed[]): string {
 
   return providerNeeds
     .map((need, index) => {
-      const selected = need.selected_provider_id
-        ? `, proveedor elegido ${need.selected_provider_id}`
+      const selected = need.selected_provider_ids.length > 0
+        ? `, proveedores elegidos ${need.selected_provider_ids.join(', ')}`
         : '';
       const unavailable = need.status === 'no_providers_available'
         ? ' (sin proveedores disponibles)'
@@ -409,8 +443,8 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
             missing_fields: update.missing_fields ?? [],
             recommended_provider_ids: update.recommended_provider_ids ?? [],
             recommended_providers: update.recommended_providers ?? [],
-            selected_provider_id: update.selected_provider_id ?? null,
-            selected_provider_hint: update.selected_provider_hint ?? null,
+            selected_provider_ids: update.selected_provider_ids ?? [],
+            selected_provider_hints: update.selected_provider_hints ?? [],
           }),
         ]
       : mergedProviderNeeds.map((need) =>
@@ -424,10 +458,10 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
                   update.recommended_provider_ids ?? need.recommended_provider_ids,
                 recommended_providers:
                   update.recommended_providers ?? need.recommended_providers,
-                selected_provider_id:
-                  update.selected_provider_id ?? need.selected_provider_id,
-                selected_provider_hint:
-                  update.selected_provider_hint ?? need.selected_provider_hint,
+                selected_provider_ids:
+                  update.selected_provider_ids ?? need.selected_provider_ids,
+                selected_provider_hints:
+                  update.selected_provider_hints ?? need.selected_provider_hints,
               })
             : need,
         );
@@ -455,8 +489,8 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     active_need_category: activeNeedState.activeNeedCategory,
     recommended_provider_ids: activeProjection.recommended_provider_ids ?? [],
     recommended_providers: activeProjection.recommended_providers ?? [],
-    selected_provider_id: activeProjection.selected_provider_id ?? null,
-    selected_provider_hint: activeProjection.selected_provider_hint ?? null,
+    selected_provider_ids: activeProjection.selected_provider_ids ?? [],
+    selected_provider_hints: activeProjection.selected_provider_hints ?? [],
     vendor_category: activeProjection.vendor_category ?? null,
     open_questions: uniqueStrings([
       ...(plan.open_questions ?? []),

@@ -68,7 +68,7 @@ class FakeRuntime implements AgentRuntime {
         hardConstraints: [],
         assumptions: [],
         conversationSummary: 'Pausa solicitada por el usuario.',
-        selectedProviderHint: null,
+        selectedProviderHints: [],
         pauseRequested: true,
         contactName: null,
         contactEmail: null,
@@ -92,7 +92,7 @@ class FakeRuntime implements AgentRuntime {
         hardConstraints: [],
         assumptions: [],
         conversationSummary: 'El usuario elige el proveedor 1.',
-        selectedProviderHint: '1',
+        selectedProviderHints: ['1'],
         pauseRequested: false,
         contactName: null,
         contactEmail: null,
@@ -115,7 +115,7 @@ class FakeRuntime implements AgentRuntime {
       hardConstraints: [],
       assumptions: [],
       conversationSummary: 'Boda en Lima con presupuesto medio.',
-      selectedProviderHint: null,
+      selectedProviderHints: [],
       pauseRequested: false,
       contactName: null,
       contactEmail: null,
@@ -147,7 +147,7 @@ class FaqRuntime extends FakeRuntime {
       hardConstraints: [],
       assumptions: [],
       conversationSummary: 'El usuario pregunta por Sin Envolturas.',
-      selectedProviderHint: null,
+      selectedProviderHints: [],
       pauseRequested: false,
       contactName: null,
       contactEmail: null,
@@ -515,7 +515,7 @@ describe('AgentService', () => {
             hardConstraints: [],
             assumptions: [],
             conversationSummary: 'El usuario quiere seguir con EDO para catering.',
-            selectedProviderHint: null,
+            selectedProviderHints: [],
             pauseRequested: false,
             contactName: null,
             contactEmail: null,
@@ -581,8 +581,8 @@ describe('AgentService', () => {
                 termsHighlights: ['Pedidos de 300 piezas a más'],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
         recommended_provider_ids: [109],
@@ -624,7 +624,7 @@ describe('AgentService', () => {
     });
 
     expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
-    expect(response.plan.selected_provider_id).toBe(109);
+    expect(response.plan.selected_provider_ids).toEqual([109]);
     expect(response.trace.next_node).toBe('seguir_refinando_guardar_plan');
     expect(gateway.searchCalls).toBe(0);
   });
@@ -646,7 +646,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario confirmó presupuesto medio.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -689,8 +689,8 @@ describe('AgentService', () => {
             missing_fields: ['budget_or_guest_range'],
             recommended_provider_ids: [],
             recommended_providers: [],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -732,7 +732,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -835,8 +835,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -884,7 +884,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario quiere ver más fotógrafos en Lima.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -949,8 +949,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -996,7 +996,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario quiere ampliar la búsqueda de fotógrafos.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1100,8 +1100,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1146,7 +1146,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario quiere opciones de fotografía más económicas.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1231,8 +1231,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1275,7 +1275,7 @@ describe('AgentService', () => {
           assumptions: [],
           conversationSummary:
             'El usuario quiere tomar a Carlos para fotografía y ahora necesita catering.',
-          selectedProviderHint: 'Carlos',
+          selectedProviderHints: ['Carlos'],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1419,8 +1419,8 @@ describe('AgentService', () => {
                 termsHighlights: ['Sujeto a disponibilidad'],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1448,7 +1448,7 @@ describe('AgentService', () => {
 
     expect(response.plan.current_node).toBe('recomendar');
     expect(response.plan.active_need_category).toBe('Catering');
-    expect(photographyNeed?.selected_provider_id).toBe(90);
+    expect(photographyNeed?.selected_provider_ids).toEqual([90]);
     expect(photographyNeed?.status).toBe('selected');
     expect(cateringNeed?.recommended_provider_ids).toEqual([109]);
     expect(gateway.searchCalls).toBe(1);
@@ -1472,7 +1472,7 @@ describe('AgentService', () => {
           assumptions: [],
           conversationSummary:
             'El usuario eligió 4Foodies para catering y ahora necesita música.',
-          selectedProviderHint: '4Foodies',
+          selectedProviderHints: ['4Foodies'],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1558,8 +1558,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1588,9 +1588,9 @@ describe('AgentService', () => {
     expect(response.plan.current_node).toBe('recomendar');
     expect(response.plan.active_need_category).toBe('Música');
     expect(cateringNeed?.status).toBe('selected');
-    expect(cateringNeed?.selected_provider_id).toBe(136);
+    expect(cateringNeed?.selected_provider_ids).toEqual([136]);
     expect(musicNeed?.status).toBe('shortlisted');
-    expect(musicNeed?.selected_provider_hint).toBeNull();
+    expect(musicNeed?.selected_provider_hints).toEqual([]);
     expect(gateway.searchCalls).toBe(1);
   });
 
@@ -1612,7 +1612,7 @@ describe('AgentService', () => {
           assumptions: [],
           conversationSummary:
             'El usuario eligió el catering de tablas de queso y ahora necesita música.',
-          selectedProviderHint: '4Foodies',
+          selectedProviderHints: ['4Foodies'],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1714,8 +1714,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1743,7 +1743,7 @@ describe('AgentService', () => {
 
     expect(response.plan.active_need_category).toBe('Música');
     expect(cateringNeed?.status).toBe('selected');
-    expect(cateringNeed?.selected_provider_id).toBe(136);
+    expect(cateringNeed?.selected_provider_ids).toEqual([136]);
     expect(musicNeed?.status).toBe('shortlisted');
     expect(gateway.searchCalls).toBe(1);
   });
@@ -1765,8 +1765,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario eligió el proveedor de tablas de queso.',
-          selectedProviderHint:
-            'proveedor de la shortlist de catering con servicio en tablas de quesos (4Foodies)',
+          selectedProviderHints: ['proveedor de la shortlist de catering con servicio en tablas de quesos (4Foodies)'],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1848,8 +1847,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1868,7 +1867,7 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.selected_provider_id).toBe(136);
+    expect(response.plan.selected_provider_ids).toEqual([136]);
     expect(gateway.searchCalls).toBe(0);
   });
 
@@ -1889,7 +1888,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario eligió la primera opción de música.',
-          selectedProviderHint: 'primera opción',
+          selectedProviderHints: ['primera opción'],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -1971,8 +1970,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: null,
-            selected_provider_hint: null,
+            selected_provider_ids: [],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -1992,7 +1991,7 @@ describe('AgentService', () => {
     });
 
     expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
-    expect(response.plan.selected_provider_id).toBe(115);
+    expect(response.plan.selected_provider_ids).toEqual([115]);
     expect(getActiveNeed(response.plan)?.status).toBe('selected');
     expect(gateway.searchCalls).toBe(0);
   });
@@ -2014,7 +2013,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'El usuario quiere planear una boda en Lima.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -2064,7 +2063,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: ['El tipo de evento podría necesitar local.'],
           conversationSummary: 'El usuario quiere planear una boda en Lima.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -2116,7 +2115,7 @@ describe('AgentService', () => {
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'Boda en Lima con 100 invitados.',
-          selectedProviderHint: null,
+          selectedProviderHints: [],
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
@@ -2247,7 +2246,7 @@ describe('AgentService', () => {
             hardConstraints: [],
             assumptions: [],
             conversationSummary: 'El usuario quiere cerrar y dio un teléfono inválido.',
-            selectedProviderHint: null,
+            selectedProviderHints: [],
             pauseRequested: false,
             contactName: 'Carolina',
             contactEmail: 'carolina@example.com',
@@ -2305,8 +2304,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: 1,
-            selected_provider_hint: null,
+            selected_provider_ids: [1],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -2348,7 +2347,7 @@ describe('AgentService', () => {
             hardConstraints: [],
             assumptions: [],
             conversationSummary: 'El usuario quiere cerrar y dio un email inválido.',
-            selectedProviderHint: null,
+            selectedProviderHints: [],
             pauseRequested: false,
             contactName: 'Carolina',
             contactEmail: 'carolina.gmail.com',
@@ -2407,8 +2406,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: 1,
-            selected_provider_hint: null,
+            selected_provider_ids: [1],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -2447,7 +2446,7 @@ describe('AgentService', () => {
             hardConstraints: [],
             assumptions: [],
             conversationSummary: 'El usuario quiere cerrar y dio su teléfono.',
-            selectedProviderHint: null,
+            selectedProviderHints: [],
             pauseRequested: false,
             contactName: null,
             contactEmail: null,
@@ -2506,8 +2505,8 @@ describe('AgentService', () => {
                 termsHighlights: [],
               },
             ],
-            selected_provider_id: 1,
-            selected_provider_hint: null,
+            selected_provider_ids: [1],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -2585,8 +2584,8 @@ describe('AgentService', () => {
             missing_fields: [],
             recommended_provider_ids: [1],
             recommended_providers: [],
-            selected_provider_id: 1,
-            selected_provider_hint: null,
+            selected_provider_ids: [1],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -2634,8 +2633,8 @@ describe('AgentService', () => {
             missing_fields: [],
             recommended_provider_ids: [1],
             recommended_providers: [],
-            selected_provider_id: 1,
-            selected_provider_hint: null,
+            selected_provider_ids: [1],
+            selected_provider_hints: [],
           },
         ],
       },
@@ -2649,5 +2648,276 @@ describe('AgentService', () => {
     expect(result.status).toBe('success');
     expect(gateway.lastQuoteRequest?.phone).toBe('15512345678');
     expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+52');
+  });
+
+  it('selects multiple providers by ordinal from the active shortlist', async () => {
+    class MultiOrdinalRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'confirmar_proveedor',
+          intentConfidence: 0.97,
+          eventType: 'boda',
+          vendorCategory: 'Catering',
+          vendorCategories: ['Catering'],
+          activeNeedCategory: 'Catering',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario eligió la primera y la tercera opción.',
+          selectedProviderHints: ['primera y tercera'],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+        };
+      }
+    }
+
+    const runtime = new MultiOrdinalRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-multi-ordinal',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-multi-ordinal',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'Catering',
+        vendor_category: 'Catering',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [101, 102, 103],
+            recommended_providers: [
+              { id: 101, title: 'EDO', category: 'Catering', location: 'Lima', priceLevel: '$$', reason: null, serviceHighlights: [], termsHighlights: [] },
+              { id: 102, title: 'Mesa Central', category: 'Catering', location: 'Lima', priceLevel: '$$', reason: null, serviceHighlights: [], termsHighlights: [] },
+              { id: 103, title: 'Dulcefina', category: 'Catering', location: 'Lima', priceLevel: '$$', reason: null, serviceHighlights: [], termsHighlights: [] },
+            ],
+            selected_provider_ids: [],
+            selected_provider_hints: [],
+          },
+        ],
+      },
+    );
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-multi-ordinal',
+      text: 'me quedo con la primera y la tercera',
+      messageId: 'msg-multi-ordinal',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.selected_provider_ids).toEqual([101, 103]);
+    expect(gateway.searchCalls).toBe(0);
+  });
+
+  it('selects multiple providers by name and continues to a new need via secondary intent', async () => {
+    class MultiIntentRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          secondaryIntents: ['confirmar_proveedor'],
+          intentConfidence: 0.97,
+          eventType: 'boda',
+          vendorCategory: 'Música',
+          vendorCategories: ['Música'],
+          activeNeedCategory: 'Música',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario eligió dos caterings y ahora quiere música.',
+          selectedProviderHints: ['EDO', 'Dulcefina'],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            needCategory: 'música',
+          },
+        };
+      }
+    }
+
+    class MusicGateway extends FakeGateway {
+      override async searchProviders(): Promise<ProviderGatewaySearchResult> {
+        this.searchCalls += 1;
+        return {
+          providers: [
+            {
+              id: 201,
+              title: 'DJ Pulga',
+              category: 'Música',
+              location: 'Lima',
+              priceLevel: '$$',
+              reason: 'coincide con el plan',
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        if (providerId === 201) {
+          return {
+            id: 201,
+            title: 'DJ Pulga',
+            slug: 'dj-pulga',
+            category: 'Música',
+            location: 'Lima',
+            priceLevel: '$$',
+            rating: null,
+            reason: 'coincide con el plan',
+            detailUrl: null,
+            websiteUrl: null,
+            minPrice: null,
+            maxPrice: null,
+            promoBadge: null,
+            promoSummary: null,
+            descriptionSnippet: 'DJ para eventos.',
+            serviceHighlights: [],
+            termsHighlights: [],
+            description: 'DJ para eventos.',
+            eventTypes: ['boda'],
+            raw: {},
+          };
+        }
+        return await super.getProviderDetail(providerId);
+      }
+    }
+
+    const runtime = new MultiIntentRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new MusicGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-multi-intent-selection',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-multi-intent-selection',
+      }),
+      {
+        current_node: 'recomendar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'Catering',
+        vendor_category: 'Catering',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [101, 103],
+            recommended_providers: [
+              { id: 101, title: 'EDO', category: 'Catering', location: 'Lima', priceLevel: '$$', reason: null, serviceHighlights: [], termsHighlights: [] },
+              { id: 103, title: 'Dulcefina', category: 'Catering', location: 'Lima', priceLevel: '$$', reason: null, serviceHighlights: [], termsHighlights: [] },
+            ],
+            selected_provider_ids: [],
+            selected_provider_hints: [],
+          },
+        ],
+      },
+    );
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-multi-intent-selection',
+      text: 'ok EDO y Dulcefina, ahora necesito música',
+      messageId: 'msg-multi-intent-selection',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find((need) => need.category === 'Catering');
+    expect(cateringNeed?.selected_provider_ids).toEqual([101, 103]);
+    expect(response.plan.active_need_category).toBe('Música');
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(gateway.searchCalls).toBe(1);
+  });
+
+  it('creates one quote request per selected provider in finish_plan', async () => {
+    class FinishGateway extends FakeGateway {
+      public readonly quoteRequests: QuoteRequestInput[] = [];
+
+      override async createQuoteRequest(
+        input: QuoteRequestInput,
+      ): Promise<Record<string, unknown>> {
+        this.quoteRequests.push(input);
+        return { ok: true, input };
+      }
+    }
+
+    const gateway = new FinishGateway();
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-finish-multiple',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-finish-multiple',
+      }),
+      {
+        contact_name: 'Carolina',
+        contact_email: 'carolina@example.com',
+        contact_phone: '51954779071',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'selected',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [101, 103],
+            recommended_providers: [],
+            selected_provider_ids: [101, 103],
+            selected_provider_hints: ['EDO', 'Dulcefina'],
+          },
+        ],
+      },
+    );
+
+    const result = await executeFinishPlanTool({
+      plan: plan as unknown as PersistedPlan,
+      providerGateway: gateway,
+    });
+
+    expect(result.status).toBe('success');
+    expect(gateway.quoteRequests.map((request) => request.providerId)).toEqual([
+      101,
+      103,
+    ]);
   });
 });
