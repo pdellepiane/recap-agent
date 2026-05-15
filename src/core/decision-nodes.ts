@@ -5,6 +5,7 @@ export const decisionNodes = [
   'deteccion_intencion',
   'existe_plan_guardado',
   'entrevista',
+  'elicitacion_necesidades',
   'minimos_para_buscar',
   'aclarar_pedir_faltante',
   'usuario_responde',
@@ -34,6 +35,7 @@ export const decisionNodeSchema = z.enum(decisionNodes);
 export const extractionPersistenceNodes: ReadonlySet<DecisionNode> = new Set([
   'deteccion_intencion',
   'entrevista',
+  'elicitacion_necesidades',
   'aclarar_pedir_faltante',
   'refinar_criterios',
   'seguir_refinando_guardar_plan',

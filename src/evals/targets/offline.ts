@@ -20,6 +20,7 @@ import type {
   ProviderGateway,
   ProviderGatewaySearchResult,
   ProviderReview,
+  QueryIntentProviderSearchInput,
   QuoteRequestInput,
 } from '../../runtime/provider-gateway';
 import { InMemoryPlanStore } from '../../storage/in-memory-plan-store';
@@ -169,6 +170,10 @@ class FixtureRuntime implements AgentRuntime {
           shouldAvoid: [],
           rankingNotes: 'Offline fixture did not provide provider fit criteria.',
         },
+        providerQueryIntents: [],
+        providerPlanOperations: [],
+        providerExplanationRequest: null,
+        providerDetailRequest: null,
       },
       tokenUsage: null,
     };
@@ -188,6 +193,7 @@ class FixtureRuntime implements AgentRuntime {
 
 class FixtureProviderGateway implements ProviderGateway {
   private searchTurnIndex = 0;
+  private queryIntentTurnIndex = 0;
 
   constructor(private readonly fixture: OfflineFixture | undefined) {}
 
@@ -237,6 +243,28 @@ class FixtureProviderGateway implements ProviderGateway {
     }
 
     return configured?.value ?? { providers: [] };
+  }
+
+  async searchProvidersByQueryIntent(
+    input: QueryIntentProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult> {
+    const configured =
+      this.fixture?.providerGateway?.searchProvidersByQueryIntentByTurn?.[
+        this.queryIntentTurnIndex
+      ];
+    this.queryIntentTurnIndex += 1;
+    if (configured && 'error' in configured) {
+      throw new Error(configured.error);
+    }
+    if (configured) {
+      return configured.value;
+    }
+
+    return this.searchProvidersByCategoryLocation({
+      category: input.category,
+      location: input.location,
+      page: 1,
+    });
   }
 
   async getRelevantProviders(): Promise<ProviderSummary[]> {

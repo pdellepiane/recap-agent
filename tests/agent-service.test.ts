@@ -31,6 +31,7 @@ import type {
   ProviderGateway,
   ProviderGatewaySearchResult,
   ProviderReview,
+  QueryIntentProviderSearchInput,
   QuoteRequestInput,
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
@@ -258,6 +259,16 @@ class FakeGateway implements ProviderGateway {
         },
       ],
     };
+  }
+
+  async searchProvidersByQueryIntent(
+    input: QueryIntentProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult> {
+    return this.searchProvidersByCategoryLocation({
+      category: input.category,
+      location: input.location,
+      page: 1,
+    });
   }
 
   async getRelevantProviders() {
@@ -2919,5 +2930,409 @@ describe('AgentService', () => {
       101,
       103,
     ]);
+  });
+
+  it('runs multi-need elicitation and stores independent shortlists', async () => {
+    class ElicitationRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: ['Catering', 'Música'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: 'medio',
+          guestRange: '51-100',
+          preferences: ['elegante'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda elegante en Lima para 80 personas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [
+            {
+              category: 'Catering',
+              label: 'Catering para boda',
+              priority: 1,
+              queryStrings: ['catering elegante para boda en Lima'],
+              preferences: ['elegante'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'catering' },
+            },
+            {
+              category: 'Música',
+              label: 'Música para boda',
+              priority: 2,
+              queryStrings: ['música para boda elegante en Lima'],
+              preferences: ['elegante'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'música' },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class MultiNeedGateway extends FakeGateway {
+      public readonly queryIntentCategories: string[] = [];
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.queryIntentCategories.push(input.category);
+        return {
+          providers: [
+            {
+              id: input.category === 'Catering' ? 301 : 401,
+              title: input.category === 'Catering' ? 'Mesa Clara' : 'DJ Noche',
+              category: input.category,
+              location: 'Lima',
+              priceLevel: 'mid',
+              reason: 'coincide con la necesidad',
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const isCatering = providerId === 301;
+        return {
+          id: providerId,
+          title: isCatering ? 'Mesa Clara' : 'DJ Noche',
+          slug: isCatering ? 'mesa-clara' : 'dj-noche',
+          category: isCatering ? 'Catering' : 'Música',
+          location: 'Lima',
+          priceLevel: 'mid',
+          rating: null,
+          reason: 'coincide con la necesidad',
+          detailUrl: null,
+          websiteUrl: null,
+          minPrice: null,
+          maxPrice: null,
+          promoBadge: null,
+          promoSummary: null,
+          descriptionSnippet: isCatering ? 'Catering para bodas.' : 'DJ para bodas.',
+          serviceHighlights: [],
+          termsHighlights: [],
+          description: isCatering ? 'Catering para bodas.' : 'DJ para bodas.',
+          eventTypes: ['boda'],
+          raw: {},
+        };
+      }
+    }
+
+    const gateway = new MultiNeedGateway();
+    const planStore = new InMemoryPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime: new ElicitationRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-elicit',
+      text: 'quiero planear una boda elegante en Lima para 80 personas',
+      messageId: 'msg-elicit',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('elicitacion_necesidades');
+    expect(response.trace.search_strategy).toBe('multi_need_query_intents');
+    expect(gateway.queryIntentCategories).toEqual(['Catering', 'Música']);
+    expect(response.plan.provider_needs).toHaveLength(2);
+    expect(response.plan.provider_needs.find((need) => need.category === 'Catering')?.recommended_provider_ids).toEqual([301]);
+    expect(response.plan.provider_needs.find((need) => need.category === 'Música')?.recommended_provider_ids).toEqual([401]);
+  });
+
+  it('keeps broad event elicitation as a compact starter menu without searching every need', async () => {
+    class BroadElicitationRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        const categories = [
+          'Locales',
+          'Catering',
+          'Fotografía y video',
+          'Música',
+          'Hogar y deco',
+          'Florería y papelería',
+          'Wedding planners',
+          'Vestidos',
+          'Maquillaje',
+          'Salud y belleza',
+          'Licores',
+          'Accesorios y zapatos',
+          'Ternos y camisas',
+          'Baile',
+          'Otros',
+        ] as const;
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.94,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: [...categories],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: 'medio',
+          guestRange: '51-100',
+          preferences: ['elegante'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda elegante en Lima para 80 personas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: categories.map((category, index) => ({
+            category,
+            label: category,
+            priority: index + 1,
+            queryStrings: [`${category} para boda elegante en Lima`],
+            preferences: ['elegante'],
+            hardConstraints: [],
+            missingFields: [],
+            retrievalReady: true,
+            fitCriteria: {
+              ...testProviderFitCriteria,
+              needCategory: category,
+            },
+          })),
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class SearchCountingGateway extends FakeGateway {
+      public queryIntentCalls = 0;
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        void input;
+        this.queryIntentCalls += 1;
+        return { providers: [] };
+      }
+    }
+
+    const gateway = new SearchCountingGateway();
+    const planStore = new InMemoryPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime: new BroadElicitationRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-broad-elicit',
+      text: 'quiero planear una boda elegante en Lima para 80 personas, presupuesto medio',
+      messageId: 'msg-broad-elicit',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('elicitacion_necesidades');
+    expect(response.trace.search_strategy).toBe('none');
+    expect(gateway.queryIntentCalls).toBe(0);
+    expect(response.plan.provider_needs.map((need) => need.category)).toEqual([
+      'Locales',
+      'Catering',
+      'Fotografía y video',
+      'Música',
+      'Florería y papelería',
+    ]);
+    expect(response.plan.provider_needs.every((need) => need.status === 'identified')).toBe(true);
+  });
+
+  it('routes broad multi-need provider search extraction into elicitation without searching', async () => {
+    class BroadSearchRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.9,
+          eventType: 'boda',
+          vendorCategory: 'Catering',
+          vendorCategories: ['Catering', 'Fotografía y video'],
+          activeNeedCategory: 'Catering',
+          location: 'Lima',
+          budgetSignal: 'medio',
+          guestRange: '51-100',
+          preferences: ['elegante'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda elegante en Lima para 80 personas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class SearchCountingGateway extends FakeGateway {
+      public searchCalls = 0;
+
+      override async searchProviders(): Promise<ProviderGatewaySearchResult> {
+        this.searchCalls += 1;
+        return { providers: [] };
+      }
+    }
+
+    const gateway = new SearchCountingGateway();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new BroadSearchRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-broad-search-elicit',
+      text: 'quiero planear una boda elegante en Lima para 80 personas, presupuesto medio',
+      messageId: 'msg-broad-search-elicit',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('elicitacion_necesidades');
+    expect(response.trace.search_strategy).toBe('none');
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.plan.provider_needs.map((need) => need.category)).toEqual([
+      'Locales',
+      'Catering',
+      'Fotografía y video',
+      'Música',
+      'Florería y papelería',
+    ]);
+  });
+
+  it('applies structured plan operations without keyword fallback', async () => {
+    class OperationRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        const base = await super.extract(request);
+        return {
+          ...base,
+          intent: 'modificar_plan_proveedores',
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          providerPlanOperations: request.userMessage === 'structured delete'
+            ? [{
+                type: 'delete_need',
+                category: 'Música',
+                preferences: [],
+                hardConstraints: [],
+                queryIntent: null,
+                rerunSearch: false,
+                provider: null,
+                removeProvider: null,
+                addProvider: null,
+              }]
+            : [],
+          providerQueryIntents: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-operations',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-operations',
+      }),
+      {
+        current_node: 'elicitacion_necesidades',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'Catering',
+        provider_needs: [
+          {
+            category: 'Catering',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [101],
+            recommended_providers: [
+              { id: 101, title: 'EDO', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+            ],
+            selected_provider_ids: [],
+            selected_provider_hints: [],
+          },
+          {
+            category: 'Música',
+            status: 'shortlisted',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [201],
+            recommended_providers: [
+              { id: 201, title: 'DJ Noche', category: 'Música', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+            ],
+            selected_provider_ids: [],
+            selected_provider_hints: [],
+          },
+        ],
+      },
+    );
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+    const service = new AgentService({
+      planStore,
+      runtime: new OperationRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const noOperation = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-operations',
+      text: 'please delete music but extractor emits no operation',
+      messageId: 'msg-no-op',
+      receivedAt: new Date().toISOString(),
+    });
+    expect(noOperation.plan.provider_needs.map((need) => need.category)).toContain('Música');
+
+    const deleted = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-operations',
+      text: 'structured delete',
+      messageId: 'msg-delete-op',
+      receivedAt: new Date().toISOString(),
+    });
+    expect(deleted.plan.provider_needs.map((need) => need.category)).not.toContain('Música');
   });
 });

@@ -1,6 +1,7 @@
 import type { PersistedPlan } from '../core/plan';
 import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderDetail, ProviderSummary } from '../core/provider';
+import type { ProviderFitCriteria } from './provider-fit';
 
 export type ProviderGatewaySearchResult = {
   providers: ProviderSummary[];
@@ -17,6 +18,13 @@ export type CategoryLocationProviderSearchInput = {
   category: ProviderCategory;
   location?: string | null;
   page?: number | null;
+};
+
+export type QueryIntentProviderSearchInput = {
+  category: ProviderCategory;
+  queryStrings: string[];
+  location: string | null;
+  fitCriteria: ProviderFitCriteria;
 };
 
 export type MarketplaceCategory = {
@@ -81,6 +89,9 @@ export interface ProviderGateway {
   ): Promise<ProviderGatewaySearchResult>;
   searchProvidersByCategoryLocation(
     input: CategoryLocationProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult>;
+  searchProvidersByQueryIntent(
+    input: QueryIntentProviderSearchInput,
   ): Promise<ProviderGatewaySearchResult>;
   getRelevantProviders(): Promise<ProviderSummary[]>;
   getProviderDetail(providerId: number): Promise<ProviderDetail | null>;

@@ -17,6 +17,7 @@ import type {
   MarketplaceLocation,
   ProviderGateway,
   ProviderGatewaySearchResult,
+  QueryIntentProviderSearchInput,
   ProviderSearchMode,
   ProviderReview,
   QuoteRequestInput,
@@ -106,7 +107,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       persistedSearchLimit: number;
       summarySearchWordLimit: number;
       searchMode?: ProviderSearchMode;
-      vectorSearchGateway?: Pick<ProviderVectorSearchGateway, 'search'> | null;
+      vectorSearchGateway?: Pick<ProviderVectorSearchGateway, 'search' | 'searchQueryIntent'> | null;
     },
   ) {}
 
@@ -333,6 +334,24 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return this.searchProvidersWithAllowedParams({
       search: composedSearch,
       page: input.page ?? 1,
+    });
+  }
+
+  async searchProvidersByQueryIntent(
+    input: QueryIntentProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult> {
+    if (this.options.vectorSearchGateway && this.options.searchMode !== 'api') {
+      const vectorResults = await this.options.vectorSearchGateway.searchQueryIntent(input);
+      const providers = await this.enrichVectorResults(vectorResults);
+      return {
+        providers: providers.slice(0, this.options.persistedSearchLimit),
+      };
+    }
+
+    return this.searchProvidersByCategoryLocation({
+      category: input.category,
+      location: input.location,
+      page: 1,
     });
   }
 

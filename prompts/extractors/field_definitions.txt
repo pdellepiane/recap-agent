@@ -1,10 +1,14 @@
 Definiciones de campos:
 
 - intent:
+  - elicitar_necesidades: el usuario describe un evento completo o pide ayuda para armar el plan; debes convertirlo en varias necesidades de proveedores con providerQueryIntents.
   - buscar_proveedores: quiere iniciar o continuar una búsqueda con intención de ver opciones.
   - refinar_busqueda: quiere ajustar criterios, ampliar o acotar resultados, incluyendo pedir más opciones dentro de la misma necesidad.
   - ver_opciones: quiere revisar alternativas sin expresar refinamiento claro.
   - confirmar_proveedor: quiere elegir un proveedor o pedir avanzar con una opción específica.
+  - modificar_plan_proveedores: quiere agregar, cambiar, eliminar, pausar, reactivar, seleccionar, deseleccionar o reemplazar necesidades/proveedores del plan. Usa providerPlanOperations.
+  - explicar_recomendacion: quiere entender por qué un proveedor conviene más que otro. Usa providerExplanationRequest.
+  - detallar_proveedor: quiere toda la información disponible de un proveedor. Usa providerDetailRequest.
   - retomar_plan: quiere seguir desde un plan ya guardado.
   - cerrar: quiere cerrar el plan o avanzar a contactar/cotizar con proveedores ya elegidos.
   - pausar: quiere dejarlo para después o retomarlo luego.
@@ -97,6 +101,30 @@ Definiciones de campos:
   - mustHave: atributos deseables o necesarios que deben favorecer a un proveedor.
   - shouldAvoid: señales que deben penalizar a un proveedor.
   - rankingNotes: una frase corta en español que explique qué debe privilegiar el reranking.
+
+- providerQueryIntents:
+  - lista estructurada de necesidades de proveedores que deben consultarse en paralelo cuando el usuario describe un evento completo.
+  - cada elemento debe incluir category canónica, label, priority, queryStrings, preferences, hardConstraints, missingFields, retrievalReady y fitCriteria.
+  - queryStrings debe contener consultas naturales en español para la base de proveedores, no instrucciones internas.
+  - retrievalReady es true solo si hay suficiente contexto útil para buscar esa necesidad sin ruido excesivo.
+  - Para proveedores, suficiente contexto útil normalmente es: category + location + (guestRange o budgetSignal). No exijas fecha exacta ni distrito exacto para marcar retrievalReady=true si ya hay ciudad y escala/presupuesto.
+  - Si retrievalReady=true, missingFields puede seguir listando datos útiles para ajustar después, pero esos faltantes no deben bloquear la primera búsqueda.
+  - No generes todas las categorías del marketplace. Para una descripción general y poco detallada, usa solo 3 a 5 necesidades iniciales priorizadas por tipo de evento y marca retrievalReady=false hasta que el usuario elija por dónde empezar.
+  - Solo marca varias necesidades con retrievalReady=true cuando el usuario ya dio una idea detallada del evento: estilo específico, restricciones, preferencias concretas, proveedores deseados o frentes explícitos.
+  - Las necesidades deben estar adaptadas al eventType. Ejemplo: Wedding planners puede ser normal para boda, pero no lo propongas por defecto para cumpleanos o baby_shower si el usuario no lo pidió.
+
+- providerPlanOperations:
+  - lista estructurada de cambios explícitos al plan.
+  - usa únicamente tipos soportados: add_need, update_need, delete_need, select_provider, unselect_provider, replace_provider, defer_need, reactivate_need.
+  - no uses heurísticas por palabras clave: si no puedes representar el cambio con una operación estructurada clara, deja la lista vacía y usa intentConfidence bajo.
+
+- providerExplanationRequest:
+  - objeto cuando el usuario pide comparar o justificar proveedores.
+  - debe incluir primaryProvider, comparedProviders, category y question.
+
+- providerDetailRequest:
+  - objeto cuando el usuario pide más detalle de un proveedor.
+  - debe incluir provider, category y requestedDepth.
 
 Normas de extracción de contacto:
 - contactEmail, contactPhone y contactName se actualizan de forma independiente. Si el usuario corrige solo uno, devuelve null para los demás para preservar los valores anteriores.

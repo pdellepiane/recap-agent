@@ -1,0 +1,107 @@
+template: template.base-offline
+id: multi_need.detailed_elicitation_populates_shortlists
+suite: multi_need
+version: 1
+description: Event-level elicitation should populate multiple provider needs with independent shortlists in one turn.
+tags:
+  - multi_need
+  - elicitation
+inputs:
+  - text: quiero planear una boda elegante en Lima para 80 personas con cena tipo estaciones, música en vivo y fotos naturales
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: elicitar_necesidades
+        intentConfidence: 0.96
+        eventType: boda
+        vendorCategory: null
+        vendorCategories: [Catering, Música]
+        activeNeedCategory: null
+        location: Lima
+        budgetSignal: medio
+        guestRange: 51-100
+        preferences: [elegante, cena tipo estaciones, música en vivo, fotos naturales]
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Boda elegante en Lima para 80 personas.
+        selectedProviderHints: []
+        pauseRequested: false
+        providerQueryIntents:
+          - category: Catering
+            label: Catering para boda
+            priority: 1
+            queryStrings: [catering elegante para boda en Lima]
+            preferences: [elegante, cena tipo estaciones]
+            hardConstraints: []
+            missingFields: []
+            retrievalReady: true
+            fitCriteria:
+              eventType: boda
+              needCategory: catering
+              location: Lima
+              budgetAmount: null
+              budgetCurrency: null
+              mustHave: [elegante, cena tipo estaciones]
+              shouldAvoid: []
+              rankingNotes: Priorizar catering elegante para boda.
+          - category: Música
+            label: Música para boda
+            priority: 2
+            queryStrings: [música elegante para boda en Lima]
+            preferences: [elegante, música en vivo]
+            hardConstraints: []
+            missingFields: []
+            retrievalReady: true
+            fitCriteria:
+              eventType: boda
+              needCategory: música
+              location: Lima
+              budgetAmount: null
+              budgetCurrency: null
+              mustHave: [elegante, música en vivo]
+              shouldAvoid: []
+              rankingNotes: Priorizar música elegante para boda.
+    repliesByTurn:
+      - Detecté catering y música para tu boda; ya dejé opciones guardadas para ambos frentes.
+    providerGateway:
+      searchProvidersByQueryIntentByTurn:
+        - value:
+            providers:
+              - id: 301
+                title: Mesa Clara
+                category: Catering
+                location: Lima
+                priceLevel: mid
+                reason: coincide con catering
+                serviceHighlights: []
+                termsHighlights: []
+        - value:
+            providers:
+              - id: 401
+                title: DJ Noche
+                category: Música
+                location: Lima
+                priceLevel: mid
+                reason: coincide con música
+                serviceHighlights: []
+                termsHighlights: []
+expectations:
+  - id: elicitation-node
+    type: node_transition
+    to: elicitacion_necesidades
+  - id: multi-need-path
+    type: node_path_contains
+    requiredNodes:
+      - elicitacion_necesidades
+  - id: provider-needs
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        recommended_provider_ids: [301]
+      - category: Música
+        recommended_provider_ids: [401]
+  - id: query-intent-tool
+    type: tool_usage
+    mustCall:
+      - search_providers_by_query_intent

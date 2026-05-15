@@ -238,6 +238,9 @@ describe('SinEnvolturasGateway strict search mapping', () => {
           },
         ];
       },
+      async searchQueryIntent(): Promise<ProviderVectorSearchResult[]> {
+        return [];
+      },
     };
     const gateway = new SinEnvolturasGateway({
       baseUrl: 'https://api.example.test/vendor',

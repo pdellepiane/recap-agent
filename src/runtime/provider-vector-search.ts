@@ -4,6 +4,7 @@ import { locationCountryKey } from '../core/location';
 import type { PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
 import { resolveSearchCategories } from '../core/provider-category';
+import type { QueryIntentProviderSearchInput } from './provider-gateway';
 
 export type ProviderVectorSearchResult = {
   providerId: number;
@@ -270,6 +271,36 @@ export class ProviderVectorSearchGateway {
       'scores:', merged.map((r) => r.score.toFixed(3)).join(', '));
 
     return merged;
+  }
+
+  async searchQueryIntent(
+    input: QueryIntentProviderSearchInput,
+  ): Promise<ProviderVectorSearchResult[]> {
+    const categories = resolveSearchCategories(input.category);
+    const filters = buildProviderVectorSearchFilters(categories, input.location);
+    const queries = Array.from(new Set(input.queryStrings.filter((query) => query.trim().length > 0)));
+
+    const response = await this.client.vectorStores.search(
+      this.options.vectorStoreId,
+      {
+        query: queries,
+        max_num_results: this.options.maxResults,
+        rewrite_query: true,
+        ...(filters ? { filters } : {}),
+        ranking_options: {
+          ranker: 'auto',
+          score_threshold: this.options.scoreThreshold,
+        },
+      },
+    );
+
+    const seen = new Set<number>();
+    return response.data.flatMap((item) => {
+      const parsed = parseProviderVectorSearchResult(item);
+      if (!parsed || seen.has(parsed.providerId)) return [];
+      seen.add(parsed.providerId);
+      return [parsed];
+    });
   }
 }
 

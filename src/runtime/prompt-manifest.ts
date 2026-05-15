@@ -26,6 +26,7 @@ export const toolNames = [
   'search_providers_from_plan',
   'search_providers_by_keyword',
   'search_providers_by_category_location',
+  'search_providers_by_query_intent',
   'get_relevant_providers',
   'get_provider_detail',
   'get_provider_detail_and_track_view',
@@ -76,6 +77,10 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   entrevista: {
     files: buildNodeFiles('entrevista'),
     allowedTools: ['list_categories', 'get_category_by_slug', 'list_locations'],
+  },
+  elicitacion_necesidades: {
+    files: buildNodeFiles('elicitacion_necesidades'),
+    allowedTools: ['get_provider_detail', 'list_provider_reviews'],
   },
   minimos_para_buscar: {
     files: buildNodeFiles('minimos_para_buscar'),

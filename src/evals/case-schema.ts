@@ -6,6 +6,12 @@ import { planIntentValues, planSchema } from '../core/plan';
 import type { PlanSnapshot } from '../core/plan';
 import { providerSummarySchema } from '../core/provider';
 import { providerCategorySchema } from '../core/provider-category';
+import {
+  providerDetailRequestSchema,
+  providerExplanationRequestSchema,
+  providerPlanOperationSchema,
+  providerQueryIntentSchema,
+} from '../runtime/extraction-schemas';
 
 const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -46,6 +52,10 @@ const extractionResultSchema = z.object({
   conversationSummary: z.string(),
   selectedProviderHints: z.array(z.string()).default([]),
   pauseRequested: z.boolean(),
+  providerQueryIntents: z.array(providerQueryIntentSchema).default([]),
+  providerPlanOperations: z.array(providerPlanOperationSchema).default([]),
+  providerExplanationRequest: providerExplanationRequestSchema.nullable().default(null),
+  providerDetailRequest: providerDetailRequestSchema.nullable().default(null),
 });
 
 const toolOutputTraceSchema = z.object({
@@ -75,6 +85,7 @@ const turnTraceSchema = z.object({
   tool_inputs: z.array(toolInputTraceSchema).default([]),
   tool_outputs: z.array(toolOutputTraceSchema),
   provider_results: z.array(providerSummarySchema),
+  search_strategy: z.string().default('none'),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),
     context_candidates: z.number().int().nonnegative(),
@@ -194,6 +205,7 @@ const providerGatewayFixtureSchema = z.object({
   searchProvidersByCategoryLocation: turnOutcomeSchema(
     z.object({ providers: z.array(providerSummarySchema) }),
   ).optional(),
+  searchProvidersByQueryIntentByTurn: z.array(turnOutcomeSchema(z.object({ providers: z.array(providerSummarySchema) }))).optional(),
   relevantProviders: z.array(providerSummarySchema).optional(),
   providerDetailsById: z.record(z.string(), turnOutcomeSchema(providerDetailSchema.nullable())).optional(),
   relatedProvidersById: z.record(z.string(), z.array(providerSummarySchema)).optional(),

@@ -36,7 +36,6 @@ import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
-import { eventTypeSchema } from '../core/event-type';
 import {
   closeConfirmationMessageSchema,
   closeResultMessageSchema,
@@ -45,56 +44,9 @@ import {
   recommendationMessageSchema,
   welcomeMessageSchema,
 } from './structured-message';
-import { providerFitCriteriaSchema } from './provider-fit';
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
-
-const extractionSchema = z.object({
-  intent: z
-    .enum([
-      'buscar_proveedores',
-      'refinar_busqueda',
-      'ver_opciones',
-      'confirmar_proveedor',
-      'retomar_plan',
-      'cerrar',
-      'pausar',
-      'consultar_faq',
-    ])
-    .nullable(),
-  secondaryIntents: z
-    .array(
-      z.enum([
-        'buscar_proveedores',
-        'refinar_busqueda',
-        'ver_opciones',
-        'confirmar_proveedor',
-        'retomar_plan',
-        'cerrar',
-        'pausar',
-        'consultar_faq',
-      ]),
-    )
-    .default([]),
-  kbQuery: z.string().nullable().optional(),
-  intentConfidence: z.number().min(0).max(1).nullable(),
-  eventType: eventTypeSchema.nullable(),
-  vendorCategory: providerCategorySchema.nullable(),
-  vendorCategories: z.array(providerCategorySchema),
-  activeNeedCategory: providerCategorySchema.nullable(),
-  location: z.string().nullable(),
-  budgetSignal: z.string().nullable(),
-  guestRange: z.enum(['1-20', '21-50', '51-100', '101-200', '201+', 'unknown']).nullable(),
-  preferences: z.array(z.string()),
-  hardConstraints: z.array(z.string()),
-  assumptions: z.array(z.string()),
-  conversationSummary: z.string(),
-  selectedProviderHints: z.array(z.string()).default([]),
-  pauseRequested: z.boolean(),
-  contactName: z.string().nullable(),
-  contactEmail: z.string().nullable(),
-  contactPhone: z.string().nullable(),
-  providerFitCriteria: providerFitCriteriaSchema,
-});
+import { extractionSchema } from './extraction-schemas';
+import { providerFitCriteriaSchema } from './provider-fit';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -757,6 +709,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         shouldAvoid: [],
         rankingNotes: 'No aplicar búsqueda ante intento de elusión.',
       },
+      providerQueryIntents: [],
+      providerPlanOperations: [],
+      providerExplanationRequest: null,
+      providerDetailRequest: null,
     };
   }
 
@@ -943,6 +899,28 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             'search_providers_by_category_location',
             result,
           );
+          return result;
+        },
+      }),
+      search_providers_by_query_intent: tool({
+        name: 'search_providers_by_query_intent',
+        description:
+          'Busca proveedores desde una intención estructurada de necesidad ya extraída.',
+        parameters: z
+          .object({
+            category: providerCategorySchema,
+            queryStrings: z.array(z.string().min(2)).min(1),
+            location: z.string().min(2).nullable(),
+            fitCriteria: providerFitCriteriaSchema,
+          })
+          .strict(),
+        execute: async (input) => {
+          this.recordToolInput(toolUsage, 'search_providers_by_query_intent', input);
+          toolUsage.called.push('search_providers_by_query_intent');
+          const result = await this.options.providerGateway.searchProvidersByQueryIntent(
+            input,
+          );
+          this.recordToolOutput(toolUsage, 'search_providers_by_query_intent', result);
           return result;
         },
       }),

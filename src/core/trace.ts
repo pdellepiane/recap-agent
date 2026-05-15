@@ -31,6 +31,10 @@ export type ExtractionDebugSummary = {
   preferences: string[];
   hard_constraints: string[];
   assumptions: string[];
+  provider_query_intents_count: number;
+  provider_plan_operations_count: number;
+  provider_explanation_requested: boolean;
+  provider_detail_requested: boolean;
   conversation_summary_preview: string;
   pause_requested: boolean;
   contact_fields_present: {
@@ -70,7 +74,11 @@ export type PlanDebugSummary = {
   contact_validation_error: string | null;
 };
 
-export type SearchStrategyTrace = 'none' | 'search_from_plan' | 'broaden_existing_shortlist';
+export type SearchStrategyTrace =
+  | 'none'
+  | 'search_from_plan'
+  | 'broaden_existing_shortlist'
+  | 'multi_need_query_intents';
 
 export type TurnTrace = {
   trace_id: string;

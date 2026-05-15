@@ -1650,7 +1650,46 @@ Files changed:
 - `src/evals/targets/offline.ts`
 - `tests/provider-fit.test.ts`
 - `tests/agent-service.test.ts`
+
+### Add structured multi-need elicitation and plan editing
+
+- Added the `elicitacion_necesidades` node and prompt bundle so event-level planning can create multiple provider needs at once.
+- Added Zod-backed structured extraction schemas for provider query intents, plan operations, provider references, recommendation explanations, and provider detail requests.
+- Added a multi-need provider retrieval path that executes structured query intents per need, enriches provider details, ranks each need independently, and persists independent shortlists.
+- Added global structured provider-plan operations for adding, updating, deleting, deferring, reactivating, selecting, unselecting, and replacing providers or needs.
+- Extended trace/terminal diagnostics and eval fixtures to expose structured extraction counts and multi-need query-intent search.
+- Clarified extractor retrieval readiness so category + city/location + guest range or budget is enough for first-pass provider retrieval; exact date or district can remain as later refinement context.
+- Added event-type-specific provider priority menus and a runtime elicitation gate: broad event descriptions now produce a compact starter menu without provider search, while detailed concepts can still run multi-need retrieval.
+
+Reason:
+- Event planning should be event-plan-first: a rich event description should produce several provider needs and shortlists in one pass, not force the user through one category at a time.
+
+Decision:
+- Use clean Zod schemas and structured extraction fields only for the new behavior. Do not add keyword-based routing or compatibility aliases for the new extraction shape.
+- Treat event-type priorities as a runtime guardrail so model output cannot fan out into every marketplace category.
+
+Files changed:
+- `src/core/decision-nodes.ts`
+- `src/core/event-provider-priorities.ts`
+- `src/core/plan.ts`
+- `src/core/trace.ts`
+- `src/runtime/extraction-schemas.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/provider-gateway.ts`
+- `src/runtime/provider-vector-search.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `src/runtime/prompt-manifest.ts`
+- `src/evals/case-schema.ts`
+- `src/evals/targets/offline.ts`
+- `src/terminal/client.ts`
 - `prompts/extractors/field_definitions.txt`
+- `prompts/extractors/normalization_rules.txt`
+- `prompts/nodes/elicitacion_necesidades/*`
+- `tests/extraction-schemas.test.ts`
+- `tests/agent-service.test.ts`
+- `evals/cases/multi-need-elicitation-shortlists.yaml`
+- `evals/suites/dev_regression.yaml`
 - `docs/implementation-log.md`
 
 ### Make FAQ retrieval observable and required

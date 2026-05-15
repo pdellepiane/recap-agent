@@ -8,6 +8,12 @@ import type { ToolInputTrace } from '../core/trace';
 
 import type { StructuredMessage } from './structured-message';
 import type { ProviderFitCriteria } from './provider-fit';
+import type {
+  ProviderDetailRequest,
+  ProviderExplanationRequest,
+  ProviderPlanOperation,
+  ProviderQueryIntent,
+} from './extraction-schemas';
 
 export type ExtractionResult = {
   intent: PlanIntent | null;
@@ -31,6 +37,10 @@ export type ExtractionResult = {
   contactPhone: string | null;
   providerFitCriteria?: ProviderFitCriteria | null;
   kbQuery?: string | null;
+  providerQueryIntents?: ProviderQueryIntent[];
+  providerPlanOperations?: ProviderPlanOperation[];
+  providerExplanationRequest?: ProviderExplanationRequest | null;
+  providerDetailRequest?: ProviderDetailRequest | null;
 };
 
 export type ExtractRequest = {

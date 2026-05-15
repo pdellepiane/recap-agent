@@ -11,10 +11,14 @@ import {
 } from './provider-category';
 
 export const planIntentValues = [
+  'elicitar_necesidades',
   'buscar_proveedores',
   'refinar_busqueda',
   'ver_opciones',
   'confirmar_proveedor',
+  'modificar_plan_proveedores',
+  'explicar_recomendacion',
+  'detallar_proveedor',
   'retomar_plan',
   'cerrar',
   'pausar',
@@ -385,6 +389,31 @@ export function getActiveNeed(plan: Pick<PersistedPlan, 'provider_needs' | 'acti
       (need) => normalizeCategory(need.category) === activeCategory,
     ) ?? null
   );
+}
+
+export function replaceProviderNeeds(
+  plan: PlanSnapshot,
+  providerNeeds: ProviderNeed[],
+  activeNeedCategory: ProviderCategory | null,
+): PlanSnapshot {
+  const parsedNeeds = providerNeeds.map((need) => providerNeedSchema.parse(need));
+  const activeCategory =
+    normalizeCategory(activeNeedCategory) ??
+    normalizeCategory(parsedNeeds[0]?.category) ??
+    null;
+  const activeProjection = projectActiveNeed(parsedNeeds, activeCategory);
+
+  return planSchema.parse({
+    ...plan,
+    provider_needs: parsedNeeds,
+    active_need_category: activeCategory,
+    vendor_category: activeProjection.vendor_category ?? activeCategory,
+    recommended_provider_ids: activeProjection.recommended_provider_ids ?? [],
+    recommended_providers: activeProjection.recommended_providers ?? [],
+    selected_provider_ids: activeProjection.selected_provider_ids ?? [],
+    selected_provider_hints: activeProjection.selected_provider_hints ?? [],
+    updated_at: new Date().toISOString(),
+  }) as PlanSnapshot;
 }
 
 export function summarizeProviderNeeds(providerNeeds: ProviderNeed[]): string {

@@ -25,6 +25,7 @@ import type {
   MarketplaceCategory,
   MarketplaceLocation,
   ProviderReview,
+  QueryIntentProviderSearchInput,
 } from '../src/runtime/provider-gateway';
 import type { ProviderDetail } from '../src/core/provider';
 import type { ProviderFitCriteria } from '../src/runtime/provider-fit';
@@ -163,6 +164,13 @@ class FakeGateway implements ProviderGateway {
         },
       ],
     };
+  }
+
+  async searchProvidersByQueryIntent(
+    input: QueryIntentProviderSearchInput,
+  ): Promise<ProviderGatewaySearchResult> {
+    void input;
+    return this.searchProvidersByCategoryLocation();
   }
 
   async getRelevantProviders() {

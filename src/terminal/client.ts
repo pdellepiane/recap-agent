@@ -554,6 +554,15 @@ function renderTrace(
     ['Transition', `${trace.previous_node} -> ${trace.next_node}`],
     ['Node Path', trace.node_path.join(' -> ')],
     ['Intent', trace.intent ?? 'null'],
+    [
+      'Structured Extraction',
+      [
+        `query_intents=${trace.extraction_summary.provider_query_intents_count}`,
+        `plan_operations=${trace.extraction_summary.provider_plan_operations_count}`,
+        `explanation=${String(trace.extraction_summary.provider_explanation_requested)}`,
+        `detail=${String(trace.extraction_summary.provider_detail_requested)}`,
+      ].join('\n'),
+    ],
     ['Search Ready', String(trace.search_ready)],
     ['Missing Fields', trace.missing_fields.join(', ') || 'none'],
     ['Prompt Bundle', trace.prompt_bundle_id],

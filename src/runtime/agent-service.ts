@@ -3,6 +3,10 @@ import { ulid } from 'ulid';
 import type { DecisionNode } from '../core/decision-nodes';
 import { extractionPersistenceNodes } from '../core/decision-nodes';
 import { resolveResumeNode } from '../core/decision-flow';
+import {
+  prioritizedProviderCategoriesForEvent,
+  starterProviderCategoriesForEvent,
+} from '../core/event-provider-priorities';
 import type {
   NormalizedInboundMessage,
   NormalizedOutboundMessage,
@@ -12,6 +16,7 @@ import {
   getActiveNeed,
   isPlanFinished,
   mergePlan,
+  replaceProviderNeeds,
   type PersistedPlan,
   type PlanSnapshot,
   type ProviderNeed,
@@ -34,6 +39,11 @@ import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
 import type { MessageRenderer } from './message-renderer';
 import { rankProvidersForCriteria } from './provider-fit';
+import type {
+  ProviderPlanOperation,
+  ProviderQueryIntent,
+  ProviderReference,
+} from './extraction-schemas';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
@@ -68,6 +78,8 @@ type ProviderSearchExecutionResult = {
 
 const MAX_BROADEN_SEARCH_PAGES = 5;
 const TARGET_BROADEN_UNSEEN_RESULTS = 5;
+const MAX_STARTER_NEEDS = 5;
+const MAX_DETAILED_ELICITATION_NEEDS = 6;
 
 export class AgentService {
   constructor(
@@ -255,7 +267,7 @@ export class AgentService {
     let errorMessage: string | null = null;
     const applyExtractionStartedAt = Date.now();
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
-    const { plan: mergedPlan, validationError } = this.applyExtraction(
+    const { plan: extractedPlan, validationError } = this.applyExtraction(
       workingPlan,
       extraction,
       extractionNode,
@@ -264,6 +276,14 @@ export class AgentService {
     );
     if (validationError) {
       errorMessage = validationError;
+    }
+    const operationResult = this.applyProviderPlanOperations(
+      extractedPlan,
+      extraction.providerPlanOperations ?? [],
+    );
+    const mergedPlan = operationResult.plan;
+    if (operationResult.unresolvedMessage) {
+      errorMessage = operationResult.unresolvedMessage;
     }
     timingMs.apply_extraction += Date.now() - applyExtractionStartedAt;
     const sufficiencyStartedAt = Date.now();
@@ -578,7 +598,54 @@ export class AgentService {
 
     let planAfterFlow = mergedPlan;
 
-    if (this.shouldAskForEventContext(mergedPlan)) {
+    const routeProviderSearchToElicitation =
+      this.shouldRouteProviderSearchToElicitation(extraction);
+    if (extraction.intent === 'elicitar_necesidades' || routeProviderSearchToElicitation) {
+      currentNode = 'elicitacion_necesidades';
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+      const queryIntents = this.resolveElicitationQueryIntents(extraction);
+      const retrievalResult = await this.executeMultiNeedProviderRetrieval({
+        plan: planAfterFlow,
+        queryIntents,
+        resetToQueryIntentsOnly: !this.hasDetailedElicitationConcept(extraction),
+        toolUsage,
+        timingMs,
+      });
+      planAfterFlow = mergePlan(retrievalResult.plan, {
+        current_node: currentNode,
+      });
+      providerResults = this.collectPlanProviders(planAfterFlow);
+      searchStrategy = retrievalResult.searchStrategy;
+      await persistPlan(planAfterFlow, currentNode);
+      planPersisted = true;
+      planPersistReason = currentNode;
+    } else if (operationResult.unresolvedMessage) {
+      currentNode = 'seguir_refinando_guardar_plan';
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+      planAfterFlow = mergePlan(planAfterFlow, {
+        current_node: currentNode,
+      });
+    } else if (
+      extraction.intent === 'explicar_recomendacion' ||
+      extraction.intent === 'detallar_proveedor' ||
+      extraction.intent === 'modificar_plan_proveedores'
+    ) {
+      currentNode = 'seguir_refinando_guardar_plan';
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+      planAfterFlow = mergePlan(planAfterFlow, {
+        current_node: currentNode,
+      });
+      providerResults = this.collectPlanProviders(planAfterFlow);
+      await persistPlan(planAfterFlow, currentNode);
+      planPersisted = true;
+      planPersistReason = currentNode;
+    } else if (this.shouldAskForEventContext(mergedPlan)) {
       currentNode = 'entrevista';
       nodePath.push(currentNode);
       planAfterFlow = mergePlan(mergedPlan, {
@@ -890,6 +957,10 @@ export class AgentService {
       preferences: extraction.preferences,
       hard_constraints: extraction.hardConstraints,
       assumptions: extraction.assumptions,
+      provider_query_intents_count: extraction.providerQueryIntents?.length ?? 0,
+      provider_plan_operations_count: extraction.providerPlanOperations?.length ?? 0,
+      provider_explanation_requested: Boolean(extraction.providerExplanationRequest),
+      provider_detail_requested: Boolean(extraction.providerDetailRequest),
       conversation_summary_preview: this.truncateDebugText(extraction.conversationSummary, 160),
       pause_requested: extraction.pauseRequested,
       contact_fields_present: {
@@ -944,6 +1015,18 @@ export class AgentService {
 
     if (extraction.intent === 'refinar_busqueda' || extraction.intent === 'ver_opciones') {
       return 'refinar_criterios';
+    }
+
+    if (extraction.intent === 'elicitar_necesidades') {
+      return 'elicitacion_necesidades';
+    }
+
+    if (
+      extraction.intent === 'modificar_plan_proveedores' ||
+      extraction.intent === 'explicar_recomendacion' ||
+      extraction.intent === 'detallar_proveedor'
+    ) {
+      return 'seguir_refinando_guardar_plan';
     }
 
     if (extraction.intent === 'confirmar_proveedor') {
@@ -1070,6 +1153,261 @@ export class AgentService {
       activeNeedCategory,
       vendorCategories,
     };
+  }
+
+  private applyProviderPlanOperations(
+    plan: PlanSnapshot,
+    operations: ProviderPlanOperation[],
+  ): { plan: PlanSnapshot; unresolvedMessage: string | null } {
+    if (operations.length === 0) {
+      return { plan, unresolvedMessage: null };
+    }
+
+    let nextPlan = plan;
+    for (const operation of operations) {
+      const result = this.applyProviderPlanOperation(nextPlan, operation);
+      if (!result.applied) {
+        return { plan: nextPlan, unresolvedMessage: result.message };
+      }
+      nextPlan = result.plan;
+    }
+
+    return { plan: nextPlan, unresolvedMessage: null };
+  }
+
+  private applyProviderPlanOperation(
+    plan: PlanSnapshot,
+    operation: ProviderPlanOperation,
+  ): { applied: true; plan: PlanSnapshot } | { applied: false; message: string } {
+    switch (operation.type) {
+      case 'add_need':
+      case 'update_need':
+      case 'reactivate_need': {
+        if (!operation.category) {
+          return { applied: false, message: 'Necesito saber qué necesidad del plan quieres cambiar.' };
+        }
+        const existing = this.findNeedByCategory(plan, operation.category);
+        const queryIntent = operation.queryIntent;
+        const nextNeed: ProviderNeed = {
+          category: operation.category,
+          status: queryIntent?.retrievalReady
+            ? 'search_ready'
+            : existing?.status === 'no_providers_available'
+              ? 'identified'
+              : existing?.status ?? 'identified',
+          preferences: this.uniqueOperationStrings([
+            ...(existing?.preferences ?? []),
+            ...operation.preferences,
+          ]),
+          hard_constraints: this.uniqueOperationStrings([
+            ...(existing?.hard_constraints ?? []),
+            ...operation.hardConstraints,
+          ]),
+          missing_fields: queryIntent?.missingFields ?? existing?.missing_fields ?? [],
+          recommended_provider_ids: existing?.recommended_provider_ids ?? [],
+          recommended_providers: existing?.recommended_providers ?? [],
+          selected_provider_ids: existing?.selected_provider_ids ?? [],
+          selected_provider_hints: existing?.selected_provider_hints ?? [],
+        };
+        return {
+          applied: true,
+          plan: this.upsertProviderNeed(plan, nextNeed, operation.category),
+        };
+      }
+      case 'delete_need': {
+        if (!operation.category) {
+          return { applied: false, message: 'Necesito saber qué necesidad quieres eliminar.' };
+        }
+        const nextNeeds = plan.provider_needs.filter(
+          (need) => need.category !== operation.category,
+        );
+        return {
+          applied: true,
+          plan: replaceProviderNeeds(
+            plan,
+            nextNeeds,
+            plan.active_need_category === operation.category
+              ? nextNeeds[0]?.category ?? null
+              : plan.active_need_category,
+          ),
+        };
+      }
+      case 'defer_need': {
+        if (!operation.category) {
+          return { applied: false, message: 'Necesito saber qué necesidad quieres dejar para después.' };
+        }
+        const need = this.findNeedByCategory(plan, operation.category);
+        if (!need) {
+          return {
+            applied: false,
+            message: `No encuentro esa necesidad en el plan. ¿Qué frente quieres dejar para después?`,
+          };
+        }
+        return {
+          applied: true,
+          plan: this.upsertProviderNeed(
+            plan,
+            {
+              ...need,
+              status: 'deferred',
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+            operation.category,
+          ),
+        };
+      }
+      case 'select_provider':
+      case 'unselect_provider': {
+        if (!operation.provider) {
+          return { applied: false, message: 'Necesito saber qué proveedor quieres cambiar.' };
+        }
+        const resolution = this.resolveProviderReference(plan, operation.provider, operation.category);
+        if (!resolution) {
+          return {
+            applied: false,
+            message: 'No pude identificar con seguridad ese proveedor. ¿Me dices el nombre o el número exacto de la opción?',
+          };
+        }
+        const selectedIds = new Set(resolution.need.selected_provider_ids);
+        const selectedHints = new Set(resolution.need.selected_provider_hints);
+        if (operation.type === 'select_provider') {
+          selectedIds.add(resolution.provider.id);
+          selectedHints.add(resolution.provider.title);
+        } else {
+          selectedIds.delete(resolution.provider.id);
+          selectedHints.delete(resolution.provider.title);
+        }
+        const nextSelectedIds = Array.from(selectedIds);
+        return {
+          applied: true,
+          plan: this.upsertProviderNeed(
+            plan,
+            {
+              ...resolution.need,
+              status: nextSelectedIds.length > 0
+                ? 'selected'
+                : resolution.need.recommended_provider_ids.length > 0
+                  ? 'shortlisted'
+                  : 'identified',
+              selected_provider_ids: nextSelectedIds,
+              selected_provider_hints: Array.from(selectedHints),
+            },
+            resolution.need.category,
+          ),
+        };
+      }
+      case 'replace_provider': {
+        if (!operation.removeProvider || !operation.addProvider) {
+          return {
+            applied: false,
+            message: 'Necesito saber qué proveedor sale y cuál entra.',
+          };
+        }
+        const removeResolution = this.resolveProviderReference(
+          plan,
+          operation.removeProvider,
+          operation.category,
+        );
+        const addResolution = this.resolveProviderReference(
+          plan,
+          operation.addProvider,
+          operation.category,
+        );
+        if (!removeResolution || !addResolution) {
+          return {
+            applied: false,
+            message: 'No pude identificar con seguridad qué proveedor reemplazar. ¿Me confirmas ambos nombres?',
+          };
+        }
+        if (removeResolution.need.category !== addResolution.need.category) {
+          return {
+            applied: false,
+            message: 'El reemplazo cruza dos necesidades distintas. ¿En qué categoría quieres hacer el cambio?',
+          };
+        }
+        const selectedIds = new Set(removeResolution.need.selected_provider_ids);
+        selectedIds.delete(removeResolution.provider.id);
+        selectedIds.add(addResolution.provider.id);
+        const selectedHints = new Set(removeResolution.need.selected_provider_hints);
+        selectedHints.delete(removeResolution.provider.title);
+        selectedHints.add(addResolution.provider.title);
+        return {
+          applied: true,
+          plan: this.upsertProviderNeed(
+            plan,
+            {
+              ...removeResolution.need,
+              status: 'selected',
+              selected_provider_ids: Array.from(selectedIds),
+              selected_provider_hints: Array.from(selectedHints),
+            },
+            removeResolution.need.category,
+          ),
+        };
+      }
+    }
+  }
+
+  private upsertProviderNeed(
+    plan: PlanSnapshot,
+    nextNeed: ProviderNeed,
+    activeNeedCategory: ProviderCategory,
+  ): PlanSnapshot {
+    const nextNeeds = [
+      ...plan.provider_needs.filter((need) => need.category !== nextNeed.category),
+      nextNeed,
+    ];
+    return replaceProviderNeeds(plan, nextNeeds, activeNeedCategory);
+  }
+
+  private findNeedByCategory(
+    plan: PlanSnapshot,
+    category: ProviderCategory,
+  ): ProviderNeed | null {
+    return plan.provider_needs.find((need) => need.category === category) ?? null;
+  }
+
+  private resolveProviderReference(
+    plan: PlanSnapshot,
+    reference: ProviderReference,
+    fallbackCategory: ProviderCategory | null,
+  ): { need: ProviderNeed; provider: ProviderSummary } | null {
+    const candidateNeeds = plan.provider_needs.filter((need) =>
+      reference.category
+        ? need.category === reference.category
+        : fallbackCategory
+          ? need.category === fallbackCategory
+          : true,
+    );
+    const matches = candidateNeeds.flatMap((need) =>
+      need.recommended_providers.flatMap((provider) => {
+        if (reference.providerId !== null && provider.id === reference.providerId) {
+          return [{ need, provider }];
+        }
+        const textReference = reference.providerTitle ?? reference.hint;
+        if (!textReference) {
+          return [];
+        }
+        const normalizedReference = this.normalizeSelectionText(textReference);
+        const matched = this.providerAliases(provider).some((alias) =>
+          this.normalizedTextContainsAlias(normalizedReference, alias) ||
+          this.normalizedTextContainsAlias(alias, normalizedReference),
+        );
+        return matched ? [{ need, provider }] : [];
+      }),
+    );
+
+    if (matches.length !== 1) {
+      return null;
+    }
+    return matches[0] ?? null;
+  }
+
+  private uniqueOperationStrings(values: string[]): string[] {
+    return Array.from(
+      new Set(values.map((value) => value.trim()).filter((value) => value.length > 0)),
+    );
   }
 
   private tryResolveSelection(
@@ -1297,6 +1635,218 @@ export class AgentService {
     }
 
     return !this.hasSearchCriteriaChange(baselinePlan, extraction);
+  }
+
+  private async executeMultiNeedProviderRetrieval(args: {
+    plan: PlanSnapshot;
+    queryIntents: ProviderQueryIntent[];
+    resetToQueryIntentsOnly: boolean;
+    toolUsage: ToolUsage;
+    timingMs: {
+      provider_search: number;
+      provider_enrichment: number;
+    };
+  }): Promise<{ plan: PlanSnapshot; searchStrategy: SearchStrategyTrace }> {
+    const existingByCategory = new Map(
+      args.plan.provider_needs.map((need) => [need.category, need]),
+    );
+    const sortedIntents = [...args.queryIntents].sort(
+      (left, right) => left.priority - right.priority,
+    );
+
+    const retrievedNeeds = await Promise.all(
+      sortedIntents.map(async (queryIntent) => {
+        const existingNeed = existingByCategory.get(queryIntent.category) ?? null;
+        if (!queryIntent.retrievalReady) {
+          const carryExistingNeed = args.resetToQueryIntentsOnly ? null : existingNeed;
+          return {
+            category: queryIntent.category,
+            status: carryExistingNeed?.status ?? 'identified',
+            preferences: queryIntent.preferences,
+            hard_constraints: queryIntent.hardConstraints,
+            missing_fields: queryIntent.missingFields,
+            recommended_provider_ids: carryExistingNeed?.recommended_provider_ids ?? [],
+            recommended_providers: carryExistingNeed?.recommended_providers ?? [],
+            selected_provider_ids: carryExistingNeed?.selected_provider_ids ?? [],
+            selected_provider_hints: carryExistingNeed?.selected_provider_hints ?? [],
+          } satisfies ProviderNeed;
+        }
+
+        args.toolUsage.considered.push('search_providers_by_query_intent');
+        args.toolUsage.inputs.push({
+          tool: 'search_providers_by_query_intent',
+          input: JSON.stringify(
+            {
+              category: queryIntent.category,
+              queryStrings: queryIntent.queryStrings,
+              location: args.plan.location,
+            },
+            null,
+            2,
+          ),
+        });
+        const providerSearchStartedAt = Date.now();
+        const searchResult = await this.dependencies.providerGateway.searchProvidersByQueryIntent({
+          category: queryIntent.category,
+          queryStrings: queryIntent.queryStrings,
+          location: args.plan.location,
+          fitCriteria: queryIntent.fitCriteria,
+        });
+        args.timingMs.provider_search += Date.now() - providerSearchStartedAt;
+        args.toolUsage.called.push('search_providers_by_query_intent');
+        args.toolUsage.outputs.push({
+          tool: 'search_providers_by_query_intent',
+          output: JSON.stringify(searchResult, null, 2),
+        });
+
+        const providerEnrichmentStartedAt = Date.now();
+        const enriched = await this.enrichProviders(searchResult.providers);
+        const ranked = rankProvidersForCriteria(enriched, queryIntent.fitCriteria);
+        args.timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
+
+        return {
+          category: queryIntent.category,
+          status: ranked.length > 0 ? 'shortlisted' : 'no_providers_available',
+          preferences: queryIntent.preferences,
+          hard_constraints: queryIntent.hardConstraints,
+          missing_fields: [],
+          recommended_provider_ids: ranked.map((provider) => provider.id),
+          recommended_providers: ranked,
+          selected_provider_ids: [],
+          selected_provider_hints: [],
+        } satisfies ProviderNeed;
+      }),
+    );
+
+    const retrievedCategories = new Set(retrievedNeeds.map((need) => need.category));
+    const untouchedNeeds = args.resetToQueryIntentsOnly
+      ? []
+      : args.plan.provider_needs.filter(
+          (need) => !retrievedCategories.has(need.category),
+        );
+    const activeNeedCategory =
+      sortedIntents[0]?.category ?? args.plan.active_need_category ?? null;
+
+    return {
+      plan: replaceProviderNeeds(
+        args.plan,
+        [...untouchedNeeds, ...retrievedNeeds],
+        activeNeedCategory,
+      ),
+      searchStrategy: sortedIntents.some((queryIntent) => queryIntent.retrievalReady)
+        ? 'multi_need_query_intents'
+        : 'none',
+    };
+  }
+
+  private resolveElicitationQueryIntents(
+    extraction: ExtractionResult,
+  ): ProviderQueryIntent[] {
+    const queryIntents = extraction.providerQueryIntents ?? [];
+
+    const allowedCategories = prioritizedProviderCategoriesForEvent(extraction.eventType);
+    const extractedExplicitCategories = new Set([
+      extraction.vendorCategory,
+      extraction.activeNeedCategory,
+      ...extraction.vendorCategories,
+    ].filter((category): category is ProviderCategory => Boolean(category)));
+    const explicitCategories =
+      extractedExplicitCategories.size > 0 && extractedExplicitCategories.size <= 3
+        ? extractedExplicitCategories
+        : new Set<ProviderCategory>();
+    const ranked = [...queryIntents]
+      .filter((queryIntent) => allowedCategories.includes(queryIntent.category))
+      .sort((left, right) => {
+        const leftExplicit = explicitCategories.has(left.category) ? 0 : 1;
+        const rightExplicit = explicitCategories.has(right.category) ? 0 : 1;
+        if (leftExplicit !== rightExplicit) return leftExplicit - rightExplicit;
+        const leftRank = allowedCategories.indexOf(left.category);
+        const rightRank = allowedCategories.indexOf(right.category);
+        if (leftRank !== rightRank) return leftRank - rightRank;
+        return left.priority - right.priority;
+      });
+
+    if (!this.hasDetailedElicitationConcept(extraction)) {
+      const starterCategories = Array.from(new Set([
+        ...starterProviderCategoriesForEvent(extraction.eventType, MAX_STARTER_NEEDS),
+        ...explicitCategories,
+      ])).slice(0, MAX_STARTER_NEEDS);
+      const rankedByCategory = new Map(
+        ranked.map((queryIntent) => [queryIntent.category, queryIntent]),
+      );
+
+      return starterCategories.map((category, index) => {
+        const queryIntent = rankedByCategory.get(category);
+        return {
+          category,
+          label: queryIntent?.label ?? category,
+          priority: index + 1,
+          queryStrings: queryIntent?.queryStrings ?? [],
+          preferences: queryIntent?.preferences ?? extraction.preferences ?? [],
+          hardConstraints: queryIntent?.hardConstraints ?? extraction.hardConstraints ?? [],
+          retrievalReady: false,
+          missingFields: this.uniqueOperationStrings([
+            ...(queryIntent?.missingFields ?? []),
+            'need_priority_confirmation',
+          ]),
+          fitCriteria: queryIntent?.fitCriteria ?? {
+            eventType: extraction.providerFitCriteria?.eventType ?? extraction.eventType,
+            needCategory: category,
+            location: extraction.providerFitCriteria?.location ?? extraction.location,
+            budgetAmount: extraction.providerFitCriteria?.budgetAmount ?? null,
+            budgetCurrency: extraction.providerFitCriteria?.budgetCurrency ?? null,
+            mustHave: extraction.providerFitCriteria?.mustHave ?? [],
+            shouldAvoid: extraction.providerFitCriteria?.shouldAvoid ?? [],
+            rankingNotes: extraction.providerFitCriteria?.rankingNotes ?? '',
+          },
+        };
+      });
+    }
+
+    return ranked.slice(0, MAX_DETAILED_ELICITATION_NEEDS);
+  }
+
+  private hasDetailedElicitationConcept(extraction: ExtractionResult): boolean {
+    if (extraction.intent !== 'elicitar_necesidades') {
+      return false;
+    }
+
+    const explicitNeedCount = new Set([
+      extraction.vendorCategory,
+      extraction.activeNeedCategory,
+      ...extraction.vendorCategories,
+    ].filter(Boolean)).size;
+
+    return (
+      (explicitNeedCount > 0 && explicitNeedCount <= 3) ||
+      (extraction.hardConstraints?.length ?? 0) > 0 ||
+      (extraction.preferences?.length ?? 0) >= 3
+    );
+  }
+
+  private shouldRouteProviderSearchToElicitation(
+    extraction: ExtractionResult,
+  ): boolean {
+    if (extraction.intent !== 'buscar_proveedores' || !extraction.eventType) {
+      return false;
+    }
+    if (
+      (extraction.hardConstraints?.length ?? 0) > 0 ||
+      (extraction.preferences?.length ?? 0) >= 3
+    ) {
+      return false;
+    }
+
+    const multiNeedSignals = new Set(
+      extraction.vendorCategories.filter(
+        (category): category is ProviderCategory => Boolean(category),
+      ),
+    );
+
+    return (
+      multiNeedSignals.size > 1 &&
+      extraction.budgetSignal === 'medio'
+    );
   }
 
   private async executeProviderSearch(args: {
@@ -1618,6 +2168,21 @@ export class AgentService {
     );
 
     return details;
+  }
+
+  private collectPlanProviders(plan: PlanSnapshot): ProviderSummary[] {
+    const seen = new Set<number>();
+    const providers: ProviderSummary[] = [];
+    for (const need of plan.provider_needs) {
+      for (const provider of need.recommended_providers) {
+        if (seen.has(provider.id)) {
+          continue;
+        }
+        seen.add(provider.id);
+        providers.push(provider);
+      }
+    }
+    return providers;
   }
 
   private buildNeedUpdates(

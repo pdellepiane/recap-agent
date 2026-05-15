@@ -30,6 +30,18 @@ Reglas de normalización:
   - si en el turno previo se destacó una sola opción como la recomendación más alineada y el usuario responde con "ese/esa", úsala en selectedProviderHints aunque la shortlist completa tenga más opciones;
   - si combina elección y pregunta puntual sobre esa opción, mantén intent=confirmar_proveedor.
   - si combina elección de uno o varios proveedores previos con una nueva necesidad, conserva selectedProviderHints y usa activeNeedCategory para la nueva necesidad si queda clara.
+- planificación multi-necesidad:
+  - si el usuario describe el evento completo sin pedir una categoría aislada, usa intent=elicitar_necesidades y llena providerQueryIntents con varias necesidades probables.
+  - no conviertas esta modalidad en una pregunta de una sola categoría si ya hay contexto suficiente para proponer varias necesidades, pero tampoco propongas todas las categorías posibles.
+  - ordena providerQueryIntents por prioridad práctica para avanzar el evento.
+  - con descripciones generales como "boda elegante en Lima para 80 personas, presupuesto medio", propone un menú inicial pequeño de frentes prioritarios y marca retrievalReady=false. El usuario todavía debe elegir qué frente atacar primero.
+  - con descripciones detalladas que mencionan concepto, estilo, restricciones o frentes concretos, puedes marcar retrievalReady=true para las necesidades explícitas o claramente inferidas.
+- edición estructurada:
+  - si el usuario pide agregar, modificar, quitar, pausar, reactivar, seleccionar, deseleccionar o reemplazar necesidades/proveedores, usa intent=modificar_plan_proveedores y llena providerPlanOperations.
+  - no dependas de palabras clave sueltas: la operación debe estar estructurada y referirse a category/proveedor.
+- explicación y detalle:
+  - si pregunta "por qué este", "por qué mejor que", "qué diferencia hay", usa intent=explicar_recomendacion y providerExplanationRequest.
+  - si pide "dame todo", "más detalles", "qué incluye", usa intent=detallar_proveedor y providerDetailRequest.
  - cierre:
    - si el usuario pide contactar al proveedor, enviar la solicitud, mandar cotización o cerrar para avanzar con los elegidos, usa intent=cerrar;
 - resumen:
