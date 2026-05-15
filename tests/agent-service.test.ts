@@ -3235,6 +3235,73 @@ describe('AgentService', () => {
     ]);
   });
 
+  it('applies event-type provider priorities during normal plan projection', async () => {
+    class BirthdayRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.9,
+          eventType: 'cumpleanos',
+          vendorCategory: null,
+          vendorCategories: [
+            'Wedding planners',
+            'Catering',
+            'Locales',
+            'Música',
+            'Fotografía y video',
+            'Hogar y deco',
+            'Licores',
+          ],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: '$$',
+          guestRange: '21-50',
+          preferences: ['divertido'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Cumpleaños en Lima para 40 personas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new BirthdayRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-birthday-normal-priority',
+      text: 'quiero planear un cumpleaños para 40 personas en Lima',
+      messageId: 'msg-birthday-normal-priority',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.provider_needs.map((need) => need.category)).toEqual([
+      'Locales',
+      'Catering',
+      'Música',
+      'Fotografía y video',
+      'Hogar y deco',
+    ]);
+    expect(response.plan.provider_needs.map((need) => need.category)).not.toContain(
+      'Wedding planners',
+    );
+  });
+
   it('applies structured plan operations without keyword fallback', async () => {
     class OperationRuntime extends FakeRuntime {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {

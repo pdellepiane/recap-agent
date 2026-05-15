@@ -2189,15 +2189,7 @@ export class AgentService {
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): ProviderNeed[] {
-    const categories = Array.from(
-      new Set(
-        [
-          extraction.activeNeedCategory,
-          extraction.vendorCategory,
-          ...extraction.vendorCategories,
-        ].filter((category): category is ProviderCategory => Boolean(category)),
-      ),
-    );
+    const categories = this.resolvePlanNeedCategories(extraction);
     const currentActiveCategory =
       plan.active_need_category ??
       getActiveNeed(plan)?.category ??
@@ -2233,6 +2225,75 @@ export class AgentService {
         selected_provider_hints: currentNeed?.selected_provider_hints ?? [],
       };
     });
+  }
+
+  private resolvePlanNeedCategories(extraction: ExtractionResult): ProviderCategory[] {
+    const extractedCategories = Array.from(
+      new Set(
+        [
+          extraction.activeNeedCategory,
+          extraction.vendorCategory,
+          ...extraction.vendorCategories,
+        ].filter((category): category is ProviderCategory => Boolean(category)),
+      ),
+    );
+    if (extractedCategories.length === 0) {
+      return [];
+    }
+
+    const allowedCategories = prioritizedProviderCategoriesForEvent(extraction.eventType);
+    const explicitCategories = new Set(
+      [
+        extraction.activeNeedCategory,
+        extraction.vendorCategory,
+      ].filter((category): category is ProviderCategory => Boolean(category)),
+    );
+    const filteredCategories = extractedCategories.filter(
+      (category) => allowedCategories.includes(category) || explicitCategories.has(category),
+    );
+    const rankedCategories = filteredCategories.sort((left, right) => {
+      const leftExplicit = explicitCategories.has(left) ? 0 : 1;
+      const rightExplicit = explicitCategories.has(right) ? 0 : 1;
+      if (leftExplicit !== rightExplicit) {
+        return leftExplicit - rightExplicit;
+      }
+
+      const leftRank = allowedCategories.indexOf(left);
+      const rightRank = allowedCategories.indexOf(right);
+      if (leftRank !== rightRank) {
+        return leftRank - rightRank;
+      }
+
+      return extractedCategories.indexOf(left) - extractedCategories.indexOf(right);
+    });
+
+    if (this.shouldUseStarterNeedProjection(extraction, rankedCategories)) {
+      return Array.from(new Set([
+        ...rankedCategories.filter((category) => explicitCategories.has(category)),
+        ...starterProviderCategoriesForEvent(extraction.eventType, MAX_STARTER_NEEDS),
+      ])).slice(0, MAX_STARTER_NEEDS);
+    }
+
+    return rankedCategories;
+  }
+
+  private shouldUseStarterNeedProjection(
+    extraction: ExtractionResult,
+    categories: ProviderCategory[],
+  ): boolean {
+    if (extraction.intent === 'elicitar_necesidades') {
+      return false;
+    }
+    if (categories.length <= 3) {
+      return false;
+    }
+    if ((extraction.hardConstraints?.length ?? 0) > 0) {
+      return false;
+    }
+    if ((extraction.preferences?.length ?? 0) >= 3) {
+      return false;
+    }
+    return Boolean(extraction.eventType);
   }
 
   private shouldAskForEventContext(plan: PlanSnapshot): boolean {

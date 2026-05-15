@@ -1769,3 +1769,21 @@ Files changed:
 - `src/runtime/openai-agent-runtime.ts`
 - `tests/openai-agent-runtime-token-usage.test.ts`
 - `docs/implementation-log.md`
+
+### Apply event-type provider priorities to normal plan projection
+
+- Reused the normalized event-type provider priority map when structured extractor categories are projected into `provider_needs` in the normal flow.
+- Filtered inferred provider categories against the normalized event type while preserving explicitly requested active/vendor categories.
+- Collapsed broad multi-need normal projections to the event-specific starter set so irrelevant categories such as wedding planners do not appear for birthdays.
+- Added a regression proving a birthday plan with an overbroad extractor output keeps the birthday starter needs and excludes `Wedding planners`.
+
+Reason:
+- Event-specific provider prioritization must be a plan-level invariant, not only an elicitation-node behavior. Normal provider search turns can also populate multiple needs before the elicitation node runs.
+
+Decision:
+- Keep structured extraction as the only signal source, then normalize category projection through the shared event priority map in `AgentService`.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
