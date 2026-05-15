@@ -2945,7 +2945,7 @@ describe('AgentService', () => {
           location: 'Lima',
           budgetSignal: 'medio',
           guestRange: '51-100',
-          preferences: ['elegante'],
+          preferences: ['elegante', 'cena tipo estaciones', 'música en vivo'],
           hardConstraints: [],
           assumptions: [],
           conversationSummary: 'Boda elegante en Lima para 80 personas.',
@@ -2961,7 +2961,7 @@ describe('AgentService', () => {
               label: 'Catering para boda',
               priority: 1,
               queryStrings: ['catering elegante para boda en Lima'],
-              preferences: ['elegante'],
+              preferences: ['elegante', 'cena tipo estaciones'],
               hardConstraints: [],
               missingFields: [],
               retrievalReady: true,
@@ -2972,7 +2972,7 @@ describe('AgentService', () => {
               label: 'Música para boda',
               priority: 2,
               queryStrings: ['música para boda elegante en Lima'],
-              preferences: ['elegante'],
+              preferences: ['elegante', 'música en vivo'],
               hardConstraints: [],
               missingFields: [],
               retrievalReady: true,
@@ -3109,7 +3109,7 @@ describe('AgentService', () => {
             queryStrings: [`${category} para boda elegante en Lima`],
             preferences: ['elegante'],
             hardConstraints: [],
-            missingFields: [],
+            missingFields: ['fecha', 'distrito'],
             retrievalReady: true,
             fitCriteria: {
               ...testProviderFitCriteria,
@@ -3164,6 +3164,9 @@ describe('AgentService', () => {
       'Florería y papelería',
     ]);
     expect(response.plan.provider_needs.every((need) => need.status === 'identified')).toBe(true);
+    expect(response.plan.provider_needs.every(
+      (need) => need.missing_fields.join(',') === 'need_priority_confirmation',
+    )).toBe(true);
   });
 
   it('routes broad multi-need provider search extraction into elicitation without searching', async () => {

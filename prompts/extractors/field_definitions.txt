@@ -110,6 +110,7 @@ Definiciones de campos:
   - Las categorías fuera de las sugerencias del eventType siguen siendo válidas solo si el usuario las pide explícitamente; no las agregues como necesidades inferidas por defecto.
   - retrievalReady es true solo si hay suficiente contexto útil para buscar esa necesidad sin ruido excesivo.
   - Para proveedores, suficiente contexto útil normalmente es: category + location + (guestRange o budgetSignal). No exijas fecha exacta ni distrito exacto para marcar retrievalReady=true si ya hay ciudad y escala/presupuesto.
+  - No incluyas fecha exacta, rango de fechas, zona o distrito en missingFields solo porque serían útiles; inclúyelos únicamente si el usuario los convirtió en una restricción necesaria o si no hay ninguna ubicación útil.
   - Si retrievalReady=true, missingFields puede seguir listando datos útiles para ajustar después, pero esos faltantes no deben bloquear la primera búsqueda.
   - No generes todas las categorías del marketplace. Para una descripción general y poco detallada, usa solo 3 a 5 necesidades iniciales priorizadas por tipo de evento y marca retrievalReady=false hasta que el usuario elija por dónde empezar.
   - Solo marca varias necesidades con retrievalReady=true cuando el usuario ya dio una idea detallada del evento: estilo específico, restricciones, preferencias concretas, proveedores deseados o frentes explícitos.

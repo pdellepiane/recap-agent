@@ -1806,3 +1806,23 @@ Files changed:
 - `prompts/nodes/elicitacion_necesidades/response_contract.txt`
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
+
+### Stop broad elicitation from inventing venue missing fields
+
+- Raised the detailed elicitation gate so a small set of extracted categories alone no longer makes a broad event concept search-ready.
+- For broad starter elicitation, discard extractor-proposed per-need missing fields such as date or district and keep only the priority-confirmation marker.
+- Tightened extractor and elicitation reply prompts so date, date range, zone, and district are not described as missing requirements when a useful location is already present and those fields are not explicit plan missing fields.
+- Added regression coverage where the extractor emits `fecha` and `distrito` for broad starter needs and runtime strips them before composing the reply.
+
+Reason:
+- The model told the user that Locales needed a date/date range and district even though the plan only knew country/location context and those fields are not required for provider retrieval.
+
+Decision:
+- Treat those fields as optional refinements, not default missing requirements, unless the structured plan state explicitly says otherwise.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/nodes/elicitacion_necesidades/response_contract.txt`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`

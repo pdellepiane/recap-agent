@@ -1786,7 +1786,6 @@ export class AgentService {
           hardConstraints: queryIntent?.hardConstraints ?? extraction.hardConstraints ?? [],
           retrievalReady: false,
           missingFields: this.uniqueOperationStrings([
-            ...(queryIntent?.missingFields ?? []),
             'need_priority_confirmation',
           ]),
           fitCriteria: queryIntent?.fitCriteria ?? {
@@ -1811,14 +1810,7 @@ export class AgentService {
       return false;
     }
 
-    const explicitNeedCount = new Set([
-      extraction.vendorCategory,
-      extraction.activeNeedCategory,
-      ...extraction.vendorCategories,
-    ].filter(Boolean)).size;
-
     return (
-      (explicitNeedCount > 0 && explicitNeedCount <= 3) ||
       (extraction.hardConstraints?.length ?? 0) > 0 ||
       (extraction.preferences?.length ?? 0) >= 3
     );
