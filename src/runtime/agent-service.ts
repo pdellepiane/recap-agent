@@ -1910,16 +1910,23 @@ export class AgentService {
       (extraction.providerQueryIntents ?? []).flatMap((queryIntent) => [
         ...queryIntent.preferences,
         ...queryIntent.hardConstraints,
+        ...queryIntent.queryStrings,
       ]).map((detail) => detail.trim().toLowerCase()).filter(Boolean),
     );
     const readyNeedCount = (extraction.providerQueryIntents ?? []).filter(
       (queryIntent) => queryIntent.retrievalReady,
     ).length;
+    const queryIntentCount = (extraction.providerQueryIntents ?? []).length;
 
     return (
       (extraction.hardConstraints?.length ?? 0) > 0 ||
       (extraction.preferences?.length ?? 0) >= 3 ||
-      (readyNeedCount >= 2 && queryIntentDetails.size >= 3)
+      (
+        queryIntentCount > 0 &&
+        queryIntentCount <= MAX_DETAILED_ELICITATION_NEEDS &&
+        readyNeedCount >= 2 &&
+        queryIntentDetails.size >= 3
+      )
     );
   }
 

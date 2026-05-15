@@ -1810,6 +1810,25 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Use query strings as detailed elicitation evidence
+
+- Count natural-language `providerQueryIntents.queryStrings` as structured detail for the detailed elicitation gate.
+- Keep the gate bounded to small query-intent sets so broad over-expanded extraction still falls back to a starter menu.
+- Added explicit missing-field context to reply prompts, including a deterministic instruction not to mention missing requirements when neither plan-level nor per-need missing fields exist.
+- Updated regression coverage so detailed multi-need retrieval still triggers when per-need details live in query strings rather than preferences.
+
+Reason:
+- Live detailed prompts produced retrieval-ready query intents with rich query strings, but no top-level preferences, so the runtime downgraded them and skipped provider search. The reply then hallucinated missing requirements despite empty state.
+
+Decision:
+- Treat query intent query strings as part of the structured retrieval-readiness signal and make missing-field narration state-bound.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
 ### Add dynamic event-type category guidance to prompts
 
 - Added dynamic event-type category context to extractor and reply model inputs, including the starter suggestions and full priority order for the normalized event type.

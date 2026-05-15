@@ -568,6 +568,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       `Necesidad activa: ${activeNeed?.category ?? 'ninguna todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
+      `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
+      this.buildMissingFieldsInstruction(request),
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
       `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
     ];
@@ -588,6 +590,27 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     return parts.filter(Boolean).join('\n\n');
+  }
+
+  private summarizeNeedMissingFields(plan: PersistedPlan): string {
+    const entries = plan.provider_needs
+      .filter((need) => need.missing_fields.length > 0)
+      .map((need) => `${need.category}: ${need.missing_fields.join(', ')}`);
+
+    return entries.length > 0 ? entries.join(' | ') : 'ninguno';
+  }
+
+  private buildMissingFieldsInstruction(request: ComposeReplyRequest): string {
+    const hasPlanMissingFields = request.missingFields.length > 0;
+    const hasNeedMissingFields = request.plan.provider_needs.some(
+      (need) => need.missing_fields.length > 0,
+    );
+
+    if (hasPlanMissingFields || hasNeedMissingFields) {
+      return 'Solo menciona faltantes que aparezcan literalmente en "Faltantes" o "Faltantes por necesidad". No agregues otros.';
+    }
+
+    return 'No hay faltantes registrados. No digas que faltan fecha, distrito, modalidad, restricciones, presupuesto, preferencias u otros datos.';
   }
 
   private buildEventCategoryPromptContext(
