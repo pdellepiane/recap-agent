@@ -634,7 +634,32 @@ export class AgentService {
       extraction.intent === 'detallar_proveedor' ||
       extraction.intent === 'modificar_plan_proveedores'
     ) {
-      currentNode = 'seguir_refinando_guardar_plan';
+      const nextNeed = this.resolveNextNeedAfterSelectionOperation(
+        planAfterFlow,
+        operationResult.appliedOperations,
+      );
+      if (nextNeed?.recommended_providers.length) {
+        currentNode = 'recomendar';
+        if (nodePath[nodePath.length - 1] !== currentNode) {
+          nodePath.push('buscar_proveedores', 'busqueda_exitosa', 'hay_resultados', currentNode);
+        }
+        planAfterFlow = replaceProviderNeeds(
+          planAfterFlow,
+          planAfterFlow.provider_needs,
+          nextNeed.category,
+        );
+        planAfterFlow = mergePlan(planAfterFlow, {
+          current_node: currentNode,
+          recommended_provider_ids: nextNeed.recommended_provider_ids,
+          recommended_providers: nextNeed.recommended_providers,
+        });
+        providerResults = nextNeed.recommended_providers;
+        searchStrategy = 'existing_plan_shortlist';
+        await persistPlan(planAfterFlow, currentNode);
+        planPersisted = true;
+        planPersistReason = currentNode;
+      } else {
+        currentNode = 'seguir_refinando_guardar_plan';
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
       }
@@ -645,6 +670,7 @@ export class AgentService {
       await persistPlan(planAfterFlow, currentNode);
       planPersisted = true;
       planPersistReason = currentNode;
+      }
     } else if (this.shouldAskForEventContext(mergedPlan)) {
       currentNode = 'entrevista';
       nodePath.push(currentNode);
@@ -1158,21 +1184,27 @@ export class AgentService {
   private applyProviderPlanOperations(
     plan: PlanSnapshot,
     operations: ProviderPlanOperation[],
-  ): { plan: PlanSnapshot; unresolvedMessage: string | null } {
+  ): {
+    plan: PlanSnapshot;
+    unresolvedMessage: string | null;
+    appliedOperations: ProviderPlanOperation[];
+  } {
     if (operations.length === 0) {
-      return { plan, unresolvedMessage: null };
+      return { plan, unresolvedMessage: null, appliedOperations: [] };
     }
 
     let nextPlan = plan;
+    const appliedOperations: ProviderPlanOperation[] = [];
     for (const operation of operations) {
       const result = this.applyProviderPlanOperation(nextPlan, operation);
       if (!result.applied) {
-        return { plan: nextPlan, unresolvedMessage: result.message };
+        return { plan: nextPlan, unresolvedMessage: result.message, appliedOperations };
       }
       nextPlan = result.plan;
+      appliedOperations.push(operation);
     }
 
-    return { plan: nextPlan, unresolvedMessage: null };
+    return { plan: nextPlan, unresolvedMessage: null, appliedOperations };
   }
 
   private applyProviderPlanOperation(
@@ -1359,6 +1391,30 @@ export class AgentService {
       nextNeed,
     ];
     return replaceProviderNeeds(plan, nextNeeds, activeNeedCategory);
+  }
+
+  private resolveNextNeedAfterSelectionOperation(
+    plan: PlanSnapshot,
+    operations: ProviderPlanOperation[],
+  ): ProviderNeed | null {
+    if (!operations.some((operation) => operation.type === 'select_provider')) {
+      return null;
+    }
+
+    const activeCategory = plan.active_need_category;
+    const openNeeds = plan.provider_needs.filter(
+      (need) =>
+        need.category !== activeCategory &&
+        need.status !== 'selected' &&
+        need.status !== 'deferred' &&
+        need.status !== 'no_providers_available',
+    );
+
+    return (
+      openNeeds.find((need) => need.recommended_providers.length > 0) ??
+      openNeeds[0] ??
+      null
+    );
   }
 
   private findNeedByCategory(

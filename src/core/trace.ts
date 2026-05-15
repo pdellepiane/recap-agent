@@ -78,6 +78,7 @@ export type SearchStrategyTrace =
   | 'none'
   | 'search_from_plan'
   | 'broaden_existing_shortlist'
+  | 'existing_plan_shortlist'
   | 'multi_need_query_intents';
 
 export type TurnTrace = {

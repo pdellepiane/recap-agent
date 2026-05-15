@@ -10,7 +10,7 @@ import {
   type PlanSnapshot,
 } from '../src/core/plan';
 import { decisionNodes } from '../src/core/decision-nodes';
-import type { ProviderDetail } from '../src/core/provider';
+import type { ProviderDetail, ProviderSummary } from '../src/core/provider';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -3356,6 +3356,173 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.map((need) => need.category)).toContain(
       'Wedding planners',
     );
+  });
+
+  it('advances to the next stored shortlist after selecting providers', async () => {
+    class SelectAndContinueRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'modificar_plan_proveedores',
+          intentConfidence: 0.94,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere cotizar ambos locales y seguir.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [],
+          providerPlanOperations: [
+            {
+              type: 'select_provider',
+              category: 'Locales',
+              preferences: [],
+              hardConstraints: [],
+              queryIntent: null,
+              rerunSearch: false,
+              provider: {
+                providerId: 147,
+                providerTitle: null,
+                category: 'Locales',
+                hint: null,
+              },
+              removeProvider: null,
+              addProvider: null,
+            },
+            {
+              type: 'select_provider',
+              category: 'Locales',
+              preferences: [],
+              hardConstraints: [],
+              queryIntent: null,
+              rerunSearch: false,
+              provider: {
+                providerId: 181,
+                providerTitle: null,
+                category: 'Locales',
+                hint: null,
+              },
+              removeProvider: null,
+              addProvider: null,
+            },
+          ],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const localProviders = [
+      {
+        id: 147,
+        title: 'Casa Club 147',
+        category: 'Locales',
+        location: 'Perú',
+        priceLevel: 'high',
+        reason: 'local recomendado',
+        serviceHighlights: [],
+        termsHighlights: [],
+      },
+      {
+        id: 181,
+        title: 'Fundo las Palmeras',
+        category: 'Locales',
+        location: 'Ica',
+        priceLevel: 'high',
+        reason: 'local recomendado',
+        serviceHighlights: [],
+        termsHighlights: [],
+      },
+    ] satisfies ProviderSummary[];
+    const cateringProviders = [
+      {
+        id: 109,
+        title: 'Edo Sushi Bar',
+        category: 'Catering',
+        location: 'Lima',
+        priceLevel: 'high',
+        reason: 'catering recomendado',
+        serviceHighlights: [],
+        termsHighlights: [],
+      },
+    ] satisfies ProviderSummary[];
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-select-continue',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-select-continue',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          active_need_category: 'Locales',
+          location: 'Lima',
+          guest_range: '101-200',
+          provider_needs: [
+            {
+              category: 'Locales',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [147, 181],
+              recommended_providers: localProviders,
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [109],
+              recommended_providers: cateringProviders,
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const runtime = new SelectAndContinueRuntime();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-select-continue',
+      text: 'ok quiero cotizar ambos. agregalos y sigamos con otro tipo de proveedor',
+      messageId: 'msg-select-continue',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(response.plan.active_need_category).toBe('Catering');
+    expect(response.plan.recommended_provider_ids).toEqual([109]);
+    expect(response.trace.search_strategy).toBe('existing_plan_shortlist');
+    expect(runtime.composeRequests.at(-1)?.providerResults.map((provider) => provider.title)).toEqual([
+      'Edo Sushi Bar',
+    ]);
   });
 
   it('applies structured plan operations without keyword fallback', async () => {

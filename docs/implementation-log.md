@@ -1826,3 +1826,26 @@ Files changed:
 - `prompts/nodes/elicitacion_necesidades/response_contract.txt`
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
+
+### Advance from selected providers to the next stored shortlist
+
+- When structured provider-selection operations succeed and another need already has a stored shortlist, the state machine now advances to `recomendar` for that next need instead of stopping in `seguir_refinando_guardar_plan`.
+- Added an `existing_plan_shortlist` search strategy trace value for this no-new-search transition.
+- Added provider titles to the prompt plan snapshot so multi-need plans can show the top stored choices per need instead of only IDs.
+- Updated elicitation and plan-refinement response contracts to show stored top choices when they already exist.
+- Added regression coverage for selecting two venue providers and immediately advancing to the Catering shortlist.
+
+Reason:
+- After the user said they wanted to quote both venue options and continue with another provider type, the agent acknowledged the edit but did not surface the next need's already stored choices.
+
+Decision:
+- Treat stored shortlists as first-class plan state: continuing to another need should present existing options immediately, without requiring another user turn or another search.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/core/trace.ts`
+- `prompts/nodes/elicitacion_necesidades/response_contract.txt`
+- `prompts/nodes/seguir_refinando_guardar_plan/response_contract.txt`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`

@@ -1392,6 +1392,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           )
           .filter((title): title is string => Boolean(title)),
         recommended_provider_ids: need.recommended_provider_ids.slice(0, 6),
+        recommended_provider_titles: need.recommended_providers
+          .slice(0, 3)
+          .map((provider) => provider.title),
       })),
       selected_provider_ids: plan.selected_provider_ids,
       selected_provider_hints: plan.selected_provider_hints,
