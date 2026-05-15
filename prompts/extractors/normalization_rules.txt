@@ -31,6 +31,7 @@ Reglas de normalización:
   - si combina elección y pregunta puntual sobre esa opción, mantén intent=confirmar_proveedor.
   - si combina elección de uno o varios proveedores previos con una nueva necesidad, conserva selectedProviderHints y usa activeNeedCategory para la nueva necesidad si queda clara.
 - planificación multi-necesidad:
+  - no inicies planificación multi-necesidad ante saludos, onboarding o preguntas generales como "hola, cómo puedes ayudarme" si no hay datos de evento; usa intent=null y eventType=null.
   - si el usuario describe el evento completo sin pedir una categoría aislada, usa intent=elicitar_necesidades y llena providerQueryIntents con varias necesidades probables.
   - no conviertas esta modalidad en una pregunta de una sola categoría si ya hay contexto suficiente para proponer varias necesidades, pero tampoco propongas todas las categorías posibles.
   - ordena providerQueryIntents por prioridad práctica para avanzar el evento.

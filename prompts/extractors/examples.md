@@ -1,5 +1,13 @@
 Ejemplos breves:
 
+0. Usuario: "Hola, ¿cómo puedes ayudarme?"
+- intent: null
+- eventType: null
+- vendorCategory: null
+- vendorCategories: []
+- activeNeedCategory: null
+- providerQueryIntents: []
+
 1. Usuario: "Quiero planear una boda en Lima, probablemente necesitaré local, catering y foto."
 - intent: buscar_proveedores
 - eventType: boda

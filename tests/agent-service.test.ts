@@ -3189,6 +3189,175 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.every((need) => need.status === 'shortlisted')).toBe(true);
   });
 
+  it('does not create a starter plan for a generic greeting', async () => {
+    class GenericGreetingRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        const categories = [
+          'Locales',
+          'Catering',
+          'Fotografía y video',
+          'Música',
+          'Hogar y deco',
+        ] as const;
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.82,
+          eventType: 'otro',
+          vendorCategory: null,
+          vendorCategories: categories.map((category) => category),
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: '',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: categories.map((category, index) => ({
+            category,
+            label: category,
+            priority: index + 1,
+            queryStrings: [`${category} para evento`],
+            preferences: [],
+            hardConstraints: [],
+            missingFields: [],
+            retrievalReady: false,
+            fitCriteria: {
+              ...testProviderFitCriteria,
+              eventType: 'otro',
+              needCategory: category,
+              location: null,
+            },
+          })),
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new GenericGreetingRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-generic-greeting',
+      text: 'hola como puedes ayudarme?',
+      messageId: 'msg-generic-greeting',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('entrevista');
+    expect(response.trace.intent).toBeNull();
+    expect(response.plan.provider_needs).toHaveLength(0);
+  });
+
+  it('keeps otro as a valid event type when planning evidence exists', async () => {
+    class OtherEventRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.9,
+          eventType: 'otro',
+          vendorCategory: null,
+          vendorCategories: ['Locales', 'Catering'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Activación de marca en Lima para 80 personas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            eventType: 'otro',
+            location: 'Lima',
+          },
+          providerQueryIntents: [
+            {
+              category: 'Locales',
+              label: 'Locales',
+              priority: 1,
+              queryStrings: ['local para activación de marca en Lima'],
+              preferences: [],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: false,
+              fitCriteria: {
+                ...testProviderFitCriteria,
+                eventType: 'otro',
+                needCategory: 'Locales',
+                location: 'Lima',
+              },
+            },
+            {
+              category: 'Catering',
+              label: 'Catering',
+              priority: 2,
+              queryStrings: ['catering para activación de marca en Lima'],
+              preferences: [],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: false,
+              fitCriteria: {
+                ...testProviderFitCriteria,
+                eventType: 'otro',
+                needCategory: 'Catering',
+                location: 'Lima',
+              },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new OtherEventRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-other-event',
+      text: 'quiero planear una activación de marca en Lima para 80 personas',
+      messageId: 'msg-other-event',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('elicitacion_necesidades');
+    expect(response.plan.event_type).toBe('otro');
+    expect(response.plan.provider_needs.map((need) => need.category)).toEqual([
+      'Locales',
+      'Catering',
+      'Fotografía y video',
+      'Música',
+      'Hogar y deco',
+    ]);
+  });
+
   it('keeps broad event elicitation as a compact starter menu without searching every need', async () => {
     class BroadElicitationRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {

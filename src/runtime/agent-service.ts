@@ -254,7 +254,7 @@ export class AgentService {
       userMessage: inbound.text,
       plan: workingPlan,
     });
-    const extraction =
+    let extraction =
       'extraction' in rawExtractionResult
         ? rawExtractionResult.extraction
         : rawExtractionResult;
@@ -266,6 +266,7 @@ export class AgentService {
 
     let errorMessage: string | null = null;
     const applyExtractionStartedAt = Date.now();
+    extraction = this.guardGenericElicitation(extraction);
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
     const { plan: extractedPlan, validationError } = this.applyExtraction(
       workingPlan,
@@ -1179,6 +1180,45 @@ export class AgentService {
       activeNeedCategory,
       vendorCategories,
     };
+  }
+
+  private guardGenericElicitation(extraction: ExtractionResult): ExtractionResult {
+    if (extraction.intent !== 'elicitar_necesidades') {
+      return extraction;
+    }
+    if (this.hasStructuredPlanningSignal(extraction)) {
+      return extraction;
+    }
+
+    return {
+      ...extraction,
+      intent: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      providerQueryIntents: [],
+      providerPlanOperations: [],
+      providerExplanationRequest: null,
+      providerDetailRequest: null,
+    };
+  }
+
+  private hasStructuredPlanningSignal(extraction: ExtractionResult): boolean {
+    return (
+      (extraction.eventType !== null && extraction.eventType !== 'otro') ||
+      extraction.location !== null ||
+      extraction.budgetSignal !== null ||
+      (extraction.guestRange !== null && extraction.guestRange !== 'unknown') ||
+      extraction.vendorCategory !== null ||
+      extraction.activeNeedCategory !== null ||
+      extraction.preferences.length > 0 ||
+      extraction.hardConstraints.length > 0 ||
+      (extraction.providerQueryIntents ?? []).some(
+        (queryIntent) =>
+          queryIntent.preferences.length > 0 ||
+          queryIntent.hardConstraints.length > 0,
+      )
+    );
   }
 
   private applyProviderPlanOperations(

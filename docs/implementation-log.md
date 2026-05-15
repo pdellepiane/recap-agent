@@ -1788,6 +1788,28 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Distinguish no event from event type otro
+
+- Clarified extractor prompt semantics: `eventType=null` means no event was described, while `eventType=otro` means a real event exists but does not fit the known taxonomy.
+- Added extractor examples and normalization guidance so generic onboarding like "hola, como puedes ayudarme" uses `intent=null`, `eventType=null`, and no provider query intents.
+- Kept runtime defense-in-depth based on absence of structured planning evidence, not on `otro` itself.
+- Added regression coverage proving a generic greeting does not create a starter plan, while a real `otro` event with location and guest range still enters elicitation.
+
+Reason:
+- Generic onboarding was being misclassified as `elicitar_necesidades` with `eventType=otro`, creating a fake plan. `otro` should remain a valid event type, not a proxy for no-plan.
+
+Decision:
+- Make nullability the source of truth for "no event" and reserve `otro` for real out-of-taxonomy events.
+
+Files changed:
+- `prompts/extractors/field_definitions.txt`
+- `prompts/extractors/normalization_rules.txt`
+- `prompts/extractors/domain_knowledge.txt`
+- `prompts/extractors/examples.md`
+- `src/runtime/agent-service.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
 ### Add dynamic event-type category guidance to prompts
 
 - Added dynamic event-type category context to extractor and reply model inputs, including the starter suggestions and full priority order for the normalized event type.
