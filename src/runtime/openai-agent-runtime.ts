@@ -23,6 +23,10 @@ import {
   summarizeProviderNeeds,
   summarizeRecommendedProviders,
 } from '../core/plan';
+import {
+  prioritizedProviderCategoriesForEvent,
+  starterProviderCategoriesForEvent,
+} from '../core/event-provider-priorities';
 import { executeFinishPlanTool } from './finish-plan-tool';
 import type {
   AgentRuntime,
@@ -437,9 +441,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private composeExtractorInput(request: ExtractRequest): string {
+    const suggestedCategories = this.buildEventCategoryPromptContext(
+      request.plan.event_type,
+      'extractor',
+    );
     return [
       `Mensaje del usuario: ${request.userMessage}`,
       `Plan base (JSON compacto): ${JSON.stringify(this.buildExtractorPlanSnapshot(request.plan))}`,
+      suggestedCategories,
       'Extrae solo cambios nuevos del turno. Si un dato no cambia, mantenlo como null/vacio para no sobreescribir sin evidencia.',
     ].join('\n');
   }
@@ -556,6 +565,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Nodo actual: ${request.currentNode}`,
       `Mensaje del usuario: ${request.userMessage}`,
       `Plan resumido: ${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
+      this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       `Necesidad activa: ${activeNeed?.category ?? 'ninguna todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
@@ -578,6 +588,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     return parts.filter(Boolean).join('\n\n');
+  }
+
+  private buildEventCategoryPromptContext(
+    eventType: PersistedPlan['event_type'],
+    mode: 'extractor' | 'reply',
+  ): string {
+    const starterCategories = starterProviderCategoriesForEvent(eventType);
+    const prioritizedCategories = prioritizedProviderCategoriesForEvent(eventType);
+    const normalizedEvent = eventType ?? 'otro';
+    const instruction =
+      mode === 'extractor'
+        ? 'Para necesidades sugeridas o inferidas, usa primero estas categorías. Mantén una categoría fuera de esta lista solo si el usuario la pide de forma explícita.'
+        : 'Cuando sugieras próximos frentes al usuario, muestra primero estas categorías. No presentes categorías fuera de esta lista como sugerencias iniciales; sí puedes aceptarlas si el usuario las pide explícitamente.';
+
+    return [
+      `Categorías sugeridas para event_type=${normalizedEvent}: ${starterCategories.join(', ')}`,
+      `Prioridad completa para event_type=${normalizedEvent}: ${prioritizedCategories.join(', ')}`,
+      instruction,
+    ].join('\n');
   }
 
   private resolveOutputSchema(request: ComposeReplyRequest) {

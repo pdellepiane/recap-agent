@@ -1787,3 +1787,22 @@ Files changed:
 - `src/runtime/agent-service.ts`
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
+
+### Add dynamic event-type category guidance to prompts
+
+- Added dynamic event-type category context to extractor and reply model inputs, including the starter suggestions and full priority order for the normalized event type.
+- Updated extractor and elicitation node prompts to treat event-type categories as the initial suggestion menu while still allowing off-priority categories when explicitly requested by the user.
+- Added a regression proving an off-priority category such as `Wedding planners` remains available for a birthday when it is the explicit requested provider category.
+
+Reason:
+- Event-type priorities should control what the agent suggests by default, but should not behave like a hard allowlist that blocks user-insisted categories.
+
+Decision:
+- Keep the static prompt files as policy and inject the concrete event-type category menu dynamically through runtime prompt input.
+
+Files changed:
+- `src/runtime/openai-agent-runtime.ts`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/nodes/elicitacion_necesidades/response_contract.txt`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`

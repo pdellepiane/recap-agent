@@ -3302,6 +3302,59 @@ describe('AgentService', () => {
     );
   });
 
+  it('keeps off-priority categories when the user explicitly asks for them', async () => {
+    class ExplicitBirthdayPlannerRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.92,
+          eventType: 'cumpleanos',
+          vendorCategory: 'Wedding planners',
+          vendorCategories: ['Wedding planners', 'Catering', 'Locales'],
+          activeNeedCategory: 'Wedding planners',
+          location: 'Lima',
+          budgetSignal: '$$',
+          guestRange: '21-50',
+          preferences: ['organizado'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Cumpleaños en Lima con pedido explícito de wedding planner.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new ExplicitBirthdayPlannerRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-explicit-birthday-planner',
+      text: 'quiero un wedding planner para un cumpleaños en Lima',
+      messageId: 'msg-explicit-birthday-planner',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.active_need_category).toBe('Wedding planners');
+    expect(response.plan.provider_needs.map((need) => need.category)).toContain(
+      'Wedding planners',
+    );
+  });
+
   it('applies structured plan operations without keyword fallback', async () => {
     class OperationRuntime extends FakeRuntime {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {

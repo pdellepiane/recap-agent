@@ -106,6 +106,8 @@ Definiciones de campos:
   - lista estructurada de necesidades de proveedores que deben consultarse en paralelo cuando el usuario describe un evento completo.
   - cada elemento debe incluir category canónica, label, priority, queryStrings, preferences, hardConstraints, missingFields, retrievalReady y fitCriteria.
   - queryStrings debe contener consultas naturales en español para la base de proveedores, no instrucciones internas.
+  - La entrada incluye categorías sugeridas y prioridad completa dinámicas para el eventType normalizado. Para necesidades sugeridas o inferidas, sigue esa lista por tipo de evento.
+  - Las categorías fuera de las sugerencias del eventType siguen siendo válidas solo si el usuario las pide explícitamente; no las agregues como necesidades inferidas por defecto.
   - retrievalReady es true solo si hay suficiente contexto útil para buscar esa necesidad sin ruido excesivo.
   - Para proveedores, suficiente contexto útil normalmente es: category + location + (guestRange o budgetSignal). No exijas fecha exacta ni distrito exacto para marcar retrievalReady=true si ya hay ciudad y escala/presupuesto.
   - Si retrievalReady=true, missingFields puede seguir listando datos útiles para ajustar después, pero esos faltantes no deben bloquear la primera búsqueda.
