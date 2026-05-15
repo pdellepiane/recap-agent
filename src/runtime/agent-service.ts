@@ -1866,9 +1866,20 @@ export class AgentService {
       return false;
     }
 
+    const queryIntentDetails = new Set(
+      (extraction.providerQueryIntents ?? []).flatMap((queryIntent) => [
+        ...queryIntent.preferences,
+        ...queryIntent.hardConstraints,
+      ]).map((detail) => detail.trim().toLowerCase()).filter(Boolean),
+    );
+    const readyNeedCount = (extraction.providerQueryIntents ?? []).filter(
+      (queryIntent) => queryIntent.retrievalReady,
+    ).length;
+
     return (
       (extraction.hardConstraints?.length ?? 0) > 0 ||
-      (extraction.preferences?.length ?? 0) >= 3
+      (extraction.preferences?.length ?? 0) >= 3 ||
+      (readyNeedCount >= 2 && queryIntentDetails.size >= 3)
     );
   }
 

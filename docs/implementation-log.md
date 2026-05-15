@@ -1849,3 +1849,20 @@ Files changed:
 - `prompts/nodes/seguir_refinando_guardar_plan/response_contract.txt`
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
+
+### Treat detailed query intents as enough for multi-need retrieval
+
+- Updated the detailed elicitation gate to inspect structured `providerQueryIntents`, not only top-level extraction preferences and constraints.
+- A turn with at least two retrieval-ready query intents and at least three distinct per-need preferences or constraints now triggers `multi_need_query_intents`.
+- Added regression coverage for a detailed wedding request whose useful details live inside query intents: sushi catering, natural wedding photography, live music, and minimalist flowers.
+
+Reason:
+- Detailed event prompts were being downgraded to a starter menu when the extractor placed the specifics inside per-need query intents instead of top-level preferences.
+
+Decision:
+- Use the structured per-need intent payload as the source of truth for retrieval readiness.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`

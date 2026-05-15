@@ -3062,6 +3062,133 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.find((need) => need.category === 'Música')?.recommended_provider_ids).toEqual([401]);
   });
 
+  it('searches detailed elicitation when details live inside query intents', async () => {
+    class DetailedQueryIntentRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: ['Catering', 'Fotografía y video', 'Música', 'Florería y papelería'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '101-200',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda moderna en Lima para 120 personas con sushi, música en vivo, fotos naturales y flores minimalistas.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [
+            {
+              category: 'Catering',
+              label: 'Catering con sushi',
+              priority: 1,
+              queryStrings: ['catering sushi boda Lima 120 personas'],
+              preferences: ['sushi', 'torta para novios'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
+            },
+            {
+              category: 'Fotografía y video',
+              label: 'Fotografía para novios',
+              priority: 2,
+              queryStrings: ['fotografía natural novios boda Lima'],
+              preferences: ['fotos naturales', 'especializada para novios'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Fotografía y video' },
+            },
+            {
+              category: 'Música',
+              label: 'Música en vivo',
+              priority: 3,
+              queryStrings: ['música en vivo boda Lima'],
+              preferences: ['música en vivo'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Música' },
+            },
+            {
+              category: 'Florería y papelería',
+              label: 'Flores minimalistas',
+              priority: 4,
+              queryStrings: ['flores minimalistas boda Lima'],
+              preferences: ['flores minimalistas'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Florería y papelería' },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class QueryIntentGateway extends FakeGateway {
+      public readonly categories: string[] = [];
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.categories.push(input.category);
+        return {
+          providers: [
+            {
+              id: this.categories.length + 500,
+              title: `${input.category} Uno`,
+              category: input.category,
+              location: 'Lima',
+              priceLevel: 'mid',
+              reason: 'coincide con la necesidad',
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+    }
+
+    const gateway = new QueryIntentGateway();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new DetailedQueryIntentRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-detailed-query-intents',
+      text: 'quiero una boda moderna en Lima para 120 personas, cena con sushi, música en vivo, fotos naturales, flores minimalistas, fotografia especializada para novios, torta para novios',
+      messageId: 'msg-detailed-query-intents',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.trace.search_strategy).toBe('multi_need_query_intents');
+    expect(gateway.categories).toEqual([
+      'Catering',
+      'Fotografía y video',
+      'Música',
+      'Florería y papelería',
+    ]);
+    expect(response.plan.provider_needs.every((need) => need.status === 'shortlisted')).toBe(true);
+  });
+
   it('keeps broad event elicitation as a compact starter menu without searching every need', async () => {
     class BroadElicitationRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
