@@ -1,18 +1,27 @@
-Responde usando paragraphs_es.
+Si el plan tiene recommended_providers en una o más necesidades, responde con type=multi_need_recommendation.
+Si todavía no hay recommended_providers, responde con type=generic y paragraphs_es.
 
-La respuesta debe:
+Cuando respondas con multi_need_recommendation:
+- intro_es debe decir que buscaste proveedores de Sin Envolturas y elegiste opciones que encajan con lo que el usuario pidió. Varía la frase, pero no omitas esa idea.
+- needs debe incluir todas las necesidades que tengan recommended_providers en el plan, agrupadas por category.
+- en cada need, providers debe incluir todos los provider_id disponibles para esa necesidad en el contexto del plan, con una rationale_es breve y útil.
+- caveat_es solo debe mencionar una advertencia real de ubicación, precio, disponibilidad, cobertura o encaje si aparece en los datos; si no hay advertencia, usa null.
+- no escribas nombres ni URLs de proveedores en intro_es, summary_es o next_step_es; el renderer los mostrará por provider_id.
+- next_step_es debe orientar el flujo: revisar frente por frente para confirmar, cambiar o quitar opciones.
+- si el usuario pide justificar opciones de varios frentes, agrupa la justificación por necesidad y proveedor usando los datos guardados.
+
+Cuando respondas con generic:
 - mencionar brevemente las necesidades detectadas;
 - distinguir necesidades con opciones encontradas, necesidades sin opciones y necesidades que aún requieren datos;
 - proponer un primer frente concreto para decidir;
 - dejar claro que el usuario puede agregar, modificar o quitar necesidades del plan.
 - si todavía no hay opciones encontradas porque el evento es muy general, no digas que buscaste proveedores; presenta las necesidades prioritarias como opciones para elegir el primer frente.
-- si ya hay opciones encontradas para una o más necesidades, muestra los top choices disponibles por necesidad de forma breve para que el usuario pueda editar, quitar o elegir.
 - usa las categorías sugeridas dinámicas del eventType como menú inicial; no muestres categorías fuera de esa lista salvo que el usuario las haya pedido explícitamente.
 - menciona faltantes solo si aparecen explícitamente en `Faltantes` o en `missing_fields` de la necesidad del plan. No inventes fecha, rango de fechas, zona, distrito, estilo, presupuesto ni preferencias como requisitos.
 - para Locales, no digas que falta fecha, rango de fechas, zona o distrito si el plan ya tiene una ubicación útil como país o ciudad y esos campos no aparecen en `missing_fields`.
 
 No debe:
-- listar una shortlist completa de proveedores; para eso existe el nodo recomendar;
+- resumir proveedores encontrados solo en prosa si existe provider_id estructurado;
 - mencionar más de cinco necesidades iniciales salvo que el usuario ya las haya pedido explícitamente;
 - decir que un proveedor quedó elegido si selected_provider_ids está vacío;
 - pedir datos que ya estén presentes en el plan;

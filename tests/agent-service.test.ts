@@ -2964,7 +2964,7 @@ describe('AgentService', () => {
               preferences: ['elegante', 'cena tipo estaciones'],
               hardConstraints: [],
               missingFields: [],
-              retrievalReady: true,
+              retrievalReady: false,
               fitCriteria: { ...testProviderFitCriteria, needCategory: 'catering' },
             },
             {
@@ -2975,7 +2975,7 @@ describe('AgentService', () => {
               preferences: ['elegante', 'música en vivo'],
               hardConstraints: [],
               missingFields: [],
-              retrievalReady: true,
+              retrievalReady: false,
               fitCriteria: { ...testProviderFitCriteria, needCategory: 'música' },
             },
           ],
@@ -3094,7 +3094,7 @@ describe('AgentService', () => {
               preferences: [],
               hardConstraints: [],
               missingFields: [],
-              retrievalReady: true,
+              retrievalReady: false,
               fitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
             },
             {
@@ -3105,7 +3105,7 @@ describe('AgentService', () => {
               preferences: [],
               hardConstraints: [],
               missingFields: [],
-              retrievalReady: true,
+              retrievalReady: false,
               fitCriteria: { ...testProviderFitCriteria, needCategory: 'Fotografía y video' },
             },
             {
@@ -3116,7 +3116,7 @@ describe('AgentService', () => {
               preferences: [],
               hardConstraints: [],
               missingFields: [],
-              retrievalReady: true,
+              retrievalReady: false,
               fitCriteria: { ...testProviderFitCriteria, needCategory: 'Música' },
             },
             {
@@ -3127,7 +3127,7 @@ describe('AgentService', () => {
               preferences: [],
               hardConstraints: [],
               missingFields: [],
-              retrievalReady: true,
+              retrievalReady: false,
               fitCriteria: { ...testProviderFitCriteria, needCategory: 'Florería y papelería' },
             },
           ],
@@ -3189,6 +3189,156 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.every((need) => need.status === 'shortlisted')).toBe(true);
   });
 
+  it('renders detailed elicitation results as grouped multi-need output', async () => {
+    class StructuredElicitationRuntime extends FakeRuntime {
+      public readonly composeNodes: string[] = [];
+
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: ['Catering', 'Música'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '101-200',
+          preferences: ['sushi', 'música en vivo'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda con catering y música.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [
+            {
+              category: 'Catering',
+              label: 'Catering con sushi',
+              priority: 1,
+              queryStrings: ['catering sushi boda Lima'],
+              preferences: ['sushi'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: false,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
+            },
+            {
+              category: 'Música',
+              label: 'Música en vivo',
+              priority: 2,
+              queryStrings: ['música en vivo boda Lima'],
+              preferences: ['música en vivo'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: false,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Música' },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        this.composeNodes.push(request.currentNode);
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'multi_need_recommendation',
+            intro_es: 'Busqué proveedores de Sin Envolturas que encajan con tu plan.',
+            needs: request.plan.provider_needs
+              .filter((need) => need.recommended_providers.length > 0)
+              .map((need) => ({
+                category: need.category,
+                summary_es: `Opciones para ${need.category}.`,
+                providers: need.recommended_providers.map((provider) => ({
+                  provider_id: provider.id,
+                  rationale_es: 'Encaja con lo que pediste para este frente.',
+                  caveat_es: null,
+                })),
+              })),
+            next_step_es: 'Podemos revisar frente por frente para confirmar, cambiar o quitar opciones.',
+          },
+        };
+      }
+    }
+
+    class StructuredGateway extends FakeGateway {
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        return {
+          providers: [
+            {
+              id: input.category === 'Catering' ? 701 : 801,
+              title: input.category === 'Catering' ? 'Sushi Mesa' : 'Banda Clara',
+              category: input.category,
+              location: 'Lima',
+              priceLevel: 'mid',
+              reason: 'coincide con la necesidad',
+              detailUrl: `https://sinenvolturas.com/proveedores/${input.category === 'Catering' ? 'sushi-mesa' : 'banda-clara'}`,
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const isCatering = providerId === 701;
+        return {
+          id: providerId,
+          title: isCatering ? 'Sushi Mesa' : 'Banda Clara',
+          slug: isCatering ? 'sushi-mesa' : 'banda-clara',
+          category: isCatering ? 'Catering' : 'Música',
+          location: 'Lima',
+          priceLevel: 'mid',
+          rating: null,
+          reason: 'coincide con la necesidad',
+          detailUrl: `https://sinenvolturas.com/proveedores/${isCatering ? 'sushi-mesa' : 'banda-clara'}`,
+          websiteUrl: null,
+          minPrice: null,
+          maxPrice: null,
+          promoBadge: null,
+          promoSummary: null,
+          descriptionSnippet: null,
+          serviceHighlights: [],
+          termsHighlights: [],
+          description: null,
+          eventTypes: ['boda'],
+          raw: {},
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new StructuredElicitationRuntime(),
+      providerGateway: new StructuredGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-structured-multi',
+      text: 'quiero una boda con sushi y música en vivo',
+      messageId: 'msg-structured-multi',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('elicitacion_necesidades');
+    expect(response.outbound.text).toContain('Busqué proveedores de Sin Envolturas');
+    expect(response.outbound.text).toContain('Catering\nOpciones para Catering.\n1. Sushi Mesa');
+    expect(response.outbound.text).toContain('Música\nOpciones para Música.\n1. Banda Clara');
+    expect(response.outbound.text).toContain('Podemos revisar frente por frente');
+  });
+
   it('does not create a starter plan for a generic greeting', async () => {
     class GenericGreetingRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
@@ -3240,6 +3390,19 @@ describe('AgentService', () => {
           providerDetailRequest: null,
         };
       }
+
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'welcome',
+            greeting_es: '¡Hola! Soy el asistente de Sin Envolturas.',
+            ask_es: 'Puedo ayudarte con preguntas sobre nuestros servicios o armar un plan con proveedores. Cuéntame tu evento ideal o empecemos proveedor por proveedor.',
+            requested_fields_es: [],
+          },
+        };
+      }
     }
 
     const service = new AgentService({
@@ -3261,6 +3424,8 @@ describe('AgentService', () => {
     expect(response.plan.current_node).toBe('entrevista');
     expect(response.trace.intent).toBeNull();
     expect(response.plan.provider_needs).toHaveLength(0);
+    expect(response.outbound.text).toContain('Soy el asistente de Sin Envolturas');
+    expect(response.outbound.text).toContain('preguntas sobre nuestros servicios');
   });
 
   it('keeps otro as a valid event type when planning evidence exists', async () => {
@@ -3406,7 +3571,7 @@ describe('AgentService', () => {
             preferences: ['elegante'],
             hardConstraints: [],
             missingFields: ['fecha', 'distrito'],
-            retrievalReady: true,
+            retrievalReady: false,
             fitCriteria: {
               ...testProviderFitCriteria,
               needCategory: category,
@@ -3920,5 +4085,144 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
     expect(deleted.plan.provider_needs.map((need) => need.category)).not.toContain('Música');
+  });
+
+  it('supports all-needs recommendation explanations without new search', async () => {
+    class ExplainAllRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'explicar_recomendacion',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario pide justificar todo.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: {
+            scope: 'all_needs',
+            primaryProvider: {
+              providerId: null,
+              providerTitle: null,
+              category: null,
+              hint: null,
+            },
+            comparedProviders: [],
+            category: null,
+            categories: [],
+            question: 'Justifica todas las opciones recomendadas.',
+          },
+          providerDetailRequest: null,
+        };
+      }
+
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'generic',
+            paragraphs_es: [
+              'Estas recomendaciones se eligieron por encaje con cada frente guardado del plan.',
+              'Catering: EDO encaja por comida para eventos. Música: DJ Noche encaja por formato de recepción.',
+            ],
+          },
+        };
+      }
+    }
+
+    class NoSearchGateway extends FakeGateway {
+      public searchCount = 0;
+
+      override async searchProviders(): Promise<ProviderGatewaySearchResult> {
+        this.searchCount += 1;
+        return { providers: [] };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-explain-all',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-explain-all',
+        }),
+        {
+          current_node: 'elicitacion_necesidades',
+          event_type: 'boda',
+          active_need_category: 'Catering',
+          provider_needs: [
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [101],
+              recommended_providers: [
+                { id: 101, title: 'EDO', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: 'catering para eventos', serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+            {
+              category: 'Música',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [201],
+              recommended_providers: [
+                { id: 201, title: 'DJ Noche', category: 'Música', location: 'Lima', priceLevel: 'mid', reason: 'música para recepción', serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+      reason: 'seed',
+    });
+
+    const runtime = new ExplainAllRuntime();
+    const gateway = new NoSearchGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-explain-all',
+      text: 'justifica por qué elegiste estas opciones para todos los frentes',
+      messageId: 'msg-explain-all',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
+    expect(gateway.searchCount).toBe(0);
+    expect(runtime.composeRequests.at(-1)?.extraction.providerExplanationRequest?.scope).toBe('all_needs');
+    expect(runtime.composeRequests.at(-1)?.providerResults.map((provider) => provider.title)).toEqual([
+      'EDO',
+      'DJ Noche',
+    ]);
+    expect(response.outbound.text).toContain('Catering: EDO');
   });
 });

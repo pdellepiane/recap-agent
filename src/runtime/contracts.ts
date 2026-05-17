@@ -53,6 +53,7 @@ export type ComposeReplyRequest = {
   previousNode: DecisionNode;
   userMessage: string;
   plan: PersistedPlan;
+  extraction: ExtractionResult;
   missingFields: string[];
   searchReady: boolean;
   providerResults: ProviderSummary[];

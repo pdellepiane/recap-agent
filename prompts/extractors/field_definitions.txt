@@ -126,7 +126,9 @@ Definiciones de campos:
 
 - providerExplanationRequest:
   - objeto cuando el usuario pide comparar o justificar proveedores.
-  - debe incluir primaryProvider, comparedProviders, category y question.
+  - scope debe ser single_need para una necesidad o proveedor puntual, y all_needs cuando pida justificar todas las opciones del plan, todos los frentes o todo lo recomendado.
+  - debe incluir primaryProvider, comparedProviders, category, categories y question.
+  - para scope=all_needs, usa providerReference vacío estructurado para primaryProvider cuando no haya proveedor principal: providerId=null, providerTitle=null, category=null, hint=null. categories debe listar las categorías mencionadas explícitamente; si pide todos los frentes, puede ser [].
 
 - providerDetailRequest:
   - objeto cuando el usuario pide más detalle de un proveedor.

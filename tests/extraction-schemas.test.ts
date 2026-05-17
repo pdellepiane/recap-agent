@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   extractionSchema,
+  providerExplanationRequestSchema,
   providerPlanOperationSchema,
   providerQueryIntentSchema,
 } from '../src/runtime/extraction-schemas';
@@ -78,5 +79,24 @@ describe('structured extraction schemas', () => {
     expect(parsed.providerPlanOperations).toEqual([]);
     expect(parsed.providerExplanationRequest).toBeNull();
     expect(parsed.providerDetailRequest).toBeNull();
+  });
+
+  it('parses all-needs provider explanation requests', () => {
+    const parsed = providerExplanationRequestSchema.parse({
+      scope: 'all_needs',
+      primaryProvider: {
+        providerId: null,
+        providerTitle: null,
+        category: null,
+        hint: null,
+      },
+      comparedProviders: [],
+      category: null,
+      categories: [],
+      question: 'Justifica todas las recomendaciones del plan.',
+    });
+
+    expect(parsed.scope).toBe('all_needs');
+    expect(parsed.categories).toEqual([]);
   });
 });

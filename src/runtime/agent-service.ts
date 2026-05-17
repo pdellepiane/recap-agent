@@ -178,6 +178,7 @@ export class AgentService {
           previousNode: existingPlan.current_node,
           userMessage: inbound.text,
           plan: existingPlan,
+          extraction: finishedExtraction,
           missingFields: finishedSufficiency.missingFields,
           searchReady: finishedSufficiency.searchReady,
           providerResults: finishedProviders,
@@ -328,6 +329,7 @@ export class AgentService {
         previousNode,
         userMessage: inbound.text,
         plan: planToSave,
+        extraction,
         missingFields: sufficiency.missingFields,
         searchReady: sufficiency.searchReady,
         providerResults,
@@ -398,6 +400,7 @@ export class AgentService {
           previousNode,
           userMessage: inbound.text,
           plan: planToSave,
+          extraction,
           missingFields: sufficiency.missingFields,
           searchReady: sufficiency.searchReady,
           providerResults,
@@ -475,6 +478,7 @@ export class AgentService {
         previousNode,
         userMessage: inbound.text,
         plan: planToSave,
+        extraction,
         missingFields: sufficiency.missingFields,
         searchReady: sufficiency.searchReady,
         providerResults,
@@ -543,6 +547,7 @@ export class AgentService {
         previousNode,
         userMessage: inbound.text,
         plan: planToSave,
+        extraction,
         missingFields: sufficiency.missingFields,
         searchReady: sufficiency.searchReady,
         providerResults,
@@ -822,6 +827,7 @@ export class AgentService {
       previousNode,
       userMessage: inbound.text,
       plan: planAfterFlow,
+      extraction,
       missingFields: sufficiency.missingFields,
       searchReady: sufficiency.searchReady,
       providerResults,
@@ -1898,7 +1904,13 @@ export class AgentService {
       });
     }
 
-    return ranked.slice(0, MAX_DETAILED_ELICITATION_NEEDS);
+    return ranked.slice(0, MAX_DETAILED_ELICITATION_NEEDS).map((queryIntent) => ({
+      ...queryIntent,
+      retrievalReady: this.isStructuredQueryIntentRetrievalReady(
+        queryIntent,
+        extraction,
+      ),
+    }));
   }
 
   private hasDetailedElicitationConcept(extraction: ExtractionResult): boolean {
@@ -1914,7 +1926,7 @@ export class AgentService {
       ]).map((detail) => detail.trim().toLowerCase()).filter(Boolean),
     );
     const readyNeedCount = (extraction.providerQueryIntents ?? []).filter(
-      (queryIntent) => queryIntent.retrievalReady,
+      (queryIntent) => this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction),
     ).length;
     const queryIntentCount = (extraction.providerQueryIntents ?? []).length;
 
@@ -1928,6 +1940,27 @@ export class AgentService {
         queryIntentDetails.size >= 3
       )
     );
+  }
+
+  private isStructuredQueryIntentRetrievalReady(
+    queryIntent: ProviderQueryIntent,
+    extraction: ExtractionResult,
+  ): boolean {
+    if (queryIntent.retrievalReady) {
+      return true;
+    }
+
+    const hasQuery = queryIntent.queryStrings.some(
+      (query) => query.trim().length > 0,
+    );
+    const hasEventScale =
+      extraction.location !== null &&
+      (
+        extraction.budgetSignal !== null ||
+        (extraction.guestRange !== null && extraction.guestRange !== 'unknown')
+      );
+
+    return hasQuery && hasEventScale;
   }
 
   private shouldRouteProviderSearchToElicitation(

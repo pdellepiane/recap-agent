@@ -41,7 +41,8 @@ Reglas de normalización:
   - si el usuario pide agregar, modificar, quitar, pausar, reactivar, seleccionar, deseleccionar o reemplazar necesidades/proveedores, usa intent=modificar_plan_proveedores y llena providerPlanOperations.
   - no dependas de palabras clave sueltas: la operación debe estar estructurada y referirse a category/proveedor.
 - explicación y detalle:
-  - si pregunta "por qué este", "por qué mejor que", "qué diferencia hay", usa intent=explicar_recomendacion y providerExplanationRequest.
+  - si pregunta "por qué este", "por qué mejor que", "qué diferencia hay", usa intent=explicar_recomendacion y providerExplanationRequest con scope=single_need.
+  - si pregunta "por qué elegiste estos", "justifica todo", "por qué estas opciones para todos los frentes" o equivalente, usa intent=explicar_recomendacion y providerExplanationRequest con scope=all_needs.
   - si pide "dame todo", "más detalles", "qué incluye", usa intent=detallar_proveedor y providerDetailRequest.
  - cierre:
    - si el usuario pide contactar al proveedor, enviar la solicitud, mandar cotización o cerrar para avanzar con los elegidos, usa intent=cerrar;

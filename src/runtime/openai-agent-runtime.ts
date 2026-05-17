@@ -45,6 +45,7 @@ import {
   closeResultMessageSchema,
   contactRequestMessageSchema,
   genericMessageSchema,
+  multiNeedRecommendationMessageSchema,
   recommendationMessageSchema,
   welcomeMessageSchema,
 } from './structured-message';
@@ -552,11 +553,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ? request.toolUsage.considered.join(', ')
         : 'ninguna';
     const stripProviders = request.currentNode === 'consultar_faq';
+    const includeAllGroupedProviders =
+      request.currentNode === 'elicitacion_necesidades' &&
+      this.hasShortlistedProviderNeeds(request.plan);
     const providerResults = stripProviders
       ? []
       : request.providerResults.slice(
           0,
-          this.options.replyProviderLimit,
+          includeAllGroupedProviders
+            ? request.providerResults.length
+            : this.options.replyProviderLimit,
         );
     const activeNeed = getActiveNeed(request.plan);
 
@@ -564,6 +570,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Nodo previo: ${request.previousNode}`,
       `Nodo actual: ${request.currentNode}`,
       `Mensaje del usuario: ${request.userMessage}`,
+      `Extracción estructurada del turno: ${JSON.stringify(this.buildReplyExtractionSnapshot(request.extraction), null, 2)}`,
       `Plan resumido: ${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       `Necesidad activa: ${activeNeed?.category ?? 'ninguna todavía'}`,
@@ -582,6 +589,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     if (!stripProviders) {
       parts.push(`Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`);
+      if (includeAllGroupedProviders) {
+        parts.push(`Resultados agrupados por necesidad:\n${this.summarizeGroupedProviderResults(request.plan)}`);
+      }
       parts.push(`Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`);
     }
 
@@ -632,10 +642,34 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     ].join('\n');
   }
 
+  private buildReplyExtractionSnapshot(extraction: ComposeReplyRequest['extraction']): Record<string, unknown> {
+    return {
+      intent: extraction.intent,
+      provider_explanation_request: extraction.providerExplanationRequest ?? null,
+      provider_detail_request: extraction.providerDetailRequest ?? null,
+      provider_plan_operations: extraction.providerPlanOperations ?? [],
+      provider_query_intents: (extraction.providerQueryIntents ?? []).map((queryIntent) => ({
+        category: queryIntent.category,
+        label: queryIntent.label,
+        priority: queryIntent.priority,
+        retrieval_ready: queryIntent.retrievalReady,
+      })),
+    };
+  }
+
   private resolveOutputSchema(request: ComposeReplyRequest) {
     const node = request.currentNode;
     if (node === 'contacto_inicial') {
       return welcomeMessageSchema;
+    }
+    if (node === 'entrevista' && !this.hasPlanningContext(request.plan)) {
+      return welcomeMessageSchema;
+    }
+    if (
+      node === 'elicitacion_necesidades' &&
+      this.hasShortlistedProviderNeeds(request.plan)
+    ) {
+      return multiNeedRecommendationMessageSchema;
     }
     if (node === 'recomendar') {
       return recommendationMessageSchema;
@@ -654,6 +688,47 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return closeConfirmationMessageSchema;
     }
     return genericMessageSchema;
+  }
+
+  private hasShortlistedProviderNeeds(plan: PersistedPlan): boolean {
+    return plan.provider_needs.some(
+      (need) => need.recommended_providers.length > 0,
+    );
+  }
+
+  private hasPlanningContext(plan: PersistedPlan): boolean {
+    return Boolean(
+      plan.event_type ??
+      plan.active_need_category ??
+      plan.vendor_category ??
+      plan.location ??
+      plan.budget_signal ??
+      plan.guest_range ??
+      (plan.provider_needs.length > 0 ? true : null),
+    );
+  }
+
+  private summarizeGroupedProviderResults(plan: PersistedPlan): string {
+    const sections = plan.provider_needs
+      .filter((need) => need.recommended_providers.length > 0)
+      .map((need) => {
+        const providers = need.recommended_providers
+          .map((provider, index) => {
+            const parts = [
+              `${index + 1}. id=${provider.id}`,
+              `title=${provider.title}`,
+              provider.location ? `location=${provider.location}` : null,
+              provider.priceLevel ? `price=${provider.priceLevel}` : null,
+              provider.reason ? `reason=${provider.reason}` : null,
+              provider.promoBadge ? `promo=${provider.promoBadge}` : null,
+            ].filter(Boolean);
+            return parts.join(' | ');
+          })
+          .join('\n');
+        return `${need.category}\n${providers}`;
+      });
+
+    return sections.length > 0 ? sections.join('\n\n') : 'ninguno';
   }
 
   private buildReplyModelSettings(

@@ -58,9 +58,11 @@ export const planOperationSchema = z.object({
 export type PlanOperation = z.infer<typeof planOperationSchema>;
 
 export const providerExplanationRequestSchema = z.object({
+  scope: z.enum(['single_need', 'all_needs']),
   primaryProvider: providerReferenceSchema,
   comparedProviders: z.array(providerReferenceSchema),
   category: providerCategorySchema.nullable(),
+  categories: z.array(providerCategorySchema),
   question: z.string().min(1),
 });
 

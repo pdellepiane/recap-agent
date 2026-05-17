@@ -1788,6 +1788,41 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Add structured multi-need recommendation rendering
+
+- Added a `multi_need_recommendation` structured message type with grouped needs, provider references, and next-step guidance.
+- Refactored message rendering through a shared base renderer so provider-card formatting is reusable while WhatsApp and WebChat keep channel-specific presentation.
+- Updated elicitation reply schema selection so `elicitacion_necesidades` returns grouped structured results whenever the plan has stored provider shortlists.
+- Added grouped provider context to reply prompts so the model emits provider IDs and rationale while renderers own names, locations, prices, promos, and ficha links.
+- Added assistant identity guidance and tightened prompt style away from weak diagnostic openings such as "veo" and "detecté".
+- Extended provider explanation extraction with `scope=all_needs` so users can ask for justification across all stored needs without triggering search.
+
+Reason:
+- Multi-need elicitation was searching correctly but summarizing provider choices in prose, which made the UX inconsistent and hard to tune per channel.
+
+Decision:
+- Make multi-need provider presentation a structured output and renderer concern, with clean schema changes instead of prose compatibility behavior.
+
+Files changed:
+- `src/runtime/structured-message.ts`
+- `src/runtime/message-renderer.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/extraction-schemas.ts`
+- `prompts/shared/base_system.txt`
+- `prompts/shared/output_style.txt`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/extractors/normalization_rules.txt`
+- `prompts/nodes/elicitacion_necesidades/response_contract.txt`
+- `prompts/nodes/entrevista/response_contract.txt`
+- `prompts/nodes/seguir_refinando_guardar_plan/response_contract.txt`
+- `tests/message-renderer.test.ts`
+- `tests/extraction-schemas.test.ts`
+- `tests/agent-service.test.ts`
+- `tests/openai-agent-runtime-token-usage.test.ts`
+- `docs/implementation-log.md`
+
 ### Distinguish no event from event type otro
 
 - Clarified extractor prompt semantics: `eventType=null` means no event was described, while `eventType=otro` means a real event exists but does not fit the known taxonomy.

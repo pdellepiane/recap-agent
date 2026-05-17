@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
-import type { StructuredMessage } from '../src/runtime/structured-message';
+import { WebChatMessageRenderer, WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
+import {
+  multiNeedRecommendationMessageSchema,
+  type StructuredMessage,
+} from '../src/runtime/structured-message';
 import type { ProviderSummary } from '../src/core/provider';
 
 const renderer = new WhatsAppMessageRenderer();
@@ -30,6 +33,65 @@ function createProvider(overrides: Partial<ProviderSummary> = {}): ProviderSumma
 }
 
 describe('WhatsAppMessageRenderer', () => {
+  describe('structured schemas', () => {
+    it('accepts valid multi-need recommendation payloads', () => {
+      const parsed = multiNeedRecommendationMessageSchema.parse({
+        type: 'multi_need_recommendation',
+        intro_es: 'Encontré opciones para comparar.',
+        needs: [
+          {
+            category: 'Catering',
+            summary_es: 'Para catering.',
+            providers: [
+              {
+                provider_id: 1,
+                rationale_es: 'Encaja por estilo.',
+                caveat_es: null,
+              },
+            ],
+          },
+        ],
+        next_step_es: 'Podemos revisar frente por frente.',
+      });
+
+      expect(parsed.needs).toHaveLength(1);
+    });
+
+    it('rejects empty multi-need recommendation needs', () => {
+      expect(() =>
+        multiNeedRecommendationMessageSchema.parse({
+          type: 'multi_need_recommendation',
+          intro_es: 'Encontré opciones para comparar.',
+          needs: [],
+          next_step_es: 'Podemos revisar frente por frente.',
+        }),
+      ).toThrow();
+    });
+
+    it('rejects malformed grouped provider references', () => {
+      expect(() =>
+        multiNeedRecommendationMessageSchema.parse({
+          type: 'multi_need_recommendation',
+          intro_es: 'Encontré opciones para comparar.',
+          needs: [
+            {
+              category: 'Catering',
+              summary_es: 'Para catering.',
+              providers: [
+                {
+                  provider_id: '1',
+                  rationale_es: 'Encaja por estilo.',
+                  caveat_es: null,
+                },
+              ],
+            },
+          ],
+          next_step_es: 'Podemos revisar frente por frente.',
+        }),
+      ).toThrow();
+    });
+  });
+
   describe('welcome messages', () => {
     it('renders greeting, ask, and bulleted fields with capitals and periods', () => {
       const message: StructuredMessage = {
@@ -163,6 +225,114 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [provider] });
 
       expect(result).toContain('Ubicación: Ubicación no especificada.');
+    });
+  });
+
+  describe('multi_need_recommendation messages', () => {
+    it('renders grouped needs and provider cards deterministically', () => {
+      const providers = [
+        createProvider({ id: 1, title: 'La Botanería', category: 'Catering' }),
+        createProvider({
+          id: 2,
+          title: 'Foto Clara',
+          category: 'Fotografía y video',
+          detailUrl: 'https://sinenvolturas.com/proveedores/foto-clara',
+        }),
+      ];
+      const message: StructuredMessage = {
+        type: 'multi_need_recommendation',
+        intro_es: 'Busqué proveedores que encajan con tu plan.',
+        needs: [
+          {
+            category: 'Catering',
+            summary_es: 'Opciones para comida.',
+            providers: [
+              {
+                provider_id: 1,
+                rationale_es: 'Encaja por propuesta gastronómica.',
+                caveat_es: null,
+              },
+            ],
+          },
+          {
+            category: 'Fotografía y video',
+            summary_es: 'Opciones para foto.',
+            providers: [
+              {
+                provider_id: 2,
+                rationale_es: 'Encaja por estilo natural.',
+                caveat_es: 'Confirmar cobertura de fiesta',
+              },
+            ],
+          },
+        ],
+        next_step_es: 'Podemos revisar frente por frente.',
+      };
+
+      const result = renderer.render({ message, providerResults: providers });
+
+      expect(result).toContain('Busqué proveedores que encajan con tu plan.');
+      expect(result).toContain('Catering\nOpciones para comida.\n1. La Botanería');
+      expect(result).toContain('Fotografía y video\nOpciones para foto.\n1. Foto Clara');
+      expect(result).toContain('Nota: Confirmar cobertura de fiesta.');
+      expect(result).toContain('Podemos revisar frente por frente.');
+    });
+
+    it('uses WebChat channel formatting without WhatsApp ficha labels', () => {
+      const webRenderer = new WebChatMessageRenderer();
+      const message: StructuredMessage = {
+        type: 'multi_need_recommendation',
+        intro_es: 'Encontré opciones para comparar.',
+        needs: [
+          {
+            category: 'Catering',
+            summary_es: 'Para catering.',
+            providers: [
+              {
+                provider_id: 1,
+                rationale_es: 'Tiene una propuesta alineada.',
+                caveat_es: null,
+              },
+            ],
+          },
+        ],
+        next_step_es: 'Revisemos el primer frente.',
+      };
+
+      const result = webRenderer.render({
+        message,
+        providerResults: [createProvider()],
+      });
+
+      expect(result).toContain('Ubicación: Lima, Perú');
+      expect(result).not.toContain('Ubicación: Lima, Perú.');
+      expect(result).toContain('https://sinenvolturas.com/proveedores/la-botaneria');
+      expect(result).not.toContain('Ficha:');
+    });
+
+    it('skips missing provider IDs inside grouped needs', () => {
+      const message: StructuredMessage = {
+        type: 'multi_need_recommendation',
+        intro_es: 'Encontré opciones para comparar.',
+        needs: [
+          {
+            category: 'Catering',
+            summary_es: 'Para catering.',
+            providers: [
+              {
+                provider_id: 999,
+                rationale_es: 'No debe renderizarse.',
+                caveat_es: null,
+              },
+            ],
+          },
+        ],
+        next_step_es: 'Revisemos el primer frente.',
+      };
+
+      const result = renderer.render({ message, providerResults: [] });
+
+      expect(result).toBe('Encontré opciones para comparar.\n\nRevisemos el primer frente.');
     });
   });
 
