@@ -38,6 +38,7 @@ import type {
 } from './contracts';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
+import type { ProviderSummary } from '../core/provider';
 import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
 import {
@@ -558,12 +559,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       this.hasShortlistedProviderNeeds(request.plan);
     const providerResults = stripProviders
       ? []
-      : request.providerResults.slice(
-          0,
-          includeAllGroupedProviders
-            ? request.providerResults.length
-            : this.options.replyProviderLimit,
-        );
+      : includeAllGroupedProviders
+        ? this.collectTopProviderPerNeed(request.plan)
+        : request.providerResults.slice(0, this.options.replyProviderLimit);
     const activeNeed = getActiveNeed(request.plan);
 
     const parts: Array<string | null> = [
@@ -713,6 +711,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       .filter((need) => need.recommended_providers.length > 0)
       .map((need) => {
         const providers = need.recommended_providers
+          .slice(0, 1)
           .map((provider, index) => {
             const parts = [
               `${index + 1}. id=${provider.id}`,
@@ -729,6 +728,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       });
 
     return sections.length > 0 ? sections.join('\n\n') : 'ninguno';
+  }
+
+  private collectTopProviderPerNeed(plan: PersistedPlan): ProviderSummary[] {
+    const seen = new Set<number>();
+    const providers: ProviderSummary[] = [];
+    for (const need of plan.provider_needs) {
+      const provider = need.recommended_providers[0] ?? null;
+      if (!provider || seen.has(provider.id)) {
+        continue;
+      }
+      seen.add(provider.id);
+      providers.push(provider);
+    }
+    return providers;
   }
 
   private buildReplyModelSettings(

@@ -90,6 +90,26 @@ describe('WhatsAppMessageRenderer', () => {
         }),
       ).toThrow();
     });
+
+    it('rejects more than one provider per need in kickstart messages', () => {
+      expect(() =>
+        multiNeedRecommendationMessageSchema.parse({
+          type: 'multi_need_recommendation',
+          intro_es: 'Encontré opciones para comparar.',
+          needs: [
+            {
+              category: 'Catering',
+              summary_es: 'Para catering.',
+              providers: [
+                { provider_id: 1, rationale_es: 'Primera.', caveat_es: null },
+                { provider_id: 2, rationale_es: 'Segunda.', caveat_es: null },
+              ],
+            },
+          ],
+          next_step_es: 'Podemos revisar frente por frente.',
+        }),
+      ).toThrow();
+    });
   });
 
   describe('welcome messages', () => {
@@ -272,10 +292,16 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: providers });
 
       expect(result).toContain('Busqué proveedores que encajan con tu plan.');
-      expect(result).toContain('Catering\nOpciones para comida.\n1. La Botanería');
-      expect(result).toContain('Fotografía y video\nOpciones para foto.\n1. Foto Clara');
-      expect(result).toContain('Nota: Confirmar cobertura de fiesta.');
+      expect(result).toContain(
+        'Catering\nOpciones para comida.\n1. La Botanería (Lima, Perú · $$)',
+      );
+      expect(result).toContain(
+        'Fotografía y video\nOpciones para foto.\n1. Foto Clara (Lima, Perú · $$)',
+      );
+      expect(result).toContain('Limitación: Confirmar cobertura de fiesta.');
       expect(result).toContain('Podemos revisar frente por frente.');
+      expect(result).not.toContain('Ubicación:');
+      expect(result).not.toContain('Precio:');
     });
 
     it('uses WebChat channel formatting without WhatsApp ficha labels', () => {
@@ -304,8 +330,7 @@ describe('WhatsAppMessageRenderer', () => {
         providerResults: [createProvider()],
       });
 
-      expect(result).toContain('Ubicación: Lima, Perú');
-      expect(result).not.toContain('Ubicación: Lima, Perú.');
+      expect(result).toContain('1. La Botanería (Lima, Perú · $$)');
       expect(result).toContain('https://sinenvolturas.com/proveedores/la-botaneria');
       expect(result).not.toContain('Ficha:');
     });

@@ -121,7 +121,7 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     providerMap: Map<number, ProviderSummary>,
   ): string | null {
     const cards = need.providers
-      .map((rec, index) => this.renderProviderCard(rec, providerMap, index))
+      .map((rec, index) => this.renderCompactProviderRow(rec, providerMap, index))
       .filter((card): card is string => card !== null);
 
     if (cards.length === 0) {
@@ -131,8 +131,53 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     return [
       need.category,
       need.summary_es,
-      cards.join('\n\n'),
+      cards.join('\n'),
     ].filter(Boolean).join('\n');
+  }
+
+  private renderCompactProviderRow(
+    rec: ProviderRecommendation,
+    providerMap: Map<number, ProviderSummary>,
+    index: number,
+  ): string | null {
+    const provider = providerMap.get(rec.provider_id);
+    if (!provider) {
+      return null;
+    }
+
+    const details: string[] = [];
+    if (provider.location) {
+      details.push(provider.location);
+    }
+    const priceLevel = provider.priceLevel ?? null;
+    if (priceLevel) {
+      const formattedPrice = formatPriceLevel(priceLevel);
+      if (formattedPrice) {
+        details.push(formattedPrice);
+      }
+    }
+    if (provider.promoBadge || provider.promoSummary) {
+      details.push(`promo: ${provider.promoBadge ?? provider.promoSummary}`);
+    }
+
+    const lines = [
+      `${index + 1}. ${provider.title}${details.length > 0 ? ` (${details.join(' · ')})` : ''}`,
+      `   ${rec.rationale_es}`,
+    ];
+
+    if (rec.caveat_es) {
+      lines.push(`   ${this.formatLine('Limitación', rec.caveat_es)}`);
+    }
+
+    if (provider.detailUrl) {
+      lines.push(
+        this.style.detailLabel
+          ? `   Ficha: ${provider.detailUrl}`
+          : `   ${provider.detailUrl}`,
+      );
+    }
+
+    return lines.join('\n');
   }
 
   private renderProviderCard(

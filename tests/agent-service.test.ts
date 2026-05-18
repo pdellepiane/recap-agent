@@ -3334,8 +3334,9 @@ describe('AgentService', () => {
 
     expect(response.plan.current_node).toBe('elicitacion_necesidades');
     expect(response.outbound.text).toContain('Busqué proveedores de Sin Envolturas');
-    expect(response.outbound.text).toContain('Catering\nOpciones para Catering.\n1. Sushi Mesa');
-    expect(response.outbound.text).toContain('Música\nOpciones para Música.\n1. Banda Clara');
+    expect(response.outbound.text).toContain('Catering\nOpciones para Catering.\n1. Sushi Mesa (Lima · $$)');
+    expect(response.outbound.text).toContain('Música\nOpciones para Música.\n1. Banda Clara (Lima · $$)');
+    expect(response.outbound.text).not.toContain('Ubicación:');
     expect(response.outbound.text).toContain('Podemos revisar frente por frente');
   });
 

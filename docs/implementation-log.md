@@ -1788,6 +1788,31 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Compact multi-need kickstart recommendations
+
+- Limited `multi_need_recommendation` to one provider per need so the first plan kickstart stays scannable.
+- Changed the multi-need renderer to use compact provider rows instead of full repeated provider cards.
+- Kept limitations visible through `caveat_es`, rendered as `Limitación`, while avoiding repeated location/price/promo labels.
+- Reduced reply-model provider context for multi-need elicitation to the top provider per need.
+- Tightened prompt language so internal concepts such as "activo" or "frente activo" are not surfaced to users.
+- Tightened the multi-need intro guidance so the copy says first selection/top recommendation per need instead of implying multiple options are shown per front.
+
+Reason:
+- The multi-need kickstart reply became too long and repetitive when it listed every shortlisted provider for every need.
+
+Decision:
+- Store full shortlists in the plan, but present only the top choice per need in the initial multi-need summary. Deeper comparison remains available when the user asks to review a specific front.
+
+Files changed:
+- `src/runtime/structured-message.ts`
+- `src/runtime/message-renderer.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `prompts/nodes/elicitacion_necesidades/response_contract.txt`
+- `prompts/shared/output_style.txt`
+- `tests/message-renderer.test.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
 ### Add structured multi-need recommendation rendering
 
 - Added a `multi_need_recommendation` structured message type with grouped needs, provider references, and next-step guidance.

@@ -13,7 +13,7 @@ export type ProviderRecommendation = z.infer<typeof providerRecommendationSchema
 export const providerNeedRecommendationSchema = z.object({
   category: providerCategorySchema,
   summary_es: z.string(),
-  providers: z.array(providerRecommendationSchema).min(1),
+  providers: z.array(providerRecommendationSchema).min(1).max(1),
 });
 
 export type ProviderNeedRecommendation = z.infer<typeof providerNeedRecommendationSchema>;
