@@ -472,6 +472,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         missing_fields: need.missing_fields,
         selected_provider_ids: need.selected_provider_ids,
         selected_provider_hints: need.selected_provider_hints,
+        sub_query_results: (need.sub_query_results ?? []).map((result) => ({
+          label: result.subQuery.label,
+          selected_provider_ids: result.selected_provider_ids,
+          no_match_reason: result.no_match_reason,
+        })),
         recommended_providers: need.recommended_providers.slice(0, 4).map((provider, index) => ({
           rank: index + 1,
           id: provider.id,
@@ -560,7 +565,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const providerResults = stripProviders
       ? []
       : includeAllGroupedProviders
-        ? this.collectTopProviderPerNeed(request.plan)
+        ? this.collectRecommendedProvidersForMultiNeed(request.plan)
         : request.providerResults.slice(0, this.options.replyProviderLimit);
     const activeNeed = getActiveNeed(request.plan);
 
@@ -651,6 +656,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         label: queryIntent.label,
         priority: queryIntent.priority,
         retrieval_ready: queryIntent.retrievalReady,
+        sub_queries: (queryIntent.subQueries ?? []).map((subQuery) => ({
+          id: subQuery.id,
+          label: subQuery.label,
+          query_strings: subQuery.queryStrings,
+          must_have: subQuery.mustHave,
+        })),
       })),
     };
   }
@@ -710,12 +721,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const sections = plan.provider_needs
       .filter((need) => need.recommended_providers.length > 0)
       .map((need) => {
-        const providers = need.recommended_providers
-          .slice(0, 1)
-          .map((provider, index) => {
+        const subQueryProviders = (need.sub_query_results ?? []).flatMap((result) =>
+          result.selected_provider_ids.flatMap((providerId) => {
+            const provider = need.recommended_providers.find((item) => item.id === providerId);
+            return provider ? [{ provider, label: result.subQuery.label }] : [];
+          }),
+        );
+        const providers = (subQueryProviders.length > 0
+          ? subQueryProviders
+          : need.recommended_providers.map((provider) => ({ provider, label: null }))
+        )
+          .map(({ provider, label }, index) => {
             const parts = [
               `${index + 1}. id=${provider.id}`,
               `title=${provider.title}`,
+              label ? `match_label=${label}` : null,
               provider.location ? `location=${provider.location}` : null,
               provider.priceLevel ? `price=${provider.priceLevel}` : null,
               provider.reason ? `reason=${provider.reason}` : null,
@@ -730,16 +750,27 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return sections.length > 0 ? sections.join('\n\n') : 'ninguno';
   }
 
-  private collectTopProviderPerNeed(plan: PersistedPlan): ProviderSummary[] {
+  private collectRecommendedProvidersForMultiNeed(plan: PersistedPlan): ProviderSummary[] {
     const seen = new Set<number>();
     const providers: ProviderSummary[] = [];
     for (const need of plan.provider_needs) {
-      const provider = need.recommended_providers[0] ?? null;
-      if (!provider || seen.has(provider.id)) {
-        continue;
+      const subQueryProviderIds = (need.sub_query_results ?? []).flatMap(
+        (result) => result.selected_provider_ids,
+      );
+      const providerIds = subQueryProviderIds.length > 0
+        ? subQueryProviderIds
+        : need.recommended_provider_ids;
+      for (const providerId of providerIds) {
+        if (seen.has(providerId)) {
+          continue;
+        }
+        const provider = need.recommended_providers.find((item) => item.id === providerId);
+        if (!provider) {
+          continue;
+        }
+        seen.add(provider.id);
+        providers.push(provider);
       }
-      seen.add(provider.id);
-      providers.push(provider);
     }
     return providers;
   }

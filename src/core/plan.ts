@@ -9,6 +9,7 @@ import {
   providerCategorySchema,
   type ProviderCategory,
 } from './provider-category';
+import { providerSubQueryResultSchema } from './provider-sub-query';
 
 export const planIntentValues = [
   'elicitar_necesidades',
@@ -61,6 +62,7 @@ export const providerNeedSchema = z.object({
   missing_fields: z.array(z.string()),
   recommended_provider_ids: z.array(z.number()),
   recommended_providers: z.array(providerSummarySchema),
+  sub_query_results: z.array(providerSubQueryResultSchema).optional(),
   selected_provider_ids: z.array(z.number()),
   selected_provider_hints: z.array(z.string()),
 });
@@ -153,6 +155,9 @@ export function normalizeRawPlan(raw: unknown): unknown {
       if (typeof needObj.selected_provider_hint === 'string' && !Array.isArray(needObj.selected_provider_hints)) {
         needObj.selected_provider_hints = [needObj.selected_provider_hint];
       }
+      if (!Array.isArray(needObj.sub_query_results)) {
+        needObj.sub_query_results = [];
+      }
       delete needObj.selected_provider_id;
       delete needObj.selected_provider_hint;
       return needObj;
@@ -244,6 +249,8 @@ function mergeProviderNeed(
       ]);
   const recommendedProviders =
     update.recommended_providers ?? current?.recommended_providers ?? [];
+  const subQueryResults =
+    update.sub_query_results ?? current?.sub_query_results ?? [];
 
   let status = update.status ?? current?.status ?? 'identified';
 
@@ -278,6 +285,7 @@ function mergeProviderNeed(
     missing_fields: update.missing_fields ?? current?.missing_fields ?? [],
     recommended_provider_ids: recommendedProviderIds,
     recommended_providers: recommendedProviders,
+    sub_query_results: subQueryResults,
     selected_provider_ids: selectedProviderIds,
     selected_provider_hints: selectedProviderHints,
   });
@@ -453,6 +461,9 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
             missing_fields: update.missing_fields ?? [],
             recommended_provider_ids: update.recommended_provider_ids ?? [],
             recommended_providers: update.recommended_providers ?? [],
+            sub_query_results: update.provider_needs?.find(
+              (need) => normalizeCategory(need.category) === normalizeCategory(update.vendor_category),
+            )?.sub_query_results ?? [],
             selected_provider_ids: update.selected_provider_ids ?? [],
             selected_provider_hints: update.selected_provider_hints ?? [],
           }),
@@ -468,6 +479,9 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
                   update.recommended_provider_ids ?? need.recommended_provider_ids,
                 recommended_providers:
                   update.recommended_providers ?? need.recommended_providers,
+                sub_query_results: update.provider_needs?.find(
+                  (updatedNeed) => normalizeCategory(updatedNeed.category) === normalizeCategory(need.category),
+                )?.sub_query_results ?? need.sub_query_results,
                 selected_provider_ids:
                   update.selected_provider_ids ?? need.selected_provider_ids,
                 selected_provider_hints:

@@ -160,8 +160,10 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
       details.push(`promo: ${provider.promoBadge ?? provider.promoSummary}`);
     }
 
+    const matchLabel = rec.match_label_es?.trim();
+    const title = matchLabel ? `${provider.title} - ${matchLabel}` : provider.title;
     const lines = [
-      `${index + 1}. ${provider.title}${details.length > 0 ? ` (${details.join(' · ')})` : ''}`,
+      `${index + 1}. ${title}${details.length > 0 ? ` (${details.join(' · ')})` : ''}`,
       `   ${rec.rationale_es}`,
     ];
 

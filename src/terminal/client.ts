@@ -858,8 +858,19 @@ function formatProviderNeedDebug(
     selectedTitles.length > 0
       ? ` | selected=${selectedTitles.join(', ')}`
       : '';
+  const queryText = (need.sub_query_results ?? [])
+    .map((result) => {
+      const candidateIds = result.candidate_provider_ids.slice(0, 5).join(',');
+      const selectedIds = result.selected_provider_ids.join(',') || 'none';
+      const noMatch = result.no_match_reason ? ` no_match=${result.no_match_reason}` : '';
+      return `  - ${result.subQuery.label}: selected=${selectedIds} candidates=${candidateIds || 'none'}${noMatch}`;
+    })
+    .join('\n');
 
-  return `${index + 1}. ${need.category} [${need.status}]${selectedText}`;
+  return [
+    `${index + 1}. ${need.category} [${need.status}]${selectedText}`,
+    queryText,
+  ].filter(Boolean).join('\n');
 }
 
 function formatProviderDebug(

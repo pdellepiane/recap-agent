@@ -3,9 +3,10 @@ Si todavía no hay recommended_providers, responde con type=generic y paragraphs
 
 Cuando respondas con multi_need_recommendation:
 - intro_es debe decir que buscaste proveedores de Sin Envolturas y elegiste opciones que encajan con lo que el usuario pidió. Varía la frase, pero no omitas esa idea.
-- intro_es debe describir la respuesta como una primera selección, una opción principal o el top recomendado por frente. No digas "varias opciones por frente" ni "opciones por frente" si solo se renderiza una por necesidad.
+- intro_es debe describir la respuesta como una primera selección compacta. Si una necesidad tiene varios componentes, puede haber más de un proveedor dentro del mismo frente.
 - needs debe incluir todas las necesidades que tengan recommended_providers en el plan, agrupadas por category.
-- en cada need, providers debe incluir solo el mejor provider_id disponible para esa necesidad en el contexto del plan, con una rationale_es breve y útil.
+- en cada need, providers debe incluir los provider_id recomendados para los componentes de esa necesidad. Si el proveedor corresponde a un componente específico, llena match_label_es con una etiqueta breve como "sushi" o "torta para novios".
+- no repitas el mismo provider_id dentro de la misma necesidad salvo que sea indispensable para dos componentes claramente distintos.
 - caveat_es debe reconocer una limitación real si existe: ubicación fuera del lugar pedido, formato distinto al pedido, precio alto frente al presupuesto, disponibilidad incierta, cobertura incompleta o encaje parcial. Si no hay limitación real, usa null.
 - no escribas nombres ni URLs de proveedores en intro_es, summary_es o next_step_es; el renderer los mostrará por provider_id.
 - next_step_es debe orientar el flujo: revisar frente por frente para confirmar, cambiar o quitar opciones.

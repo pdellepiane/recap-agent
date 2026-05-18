@@ -4,6 +4,7 @@ import { providerCategorySchema } from '../core/provider-category';
 
 export const providerRecommendationSchema = z.object({
   provider_id: z.number(),
+  match_label_es: z.string().min(1).nullable().optional(),
   rationale_es: z.string(),
   caveat_es: z.string().nullable(),
 });
@@ -13,7 +14,7 @@ export type ProviderRecommendation = z.infer<typeof providerRecommendationSchema
 export const providerNeedRecommendationSchema = z.object({
   category: providerCategorySchema,
   summary_es: z.string(),
-  providers: z.array(providerRecommendationSchema).min(1).max(1),
+  providers: z.array(providerRecommendationSchema).min(1),
 });
 
 export type ProviderNeedRecommendation = z.infer<typeof providerNeedRecommendationSchema>;

@@ -22,6 +22,10 @@ import {
   type ProviderNeed,
 } from '../core/plan';
 import { normalizeProviderSummary, type ProviderSummary } from '../core/provider';
+import type {
+  ProviderNeedSubQuery,
+  ProviderSubQueryResult,
+} from '../core/provider-sub-query';
 import {
   normalizeToProviderCategory,
   resolveSearchCategories,
@@ -39,6 +43,7 @@ import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
 import type { MessageRenderer } from './message-renderer';
 import { rankProvidersForCriteria } from './provider-fit';
+import { createSubQueryFitCriteria, selectProvidersForSubQuery } from './provider-sub-query-selection';
 import type {
   ProviderPlanOperation,
   ProviderQueryIntent,
@@ -1284,6 +1289,7 @@ export class AgentService {
           missing_fields: queryIntent?.missingFields ?? existing?.missing_fields ?? [],
           recommended_provider_ids: existing?.recommended_provider_ids ?? [],
           recommended_providers: existing?.recommended_providers ?? [],
+          sub_query_results: existing?.sub_query_results ?? [],
           selected_provider_ids: existing?.selected_provider_ids ?? [],
           selected_provider_hints: existing?.selected_provider_hints ?? [],
         };
@@ -1769,42 +1775,67 @@ export class AgentService {
             missing_fields: queryIntent.missingFields,
             recommended_provider_ids: carryExistingNeed?.recommended_provider_ids ?? [],
             recommended_providers: carryExistingNeed?.recommended_providers ?? [],
+            sub_query_results: carryExistingNeed?.sub_query_results ?? [],
             selected_provider_ids: carryExistingNeed?.selected_provider_ids ?? [],
             selected_provider_hints: carryExistingNeed?.selected_provider_hints ?? [],
           } satisfies ProviderNeed;
         }
 
-        args.toolUsage.considered.push('search_providers_by_query_intent');
-        args.toolUsage.inputs.push({
-          tool: 'search_providers_by_query_intent',
-          input: JSON.stringify(
-            {
-              category: queryIntent.category,
-              queryStrings: queryIntent.queryStrings,
+        const subQueries = this.resolveProviderSubQueries(queryIntent);
+        const subQueryResults = await Promise.all(
+          subQueries.map(async (subQuery) => {
+            args.toolUsage.considered.push('search_providers_by_query_intent');
+            args.toolUsage.inputs.push({
+              tool: 'search_providers_by_query_intent',
+              input: JSON.stringify(
+                {
+                  category: subQuery.category,
+                  label: subQuery.label,
+                  queryStrings: subQuery.queryStrings,
+                  location: args.plan.location,
+                },
+                null,
+                2,
+              ),
+            });
+            const providerSearchStartedAt = Date.now();
+            const fitCriteria = createSubQueryFitCriteria({
+              baseCriteria: queryIntent.fitCriteria,
+              subQuery,
+            });
+            const searchResult = await this.dependencies.providerGateway.searchProvidersByQueryIntent({
+              category: subQuery.category,
+              queryStrings: subQuery.queryStrings,
               location: args.plan.location,
-            },
-            null,
-            2,
-          ),
-        });
-        const providerSearchStartedAt = Date.now();
-        const searchResult = await this.dependencies.providerGateway.searchProvidersByQueryIntent({
-          category: queryIntent.category,
-          queryStrings: queryIntent.queryStrings,
-          location: args.plan.location,
-          fitCriteria: queryIntent.fitCriteria,
-        });
-        args.timingMs.provider_search += Date.now() - providerSearchStartedAt;
-        args.toolUsage.called.push('search_providers_by_query_intent');
-        args.toolUsage.outputs.push({
-          tool: 'search_providers_by_query_intent',
-          output: JSON.stringify(searchResult, null, 2),
-        });
+              fitCriteria,
+            });
+            args.timingMs.provider_search += Date.now() - providerSearchStartedAt;
+            args.toolUsage.called.push('search_providers_by_query_intent');
+            args.toolUsage.outputs.push({
+              tool: 'search_providers_by_query_intent',
+              output: JSON.stringify({
+                label: subQuery.label,
+                providers: searchResult.providers.map((provider) => ({
+                  id: provider.id,
+                  title: provider.title,
+                  category: provider.category,
+                  retrievalScore: provider.retrievalScore ?? null,
+                })),
+              }, null, 2),
+            });
 
-        const providerEnrichmentStartedAt = Date.now();
-        const enriched = await this.enrichProviders(searchResult.providers);
-        const ranked = rankProvidersForCriteria(enriched, queryIntent.fitCriteria);
-        args.timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
+            const providerEnrichmentStartedAt = Date.now();
+            const enriched = await this.enrichProviders(searchResult.providers);
+            const result = selectProvidersForSubQuery({
+              subQuery,
+              providers: enriched,
+              baseCriteria: queryIntent.fitCriteria,
+            });
+            args.timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
+            return result;
+          }),
+        );
+        const ranked = this.collectSelectedProvidersFromSubQueries(subQueryResults);
 
         return {
           category: queryIntent.category,
@@ -1814,6 +1845,7 @@ export class AgentService {
           missing_fields: [],
           recommended_provider_ids: ranked.map((provider) => provider.id),
           recommended_providers: ranked,
+          sub_query_results: subQueryResults,
           selected_provider_ids: [],
           selected_provider_hints: [],
         } satisfies ProviderNeed;
@@ -1839,6 +1871,78 @@ export class AgentService {
         ? 'multi_need_query_intents'
         : 'none',
     };
+  }
+
+  private resolveProviderSubQueries(
+    queryIntent: ProviderQueryIntent,
+  ): ProviderNeedSubQuery[] {
+    const subQueries = queryIntent.subQueries ?? [];
+    if (subQueries.length > 0) {
+      return subQueries;
+    }
+
+    if (queryIntent.queryStrings.length > 1) {
+      return queryIntent.queryStrings.map((queryString, index) => ({
+        id: this.slugifySubQueryId(`${queryIntent.label}-${index + 1}`),
+        label: this.labelFromQueryString(queryIntent.category, queryString),
+        category: queryIntent.category,
+        queryStrings: [queryString],
+        mustHave: [queryString],
+        shouldAvoid: queryIntent.hardConstraints,
+        maxSelections: 1,
+        allowCrossCategory: false,
+      }));
+    }
+
+    return [{
+      id: this.slugifySubQueryId(queryIntent.label),
+      label: queryIntent.label,
+      category: queryIntent.category,
+      queryStrings: queryIntent.queryStrings,
+      mustHave: queryIntent.preferences.length > 0
+        ? queryIntent.preferences
+        : queryIntent.queryStrings,
+      shouldAvoid: queryIntent.hardConstraints,
+      maxSelections: 1,
+      allowCrossCategory: false,
+    }];
+  }
+
+  private collectSelectedProvidersFromSubQueries(
+    subQueryResults: ProviderSubQueryResult[],
+  ): ProviderSummary[] {
+    const selectedById = new Map<number, ProviderSummary>();
+    for (const result of subQueryResults) {
+      for (const selectedId of result.selected_provider_ids) {
+        if (selectedById.has(selectedId)) {
+          continue;
+        }
+        const provider = result.candidates.find((candidate) => candidate.id === selectedId);
+        if (provider) {
+          selectedById.set(selectedId, provider);
+        }
+      }
+    }
+    return Array.from(selectedById.values());
+  }
+
+  private slugifySubQueryId(label: string): string {
+    const normalized = label
+      .normalize('NFD')
+      .replace(/\p{Diacritic}/gu, '')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+    return normalized || 'consulta';
+  }
+
+  private labelFromQueryString(category: ProviderCategory, queryString: string): string {
+    const normalized = queryString
+      .replace(new RegExp(category, 'gi'), '')
+      .replace(/\b(en|para|con|de|la|el|los|las|un|una|boda|lima|personas|proveedor(?:es)?)\b/gi, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+    return normalized.length >= 3 ? normalized : queryString;
   }
 
   private resolveElicitationQueryIntents(
@@ -1929,10 +2033,15 @@ export class AgentService {
       (queryIntent) => this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction),
     ).length;
     const queryIntentCount = (extraction.providerQueryIntents ?? []).length;
+    const subQueryCount = (extraction.providerQueryIntents ?? []).reduce(
+      (count, queryIntent) => count + (queryIntent.subQueries ?? []).length,
+      0,
+    );
 
     return (
       (extraction.hardConstraints?.length ?? 0) > 0 ||
       (extraction.preferences?.length ?? 0) >= 3 ||
+      subQueryCount >= 2 ||
       (
         queryIntentCount > 0 &&
         queryIntentCount <= MAX_DETAILED_ELICITATION_NEEDS &&
@@ -2360,6 +2469,7 @@ export class AgentService {
         missing_fields: [],
         recommended_provider_ids: currentNeed?.recommended_provider_ids ?? [],
         recommended_providers: currentNeed?.recommended_providers ?? [],
+        sub_query_results: currentNeed?.sub_query_results ?? [],
         selected_provider_ids: currentNeed?.selected_provider_ids ?? [],
         selected_provider_hints: currentNeed?.selected_provider_hints ?? [],
       };

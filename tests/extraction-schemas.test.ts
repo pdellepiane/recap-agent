@@ -36,6 +36,47 @@ describe('structured extraction schemas', () => {
     expect(parsed.retrievalReady).toBe(true);
   });
 
+  it('parses provider query intents with sub-query slots', () => {
+    const parsed = providerQueryIntentSchema.parse({
+      category: 'Catering',
+      label: 'Catering para boda',
+      priority: 1,
+      queryStrings: ['catering para boda en Lima'],
+      subQueries: [
+        {
+          id: 'sushi',
+          label: 'sushi',
+          category: 'Catering',
+          queryStrings: ['catering con sushi en Lima'],
+          mustHave: ['sushi'],
+          shouldAvoid: [],
+          maxSelections: 1,
+          allowCrossCategory: false,
+        },
+        {
+          id: 'torta',
+          label: 'torta para novios',
+          category: 'Catering',
+          queryStrings: ['torta para novios en Lima'],
+          mustHave: ['torta para novios'],
+          shouldAvoid: [],
+          maxSelections: 1,
+          allowCrossCategory: false,
+        },
+      ],
+      preferences: ['sushi', 'torta para novios'],
+      hardConstraints: [],
+      missingFields: [],
+      retrievalReady: true,
+      fitCriteria,
+    });
+
+    expect(parsed.subQueries?.map((subQuery) => subQuery.label)).toEqual([
+      'sushi',
+      'torta para novios',
+    ]);
+  });
+
   it('rejects malformed provider operations', () => {
     expect(() =>
       providerPlanOperationSchema.parse({

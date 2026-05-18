@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { eventTypeSchema } from '../core/event-type';
 import { planIntentValues } from '../core/plan';
 import { providerCategorySchema } from '../core/provider-category';
+import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
 import { providerFitCriteriaSchema } from './provider-fit';
 
 export const providerReferenceSchema = z.object({
@@ -19,6 +20,7 @@ export const providerQueryIntentSchema = z.object({
   label: z.string().min(1),
   priority: z.number().int().min(1),
   queryStrings: z.array(z.string().min(2)).min(1),
+  subQueries: z.array(providerNeedSubQuerySchema).optional(),
   preferences: z.array(z.string()),
   hardConstraints: z.array(z.string()),
   missingFields: z.array(z.string()),

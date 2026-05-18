@@ -3062,6 +3062,166 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.find((need) => need.category === 'Música')?.recommended_provider_ids).toEqual([401]);
   });
 
+  it('stores per-sub-query provenance and selected providers for complex needs', async () => {
+    class ComplexCateringRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: ['Catering'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: 'medio-alto',
+          guestRange: '101-200',
+          preferences: ['sushi', 'torta para novios'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda en Lima con catering de sushi y torta.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
+          providerQueryIntents: [
+            {
+              category: 'Catering',
+              label: 'Catering para boda',
+              priority: 1,
+              queryStrings: ['catering para boda en Lima'],
+              subQueries: [
+                {
+                  id: 'sushi',
+                  label: 'sushi',
+                  category: 'Catering',
+                  queryStrings: ['catering con sushi en Lima'],
+                  mustHave: ['sushi'],
+                  shouldAvoid: [],
+                  maxSelections: 1,
+                  allowCrossCategory: false,
+                },
+                {
+                  id: 'torta',
+                  label: 'torta para novios',
+                  category: 'Catering',
+                  queryStrings: ['torta para novios en Lima'],
+                  mustHave: ['torta'],
+                  shouldAvoid: [],
+                  maxSelections: 1,
+                  allowCrossCategory: false,
+                },
+              ],
+              preferences: ['sushi', 'torta para novios'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class ComplexCateringGateway extends FakeGateway {
+      private readonly providers = new Map<number, ProviderSummary>();
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        const isSushi = input.queryStrings.join(' ').includes('sushi');
+        const providers: ProviderSummary[] = isSushi
+            ? [
+                {
+                  id: 109,
+                  title: 'Edo Sushi Bar',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  reason: null,
+                  descriptionSnippet: 'Catering de sushi para eventos.',
+                  serviceHighlights: ['Catering de sushi para eventos'],
+                  termsHighlights: [],
+                  retrievalScore: 0.9,
+                },
+                {
+                  id: 135,
+                  title: 'Paola Puerta Catering',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'very_high',
+                  reason: null,
+                  descriptionSnippet: 'Catering para matrimonios.',
+                  serviceHighlights: ['Catering para matrimonios'],
+                  termsHighlights: [],
+                  retrievalScore: 0.7,
+                },
+              ]
+            : [
+                {
+                  id: 220,
+                  title: 'Dulce Boda',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: null,
+                  descriptionSnippet: 'Torta para novios y mesa dulce.',
+                  serviceHighlights: ['Torta para novios'],
+                  termsHighlights: [],
+                  retrievalScore: 0.86,
+                },
+              ];
+        for (const provider of providers) {
+          this.providers.set(provider.id, provider);
+        }
+        return { providers };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const provider = this.providers.get(providerId);
+        if (!provider) {
+          return null;
+        }
+        return {
+          ...provider,
+          eventTypes: ['boda'],
+          raw: {},
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new ComplexCateringRuntime(),
+      providerGateway: new ComplexCateringGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-complex-catering',
+      text: 'quiero catering con sushi y torta para novios',
+      messageId: 'msg-complex-catering',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find((need) => need.category === 'Catering');
+    expect(cateringNeed?.recommended_provider_ids).toEqual([109, 220]);
+    expect(cateringNeed?.sub_query_results?.map((result) => result.subQuery.label)).toEqual([
+      'sushi',
+      'torta para novios',
+    ]);
+    expect(cateringNeed?.sub_query_results?.map((result) => result.selected_provider_ids)).toEqual([
+      [109],
+      [220],
+    ]);
+  });
+
   it('searches detailed elicitation when details live inside query intents', async () => {
     class DetailedQueryIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
@@ -3140,25 +3300,29 @@ describe('AgentService', () => {
 
     class QueryIntentGateway extends FakeGateway {
       public readonly categories: string[] = [];
+      private readonly providers = new Map<number, ProviderSummary>();
 
       override async searchProvidersByQueryIntent(
         input: QueryIntentProviderSearchInput,
       ): Promise<ProviderGatewaySearchResult> {
         this.categories.push(input.category);
-        return {
-          providers: [
-            {
-              id: this.categories.length + 500,
-              title: `${input.category} Uno`,
-              category: input.category,
-              location: 'Lima',
-              priceLevel: 'mid',
-              reason: 'coincide con la necesidad',
-              serviceHighlights: [],
-              termsHighlights: [],
-            },
-          ],
+        const provider: ProviderSummary = {
+          id: this.categories.length + 500,
+          title: `${input.category} Uno`,
+          category: input.category,
+          location: 'Lima',
+          priceLevel: 'mid',
+          reason: 'coincide con la necesidad',
+          serviceHighlights: [],
+          termsHighlights: [],
         };
+        this.providers.set(provider.id, provider);
+        return { providers: [provider] };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        const provider = this.providers.get(providerId);
+        return provider ? { ...provider, eventTypes: ['boda'], raw: {} } : null;
       }
     }
 

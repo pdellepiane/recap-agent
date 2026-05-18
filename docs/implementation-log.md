@@ -1788,6 +1788,40 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Add per-sub-query provider retrieval and provenance
+
+- Added Zod-backed provider sub-query, sub-query candidate, and sub-query result models.
+- Extended provider needs with optional `sub_query_results` so plans can retain which query found each selected provider.
+- Updated multi-need retrieval to search each sub-query independently, rerank per component, and store selected providers per sub-query instead of merging every need into one broad shortlist.
+- Added reusable selection helpers for sub-query fit criteria, category filtering, must-have evidence boosting, and no-match reporting.
+- Updated multi-need structured messages and renderers to allow multiple providers per need with `match_label_es`.
+- Updated extractor and elicitation prompt contracts to ask for sub-queries on complex needs such as sushi plus wedding cake.
+- Compact terminal plan output now includes sub-query selected IDs and candidate IDs for debugging.
+
+Reason:
+- Provider vector search was working, but complex needs were collapsed into one shortlist. Exact matches like Edo Sushi Bar for sushi could lose to generic wedding caterers because the ranking and presentation operated at the broad need level.
+
+Decision:
+- Treat each service component inside a provider need as its own retrieval and ranking unit, while preserving the provider need as the user-facing grouping.
+
+Files changed:
+- `src/core/provider-sub-query.ts`
+- `src/core/plan.ts`
+- `src/runtime/extraction-schemas.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/provider-sub-query-selection.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/structured-message.ts`
+- `src/runtime/message-renderer.ts`
+- `src/terminal/client.ts`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/nodes/elicitacion_necesidades/response_contract.txt`
+- `tests/extraction-schemas.test.ts`
+- `tests/provider-sub-query-selection.test.ts`
+- `tests/message-renderer.test.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
 ### Compact multi-need kickstart recommendations
 
 - Limited `multi_need_recommendation` to one provider per need so the first plan kickstart stays scannable.

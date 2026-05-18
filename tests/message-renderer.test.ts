@@ -91,24 +91,24 @@ describe('WhatsAppMessageRenderer', () => {
       ).toThrow();
     });
 
-    it('rejects more than one provider per need in kickstart messages', () => {
-      expect(() =>
-        multiNeedRecommendationMessageSchema.parse({
-          type: 'multi_need_recommendation',
-          intro_es: 'Encontré opciones para comparar.',
-          needs: [
-            {
-              category: 'Catering',
-              summary_es: 'Para catering.',
-              providers: [
-                { provider_id: 1, rationale_es: 'Primera.', caveat_es: null },
-                { provider_id: 2, rationale_es: 'Segunda.', caveat_es: null },
-              ],
-            },
-          ],
-          next_step_es: 'Podemos revisar frente por frente.',
-        }),
-      ).toThrow();
+    it('allows multiple providers per need for separate match components', () => {
+      const parsed = multiNeedRecommendationMessageSchema.parse({
+        type: 'multi_need_recommendation',
+        intro_es: 'Encontré opciones para comparar.',
+        needs: [
+          {
+            category: 'Catering',
+            summary_es: 'Para catering.',
+            providers: [
+              { provider_id: 1, match_label_es: 'sushi', rationale_es: 'Primera.', caveat_es: null },
+              { provider_id: 2, match_label_es: 'torta', rationale_es: 'Segunda.', caveat_es: null },
+            ],
+          },
+        ],
+        next_step_es: 'Podemos revisar frente por frente.',
+      });
+
+      expect(parsed.needs[0]?.providers).toHaveLength(2);
     });
   });
 
@@ -269,6 +269,7 @@ describe('WhatsAppMessageRenderer', () => {
             providers: [
               {
                 provider_id: 1,
+                match_label_es: 'sushi',
                 rationale_es: 'Encaja por propuesta gastronómica.',
                 caveat_es: null,
               },
@@ -293,7 +294,7 @@ describe('WhatsAppMessageRenderer', () => {
 
       expect(result).toContain('Busqué proveedores que encajan con tu plan.');
       expect(result).toContain(
-        'Catering\nOpciones para comida.\n1. La Botanería (Lima, Perú · $$)',
+        'Catering\nOpciones para comida.\n1. La Botanería - sushi (Lima, Perú · $$)',
       );
       expect(result).toContain(
         'Fotografía y video\nOpciones para foto.\n1. Foto Clara (Lima, Perú · $$)',

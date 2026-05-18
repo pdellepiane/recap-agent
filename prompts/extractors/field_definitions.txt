@@ -107,8 +107,13 @@ Definiciones de campos:
 
 - providerQueryIntents:
   - lista estructurada de necesidades de proveedores que deben consultarse en paralelo cuando el usuario describe un evento completo.
-  - cada elemento debe incluir category canónica, label, priority, queryStrings, preferences, hardConstraints, missingFields, retrievalReady y fitCriteria.
+  - cada elemento debe incluir category canónica, label, priority, queryStrings, subQueries, preferences, hardConstraints, missingFields, retrievalReady y fitCriteria.
   - queryStrings debe contener consultas naturales en español para la base de proveedores, no instrucciones internas.
+  - subQueries divide una necesidad compleja en componentes buscables de forma independiente. Cada elemento debe incluir id, label, category, queryStrings, mustHave, shouldAvoid, maxSelections y allowCrossCategory.
+  - Usa subQueries cuando una necesidad contenga varios entregables que podrían requerir proveedores distintos. Ejemplo: Catering con sushi, estaciones y torta para novios debe producir subQueries separadas para "sushi", "estaciones de comida" y "torta para novios".
+  - Para necesidades simples, subQueries debe tener un solo elemento equivalente al label principal de la necesidad.
+  - maxSelections normalmente debe ser 1; súbelo solo si el usuario pide explícitamente varias opciones para el mismo componente.
+  - allowCrossCategory debe ser false salvo que el usuario permita o pida resolver ese componente con otra categoría.
   - La entrada incluye categorías sugeridas y prioridad completa dinámicas para el eventType normalizado. Para necesidades sugeridas o inferidas, sigue esa lista por tipo de evento.
   - Las categorías fuera de las sugerencias del eventType siguen siendo válidas solo si el usuario las pide explícitamente; no las agregues como necesidades inferidas por defecto.
   - retrievalReady es true solo si hay suficiente contexto útil para buscar esa necesidad sin ruido excesivo.
