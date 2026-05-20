@@ -2439,7 +2439,7 @@ describe('AgentService', () => {
     expect(response.trace.operational_note).toContain('correo');
   });
 
-  it('accepts a standalone phone correction via regex fallback', async () => {
+  it('rejects a local phone correction without country code', async () => {
     class StandalonePhoneRuntime extends FakeRuntime {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
         if (request.userMessage.includes('954779071')) {
@@ -2528,15 +2528,109 @@ describe('AgentService', () => {
     const response = await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'user-standalone-phone',
-      text: '954779071',
+      text: 'mi telefono es 954779071',
       messageId: 'msg-standalone-phone',
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.contact_phone).toBe('954779071');
+    expect(response.plan.contact_phone).toBeNull();
     expect(response.plan.contact_name).toBe('Carolina');
     expect(response.plan.contact_email).toBe('carolina@example.com');
-    expect(response.trace.operational_note).toBeNull();
+    expect(response.trace.operational_note).toContain('código de país');
+  });
+
+  it('rejects the incomplete Peru phone from the close-flow logs', async () => {
+    class IncompleteInternationalPhoneRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'cerrar',
+          intentConfidence: 0.95,
+          eventType: 'boda',
+          vendorCategory: 'Fotografía y video',
+          vendorCategories: ['Fotografía y video'],
+          activeNeedCategory: 'Fotografía y video',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere cerrar y dio un teléfono incompleto.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: 'Gabriela',
+          contactEmail: 'gabriela@example.com',
+          contactPhone: '+51 95477906',
+          providerFitCriteria: testProviderFitCriteria,
+        };
+      }
+    }
+
+    const runtime = new IncompleteInternationalPhoneRuntime();
+    const planStore = new RecordingPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const seededPlan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-incomplete-pe-phone',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-incomplete-pe-phone',
+      }),
+      {
+        current_node: 'crear_lead_cerrar',
+        event_type: 'boda',
+        location: 'Lima',
+        guest_range: '51-100',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
+        contact_name: 'Gabriela',
+        contact_email: 'gabriela@example.com',
+        contact_phone: null,
+        provider_needs: [
+          {
+            category: 'Fotografía y video',
+            status: 'selected',
+            preferences: [],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [1],
+            recommended_providers: [
+              {
+                id: 1,
+                title: 'Foto Uno',
+                category: 'Fotografía y video',
+                location: 'Lima',
+                priceLevel: 'mid',
+                reason: 'coincide con el plan',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_ids: [1],
+            selected_provider_hints: [],
+          },
+        ],
+      },
+    );
+    await planStore.save({ plan: seededPlan, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-incomplete-pe-phone',
+      text: 'mi teelfono es entonces +51 95477906',
+      messageId: 'msg-incomplete-pe-phone',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.contact_phone).toBeNull();
+    expect(response.trace.operational_note).toContain('incompleto');
+    expect(response.trace.tools_called).not.toContain('finish_plan');
   });
 
   it('seeds contact phone from webhook payload and skips asking for it', async () => {
@@ -2634,7 +2728,7 @@ describe('AgentService', () => {
       {
         contact_name: 'Carlos',
         contact_email: 'carlos@example.com',
-        contact_phone: '5215512345678',
+        contact_phone: '525512345678',
         provider_needs: [
           {
             category: 'Fotografía y video',
@@ -2657,7 +2751,7 @@ describe('AgentService', () => {
     });
 
     expect(result.status).toBe('success');
-    expect(gateway.lastQuoteRequest?.phone).toBe('15512345678');
+    expect(gateway.lastQuoteRequest?.phone).toBe('5512345678');
     expect(gateway.lastQuoteRequest?.phoneExtension).toBe('+52');
   });
 
@@ -4250,6 +4344,557 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
     expect(deleted.plan.provider_needs.map((need) => need.category)).not.toContain('Música');
+  });
+
+  it('uses structured provider references to resolve close-time selections', async () => {
+    class StructuredCloseSelectionRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'cerrar',
+          intentConfidence: 0.97,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario elige Kisu y quiere cerrar.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [
+            {
+              providerId: 302,
+              providerTitle: null,
+              category: 'Catering',
+              hint: null,
+            },
+          ],
+          pauseRequested: false,
+          contactName: 'Carolina',
+          contactEmail: 'carolina@example.com',
+          contactPhone: '+51954779067',
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: { type: 'confirm_close' },
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-structured-close-selection',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-structured-close-selection',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Catering',
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: '+51954779067',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [168],
+              recommended_providers: [
+                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [168],
+              selected_provider_hints: ['Filomena'],
+            },
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [302],
+              recommended_providers: [
+                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new StructuredCloseSelectionRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-structured-close-selection',
+      text: 'Kisu y cerrar',
+      messageId: 'msg-structured-close-selection',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'Catering',
+    );
+    expect(response.plan.current_node).toBe('crear_lead_cerrar');
+    expect(cateringNeed?.status).toBe('selected');
+    expect(cateringNeed?.selected_provider_ids).toEqual([302]);
+    expect(response.trace.operational_note).toBeNull();
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+  });
+
+  it('requires structured close actions before deferring an unresolved shortlist', async () => {
+    class UnstructuredDeclineRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'cerrar',
+          intentConfidence: 0.96,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario escribió una negativa, pero no hay acción estructurada.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: 'Carolina',
+          contactEmail: 'carolina@example.com',
+          contactPhone: '+51954779067',
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: null,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-unstructured-decline',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-unstructured-decline',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Catering',
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: '+51954779067',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [168],
+              recommended_providers: [
+                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [168],
+              selected_provider_hints: ['Filomena'],
+            },
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [302],
+              recommended_providers: [
+                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new UnstructuredDeclineRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-unstructured-decline',
+      text: 'ninguna, cerrar',
+      messageId: 'msg-unstructured-decline',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'Catering',
+    );
+    expect(cateringNeed?.status).toBe('shortlisted');
+    expect(cateringNeed?.selected_provider_ids).toEqual([]);
+    expect(response.trace.operational_note).toContain('Catering');
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+  });
+
+  it('uses structured defer close actions to close with a deferred need', async () => {
+    class StructuredDeferRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'cerrar',
+          intentConfidence: 0.97,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere cerrar dejando Catering sin proveedor.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: 'Carolina',
+          contactEmail: 'carolina@example.com',
+          contactPhone: '+51954779067',
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: { type: 'defer_need', category: 'Catering' },
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-structured-defer',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-structured-defer',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Catering',
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: '+51954779067',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [168],
+              recommended_providers: [
+                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [168],
+              selected_provider_hints: ['Filomena'],
+            },
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [302],
+              recommended_providers: [
+                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new StructuredDeferRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-structured-defer',
+      text: 'deja catering sin proveedor y cierra',
+      messageId: 'msg-structured-defer',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const cateringNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'Catering',
+    );
+    expect(response.plan.current_node).toBe('crear_lead_cerrar');
+    expect(cateringNeed?.status).toBe('deferred');
+    expect(response.trace.operational_note).toBeNull();
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+  });
+
+  it('keeps phone-extension clarification in close flow without provider search', async () => {
+    class ExtensionClarificationRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.81,
+          eventType: null,
+          vendorCategory: 'Catering',
+          vendorCategories: ['Catering'],
+          activeNeedCategory: 'Catering',
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario pregunta qué es el código de extensión telefónica.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: {
+            type: 'clarify',
+            reason: 'Aclara que el código de país es el prefijo del teléfono y pide solo el teléfono completo.',
+          },
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-extension-clarification',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-extension-clarification',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Catering',
+          contact_name: 'Gabriela',
+          contact_email: 'gabriela@example.com',
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [168],
+              recommended_providers: [
+                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [168],
+              selected_provider_hints: ['Filomena'],
+            },
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [302],
+              recommended_providers: [
+                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new ExtensionClarificationRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-extension-clarification',
+      text: 'que es un codigo de extension',
+      messageId: 'msg-extension-clarification',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('crear_lead_cerrar');
+    expect(response.trace.operational_note).toContain('código de país');
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+  });
+
+  it('preserves selected providers when the same external user resumes to contact them', async () => {
+    class ResumeCloseRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'cerrar',
+          intentConfidence: 0.96,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario quiere contactar a los proveedores seleccionados.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: { type: 'request_contact' },
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-selected-provider',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-same-user-selected-provider',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-same-number',
+        }),
+        {
+          current_node: 'seguir_refinando_guardar_plan',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [168],
+              recommended_providers: [
+                {
+                  id: 168,
+                  title: 'Filomena',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: 'mid',
+                  reason: null,
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [168],
+              selected_provider_hints: ['Filomena'],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new ResumeCloseRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-same-number',
+      text: 'me ayudas a contactar proveedores',
+      messageId: 'msg-same-number-contact',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const selectedNeed = response.plan.provider_needs.find(
+      (need) => need.category === 'Fotografía y video',
+    );
+    expect(response.plan.current_node).toBe('crear_lead_cerrar');
+    expect(selectedNeed?.selected_provider_ids).toEqual([168]);
+    expect(selectedNeed?.selected_provider_hints).toEqual(['Filomena']);
+    expect(response.trace.operational_note).toBeNull();
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
   });
 
   it('supports all-needs recommendation explanations without new search', async () => {

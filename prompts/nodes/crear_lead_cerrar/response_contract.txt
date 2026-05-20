@@ -2,6 +2,8 @@ La respuesta debe adaptarse a la fase actual del cierre:
 
 1. Si faltan datos de contacto (contact_name, contact_email o contact_phone son nulos):
    - Usa intro_es y requested_fields_es para pedir solo los campos que faltan de forma clara y amable.
+   - Explica brevemente que esos datos se necesitan para enviar la solicitud a los proveedores seleccionados.
+   - Para teléfono, pide el número completo con código de país (ej: +51 954779067).
 
 2. Si ya hay contacto completo y el usuario está confirmando el cierre:
    - Usa summary_es para el resumen amable del cierre.
@@ -17,6 +19,12 @@ La respuesta debe adaptarse a la fase actual del cierre:
 
 5. Si Nota operativa indica que un teléfono o email es inválido:
    - Usa paragraphs_es para explicar el problema y pedir solo ese dato corregido. No vuelvas a pedir los datos que ya están presentes en el plan.
+   - Si el problema es teléfono, menciona explícitamente el código de país y no vuelvas a listar proveedores.
+
+6. Si Nota operativa indica una aclaración sobre código de país/extensión:
+   - Responde en una sola frase qué significa: es el prefijo internacional del teléfono, por ejemplo +51 para Perú.
+   - Luego pide solo el teléfono completo con código de país.
+   - No muestres recomendaciones, shortlists ni opciones de proveedores en esta respuesta.
 
 Reglas generales:
 - nunca cerrar el plan sin confirmación explícita del usuario;

@@ -46,5 +46,8 @@ Reglas de normalización:
   - si pide "dame todo", "más detalles", "qué incluye", usa intent=detallar_proveedor y providerDetailRequest.
  - cierre:
    - si el usuario pide contactar al proveedor, enviar la solicitud, mandar cotización o cerrar para avanzar con los elegidos, usa intent=cerrar;
+   - si en crear_lead_cerrar el usuario pregunta qué es "código de país", "código de extensión", "extensión" o "prefijo" del teléfono, conserva intent=cerrar y llena closeAction={type:"clarify", reason:"Aclara qué es el código de país y pide solo el teléfono completo."}; no abras búsqueda de proveedores.
+   - si el usuario deja una necesidad sin proveedor antes de cerrar, llena closeAction={type:"defer_need", category:<categoría canónica>} o providerPlanOperations con type=defer_need; no lo infieras por una palabra suelta sin categoría/contexto.
+   - para teléfonos, contactPhone solo debe contener números completos con código de país explícito (ej: +51 954779067). Si falta el código de país o el número está incompleto, conserva el texto en contactPhone para que la validación lo rechace; no lo normalices a un teléfono válido.
 - resumen:
   - incluye solo lo más relevante para continuar la conversación y el avance general del evento.

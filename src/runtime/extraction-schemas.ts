@@ -4,6 +4,7 @@ import { eventTypeSchema } from '../core/event-type';
 import { planIntentValues } from '../core/plan';
 import { providerCategorySchema } from '../core/provider-category';
 import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
+import { closeActionSchema } from './close-flow-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
 
 export const providerReferenceSchema = z.object({
@@ -95,6 +96,8 @@ export const extractionSchema = z.object({
   assumptions: z.array(z.string()),
   conversationSummary: z.string(),
   selectedProviderHints: z.array(z.string()).default([]),
+  selectedProviderReferences: z.array(providerReferenceSchema).default([]),
+  closeAction: closeActionSchema.nullable().default(null),
   pauseRequested: z.boolean(),
   contactName: z.string().nullable(),
   contactEmail: z.string().nullable(),

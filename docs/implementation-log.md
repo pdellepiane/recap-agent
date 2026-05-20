@@ -1788,6 +1788,78 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Stabilize close selections and contact validation
+
+- Resolved close-time provider selections from structured `selectedProviderReferences` before checking unresolved shortlists.
+- Removed raw `ninguna` text as a critical close mutation path; deferring a pending need now requires structured `closeAction: { type: "defer_need" }`.
+- Kept close/contact clarification turns in `crear_lead_cerrar` when extraction emits `closeAction: { type: "clarify" }`, preventing provider search from extension-code questions.
+- Reused the typed phone parser in contact normalization and `finish_plan`, requiring supported country codes and complete national numbers before persisting or sending quote requests.
+- Updated close-node and extractor prompts to request phone numbers with country code and to handle extension/country-code clarification without relisting providers.
+- Added regression coverage for structured close selections, structured defer actions, raw decline non-mutation, incomplete Peru phone rejection, local phone rejection, finish-plan phone splitting, and extension clarification.
+
+Reason:
+- Batch 2 perf logs showed selected providers being lost during close, raw decline text mutating unrelated needs, incomplete phones reaching `finish_plan`, and phone-extension questions triggering provider search.
+
+Decision:
+- Keep critical close and contact actions driven by Zod-validated structured extraction and service-owned validation, with exact text only allowed as non-critical extraction input.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `src/runtime/finish-plan-tool.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `prompts/extractors/normalization_rules.txt`
+- `prompts/nodes/crear_lead_cerrar/response_contract.txt`
+- `prompts/nodes/crear_lead_cerrar/transition_policy.txt`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
+### Apply locality ranking to hybrid provider search
+
+- Updated vector-only and hybrid provider search results to pass through the same category/location selector used by API search.
+- Changed hybrid search to merge API and vector candidates instead of returning vector candidates alone whenever vector hits exist.
+- Applied typed category/location selection to vector query-intent results as well.
+- Verified the Lurín trace candidates against the live provider API: ids `164` and `173` are Mexico, while ids `132`, `142`, `131`, `133`, and `95` are Peru.
+- Added regression coverage where high-scoring Mexico vector hits are omitted when Peru photography providers are available for a Lurín/Lima/Peru plan.
+- Added regression coverage that the same external user can resume with a previously selected provider and proceed to contact without a new provider search.
+
+Reason:
+- Batch 2 logs showed a Lurín, Peru photography search returning Mexico providers because hybrid search bypassed the location-aware selector.
+
+Decision:
+- Treat vector search as candidate retrieval only; final provider presentation must always pass through deterministic category/location selection.
+
+Files changed:
+- `src/runtime/sinenvolturas-gateway.ts`
+- `tests/sinenvolturas-gateway.test.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
+### Add structured close/contact schema foundations
+
+- Added Zod schemas for close actions and service-owned close flow results, including discriminated unions for close confirmation, need deferral, contact request, abandonment, clarification, and close outcomes.
+- Added structured selected provider references and close actions to the extraction schema so later close-flow changes can consume typed extraction instead of exact user-message matching.
+- Tightened contact request messages to canonical field IDs and added defensive renderer labels for legacy internal contact field names.
+- Added a typed international phone parser that rejects incomplete Peru numbers, requires country codes, and returns structured extension/national-number fields.
+- Added schema, renderer, and phone parser regression tests.
+
+Reason:
+- Batch 2 feedback exposed close and contact behavior that should be deterministic. Critical plan actions need structured extraction and Zod-validated service objects rather than substring matching.
+
+Decision:
+- Establish typed schema foundations first, then use them in the next milestone to refactor close-flow transitions and remove raw text-driven close mutations.
+
+Files changed:
+- `src/runtime/close-flow-schemas.ts`
+- `src/runtime/phone.ts`
+- `src/runtime/extraction-schemas.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/structured-message.ts`
+- `src/runtime/message-renderer.ts`
+- `tests/extraction-schemas.test.ts`
+- `tests/message-renderer.test.ts`
+- `tests/phone.test.ts`
+- `docs/implementation-log.md`
+
 ### Add per-sub-query provider retrieval and provenance
 
 - Added Zod-backed provider sub-query, sub-query candidate, and sub-query result models.

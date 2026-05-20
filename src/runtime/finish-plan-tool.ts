@@ -1,5 +1,6 @@
 import { mergePlan, type PersistedPlan, type PlanSnapshot } from '../core/plan';
 import type { ProviderGateway } from './provider-gateway';
+import { parseInternationalPhone } from './phone';
 
 export type FinishPlanToolResult = {
   status: 'success' | 'partial' | 'failed';
@@ -13,26 +14,21 @@ export type FinishPlanToolResult = {
 
 export type FinishPlanToolErrorResult = {
   status: 'failed';
-  error: 'missing_contact_info' | 'no_selected_providers';
+  error: 'missing_contact_info' | 'invalid_contact_info' | 'no_selected_providers';
   detail: string;
 };
 
 export type FinishPlanToolOutput = FinishPlanToolResult | FinishPlanToolErrorResult;
 
-/**
- * Split a digits-only international phone into { phone, phoneExtension }.
- * Known country codes are tried in longest-match order.
- * Falls back to empty extension if no known prefix matches.
- */
-function splitPhoneExtension(digits: string): { phone: string; phoneExtension: string } {
-  // Known country codes, longest first to avoid prefix ambiguity
-  const countryCodes = ['52', '51', '1'];
-  for (const code of countryCodes) {
-    if (digits.startsWith(code) && digits.length > code.length) {
-      return { phone: digits.slice(code.length), phoneExtension: `+${code}` };
-    }
+function splitPhoneExtension(digits: string): { phone: string; phoneExtension: string } | null {
+  const parsed = parseInternationalPhone(`+${digits.replace(/\D/g, '')}`);
+  if (parsed.status !== 'valid') {
+    return null;
   }
-  return { phone: digits, phoneExtension: '' };
+  return {
+    phone: parsed.nationalNumber,
+    phoneExtension: parsed.countryCode,
+  };
 }
 
 export async function executeFinishPlanTool(args: {
@@ -74,7 +70,16 @@ export async function executeFinishPlanTool(args: {
     : fallbackDescription;
 
   const contactedProviders: FinishPlanToolResult['contacted_providers'] = [];
-  const { phone, phoneExtension } = splitPhoneExtension(plan.contact_phone);
+  const phoneParts = splitPhoneExtension(plan.contact_phone);
+  if (!phoneParts) {
+    return {
+      status: 'failed',
+      error: 'invalid_contact_info',
+      detail:
+        'El teléfono debe incluir código de país compatible y número completo antes de llamar finish_plan.',
+    };
+  }
+  const { phone, phoneExtension } = phoneParts;
 
   for (const entry of selectedProviders) {
     try {

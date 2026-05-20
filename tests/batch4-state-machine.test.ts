@@ -459,7 +459,7 @@ describe('Batch 4 — State machine fixes', () => {
           pauseRequested: false,
           contactName: 'Carolina',
           contactEmail: 'carolina@example.com',
-          contactPhone: '51954779071',
+          contactPhone: '+51954779071',
           providerFitCriteria: testProviderFitCriteria,
         };
       }
@@ -577,8 +577,9 @@ describe('Batch 4 — State machine fixes', () => {
           pauseRequested: false,
           contactName: 'Carolina',
           contactEmail: 'carolina@example.com',
-          contactPhone: '51954779071',
+          contactPhone: '+51954779071',
           providerFitCriteria: testProviderFitCriteria,
+          closeAction: { type: 'defer_need', category: 'Música' },
         };
       }
     }
@@ -693,7 +694,7 @@ describe('Batch 4 — State machine fixes', () => {
           pauseRequested: false,
           contactName: 'Carolina',
           contactEmail: 'carolina@example.com',
-          contactPhone: '51954779071',
+          contactPhone: '+51954779071',
           providerFitCriteria: testProviderFitCriteria,
         };
       }

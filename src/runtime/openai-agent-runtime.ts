@@ -199,7 +199,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     request.plan.conversation_id = await session.getSessionId();
 
-    const parseSchema = this.resolveOutputSchema(request);
+    const parseSchema = outputSchema;
     const structured = parseSchema.parse(this.normalizeSupportEmails(finalOutput));
 
     return {

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { WebChatMessageRenderer, WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import {
+  contactRequestMessageSchema,
   multiNeedRecommendationMessageSchema,
   type StructuredMessage,
 } from '../src/runtime/structured-message';
@@ -109,6 +110,23 @@ describe('WhatsAppMessageRenderer', () => {
       });
 
       expect(parsed.needs[0]?.providers).toHaveLength(2);
+    });
+
+    it('accepts only canonical contact request fields', () => {
+      const parsed = contactRequestMessageSchema.parse({
+        type: 'contact_request',
+        intro_es: 'Necesito tus datos para enviar la solicitud.',
+        requested_fields_es: ['full_name', 'email', 'phone'],
+      });
+
+      expect(parsed.requested_fields_es).toEqual(['full_name', 'email', 'phone']);
+      expect(() =>
+        contactRequestMessageSchema.parse({
+          type: 'contact_request',
+          intro_es: 'Necesito tus datos para enviar la solicitud.',
+          requested_fields_es: ['contact_name'],
+        }),
+      ).toThrow();
     });
   });
 
@@ -248,6 +266,36 @@ describe('WhatsAppMessageRenderer', () => {
     });
   });
 
+  describe('contact request messages', () => {
+    it('renders canonical contact fields with country-code guidance', () => {
+      const message: StructuredMessage = {
+        type: 'contact_request',
+        intro_es: 'Necesito tus datos para enviar la solicitud.',
+        requested_fields_es: ['full_name', 'email', 'phone'],
+      };
+
+      const result = renderer.render({ message, providerResults: [] });
+
+      expect(result).toBe(
+        'Necesito tus datos para enviar la solicitud.\n\nEnvíame tu nombre completo, email, teléfono con código de país.',
+      );
+    });
+
+    it('renders legacy contact field names defensively', () => {
+      const message: StructuredMessage = {
+        type: 'contact_request',
+        intro_es: 'Necesito tus datos para enviar la solicitud.',
+        requested_fields_es: ['contact_name', 'contact_email', 'contact_phone'],
+      };
+
+      const result = renderer.render({ message, providerResults: [] });
+
+      expect(result).toContain('nombre completo, email, teléfono con código de país');
+      expect(result).not.toContain('contact_name');
+      expect(result).not.toContain('contact_phone');
+    });
+  });
+
   describe('multi_need_recommendation messages', () => {
     it('renders grouped needs and provider cards deterministically', () => {
       const providers = [
@@ -373,7 +421,7 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toContain('Para continuar, necesito tus datos.');
-      expect(result).toContain('Envíame tu nombre completo, email, teléfono.');
+      expect(result).toContain('Envíame tu nombre completo, email, teléfono con código de país.');
     });
   });
 

@@ -216,8 +216,19 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const providers = await this.enrichVectorResults(vectorResults);
     console.log('[search-funnel] enriched providers:', providers.length,
       providers.map((p) => `#${p.id}(${p.slug ?? '?'})`).join(', '));
+    const resolvedCategory = this.resolveActiveCategory(plan);
+    const selectedProviders = this.selectProvidersForPlan(
+      providers,
+      plan,
+      resolvedCategory,
+    );
     return {
-      providers: providers.slice(0, this.options.persistedSearchLimit),
+      providers: selectedProviders
+        .slice(0, this.options.persistedSearchLimit)
+        .map((provider) => ({
+          ...provider,
+          reason: provider.reason ?? this.reasonForProvider(provider, plan, resolvedCategory),
+        })),
     };
   }
 
@@ -230,9 +241,10 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const vectorProviders = await this.enrichVectorResults(vectorResults);
     console.log('[search-funnel] hybrid enriched providers:', vectorProviders.length);
 
+    const apiResult = await this.searchProvidersFromApi(plan);
+
     if (vectorProviders.length === 0) {
       console.log('[search-funnel] no vector results, falling back to API');
-      const apiResult = await this.searchProvidersFromApi(plan);
       console.log('[search-funnel] API results:', apiResult.providers.length,
         apiResult.providers.map((p) => `#${p.id}(${p.slug ?? '?'})`).join(', '));
       return {
@@ -240,8 +252,21 @@ export class SinEnvolturasGateway implements ProviderGateway {
       };
     }
 
+    const resolvedCategory = this.resolveActiveCategory(plan);
+    const mergedProviders = this.mergeProviderCandidates(apiResult.providers, vectorProviders);
+    const selectedProviders = this.selectProvidersForPlan(
+      mergedProviders,
+      plan,
+      resolvedCategory,
+    );
+
     return {
-      providers: vectorProviders.slice(0, this.options.persistedSearchLimit),
+      providers: selectedProviders
+        .slice(0, this.options.persistedSearchLimit)
+        .map((provider) => ({
+          ...provider,
+          reason: provider.reason ?? this.reasonForProvider(provider, plan, resolvedCategory),
+        })),
     };
   }
 
@@ -344,7 +369,11 @@ export class SinEnvolturasGateway implements ProviderGateway {
       const vectorResults = await this.options.vectorSearchGateway.searchQueryIntent(input);
       const providers = await this.enrichVectorResults(vectorResults);
       return {
-        providers: providers.slice(0, this.options.persistedSearchLimit),
+        providers: this.selectProvidersForCriteria(
+          providers,
+          input.location,
+          input.category,
+        ).slice(0, this.options.persistedSearchLimit),
       };
     }
 
@@ -512,7 +541,15 @@ export class SinEnvolturasGateway implements ProviderGateway {
     plan: PersistedPlan,
     activeCategory: string | null,
   ): ProviderSummary[] {
-    const locationCountry = locationCountryKey(plan.location);
+    return this.selectProvidersForCriteria(providers, plan.location, activeCategory);
+  }
+
+  private selectProvidersForCriteria(
+    providers: ProviderSummary[],
+    location: string | null,
+    activeCategory: string | null,
+  ): ProviderSummary[] {
+    const locationCountry = locationCountryKey(location);
     const evaluated = providers
       .map((provider) => {
         const categoryScore = this.categoryMatchScore(provider, activeCategory);

@@ -49,6 +49,7 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
+import { parseInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
@@ -383,15 +384,49 @@ export class AgentService {
       };
     }
 
-    if (extraction.intent === 'cerrar') {
-      const unselected = this.hasUnselectedShortlist(mergedPlan);
-      const userDeclinedShortlist = inbound.text.toLowerCase().includes('ninguna');
+    if (
+      extraction.intent === 'cerrar' ||
+      this.shouldHandleCloseContactClarification(previousNode, extraction)
+    ) {
+      const isCloseContactClarification = extraction.closeAction?.type === 'clarify';
+      const closeSelectionResolution = this.tryResolveSelection(
+        mergedPlan,
+        extraction.selectedProviderReferences ?? [],
+        this.resolveEffectiveSelectionHints(extraction),
+        extraction.intent,
+      );
+      let planToClose = mergedPlan;
+      if (closeSelectionResolution.resolved) {
+        planToClose = mergedPlan;
+      }
+      if (extraction.closeAction?.type === 'defer_need') {
+        const deferredCategory = extraction.closeAction.category;
+        const deferredNeed = planToClose.provider_needs.find(
+          (need) => need.category === deferredCategory,
+        );
+        if (deferredNeed) {
+          planToClose = mergePlan(planToClose, {
+            provider_needs: [
+              {
+                ...deferredNeed,
+                status: 'deferred',
+                selected_provider_ids: [],
+                selected_provider_hints: [],
+              },
+            ],
+          });
+        }
+      }
 
-      if (unselected && !userDeclinedShortlist) {
+      const unselected = isCloseContactClarification
+        ? null
+        : this.hasUnselectedShortlist(planToClose);
+
+      if (unselected) {
         currentNode = 'crear_lead_cerrar';
         nodePath.push(currentNode);
         errorMessage = `Antes de cerrar, necesito saber: ¿quieres elegir alguna opción de ${unselected.category} o prefieres dejarla sin proveedor? Responde "ninguna" si no quieres ninguna.`;
-        const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
+        const planToSave = mergePlan(planToClose, { current_node: currentNode });
         await persistPlan(planToSave, 'crear_lead_cerrar');
         planPersisted = true;
         planPersistReason = 'crear_lead_cerrar';
@@ -454,21 +489,11 @@ export class AgentService {
         };
       }
 
-      let planToClose = mergedPlan;
-      if (unselected && userDeclinedShortlist) {
-        const deferredNeed: ProviderNeed = {
-          ...unselected,
-          status: 'deferred',
-          selected_provider_ids: [],
-          selected_provider_hints: [],
-        };
-        planToClose = mergePlan(mergedPlan, {
-          provider_needs: [deferredNeed],
-        });
-      }
-
       currentNode = 'crear_lead_cerrar';
       nodePath.push(currentNode);
+      if (extraction.closeAction?.type === 'clarify') {
+        errorMessage = extraction.closeAction.reason;
+      }
       const planToSave = mergePlan(planToClose, { current_node: currentNode });
       await persistPlan(planToSave, 'crear_lead_cerrar');
       planPersisted = true;
@@ -705,14 +730,11 @@ export class AgentService {
           : [],
       });
     } else {
-        const effectiveSelectionHints = this.resolveEffectiveSelectionHints(
-          extraction,
-          inbound.text,
-          planAfterFlow,
-        );
+        const effectiveSelectionHints = this.resolveEffectiveSelectionHints(extraction);
 
         const selectionResolution = this.tryResolveSelection(
           planAfterFlow,
+          extraction.selectedProviderReferences ?? [],
           effectiveSelectionHints,
           extraction.intent,
         );
@@ -1100,7 +1122,11 @@ export class AgentService {
     // Normalize and resolve contact fields independently (partial updates allowed)
     const normalizedExtractorPhone = this.normalizePhone(guardedExtraction.contactPhone);
     const normalizedChannelPhone = this.normalizePhone(channelPhone);
-    const inferredPhone = this.inferContactPhoneFromMessage(userMessage);
+    const inferredPhoneCandidate = this.extractContactPhoneCandidate(userMessage);
+    const inferredPhone = this.normalizePhone(inferredPhoneCandidate);
+    const phoneValidationError =
+      this.describePhoneValidationError(guardedExtraction.contactPhone) ??
+      this.describePhoneValidationError(inferredPhoneCandidate);
 
     const nextPhone =
       normalizedExtractorPhone ??
@@ -1141,11 +1167,11 @@ export class AgentService {
       missing_fields: sufficiency.missingFields,
     });
 
-    const validationError = this.validateContactFields(merged, plan);
+    const validationError = phoneValidationError ?? this.validateContactFields(merged, plan);
     if (validationError) {
       // Revert invalid fields to previous plan values so we don't persist garbage
       const reverted = mergePlan(merged, {
-        contact_phone: normalizedExtractorPhone !== null && !this.isValidPhone(normalizedExtractorPhone)
+        contact_phone: phoneValidationError
           ? plan.contact_phone
           : merged.contact_phone,
         contact_email: guardedExtraction.contactEmail !== null && !this.isValidEmail(guardedExtraction.contactEmail)
@@ -1520,6 +1546,7 @@ export class AgentService {
 
   private tryResolveSelection(
     plan: PlanSnapshot,
+    selectedProviderReferences: ProviderReference[],
     selectedProviderHints: string[],
     intent: ExtractionResult['intent'],
   ): SelectionResolution {
@@ -1537,15 +1564,21 @@ export class AgentService {
       return { resolved: false };
     }
 
-    const selections = selectedProviderHints.length > 0
-      ? selectedProviderHints.flatMap((hint) =>
+    const referenceSelections = selectedProviderReferences.flatMap((reference) =>
+      this.resolveProviderReferenceSelection(plan, reference),
+    );
+
+    const selections = referenceSelections.length > 0
+      ? referenceSelections
+      : selectedProviderHints.length > 0
+        ? selectedProviderHints.flatMap((hint) =>
           this.resolveProviderSelections(
             needsWithProviders,
             activeNeed,
             hint,
           ),
         )
-      : this.resolveSingleProviderSelection(needsWithProviders, intent);
+        : this.resolveSingleProviderSelection(needsWithProviders, intent);
     const uniqueSelections = this.dedupeSelections(selections);
 
     if (uniqueSelections.length === 0) {
@@ -1629,6 +1662,27 @@ export class AgentService {
           }]
         : [];
     });
+  }
+
+  private resolveProviderReferenceSelection(
+    plan: PlanSnapshot,
+    reference: ProviderReference,
+  ): ProviderSelectionMatch[] {
+    const resolved = this.resolveProviderReference(
+      plan,
+      reference,
+      reference.category,
+    );
+    if (!resolved) {
+      return [];
+    }
+    return [
+      {
+        selectedNeed: resolved.need,
+        selectedProvider: resolved.provider,
+        hint: resolved.provider.title,
+      },
+    ];
   }
 
   private resolveSingleProviderSelection(
@@ -2584,11 +2638,19 @@ export class AgentService {
     );
   }
 
+  private shouldHandleCloseContactClarification(
+    previousNode: DecisionNode | null,
+    extraction: ExtractionResult,
+  ): boolean {
+    return (
+      previousNode === 'crear_lead_cerrar' &&
+      extraction.closeAction?.type === 'clarify'
+    );
+  }
+
   // --- Contact field validation & normalization ---
 
   private readonly SIMPLE_EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/i;
-  private readonly PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]+$/;
-
   /**
    * Normalize a phone number to digits-only international format (E.164 without +).
    * Convention: contact_phone always stores the full international number as digits
@@ -2596,14 +2658,14 @@ export class AgentService {
    * Country code splitting happens at the gateway boundary.
    */
   private normalizePhone(value: string | null | undefined): string | null {
-    if (!value) return null;
-    const digits = value.replace(/\D/g, '');
-    return digits.length > 0 ? digits : null;
+    const parsed = parseInternationalPhone(value);
+    return parsed.status === 'valid' ? parsed.digits : null;
   }
 
   private isValidPhone(digits: string | null): boolean {
     if (!digits) return false;
-    return digits.length >= 6 && digits.length <= 15;
+    const normalizedDigits = digits.replace(/\D/g, '');
+    return parseInternationalPhone(`+${normalizedDigits}`).status === 'valid';
   }
 
   private isValidEmail(value: string | null): boolean {
@@ -2612,20 +2674,53 @@ export class AgentService {
   }
 
   private inferContactPhoneFromMessage(text: string): string | null {
+    const candidate = this.extractContactPhoneCandidate(text);
+    return this.normalizePhone(candidate);
+  }
+
+  private extractContactPhoneCandidate(text: string): string | null {
+    const internationalMatch = text.match(/\+\d[\d\s().-]{5,16}\d/u);
+    if (internationalMatch) {
+      return internationalMatch[0];
+    }
+
+    if (!this.messageHasPhoneCue(text)) {
+      return null;
+    }
+
     const patterns = [
-      /\+?\d[\d\s().-]{5,14}\d/,
-      /\b\d{6,15}\b/,
+      /\b\d[\d\s().-]{5,14}\d\b/u,
+      /\b\d{6,15}\b/u,
     ];
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match) {
-        const candidate = this.normalizePhone(match[0]);
-        if (this.isValidPhone(candidate)) {
-          return candidate;
-        }
+        return match[0];
       }
     }
     return null;
+  }
+
+  private messageHasPhoneCue(text: string): boolean {
+    return /\b(?:tel[eé]fono|celular|whatsapp|contacto|fono)\b/iu.test(text);
+  }
+
+  private describePhoneValidationError(value: string | null | undefined): string | null {
+    if (!value) return null;
+    const parsed = parseInternationalPhone(value);
+    if (parsed.status === 'valid') {
+      return null;
+    }
+    if (parsed.reason === 'missing_country_code') {
+      return 'El teléfono debe incluir código de país, por ejemplo +51 954779067.';
+    }
+    if (parsed.reason === 'invalid_length') {
+      return 'El teléfono está incompleto o tiene demasiados dígitos; envíalo con código de país, por ejemplo +51 954779067.';
+    }
+    if (parsed.reason === 'unsupported_country_code') {
+      return 'El teléfono debe incluir un código de país compatible, por ejemplo +51, +52 o +1.';
+    }
+    return 'El teléfono no parece válido; envíalo con código de país, por ejemplo +51 954779067.';
   }
 
   private validateContactFields(plan: PlanSnapshot, previousPlan: PlanSnapshot): string | null {
@@ -2633,7 +2728,7 @@ export class AgentService {
     const emailChanged = plan.contact_email !== previousPlan.contact_email;
 
     if (phoneChanged && plan.contact_phone !== null && !this.isValidPhone(plan.contact_phone)) {
-      return 'El teléfono debe tener entre 6 y 15 dígitos.';
+      return 'El teléfono debe incluir código de país y número completo, por ejemplo +51 954779067.';
     }
     if (emailChanged && plan.contact_email !== null && !this.isValidEmail(plan.contact_email)) {
       return 'El correo electrónico no parece válido.';
@@ -2689,39 +2784,8 @@ export class AgentService {
 
   private resolveEffectiveSelectionHints(
     extraction: ExtractionResult,
-    userMessage: string,
-    plan: PlanSnapshot,
   ): string[] {
-    if (extraction.selectedProviderHints.length > 0) {
-      return extraction.selectedProviderHints;
-    }
-
-    const hasSelectionIntent =
-      extraction.intent === 'confirmar_proveedor' ||
-      extraction.secondaryIntents?.includes('confirmar_proveedor');
-
-    if (!hasSelectionIntent) {
-      return [];
-    }
-
-    const normalizedMessage = this.normalizeSelectionText(userMessage);
-
-    const allProviders = plan.provider_needs.flatMap(
-      (need) => need.recommended_providers,
-    );
-
-    const hints: string[] = [];
-    for (const provider of allProviders) {
-      const aliases = this.providerAliases(provider);
-      for (const alias of aliases) {
-        if (alias.length >= 3 && normalizedMessage.includes(alias)) {
-          hints.push(provider.title);
-          break;
-        }
-      }
-    }
-
-    return hints;
+    return extraction.selectedProviderHints;
   }
 
   private messageHasVenueCue(value: string): boolean {

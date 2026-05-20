@@ -9,10 +9,14 @@ import type { ToolInputTrace } from '../core/trace';
 import type { StructuredMessage } from './structured-message';
 import type { ProviderFitCriteria } from './provider-fit';
 import type {
+  CloseAction,
+} from './close-flow-schemas';
+import type {
   ProviderDetailRequest,
   ProviderExplanationRequest,
   ProviderPlanOperation,
   ProviderQueryIntent,
+  ProviderReference,
 } from './extraction-schemas';
 
 export type ExtractionResult = {
@@ -31,6 +35,8 @@ export type ExtractionResult = {
   assumptions: string[];
   conversationSummary: string;
   selectedProviderHints: string[];
+  selectedProviderReferences?: ProviderReference[];
+  closeAction?: CloseAction | null;
   pauseRequested: boolean;
   contactName: string | null;
   contactEmail: string | null;

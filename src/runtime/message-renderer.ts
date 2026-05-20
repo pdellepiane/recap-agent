@@ -306,7 +306,13 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
       case 'email':
         return 'email';
       case 'phone':
-        return 'teléfono';
+        return 'teléfono con código de país';
+      case 'contact_name':
+        return 'nombre completo';
+      case 'contact_email':
+        return 'email';
+      case 'contact_phone':
+        return 'teléfono con código de país';
       default:
         return field;
     }

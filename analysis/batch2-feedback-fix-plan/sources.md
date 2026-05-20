@@ -1,0 +1,18 @@
+# Sources
+
+| Name | Path or URL | Type | Date Checked | Why It Matters | Caveats |
+| --- | --- | --- | --- | --- | --- |
+| Batch 2 feedback dump | `feedback/batch2/dump.md` | WhatsApp exported text | 2026-05-20 | Primary issue list and attachment references. | Attachment filenames in dump do not exactly match local image filenames, so matching used sorted export order and visual content. |
+| Batch 2 images | `feedback/batch2/images/*.jpeg` | Screenshots | 2026-05-20 | Visual evidence for each reported issue. | No OCR engine was available; matching was done by visual inspection via contact sheet. |
+| Contact sheet artifact | `analysis/batch2-feedback-fix-plan/artifacts/contact-sheet-2026-05-20.jpeg` | Generated image index | 2026-05-20 | Stable index that maps sorted image order to observed screenshot content. | Generated from local screenshots, not a source of truth by itself. |
+| Agent service | `src/runtime/agent-service.ts` | TypeScript source | 2026-05-20 | Main state machine for plan load, extraction application, selection resolution, close routing, phone validation, provider search routing. | Investigation was static; no live transcript replay was run. |
+| OpenAI agent runtime | `src/runtime/openai-agent-runtime.ts` | TypeScript source | 2026-05-20 | Structured output schema resolution and `finish_plan` tool registration. | Exact runtime error should be confirmed with a regression test. |
+| Finish plan tool | `src/runtime/finish-plan-tool.ts` | TypeScript source | 2026-05-20 | Quote request execution, phone extension split, lifecycle mutation. | Does not validate phone beyond prior service validation. |
+| Message renderer | `src/runtime/message-renderer.ts` | TypeScript source | 2026-05-20 | Renders contact requests and provider cards sent to WhatsApp/terminal. | Renderer cannot fix missing context if model intro is empty. |
+| Structured message schemas | `src/runtime/structured-message.ts` | TypeScript source | 2026-05-20 | Defines untyped contact request field list and close output schemas. | Needs tests if field enums are introduced. |
+| Provider gateway | `src/runtime/sinenvolturas-gateway.ts` | TypeScript source | 2026-05-20 | Provider search, vector/hybrid routing, locality scoring. | Live provider API/vector-store contents were not queried. |
+| Close prompts | `prompts/nodes/crear_lead_cerrar/*` | Prompt text | 2026-05-20 | Controls contact request, close confirmation, and finish behavior. | Conversational prompt content must stay in Spanish. |
+| FAQ and scope prompts | `prompts/nodes/consultar_faq/*`, `prompts/shared/*.txt` | Prompt text | 2026-05-20 | Controls out-of-scope, support, and product FAQ responses. | KB source content still needs inspection before product-policy edits. |
+| Perf log query: web_chat 954779067 | `analysis/batch2-feedback-fix-plan/artifacts/perf-logs/web_chat-954779067-2026-05-15.json` | DynamoDB export | 2026-05-20 | Runtime trace for the main close/catering/Filomena/contact failure path. | Stores hashed user id only; matching assumes adapter used bare number `954779067`. |
+| Perf log query: Rebel path | `analysis/batch2-feedback-fix-plan/artifacts/perf-logs/web_chat-5b8dd4cf18f7-2026-05-15.json` | DynamoDB export | 2026-05-20 | Runtime trace for Lurin/Rebel selection, post-error rerouting, and repeated provider list issue. | Needs provider detail lookup to prove exact provider locations. |
+| Perf log query: FAQ/support path | `analysis/batch2-feedback-fix-plan/artifacts/perf-logs/web_chat-f6b10567e6b5-2026-05-15.json` | DynamoDB export | 2026-05-20 | Runtime trace for web-design, support contact, gift issue, and brand contact questions. | Does not include full assistant response text, only trace summaries and tool usage. |

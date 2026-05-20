@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  closeActionSchema,
+  closeFlowResultSchema,
+} from '../src/runtime/close-flow-schemas';
+import {
   extractionSchema,
   providerExplanationRequestSchema,
   providerPlanOperationSchema,
@@ -120,6 +124,8 @@ describe('structured extraction schemas', () => {
     expect(parsed.providerPlanOperations).toEqual([]);
     expect(parsed.providerExplanationRequest).toBeNull();
     expect(parsed.providerDetailRequest).toBeNull();
+    expect(parsed.selectedProviderReferences).toEqual([]);
+    expect(parsed.closeAction).toBeNull();
   });
 
   it('parses all-needs provider explanation requests', () => {
@@ -139,5 +145,68 @@ describe('structured extraction schemas', () => {
 
     expect(parsed.scope).toBe('all_needs');
     expect(parsed.categories).toEqual([]);
+  });
+
+  it('parses structured selected provider references and close actions', () => {
+    const parsed = extractionSchema.parse({
+      intent: 'cerrar',
+      intentConfidence: 0.95,
+      eventType: 'boda',
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: 'Fotografía y video',
+      location: 'Lima',
+      budgetSignal: null,
+      guestRange: '51-100',
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'Boda en Lima.',
+      selectedProviderHints: [],
+      selectedProviderReferences: [
+        {
+          providerId: 109,
+          providerTitle: 'Filomena Studio',
+          category: 'Fotografía y video',
+          hint: null,
+        },
+      ],
+      closeAction: {
+        type: 'defer_need',
+        category: 'Catering',
+      },
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: fitCriteria,
+    });
+
+    expect(parsed.selectedProviderReferences[0]?.providerId).toBe(109);
+    expect(parsed.closeAction).toEqual({
+      type: 'defer_need',
+      category: 'Catering',
+    });
+  });
+
+  it('rejects malformed close actions', () => {
+    expect(() =>
+      closeActionSchema.parse({
+        type: 'defer_need',
+        category: 'not-a-category',
+      }),
+    ).toThrow();
+  });
+
+  it('parses typed close flow results', () => {
+    const parsed = closeFlowResultSchema.parse({
+      status: 'missing_contact',
+      missingFields: ['full_name', 'phone'],
+    });
+
+    expect(parsed.status).toBe('missing_contact');
+    if (parsed.status === 'missing_contact') {
+      expect(parsed.missingFields).toEqual(['full_name', 'phone']);
+    }
   });
 });

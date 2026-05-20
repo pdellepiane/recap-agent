@@ -266,8 +266,176 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     const result = await gateway.searchProviders(plan);
 
-    expect(result.providers.map((provider) => provider.id)).toEqual([2]);
-    expect(result.providers[0]?.retrievalSource).toBe('vector');
-    expect(result.providers[0]?.descriptionSnippet).toContain('Fotografía documental');
+    expect(result.providers.map((provider) => provider.id)).toEqual([1, 2]);
+    expect(result.providers[0]?.retrievalSource).toBe('api');
+    expect(result.providers[1]?.retrievalSource).toBe('vector');
+    expect(result.providers[1]?.descriptionSnippet).toContain('Fotografía documental');
+  });
+
+  it('filters cross-country hybrid vector results when Peru providers are available', async () => {
+    const responses = new Map<string, unknown>([
+      [
+        'https://api.example.test/vendor/filtered?search=Fotograf%C3%ADa%20y%20video&page=1',
+        {
+          status: true,
+          errors: null,
+          error: '',
+          data: {
+            data: [
+              {
+                id: 132,
+                slug: 'carlos-romero-films',
+                translations: [{ title: 'Carlos Romero Films' }],
+                category: { translations: [{ name: 'Fotografía y video' }] },
+                city: { name: 'Lima' },
+                country: { name: 'Perú' },
+              },
+            ],
+          },
+        },
+      ],
+      [
+        'https://api.example.test/vendor/relevant',
+        {
+          status: true,
+          errors: null,
+          error: '',
+          data: [],
+        },
+      ],
+      [
+        'https://api.example.test/vendor/142',
+        {
+          status: true,
+          errors: null,
+          error: '',
+          data: {
+            id: 142,
+            slug: 'agalux-studio',
+            translations: [{ title: 'Agalux Studio' }],
+            category: { translations: [{ name: 'Fotografía y video' }] },
+            city: { name: 'Lima' },
+            country: { name: 'Perú' },
+          },
+        },
+      ],
+      [
+        'https://api.example.test/vendor/164',
+        {
+          status: true,
+          errors: null,
+          error: '',
+          data: {
+            id: 164,
+            slug: 'on-weddings',
+            translations: [{ title: 'On Weddings' }],
+            category: { translations: [{ name: 'Fotografía y video' }] },
+            city: { name: 'León' },
+            country: { name: 'México' },
+          },
+        },
+      ],
+      [
+        'https://api.example.test/vendor/173',
+        {
+          status: true,
+          errors: null,
+          error: '',
+          data: {
+            id: 173,
+            slug: 'llum-studio',
+            translations: [{ title: 'LLUM Studio' }],
+            category: { translations: [{ name: 'Fotografía y video' }] },
+            city: { name: 'Santiago de Querétaro' },
+            country: { name: 'México' },
+          },
+        },
+      ],
+    ]);
+    const fetchMock = vi.fn().mockImplementation((url: string) => {
+      const body = responses.get(url);
+      if (!body) {
+        return Promise.resolve({
+          ok: true,
+          async json() {
+            return {
+              status: true,
+              errors: null,
+              error: '',
+              data: { data: [] },
+            };
+          },
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        async json() {
+          return body;
+        },
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const vectorSearch = {
+      async search(): Promise<ProviderVectorSearchResult[]> {
+        return [
+          {
+            providerId: 164,
+            score: 0.98,
+            matchedText: 'Fotografía para bodas destino.',
+            attributes: { provider_id: 164, country_key: 'mexico' },
+            filename: '164-on-weddings.md',
+          },
+          {
+            providerId: 173,
+            score: 0.96,
+            matchedText: 'Fotografía editorial de boda.',
+            attributes: { provider_id: 173, country_key: 'mexico' },
+            filename: '173-llum-studio.md',
+          },
+          {
+            providerId: 142,
+            score: 0.8,
+            matchedText: 'Fotografía de bodas en Lima.',
+            attributes: { provider_id: 142, country_key: 'peru' },
+            filename: '142-agalux-studio.md',
+          },
+        ];
+      },
+      async searchQueryIntent(): Promise<ProviderVectorSearchResult[]> {
+        return [];
+      },
+    };
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+      searchMode: 'hybrid',
+      vectorSearchGateway: vectorSearch,
+    });
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'plan-lurin-locality',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'user-lurin',
+      }),
+      {
+        event_type: 'boda',
+        active_need_category: 'Fotografía y video',
+        vendor_category: 'Fotografía y video',
+        location: 'Lurín, Lima, Perú',
+        conversation_summary: 'Boda en Lurín; busca fotografía y video.',
+      },
+    );
+
+    const result = await gateway.searchProviders(plan);
+
+    expect(result.providers.map((provider) => provider.id)).toEqual([132, 142]);
+    expect(result.providers.map((provider) => provider.location)).toEqual([
+      'Lima, Perú',
+      'Lima, Perú',
+    ]);
+    expect(result.providers.map((provider) => provider.id)).not.toContain(164);
+    expect(result.providers.map((provider) => provider.id)).not.toContain(173);
   });
 });

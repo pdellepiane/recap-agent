@@ -2,6 +2,10 @@ import { z } from 'zod';
 
 import { providerCategorySchema } from '../core/provider-category';
 
+export const contactRequestFieldSchema = z.enum(['full_name', 'email', 'phone']);
+
+export type ContactRequestField = z.infer<typeof contactRequestFieldSchema>;
+
 export const providerRecommendationSchema = z.object({
   provider_id: z.number(),
   match_label_es: z.string().min(1).nullable().optional(),
@@ -71,7 +75,7 @@ export const multiNeedRecommendationMessageSchema = z.object({
 export const contactRequestMessageSchema = z.object({
   type: z.literal('contact_request'),
   intro_es: z.string(),
-  requested_fields_es: z.array(z.string()),
+  requested_fields_es: z.array(contactRequestFieldSchema).min(1),
 });
 
 export const closeConfirmationMessageSchema = z.object({
