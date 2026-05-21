@@ -31,7 +31,7 @@ import {
   resolveSearchCategories,
   type ProviderCategory,
 } from '../core/provider-category';
-import { computeSearchSufficiency } from '../core/sufficiency';
+import { computeNeedSearchSufficiencies, computeSearchSufficiency } from '../core/sufficiency';
 import type {
   CloseActionDebugSummary,
   ContactValidationDebugSummary,
@@ -44,6 +44,14 @@ import type {
   SelectionResolutionDebugSummary,
   TurnTrace,
 } from '../core/trace';
+import {
+  decisionEvidenceSchema,
+  turnDecisionSchema,
+  type DecisionEvidence,
+  type NeedSufficiency,
+  type SessionFocus,
+  type TurnDecision,
+} from '../core/turn-decision';
 import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
 import type { MessageRenderer } from './message-renderer';
@@ -141,6 +149,14 @@ export class AgentService {
       inbound.channel,
       inbound.externalUserId,
     );
+    const sessionFocus =
+      inbound.sessionId && this.dependencies.planStore.getSessionFocus
+        ? await this.dependencies.planStore.getSessionFocus(
+            inbound.channel,
+            inbound.externalUserId,
+            inbound.sessionId,
+          )
+        : null;
     timingMs.load_plan += Date.now() - loadPlanStartedAt;
 
     if (existingPlan && isPlanFinished(existingPlan)) {
@@ -302,7 +318,20 @@ export class AgentService {
     timingMs.apply_extraction += Date.now() - applyExtractionStartedAt;
     const sufficiencyStartedAt = Date.now();
     const sufficiency = computeSearchSufficiency(mergedPlan);
+    const sufficiencyByNeed = computeNeedSearchSufficiencies(mergedPlan);
     timingMs.compute_sufficiency += Date.now() - sufficiencyStartedAt;
+    const decisionEvidence = this.buildDecisionEvidence({
+      previousNode,
+      extraction,
+      planBefore: workingPlan,
+      planAfterReduction: mergedPlan,
+      sessionFocus,
+      sufficiency,
+      sufficiencyByNeed,
+      hasResolvedSelection: false,
+      hasAmbiguousSelection: false,
+    });
+    let turnDecision = this.decideNextTurn(decisionEvidence);
 
     const nodePath: DecisionNode[] = existingPlan
       ? [previousNode, 'existe_plan_guardado', extractionNode]
@@ -642,8 +671,37 @@ export class AgentService {
 
     let planAfterFlow = mergedPlan;
 
+    const hasSelectionEvidence =
+      extraction.intent === 'confirmar_proveedor' ||
+      (extraction.selectedProviderReferences?.length ?? 0) > 0 ||
+      extraction.selectedProviderHints.length > 0 ||
+      (extraction.providerPlanOperations ?? []).some(
+        (operation) => operation.type === 'select_provider' || operation.type === 'replace_provider',
+      );
     const routeProviderSearchToElicitation =
-      this.shouldRouteProviderSearchToElicitation(extraction);
+      !hasSelectionEvidence &&
+      (
+        turnDecision.routeKind === 'multi_need_search' ||
+        this.shouldRouteProviderSearchToElicitation(extraction)
+      );
+    if (routeProviderSearchToElicitation && turnDecision.routeKind !== 'multi_need_search') {
+      const needs = Array.from(new Set(
+        (extraction.providerQueryIntents ?? []).map((queryIntent) => queryIntent.category),
+      ));
+      turnDecision = turnDecisionSchema.parse({
+        ...turnDecision,
+        nextNode: 'elicitacion_necesidades',
+        routeKind: 'multi_need_search',
+        providerSearchMode: 'multi_need_query_intents',
+        presentationScope: 'multi_need',
+        focusNeedCategory: needs[0] ?? turnDecision.focusNeedCategory,
+        needsToSearch: needs,
+        needsToPresent: needs,
+        persistReason: 'elicitacion_necesidades',
+        invariantStatus: 'valid',
+        invariantViolations: [],
+      });
+    }
     if (extraction.intent === 'elicitar_necesidades' || routeProviderSearchToElicitation) {
       currentNode = 'elicitacion_necesidades';
       if (nodePath[nodePath.length - 1] !== currentNode) {
@@ -870,6 +928,7 @@ export class AgentService {
       promptBundleId: promptBundle.id,
       promptFilePaths: promptBundle.filePaths,
       toolUsage,
+      turnDecision,
     });
     tokenUsage.reply = reply.tokenUsage ?? null;
     tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -880,6 +939,12 @@ export class AgentService {
     timingMs.compose_reply += Date.now() - composeReplyStartedAt;
 
     await persistPlan(planAfterFlow, planPersistReason ?? currentNode);
+    await this.saveSessionFocusFromTurn({
+      inbound,
+      plan: planAfterFlow,
+      currentNode,
+      providerResults,
+    });
     timingMs.total = Date.now() - handleTurnStartedAt;
 
     return {
@@ -906,6 +971,16 @@ export class AgentService {
         timingMs,
         tokenUsage,
         searchStrategy,
+        turnDecision: turnDecision.nextNode === currentNode
+          ? turnDecision
+          : this.fallbackTurnDecision({
+              currentNode,
+              searchStrategy,
+              providerResults,
+              focusNeedCategory: planAfterFlow.active_need_category,
+            }),
+        sessionFocusUsed: Boolean(sessionFocus),
+        sessionFocusKeyPresent: Boolean(inbound.sessionId),
         operationalNote: errorMessage,
       }),
     };
@@ -956,6 +1031,318 @@ export class AgentService {
     };
   }
 
+  private buildDecisionEvidence(args: {
+    previousNode: DecisionNode;
+    extraction: ExtractionResult;
+    planBefore: PlanSnapshot;
+    planAfterReduction: PlanSnapshot;
+    sessionFocus: SessionFocus | null;
+    sufficiency: { searchReady: boolean; missingFields: string[] };
+    sufficiencyByNeed: NeedSufficiency[];
+    hasResolvedSelection: boolean;
+    hasAmbiguousSelection: boolean;
+  }): DecisionEvidence {
+    const focusedNeedCategory =
+      args.extraction.activeNeedCategory ??
+      args.extraction.vendorCategory ??
+      (args.sessionFocus ? args.sessionFocus.activeNeedCategory : null);
+    const readyNeedCategories = this.resolveReadyNeedCategories(
+      args.extraction,
+      args.planAfterReduction,
+      args.sufficiencyByNeed,
+    );
+
+    return decisionEvidenceSchema.parse({
+      previousNode: args.previousNode,
+      extractionIntent: args.extraction.intent,
+      extractionProviderQueryIntentCount: args.extraction.providerQueryIntents?.length ?? 0,
+      extractionProviderPlanOperationCount: args.extraction.providerPlanOperations?.length ?? 0,
+      planBeforeNode: args.planBefore.current_node,
+      planAfterNode: args.planAfterReduction.current_node,
+      providerNeedCount: args.planAfterReduction.provider_needs.length,
+      readyNeedCategories,
+      focusedNeedCategory,
+      sessionFocus: args.sessionFocus,
+      globalMissingFields: args.sufficiency.missingFields,
+      sufficiencyByNeed: args.sufficiencyByNeed,
+      hasResolvedSelection: args.hasResolvedSelection,
+      hasAmbiguousSelection: args.hasAmbiguousSelection,
+      hasExistingShortlist: args.planAfterReduction.provider_needs.some(
+        (need) => need.recommended_providers.length > 0,
+      ),
+    });
+  }
+
+  private decideNextTurn(evidence: DecisionEvidence): TurnDecision {
+    let decision: Omit<TurnDecision, 'invariantStatus' | 'invariantViolations'>;
+
+    if (evidence.extractionIntent === 'pausar') {
+      decision = {
+        nextNode: 'guardar_cerrar_temporalmente',
+        routeKind: 'pause',
+        providerSearchMode: 'none',
+        presentationScope: 'none',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: null,
+        persistReason: 'guardar_cerrar_temporalmente',
+      };
+    } else if (evidence.extractionIntent === 'consultar_faq') {
+      decision = {
+        nextNode: 'consultar_faq',
+        routeKind: 'faq',
+        providerSearchMode: 'none',
+        presentationScope: 'faq',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: null,
+        persistReason: 'consultar_faq',
+      };
+    } else if (evidence.extractionIntent === 'cerrar') {
+      decision = {
+        nextNode: 'crear_lead_cerrar',
+        routeKind: 'close',
+        providerSearchMode: 'none',
+        presentationScope: 'close',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: evidence.sufficiencyByNeed
+          .filter((need) => need.hasShortlist)
+          .map((need) => need.category),
+        stopReason: null,
+        persistReason: 'crear_lead_cerrar',
+      };
+    } else if (
+      evidence.readyNeedCategories.length > 1 &&
+      (
+        evidence.extractionIntent === 'elicitar_necesidades' ||
+        evidence.extractionIntent === 'buscar_proveedores'
+      )
+    ) {
+      decision = {
+        nextNode: 'elicitacion_necesidades',
+        routeKind: 'multi_need_search',
+        providerSearchMode: 'multi_need_query_intents',
+        presentationScope: 'multi_need',
+        focusNeedCategory: evidence.readyNeedCategories[0] ?? evidence.focusedNeedCategory,
+        needsToSearch: evidence.readyNeedCategories,
+        needsToPresent: evidence.readyNeedCategories,
+        stopReason: null,
+        persistReason: 'elicitacion_necesidades',
+      };
+    } else if (
+      evidence.hasExistingShortlist &&
+      (
+        evidence.extractionIntent === 'ver_opciones' ||
+        evidence.extractionIntent === 'explicar_recomendacion' ||
+        evidence.extractionIntent === 'detallar_proveedor'
+      )
+    ) {
+      const needsToPresent = evidence.sufficiencyByNeed
+        .filter((need) => need.hasShortlist)
+        .map((need) => need.category);
+      decision = {
+        nextNode: needsToPresent.length > 1 ? 'elicitacion_necesidades' : 'recomendar',
+        routeKind: 'present_existing_shortlist',
+        providerSearchMode: 'existing_shortlist',
+        presentationScope: needsToPresent.length > 1 ? 'multi_need' : 'single_need',
+        focusNeedCategory: evidence.focusedNeedCategory ?? needsToPresent[0] ?? null,
+        needsToSearch: [],
+        needsToPresent,
+        stopReason: null,
+        persistReason: needsToPresent.length > 1 ? 'elicitacion_necesidades' : 'recomendar',
+      };
+    } else if (evidence.readyNeedCategories.length === 1 && evidence.focusedNeedCategory !== null) {
+      decision = {
+        nextNode: 'recomendar',
+        routeKind: 'single_need_search',
+        providerSearchMode: 'single_need_from_plan',
+        presentationScope: 'single_need',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: evidence.readyNeedCategories,
+        needsToPresent: evidence.readyNeedCategories,
+        stopReason: null,
+        persistReason: 'recomendar',
+      };
+    } else if (evidence.globalMissingFields.length > 0) {
+      decision = {
+        nextNode: 'aclarar_pedir_faltante',
+        routeKind: 'clarify_missing_fields',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: evidence.globalMissingFields.join(', '),
+        persistReason: 'aclarar_pedir_faltante',
+      };
+    } else {
+      decision = {
+        nextNode: 'entrevista',
+        routeKind: 'ask_event_context',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: 'insufficient_reachable_transition',
+        persistReason: 'entrevista',
+      };
+    }
+
+    return turnDecisionSchema.parse({
+      ...decision,
+      ...this.validateTurnDecisionInvariants(evidence, decision),
+    });
+  }
+
+  private resolveReadyNeedCategories(
+    extraction: ExtractionResult,
+    plan: PlanSnapshot,
+    sufficiencyByNeed: NeedSufficiency[],
+  ): ProviderCategory[] {
+    const readyFromQueryIntents = (extraction.providerQueryIntents ?? [])
+      .filter((queryIntent) => this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction))
+      .map((queryIntent) => queryIntent.category);
+    if (readyFromQueryIntents.length > 0) {
+      return Array.from(new Set(readyFromQueryIntents));
+    }
+
+    const focusedCategory = extraction.activeNeedCategory ?? extraction.vendorCategory;
+    if (extraction.intent === 'buscar_proveedores' && focusedCategory) {
+      return plan.provider_needs.some((need) => need.category === focusedCategory)
+        ? [focusedCategory]
+        : [];
+    }
+
+    const readyByPlan = new Set(
+      sufficiencyByNeed
+        .filter((need) => need.searchReady)
+        .map((need) => need.category),
+    );
+    return plan.provider_needs
+      .filter((need) => readyByPlan.has(need.category))
+      .map((need) => need.category);
+  }
+
+  private validateTurnDecisionInvariants(
+    evidence: DecisionEvidence,
+    decision: Omit<TurnDecision, 'invariantStatus' | 'invariantViolations'>,
+  ): Pick<TurnDecision, 'invariantStatus' | 'invariantViolations'> {
+    const violations: string[] = [];
+
+    if (
+      evidence.extractionProviderQueryIntentCount > 1 &&
+      decision.providerSearchMode === 'single_need_from_plan' &&
+      decision.needsToSearch.length !== 1
+    ) {
+      violations.push('single_need_search_requires_exactly_one_need');
+    }
+
+    if (
+      decision.providerSearchMode === 'multi_need_query_intents' &&
+      decision.presentationScope !== 'multi_need'
+    ) {
+      violations.push('multi_need_search_requires_multi_need_presentation');
+    }
+
+    if (
+      decision.routeKind === 'multi_need_search' &&
+      decision.nextNode !== 'elicitacion_necesidades'
+    ) {
+      violations.push('multi_need_search_must_reach_elicitacion_necesidades');
+    }
+
+    return {
+      invariantStatus: violations.length === 0 ? 'valid' : 'invalid',
+      invariantViolations: violations,
+    };
+  }
+
+  private fallbackTurnDecision(args: {
+    currentNode: DecisionNode;
+    searchStrategy: SearchStrategyTrace;
+    providerResults: ProviderSummary[];
+    focusNeedCategory: ProviderCategory | null;
+  }): TurnDecision {
+    const presentationScope =
+      args.currentNode === 'consultar_faq'
+        ? 'faq'
+        : args.currentNode === 'crear_lead_cerrar'
+          ? 'close'
+          : args.currentNode === 'elicitacion_necesidades'
+            ? 'multi_need'
+            : args.currentNode === 'recomendar'
+              ? 'single_need'
+              : 'none';
+    const providerSearchMode =
+      args.searchStrategy === 'multi_need_query_intents'
+        ? 'multi_need_query_intents'
+        : args.searchStrategy === 'existing_plan_shortlist'
+          ? 'existing_shortlist'
+          : args.searchStrategy === 'search_from_plan'
+            ? 'single_need_from_plan'
+            : 'none';
+
+    return turnDecisionSchema.parse({
+      nextNode: args.currentNode,
+      routeKind: args.currentNode === 'consultar_faq'
+        ? 'faq'
+        : args.currentNode === 'crear_lead_cerrar'
+          ? 'close'
+          : args.currentNode === 'guardar_cerrar_temporalmente'
+            ? 'pause'
+            : args.currentNode === 'informar_error_reintento'
+              ? 'error'
+              : providerSearchMode === 'multi_need_query_intents'
+                ? 'multi_need_search'
+                : providerSearchMode === 'single_need_from_plan'
+                  ? 'single_need_search'
+                  : 'ask_event_context',
+      providerSearchMode,
+      presentationScope,
+      focusNeedCategory: args.focusNeedCategory,
+      needsToSearch: args.focusNeedCategory ? [args.focusNeedCategory] : [],
+      needsToPresent: Array.from(new Set(args.providerResults
+        .map((provider) => this.normalizeCategoryValue(provider.category ?? null))
+        .filter((category): category is ProviderCategory => Boolean(category)))),
+      stopReason: null,
+      persistReason: args.currentNode,
+      invariantStatus: 'valid',
+      invariantViolations: [],
+    });
+  }
+
+  private async saveSessionFocusFromTurn(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    currentNode: DecisionNode;
+    providerResults: ProviderSummary[];
+  }): Promise<void> {
+    if (!args.inbound.sessionId || !this.dependencies.planStore.saveSessionFocus) {
+      return;
+    }
+
+    const lastPresentedCategories = Array.from(new Set(args.providerResults
+      .map((provider) => this.normalizeCategoryValue(provider.category ?? null))
+      .filter((category): category is ProviderCategory => Boolean(category))));
+
+    await this.dependencies.planStore.saveSessionFocus(
+      args.inbound.channel,
+      args.inbound.externalUserId,
+      {
+        sessionId: args.inbound.sessionId,
+        activeNeedCategory: args.plan.active_need_category,
+        lastPresentedCategories,
+        lastPresentedProviderIds: args.providerResults.map((provider) => provider.id),
+        lastNode: args.currentNode,
+        updatedAt: new Date().toISOString(),
+      },
+    );
+  }
+
   private buildTrace(args: {
     traceId?: string;
     plan: PlanSnapshot;
@@ -975,9 +1362,18 @@ export class AgentService {
     timingMs: TurnTrace['timing_ms'];
     tokenUsage: TurnTrace['token_usage'];
     searchStrategy: SearchStrategyTrace;
+    turnDecision?: TurnDecision;
+    sessionFocusUsed?: boolean;
+    sessionFocusKeyPresent?: boolean;
     operationalNote: string | null;
   }): TurnTrace {
     const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
+    const turnDecision = args.turnDecision ?? this.fallbackTurnDecision({
+      currentNode: args.currentNode,
+      searchStrategy: args.searchStrategy,
+      providerResults: args.providerResults,
+      focusNeedCategory: args.plan.active_need_category,
+    });
     return {
       trace_id: args.traceId ?? ulid(),
       conversation_id: args.plan.conversation_id,
@@ -997,6 +1393,13 @@ export class AgentService {
       provider_results: args.providerResults,
       recommendation_funnel: args.recommendationFunnel,
       search_strategy: args.searchStrategy,
+      turn_decision: turnDecision,
+      route_kind: turnDecision.routeKind,
+      presentation_scope: turnDecision.presentationScope,
+      session_focus_used: args.sessionFocusUsed ?? false,
+      session_focus_key_present: args.sessionFocusKeyPresent ?? false,
+      state_machine_invariant_status: turnDecision.invariantStatus,
+      state_machine_invariant_violations: turnDecision.invariantViolations,
       operational_note: args.operationalNote,
       extraction_summary: this.summarizeExtraction(args.extraction, contactValidationSummary),
       plan_summary: this.summarizePlan(args.plan, contactValidationSummary),
@@ -2196,7 +2599,10 @@ export class AgentService {
   }
 
   private hasDetailedElicitationConcept(extraction: ExtractionResult): boolean {
-    if (extraction.intent !== 'elicitar_necesidades') {
+    if (
+      extraction.intent !== 'elicitar_necesidades' &&
+      extraction.intent !== 'buscar_proveedores'
+    ) {
       return false;
     }
 
@@ -2254,6 +2660,12 @@ export class AgentService {
   ): boolean {
     if (extraction.intent !== 'buscar_proveedores' || !extraction.eventType) {
       return false;
+    }
+    if (
+      (extraction.providerQueryIntents ?? []).length > 1 &&
+      this.hasDetailedElicitationConcept(extraction)
+    ) {
+      return true;
     }
     if (
       (extraction.hardConstraints?.length ?? 0) > 0 ||

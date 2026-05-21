@@ -573,6 +573,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Nodo previo: ${request.previousNode}`,
       `Nodo actual: ${request.currentNode}`,
       `Mensaje del usuario: ${request.userMessage}`,
+      request.turnDecision
+        ? `Decisión determinística del estado: ${JSON.stringify({
+            route_kind: request.turnDecision.routeKind,
+            presentation_scope: request.turnDecision.presentationScope,
+            provider_search_mode: request.turnDecision.providerSearchMode,
+            focus_need_category: request.turnDecision.focusNeedCategory,
+            needs_to_present: request.turnDecision.needsToPresent,
+            stop_reason: request.turnDecision.stopReason,
+          }, null, 2)}`
+        : null,
       `Extracción estructurada del turno: ${JSON.stringify(this.buildReplyExtractionSnapshot(request.extraction), null, 2)}`,
       `Plan resumido: ${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),

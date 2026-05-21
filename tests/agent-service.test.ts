@@ -3175,6 +3175,167 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.find((need) => need.category === 'Música')?.recommended_provider_ids).toEqual([401]);
   });
 
+  it('does not let stale active need downgrade a current multi-need provider request', async () => {
+    class MultiFrontRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: ['Catering', 'Música', 'Locales'],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: 'medio-alto',
+          guestRange: '101-200',
+          preferences: ['sushi', 'banda elegante', 'local sofisticado'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda moderna en Lima con varios frentes de proveedores.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [
+            {
+              category: 'Catering',
+              label: 'Catering',
+              priority: 1,
+              queries: [providerNeedQuery('Catering', 'Sushi', ['catering sushi boda Lima'], ['sushi'])],
+              preferences: ['sushi'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Catering' },
+            },
+            {
+              category: 'Música',
+              label: 'Música',
+              priority: 2,
+              queries: [providerNeedQuery('Música', 'Banda', ['banda elegante boda Lima'], ['banda'])],
+              preferences: ['banda elegante'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Música' },
+            },
+            {
+              category: 'Locales',
+              label: 'Locales',
+              priority: 3,
+              queries: [providerNeedQuery('Locales', 'Local', ['local noche sofisticado Lima'], ['sofisticado'])],
+              preferences: ['noche sofisticada'],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: { ...testProviderFitCriteria, needCategory: 'Locales' },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class MultiFrontGateway extends FakeGateway {
+      public readonly queryIntentCategories: string[] = [];
+
+      override async searchProviders(): Promise<ProviderGatewaySearchResult> {
+        this.searchCalls += 1;
+        return { providers: [] };
+      }
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.queryIntentCategories.push(input.category);
+        const idByCategory = {
+          Catering: 301,
+          Música: 401,
+          Locales: 501,
+        } satisfies Record<'Catering' | 'Música' | 'Locales', number>;
+        const id = idByCategory[input.category as 'Catering' | 'Música' | 'Locales'];
+        return {
+          providers: [
+            {
+              id,
+              title: `${input.category} Uno`,
+              category: input.category,
+              location: 'Lima',
+              priceLevel: 'mid',
+              reason: 'coincide con el frente solicitado',
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-stale-catering',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-stale-catering',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          active_need_category: 'Catering',
+          location: 'Lima',
+          budget_signal: 'medio-alto',
+          guest_range: '101-200',
+          provider_needs: [
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: ['buffet'],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [101],
+              recommended_providers: [
+                { id: 101, title: 'Catering Viejo', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: 'shortlist previa', serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new MultiFrontGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new MultiFrontRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-stale-catering',
+      text: 'Quiero comparar catering, música y local para una boda moderna en Lima',
+      messageId: 'msg-stale-catering',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('elicitacion_necesidades');
+    expect(response.trace.search_strategy).toBe('multi_need_query_intents');
+    expect(response.trace.turn_decision.routeKind).toBe('multi_need_search');
+    expect(response.trace.presentation_scope).toBe('multi_need');
+    expect(response.trace.state_machine_invariant_status).toBe('valid');
+    expect(gateway.searchCalls).toBe(0);
+    expect(gateway.queryIntentCategories).toEqual(['Catering', 'Música', 'Locales']);
+  });
+
   it('stores per-sub-query provenance and selected providers for complex needs', async () => {
     class ComplexCateringRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {

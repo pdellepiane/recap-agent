@@ -1788,6 +1788,41 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Add deterministic turn decisions and session-scoped focus
+
+- Added Zod-validated `DecisionEvidence`, `TurnDecision`, per-need sufficiency, and session-focus schemas.
+- Routed single-vs-multi provider search through a decision object before provider tools or reply composition.
+- Added turn-decision, presentation-scope, route-kind, session-focus, and invariant-status fields to traces and persisted perf records.
+- Added optional `session_id` to Lambda, terminal, and live-eval request bodies; session focus is stored as a companion item in the plans table when adapters provide it.
+- Added a compact deterministic state-decision block to reply composition so prompts no longer need to infer the route from broad transition text.
+- Added regression coverage proving a stale Catering active need cannot downgrade a current multi-front wedding request into single-category search.
+
+Reason:
+- A live conversation produced five structured provider fronts, but the runtime followed stale active Catering state and presented only Catering recommendations.
+
+Decision:
+- The model owns structured interpretation; application code owns routing consequences, provider search mode, presentation scope, persistence, and invariant traceability.
+
+Files changed:
+- `src/core/turn-decision.ts`
+- `src/core/sufficiency.ts`
+- `src/core/messages.ts`
+- `src/core/trace.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/lambda/handler.ts`
+- `src/logs/trace/perf.ts`
+- `src/storage/plan-store.ts`
+- `src/storage/in-memory-plan-store.ts`
+- `src/storage/dynamo-plan-store.ts`
+- `src/terminal/client.ts`
+- `src/evals/targets/live-lambda.ts`
+- `tests/agent-service.test.ts`
+- `tests/perf-trace.test.ts`
+- `docs/channel-integration.md`
+- `docs/implementation-log.md`
+
 ### Flatten provider-need retrieval queries
 
 - Replaced the extractor-facing `queryStrings` plus `subQueries` hierarchy with one `queries` list per provider need.

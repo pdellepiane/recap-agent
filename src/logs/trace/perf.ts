@@ -31,6 +31,13 @@ export type TurnPerfRecord = {
   tools_called_count: number;
   tools_called: string[];
   search_strategy: TurnTrace['search_strategy'];
+  turn_decision: TurnTrace['turn_decision'];
+  route_kind: TurnTrace['route_kind'];
+  presentation_scope: TurnTrace['presentation_scope'];
+  session_focus_used: boolean;
+  session_focus_key_present: boolean;
+  state_machine_invariant_status: TurnTrace['state_machine_invariant_status'];
+  state_machine_invariant_violations: string[];
   operational_note: string | null;
   extraction_summary: TurnTrace['extraction_summary'];
   plan_summary: TurnTrace['plan_summary'];
@@ -127,6 +134,13 @@ export function buildTurnPerfRecord(args: {
     tools_called_count: args.trace.tools_called.length,
     tools_called: args.trace.tools_called,
     search_strategy: args.trace.search_strategy,
+    turn_decision: args.trace.turn_decision,
+    route_kind: args.trace.route_kind,
+    presentation_scope: args.trace.presentation_scope,
+    session_focus_used: args.trace.session_focus_used,
+    session_focus_key_present: args.trace.session_focus_key_present,
+    state_machine_invariant_status: args.trace.state_machine_invariant_status,
+    state_machine_invariant_violations: args.trace.state_machine_invariant_violations,
     operational_note: args.trace.operational_note,
     extraction_summary: args.trace.extraction_summary,
     plan_summary: args.trace.plan_summary,

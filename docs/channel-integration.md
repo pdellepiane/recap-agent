@@ -106,6 +106,7 @@ curl -sS \
     "channel": "whatsapp",
     "message_id": "wamid.example.0001",
     "received_at": "2026-04-21T21:17:26.000Z",
+    "session_id": "whatsapp-session-abc123",
     "client_mode": "channel"
   }'
 ```
@@ -131,6 +132,8 @@ Field meanings:
 | `conversation_id` | string or null | OpenAI conversation id used by the runtime when available. |
 | `plan_id` | string | Internal persisted event-plan id. Useful for support correlation, not for end-user display. |
 | `current_node` | string | Current decision-flow node after this turn. Useful for adapter logs and support dashboards. |
+
+Inbound adapters may send optional `session_id`. The runtime treats it as an adapter-defined active-session boundary for ephemeral focus such as the last active provider need and last presented providers. Durable event-plan state is still keyed by `channel` and `user_id`; when `session_id` changes, stale focus from another session is ignored.
 
 Adapters should ignore unknown fields to stay forward-compatible with non-breaking diagnostics additions.
 

@@ -80,6 +80,7 @@ export async function runLiveLambdaCase(args: {
         text: input.text,
         message_id: `${args.currentCase.id}-${turnIndex}`,
         received_at: input.receivedAt ?? new Date().toISOString(),
+        session_id: args.currentCase.id,
         client_mode: 'cli',
       }),
     });

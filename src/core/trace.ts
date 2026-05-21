@@ -1,5 +1,6 @@
 import type { DecisionNode } from './decision-nodes';
 import type { ProviderSummary } from './provider';
+import type { TurnDecision } from './turn-decision';
 
 export type ToolOutputTrace = {
   tool: string;
@@ -150,6 +151,13 @@ export type TurnTrace = {
   provider_results: ProviderSummary[];
   recommendation_funnel: RecommendationFunnelTrace;
   search_strategy: SearchStrategyTrace;
+  turn_decision: TurnDecision;
+  route_kind: TurnDecision['routeKind'];
+  presentation_scope: TurnDecision['presentationScope'];
+  session_focus_used: boolean;
+  session_focus_key_present: boolean;
+  state_machine_invariant_status: TurnDecision['invariantStatus'];
+  state_machine_invariant_violations: string[];
   operational_note: string | null;
   extraction_summary: ExtractionDebugSummary;
   plan_summary: PlanDebugSummary;

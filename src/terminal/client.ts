@@ -1,5 +1,6 @@
 #!/usr/bin/env bun
 
+import crypto from 'node:crypto';
 import readline from 'node:readline/promises';
 import { stdin as input, stdout as output } from 'node:process';
 
@@ -161,6 +162,7 @@ async function main() {
   });
 
   renderIntro(config);
+  const sessionId = crypto.randomUUID();
 
   const rl = readline.createInterface({ input, output });
 
@@ -213,6 +215,7 @@ async function main() {
           channel: config.channel,
           user_id: config.userId,
           text: line,
+          session_id: sessionId,
           client_mode: 'cli',
         },
         config.timeoutMs,

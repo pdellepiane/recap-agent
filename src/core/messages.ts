@@ -4,6 +4,8 @@ export type NormalizedInboundMessage = {
   text: string;
   messageId: string;
   receivedAt: string;
+  /** Optional adapter-provided session boundary. */
+  sessionId?: string | null;
   /** Optional phone number provided by the channel (e.g. WhatsApp webhook). */
   contactPhone?: string | null;
 };
@@ -12,4 +14,3 @@ export type NormalizedOutboundMessage = {
   text: string;
   conversationId: string | null;
 };
-

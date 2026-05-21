@@ -5,6 +5,7 @@ import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderSummary } from '../core/provider';
 import type { ToolOutputTrace } from '../core/trace';
 import type { ToolInputTrace } from '../core/trace';
+import type { TurnDecision } from '../core/turn-decision';
 
 import type { StructuredMessage } from './structured-message';
 import type { ProviderFitCriteria } from './provider-fit';
@@ -63,6 +64,7 @@ export type ComposeReplyRequest = {
   missingFields: string[];
   searchReady: boolean;
   providerResults: ProviderSummary[];
+  turnDecision?: TurnDecision;
   errorMessage: string | null;
   promptBundleId: string;
   promptFilePaths: string[];

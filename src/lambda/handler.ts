@@ -21,6 +21,7 @@ type TerminalRequestBody = {
   channel: string;
   message_id?: string;
   received_at?: string;
+  session_id?: string | null;
   client_mode?: 'cli' | 'channel';
   /** Phone number provided by the channel payload (e.g. WhatsApp). */
   contact_phone?: string | null;
@@ -58,6 +59,7 @@ export async function handler(
       text: body.text,
       messageId,
       receivedAt,
+      sessionId: body.session_id ?? null,
       contactPhone: body.contact_phone ?? null,
     });
     const perfRecord = buildTurnPerfRecord({
