@@ -28,7 +28,18 @@ describe('structured extraction schemas', () => {
       category: 'Catering',
       label: 'Catering para boda',
       priority: 1,
-      queryStrings: ['Catering para boda en Lima con estaciones'],
+      queries: [
+        {
+          id: 'catering',
+          label: 'Catering para boda',
+          category: 'Catering',
+          queryStrings: ['Catering para boda en Lima con estaciones'],
+          mustHave: ['estaciones'],
+          shouldAvoid: [],
+          maxSelections: 1,
+          allowCrossCategory: false,
+        },
+      ],
       preferences: ['estaciones'],
       hardConstraints: [],
       missingFields: [],
@@ -40,13 +51,12 @@ describe('structured extraction schemas', () => {
     expect(parsed.retrievalReady).toBe(true);
   });
 
-  it('parses provider query intents with sub-query slots', () => {
+  it('parses provider query intents with capped query slots', () => {
     const parsed = providerQueryIntentSchema.parse({
       category: 'Catering',
       label: 'Catering para boda',
       priority: 1,
-      queryStrings: ['catering para boda en Lima'],
-      subQueries: [
+      queries: [
         {
           id: 'sushi',
           label: 'sushi',
@@ -75,7 +85,7 @@ describe('structured extraction schemas', () => {
       fitCriteria,
     });
 
-    expect(parsed.subQueries?.map((subQuery) => subQuery.label)).toEqual([
+    expect(parsed.queries.map((query) => query.label)).toEqual([
       'sushi',
       'torta para novios',
     ]);

@@ -90,7 +90,8 @@ type ProviderSearchExecutionResult = {
 const MAX_BROADEN_SEARCH_PAGES = 5;
 const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 const MAX_STARTER_NEEDS = 5;
-const MAX_DETAILED_ELICITATION_NEEDS = 6;
+const MAX_DETAILED_ELICITATION_NEEDS = 5;
+const MAX_PROVIDER_QUERIES_PER_NEED = 3;
 
 export class AgentService {
   constructor(
@@ -2072,36 +2073,7 @@ export class AgentService {
   private resolveProviderSubQueries(
     queryIntent: ProviderQueryIntent,
   ): ProviderNeedSubQuery[] {
-    const subQueries = queryIntent.subQueries ?? [];
-    if (subQueries.length > 0) {
-      return subQueries;
-    }
-
-    if (queryIntent.queryStrings.length > 1) {
-      return queryIntent.queryStrings.map((queryString, index) => ({
-        id: this.slugifySubQueryId(`${queryIntent.label}-${index + 1}`),
-        label: this.labelFromQueryString(queryIntent.category, queryString),
-        category: queryIntent.category,
-        queryStrings: [queryString],
-        mustHave: [queryString],
-        shouldAvoid: queryIntent.hardConstraints,
-        maxSelections: 1,
-        allowCrossCategory: false,
-      }));
-    }
-
-    return [{
-      id: this.slugifySubQueryId(queryIntent.label),
-      label: queryIntent.label,
-      category: queryIntent.category,
-      queryStrings: queryIntent.queryStrings,
-      mustHave: queryIntent.preferences.length > 0
-        ? queryIntent.preferences
-        : queryIntent.queryStrings,
-      shouldAvoid: queryIntent.hardConstraints,
-      maxSelections: 1,
-      allowCrossCategory: false,
-    }];
+    return queryIntent.queries.slice(0, MAX_PROVIDER_QUERIES_PER_NEED);
   }
 
   private collectSelectedProvidersFromSubQueries(
@@ -2183,8 +2155,18 @@ export class AgentService {
           category,
           label: queryIntent?.label ?? category,
           priority: index + 1,
-          queryStrings: queryIntent?.queryStrings ?? [],
-          subQueries: queryIntent?.subQueries ?? [],
+          queries: queryIntent?.queries.slice(0, MAX_PROVIDER_QUERIES_PER_NEED) ?? [
+            {
+              id: this.slugifySubQueryId(category),
+              label: category,
+              category,
+              queryStrings: [`${category} para evento`],
+              mustHave: [],
+              shouldAvoid: [],
+              maxSelections: 1,
+              allowCrossCategory: false,
+            },
+          ],
           preferences: queryIntent?.preferences ?? extraction.preferences ?? [],
           hardConstraints: queryIntent?.hardConstraints ?? extraction.hardConstraints ?? [],
           retrievalReady: false,
@@ -2205,12 +2187,11 @@ export class AgentService {
       });
     }
 
-    return ranked.slice(0, MAX_DETAILED_ELICITATION_NEEDS).map((queryIntent) => ({
+    return ranked.map((queryIntent, index) => ({
       ...queryIntent,
-      retrievalReady: this.isStructuredQueryIntentRetrievalReady(
-        queryIntent,
-        extraction,
-      ),
+      queries: queryIntent.queries.slice(0, MAX_PROVIDER_QUERIES_PER_NEED),
+      retrievalReady: index < MAX_DETAILED_ELICITATION_NEEDS &&
+        this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction),
     }));
   }
 
@@ -2223,25 +2204,24 @@ export class AgentService {
       (extraction.providerQueryIntents ?? []).flatMap((queryIntent) => [
         ...queryIntent.preferences,
         ...queryIntent.hardConstraints,
-        ...queryIntent.queryStrings,
+        ...queryIntent.queries.flatMap((query) => query.queryStrings),
       ]).map((detail) => detail.trim().toLowerCase()).filter(Boolean),
     );
     const readyNeedCount = (extraction.providerQueryIntents ?? []).filter(
       (queryIntent) => this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction),
     ).length;
     const queryIntentCount = (extraction.providerQueryIntents ?? []).length;
-    const subQueryCount = (extraction.providerQueryIntents ?? []).reduce(
-      (count, queryIntent) => count + (queryIntent.subQueries ?? []).length,
-      0,
-    );
+    const multiQueryNeedCount = (extraction.providerQueryIntents ?? []).filter(
+      (queryIntent) => queryIntent.queries.length > 1,
+    ).length;
 
     return (
       (extraction.hardConstraints?.length ?? 0) > 0 ||
       (extraction.preferences?.length ?? 0) >= 3 ||
-      subQueryCount >= 2 ||
+      (multiQueryNeedCount > 0 && queryIntentDetails.size >= 2) ||
       (
         queryIntentCount > 0 &&
-        queryIntentCount <= MAX_DETAILED_ELICITATION_NEEDS &&
+        queryIntentCount <= 8 &&
         readyNeedCount >= 2 &&
         queryIntentDetails.size >= 3
       )
@@ -2256,7 +2236,7 @@ export class AgentService {
       return true;
     }
 
-    const hasQuery = queryIntent.queryStrings.some(
+    const hasQuery = queryIntent.queries.flatMap((query) => query.queryStrings).some(
       (query) => query.trim().length > 0,
     );
     const hasEventScale =

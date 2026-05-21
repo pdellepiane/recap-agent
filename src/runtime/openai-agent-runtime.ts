@@ -656,11 +656,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         label: queryIntent.label,
         priority: queryIntent.priority,
         retrieval_ready: queryIntent.retrievalReady,
-        sub_queries: (queryIntent.subQueries ?? []).map((subQuery) => ({
-          id: subQuery.id,
-          label: subQuery.label,
-          query_strings: subQuery.queryStrings,
-          must_have: subQuery.mustHave,
+        queries: queryIntent.queries.map((query) => ({
+          id: query.id,
+          label: query.label,
+          query_strings: query.queryStrings,
+          must_have: query.mustHave,
         })),
       })),
     };

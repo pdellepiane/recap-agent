@@ -107,13 +107,15 @@ Definiciones de campos:
 
 - providerQueryIntents:
   - lista estructurada de necesidades de proveedores que deben consultarse en paralelo cuando el usuario describe un evento completo.
-  - cada elemento debe incluir category canónica, label, priority, queryStrings, subQueries, preferences, hardConstraints, missingFields, retrievalReady y fitCriteria.
-  - queryStrings debe contener consultas naturales en español para la base de proveedores, no instrucciones internas.
-  - subQueries divide una necesidad compleja en componentes buscables de forma independiente. Cada elemento debe incluir id, label, category, queryStrings, mustHave, shouldAvoid, maxSelections y allowCrossCategory.
-  - Usa subQueries cuando una necesidad contenga varios entregables que podrían requerir proveedores distintos. Ejemplo: Catering con sushi, estaciones y torta para novios debe producir subQueries separadas para "sushi", "estaciones de comida" y "torta para novios".
-  - Para necesidades simples, subQueries debe tener un solo elemento equivalente al label principal de la necesidad.
+  - cada elemento debe incluir category canónica, label, priority, queries, preferences, hardConstraints, missingFields, retrievalReady y fitCriteria.
+  - queries es una lista plana de consultas buscables para esa necesidad de proveedor. Cada query debe incluir id, label, category, queryStrings, mustHave, shouldAvoid, maxSelections y allowCrossCategory.
+  - Consolida primero: si varias frases apuntan al mismo tipo de proveedor y el mismo entregable, usa una sola query con varias queryStrings o mustHave.
+  - Separa queries solo cuando los componentes dentro de la misma necesidad realmente podrían requerir proveedores distintos o evidencia claramente distinta. Ejemplo: Catering con sushi, estaciones y torta para novios puede tener queries separadas para "sushi", "estaciones de comida" y "torta para novios".
+  - Máximo 3 queries por necesidad de proveedor. Si hay más componentes, combina los menos críticos en la query principal o en mustHave.
+  - Para necesidades simples, queries debe tener un solo elemento equivalente al label principal de la necesidad.
   - maxSelections normalmente debe ser 1; súbelo solo si el usuario pide explícitamente varias opciones para el mismo componente.
   - allowCrossCategory debe ser false salvo que el usuario permita o pida resolver ese componente con otra categoría.
+  - Máximo 5 necesidades deben estar listas para búsqueda inmediata. Si identificas más de 5 necesidades, conserva las adicionales como identificadas con retrievalReady=false para priorizarlas después.
   - La entrada incluye categorías sugeridas y prioridad completa dinámicas para el eventType normalizado. Para necesidades sugeridas o inferidas, sigue esa lista por tipo de evento.
   - Las categorías fuera de las sugerencias del eventType siguen siendo válidas solo si el usuario las pide explícitamente; no las agregues como necesidades inferidas por defecto.
   - retrievalReady es true solo si hay suficiente contexto útil para buscar esa necesidad sin ruido excesivo.

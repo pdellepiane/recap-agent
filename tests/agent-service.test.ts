@@ -38,6 +38,7 @@ import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { PlanStore, SavePlanInput } from '../src/storage/plan-store';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import type { ProviderFitCriteria } from '../src/runtime/provider-fit';
+import type { ProviderQueryIntent } from '../src/runtime/extraction-schemas';
 
 const testProviderFitCriteria = {
   eventType: 'boda',
@@ -49,6 +50,24 @@ const testProviderFitCriteria = {
   shouldAvoid: [],
   rankingNotes: 'Priorizar proveedores alineados con la necesidad activa.',
 } satisfies ProviderFitCriteria;
+
+function providerNeedQuery(
+  category: ProviderQueryIntent['category'],
+  label: string,
+  queryStrings: string[],
+  mustHave: string[] = [],
+): ProviderQueryIntent['queries'][number] {
+  return {
+    id: label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'query',
+    label,
+    category,
+    queryStrings,
+    mustHave,
+    shouldAvoid: [],
+    maxSelections: 1,
+    allowCrossCategory: false,
+  };
+}
 
 class FakeRuntime implements AgentRuntime {
   public readonly composeRequests: ComposeReplyRequest[] = [];
@@ -3054,8 +3073,7 @@ describe('AgentService', () => {
               category: 'Catering',
               label: 'Catering para boda',
               priority: 1,
-              queryStrings: ['catering elegante para boda en Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Catering', 'Catering para boda', ['catering elegante para boda en Lima'])],
               preferences: ['elegante', 'cena tipo estaciones'],
               hardConstraints: [],
               missingFields: [],
@@ -3066,8 +3084,7 @@ describe('AgentService', () => {
               category: 'Música',
               label: 'Música para boda',
               priority: 2,
-              queryStrings: ['música para boda elegante en Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Música', 'Música para boda', ['música para boda elegante en Lima'])],
               preferences: ['elegante', 'música en vivo'],
               hardConstraints: [],
               missingFields: [],
@@ -3186,8 +3203,7 @@ describe('AgentService', () => {
               category: 'Catering',
               label: 'Catering para boda',
               priority: 1,
-              queryStrings: ['catering para boda en Lima'],
-              subQueries: [
+              queries: [
                 {
                   id: 'sushi',
                   label: 'sushi',
@@ -3318,6 +3334,102 @@ describe('AgentService', () => {
     ]);
   });
 
+  it('caps detailed elicitation searches while keeping extra needs identified', async () => {
+    const categories = [
+      'Catering',
+      'Fotografía y video',
+      'Música',
+      'Florería y papelería',
+      'Locales',
+      'Wedding planners',
+    ] as const;
+
+    class CappedDetailedRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'elicitar_necesidades',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: [...categories],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: 'medio',
+          guestRange: '101-200',
+          preferences: ['sushi', 'fotos naturales', 'música en vivo', 'flores minimalistas'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda detallada con varias necesidades.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: categories.map((category, index) => ({
+            category,
+            label: category,
+            priority: index + 1,
+            queries: category === 'Catering'
+              ? [
+                  providerNeedQuery(category, 'sushi', ['catering sushi Lima'], ['sushi']),
+                  providerNeedQuery(category, 'estaciones', ['estaciones de comida Lima'], ['estaciones']),
+                  providerNeedQuery(category, 'torta', ['torta para novios Lima'], ['torta']),
+                  providerNeedQuery(category, 'mesa dulce', ['mesa dulce Lima'], ['mesa dulce']),
+                ]
+              : [providerNeedQuery(category, category, [`${category} para boda Lima`])],
+            preferences: [category],
+            hardConstraints: [],
+            missingFields: [],
+            retrievalReady: false,
+            fitCriteria: {
+              ...testProviderFitCriteria,
+              needCategory: category,
+            },
+          })),
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class CappedGateway extends FakeGateway {
+      public readonly calls: QueryIntentProviderSearchInput[] = [];
+
+      override async searchProvidersByQueryIntent(
+        input: QueryIntentProviderSearchInput,
+      ): Promise<ProviderGatewaySearchResult> {
+        this.calls.push(input);
+        return { providers: [] };
+      }
+    }
+
+    const gateway = new CappedGateway();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new CappedDetailedRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-capped-detailed',
+      text: 'boda en Lima con sushi, estaciones, torta, música, fotos y flores',
+      messageId: 'msg-capped-detailed',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.trace.search_strategy).toBe('multi_need_query_intents');
+    expect(response.plan.provider_needs.map((need) => need.category)).toEqual([...categories]);
+    expect(response.plan.provider_needs.at(-1)?.status).toBe('identified');
+    expect(gateway.calls).toHaveLength(7);
+    expect(gateway.calls.filter((call) => call.category === 'Catering')).toHaveLength(3);
+    expect(gateway.calls.some((call) => call.queryStrings.includes('mesa dulce Lima'))).toBe(false);
+  });
+
   it('searches detailed elicitation when details live inside query intents', async () => {
     class DetailedQueryIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
@@ -3346,8 +3458,7 @@ describe('AgentService', () => {
               category: 'Catering',
               label: 'Catering con sushi',
               priority: 1,
-              queryStrings: ['catering sushi boda Lima 120 personas'],
-              subQueries: [],
+              queries: [providerNeedQuery('Catering', 'Catering con sushi', ['catering sushi boda Lima 120 personas'])],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3358,8 +3469,7 @@ describe('AgentService', () => {
               category: 'Fotografía y video',
               label: 'Fotografía para novios',
               priority: 2,
-              queryStrings: ['fotografía natural novios boda Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Fotografía y video', 'Fotografía para novios', ['fotografía natural novios boda Lima'])],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3370,8 +3480,7 @@ describe('AgentService', () => {
               category: 'Música',
               label: 'Música en vivo',
               priority: 3,
-              queryStrings: ['música en vivo boda Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Música', 'Música en vivo', ['música en vivo boda Lima'])],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3382,8 +3491,7 @@ describe('AgentService', () => {
               category: 'Florería y papelería',
               label: 'Flores minimalistas',
               priority: 4,
-              queryStrings: ['flores minimalistas boda Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Florería y papelería', 'Flores minimalistas', ['flores minimalistas boda Lima'])],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3483,8 +3591,7 @@ describe('AgentService', () => {
               category: 'Catering',
               label: 'Catering con sushi',
               priority: 1,
-              queryStrings: ['catering sushi boda Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Catering', 'Catering con sushi', ['catering sushi boda Lima'])],
               preferences: ['sushi'],
               hardConstraints: [],
               missingFields: [],
@@ -3495,8 +3602,7 @@ describe('AgentService', () => {
               category: 'Música',
               label: 'Música en vivo',
               priority: 2,
-              queryStrings: ['música en vivo boda Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Música', 'Música en vivo', ['música en vivo boda Lima'])],
               preferences: ['música en vivo'],
               hardConstraints: [],
               missingFields: [],
@@ -3640,8 +3746,7 @@ describe('AgentService', () => {
             category,
             label: category,
             priority: index + 1,
-            queryStrings: [`${category} para evento`],
-            subQueries: [],
+            queries: [providerNeedQuery(category, category, [`${category} para evento`])],
             preferences: [],
             hardConstraints: [],
             missingFields: [],
@@ -3728,8 +3833,7 @@ describe('AgentService', () => {
               category: 'Locales',
               label: 'Locales',
               priority: 1,
-              queryStrings: ['local para activación de marca en Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Locales', 'Locales', ['local para activación de marca en Lima'])],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3745,8 +3849,7 @@ describe('AgentService', () => {
               category: 'Catering',
               label: 'Catering',
               priority: 2,
-              queryStrings: ['catering para activación de marca en Lima'],
-              subQueries: [],
+              queries: [providerNeedQuery('Catering', 'Catering', ['catering para activación de marca en Lima'])],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3837,8 +3940,7 @@ describe('AgentService', () => {
             category,
             label: category,
             priority: index + 1,
-            queryStrings: [`${category} para boda elegante en Lima`],
-            subQueries: [],
+            queries: [providerNeedQuery(category, category, [`${category} para evento`])],
             preferences: ['elegante'],
             hardConstraints: [],
             missingFields: ['fecha', 'distrito'],

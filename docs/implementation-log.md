@@ -1788,6 +1788,29 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Flatten provider-need retrieval queries
+
+- Replaced the extractor-facing `queryStrings` plus `subQueries` hierarchy with one `queries` list per provider need.
+- Capped each provider need to 3 retrieval queries and detailed elicitation to 5 searched needs per turn; additional detailed needs remain in the plan as identified and unsearched.
+- Updated elicitation gating so broad category menus do not trigger provider searches just because many generic category queries were extracted.
+- Added regression coverage for capped detailed search and retained extra needs.
+
+Reason:
+- The previous query/sub-query hierarchy encouraged over-fragmented retrieval, especially during KB-style or broad elicitation turns.
+
+Decision:
+- Keep one model-facing query level and ask the extractor to consolidate first, splitting only when components inside the same provider need are genuinely different.
+
+Files changed:
+- `src/runtime/extraction-schemas.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `prompts/extractors/field_definitions.txt`
+- `evals/cases/multi-need-elicitation-shortlists.yaml`
+- `tests/agent-service.test.ts`
+- `tests/extraction-schemas.test.ts`
+- `docs/implementation-log.md`
+
 ### Persist structured traceability summaries in perf telemetry
 
 - Added first-class trace and perf fields for close actions, provider-selection references, contact validation, provider candidate provenance, and FAQ retrieval usage.

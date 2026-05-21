@@ -30,7 +30,15 @@ fixtures:
           - category: Catering
             label: Catering para boda
             priority: 1
-            queryStrings: [catering elegante para boda en Lima]
+            queries:
+              - id: catering
+                label: Catering para boda
+                category: Catering
+                queryStrings: [catering elegante para boda en Lima]
+                mustHave: [elegante, cena tipo estaciones]
+                shouldAvoid: []
+                maxSelections: 1
+                allowCrossCategory: false
             preferences: [elegante, cena tipo estaciones]
             hardConstraints: []
             missingFields: []
@@ -47,7 +55,15 @@ fixtures:
           - category: Música
             label: Música para boda
             priority: 2
-            queryStrings: [música elegante para boda en Lima]
+            queries:
+              - id: musica
+                label: Música para boda
+                category: Música
+                queryStrings: [música elegante para boda en Lima]
+                mustHave: [elegante, música en vivo]
+                shouldAvoid: []
+                maxSelections: 1
+                allowCrossCategory: false
             preferences: [elegante, música en vivo]
             hardConstraints: []
             missingFields: []
