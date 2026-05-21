@@ -1,0 +1,52 @@
+template: template.base-live
+id: live.faq_web_design_support
+suite: live_comprehensive
+version: 1
+description: Out-of-scope web design requests should stay in FAQ/support mode, not provider search.
+tags:
+  - live
+  - faq
+  - scope
+inputs:
+  - text: ¿Me puedes diseñar una web para mi negocio? Si no, ¿con quién contacto por este error?
+expectations:
+  - id: enters-faq-node
+    type: node_transition
+    to: consultar_faq
+  - id: faq-tool-called
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+  - id: no-provider-results
+    type: provider_result_count
+    max: 0
+  - id: says-no-external-web-design
+    type: text_contains
+    allOf:
+      - web
+    anyOf:
+      - no diseño
+      - no realizo
+      - no puedo diseñar
+      - no construyo
+  - id: gives-support-channel
+    type: text_contains
+    anyOf:
+      - hola@sinenvolturas.com
+      - chat
+  - id: does-not-claim-no-number
+    type: text_not_contains
+    phrases:
+      - no tenemos número
+      - no hay número
+      - no existe un número
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
+    maxToolCalls: 2

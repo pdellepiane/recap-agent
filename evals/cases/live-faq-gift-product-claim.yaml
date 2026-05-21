@@ -1,0 +1,63 @@
+template: template.base-live
+id: live.faq_gift_product_claim
+suite: live_comprehensive
+version: 1
+description: Gift/product claim questions should combine KB facts about optional gift purchase, received value, brand claims, and support channels.
+tags:
+  - live
+  - faq
+  - knowledge-base
+  - shop
+inputs:
+  - text: Tengo un problema con un regalo de mi web, ¿estoy obligado a comprarlo o tengo que reclamarle a la marca?
+expectations:
+  - id: enters-faq-node
+    type: node_transition
+    to: consultar_faq
+  - id: faq-tool-called
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+  - id: no-provider-results
+    type: provider_result_count
+    max: 0
+  - id: explains-gift-not-mandatory
+    type: text_contains
+    allOf:
+      - obligado
+    anyOf:
+      - no estás obligado
+      - no estas obligado
+      - no es obligatorio
+  - id: explains-value-and-commission
+    type: text_contains
+    allOf:
+      - comisión
+    anyOf:
+      - 100%
+      - valor
+      - fondos
+      - cuenta bancaria
+  - id: explains-brand-claim
+    type: text_contains
+    allOf:
+      - marca
+    anyOf:
+      - reclamo
+      - compra
+      - producto
+  - id: offers-support-channel
+    type: text_contains
+    anyOf:
+      - hola@sinenvolturas.com
+      - chat
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
+    maxToolCalls: 2

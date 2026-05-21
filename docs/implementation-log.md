@@ -1834,6 +1834,35 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Clarify FAQ scope and product-claim support
+
+- Updated shared scope and welcome prompts to state that the assistant helps with Sin Envolturas questions and event-provider planning, but does not design or build external websites.
+- Strengthened FAQ prompts so support escalation consistently offers the web chat or `hola@sinenvolturas.com`, without claiming there is no direct number unless the knowledge base says so.
+- Inspected the live scraped knowledge base without uploading changes; confirmed relevant facts are present across the `estamos-obligados-a-comprar` and Shop claim articles.
+- Updated FAQ policy so gift/product claim questions combine no-obligation gift guidance, configured commission/value framing, direct brand claim handling, and Sin Envolturas help channels.
+- Added live eval cases for web-design/support scope and gift/product-claim wording, and included them in the live comprehensive suite.
+- Added prompt-loader regression coverage for the new scope and FAQ policy instructions.
+
+Reason:
+- Batch 2 feedback showed out-of-scope web-design support copy and gift/product claim answers that were directionally right but unclear and incomplete.
+
+Decision:
+- Keep product facts grounded in the knowledge base, but make the FAQ node explicitly combine related KB facts when a user asks a blended support question.
+
+Files changed:
+- `prompts/shared/base_system.txt`
+- `prompts/shared/domain_scope.txt`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/nodes/contacto_inicial/response_contract.txt`
+- `prompts/nodes/consultar_faq/system.txt`
+- `prompts/nodes/consultar_faq/response_contract.txt`
+- `prompts/nodes/consultar_faq/tool_policy.txt`
+- `evals/cases/live-faq-web-design-support.yaml`
+- `evals/cases/live-faq-gift-product-claim.yaml`
+- `evals/suites/live_comprehensive.yaml`
+- `tests/prompt-loader.test.ts`
+- `docs/implementation-log.md`
+
 ### Add structured close/contact schema foundations
 
 - Added Zod schemas for close actions and service-owned close flow results, including discriminated unions for close confirmation, need deferral, contact request, abandonment, clarification, and close outcomes.

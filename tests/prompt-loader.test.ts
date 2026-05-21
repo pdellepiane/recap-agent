@@ -24,6 +24,21 @@ describe('PromptLoader', () => {
     }
   });
 
+  it('includes explicit FAQ scope and gift-claim policy in prompt bundles', async () => {
+    const faqBundle = await loader.loadNodeBundle('consultar_faq');
+    const welcomeBundle = await loader.loadNodeBundle('contacto_inicial');
+    const extractorBundle = await loader.loadExtractorBundle();
+
+    expect(faqBundle.instructions).toContain('no realizas diseño/desarrollo web externo');
+    expect(faqBundle.instructions).toContain('no está obligado a comprar los regalos');
+    expect(faqBundle.instructions).toContain('reclamo se gestiona directamente con la marca');
+    expect(faqBundle.instructions).toContain('chat de la web');
+    expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
+    expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
+    expect(extractorBundle.instructions).toContain('diseñar una web externa');
+    expect(extractorBundle.instructions).toContain('reclamos de productos');
+  });
+
   it('loads extractor prompts without conversational style files', async () => {
     const bundle = await loader.loadExtractorBundle();
 
