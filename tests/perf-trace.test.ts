@@ -79,6 +79,40 @@ describe('perf trace module', () => {
           contact_fields_present: { name: false, email: false, phone: false },
           contact_validation_error: null,
         },
+        close_action_summary: {
+          type: null,
+          category: null,
+          reason_preview: null,
+        },
+        selection_resolution_summary: {
+          selected_provider_references: [],
+          selected_provider_hints_count: 0,
+          provider_plan_operation_types: [],
+          provider_plan_operation_categories: [],
+        },
+        contact_validation_summary: {
+          status: 'not_provided',
+          field: null,
+          reason_preview: null,
+          extraction_contact_fields_present: { name: false, email: false, phone: false },
+          plan_contact_fields_present: { name: false, email: false, phone: false },
+        },
+        provider_candidate_audit: [
+          {
+            provider_id: 7,
+            category: 'Catering',
+            location: 'Lima',
+            retrieval_source: 'hybrid',
+            retrieval_score: 0.82,
+            fit_score: 91,
+          },
+        ],
+        faq_resolution_summary: {
+          is_faq_turn: false,
+          kb_query_present: false,
+          file_search_called: false,
+          file_search_output_count: 0,
+        },
         plan_persisted: true,
         plan_persist_reason: 'recomendar',
         timing_ms: {
@@ -124,6 +158,18 @@ describe('perf trace module', () => {
     expect(record.prompt_bundle_id).toBe('bundle-1');
     expect(record.prompt_file_paths).toEqual(['prompts/nodes/recomendar/system.txt']);
     expect(record.operational_note).toBe('No encontré más opciones distintas con los criterios actuales.');
+    expect(record.provider_candidate_audit).toEqual([
+      {
+        provider_id: 7,
+        category: 'Catering',
+        location: 'Lima',
+        retrieval_source: 'hybrid',
+        retrieval_score: 0.82,
+        fit_score: 91,
+      },
+    ]);
+    expect(record.contact_validation_summary.status).toBe('not_provided');
+    expect(record.faq_resolution_summary.is_faq_turn).toBe(false);
     expect(record.ttl_epoch_seconds).toBe(1778889600);
   });
 
@@ -226,6 +272,31 @@ describe('perf trace module', () => {
         open_question_count: 0,
         contact_fields_present: { name: false, email: false, phone: false },
         contact_validation_error: null,
+      },
+      close_action_summary: {
+        type: null,
+        category: null,
+        reason_preview: null,
+      },
+      selection_resolution_summary: {
+        selected_provider_references: [],
+        selected_provider_hints_count: 0,
+        provider_plan_operation_types: [],
+        provider_plan_operation_categories: [],
+      },
+      contact_validation_summary: {
+        status: 'not_provided',
+        field: null,
+        reason_preview: null,
+        extraction_contact_fields_present: { name: false, email: false, phone: false },
+        plan_contact_fields_present: { name: false, email: false, phone: false },
+      },
+      provider_candidate_audit: [],
+      faq_resolution_summary: {
+        is_faq_turn: false,
+        kb_query_present: false,
+        file_search_called: false,
+        file_search_output_count: 0,
       },
       provider_results_count: 2,
       provider_result_ids: [1, 2],

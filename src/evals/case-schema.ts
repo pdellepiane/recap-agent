@@ -68,6 +68,12 @@ const toolInputTraceSchema = z.object({
   input: z.string(),
 });
 
+const contactFieldPresenceSchema = z.object({
+  name: z.boolean(),
+  email: z.boolean(),
+  phone: z.boolean(),
+});
+
 const turnTraceSchema = z.object({
   trace_id: z.string(),
   conversation_id: z.string().nullable(),
@@ -86,6 +92,63 @@ const turnTraceSchema = z.object({
   tool_outputs: z.array(toolOutputTraceSchema),
   provider_results: z.array(providerSummarySchema),
   search_strategy: z.string().default('none'),
+  close_action_summary: z.object({
+    type: z.enum(['confirm_close', 'defer_need', 'request_contact', 'abandon_plan', 'clarify']).nullable(),
+    category: z.string().nullable(),
+    reason_preview: z.string().nullable(),
+  }).default({
+    type: null,
+    category: null,
+    reason_preview: null,
+  }),
+  selection_resolution_summary: z.object({
+    selected_provider_references: z.array(z.object({
+      provider_id: z.number().int().positive().nullable(),
+      category: z.string().nullable(),
+      has_title: z.boolean(),
+      has_hint: z.boolean(),
+    })),
+    selected_provider_hints_count: z.number().int().nonnegative(),
+    provider_plan_operation_types: z.array(z.string()),
+    provider_plan_operation_categories: z.array(z.string()),
+  }).default({
+    selected_provider_references: [],
+    selected_provider_hints_count: 0,
+    provider_plan_operation_types: [],
+    provider_plan_operation_categories: [],
+  }),
+  contact_validation_summary: z.object({
+    status: z.enum(['not_provided', 'valid', 'invalid']),
+    field: z.enum(['phone', 'email']).nullable(),
+    reason_preview: z.string().nullable(),
+    extraction_contact_fields_present: contactFieldPresenceSchema,
+    plan_contact_fields_present: contactFieldPresenceSchema,
+  }).default({
+    status: 'not_provided',
+    field: null,
+    reason_preview: null,
+    extraction_contact_fields_present: { name: false, email: false, phone: false },
+    plan_contact_fields_present: { name: false, email: false, phone: false },
+  }),
+  provider_candidate_audit: z.array(z.object({
+    provider_id: z.number().int().positive(),
+    category: z.string().nullable(),
+    location: z.string().nullable(),
+    retrieval_source: z.string().nullable(),
+    retrieval_score: z.number().nullable(),
+    fit_score: z.number().nullable(),
+  })).default([]),
+  faq_resolution_summary: z.object({
+    is_faq_turn: z.boolean(),
+    kb_query_present: z.boolean(),
+    file_search_called: z.boolean(),
+    file_search_output_count: z.number().int().nonnegative(),
+  }).default({
+    is_faq_turn: false,
+    kb_query_present: false,
+    file_search_called: false,
+    file_search_output_count: 0,
+  }),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),
     context_candidates: z.number().int().nonnegative(),

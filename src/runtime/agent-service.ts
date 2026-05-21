@@ -33,10 +33,15 @@ import {
 } from '../core/provider-category';
 import { computeSearchSufficiency } from '../core/sufficiency';
 import type {
+  CloseActionDebugSummary,
+  ContactValidationDebugSummary,
+  FaqResolutionDebugSummary,
   ExtractionDebugSummary,
   PlanDebugSummary,
+  ProviderCandidateAuditEntry,
   RecommendationFunnelTrace,
   SearchStrategyTrace,
+  SelectionResolutionDebugSummary,
   TurnTrace,
 } from '../core/trace';
 import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
@@ -400,21 +405,23 @@ export class AgentService {
         planToClose = mergedPlan;
       }
       if (extraction.closeAction?.type === 'defer_need') {
-        const deferredCategory = extraction.closeAction.category;
-        const deferredNeed = planToClose.provider_needs.find(
-          (need) => need.category === deferredCategory,
-        );
-        if (deferredNeed) {
-          planToClose = mergePlan(planToClose, {
-            provider_needs: [
-              {
-                ...deferredNeed,
-                status: 'deferred',
-                selected_provider_ids: [],
-                selected_provider_hints: [],
-              },
-            ],
-          });
+        const deferredCategory = extraction.closeAction.category ?? null;
+        if (deferredCategory !== null) {
+          const deferredNeed = planToClose.provider_needs.find(
+            (need) => need.category === deferredCategory,
+          );
+          if (deferredNeed) {
+            planToClose = mergePlan(planToClose, {
+              provider_needs: [
+                {
+                  ...deferredNeed,
+                  status: 'deferred',
+                  selected_provider_ids: [],
+                  selected_provider_hints: [],
+                },
+              ],
+            });
+          }
         }
       }
 
@@ -492,7 +499,7 @@ export class AgentService {
       currentNode = 'crear_lead_cerrar';
       nodePath.push(currentNode);
       if (extraction.closeAction?.type === 'clarify') {
-        errorMessage = extraction.closeAction.reason;
+        errorMessage = extraction.closeAction.reason ?? null;
       }
       const planToSave = mergePlan(planToClose, { current_node: currentNode });
       await persistPlan(planToSave, 'crear_lead_cerrar');
@@ -969,6 +976,7 @@ export class AgentService {
     searchStrategy: SearchStrategyTrace;
     operationalNote: string | null;
   }): TurnTrace {
+    const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
     return {
       trace_id: args.traceId ?? ulid(),
       conversation_id: args.plan.conversation_id,
@@ -989,8 +997,13 @@ export class AgentService {
       recommendation_funnel: args.recommendationFunnel,
       search_strategy: args.searchStrategy,
       operational_note: args.operationalNote,
-      extraction_summary: this.summarizeExtraction(args.extraction, args.operationalNote),
-      plan_summary: this.summarizePlan(args.plan, args.operationalNote),
+      extraction_summary: this.summarizeExtraction(args.extraction, contactValidationSummary),
+      plan_summary: this.summarizePlan(args.plan, contactValidationSummary),
+      close_action_summary: this.summarizeCloseAction(args.extraction),
+      selection_resolution_summary: this.summarizeSelectionResolution(args.extraction),
+      contact_validation_summary: contactValidationSummary,
+      provider_candidate_audit: this.summarizeProviderCandidateAudit(args.providerResults),
+      faq_resolution_summary: this.summarizeFaqResolution(args.currentNode, args.extraction, args.toolUsage),
       plan_persisted: args.planPersisted,
       plan_persist_reason: args.planPersistReason,
       timing_ms: args.timingMs,
@@ -1000,10 +1013,8 @@ export class AgentService {
 
   private summarizeExtraction(
     extraction: ExtractionResult,
-    operationalNote: string | null,
+    contactValidationSummary: ContactValidationDebugSummary,
   ): ExtractionDebugSummary {
-    const isContactValidationError = operationalNote !== null &&
-      (operationalNote.includes('teléfono') || operationalNote.includes('correo'));
     return {
       intent_confidence: extraction.intentConfidence,
       event_type: extraction.eventType,
@@ -1028,13 +1039,14 @@ export class AgentService {
         email: Boolean(extraction.contactEmail),
         phone: Boolean(extraction.contactPhone),
       },
-      contact_validation_error: isContactValidationError ? operationalNote : null,
+      contact_validation_error: contactValidationSummary.reason_preview,
     };
   }
 
-  private summarizePlan(plan: PlanSnapshot, operationalNote: string | null): PlanDebugSummary {
-    const isContactValidationError = operationalNote !== null &&
-      (operationalNote.includes('teléfono') || operationalNote.includes('correo'));
+  private summarizePlan(
+    plan: PlanSnapshot,
+    contactValidationSummary: ContactValidationDebugSummary,
+  ): PlanDebugSummary {
     return {
       current_node: plan.current_node,
       lifecycle_state: plan.lifecycle_state,
@@ -1061,7 +1073,137 @@ export class AgentService {
         email: Boolean(plan.contact_email),
         phone: Boolean(plan.contact_phone),
       },
-      contact_validation_error: isContactValidationError ? operationalNote : null,
+      contact_validation_error: contactValidationSummary.reason_preview,
+    };
+  }
+
+  private summarizeCloseAction(extraction: ExtractionResult): CloseActionDebugSummary {
+    const closeAction = extraction.closeAction ?? null;
+    if (!closeAction) {
+      return {
+        type: null,
+        category: null,
+        reason_preview: null,
+      };
+    }
+
+    return {
+      type: closeAction.type,
+      category: closeAction.type === 'defer_need' ? closeAction.category ?? null : null,
+      reason_preview: closeAction.type === 'clarify'
+        ? this.truncateDebugText(closeAction.reason ?? '', 160)
+        : null,
+    };
+  }
+
+  private summarizeSelectionResolution(extraction: ExtractionResult): SelectionResolutionDebugSummary {
+    const operations = extraction.providerPlanOperations ?? [];
+    return {
+      selected_provider_references: (extraction.selectedProviderReferences ?? []).map((reference) => ({
+        provider_id: reference.providerId,
+        category: reference.category,
+        has_title: reference.providerTitle !== null,
+        has_hint: reference.hint !== null,
+      })),
+      selected_provider_hints_count: extraction.selectedProviderHints.length,
+      provider_plan_operation_types: operations.map((operation) => operation.type),
+      provider_plan_operation_categories: operations
+        .map((operation) => operation.category)
+        .filter((category): category is ProviderCategory => category !== null),
+    };
+  }
+
+  private summarizeContactValidation(
+    extraction: ExtractionResult,
+    plan: PlanSnapshot,
+  ): ContactValidationDebugSummary {
+    const extractionFieldsPresent = {
+      name: Boolean(extraction.contactName),
+      email: Boolean(extraction.contactEmail),
+      phone: Boolean(extraction.contactPhone),
+    };
+    const planFieldsPresent = {
+      name: Boolean(plan.contact_name),
+      email: Boolean(plan.contact_email),
+      phone: Boolean(plan.contact_phone),
+    };
+
+    const extractionPhoneError = this.describePhoneValidationError(extraction.contactPhone);
+    if (extractionPhoneError !== null) {
+      return {
+        status: 'invalid',
+        field: 'phone',
+        reason_preview: extractionPhoneError,
+        extraction_contact_fields_present: extractionFieldsPresent,
+        plan_contact_fields_present: planFieldsPresent,
+      };
+    }
+
+    if (extraction.contactEmail !== null && !this.isValidEmail(extraction.contactEmail)) {
+      return {
+        status: 'invalid',
+        field: 'email',
+        reason_preview: 'El correo electrónico no parece válido.',
+        extraction_contact_fields_present: extractionFieldsPresent,
+        plan_contact_fields_present: planFieldsPresent,
+      };
+    }
+
+    if (plan.contact_phone !== null && !this.isValidPhone(plan.contact_phone)) {
+      return {
+        status: 'invalid',
+        field: 'phone',
+        reason_preview: 'El teléfono debe incluir código de país y número completo, por ejemplo +51 954779067.',
+        extraction_contact_fields_present: extractionFieldsPresent,
+        plan_contact_fields_present: planFieldsPresent,
+      };
+    }
+
+    if (plan.contact_email !== null && !this.isValidEmail(plan.contact_email)) {
+      return {
+        status: 'invalid',
+        field: 'email',
+        reason_preview: 'El correo electrónico no parece válido.',
+        extraction_contact_fields_present: extractionFieldsPresent,
+        plan_contact_fields_present: planFieldsPresent,
+      };
+    }
+
+    const hasContactSignal = Object.values(extractionFieldsPresent).some(Boolean) ||
+      Object.values(planFieldsPresent).some(Boolean);
+    return {
+      status: hasContactSignal ? 'valid' : 'not_provided',
+      field: null,
+      reason_preview: null,
+      extraction_contact_fields_present: extractionFieldsPresent,
+      plan_contact_fields_present: planFieldsPresent,
+    };
+  }
+
+  private summarizeProviderCandidateAudit(
+    providerResults: ProviderSummary[],
+  ): ProviderCandidateAuditEntry[] {
+    return providerResults.map((provider) => ({
+      provider_id: provider.id,
+      category: provider.category ?? null,
+      location: provider.location ?? null,
+      retrieval_source: provider.retrievalSource ?? null,
+      retrieval_score: provider.retrievalScore ?? null,
+      fit_score: provider.fitScore ?? null,
+    }));
+  }
+
+  private summarizeFaqResolution(
+    currentNode: DecisionNode,
+    extraction: ExtractionResult,
+    toolUsage: ToolUsage,
+  ): FaqResolutionDebugSummary {
+    const fileSearchToolNames = new Set(['file_search', 'hosted_file_search']);
+    return {
+      is_faq_turn: currentNode === 'consultar_faq',
+      kb_query_present: Boolean(extraction.kbQuery),
+      file_search_called: toolUsage.called.some((toolName) => fileSearchToolNames.has(toolName)),
+      file_search_output_count: toolUsage.outputs.filter((output) => fileSearchToolNames.has(output.tool)).length,
     };
   }
 
@@ -2042,6 +2184,7 @@ export class AgentService {
           label: queryIntent?.label ?? category,
           priority: index + 1,
           queryStrings: queryIntent?.queryStrings ?? [],
+          subQueries: queryIntent?.subQueries ?? [],
           preferences: queryIntent?.preferences ?? extraction.preferences ?? [],
           hardConstraints: queryIntent?.hardConstraints ?? extraction.hardConstraints ?? [],
           retrievalReady: false,

@@ -3055,6 +3055,7 @@ describe('AgentService', () => {
               label: 'Catering para boda',
               priority: 1,
               queryStrings: ['catering elegante para boda en Lima'],
+              subQueries: [],
               preferences: ['elegante', 'cena tipo estaciones'],
               hardConstraints: [],
               missingFields: [],
@@ -3066,6 +3067,7 @@ describe('AgentService', () => {
               label: 'Música para boda',
               priority: 2,
               queryStrings: ['música para boda elegante en Lima'],
+              subQueries: [],
               preferences: ['elegante', 'música en vivo'],
               hardConstraints: [],
               missingFields: [],
@@ -3345,6 +3347,7 @@ describe('AgentService', () => {
               label: 'Catering con sushi',
               priority: 1,
               queryStrings: ['catering sushi boda Lima 120 personas'],
+              subQueries: [],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3356,6 +3359,7 @@ describe('AgentService', () => {
               label: 'Fotografía para novios',
               priority: 2,
               queryStrings: ['fotografía natural novios boda Lima'],
+              subQueries: [],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3367,6 +3371,7 @@ describe('AgentService', () => {
               label: 'Música en vivo',
               priority: 3,
               queryStrings: ['música en vivo boda Lima'],
+              subQueries: [],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3378,6 +3383,7 @@ describe('AgentService', () => {
               label: 'Flores minimalistas',
               priority: 4,
               queryStrings: ['flores minimalistas boda Lima'],
+              subQueries: [],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3478,6 +3484,7 @@ describe('AgentService', () => {
               label: 'Catering con sushi',
               priority: 1,
               queryStrings: ['catering sushi boda Lima'],
+              subQueries: [],
               preferences: ['sushi'],
               hardConstraints: [],
               missingFields: [],
@@ -3489,6 +3496,7 @@ describe('AgentService', () => {
               label: 'Música en vivo',
               priority: 2,
               queryStrings: ['música en vivo boda Lima'],
+              subQueries: [],
               preferences: ['música en vivo'],
               hardConstraints: [],
               missingFields: [],
@@ -3633,6 +3641,7 @@ describe('AgentService', () => {
             label: category,
             priority: index + 1,
             queryStrings: [`${category} para evento`],
+            subQueries: [],
             preferences: [],
             hardConstraints: [],
             missingFields: [],
@@ -3720,6 +3729,7 @@ describe('AgentService', () => {
               label: 'Locales',
               priority: 1,
               queryStrings: ['local para activación de marca en Lima'],
+              subQueries: [],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3736,6 +3746,7 @@ describe('AgentService', () => {
               label: 'Catering',
               priority: 2,
               queryStrings: ['catering para activación de marca en Lima'],
+              subQueries: [],
               preferences: [],
               hardConstraints: [],
               missingFields: [],
@@ -3827,6 +3838,7 @@ describe('AgentService', () => {
             label: category,
             priority: index + 1,
             queryStrings: [`${category} para boda elegante en Lima`],
+            subQueries: [],
             preferences: ['elegante'],
             hardConstraints: [],
             missingFields: ['fecha', 'distrito'],
@@ -4462,6 +4474,20 @@ describe('AgentService', () => {
     expect(response.trace.operational_note).toBeNull();
     expect(gateway.searchCalls).toBe(0);
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+    expect(response.trace.close_action_summary).toEqual({
+      type: 'confirm_close',
+      category: null,
+      reason_preview: null,
+    });
+    expect(response.trace.selection_resolution_summary.selected_provider_references).toEqual([
+      {
+        provider_id: 302,
+        category: 'Catering',
+        has_title: false,
+        has_hint: false,
+      },
+    ]);
+    expect(response.trace.contact_validation_summary.status).toBe('valid');
   });
 
   it('requires structured close actions before deferring an unresolved shortlist', async () => {

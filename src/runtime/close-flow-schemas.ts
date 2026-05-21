@@ -2,27 +2,48 @@ import { z } from 'zod';
 
 import { providerCategorySchema } from '../core/provider-category';
 
-export const closeActionSchema = z.discriminatedUnion('type', [
-  z.object({
-    type: z.literal('confirm_close'),
-  }),
-  z.object({
-    type: z.literal('defer_need'),
-    category: providerCategorySchema,
-  }),
-  z.object({
-    type: z.literal('request_contact'),
-  }),
-  z.object({
-    type: z.literal('abandon_plan'),
-  }),
-  z.object({
-    type: z.literal('clarify'),
-    reason: z.string().min(1),
-  }),
-]);
+export const closeActionSchema = z.object({
+  type: z.enum([
+    'confirm_close',
+    'defer_need',
+    'request_contact',
+    'abandon_plan',
+    'clarify',
+  ]),
+  category: providerCategorySchema.nullable().default(null),
+  reason: z.string().min(1).nullable().default(null),
+}).superRefine((action, context) => {
+  if (action.type === 'defer_need' && action.category === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['category'],
+      message: 'category is required when type is defer_need',
+    });
+  }
+  if (action.type !== 'defer_need' && action.category !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['category'],
+      message: 'category must be null unless type is defer_need',
+    });
+  }
+  if (action.type === 'clarify' && action.reason === null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['reason'],
+      message: 'reason is required when type is clarify',
+    });
+  }
+  if (action.type !== 'clarify' && action.reason !== null) {
+    context.addIssue({
+      code: 'custom',
+      path: ['reason'],
+      message: 'reason must be null unless type is clarify',
+    });
+  }
+});
 
-export type CloseAction = z.infer<typeof closeActionSchema>;
+export type CloseAction = z.input<typeof closeActionSchema>;
 
 const contactedProviderSchema = z.object({
   providerId: z.number().int().positive(),

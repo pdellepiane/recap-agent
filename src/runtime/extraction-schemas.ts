@@ -21,7 +21,7 @@ export const providerQueryIntentSchema = z.object({
   label: z.string().min(1),
   priority: z.number().int().min(1),
   queryStrings: z.array(z.string().min(2)).min(1),
-  subQueries: z.array(providerNeedSubQuerySchema).optional(),
+  subQueries: z.array(providerNeedSubQuerySchema).default([]),
   preferences: z.array(z.string()),
   hardConstraints: z.array(z.string()),
   missingFields: z.array(z.string()),
@@ -82,7 +82,7 @@ export type ProviderDetailRequest = z.infer<typeof providerDetailRequestSchema>;
 export const extractionSchema = z.object({
   intent: z.enum(planIntentValues).nullable(),
   secondaryIntents: z.array(z.enum(planIntentValues)).default([]),
-  kbQuery: z.string().nullable().optional(),
+  kbQuery: z.string().nullable().default(null),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: eventTypeSchema.nullable(),
   vendorCategory: providerCategorySchema.nullable(),

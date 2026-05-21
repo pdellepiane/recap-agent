@@ -74,6 +74,56 @@ export type PlanDebugSummary = {
   contact_validation_error: string | null;
 };
 
+export type CloseActionDebugSummary = {
+  type: 'confirm_close' | 'defer_need' | 'request_contact' | 'abandon_plan' | 'clarify' | null;
+  category: string | null;
+  reason_preview: string | null;
+};
+
+export type SelectionResolutionDebugSummary = {
+  selected_provider_references: Array<{
+    provider_id: number | null;
+    category: string | null;
+    has_title: boolean;
+    has_hint: boolean;
+  }>;
+  selected_provider_hints_count: number;
+  provider_plan_operation_types: string[];
+  provider_plan_operation_categories: string[];
+};
+
+export type ContactValidationDebugSummary = {
+  status: 'not_provided' | 'valid' | 'invalid';
+  field: 'phone' | 'email' | null;
+  reason_preview: string | null;
+  extraction_contact_fields_present: {
+    name: boolean;
+    email: boolean;
+    phone: boolean;
+  };
+  plan_contact_fields_present: {
+    name: boolean;
+    email: boolean;
+    phone: boolean;
+  };
+};
+
+export type ProviderCandidateAuditEntry = {
+  provider_id: number;
+  category: string | null;
+  location: string | null;
+  retrieval_source: string | null;
+  retrieval_score: number | null;
+  fit_score: number | null;
+};
+
+export type FaqResolutionDebugSummary = {
+  is_faq_turn: boolean;
+  kb_query_present: boolean;
+  file_search_called: boolean;
+  file_search_output_count: number;
+};
+
 export type SearchStrategyTrace =
   | 'none'
   | 'search_from_plan'
@@ -103,6 +153,11 @@ export type TurnTrace = {
   operational_note: string | null;
   extraction_summary: ExtractionDebugSummary;
   plan_summary: PlanDebugSummary;
+  close_action_summary: CloseActionDebugSummary;
+  selection_resolution_summary: SelectionResolutionDebugSummary;
+  contact_validation_summary: ContactValidationDebugSummary;
+  provider_candidate_audit: ProviderCandidateAuditEntry[];
+  faq_resolution_summary: FaqResolutionDebugSummary;
   plan_persisted: boolean;
   plan_persist_reason: string | null;
   timing_ms: {

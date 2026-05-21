@@ -186,6 +186,7 @@ describe('structured extraction schemas', () => {
     expect(parsed.closeAction).toEqual({
       type: 'defer_need',
       category: 'Catering',
+      reason: null,
     });
   });
 

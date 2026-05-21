@@ -1788,6 +1788,34 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Persist structured traceability summaries in perf telemetry
+
+- Added first-class trace and perf fields for close actions, provider-selection references, contact validation, provider candidate provenance, and FAQ retrieval usage.
+- Replaced contact validation trace inference based on operational note text with structured validation over extracted and persisted contact fields.
+- Tightened extraction Zod schemas so FAQ queries, provider sub-queries, and close actions use required defaulted fields accepted by live structured outputs.
+- Added an OpenAI structured-output schema compatibility validator and regression test that converts every OpenAI-facing output schema in one pass.
+- Updated eval trace parsing and regression tests so live Lambda telemetry can be asserted without relying on exact wording.
+
+Reason:
+- Batch feedback validation needed more deterministic telemetry in the perf table to explain why close, FAQ, and provider-selection turns took a particular path.
+
+Decision:
+- Store compact Zod-validated summaries alongside the existing trace summaries, keeping exact text matching out of critical telemetry decisions.
+
+Files changed:
+- `src/core/trace.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/close-flow-schemas.ts`
+- `src/runtime/extraction-schemas.ts`
+- `src/runtime/openai-structured-schema.ts`
+- `src/logs/trace/perf.ts`
+- `src/evals/case-schema.ts`
+- `tests/agent-service.test.ts`
+- `tests/extraction-schemas.test.ts`
+- `tests/openai-structured-schema.test.ts`
+- `tests/perf-trace.test.ts`
+- `docs/implementation-log.md`
+
 ### Stabilize close selections and contact validation
 
 - Resolved close-time provider selections from structured `selectedProviderReferences` before checking unresolved shortlists.

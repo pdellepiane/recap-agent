@@ -34,6 +34,11 @@ export type TurnPerfRecord = {
   operational_note: string | null;
   extraction_summary: TurnTrace['extraction_summary'];
   plan_summary: TurnTrace['plan_summary'];
+  close_action_summary: TurnTrace['close_action_summary'];
+  selection_resolution_summary: TurnTrace['selection_resolution_summary'];
+  contact_validation_summary: TurnTrace['contact_validation_summary'];
+  provider_candidate_audit: TurnTrace['provider_candidate_audit'];
+  faq_resolution_summary: TurnTrace['faq_resolution_summary'];
   provider_results_count: number;
   provider_result_ids: number[];
   missing_fields_count: number;
@@ -125,6 +130,11 @@ export function buildTurnPerfRecord(args: {
     operational_note: args.trace.operational_note,
     extraction_summary: args.trace.extraction_summary,
     plan_summary: args.trace.plan_summary,
+    close_action_summary: args.trace.close_action_summary,
+    selection_resolution_summary: args.trace.selection_resolution_summary,
+    contact_validation_summary: args.trace.contact_validation_summary,
+    provider_candidate_audit: args.trace.provider_candidate_audit,
+    faq_resolution_summary: args.trace.faq_resolution_summary,
     provider_results_count: args.trace.provider_results.length,
     provider_result_ids: args.trace.provider_results.map((provider) => provider.id),
     missing_fields_count: args.trace.missing_fields.length,
