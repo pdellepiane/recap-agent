@@ -1,0 +1,79 @@
+template: template.base-offline
+id: feedback.none_defers_need_and_allows_close
+suite: feedback_regression
+version: 1
+description: Responding ninguna for a pending shortlist should defer that need instead of trapping the close flow.
+tags: [feedback, batch2, close]
+inputs:
+  - text: ninguna para catering
+seedPlan:
+  current_node: crear_lead_cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [109]
+      recommended_providers:
+        - id: 109
+          title: EDO Sushi Bar
+          category: Catering
+          location: Lima
+          priceLevel: high
+          reason: opción previa
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+    - category: Fotografía y video
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90]
+      recommended_providers: []
+      selected_provider_ids: [90]
+      selected_provider_hints: [Carlos Schult]
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: cerrar
+        intentConfidence: 0.94
+        eventType: boda
+        vendorCategory: Catering
+        vendorCategories: [Catering, Fotografía y video]
+        activeNeedCategory: Catering
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario no quiere ningún proveedor de Catering y desea cerrar con foto.
+        selectedProviderHints: []
+        pauseRequested: false
+        closeAction:
+          type: defer_need
+          category: Catering
+          reason: null
+    repliesByTurn:
+      - Listo, dejamos Catering sin proveedor y seguimos con el cierre de Fotografía y video.
+expectations:
+  - id: catering-deferred
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        status: deferred
+        selected_provider_ids: []
+  - id: no-trap-copy
+    type: text_not_contains
+    phrases:
+      - no puedo cerrar
+      - todavía falta confirmar

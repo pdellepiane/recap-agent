@@ -1,0 +1,77 @@
+template: template.base-offline
+id: feedback.close_selected_provider_does_not_reask
+suite: feedback_regression
+version: 1
+description: Closing a plan with an already selected provider should ask for contact context, not reopen provider selection.
+tags: [feedback, batch2, close]
+inputs:
+  - text: cerremos el plan
+seedPlan:
+  current_node: crear_lead_cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [109]
+      recommended_providers:
+        - id: 109
+          title: EDO Sushi Bar
+          category: Catering
+          location: Lima
+          priceLevel: high
+          reason: seleccionado previamente
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: [109]
+      selected_provider_hints: [EDO Sushi Bar]
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: cerrar
+        intentConfidence: 0.96
+        eventType: boda
+        vendorCategory: Catering
+        vendorCategories: [Catering]
+        activeNeedCategory: Catering
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario quiere cerrar el plan con Catering seleccionado.
+        selectedProviderHints: []
+        pauseRequested: false
+        closeAction:
+          type: request_contact
+          category: null
+          reason: null
+    repliesByTurn:
+      - Si quieres cerrar el plan con EDO Sushi Bar, necesito tu información de contacto para enviar la solicitud.
+expectations:
+  - id: close-node
+    type: node_transition
+    to: crear_lead_cerrar
+  - id: selected-preserved
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        status: selected
+        selected_provider_ids: [109]
+  - id: explains-contact-context
+    type: text_contains
+    allOf: [cerrar el plan, información de contacto]
+  - id: does-not-reask-selection
+    type: text_not_contains
+    phrases:
+      - falta elegir
+      - falta confirmar catering
+      - elige un proveedor

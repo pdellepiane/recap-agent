@@ -11,7 +11,9 @@ import {
   providerExplanationRequestSchema,
   providerPlanOperationSchema,
   providerQueryIntentSchema,
+  providerReferenceSchema,
 } from '../runtime/extraction-schemas';
+import { closeActionSchema } from '../runtime/close-flow-schemas';
 
 const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -51,7 +53,13 @@ const extractionResultSchema = z.object({
   assumptions: z.array(z.string()),
   conversationSummary: z.string(),
   selectedProviderHints: z.array(z.string()).default([]),
+  selectedProviderReferences: z.array(providerReferenceSchema).default([]),
+  closeAction: closeActionSchema.nullable().default(null),
+  kbQuery: z.string().nullable().default(null),
   pauseRequested: z.boolean(),
+  contactName: z.string().nullable().default(null),
+  contactEmail: z.string().nullable().default(null),
+  contactPhone: z.string().nullable().default(null),
   providerQueryIntents: z.array(providerQueryIntentSchema).default([]),
   providerPlanOperations: z.array(providerPlanOperationSchema).default([]),
   providerExplanationRequest: providerExplanationRequestSchema.nullable().default(null),
@@ -221,6 +229,7 @@ const turnInputSchema = z.object({
   channel: z.string().optional(),
   externalUserId: z.string().optional(),
   receivedAt: z.string().optional(),
+  sessionId: z.string().optional(),
 });
 
 const turnOutcomeSchema = <T extends z.ZodTypeAny>(inner: T) =>
@@ -426,6 +435,16 @@ const budgetConstraintExpectationSchema = z.object({
   severity: z.enum(['hard', 'soft']).default('soft'),
 });
 
+const tokenUsagePresentExpectationSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('token_usage_present'),
+  turnIndex: z.number().int().nonnegative().optional(),
+  allTurns: z.boolean().default(false),
+  requireExtraction: z.boolean().default(true),
+  requireReply: z.boolean().default(true),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+});
+
 export const expectationSchema = z.discriminatedUnion('type', [
   nodeTransitionExpectationSchema,
   nodePathContainsExpectationSchema,
@@ -442,6 +461,7 @@ export const expectationSchema = z.discriminatedUnion('type', [
   textSemanticExpectationSchema,
   trajectoryInvariantExpectationSchema,
   budgetConstraintExpectationSchema,
+  tokenUsagePresentExpectationSchema,
 ]);
 export type EvalExpectation = z.infer<typeof expectationSchema>;
 

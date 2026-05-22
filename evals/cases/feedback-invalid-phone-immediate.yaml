@@ -1,0 +1,68 @@
+template: template.base-offline
+id: feedback.invalid_phone_rejected_immediately
+suite: feedback_regression
+version: 1
+description: A too-short phone number should be rejected in the same turn and not persisted.
+tags: [feedback, batch2, validation]
+inputs:
+  - text: mi teléfono es 967
+seedPlan:
+  current_node: crear_lead_cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Fotografía y video
+  vendor_category: Fotografía y video
+  contact_name: Carolina
+  contact_email: carolina@example.com
+  provider_needs:
+    - category: Fotografía y video
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90]
+      recommended_providers:
+        - id: 90
+          title: Carlos Schult
+          category: Fotografía y video
+          location: Lima
+          priceLevel: null
+          reason: seleccionado
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: [90]
+      selected_provider_hints: [Carlos Schult]
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: cerrar
+        intentConfidence: 0.95
+        eventType: boda
+        vendorCategory: Fotografía y video
+        vendorCategories: [Fotografía y video]
+        activeNeedCategory: Fotografía y video
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario dio un teléfono incompleto.
+        selectedProviderHints: []
+        pauseRequested: false
+        contactPhone: "967"
+    repliesByTurn:
+      - Ese teléfono está incompleto. Envíamelo con código de país y todos los dígitos, por ejemplo +51 954779071.
+expectations:
+  - id: phone-invalid-trace
+    type: trace_field_equals
+    path: contact_validation_summary.status
+    expected: invalid
+  - id: phone-not-persisted
+    type: plan_field_equals
+    path: contact_phone
+    expected: null
+  - id: mentions-country-code
+    type: text_contains
+    anyOf: [código de país, "+51"]

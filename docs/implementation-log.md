@@ -2212,3 +2212,64 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `tests/prompt-loader.test.ts`
 - `docs/implementation-log.md`
+
+### Add feedback regression and live token eval coverage
+
+- Added a feedback coverage matrix that maps batch1 and batch2 failures to expected fixed behavior, regression IDs, and coverage type.
+- Added offline feedback regression cases for close/contact loops, invalid phone handling, standalone phone correction, `ninguna` deferral, unresolved shortlist close blocking, zero-result close behavior, selection confirmation, post-error clarification, support-boundary FAQs, gift/product-claim FAQs, location filtering, and stale-focus multi-need routing.
+- Added a dedicated live feedback token suite with seeded/mock multi-turn flows and a fresh multi-front request, all asserting real token usage per turn.
+- Extended eval case schemas to support optional per-turn `sessionId`, richer fixture extraction fields, trace-field expectations, and a `token_usage_present` aggregate expectation.
+- Passed eval `sessionId` through both offline and live targets so session focus can be tested deterministically.
+- Added a live-target unit test proving seeded plans and session IDs are sent to the Lambda adapter and non-null token usage is preserved across multiple turns.
+
+Reason:
+- Feedback regressions need durable coverage that catches the old broken behavior, not only broad runtime unit tests. Live token-consuming evals are needed for failures that depend on real extraction/reply behavior over many turns.
+
+Decision:
+- Keep fast deterministic feedback coverage offline, and isolate slower token-consuming Lambda checks in `live_feedback_token_regression` so they can be run explicitly with `AWS_PROFILE=se-dev`.
+
+Files changed:
+- `docs/feedback-test-coverage.md`
+- `docs/evaluation-framework.md`
+- `docs/implementation-log.md`
+- `evals/cases/feedback-*.yaml`
+- `evals/cases/live-feedback-token-*.yaml`
+- `evals/suites/feedback_regression.yaml`
+- `evals/suites/live_feedback_token_regression.yaml`
+- `evals/templates/base-live.yaml`
+- `src/evals/case-schema.ts`
+- `src/evals/runner.ts`
+- `src/evals/targets/live-lambda.ts`
+- `src/evals/targets/offline.ts`
+- `tests/eval-live-target.test.ts`
+
+### Tolerate incidental close-action metadata from structured extraction
+
+- Relaxed close-action validation so non-`defer_need` close actions do not fail the whole turn if the extractor includes an incidental active category.
+- Kept deterministic runtime behavior: only `defer_need` uses `closeAction.category`, and runtime trace already projects non-defer categories as null.
+- Added extractor prompt guidance that `category` belongs only to `defer_need` and `reason` belongs only to `clarify`.
+- Added schema coverage for accepting a non-defer close action with an incidental category.
+- Routed standalone contact-field updates and contact validation errors back through `crear_lead_cerrar` when the previous node is the close flow, preventing invalid phone corrections from falling through into provider search.
+- Ignored provider-selection references on close-flow contact-field turns so stale or incidental provider references cannot select a pending provider while the user is only sending contact data.
+- Adjusted live token eval contact inputs to use explicit country-code phone format and removed an ambiguous final confirmation that could be interpreted as selecting a still-visible provider.
+- Converted structured `delete_need` operations into `deferred` when the extractor emits them alongside provider-selection context for an unresolved shortlisted need, matching the close-flow meaning of "no quiero ninguna" without changing explicit standalone deletion.
+- Added extractor guidance that declining all options for a recommended need should be `defer_need`, not `delete_need`.
+
+Reason:
+- Live token regression exposed an HTTP 500 where the deployed extractor emitted `closeAction.category` for a non-defer close action. It also showed invalid standalone phone corrections could continue into provider search, and a "no quiero ninguna" turn could delete a shortlisted need instead of deferring it.
+
+Decision:
+- Preserve strict requirements for critical fields (`defer_need` still requires a category, `clarify` still requires a reason), while treating extra non-authoritative close-action metadata as harmless.
+- Treat contact updates and contact validation failures during `crear_lead_cerrar` as close-flow turns even when the extractor does not classify the message as `cerrar`.
+- Preserve explicit standalone `delete_need` behavior, but prefer non-destructive deferral when a delete-shaped operation appears as part of selection/close progression over a shortlisted need.
+
+Files changed:
+- `src/runtime/close-flow-schemas.ts`
+- `src/runtime/agent-service.ts`
+- `prompts/extractors/field_definitions.txt`
+- `evals/cases/live-feedback-token-contact-correction.yaml`
+- `evals/cases/live-feedback-token-selection-defer-close.yaml`
+- `evals/cases/live-feedback-token-multifront.yaml`
+- `tests/agent-service.test.ts`
+- `tests/extraction-schemas.test.ts`
+- `docs/implementation-log.md`

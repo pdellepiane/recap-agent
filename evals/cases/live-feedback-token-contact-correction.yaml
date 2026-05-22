@@ -1,0 +1,47 @@
+template: template.base-live
+id: live_feedback.token_seeded_contact_correction
+suite: live_feedback_token_regression
+version: 1
+description: Seeded close flow should consume tokens while rejecting and then accepting corrected contact phone.
+tags: [live, feedback, token, seeded-plan, contact]
+inputs:
+  - text: mi teléfono es 967
+    sessionId: live-feedback-contact-session
+  - text: perdón, mi teléfono con código es +51 954779071
+    sessionId: live-feedback-contact-session
+  - text: mi nombre es Carolina y mi correo es carolina@example.com
+    sessionId: live-feedback-contact-session
+seedPlan:
+  current_node: crear_lead_cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Fotografía y video
+  vendor_category: Fotografía y video
+  provider_needs:
+    - category: Fotografía y video
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90]
+      recommended_providers: []
+      selected_provider_ids: [90]
+      selected_provider_hints: [Carlos Schult]
+expectations:
+  - id: tokens-all-turns
+    type: token_usage_present
+    allTurns: true
+  - id: first-phone-invalid
+    type: trace_field_equals
+    turnIndex: 0
+    path: contact_validation_summary.status
+    expected: invalid
+  - id: corrected-phone-final
+    type: plan_field_equals
+    path: contact_phone
+    expected: "51954779071"
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1400
+  estimatedCompletionTokensPerTurn: 400

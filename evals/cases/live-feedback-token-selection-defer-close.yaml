@@ -1,0 +1,77 @@
+template: template.base-live
+id: live_feedback.token_seeded_selection_defer_close
+suite: live_feedback_token_regression
+version: 1
+description: Seeded multi-need plan should consume tokens while selecting one need, deferring another, and entering close flow.
+tags: [live, feedback, token, seeded-plan, multi-need]
+inputs:
+  - text: confirmo Carlos Schult para foto
+    sessionId: live-feedback-multineed-session
+  - text: para catering no quiero ninguna
+    sessionId: live-feedback-multineed-session
+  - text: ahora cerremos el plan
+    sessionId: live-feedback-multineed-session
+  - text: soy Carolina, carolina@example.com, teléfono +51 954779071
+    sessionId: live-feedback-multineed-session
+seedPlan:
+  current_node: elicitacion_necesidades
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Fotografía y video
+  vendor_category: Fotografía y video
+  provider_needs:
+    - category: Fotografía y video
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90]
+      recommended_providers:
+        - id: 90
+          title: Carlos Schult
+          category: Fotografía y video
+          location: Lima
+          priceLevel: null
+          reason: opción foto
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+    - category: Catering
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [109]
+      recommended_providers:
+        - id: 109
+          title: EDO Sushi Bar
+          category: Catering
+          location: Lima
+          priceLevel: high
+          reason: opción catering
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+expectations:
+  - id: tokens-all-turns
+    type: token_usage_present
+    allTurns: true
+  - id: photography-selected
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        selected_provider_ids: [90]
+  - id: catering-deferred
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        status: deferred
+budget:
+  maxTurns: 4
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 450

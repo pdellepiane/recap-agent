@@ -80,13 +80,16 @@ export async function runLiveLambdaCase(args: {
         text: input.text,
         message_id: `${args.currentCase.id}-${turnIndex}`,
         received_at: input.receivedAt ?? new Date().toISOString(),
-        session_id: args.currentCase.id,
+        session_id: input.sessionId ?? args.currentCase.id,
         client_mode: 'cli',
       }),
     });
 
     if (!response.ok) {
-      throw new Error(`Live Lambda returned HTTP ${response.status}.`);
+      const errorBody = await response.text();
+      throw new Error(
+        `Live Lambda returned HTTP ${response.status}: ${errorBody.slice(0, 500)}`,
+      );
     }
 
     const raw = (await response.json()) as LambdaTurnResponse;

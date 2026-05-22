@@ -70,6 +70,7 @@ export async function runOfflineCase(args: {
       text: input.text,
       messageId: `${args.currentCase.id}-${turnIndex}`,
       receivedAt: input.receivedAt ?? new Date().toISOString(),
+      sessionId: input.sessionId ?? args.currentCase.id,
     });
     turns.push({
       turnIndex,
@@ -121,9 +122,6 @@ class FixtureRuntime implements AgentRuntime {
     if (configured) {
       return {
         extraction: {
-          contactName: null,
-          contactEmail: null,
-          contactPhone: null,
           providerFitCriteria: {
             eventType: null,
             needCategory: null,

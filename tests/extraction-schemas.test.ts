@@ -209,6 +209,20 @@ describe('structured extraction schemas', () => {
     ).toThrow();
   });
 
+  it('accepts non-defer close actions with incidental categories', () => {
+    const parsed = closeActionSchema.parse({
+      type: 'request_contact',
+      category: 'Catering',
+      reason: null,
+    });
+
+    expect(parsed).toEqual({
+      type: 'request_contact',
+      category: 'Catering',
+      reason: null,
+    });
+  });
+
   it('parses typed close flow results', () => {
     const parsed = closeFlowResultSchema.parse({
       status: 'missing_contact',

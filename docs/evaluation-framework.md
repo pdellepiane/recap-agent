@@ -149,6 +149,18 @@ inputs:
   - text: quiero planear una {{event_type}} en {{location}}
 ```
 
+### Turn session IDs
+
+Turn inputs can include an optional `sessionId`. Targets pass it through to the runtime or Lambda request as `session_id`, which lets evals assert session-scoped focus without coupling routing to durable active-need fields.
+
+```yaml
+inputs:
+  - text: quiero ver opciones de catering
+    sessionId: feedback-close-flow-session
+```
+
+Offline cases that omit `sessionId` default to the case ID. Live cases should set a stable `sessionId` when validating multi-turn session focus.
+
 ### Templates
 
 Templates let cases share defaults such as:
@@ -191,11 +203,28 @@ Supported expectation families:
 - `plan_field_subset`
 - `provider_results_contains`
 - `tool_usage`
+- `trace_field_equals`
+- `trace_field_subset`
+- `trace_field_number`
+- `token_usage_present`
 - `text_contains`
 - `text_not_contains`
 - `text_semantic`
 - `trajectory_invariants`
 - `budget_constraints`
+
+### Token usage expectation
+
+`token_usage_present` is intended for live Lambda evals that must prove real model calls happened for each turn. It checks total token usage and, by default, extraction and reply token usage.
+
+```yaml
+expectations:
+  - id: live-token-usage
+    type: token_usage_present
+    allTurns: true
+```
+
+Offline fixtures must stay token-free; do not fake token consumption in offline cases.
 
 ### Why layered expectations
 

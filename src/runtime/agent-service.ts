@@ -310,18 +310,28 @@ export class AgentService {
     const operationResult = this.applyProviderPlanOperations(
       extractedPlan,
       extraction.providerPlanOperations ?? [],
+      {
+        deferShortlistedDeletes:
+          (extraction.selectedProviderReferences ?? []).length > 0 ||
+          this.resolveEffectiveSelectionHints(extraction).length > 0 ||
+          extraction.intent === 'cerrar',
+      },
     );
     const mergedPlan = operationResult.plan;
     if (operationResult.unresolvedMessage) {
       errorMessage = operationResult.unresolvedMessage;
     }
     const effectiveSelectionHints = this.resolveEffectiveSelectionHints(extraction);
-    const preliminarySelectionResolution = this.tryResolveSelection(
-      mergedPlan,
-      extraction.selectedProviderReferences ?? [],
-      effectiveSelectionHints,
-      extraction.intent,
-    );
+    const shouldResolveProviderSelection =
+      !this.isCloseContactFieldTurn(previousNode, extraction, validationError);
+    const preliminarySelectionResolution: SelectionResolution = shouldResolveProviderSelection
+      ? this.tryResolveSelection(
+          mergedPlan,
+          extraction.selectedProviderReferences ?? [],
+          effectiveSelectionHints,
+          extraction.intent,
+      )
+      : { resolved: false };
     const selectionShouldStop =
       preliminarySelectionResolution.resolved &&
       !this.shouldContinueWithAnotherNeed(mergedPlan, preliminarySelectionResolution);
@@ -431,15 +441,17 @@ export class AgentService {
 
     if (
       extraction.intent === 'cerrar' ||
-      this.shouldHandleCloseContactClarification(previousNode, extraction)
+      this.shouldHandleCloseTurn(previousNode, extraction, validationError)
     ) {
       const isCloseContactClarification = extraction.closeAction?.type === 'clarify';
-      const closeSelectionResolution = this.tryResolveSelection(
-        mergedPlan,
-        extraction.selectedProviderReferences ?? [],
-        this.resolveEffectiveSelectionHints(extraction),
-        extraction.intent,
-      );
+      const closeSelectionResolution = shouldResolveProviderSelection
+        ? this.tryResolveSelection(
+            mergedPlan,
+            extraction.selectedProviderReferences ?? [],
+            this.resolveEffectiveSelectionHints(extraction),
+            extraction.intent,
+          )
+        : { resolved: false };
       let planToClose = mergedPlan;
       if (closeSelectionResolution.resolved) {
         planToClose = mergedPlan;
@@ -1945,6 +1957,7 @@ export class AgentService {
   private applyProviderPlanOperations(
     plan: PlanSnapshot,
     operations: ProviderPlanOperation[],
+    options: { deferShortlistedDeletes: boolean } = { deferShortlistedDeletes: false },
   ): {
     plan: PlanSnapshot;
     unresolvedMessage: string | null;
@@ -1957,7 +1970,7 @@ export class AgentService {
     let nextPlan = plan;
     const appliedOperations: ProviderPlanOperation[] = [];
     for (const operation of operations) {
-      const result = this.applyProviderPlanOperation(nextPlan, operation);
+      const result = this.applyProviderPlanOperation(nextPlan, operation, options);
       if (!result.applied) {
         return { plan: nextPlan, unresolvedMessage: result.message, appliedOperations };
       }
@@ -1971,6 +1984,7 @@ export class AgentService {
   private applyProviderPlanOperation(
     plan: PlanSnapshot,
     operation: ProviderPlanOperation,
+    options: { deferShortlistedDeletes: boolean },
   ): { applied: true; plan: PlanSnapshot } | { applied: false; message: string } {
     switch (operation.type) {
       case 'add_need':
@@ -2011,6 +2025,26 @@ export class AgentService {
       case 'delete_need': {
         if (!operation.category) {
           return { applied: false, message: 'Necesito saber qué necesidad quieres eliminar.' };
+        }
+        const existing = this.findNeedByCategory(plan, operation.category);
+        if (
+          options.deferShortlistedDeletes &&
+          existing?.status === 'shortlisted' &&
+          existing.selected_provider_ids.length === 0
+        ) {
+          return {
+            applied: true,
+            plan: this.upsertProviderNeed(
+              plan,
+              {
+                ...existing,
+                status: 'deferred',
+                selected_provider_ids: [],
+                selected_provider_hints: [],
+              },
+              operation.category,
+            ),
+          };
         }
         const nextNeeds = plan.provider_needs.filter(
           (need) => need.category !== operation.category,
@@ -3280,13 +3314,44 @@ export class AgentService {
     );
   }
 
-  private shouldHandleCloseContactClarification(
+  private shouldHandleCloseTurn(
     previousNode: DecisionNode | null,
     extraction: ExtractionResult,
+    validationError: string | null,
   ): boolean {
+    const hasContactField =
+      extraction.contactName !== null ||
+      extraction.contactEmail !== null ||
+      extraction.contactPhone !== null;
     return (
       previousNode === 'crear_lead_cerrar' &&
-      extraction.closeAction?.type === 'clarify'
+      (hasContactField ||
+        validationError !== null ||
+        extraction.closeAction?.type === 'clarify' ||
+        extraction.closeAction?.type === 'confirm_close' ||
+        extraction.closeAction?.type === 'request_contact' ||
+        extraction.closeAction?.type === 'abandon_plan')
+    );
+  }
+
+  private isCloseContactFieldTurn(
+    previousNode: DecisionNode | null,
+    extraction: ExtractionResult,
+    validationError: string | null,
+  ): boolean {
+    if (previousNode !== 'crear_lead_cerrar') {
+      return false;
+    }
+
+    if (extraction.closeAction?.type === 'confirm_close') {
+      return false;
+    }
+
+    return (
+      validationError !== null ||
+      extraction.contactName !== null ||
+      extraction.contactEmail !== null ||
+      extraction.contactPhone !== null
     );
   }
 

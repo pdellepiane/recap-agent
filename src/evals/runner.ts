@@ -465,6 +465,39 @@ async function evaluateExpectation(
         : `Provider result count ${count} outside expected range min=${expectation.min ?? '*'} max=${expectation.max ?? '*'}.`;
       return result;
     }
+    case 'trace_field_equals': {
+      const turn = selectTurn(context.turns, expectation.turnIndex);
+      const actual = getValueAtPath(turn?.trace ?? null, expectation.path);
+      result.passed = deepEqual(actual, expectation.expected);
+      result.score = result.passed ? 1 : 0;
+      result.message = result.passed
+        ? `Trace field ${expectation.path} matched expectation.`
+        : `Trace field ${expectation.path} was ${JSON.stringify(actual)} instead of ${JSON.stringify(expectation.expected)}.`;
+      return result;
+    }
+    case 'trace_field_subset': {
+      const turn = selectTurn(context.turns, expectation.turnIndex);
+      const actual = getValueAtPath(turn?.trace ?? null, expectation.path);
+      result.passed = isSubset(actual, expectation.expected);
+      result.score = result.passed ? 1 : 0;
+      result.message = result.passed
+        ? `Trace field ${expectation.path} contained the expected subset.`
+        : `Trace field ${expectation.path} did not contain the expected subset.`;
+      return result;
+    }
+    case 'trace_field_number': {
+      const turn = selectTurn(context.turns, expectation.turnIndex);
+      const actual = getValueAtPath(turn?.trace ?? null, expectation.path);
+      const numeric = typeof actual === 'number' ? actual : null;
+      const minPassed = numeric !== null && (expectation.min === undefined || numeric >= expectation.min);
+      const maxPassed = numeric !== null && (expectation.max === undefined || numeric <= expectation.max);
+      result.passed = minPassed && maxPassed;
+      result.score = result.passed ? 1 : 0;
+      result.message = result.passed
+        ? `Trace field ${expectation.path} numeric value ${numeric} matched expectation.`
+        : `Trace field ${expectation.path} was ${JSON.stringify(actual)} outside expected range min=${expectation.min ?? '*'} max=${expectation.max ?? '*'}.`;
+      return result;
+    }
     case 'tool_usage': {
       const turn = selectTurn(context.turns, expectation.turnIndex);
       const toolsCalled = turn?.trace.tools_called ?? [];
@@ -581,8 +614,43 @@ async function evaluateExpectation(
         : failures.join('; ');
       return result;
     }
+    case 'token_usage_present': {
+      const turns = expectation.allTurns
+        ? context.turns
+        : [selectTurn(context.turns, expectation.turnIndex)];
+      const failures: string[] = [];
+      turns.forEach((turn, index) => {
+        if (!turn) {
+          failures.push(`turn ${expectation.turnIndex ?? index} missing`);
+          return;
+        }
+        const usage = turn.trace.token_usage;
+        if (!usage.total || usage.total.total_tokens <= 0) {
+          failures.push(`turn ${turn.turnIndex} missing total tokens`);
+        }
+        if (
+          expectation.requireExtraction &&
+          (!usage.extraction || usage.extraction.total_tokens <= 0)
+        ) {
+          failures.push(`turn ${turn.turnIndex} missing extraction tokens`);
+        }
+        if (
+          expectation.requireReply &&
+          (!usage.reply || usage.reply.total_tokens <= 0)
+        ) {
+          failures.push(`turn ${turn.turnIndex} missing reply tokens`);
+        }
+      });
+      result.passed = failures.length === 0;
+      result.score = result.passed ? 1 : 0;
+      result.message = result.passed
+        ? 'Token usage was present for expected turns.'
+        : failures.join('; ');
+      return result;
+    }
     default: {
-      result.message = `Unknown expectation type: ${expectation.type}.`;
+      const unknownExpectation = expectation as { type?: unknown };
+      result.message = `Unknown expectation type: ${String(unknownExpectation.type)}.`;
       return result;
     }
   }

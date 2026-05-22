@@ -1,0 +1,24 @@
+template: template.base-live
+id: live_feedback.token_fresh_multifront_stays_multi_need
+suite: live_feedback_token_regression
+version: 1
+description: Fresh multi-front provider request should consume tokens and remain multi-need in live Lambda.
+tags: [live, feedback, token, multi-need]
+inputs:
+  - text: Quiero planear una boda moderna y elegante en Lima para 120 personas. Necesito catering con sushi, fotografía y video natural, música en vivo elegante, florería blanca y verde, y local sofisticado de noche. Presupuesto medio-alto.
+    sessionId: live-feedback-multifront-session
+expectations:
+  - id: tokens-all-turns
+    type: token_usage_present
+    allTurns: true
+  - id: multi-node
+    type: node_transition
+    to: elicitacion_necesidades
+  - id: multi-strategy
+    type: trace_field_equals
+    path: search_strategy
+    expected: multi_need_query_intents
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 700

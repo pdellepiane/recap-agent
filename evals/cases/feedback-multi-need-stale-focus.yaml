@@ -1,0 +1,166 @@
+template: template.base-offline
+id: feedback.multi_need_request_not_downgraded_by_stale_focus
+suite: feedback_regression
+version: 1
+description: A fresh multi-front request should route multi-need even if the saved plan has stale active Catering focus.
+tags: [feedback, batch2, state-machine]
+inputs:
+  - text: Quiero catering, música y local para una boda moderna en Lima para 120 personas con presupuesto medio-alto.
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 101-200
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [109]
+      recommended_providers: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.95
+        eventType: boda
+        vendorCategory: null
+        vendorCategories: [Catering, Música, Locales]
+        activeNeedCategory: null
+        location: Lima
+        budgetSignal: medio-alto
+        guestRange: 101-200
+        preferences: [boda moderna, música elegante, local sofisticado]
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Boda moderna en Lima con catering, música y local.
+        selectedProviderHints: []
+        pauseRequested: false
+        providerQueryIntents:
+          - category: Catering
+            label: Catering
+            priority: 1
+            queries:
+              - id: catering
+                label: Catering
+                category: Catering
+                queryStrings: [catering boda Lima]
+                mustHave: []
+                shouldAvoid: []
+                maxSelections: 1
+                allowCrossCategory: false
+            preferences: [boda moderna]
+            hardConstraints: []
+            missingFields: []
+            retrievalReady: true
+            fitCriteria:
+              eventType: boda
+              needCategory: Catering
+              location: Lima
+              budgetAmount: null
+              budgetCurrency: null
+              mustHave: []
+              shouldAvoid: []
+              rankingNotes: Catering para boda.
+          - category: Música
+            label: Música
+            priority: 2
+            queries:
+              - id: musica
+                label: Música
+                category: Música
+                queryStrings: [música elegante boda Lima]
+                mustHave: []
+                shouldAvoid: []
+                maxSelections: 1
+                allowCrossCategory: false
+            preferences: [música elegante]
+            hardConstraints: []
+            missingFields: []
+            retrievalReady: true
+            fitCriteria:
+              eventType: boda
+              needCategory: Música
+              location: Lima
+              budgetAmount: null
+              budgetCurrency: null
+              mustHave: []
+              shouldAvoid: []
+              rankingNotes: Música elegante.
+          - category: Locales
+            label: Locales
+            priority: 3
+            queries:
+              - id: locales
+                label: Locales
+                category: Locales
+                queryStrings: [local sofisticado boda Lima]
+                mustHave: []
+                shouldAvoid: []
+                maxSelections: 1
+                allowCrossCategory: false
+            preferences: [local sofisticado]
+            hardConstraints: []
+            missingFields: []
+            retrievalReady: true
+            fitCriteria:
+              eventType: boda
+              needCategory: Locales
+              location: Lima
+              budgetAmount: null
+              budgetCurrency: null
+              mustHave: []
+              shouldAvoid: []
+              rankingNotes: Local sofisticado.
+    repliesByTurn:
+      - Armé opciones agrupadas por Catering, Música y Locales.
+    providerGateway:
+      searchProvidersByQueryIntentByTurn:
+        - value:
+            providers:
+              - id: 109
+                title: EDO Sushi Bar
+                category: Catering
+                location: Lima
+                priceLevel: high
+                reason: catering
+                serviceHighlights: []
+                termsHighlights: []
+        - value:
+            providers:
+              - id: 115
+                title: DJ Noche
+                category: Música
+                location: Lima
+                priceLevel: mid
+                reason: música
+                serviceHighlights: []
+                termsHighlights: []
+        - value:
+            providers:
+              - id: 147
+                title: Casa Club 147
+                category: Locales
+                location: Lima
+                priceLevel: high
+                reason: local
+                serviceHighlights: []
+                termsHighlights: []
+expectations:
+  - id: multi-node
+    type: node_transition
+    to: elicitacion_necesidades
+  - id: multi-strategy
+    type: trace_field_equals
+    path: search_strategy
+    expected: multi_need_query_intents
+  - id: decision-route
+    type: trace_field_equals
+    path: route_kind
+    expected: multi_need_search
+

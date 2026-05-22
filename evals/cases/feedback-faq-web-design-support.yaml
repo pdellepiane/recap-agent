@@ -1,0 +1,43 @@
+template: template.base-offline
+id: feedback.faq_web_design_support_boundary
+suite: feedback_regression
+version: 1
+description: Web design support requests should stay in FAQ/support scope and not trigger provider search.
+tags: [feedback, batch2, faq]
+inputs:
+  - text: ¿Me puedes ayudar con el diseño de mi web y darme un contacto?
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: consultar_faq
+        intentConfidence: 0.95
+        eventType: null
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Pregunta fuera de alcance sobre diseño web y contacto de soporte.
+        selectedProviderHints: []
+        pauseRequested: false
+        kbQuery: diseño web soporte contacto Sin Envolturas
+    repliesByTurn:
+      - No diseño ni construyo webs externas. Para soporte de Sin Envolturas, puedes escribir por el chat o a hola@sinenvolturas.com.
+expectations:
+  - id: faq-node
+    type: node_transition
+    to: consultar_faq
+  - id: no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+  - id: support-boundary
+    type: text_contains
+    allOf: [web]
+    anyOf: [hola@sinenvolturas.com, chat]
+

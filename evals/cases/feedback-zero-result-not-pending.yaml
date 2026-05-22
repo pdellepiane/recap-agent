@@ -1,0 +1,62 @@
+template: template.base-offline
+id: feedback.zero_result_need_not_treated_as_pending
+suite: feedback_regression
+version: 1
+description: A searched need with zero providers should become no_providers_available and not be resumed as pending.
+tags: [feedback, batch1, batch2, no-results]
+inputs:
+  - text: busca locales para mi baby shower en La Molina
+seedPlan:
+  current_node: refinar_criterios
+  event_type: baby_shower
+  location: La Molina
+  guest_range: 21-50
+  active_need_category: Locales
+  vendor_category: Locales
+  provider_needs:
+    - category: Locales
+      status: search_ready
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: []
+      recommended_providers: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.92
+        eventType: baby_shower
+        vendorCategory: Locales
+        vendorCategories: [Locales]
+        activeNeedCategory: Locales
+        location: La Molina
+        budgetSignal: null
+        guestRange: 21-50
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Busca Locales para baby shower en La Molina.
+        selectedProviderHints: []
+        pauseRequested: false
+    repliesByTurn:
+      - No encontré locales disponibles con esos criterios. No lo dejaré como pendiente; podemos buscar otro frente si quieres.
+    providerGateway:
+      searchProvidersByTurn:
+        - value:
+            providers: []
+expectations:
+  - id: no-providers-status
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Locales
+        status: no_providers_available
+  - id: not-pending-copy
+    type: text_not_contains
+    phrases:
+      - cuando quieras retomamos Locales
+      - pendiente Locales
+

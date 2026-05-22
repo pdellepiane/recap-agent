@@ -1,0 +1,42 @@
+template: template.base-offline
+id: feedback.post_error_clarification_does_not_relist
+suite: feedback_regression
+version: 1
+description: After an error or confusion, clarification should not relist providers as if the prior selection failed.
+imports:
+  - ../fixtures/seed-plans/recommend-photography-shortlist-carlos.yaml
+tags: [feedback, batch2, error-recovery]
+inputs:
+  - text: ¿qué pasó?
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: explicar_recomendacion
+        intentConfidence: 0.8
+        eventType: boda
+        vendorCategory: Fotografía y video
+        vendorCategories: [Fotografía y video]
+        activeNeedCategory: Fotografía y video
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario pide aclaración después de un error.
+        selectedProviderHints: []
+        pauseRequested: false
+    repliesByTurn:
+      - Tu selección anterior sigue guardada. No voy a mostrar nuevas opciones a menos que me lo pidas.
+expectations:
+  - id: no-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+  - id: no-relist-copy
+    type: text_not_contains
+    phrases:
+      - "1."
+      - "2."
+      - nuevas opciones de fotografía

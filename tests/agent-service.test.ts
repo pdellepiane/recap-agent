@@ -4642,7 +4642,18 @@ describe('AgentService', () => {
           vendorCategory: null,
           vendorCategories: [],
           activeNeedCategory: null,
-          providerPlanOperations: request.userMessage === 'structured delete'
+          selectedProviderHints: request.userMessage === 'structured delete with selected context'
+            ? ['EDO']
+            : [],
+          selectedProviderReferences: request.userMessage === 'structured delete with selected context'
+            ? [{
+                providerId: 101,
+                providerTitle: 'EDO',
+                category: 'Catering',
+                hint: null,
+              }]
+            : [],
+          providerPlanOperations: request.userMessage.startsWith('structured delete')
             ? [{
                 type: 'delete_need',
                 category: 'Música',
@@ -4722,6 +4733,17 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
     expect(noOperation.plan.provider_needs.map((need) => need.category)).toContain('Música');
+
+    const deferred = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-operations',
+      text: 'structured delete with selected context',
+      messageId: 'msg-delete-op-with-selected-context',
+      receivedAt: new Date().toISOString(),
+    });
+    expect(
+      deferred.plan.provider_needs.find((need) => need.category === 'Música')?.status,
+    ).toBe('deferred');
 
     const deleted = await service.handleTurn({
       channel: 'terminal_whatsapp',
@@ -5190,6 +5212,122 @@ describe('AgentService', () => {
 
     expect(response.plan.current_node).toBe('crear_lead_cerrar');
     expect(response.trace.operational_note).toContain('código de país');
+    expect(gateway.searchCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+  });
+
+  it('keeps invalid standalone phone corrections in close flow without provider search', async () => {
+    class InvalidClosePhoneRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: null,
+          intentConfidence: 0.72,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario envía un teléfono incompleto durante el cierre.',
+          selectedProviderHints: ['Kisu'],
+          selectedProviderReferences: [
+            {
+              providerId: 302,
+              providerTitle: 'Kisu',
+              category: 'Catering',
+              hint: null,
+            },
+          ],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: '967',
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: null,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-invalid-close-phone',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-invalid-close-phone',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          contact_name: 'Gabriela',
+          contact_email: 'gabriela@example.com',
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [168],
+              recommended_providers: [
+                { id: 168, title: 'Filomena', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [168],
+              selected_provider_hints: ['Filomena'],
+            },
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [302],
+              recommended_providers: [
+                { id: 302, title: 'Kisu', category: 'Catering', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new InvalidClosePhoneRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-invalid-close-phone',
+      text: '967',
+      messageId: 'msg-invalid-close-phone',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('crear_lead_cerrar');
+    expect(response.plan.contact_phone).toBeNull();
+    expect(
+      response.plan.provider_needs.find((need) => need.category === 'Catering')?.selected_provider_ids,
+    ).toEqual([]);
+    expect(response.trace.contact_validation_summary.status).toBe('invalid');
     expect(gateway.searchCalls).toBe(0);
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
   });

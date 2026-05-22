@@ -1,0 +1,52 @@
+template: template.base-offline
+id: feedback.location_filtering_avoids_mexico_for_lurin
+suite: feedback_regression
+version: 1
+description: Peru/Lima location requests should not present Mexico providers when Peru matches are available.
+tags: [feedback, batch2, provider-filtering]
+inputs:
+  - text: necesito fotógrafos para una boda en Lurín
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: buscar_proveedores
+        intentConfidence: 0.93
+        eventType: boda
+        vendorCategory: Fotografía y video
+        vendorCategories: [Fotografía y video]
+        activeNeedCategory: Fotografía y video
+        location: Lurín
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Busca fotógrafos para boda en Lurín, Lima.
+        selectedProviderHints: []
+        pauseRequested: false
+    repliesByTurn:
+      - Encontré opciones de Fotografía y video en Lima/Lurín. No incluí proveedores de México porque hay alternativas locales.
+    providerGateway:
+      searchProvidersByTurn:
+        - value:
+            providers:
+              - id: 90
+                title: Carlos Schult
+                category: Fotografía y video
+                location: Lima, Perú
+                priceLevel: null
+                reason: opción local
+                serviceHighlights: []
+                termsHighlights: []
+expectations:
+  - id: local-provider
+    type: provider_results_contains
+    providers:
+      - id: 90
+        category: Fotografía y video
+  - id: no-mexico-provider-copy
+    type: text_not_contains
+    phrases:
+      - Ciudad de México
+      - México ·
+      - Mexico ·

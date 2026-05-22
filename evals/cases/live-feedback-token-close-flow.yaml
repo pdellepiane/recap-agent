@@ -1,0 +1,63 @@
+template: template.base-live
+id: live_feedback.token_seeded_close_flow
+suite: live_feedback_token_regression
+version: 1
+description: Seeded selected-provider close flow should consume model tokens over several live Lambda turns.
+tags: [live, feedback, token, seeded-plan, close]
+inputs:
+  - text: quiero cerrar este plan
+    sessionId: live-feedback-close-session
+  - text: mi nombre es Carolina
+    sessionId: live-feedback-close-session
+  - text: mi correo es carolina@example.com
+    sessionId: live-feedback-close-session
+  - text: mi teléfono es 51954779071
+    sessionId: live-feedback-close-session
+  - text: sí, confirma el envío
+    sessionId: live-feedback-close-session
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Fotografía y video
+  vendor_category: Fotografía y video
+  provider_needs:
+    - category: Fotografía y video
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90]
+      recommended_providers:
+        - id: 90
+          title: Carlos Schult
+          category: Fotografía y video
+          location: Lima
+          priceLevel: null
+          reason: seleccionado
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: [90]
+      selected_provider_hints: [Carlos Schult]
+expectations:
+  - id: tokens-all-turns
+    type: token_usage_present
+    allTurns: true
+  - id: selected-provider-preserved
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        selected_provider_ids: [90]
+  - id: no-provider-search
+    type: tool_usage
+    turnIndex: 0
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+budget:
+  maxTurns: 5
+  estimatedPromptTokensPerTurn: 1400
+  estimatedCompletionTokensPerTurn: 400
+

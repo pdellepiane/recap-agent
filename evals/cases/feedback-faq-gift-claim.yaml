@@ -1,0 +1,42 @@
+template: template.base-offline
+id: feedback.faq_gift_product_claim_clear_next_steps
+suite: feedback_regression
+version: 1
+description: Gift/product claim questions should explain optional gifts, value received, brand claims, and support.
+tags: [feedback, batch2, faq]
+inputs:
+  - text: Tengo un problema con un regalo de mi web, ¿estoy obligado a comprarlo o reclamo con la marca?
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: consultar_faq
+        intentConfidence: 0.95
+        eventType: null
+        vendorCategory: null
+        vendorCategories: []
+        activeNeedCategory: null
+        location: null
+        budgetSignal: null
+        guestRange: null
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: Pregunta por regalos, compra obligatoria y reclamo con marca.
+        selectedProviderHints: []
+        pauseRequested: false
+        kbQuery: regalos no obligatorios reclamo marca soporte
+    repliesByTurn:
+      - No estás obligado a comprar regalos. Recibes el valor según la comisión configurada y, si el problema es con una compra o producto, el reclamo se gestiona con la marca; igual podemos ayudarte por chat o email.
+expectations:
+  - id: faq-node
+    type: node_transition
+    to: consultar_faq
+  - id: gift-claim-copy
+    type: text_contains
+    allOf: [marca]
+    anyOf: [No estás obligado, no estás obligado, no es obligatorio]
+  - id: no-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent

@@ -1,0 +1,49 @@
+template: template.base-offline
+id: feedback.selection_confirmation_does_not_relist
+suite: feedback_regression
+version: 1
+description: Confirming a provider should persist the selection and not show another recommendation list in the same turn.
+imports:
+  - ../fixtures/seed-plans/recommend-photography-shortlist-carlos.yaml
+tags: [feedback, batch2, selection]
+inputs:
+  - text: confirmo Carlos Schult
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: confirmar_proveedor
+        intentConfidence: 0.96
+        eventType: boda
+        vendorCategory: Fotografía y video
+        vendorCategories: [Fotografía y video]
+        activeNeedCategory: Fotografía y video
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario confirma Carlos Schult.
+        selectedProviderHints: [Carlos Schult]
+        pauseRequested: false
+    repliesByTurn:
+      - Carlos Schult quedó seleccionado para Fotografía y video.
+expectations:
+  - id: no-new-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+  - id: selected
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        status: selected
+        selected_provider_ids: [90]
+  - id: no-fresh-list-copy
+    type: text_not_contains
+    phrases:
+      - Te paso más opciones
+      - Aquí tienes otras opciones
+

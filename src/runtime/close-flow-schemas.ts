@@ -20,25 +20,11 @@ export const closeActionSchema = z.object({
       message: 'category is required when type is defer_need',
     });
   }
-  if (action.type !== 'defer_need' && action.category !== null) {
-    context.addIssue({
-      code: 'custom',
-      path: ['category'],
-      message: 'category must be null unless type is defer_need',
-    });
-  }
   if (action.type === 'clarify' && action.reason === null) {
     context.addIssue({
       code: 'custom',
       path: ['reason'],
       message: 'reason is required when type is clarify',
-    });
-  }
-  if (action.type !== 'clarify' && action.reason !== null) {
-    context.addIssue({
-      code: 'custom',
-      path: ['reason'],
-      message: 'reason must be null unless type is clarify',
     });
   }
 });

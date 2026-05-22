@@ -130,6 +130,15 @@ Definiciones de campos:
   - lista estructurada de cambios explícitos al plan.
   - usa únicamente tipos soportados: add_need, update_need, delete_need, select_provider, unselect_provider, replace_provider, defer_need, reactivate_need.
   - no uses heurísticas por palabras clave: si no puedes representar el cambio con una operación estructurada clara, deja la lista vacía y usa intentConfidence bajo.
+  - si el usuario dice que no quiere ninguna opción de una necesidad ya recomendada o quiere cerrar sin proveedor para esa necesidad, usa defer_need, no delete_need. delete_need es solo para borrar una necesidad del plan cuando el usuario pide quitarla explícitamente.
+
+- closeAction:
+  - objeto estructurado solo para acciones explícitas del flujo de cierre.
+  - type debe ser uno de: confirm_close, defer_need, request_contact, abandon_plan, clarify.
+  - category se usa únicamente con type=defer_need; para confirm_close, request_contact, abandon_plan y clarify debe ser null aunque exista una necesidad activa.
+  - reason se usa únicamente con type=clarify; para confirm_close, defer_need, request_contact y abandon_plan debe ser null.
+  - si el usuario pide cerrar o contactar con proveedores ya elegidos, usa type=confirm_close o request_contact sin category.
+  - si el usuario decide continuar sin una necesidad pendiente, usa type=defer_need con category canónica.
 
 - providerExplanationRequest:
   - objeto cuando el usuario pide comparar o justificar proveedores.

@@ -1,0 +1,67 @@
+template: template.base-offline
+id: feedback.phone_correction_updates_single_field
+suite: feedback_regression
+version: 1
+description: A standalone corrected phone with country code should update only the phone while preserving name and email.
+tags: [feedback, batch2, validation]
+inputs:
+  - text: mi teléfono correcto es +51954779071
+seedPlan:
+  current_node: crear_lead_cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Fotografía y video
+  vendor_category: Fotografía y video
+  contact_name: Carolina
+  contact_email: carolina@example.com
+  contact_phone: null
+  provider_needs:
+    - category: Fotografía y video
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90]
+      recommended_providers: []
+      selected_provider_ids: [90]
+      selected_provider_hints: [Carlos Schult]
+fixtures:
+  offline:
+    extractionsByTurn:
+      - intent: cerrar
+        intentConfidence: 0.95
+        eventType: boda
+        vendorCategory: Fotografía y video
+        vendorCategories: [Fotografía y video]
+        activeNeedCategory: Fotografía y video
+        location: Lima
+        budgetSignal: null
+        guestRange: 51-100
+        preferences: []
+        hardConstraints: []
+        assumptions: []
+        conversationSummary: El usuario corrigió solo el teléfono.
+        selectedProviderHints: []
+        pauseRequested: false
+        contactPhone: "+51954779071"
+    repliesByTurn:
+      - Perfecto, actualicé tu teléfono y mantuve tu nombre y correo guardados.
+expectations:
+  - id: phone-updated
+    type: plan_field_equals
+    path: contact_phone
+    expected: "51954779071"
+  - id: name-preserved
+    type: plan_field_equals
+    path: contact_name
+    expected: Carolina
+  - id: email-preserved
+    type: plan_field_equals
+    path: contact_email
+    expected: carolina@example.com
+  - id: no-resubmit-all-fields
+    type: text_not_contains
+    phrases:
+      - vuelve a enviarme tu nombre
+      - envía nombre y correo de nuevo
