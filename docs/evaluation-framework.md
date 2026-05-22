@@ -106,6 +106,26 @@ Use live runs for:
 
 Do not use the live target as the default inner loop. It costs more, takes longer, and is more exposed to environment drift.
 
+### Observable Live Transcript
+
+For a human-viewable end-to-end run without trace or plan tables, use:
+
+```bash
+AWS_PROFILE=se-dev bun run eval:observable-live
+```
+
+This runner does not use `seedPlan`. It creates a fresh user/session, starts from a new event-planning request, shuffles operation blocks on every run, and prints only the user turns and agent replies. It is meant for terminal observation of a complete conversation, not deterministic scoring.
+
+Covered operation groups:
+
+- add, update, and delete provider needs
+- select, unselect, and replace providers
+- defer and reactivate needs
+- refine an existing need
+- provider detail, explanation, and comparison
+- FAQ/support-boundary turns
+- close/contact flow
+
 ## Case Authoring
 
 An eval case is a structured scenario, not a golden transcript.

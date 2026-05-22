@@ -2273,3 +2273,25 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `tests/extraction-schemas.test.ts`
 - `docs/implementation-log.md`
+
+### Add observable shuffled live transcript eval
+
+- Added `eval:observable-live`, a terminal-observable live Lambda conversation runner that uses a fresh user/session and no seeded plan.
+- The runner shuffles operation blocks on every run while preserving dependency order within each block.
+- It prints only the transcript (`you>` and `agent>` replies) and hides plan/trace output by using the channel-style Lambda response.
+- Added operation coverage for add, update, delete, select, unselect, replace, defer, reactivate, refine, detail, explain, compare, FAQ/support, and close/contact flow.
+- Added unit coverage for the generated script shape and internal block ordering.
+
+Reason:
+- A human-readable end-to-end eval is needed to observe the real conversation behavior in terminal without the large plan and trace tables, while still exercising broad supported operations from scratch.
+
+Decision:
+- Keep this separate from deterministic YAML suites because the requested shuffle makes it intentionally non-snapshot-like. Use it as an observational live transcript check, not a hard regression gate.
+
+Files changed:
+- `package.json`
+- `src/evals/live-observable-cli.ts`
+- `src/evals/observable-live-script.ts`
+- `tests/observable-live-script.test.ts`
+- `docs/evaluation-framework.md`
+- `docs/implementation-log.md`
