@@ -27,8 +27,10 @@ export type SessionFocus = z.infer<typeof sessionFocusSchema>;
 export const decisionEvidenceSchema = z.object({
   previousNode: decisionNodeSchema,
   extractionIntent: z.string().nullable(),
+  explicitNeedCategoryCount: z.number().int().min(0),
   extractionProviderQueryIntentCount: z.number().int().min(0),
   extractionProviderPlanOperationCount: z.number().int().min(0),
+  broadProviderMenuRequested: z.boolean(),
   planBeforeNode: decisionNodeSchema,
   planAfterNode: decisionNodeSchema,
   providerNeedCount: z.number().int().min(0),
@@ -95,4 +97,3 @@ export const turnDecisionSchema = z.object({
 });
 
 export type TurnDecision = z.infer<typeof turnDecisionSchema>;
-

@@ -315,6 +315,16 @@ export class AgentService {
     if (operationResult.unresolvedMessage) {
       errorMessage = operationResult.unresolvedMessage;
     }
+    const effectiveSelectionHints = this.resolveEffectiveSelectionHints(extraction);
+    const preliminarySelectionResolution = this.tryResolveSelection(
+      mergedPlan,
+      extraction.selectedProviderReferences ?? [],
+      effectiveSelectionHints,
+      extraction.intent,
+    );
+    const selectionShouldStop =
+      preliminarySelectionResolution.resolved &&
+      !this.shouldContinueWithAnotherNeed(mergedPlan, preliminarySelectionResolution);
     timingMs.apply_extraction += Date.now() - applyExtractionStartedAt;
     const sufficiencyStartedAt = Date.now();
     const sufficiency = computeSearchSufficiency(mergedPlan);
@@ -328,7 +338,7 @@ export class AgentService {
       sessionFocus,
       sufficiency,
       sufficiencyByNeed,
-      hasResolvedSelection: false,
+      hasResolvedSelection: selectionShouldStop,
       hasAmbiguousSelection: false,
     });
     let turnDecision = this.decideNextTurn(decisionEvidence);
@@ -671,38 +681,7 @@ export class AgentService {
 
     let planAfterFlow = mergedPlan;
 
-    const hasSelectionEvidence =
-      extraction.intent === 'confirmar_proveedor' ||
-      (extraction.selectedProviderReferences?.length ?? 0) > 0 ||
-      extraction.selectedProviderHints.length > 0 ||
-      (extraction.providerPlanOperations ?? []).some(
-        (operation) => operation.type === 'select_provider' || operation.type === 'replace_provider',
-      );
-    const routeProviderSearchToElicitation =
-      !hasSelectionEvidence &&
-      (
-        turnDecision.routeKind === 'multi_need_search' ||
-        this.shouldRouteProviderSearchToElicitation(extraction)
-      );
-    if (routeProviderSearchToElicitation && turnDecision.routeKind !== 'multi_need_search') {
-      const needs = Array.from(new Set(
-        (extraction.providerQueryIntents ?? []).map((queryIntent) => queryIntent.category),
-      ));
-      turnDecision = turnDecisionSchema.parse({
-        ...turnDecision,
-        nextNode: 'elicitacion_necesidades',
-        routeKind: 'multi_need_search',
-        providerSearchMode: 'multi_need_query_intents',
-        presentationScope: 'multi_need',
-        focusNeedCategory: needs[0] ?? turnDecision.focusNeedCategory,
-        needsToSearch: needs,
-        needsToPresent: needs,
-        persistReason: 'elicitacion_necesidades',
-        invariantStatus: 'valid',
-        invariantViolations: [],
-      });
-    }
-    if (extraction.intent === 'elicitar_necesidades' || routeProviderSearchToElicitation) {
+    if (turnDecision.nextNode === 'elicitacion_necesidades') {
       currentNode = 'elicitacion_necesidades';
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
@@ -731,11 +710,7 @@ export class AgentService {
       planAfterFlow = mergePlan(planAfterFlow, {
         current_node: currentNode,
       });
-    } else if (
-      extraction.intent === 'explicar_recomendacion' ||
-      extraction.intent === 'detallar_proveedor' ||
-      extraction.intent === 'modificar_plan_proveedores'
-    ) {
+    } else if (turnDecision.routeKind === 'modify_plan') {
       const nextNeed = this.resolveNextNeedAfterSelectionOperation(
         planAfterFlow,
         operationResult.appliedOperations,
@@ -755,6 +730,18 @@ export class AgentService {
           recommended_provider_ids: nextNeed.recommended_provider_ids,
           recommended_providers: nextNeed.recommended_providers,
         });
+        turnDecision = turnDecisionSchema.parse({
+          ...turnDecision,
+          nextNode: currentNode,
+          routeKind: 'present_existing_shortlist',
+          providerSearchMode: 'existing_shortlist',
+          presentationScope: 'single_need',
+          focusNeedCategory: nextNeed.category,
+          needsToPresent: [nextNeed.category],
+          persistReason: currentNode,
+          invariantStatus: 'valid',
+          invariantViolations: [],
+        });
         providerResults = nextNeed.recommended_providers;
         searchStrategy = 'existing_plan_shortlist';
         await persistPlan(planAfterFlow, currentNode);
@@ -773,13 +760,32 @@ export class AgentService {
       planPersisted = true;
       planPersistReason = currentNode;
       }
-    } else if (this.shouldAskForEventContext(mergedPlan)) {
+    } else if (turnDecision.routeKind === 'present_existing_shortlist') {
+      currentNode = turnDecision.nextNode;
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+      const focusCategory = turnDecision.focusNeedCategory;
+      planAfterFlow = focusCategory
+        ? replaceProviderNeeds(planAfterFlow, planAfterFlow.provider_needs, focusCategory)
+        : mergePlan(planAfterFlow, { current_node: currentNode });
+      planAfterFlow = mergePlan(planAfterFlow, {
+        current_node: currentNode,
+      });
+      providerResults = turnDecision.presentationScope === 'multi_need'
+        ? this.collectPlanProviders(planAfterFlow)
+        : getActiveNeed(planAfterFlow)?.recommended_providers ?? [];
+      searchStrategy = 'existing_plan_shortlist';
+      await persistPlan(planAfterFlow, currentNode);
+      planPersisted = true;
+      planPersistReason = currentNode;
+    } else if (turnDecision.routeKind === 'ask_event_context') {
       currentNode = 'entrevista';
       nodePath.push(currentNode);
       planAfterFlow = mergePlan(mergedPlan, {
         current_node: currentNode,
       });
-    } else if (!sufficiency.searchReady) {
+    } else if (turnDecision.routeKind === 'clarify_missing_fields') {
       currentNode = 'aclarar_pedir_faltante';
       nodePath.push('minimos_para_buscar', currentNode);
       const activeNeed = getActiveNeed(mergedPlan);
@@ -795,30 +801,33 @@ export class AgentService {
             ]
           : [],
       });
-    } else {
-        const effectiveSelectionHints = this.resolveEffectiveSelectionHints(extraction);
-
-        const selectionResolution = this.tryResolveSelection(
-          planAfterFlow,
-          extraction.selectedProviderReferences ?? [],
-          effectiveSelectionHints,
-          extraction.intent,
-        );
-
-      if (
-        selectionResolution.resolved &&
-        !this.shouldContinueWithAnotherNeed(planAfterFlow, selectionResolution)
-      ) {
-        currentNode = 'anadir_a_proveedores_recomendados';
-        nodePath.push('usuario_elige_proveedor', currentNode, 'seguir_refinando_guardar_plan');
-        currentNode = 'seguir_refinando_guardar_plan';
-        planAfterFlow = mergePlan(planAfterFlow, {
-          current_node: currentNode,
-        });
-        await persistPlan(planAfterFlow, 'seguir_refinando_guardar_plan');
-        planPersisted = true;
-        planPersistReason = 'seguir_refinando_guardar_plan';
-      } else {
+    } else if (turnDecision.routeKind === 'apply_selection') {
+      currentNode = 'anadir_a_proveedores_recomendados';
+      nodePath.push('usuario_elige_proveedor', currentNode, 'seguir_refinando_guardar_plan');
+      currentNode = 'seguir_refinando_guardar_plan';
+      turnDecision = turnDecisionSchema.parse({
+        ...turnDecision,
+        nextNode: currentNode,
+        providerSearchMode: 'none',
+        presentationScope: 'none',
+        persistReason: currentNode,
+        invariantStatus: 'valid',
+        invariantViolations: [],
+      });
+      planAfterFlow = mergePlan(planAfterFlow, {
+        current_node: currentNode,
+      });
+      await persistPlan(planAfterFlow, 'seguir_refinando_guardar_plan');
+      planPersisted = true;
+      planPersistReason = 'seguir_refinando_guardar_plan';
+    } else if (turnDecision.routeKind === 'single_need_search') {
+        if (turnDecision.focusNeedCategory) {
+          planAfterFlow = replaceProviderNeeds(
+            planAfterFlow,
+            planAfterFlow.provider_needs,
+            turnDecision.focusNeedCategory,
+          );
+        }
         nodePath.push('minimos_para_buscar', 'buscar_proveedores');
         try {
           const searchResult = await this.executeProviderSearch({
@@ -872,11 +881,27 @@ export class AgentService {
             planAfterFlow = mergePlan(planAfterFlow, {
               current_node: currentNode,
             });
+            turnDecision = turnDecisionSchema.parse({
+              ...turnDecision,
+              nextNode: currentNode,
+              presentationScope: 'clarification',
+              stopReason: 'no_providers_available',
+              persistReason: currentNode,
+              invariantStatus: 'valid',
+              invariantViolations: [],
+            });
           } else {
             currentNode = 'recomendar';
             nodePath.push('hay_resultados', currentNode);
             planAfterFlow = mergePlan(planAfterFlow, {
               current_node: currentNode,
+            });
+            turnDecision = turnDecisionSchema.parse({
+              ...turnDecision,
+              nextNode: currentNode,
+              persistReason: currentNode,
+              invariantStatus: 'valid',
+              invariantViolations: [],
             });
           }
 
@@ -902,11 +927,28 @@ export class AgentService {
           planAfterFlow = mergePlan(planAfterFlow, {
             current_node: currentNode,
           });
+          turnDecision = turnDecisionSchema.parse({
+            ...turnDecision,
+            nextNode: currentNode,
+            routeKind: 'error',
+            presentationScope: 'clarification',
+            stopReason: errorMessage,
+            persistReason: currentNode,
+            invariantStatus: 'valid',
+            invariantViolations: [],
+          });
           await persistPlan(planAfterFlow, currentNode);
           planPersisted = true;
           planPersistReason = currentNode;
         }
+    } else {
+      currentNode = turnDecision.nextNode;
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
       }
+      planAfterFlow = mergePlan(planAfterFlow, {
+        current_node: currentNode,
+      });
     }
 
     const promptBundleStartedAt = Date.now();
@@ -971,14 +1013,7 @@ export class AgentService {
         timingMs,
         tokenUsage,
         searchStrategy,
-        turnDecision: turnDecision.nextNode === currentNode
-          ? turnDecision
-          : this.fallbackTurnDecision({
-              currentNode,
-              searchStrategy,
-              providerResults,
-              focusNeedCategory: planAfterFlow.active_need_category,
-            }),
+        turnDecision,
         sessionFocusUsed: Boolean(sessionFocus),
         sessionFocusKeyPresent: Boolean(inbound.sessionId),
         operationalNote: errorMessage,
@@ -1050,13 +1085,16 @@ export class AgentService {
       args.extraction,
       args.planAfterReduction,
       args.sufficiencyByNeed,
+      args.sessionFocus,
     );
 
     return decisionEvidenceSchema.parse({
       previousNode: args.previousNode,
       extractionIntent: args.extraction.intent,
+      explicitNeedCategoryCount: this.countExplicitNeedCategories(args.extraction),
       extractionProviderQueryIntentCount: args.extraction.providerQueryIntents?.length ?? 0,
       extractionProviderPlanOperationCount: args.extraction.providerPlanOperations?.length ?? 0,
+      broadProviderMenuRequested: this.isBroadProviderMenuRequest(args.extraction),
       planBeforeNode: args.planBefore.current_node,
       planAfterNode: args.planAfterReduction.current_node,
       providerNeedCount: args.planAfterReduction.provider_needs.length,
@@ -1114,6 +1152,45 @@ export class AgentService {
         stopReason: null,
         persistReason: 'crear_lead_cerrar',
       };
+    } else if (evidence.providerNeedCount === 0) {
+      decision = {
+        nextNode: 'entrevista',
+        routeKind: 'ask_event_context',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: 'no_provider_need_identified',
+        persistReason: 'entrevista',
+      };
+    } else if (evidence.hasResolvedSelection) {
+      decision = {
+        nextNode: 'seguir_refinando_guardar_plan',
+        routeKind: 'apply_selection',
+        providerSearchMode: 'none',
+        presentationScope: 'none',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: null,
+        persistReason: 'seguir_refinando_guardar_plan',
+      };
+    } else if (
+      evidence.extractionProviderPlanOperationCount > 0 ||
+      evidence.extractionIntent === 'explicar_recomendacion'
+    ) {
+      decision = {
+        nextNode: 'seguir_refinando_guardar_plan',
+        routeKind: 'modify_plan',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: null,
+        persistReason: 'seguir_refinando_guardar_plan',
+      };
     } else if (
       evidence.readyNeedCategories.length > 1 &&
       (
@@ -1130,6 +1207,25 @@ export class AgentService {
         needsToSearch: evidence.readyNeedCategories,
         needsToPresent: evidence.readyNeedCategories,
         stopReason: null,
+        persistReason: 'elicitacion_necesidades',
+      };
+    } else if (
+      evidence.extractionIntent === 'elicitar_necesidades' ||
+      (
+        evidence.extractionIntent === 'buscar_proveedores' &&
+        evidence.broadProviderMenuRequested
+      )
+    ) {
+      const needsToPresent = evidence.sufficiencyByNeed.map((need) => need.category);
+      decision = {
+        nextNode: 'elicitacion_necesidades',
+        routeKind: 'ask_event_context',
+        providerSearchMode: 'none',
+        presentationScope: 'multi_need',
+        focusNeedCategory: evidence.focusedNeedCategory ?? needsToPresent[0] ?? null,
+        needsToSearch: [],
+        needsToPresent,
+        stopReason: needsToPresent.length > 0 ? 'need_priority_confirmation' : 'insufficient_need_detail',
         persistReason: 'elicitacion_necesidades',
       };
     } else if (
@@ -1198,10 +1294,32 @@ export class AgentService {
     });
   }
 
+  private countExplicitNeedCategories(extraction: ExtractionResult): number {
+    return new Set(
+      [
+        extraction.activeNeedCategory,
+        extraction.vendorCategory,
+        ...extraction.vendorCategories,
+      ].filter((category): category is ProviderCategory => Boolean(category)),
+    ).size;
+  }
+
+  private isBroadProviderMenuRequest(extraction: ExtractionResult): boolean {
+    return (
+      extraction.intent === 'buscar_proveedores' &&
+      this.countExplicitNeedCategories(extraction) > 1 &&
+      (extraction.providerQueryIntents ?? []).length === 0 &&
+      extraction.budgetSignal === 'medio' &&
+      (extraction.hardConstraints?.length ?? 0) === 0 &&
+      (extraction.preferences?.length ?? 0) < 3
+    );
+  }
+
   private resolveReadyNeedCategories(
     extraction: ExtractionResult,
     plan: PlanSnapshot,
     sufficiencyByNeed: NeedSufficiency[],
+    sessionFocus: SessionFocus | null,
   ): ProviderCategory[] {
     const readyFromQueryIntents = (extraction.providerQueryIntents ?? [])
       .filter((queryIntent) => this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction))
@@ -1211,9 +1329,29 @@ export class AgentService {
     }
 
     const focusedCategory = extraction.activeNeedCategory ?? extraction.vendorCategory;
-    if (extraction.intent === 'buscar_proveedores' && focusedCategory) {
+    if (
+      focusedCategory &&
+      (
+        extraction.intent === 'buscar_proveedores' ||
+        extraction.intent === 'confirmar_proveedor' ||
+        extraction.intent === 'refinar_busqueda'
+      )
+    ) {
       return plan.provider_needs.some((need) => need.category === focusedCategory)
         ? [focusedCategory]
+        : [];
+    }
+
+    const sessionFocusCategory = sessionFocus?.activeNeedCategory ?? null;
+    if (
+      sessionFocusCategory &&
+      (
+        extraction.intent === 'buscar_proveedores' ||
+        extraction.intent === 'refinar_busqueda'
+      )
+    ) {
+      return plan.provider_needs.some((need) => need.category === sessionFocusCategory)
+        ? [sessionFocusCategory]
         : [];
     }
 
@@ -2653,37 +2791,6 @@ export class AgentService {
       );
 
     return hasQuery && hasEventScale;
-  }
-
-  private shouldRouteProviderSearchToElicitation(
-    extraction: ExtractionResult,
-  ): boolean {
-    if (extraction.intent !== 'buscar_proveedores' || !extraction.eventType) {
-      return false;
-    }
-    if (
-      (extraction.providerQueryIntents ?? []).length > 1 &&
-      this.hasDetailedElicitationConcept(extraction)
-    ) {
-      return true;
-    }
-    if (
-      (extraction.hardConstraints?.length ?? 0) > 0 ||
-      (extraction.preferences?.length ?? 0) >= 3
-    ) {
-      return false;
-    }
-
-    const multiNeedSignals = new Set(
-      extraction.vendorCategories.filter(
-        (category): category is ProviderCategory => Boolean(category),
-      ),
-    );
-
-    return (
-      multiNeedSignals.size > 1 &&
-      extraction.budgetSignal === 'medio'
-    );
   }
 
   private async executeProviderSearch(args: {

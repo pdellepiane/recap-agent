@@ -53,7 +53,6 @@ function buildNodeFiles(node: DecisionNode): readonly string[] {
     `nodes/${node}/system.txt`,
     `nodes/${node}/response_contract.txt`,
     `nodes/${node}/tool_policy.txt`,
-    `nodes/${node}/transition_policy.txt`,
   ];
 }
 

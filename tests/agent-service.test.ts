@@ -3330,10 +3330,122 @@ describe('AgentService', () => {
     expect(response.plan.current_node).toBe('elicitacion_necesidades');
     expect(response.trace.search_strategy).toBe('multi_need_query_intents');
     expect(response.trace.turn_decision.routeKind).toBe('multi_need_search');
+    expect(response.trace.turn_decision.nextNode).toBe(response.plan.current_node);
+    expect(response.trace.turn_decision.providerSearchMode).toBe('multi_need_query_intents');
     expect(response.trace.presentation_scope).toBe('multi_need');
     expect(response.trace.state_machine_invariant_status).toBe('valid');
     expect(gateway.searchCalls).toBe(0);
     expect(gateway.queryIntentCategories).toEqual(['Catering', 'Música', 'Locales']);
+  });
+
+  it('uses matching session focus for single-need search without stale durable focus', async () => {
+    class FocusedRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.92,
+          eventType: 'boda',
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: 'Lima',
+          budgetSignal: '$$',
+          guestRange: '51-100',
+          preferences: ['elegante'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario pide seguir viendo opciones del frente activo.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-session-focus-plan',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-session-focus',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-session-focus',
+        }),
+        {
+          current_node: 'elicitacion_necesidades',
+          event_type: 'boda',
+          active_need_category: 'Catering',
+          location: 'Lima',
+          budget_signal: '$$',
+          guest_range: '51-100',
+          provider_needs: [
+            {
+              category: 'Catering',
+              status: 'identified',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [],
+              recommended_providers: [],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+            {
+              category: 'Música',
+              status: 'identified',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [],
+              recommended_providers: [],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+    await planStore.saveSessionFocus('terminal_whatsapp', 'user-session-focus', {
+      sessionId: 'session-music',
+      activeNeedCategory: 'Música',
+      lastPresentedCategories: ['Música'],
+      lastPresentedProviderIds: [],
+      lastNode: 'elicitacion_necesidades',
+      updatedAt: new Date().toISOString(),
+    });
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new FocusedRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-session-focus',
+      text: 'muéstrame opciones',
+      messageId: 'msg-session-focus',
+      receivedAt: new Date().toISOString(),
+      sessionId: 'session-music',
+    });
+
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(response.plan.active_need_category).toBe('Música');
+    expect(response.trace.session_focus_used).toBe(true);
+    expect(response.trace.turn_decision.routeKind).toBe('single_need_search');
+    expect(response.trace.turn_decision.focusNeedCategory).toBe('Música');
+    expect(response.trace.turn_decision.nextNode).toBe(response.plan.current_node);
+    expect(gateway.searchCalls).toBe(1);
   });
 
   it('stores per-sub-query provenance and selected providers for complex needs', async () => {

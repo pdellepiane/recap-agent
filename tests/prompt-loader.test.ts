@@ -17,7 +17,7 @@ describe('PromptLoader', () => {
 
       expect(first.id).toBe(second.id);
       expect(first.filePaths.length).toBe(
-        conversationSharedPromptFiles.length + 4,
+        conversationSharedPromptFiles.length + 3,
       );
       expect(first.instructions.length).toBeGreaterThan(0);
       expect(first.filePaths.some((filePath) => filePath.includes(`nodes/${node}/`))).toBe(true);

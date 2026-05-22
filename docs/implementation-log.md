@@ -2188,3 +2188,27 @@ Files changed:
 - `src/runtime/agent-service.ts`
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
+
+### Make turn decisions authoritative for provider routing
+
+- Moved post-extraction provider routing to the typed `TurnDecision` surface for multi-need elicitation, stored-shortlist presentation, missing-field clarification, event-context stops, provider selection stops, and single-need search.
+- Removed the legacy `shouldRouteProviderSearchToElicitation` override and stopped hiding final decision/current-node mismatches with a fallback decision in the main turn trace.
+- Added structured decision evidence for broad provider-menu requests so broad multi-need openings still produce an elicitation menu without relying on a scattered heuristic.
+- Stopped loading node `transition_policy.txt` files into conversational prompt bundles; the reply model now receives the deterministic turn decision context instead of broad static graph policy.
+- Replaced stale durable active-need wording in reply context with the turn's operative focus and added session-focus routing so a matching `session_id` can narrow an otherwise ambiguous provider search.
+- Added regression coverage for the stale-active-need multi-front request and matching-session focus behavior, including assertions that `turn_decision.nextNode` matches the executed node.
+
+Reason:
+- The previous implementation logged a structured decision, but legacy branches could still override or reinterpret the route. That preserved part of the old uncoupled behavior and kept unnecessary transition policy clutter in prompts.
+
+Decision:
+- Treat `TurnDecision` as the main routing contract after structured extraction and deterministic plan reduction. Keep model work focused on structured interpretation and reply wording; keep routing consequences in application code.
+
+Files changed:
+- `src/core/turn-decision.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/prompt-manifest.ts`
+- `tests/agent-service.test.ts`
+- `tests/prompt-loader.test.ts`
+- `docs/implementation-log.md`

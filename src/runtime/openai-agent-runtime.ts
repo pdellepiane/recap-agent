@@ -568,6 +568,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ? this.collectRecommendedProvidersForMultiNeed(request.plan)
         : request.providerResults.slice(0, this.options.replyProviderLimit);
     const activeNeed = getActiveNeed(request.plan);
+    const focusNeedCategory =
+      request.turnDecision?.focusNeedCategory ?? activeNeed?.category ?? null;
 
     const parts: Array<string | null> = [
       `Nodo previo: ${request.previousNode}`,
@@ -584,9 +586,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           }, null, 2)}`
         : null,
       `Extracción estructurada del turno: ${JSON.stringify(this.buildReplyExtractionSnapshot(request.extraction), null, 2)}`,
-      `Plan resumido: ${JSON.stringify(this.buildPromptPlanSnapshot(request.plan), null, 2)}`,
+      `Plan resumido: ${JSON.stringify(
+        this.buildPromptPlanSnapshot(request.plan, focusNeedCategory),
+        null,
+        2,
+      )}`,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
-      `Necesidad activa: ${activeNeed?.category ?? 'ninguna todavía'}`,
+      `Foco operativo del turno: ${focusNeedCategory ?? 'ninguno todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
       `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
       this.buildMissingFieldsInstruction(request),
@@ -1518,7 +1524,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return value.filter((entry): entry is string => typeof entry === 'string');
   }
 
-  private buildPromptPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
+  private buildPromptPlanSnapshot(
+    plan: PersistedPlan,
+    focusNeedCategory: PersistedPlan['active_need_category'],
+  ): Record<string, unknown> {
     return {
       lifecycle_state: plan.lifecycle_state,
       contact_name: plan.contact_name,
@@ -1527,7 +1536,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       current_node: plan.current_node,
       intent: plan.intent,
       event_type: plan.event_type,
-      active_need_category: plan.active_need_category,
+      focus_need_category: focusNeedCategory,
       vendor_category: plan.vendor_category,
       location: plan.location,
       budget_signal: plan.budget_signal,
