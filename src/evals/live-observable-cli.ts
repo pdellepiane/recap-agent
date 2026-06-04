@@ -5,7 +5,13 @@ import { setTimeout as sleep } from 'node:timers/promises';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { Command } from 'commander';
 
-import { buildObservableLiveTurns } from './observable-live-script';
+import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
+import type { DecisionNode } from '../core/decision-nodes';
+import type { TurnTrace } from '../core/trace';
+import {
+  ObservableLiveTurnPlanner,
+  type ObservableLiveContext,
+} from './observable-live-script';
 
 type CliOptions = {
   url?: string;
@@ -21,6 +27,9 @@ type CliOptions = {
 type LambdaTranscriptPayload = {
   message?: string;
   error?: string;
+  plan?: PlanSnapshot;
+  currentNode?: DecisionNode;
+  trace?: TurnTrace;
 };
 
 type LambdaRequestBody = {
@@ -30,7 +39,7 @@ type LambdaRequestBody = {
   message_id: string;
   received_at: string;
   session_id: string;
-  client_mode: 'channel';
+  client_mode: 'cli';
 };
 
 const program = new Command();
@@ -65,7 +74,9 @@ program
     250,
   );
 
-void main();
+if (isDirectExecution()) {
+  void main();
+}
 
 async function main(): Promise<void> {
   program.parse();
@@ -81,40 +92,74 @@ async function main(): Promise<void> {
     .toString(36)
     .slice(2, 8)}`;
   const sessionId = `observable-session-${Math.random().toString(36).slice(2, 10)}`;
-  const turns = buildObservableLiveTurns();
+  const planner = new ObservableLiveTurnPlanner();
+  const context: ObservableLiveContext = {
+    plan: null,
+    currentNode: null,
+    trace: null,
+    lastAgentMessage: null,
+  };
 
   process.stdout.write('\nrecap-agent observable live eval\n');
   process.stdout.write(`Function URL: ${functionUrl}\n`);
   process.stdout.write(`User: ${userId}\n`);
   process.stdout.write(`Channel: ${options.channel}\n`);
   process.stdout.write(`Session: ${sessionId}\n`);
-  process.stdout.write(`Turns: ${turns.length}\n`);
+  process.stdout.write('Turns: plan-aware dynamic run\n');
   process.stdout.write('Trace/plan output: hidden\n\n');
 
-  for (const [index, turn] of turns.entries()) {
-    process.stdout.write(`\n[${index + 1}/${turns.length}] ${turn.operationId}\n`);
+  let turnIndex = 0;
+  for (;;) {
+    const turn = planner.nextTurn(context);
+    if (!turn) {
+      break;
+    }
+    turnIndex += 1;
+    process.stdout.write(`\n[${turnIndex}] ${turn.operationId}\n`);
     process.stdout.write(`you> ${turn.text}\n`);
     const startedAt = Date.now();
-    const response = await invokeLambda(functionUrl, {
+    const response = await invokeLambda(functionUrl, buildLambdaRequestBody({
       channel: options.channel,
-      user_id: userId,
+      userId,
       text: turn.text,
-      message_id: `observable-${index}`,
-      received_at: new Date().toISOString(),
-      session_id: sessionId,
-      client_mode: 'channel',
-    }, options.timeoutMs);
+      messageId: `observable-${turnIndex - 1}`,
+      receivedAt: new Date().toISOString(),
+      sessionId,
+    }), options.timeoutMs);
     const elapsedMs = Date.now() - startedAt;
     process.stdout.write(`agent (${elapsedMs}ms)> ${response.message ?? response.error ?? '(empty response)'}\n`);
     if (response.error) {
       throw new Error(response.error);
     }
-    if (options.delayMs > 0 && index < turns.length - 1) {
+    context.plan = response.plan ?? context.plan;
+    context.currentNode = response.currentNode ?? context.currentNode;
+    context.trace = response.trace ?? context.trace;
+    context.lastAgentMessage = response.message ?? null;
+    if (options.delayMs > 0) {
       await sleep(options.delayMs);
     }
   }
 
-  process.stdout.write('\nObservable live eval finished.\n');
+  process.stdout.write(`\nObservable live eval finished after ${turnIndex} turns.\n`);
+}
+
+export function buildLambdaRequestBody(args: {
+  channel: string;
+  userId: string;
+  text: string;
+  messageId: string;
+  receivedAt: string;
+  sessionId: string;
+}): LambdaRequestBody {
+  return {
+    channel: args.channel,
+    user_id: args.userId,
+    text: args.text,
+    message_id: args.messageId,
+    received_at: args.receivedAt,
+    session_id: args.sessionId,
+    client_mode: 'cli',
+  };
 }
 
 async function invokeLambda(
@@ -146,15 +191,32 @@ async function invokeLambda(
   }
 }
 
-function parseLambdaPayload(payload: unknown): LambdaTranscriptPayload {
+export function parseLambdaPayload(payload: unknown): LambdaTranscriptPayload {
   if (!payload || typeof payload !== 'object') {
     return {};
   }
   const record = payload as Record<string, unknown>;
+  const planResult = planSchema.safeParse(normalizeRawPlan(record.plan));
+  const currentNode = typeof record.current_node === 'string'
+    ? record.current_node as DecisionNode
+    : undefined;
   return {
     message: typeof record.message === 'string' ? record.message : undefined,
     error: typeof record.error === 'string' ? record.error : undefined,
+    plan: planResult.success ? planResult.data : undefined,
+    currentNode,
+    trace: record.trace && typeof record.trace === 'object'
+      ? record.trace as TurnTrace
+      : undefined,
   };
+}
+
+function isDirectExecution(): boolean {
+  const entrypoint = process.argv[1];
+  if (!entrypoint) {
+    return false;
+  }
+  return /(?:^|[/\\])live-observable-cli\.(?:ts|js)$/.test(entrypoint);
 }
 
 async function resolveFunctionUrl(options: CliOptions): Promise<string> {

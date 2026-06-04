@@ -42,6 +42,7 @@ export const decisionEvidenceSchema = z.object({
   hasResolvedSelection: z.boolean(),
   hasAmbiguousSelection: z.boolean(),
   hasExistingShortlist: z.boolean(),
+  hasReplaceProviderOperation: z.boolean(),
 });
 
 export type DecisionEvidence = z.infer<typeof decisionEvidenceSchema>;
@@ -55,6 +56,7 @@ export const routeKindValues = [
   'apply_selection',
   'modify_plan',
   'faq',
+  'invited_event_lookup',
   'close',
   'pause',
   'error',
@@ -78,6 +80,7 @@ export const presentationScopeValues = [
   'clarification',
   'close',
   'faq',
+  'invited_event_lookup',
 ] as const;
 
 export type PresentationScope = (typeof presentationScopeValues)[number];

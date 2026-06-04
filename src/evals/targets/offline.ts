@@ -22,6 +22,8 @@ import type {
   ProviderReview,
   QueryIntentProviderSearchInput,
   QuoteRequestInput,
+  UserEventLookupInput,
+  UserEventLookupResult,
 } from '../../runtime/provider-gateway';
 import { InMemoryPlanStore } from '../../storage/in-memory-plan-store';
 import type { EvalCase, EvalRunConfig, EvalTurnResult, OfflineFixture } from '../case-schema';
@@ -307,6 +309,22 @@ class FixtureProviderGateway implements ProviderGateway {
   async listUserEventsVendorContext(userId: number): Promise<Record<string, unknown>[]> {
     void userId;
     return [];
+  }
+
+  async lookupUserEventContext(
+    input: UserEventLookupInput,
+  ): Promise<UserEventLookupResult | null> {
+    return {
+      user: { email: input.email ?? null, phone: input.phone ?? null },
+      events: [],
+      recent_orders: [],
+      guest_in_events: [],
+      host_in_events: [],
+      celebrated_in: [],
+      subscriptions: [],
+      summary: null,
+      raw: {},
+    };
   }
 
   async createQuoteRequest(input: QuoteRequestInput): Promise<Record<string, unknown>> {

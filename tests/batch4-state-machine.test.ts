@@ -26,6 +26,8 @@ import type {
   MarketplaceLocation,
   ProviderReview,
   QueryIntentProviderSearchInput,
+  UserEventLookupInput,
+  UserEventLookupResult,
 } from '../src/runtime/provider-gateway';
 import type { ProviderDetail } from '../src/core/provider';
 import type { ProviderFitCriteria } from '../src/runtime/provider-fit';
@@ -233,6 +235,22 @@ class FakeGateway implements ProviderGateway {
 
   async listUserEventsVendorContext(): Promise<Record<string, unknown>[]> {
     return [];
+  }
+
+  async lookupUserEventContext(
+    input: UserEventLookupInput,
+  ): Promise<UserEventLookupResult | null> {
+    return {
+      user: { email: input.email ?? null, phone: input.phone ?? null },
+      events: [],
+      recent_orders: [],
+      guest_in_events: [],
+      host_in_events: [],
+      celebrated_in: [],
+      subscriptions: [],
+      summary: null,
+      raw: {},
+    };
   }
 
   async createQuoteRequest(

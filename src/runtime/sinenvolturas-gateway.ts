@@ -21,6 +21,8 @@ import type {
   ProviderSearchMode,
   ProviderReview,
   QuoteRequestInput,
+  UserEventLookupInput,
+  UserEventLookupResult,
 } from './provider-gateway';
 
 type ApiEnvelope<T> = {
@@ -104,6 +106,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
   constructor(
     private readonly options: {
       baseUrl: string;
+      guestServiceBaseUrl?: string;
       persistedSearchLimit: number;
       summarySearchWordLimit: number;
       searchMode?: ProviderSearchMode;
@@ -472,6 +475,27 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return response.data;
   }
 
+  async lookupUserEventContext(
+    input: UserEventLookupInput,
+  ): Promise<UserEventLookupResult | null> {
+    const searchParams = new URLSearchParams();
+    if (input.email) {
+      searchParams.set('email', input.email);
+    } else if (input.phone) {
+      searchParams.set('phone', input.phone);
+    }
+
+    const response = await this.fetchGuestServiceJson<ApiEnvelope<Record<string, unknown>>>(
+      `/user-lookup?${searchParams.toString()}`,
+    );
+
+    if (!response.status || !response.data) {
+      return null;
+    }
+
+    return this.toUserEventLookupResult(response.data);
+  }
+
   async createQuoteRequest(
     input: QuoteRequestInput,
   ): Promise<Record<string, unknown>> {
@@ -817,6 +841,17 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return (await response.json()) as T;
   }
 
+  private async fetchGuestServiceJson<T>(pathname: string): Promise<T> {
+    const baseUrl = this.options.guestServiceBaseUrl ?? this.options.baseUrl;
+    const response = await fetch(`${baseUrl}${pathname}`);
+
+    if (!response.ok) {
+      throw new Error(`Guest service API request failed with ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  }
+
   private async postJson<T>(
     pathname: string,
     body: Record<string, unknown>,
@@ -845,6 +880,36 @@ export class SinEnvolturasGateway implements ProviderGateway {
     }
 
     return `https://sinenvolturas.com/proveedores/${slug}`;
+  }
+
+  private toUserEventLookupResult(data: Record<string, unknown>): UserEventLookupResult {
+    return {
+      user: this.recordOrNull(data.user),
+      events: this.recordArray(data.events),
+      recent_orders: this.recordArray(data.recent_orders),
+      guest_in_events: this.recordArray(data.guest_in_events),
+      host_in_events: this.recordArray(data.host_in_events),
+      celebrated_in: this.recordArray(data.celebrated_in),
+      subscriptions: this.recordArray(data.subscriptions),
+      summary: this.recordOrNull(data.summary),
+      raw: data,
+    };
+  }
+
+  private recordArray(value: unknown): Record<string, unknown>[] {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+    return value.filter((item): item is Record<string, unknown> =>
+      Boolean(item) && typeof item === 'object' && !Array.isArray(item),
+    );
+  }
+
+  private recordOrNull(value: unknown): Record<string, unknown> | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    return value as Record<string, unknown>;
   }
 
   private findWebsiteUrl(

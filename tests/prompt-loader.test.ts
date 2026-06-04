@@ -26,6 +26,7 @@ describe('PromptLoader', () => {
 
   it('includes explicit FAQ scope and gift-claim policy in prompt bundles', async () => {
     const faqBundle = await loader.loadNodeBundle('consultar_faq');
+    const invitedEventBundle = await loader.loadNodeBundle('consultar_evento_invitado');
     const welcomeBundle = await loader.loadNodeBundle('contacto_inicial');
     const extractorBundle = await loader.loadExtractorBundle();
 
@@ -34,6 +35,9 @@ describe('PromptLoader', () => {
     expect(faqBundle.instructions).toContain('reclamo se gestiona directamente con la marca');
     expect(faqBundle.instructions).toContain('chat de la web');
     expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
+    expect(invitedEventBundle.instructions).toContain('lookup_user_event_context');
+    expect(invitedEventBundle.instructions).toContain('está invitado');
+    expect(extractorBundle.instructions).toContain('consultar_evento_invitado');
     expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
     expect(extractorBundle.instructions).toContain('diseñar una web externa');
     expect(extractorBundle.instructions).toContain('reclamos de productos');

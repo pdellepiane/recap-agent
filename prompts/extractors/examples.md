@@ -95,7 +95,14 @@ Ejemplos breves:
 - activeNeedCategory: Música
 - selectedProviderHints: [EDO, Dulcefina]
 
-10. Usuario: "Perfecto, puedes contactar al proveedor?"
+10. Usuario: "Reemplaza la selección de fotografía por la segunda opción que acabas de mostrar."
+- intent: modificar_plan_proveedores
+- vendorCategory: Fotografía y video
+- activeNeedCategory: Fotografía y video
+- providerPlanOperations: [{type: replace_provider, category: Fotografía y video, removeProvider: {providerTitle: "título del proveedor seleccionado actualmente en fotografía", category: Fotografía y video}, addProvider: {providerTitle: "título de la segunda opción de fotografía mostrada", category: Fotografía y video}}]
+- selectedProviderHints: [] (no llenar selectedProviderHints; el reemplazo se maneja por providerPlanOperations)
+
+11. Usuario: "Perfecto, puedes contactar al proveedor?"
 - intent: cerrar
 
 11. Usuario: "Y qué djs tienes?"

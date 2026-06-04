@@ -1,0 +1,20 @@
+Transiciones permitidas desde consultar_evento_invitado:
+
+1. Permanecer en consultar_evento_invitado:
+   - Si el usuario hace otra pregunta sobre el mismo evento.
+   - Si el usuario pregunta por otro evento al que está invitado o asociado.
+   - Si el usuario entrega email o teléfono para poder buscar.
+   - Si el usuario aclara cuál evento quiere consultar.
+
+2. Transicionar a consultar_faq:
+   - Si el usuario pregunta por reglas generales de Sin Envolturas, comisiones, pagos, listas de regalo o soporte sin referirse a un evento específico suyo.
+
+3. Transicionar a deteccion_intencion:
+   - Si el usuario quiere planificar un evento nuevo o buscar proveedores.
+   - Acción: confirma el cambio de tema y pide tipo de evento y número de invitados.
+
+4. Transicionar a entrevista:
+   - Si ya hay un plan parcial y el usuario quiere volver a planificar o buscar proveedores para ese plan.
+   - Acción: confirma que retomas el plan anterior y pregunta qué falta o qué quiere hacer.
+
+No hay otras transiciones permitidas desde este nodo.

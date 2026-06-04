@@ -26,6 +26,7 @@ export const decisionNodes = [
   'informar_error_reintento',
   'reintentar',
   'consultar_faq',
+  'consultar_evento_invitado',
 ] as const;
 
 export type DecisionNode = (typeof decisionNodes)[number];

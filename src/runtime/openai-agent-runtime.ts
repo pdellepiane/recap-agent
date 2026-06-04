@@ -458,6 +458,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private buildExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
     return {
       current_node: plan.current_node,
+      external_user_id: plan.external_user_id,
       intent: plan.intent,
       event_type: plan.event_type,
       active_need_category: plan.active_need_category,
@@ -1259,6 +1260,34 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             user_id,
           );
           this.recordToolOutput(toolUsage, 'list_user_events_vendor_context', result);
+          return result;
+        },
+      }),
+      lookup_user_event_context: tool({
+        name: 'lookup_user_event_context',
+        description:
+          'Busca la información de Sin Envolturas asociada al usuario que pregunta, incluyendo eventos donde es invitado, anfitrión, celebrado, sus eventos propios y órdenes recientes. Usa email exacto o teléfono.',
+        parameters: z
+          .object({
+            email: z.string().email().nullish(),
+            phone: z.string().min(6).nullish(),
+          })
+          .strict()
+          .refine(
+            (input) => Boolean(input.email) || Boolean(input.phone),
+            'email or phone is required',
+          ),
+        execute: async ({ email, phone }) => {
+          const input = {
+            email: email ?? null,
+            phone: phone ?? null,
+          };
+          this.recordToolInput(toolUsage, 'lookup_user_event_context', input);
+          toolUsage.called.push('lookup_user_event_context');
+          const result = await this.options.providerGateway.lookupUserEventContext(
+            email ? { email, phone: null } : { email: null, phone: phone ?? '' },
+          );
+          this.recordToolOutput(toolUsage, 'lookup_user_event_context', result);
           return result;
         },
       }),

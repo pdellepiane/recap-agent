@@ -29,6 +29,9 @@ Parameters:
   SinEnvolturasBaseUrl:
     Type: String
     Default: https://api.sinenvolturas.com/api-web/vendor
+  SinEnvolturasGuestServiceBaseUrl:
+    Type: String
+    Default: https://se-v2-api-dev.jnq.io/api/guest-service
   ProviderSearchMode:
     Type: String
     Default: hybrid
@@ -172,6 +175,7 @@ Resources:
           PERF_RETENTION_DAYS: !Ref PerfRetentionDays
           PROMPTS_DIR: /var/task/prompts
           SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
+          SINENVOLTURAS_GUEST_SERVICE_BASE_URL: !Ref SinEnvolturasGuestServiceBaseUrl
           PROVIDER_SEARCH_MODE: !Ref ProviderSearchMode
           PROVIDER_VECTOR_STORE_NAME: !Ref ProviderVectorStoreName
           PROVIDER_VECTOR_STORE_ID: !Ref ProviderVectorStoreId

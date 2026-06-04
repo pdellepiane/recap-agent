@@ -23,6 +23,7 @@ export type AppConfig = {
   };
   providerApi: {
     baseUrl: string;
+    guestServiceBaseUrl: string;
     persistedSearchLimit: number;
     summarySearchWordLimit: number;
     searchMode: ProviderSearchMode;
@@ -67,6 +68,10 @@ const environmentSchema = z.object({
     .string()
     .url()
     .default('https://api.sinenvolturas.com/api-web/vendor'),
+  SINENVOLTURAS_GUEST_SERVICE_BASE_URL: z
+    .string()
+    .url()
+    .default('https://se-v2-api-dev.jnq.io/api/guest-service'),
   AGENT_FUNCTION_URL: z.string().url().optional(),
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(12),
@@ -112,6 +117,7 @@ export function getConfig(): AppConfig {
     },
     providerApi: {
       baseUrl: environment.SINENVOLTURAS_BASE_URL,
+      guestServiceBaseUrl: environment.SINENVOLTURAS_GUEST_SERVICE_BASE_URL,
       persistedSearchLimit: environment.PROVIDER_SEARCH_LIMIT,
       summarySearchWordLimit: environment.SEARCH_SUMMARY_WORD_LIMIT,
       searchMode: environment.PROVIDER_SEARCH_MODE,

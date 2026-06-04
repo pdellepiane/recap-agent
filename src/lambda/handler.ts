@@ -138,6 +138,7 @@ async function getRuntime(): Promise<{
           : null;
       const providerGateway = new SinEnvolturasGateway({
         baseUrl: config.providerApi.baseUrl,
+        guestServiceBaseUrl: config.providerApi.guestServiceBaseUrl,
         persistedSearchLimit: config.providerApi.persistedSearchLimit,
         summarySearchWordLimit: config.providerApi.summarySearchWordLimit,
         searchMode: config.providerApi.searchMode,

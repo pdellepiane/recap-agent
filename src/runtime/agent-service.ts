@@ -199,7 +199,9 @@ export class AgentService {
           getActiveNeed(existingPlan)?.recommended_providers ?? [];
         const respondNode = finishedExtraction.intent === 'consultar_faq'
           ? 'consultar_faq'
-          : 'necesidad_cubierta';
+          : finishedExtraction.intent === 'consultar_evento_invitado'
+            ? 'consultar_evento_invitado'
+            : 'necesidad_cubierta';
         const bundle = await this.dependencies.promptLoader.loadNodeBundle(respondNode);
         const reply = await this.dependencies.runtime.composeReply({
           currentNode: respondNode,
@@ -350,6 +352,9 @@ export class AgentService {
       sufficiencyByNeed,
       hasResolvedSelection: selectionShouldStop,
       hasAmbiguousSelection: false,
+      hasReplaceProviderOperation: operationResult.appliedOperations.some(
+        (op) => op.type === 'replace_provider',
+      ),
     });
     let turnDecision = this.decideNextTurn(decisionEvidence);
 
@@ -616,16 +621,19 @@ export class AgentService {
       };
     }
 
-    if (extraction.intent === 'consultar_faq') {
-      currentNode = 'consultar_faq';
+    if (
+      extraction.intent === 'consultar_faq' ||
+      extraction.intent === 'consultar_evento_invitado'
+    ) {
+      currentNode = extraction.intent;
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
       }
       // Preserve the planning state: only update current_node so resume works.
       const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
-      await persistPlan(planToSave, 'consultar_faq');
+      await persistPlan(planToSave, currentNode);
       planPersisted = true;
-      planPersistReason = 'consultar_faq';
+      planPersistReason = currentNode;
 
       const promptBundleStartedAt = Date.now();
       const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
@@ -1088,6 +1096,7 @@ export class AgentService {
     sufficiencyByNeed: NeedSufficiency[];
     hasResolvedSelection: boolean;
     hasAmbiguousSelection: boolean;
+    hasReplaceProviderOperation: boolean;
   }): DecisionEvidence {
     const focusedNeedCategory =
       args.extraction.activeNeedCategory ??
@@ -1120,6 +1129,7 @@ export class AgentService {
       hasExistingShortlist: args.planAfterReduction.provider_needs.some(
         (need) => need.recommended_providers.length > 0,
       ),
+      hasReplaceProviderOperation: args.hasReplaceProviderOperation,
     });
   }
 
@@ -1150,6 +1160,18 @@ export class AgentService {
         stopReason: null,
         persistReason: 'consultar_faq',
       };
+    } else if (evidence.extractionIntent === 'consultar_evento_invitado') {
+      decision = {
+        nextNode: 'consultar_evento_invitado',
+        routeKind: 'invited_event_lookup',
+        providerSearchMode: 'none',
+        presentationScope: 'invited_event_lookup',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: null,
+        persistReason: 'consultar_evento_invitado',
+      };
     } else if (evidence.extractionIntent === 'cerrar') {
       decision = {
         nextNode: 'crear_lead_cerrar',
@@ -1176,7 +1198,10 @@ export class AgentService {
         stopReason: 'no_provider_need_identified',
         persistReason: 'entrevista',
       };
-    } else if (evidence.hasResolvedSelection) {
+    } else if (
+      evidence.hasResolvedSelection &&
+      !evidence.hasReplaceProviderOperation
+    ) {
       decision = {
         nextNode: 'seguir_refinando_guardar_plan',
         routeKind: 'apply_selection',
@@ -1420,6 +1445,8 @@ export class AgentService {
     const presentationScope =
       args.currentNode === 'consultar_faq'
         ? 'faq'
+        : args.currentNode === 'consultar_evento_invitado'
+          ? 'invited_event_lookup'
         : args.currentNode === 'crear_lead_cerrar'
           ? 'close'
           : args.currentNode === 'elicitacion_necesidades'
@@ -1440,6 +1467,8 @@ export class AgentService {
       nextNode: args.currentNode,
       routeKind: args.currentNode === 'consultar_faq'
         ? 'faq'
+        : args.currentNode === 'consultar_evento_invitado'
+          ? 'invited_event_lookup'
         : args.currentNode === 'crear_lead_cerrar'
           ? 'close'
           : args.currentNode === 'guardar_cerrar_temporalmente'
@@ -1793,6 +1822,10 @@ export class AgentService {
       return 'consultar_faq';
     }
 
+    if (extraction.intent === 'consultar_evento_invitado') {
+      return 'consultar_evento_invitado';
+    }
+
     if ((plan.missing_fields ?? []).length > 0) {
       return 'aclarar_pedir_faltante';
     }
@@ -1963,13 +1996,14 @@ export class AgentService {
     unresolvedMessage: string | null;
     appliedOperations: ProviderPlanOperation[];
   } {
-    if (operations.length === 0) {
+    const normalizedOperations = this.dropSelectionShadowedReplaceOperations(plan, operations);
+    if (normalizedOperations.length === 0) {
       return { plan, unresolvedMessage: null, appliedOperations: [] };
     }
 
     let nextPlan = plan;
     const appliedOperations: ProviderPlanOperation[] = [];
-    for (const operation of operations) {
+    for (const operation of normalizedOperations) {
       const result = this.applyProviderPlanOperation(nextPlan, operation, options);
       if (!result.applied) {
         return { plan: nextPlan, unresolvedMessage: result.message, appliedOperations };
@@ -1979,6 +2013,34 @@ export class AgentService {
     }
 
     return { plan: nextPlan, unresolvedMessage: null, appliedOperations };
+  }
+
+  private dropSelectionShadowedReplaceOperations(
+    plan: PlanSnapshot,
+    operations: ProviderPlanOperation[],
+  ): ProviderPlanOperation[] {
+    const selectCategories = new Set(
+      operations
+        .filter((operation) => operation.type === 'select_provider')
+        .map((operation) => operation.category ?? operation.provider?.category ?? null)
+        .filter((category): category is ProviderCategory => Boolean(category)),
+    );
+
+    if (selectCategories.size === 0) {
+      return operations;
+    }
+
+    return operations.filter((operation) => {
+      if (operation.type !== 'replace_provider') {
+        return true;
+      }
+      const category = operation.category ?? operation.addProvider?.category ?? null;
+      if (!category || !selectCategories.has(category)) {
+        return true;
+      }
+      const existingNeed = this.findNeedByCategory(plan, category);
+      return (existingNeed?.selected_provider_ids.length ?? 0) > 0;
+    });
   }
 
   private applyProviderPlanOperation(

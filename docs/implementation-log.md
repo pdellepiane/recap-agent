@@ -1568,7 +1568,6 @@ Flow nodes affected:
 Files changed:
 - `src/runtime/structured-message.ts`
 - `src/runtime/message-renderer.ts`
-- `src/runtime/contracts.ts`
 - `src/runtime/openai-agent-runtime.ts`
 - `src/runtime/agent-service.ts`
 - `src/lambda/handler.ts`
@@ -1786,6 +1785,46 @@ Decision:
 Files changed:
 - `src/runtime/agent-service.ts`
 - `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
+### Add invited event lookup mode
+
+- Added a `consultar_evento_invitado` intent and decision node for questions about events associated with the asking user.
+- Added node prompts that require consulting `lookup_user_event_context` before answering event facts and keep provider search out of this mode.
+- Added a typed guest-service lookup gateway method for `/user-lookup` by email or phone, plus a dedicated runtime config and CloudFormation parameter for the guest-service base URL.
+- Wired the new tool into the OpenAI Agents runtime and allowed it only on the invited-event node.
+- Added regression coverage for state-machine routing from every saved node and guest-service URL mapping.
+
+Reason:
+- Users can ask about a real Sin Envolturas event they are invited to, which is neither provider planning nor general FAQ. The agent needs to verify event data through the provided endpoint response shape before answering.
+
+Decision:
+- Model this as a separate informational node, similar to FAQ, so it preserves the event plan and resumes planning afterward without running provider search. Keep the runtime channel-agnostic and use email/phone identifiers already known by the plan or provided by the user.
+
+Files changed:
+- `src/core/decision-nodes.ts`
+- `src/core/decision-flow.ts`
+- `src/core/plan.ts`
+- `src/core/turn-decision.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/config.ts`
+- `src/runtime/contracts.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/provider-gateway.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `src/runtime/prompt-manifest.ts`
+- `src/lambda/handler.ts`
+- `infra/cloudformation/stack.yaml`
+- `scripts/deploy.mjs`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/extractors/conflict_resolution.txt`
+- `prompts/nodes/consultar_evento_invitado/system.txt`
+- `prompts/nodes/consultar_evento_invitado/tool_policy.txt`
+- `prompts/nodes/consultar_evento_invitado/response_contract.txt`
+- `prompts/nodes/consultar_evento_invitado/transition_policy.txt`
+- `tests/agent-service.test.ts`
+- `tests/prompt-loader.test.ts`
+- `tests/sinenvolturas-gateway.test.ts`
 - `docs/implementation-log.md`
 
 ### Add deterministic turn decisions and session-scoped focus
@@ -2294,4 +2333,42 @@ Files changed:
 - `src/evals/observable-live-script.ts`
 - `tests/observable-live-script.test.ts`
 - `docs/evaluation-framework.md`
+- `docs/implementation-log.md`
+
+### Make observable live eval plan-aware
+
+- Replaced the static observable live transcript script with a stateful turn planner that reads the latest hidden live plan/trace context after every Lambda turn.
+- Kept operation order shuffled across eligible blocks while preserving dependency order inside each block.
+- Added prerequisites so provider detail, comparison, selection, replacement, deferral, reactivation, and refinement turns only target needs or shortlists that exist in the current plan.
+- Switched the observable CLI to request `client_mode=cli` diagnostics internally while continuing to hide raw trace and plan output from the terminal transcript.
+- Added unit coverage for shuffled eligible operation ordering, ordered dependent sub-turns, plan-derived provider/need references, fallback behavior without shortlists, and CLI diagnostic request parsing.
+
+Reason:
+- The observable live eval was exercising a broad conversation shape, but static follow-up text could drift away from the plan the agent was actually building. That made turn-by-turn observation less representative of real plan-aware conversation behavior.
+
+Decision:
+- Keep the runner observational rather than a deterministic scoring target, but make each generated user turn depend on the latest plan state. Preserve shuffled block order so runs still explore different valid operation sequences.
+
+Files changed:
+- `src/evals/live-observable-cli.ts`
+- `src/evals/observable-live-script.ts`
+- `tests/observable-live-script.test.ts`
+- `docs/evaluation-framework.md`
+- `docs/implementation-log.md`
+
+### Ignore spurious replace operations on plain selections
+
+- Hardened provider-plan operation application so a simple `select_provider` is not blocked by an extra `replace_provider` emitted for the same category when that category has no existing selected provider.
+- Based turn-decision replace detection on applied operations instead of raw extractor operations, preventing a shadowed replace from routing a successful selection as an unresolved plan modification.
+- Added agent-service regression coverage for selecting EDO Sushi Bar when extraction includes both a valid select operation and an impossible replace operation.
+
+Reason:
+- Three exact observable live runs showed one Dynamo perf trace with an operational note on `Selecciona Edo Sushi Bar para Catering.` The provider was selected correctly, but the extractor also emitted a stale replace operation and the runtime surfaced an unnecessary clarification note.
+
+Decision:
+- Treat this as extractor noise only when there is no provider to replace in that category and a concrete select operation for the category exists. Keep real replace behavior unchanged when the category already has a selected provider.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `tests/agent-service.test.ts`
 - `docs/implementation-log.md`

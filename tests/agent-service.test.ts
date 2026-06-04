@@ -33,12 +33,17 @@ import type {
   ProviderReview,
   QueryIntentProviderSearchInput,
   QuoteRequestInput,
+  UserEventLookupInput,
+  UserEventLookupResult,
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import type { PlanStore, SavePlanInput } from '../src/storage/plan-store';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import type { ProviderFitCriteria } from '../src/runtime/provider-fit';
-import type { ProviderQueryIntent } from '../src/runtime/extraction-schemas';
+import type {
+  ProviderPlanOperation,
+  ProviderQueryIntent,
+} from '../src/runtime/extraction-schemas';
 
 const testProviderFitCriteria = {
   eventType: 'boda',
@@ -167,6 +172,33 @@ class FaqRuntime extends FakeRuntime {
       hardConstraints: [],
       assumptions: [],
       conversationSummary: 'El usuario pregunta por Sin Envolturas.',
+      selectedProviderHints: [],
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: testProviderFitCriteria,
+    };
+  }
+}
+
+class InvitedEventRuntime extends FakeRuntime {
+  override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    void request;
+    return {
+      intent: 'consultar_evento_invitado',
+      intentConfidence: 0.97,
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'El usuario pregunta por un evento al que está invitado.',
       selectedProviderHints: [],
       pauseRequested: false,
       contactName: null,
@@ -362,6 +394,34 @@ class FakeGateway implements ProviderGateway {
     return [];
   }
 
+  async lookupUserEventContext(
+    input: UserEventLookupInput,
+  ): Promise<UserEventLookupResult | null> {
+    return {
+      user: { id: 42, email: input.email ?? null, phone: input.phone ?? null },
+      events: [],
+      recent_orders: [],
+      guest_in_events: [
+        {
+          id: 312,
+          has_responded: true,
+          will_attend: true,
+          has_couple: true,
+          event: {
+            id: 205,
+            name: 'Cumpleaños de Ana',
+            datetime: '2026-06-15T19:00:00Z',
+          },
+        },
+      ],
+      host_in_events: [],
+      celebrated_in: [],
+      subscriptions: [],
+      summary: { guest_in_events_count: 1 },
+      raw: {},
+    };
+  }
+
   async createQuoteRequest(
     input: QuoteRequestInput,
   ): Promise<Record<string, unknown>> {
@@ -459,6 +519,65 @@ describe('AgentService', () => {
         'search_providers_from_plan',
       );
       expect(response.trace.plan_persist_reason, node).toBe('consultar_faq');
+    }
+  });
+
+  it('routes invited event questions to consultar_evento_invitado from every saved active node', async () => {
+    for (const node of decisionNodes) {
+      const runtime = new InvitedEventRuntime();
+      const planStore = new InMemoryPlanStore();
+      const gateway = new FakeGateway();
+      const service = new AgentService({
+        planStore,
+        runtime,
+        providerGateway: gateway,
+        promptLoader,
+        renderers,
+      });
+      const externalUserId = `invited-event-from-${node}@example.com`;
+      await planStore.save({
+        plan: mergePlan(
+          createEmptyPlan({
+            planId: `plan-invited-${node}`,
+            channel: 'terminal_whatsapp',
+            externalUserId,
+          }),
+          {
+            current_node: node,
+            intent: 'buscar_proveedores',
+            event_type: 'boda',
+            vendor_category: 'Fotografía y video',
+            active_need_category: 'Fotografía y video',
+            location: 'Lima',
+            guest_range: '51-100',
+            contact_email: externalUserId,
+          },
+        ),
+        reason: 'seed-invited-event-node',
+      });
+
+      const response = await service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId,
+        text: '¿A qué hora es el evento al que estoy invitado?',
+        messageId: `msg-invited-${node}`,
+        receivedAt: new Date().toISOString(),
+      });
+
+      expect(response.plan.current_node, node).toBe('consultar_evento_invitado');
+      expect(response.trace.next_node, node).toBe('consultar_evento_invitado');
+      expect(response.trace.intent, node).toBe('consultar_evento_invitado');
+      expect(response.trace.turn_decision.routeKind, node).toBe('invited_event_lookup');
+      expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe(
+        'consultar_evento_invitado',
+      );
+      expect(gateway.searchCalls, node).toBe(0);
+      expect(response.trace.tools_called, node).not.toContain(
+        'search_providers_from_plan',
+      );
+      expect(response.trace.plan_persist_reason, node).toBe(
+        'consultar_evento_invitado',
+      );
     }
   });
 
@@ -656,6 +775,184 @@ describe('AgentService', () => {
     expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
     expect(response.plan.selected_provider_ids).toEqual([109]);
     expect(response.trace.next_node).toBe('seguir_refinando_guardar_plan');
+    expect(gateway.searchCalls).toBe(0);
+  });
+
+  it('ignores a spurious replace operation when a plain selection has no provider to replace', async () => {
+    const selectOperation: ProviderPlanOperation = {
+      type: 'select_provider',
+      category: 'Catering',
+      preferences: [],
+      hardConstraints: [],
+      queryIntent: null,
+      rerunSearch: false,
+      provider: {
+        providerId: 109,
+        providerTitle: 'EDO Sushi Bar',
+        category: 'Catering',
+        hint: 'EDO Sushi Bar',
+      },
+      removeProvider: null,
+      addProvider: null,
+    };
+    const spuriousReplaceOperation: ProviderPlanOperation = {
+      type: 'replace_provider',
+      category: 'Catering',
+      preferences: [],
+      hardConstraints: [],
+      queryIntent: null,
+      rerunSearch: false,
+      provider: null,
+      removeProvider: {
+        providerId: null,
+        providerTitle: null,
+        category: 'Catering',
+        hint: 'opción anterior',
+      },
+      addProvider: {
+        providerId: 109,
+        providerTitle: 'EDO Sushi Bar',
+        category: 'Catering',
+        hint: 'EDO Sushi Bar',
+      },
+    };
+
+    class SpuriousReplaceRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'confirmar_proveedor',
+          intentConfidence: 0.9,
+          eventType: 'boda',
+          vendorCategory: 'Catering',
+          vendorCategories: ['Catering'],
+          activeNeedCategory: 'Catering',
+          location: 'Lima',
+          budgetSignal: 'medio-alto',
+          guestRange: '101-200',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario selecciona EDO Sushi Bar para Catering.',
+          selectedProviderHints: ['EDO Sushi Bar'],
+          selectedProviderReferences: [
+            {
+              providerId: 109,
+              providerTitle: 'EDO Sushi Bar',
+              category: 'Catering',
+              hint: 'EDO Sushi Bar',
+            },
+          ],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerPlanOperations: [selectOperation, spuriousReplaceOperation],
+        };
+      }
+    }
+
+    const runtime = new SpuriousReplaceRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-spurious-replace',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-spurious-replace',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '101-200',
+          active_need_category: 'Catering',
+          vendor_category: 'Catering',
+          provider_needs: [
+            {
+              category: 'Catering',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [109],
+              recommended_providers: [
+                {
+                  id: 109,
+                  title: 'EDO Sushi Bar',
+                  slug: 'edo-sushi-bar',
+                  category: 'Catering',
+                  location: 'Lima',
+                  priceLevel: 'high',
+                  rating: '4.7',
+                  reason: 'coincide con el plan',
+                  detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
+                  websiteUrl: null,
+                  minPrice: '1200.00',
+                  maxPrice: null,
+                  promoBadge: '10% Off',
+                  promoSummary: '10% de descuento en catering.',
+                  descriptionSnippet: 'Catering especializado en sushi.',
+                  serviceHighlights: ['Catering para eventos'],
+                  termsHighlights: ['Pedidos de 300 piezas a más'],
+                },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+          recommended_provider_ids: [109],
+          recommended_providers: [
+            {
+              id: 109,
+              title: 'EDO Sushi Bar',
+              slug: 'edo-sushi-bar',
+              category: 'Catering',
+              location: 'Lima',
+              priceLevel: 'high',
+              rating: '4.7',
+              reason: 'coincide con el plan',
+              detailUrl: 'https://sinenvolturas.com/proveedores/edo-sushi-bar',
+              websiteUrl: null,
+              minPrice: '1200.00',
+              maxPrice: null,
+              promoBadge: '10% Off',
+              promoSummary: '10% de descuento en catering.',
+              descriptionSnippet: 'Catering especializado en sushi.',
+              serviceHighlights: ['Catering para eventos'],
+              termsHighlights: ['Pedidos de 300 piezas a más'],
+            },
+          ],
+        },
+      ),
+      reason: 'seed-spurious-replace',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-spurious-replace',
+      text: 'Selecciona Edo Sushi Bar para Catering.',
+      messageId: 'msg-spurious-replace',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('seguir_refinando_guardar_plan');
+    expect(response.plan.provider_needs.find((need) => need.category === 'Catering')?.selected_provider_ids).toEqual([109]);
+    expect(response.trace.operational_note).toBeNull();
+    expect(response.trace.route_kind).toBe('apply_selection');
+    expect(response.trace.selection_resolution_summary.provider_plan_operation_types).toEqual([
+      'select_provider',
+      'replace_provider',
+    ]);
     expect(gateway.searchCalls).toBe(0);
   });
 

@@ -108,13 +108,15 @@ Do not use the live target as the default inner loop. It costs more, takes longe
 
 ### Observable Live Transcript
 
-For a human-viewable end-to-end run without trace or plan tables, use:
+For a human-viewable end-to-end run without printing trace or plan tables, use:
 
 ```bash
 AWS_PROFILE=se-dev bun run eval:observable-live
 ```
 
-This runner does not use `seedPlan`. It creates a fresh user/session, starts from a new event-planning request, shuffles operation blocks on every run, and prints only the user turns and agent replies. It is meant for terminal observation of a complete conversation, not deterministic scoring.
+This runner does not use `seedPlan`. It creates a fresh user/session, starts from a new event-planning request, requests CLI diagnostics from Lambda internally, and prints only the user turns and agent replies. It is meant for terminal observation of a complete conversation, not deterministic scoring.
+
+The turn generator is plan-aware. After each Lambda response, it reads the latest hidden plan/trace payload and chooses the next eligible operation block from the current state. Blocks are shuffled on every run, while prerequisites keep sequences sensible: provider detail, comparison, selection, replacement, deferral, reactivation, and refinement only run when the current plan has the relevant needs or shortlists. The close/contact turns always run last.
 
 Covered operation groups:
 

@@ -79,6 +79,28 @@ export type CreateProviderReviewInput = {
   comment?: string | null;
 };
 
+export type UserEventLookupInput =
+  | {
+      email: string;
+      phone?: null;
+    }
+  | {
+      email?: null;
+      phone: string;
+    };
+
+export type UserEventLookupResult = {
+  user: Record<string, unknown> | null;
+  events: Record<string, unknown>[];
+  recent_orders: Record<string, unknown>[];
+  guest_in_events: Record<string, unknown>[];
+  host_in_events: Record<string, unknown>[];
+  celebrated_in: Record<string, unknown>[];
+  subscriptions: Record<string, unknown>[];
+  summary: Record<string, unknown> | null;
+  raw: Record<string, unknown>;
+};
+
 export interface ProviderGateway {
   listCategories(): Promise<MarketplaceCategory[]>;
   getCategoryBySlug(slug: string): Promise<MarketplaceCategory | null>;
@@ -106,6 +128,7 @@ export interface ProviderGateway {
     categoryId?: number | null;
   }): Promise<ProviderSummary[]>;
   listUserEventsVendorContext(userId: number): Promise<Record<string, unknown>[]>;
+  lookupUserEventContext(input: UserEventLookupInput): Promise<UserEventLookupResult | null>;
   createQuoteRequest(input: QuoteRequestInput): Promise<Record<string, unknown>>;
   addVendorToEventFavorites(input: FavoriteRequestInput): Promise<Record<string, unknown>>;
   createProviderReview(input: CreateProviderReviewInput): Promise<Record<string, unknown>>;

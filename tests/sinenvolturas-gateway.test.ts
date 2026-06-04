@@ -90,6 +90,59 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result.providers[0]?.id).toBe(35);
   });
 
+  it('looks up user event context by email through the guest service endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          status: true,
+          errors: null,
+          error: null,
+          data: {
+            user: { id: 42, email: 'maria.garcia@gmail.com' },
+            events: [],
+            recent_orders: [],
+            guest_in_events: [
+              {
+                id: 312,
+                will_attend: true,
+                event: {
+                  id: 205,
+                  name: 'Cumpleaños de Ana',
+                  datetime: '2026-06-15T19:00:00Z',
+                },
+              },
+            ],
+            host_in_events: [],
+            celebrated_in: [],
+            subscriptions: [],
+            summary: { guest_in_events_count: 1 },
+          },
+        };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestServiceBaseUrl: 'https://api.example.test/guest-service',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    const result = await gateway.lookupUserEventContext({
+      email: 'maria.garcia@gmail.com',
+      phone: null,
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/guest-service/user-lookup?email=maria.garcia%40gmail.com',
+    );
+    expect(result?.user?.email).toBe('maria.garcia@gmail.com');
+    expect(result?.guest_in_events).toHaveLength(1);
+    expect(result?.summary?.guest_in_events_count).toBe(1);
+  });
+
   it('keeps category matches when provider location granularity is broader than the plan city', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
