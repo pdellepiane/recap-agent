@@ -1787,6 +1787,30 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Simplify invited event list fields
+
+- Changed invited-event responses to present event information as a simple list with the user-relevant fields: name, URL, place, date, attendance confirmation, and companion indication.
+- Added `url` and `place` to the compact event lookup payload. Public event URLs are built from the root slug route (`https://sinenvolturas.com/{slug}`), and place uses the best available location field with country as fallback.
+- Removed generic summary instructions that encouraged low-value fields like visibility, amounts, transactions, and country unless the user asks for them explicitly.
+- Added tests for URL/place mapping and prompt bundle coverage for the required fields.
+
+Reason:
+- The previous "complete summary" output was technically exhaustive but not useful. For event lookup, users need a concise list of practical event details.
+
+Decision:
+- Keep pruning in TypeScript and make the model-facing event summary include only user-useful event fields by default. Preserve detailed fields in the compact payload for explicit follow-up questions, but instruct the response prompt not to show them unless asked.
+
+Files changed:
+- `src/runtime/provider-gateway.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `prompts/nodes/consultar_evento_invitado/system.txt`
+- `prompts/nodes/consultar_evento_invitado/tool_policy.txt`
+- `prompts/nodes/consultar_evento_invitado/response_contract.txt`
+- `tests/agent-service.test.ts`
+- `tests/sinenvolturas-gateway.test.ts`
+- `tests/prompt-loader.test.ts`
+- `docs/implementation-log.md`
+
 ### Require complete invited-event summaries
 
 - Updated invited-event prompts so answers about a selected event always include a compact event summary, not only the specific field requested.

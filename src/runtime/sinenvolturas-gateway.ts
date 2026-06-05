@@ -962,7 +962,9 @@ export class SinEnvolturasGateway implements ProviderGateway {
       relation,
       eventId,
       slug: event ? this.stringField(event, 'slug') : null,
+      url: event ? this.buildEventUrl(this.stringField(event, 'slug')) : null,
       name: event ? this.stringField(event, 'name') : this.stringField(source, 'name'),
+      place: this.resolveEventPlace(event, source),
       type: event ? this.stringField(event, 'type') : null,
       datetime: event ? this.stringField(event, 'datetime') : null,
       stage: event ? this.stringField(event, 'stage') : null,
@@ -1005,6 +1007,34 @@ export class SinEnvolturasGateway implements ProviderGateway {
       createdAt: this.stringField(order, 'created_at'),
       paymentMethod: paymentMethod ? this.stringField(paymentMethod, 'name') : null,
     };
+  }
+
+  private buildEventUrl(slug: string | null): string | null {
+    if (!slug) {
+      return null;
+    }
+
+    return `https://sinenvolturas.com/${slug}`;
+  }
+
+  private resolveEventPlace(
+    event: Record<string, unknown> | null,
+    source: Record<string, unknown>,
+  ): string | null {
+    const directFields = [
+      event ? this.stringField(event, 'place') : null,
+      event ? this.stringField(event, 'location') : null,
+      event ? this.stringField(event, 'address') : null,
+      this.stringField(source, 'place'),
+      this.stringField(source, 'location'),
+      this.stringField(source, 'address'),
+    ].filter((value): value is string => value !== null);
+    if (directFields.length > 0) {
+      return directFields[0];
+    }
+
+    const country = this.recordOrNull(event?.country ?? source.country);
+    return country ? this.stringField(country, 'name') : null;
   }
 
   private groupOrdersByEventId(

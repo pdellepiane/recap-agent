@@ -118,7 +118,9 @@ export type UserEventSummary = {
   relation: UserEventRelation;
   eventId: number | null;
   slug: string | null;
+  url: string | null;
   name: string | null;
+  place: string | null;
   type: string | null;
   datetime: string | null;
   stage: string | null;

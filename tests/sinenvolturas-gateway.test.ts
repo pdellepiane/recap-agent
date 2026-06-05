@@ -108,8 +108,10 @@ describe('SinEnvolturasGateway strict search mapping', () => {
                 will_attend: true,
                 event: {
                   id: 205,
+                  slug: 'cumple-ana-2026',
                   name: 'Cumpleaños de Ana',
                   datetime: '2026-06-15T19:00:00Z',
+                  country: { name: 'Perú' },
                 },
               },
             ],
@@ -144,6 +146,8 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(event?.relation).toBe('guest');
     expect(event?.eventId).toBe(205);
     expect(event?.name).toBe('Cumpleaños de Ana');
+    expect(event?.url).toBe('https://sinenvolturas.com/cumple-ana-2026');
+    expect(event?.place).toBe('Perú');
     expect(event?.datetime).toBe('2026-06-15T19:00:00Z');
     expect(event?.guestStatus?.willAttend).toBe(true);
     expect(result?.counts.guestEvents).toBe(1);
