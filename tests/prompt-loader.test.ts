@@ -37,6 +37,8 @@ describe('PromptLoader', () => {
     expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
     expect(invitedEventBundle.instructions).toContain('lookup_user_event_context');
     expect(invitedEventBundle.instructions).toContain('está invitado');
+    expect(invitedEventBundle.instructions).toContain('incluye siempre un resumen compacto');
+    expect(invitedEventBundle.instructions).toContain('ya está podado para ahorrar tokens');
     expect(extractorBundle.instructions).toContain('consultar_evento_invitado');
     expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
     expect(extractorBundle.instructions).toContain('diseñar una web externa');

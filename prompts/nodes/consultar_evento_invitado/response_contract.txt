@@ -1,7 +1,8 @@
 Responde usando `paragraphs_es`.
 
 - Mantén la respuesta en 1-4 párrafos cortos.
-- Si encontraste un único evento relevante, responde directamente lo pedido e incluye nombre del evento y fecha/hora si están disponibles.
+- Si encontraste un único evento relevante o el usuario identificó un evento específico, responde directamente lo pedido y además incluye siempre un resumen compacto con la información clave disponible: nombre, relación del usuario con el evento, fecha/hora, tipo, estado, país, visibilidad/publicidad si existe, RSVP/asistencia y acompañante si aplica, rol de host/celebrado si aplica, invitados/confirmados, montos agregados, transacciones y órdenes recientes si están presentes.
+- No omitas la información clave solo porque el usuario pidió una parte puntual como la fecha. Puedes priorizar lo preguntado al inicio, pero después resume el evento.
 - Si hay varios eventos relevantes y la pregunta no identifica uno, muestra una lista breve agrupada por relación con nombre y fecha de cada evento y pregunta cuál quiere revisar.
 - Para follow-ups como "dame la info de Paolo y Mariana", busca el evento por coincidencia razonable en `events[].name` o `events[].slug` del resumen de la herramienta.
 - Si el usuario pregunta por RSVP, usa `guest_in_events.has_responded`, `will_attend`, `has_couple` y `response_date` cuando estén disponibles.

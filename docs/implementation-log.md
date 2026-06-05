@@ -1787,6 +1787,25 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Require complete invited-event summaries
+
+- Updated invited-event prompts so answers about a selected event always include a compact event summary, not only the specific field requested.
+- Made the token-pruned tool payload contract explicit in the prompt: the model should use the compact summary and not expect raw endpoint JSON.
+- Added prompt-loader coverage to lock the event-summary and pruning instructions into the loaded prompt bundle.
+
+Reason:
+- Live testing showed event-specific questions could answer only the date/time. Users asking about an event should receive the key available event information in one useful response.
+
+Decision:
+- Keep the existing TypeScript pruning layer as the source of truth for model-facing event data, and enforce response completeness at the node prompt contract level.
+
+Files changed:
+- `prompts/nodes/consultar_evento_invitado/system.txt`
+- `prompts/nodes/consultar_evento_invitado/tool_policy.txt`
+- `prompts/nodes/consultar_evento_invitado/response_contract.txt`
+- `tests/prompt-loader.test.ts`
+- `docs/implementation-log.md`
+
 ### Make discovery welcome capabilities dynamic
 
 - Added typed agent feature flags to runtime config, CloudFormation, and deploy parameter wiring.
