@@ -131,11 +131,15 @@ describe('WhatsAppMessageRenderer', () => {
   });
 
   describe('welcome messages', () => {
-    it('renders greeting, ask, and bulleted fields with capitals and periods', () => {
+    it('renders greeting, ask, capabilities, and bulleted fields with capitals and periods', () => {
       const message: StructuredMessage = {
         type: 'welcome',
         greeting_es: '¡Hola! Soy tu asistente.',
         ask_es: '¿Qué tipo de evento quieres planificar?',
+        capability_lines_es: [
+          'armar un plan con proveedores',
+          'consultar eventos a los que estás invitado',
+        ],
         requested_fields_es: [
           'tipo de evento',
           'ubicación',
@@ -146,7 +150,7 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toBe(
-        '¡Hola! Soy tu asistente.\n\n¿Qué tipo de evento quieres planificar?\n\n- Tipo de evento.\n- Ubicación.\n- Invitados aproximados.',
+        '¡Hola! Soy tu asistente.\n\n¿Qué tipo de evento quieres planificar?\n\n- Armar un plan con proveedores.\n- Consultar eventos a los que estás invitado.\n\n- Tipo de evento.\n- Ubicación.\n- Invitados aproximados.',
       );
     });
 
@@ -155,6 +159,7 @@ describe('WhatsAppMessageRenderer', () => {
         type: 'welcome',
         greeting_es: '¡Hola!',
         ask_es: '¿En qué te ayudo?',
+        capability_lines_es: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });

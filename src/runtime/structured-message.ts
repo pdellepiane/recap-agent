@@ -35,6 +35,7 @@ export const structuredMessageSchema = z.object({
   ]),
   greeting_es: z.string().optional(),
   ask_es: z.string().optional(),
+  capability_lines_es: z.array(z.string()).optional(),
   requested_fields_es: z.array(z.string()).optional(),
   intro_es: z.string().optional(),
   providers: z.array(providerRecommendationSchema).optional(),
@@ -56,6 +57,7 @@ export const welcomeMessageSchema = z.object({
   type: z.literal('welcome'),
   greeting_es: z.string(),
   ask_es: z.string(),
+  capability_lines_es: z.array(z.string()).min(1),
   requested_fields_es: z.array(z.string()),
 });
 

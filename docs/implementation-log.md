@@ -1787,6 +1787,36 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Make discovery welcome capabilities dynamic
+
+- Added typed agent feature flags to runtime config, CloudFormation, and deploy parameter wiring.
+- Passed feature flags into the OpenAI reply runtime and generated a capability summary from the enabled features.
+- Extended `welcome` structured messages with `capability_lines_es` so renderers can show a richer discovery menu without hardcoded prose.
+- Updated onboarding prompts to use the runtime-provided enabled capability list instead of a static two-option sentence.
+- Added renderer and runtime tests for capability rendering and feature-gated capability summaries.
+
+Reason:
+- The first "how can you help me?" reply was too terse and static. It also needed to stay aligned with feature toggles so future capability changes do not require rewriting onboarding copy in multiple places.
+
+Decision:
+- Keep flow intent extraction LLM-based, but make capability discovery deterministic from typed runtime configuration. The state-machine welcome path remains responsible for choosing the `welcome` output schema when there is no planning context, while the reply runtime supplies the currently enabled capability surface.
+
+Files changed:
+- `src/runtime/config.ts`
+- `src/lambda/handler.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/structured-message.ts`
+- `src/runtime/message-renderer.ts`
+- `infra/cloudformation/stack.yaml`
+- `scripts/deploy.mjs`
+- `prompts/shared/base_system.txt`
+- `prompts/nodes/contacto_inicial/response_contract.txt`
+- `prompts/nodes/entrevista/response_contract.txt`
+- `tests/message-renderer.test.ts`
+- `tests/openai-agent-runtime-token-usage.test.ts`
+- `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
 ### Tighten invited event lookup follow-ups and payload shape
 
 - Kept `consultar_evento_invitado` as the resume node so event lookup follow-up questions do not fall back to planning interview mode.

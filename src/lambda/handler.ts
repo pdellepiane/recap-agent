@@ -155,6 +155,7 @@ async function getRuntime(): Promise<{
         promptLoader,
         providerGateway,
         knowledgeBase: config.knowledgeBase,
+        features: config.features,
       });
       const planStore = new DynamoPlanStore(config.storage.plansTableName, {
         region: config.aws.region,

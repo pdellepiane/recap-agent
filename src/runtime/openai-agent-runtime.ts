@@ -41,6 +41,7 @@ import type { ProviderGateway } from './provider-gateway';
 import type { ProviderSummary } from '../core/provider';
 import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
+import type { AgentFeatureFlags } from './config';
 import {
   closeConfirmationMessageSchema,
   closeResultMessageSchema,
@@ -78,6 +79,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         enabled: boolean;
         vectorStoreId: string | null;
       };
+      features?: AgentFeatureFlags;
     },
   ) {
     this.client = new OpenAI({ apiKey: options.apiKey, maxRetries: 3 });
@@ -599,6 +601,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       this.buildMissingFieldsInstruction(request),
       `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
       `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
+      `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
     ];
 
     if (request.currentNode === 'entrevista') {
@@ -714,6 +717,40 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return closeConfirmationMessageSchema;
     }
     return genericMessageSchema;
+  }
+
+  private summarizeEnabledCapabilities(): string {
+    const capabilities = this.resolveFeatureFlags();
+    const lines: string[] = [];
+
+    if (capabilities.providerPlanning) {
+      lines.push('- Planificar un evento desde cero o continuar un plan guardado.');
+    }
+    if (capabilities.providerPlanning && capabilities.providerSearch) {
+      lines.push('- Detectar varias necesidades de proveedores y buscar/recomendar opciones del marketplace.');
+    }
+    if (capabilities.providerPlanning && capabilities.providerQuoteRequests) {
+      lines.push('- Ayudar a elegir proveedores y preparar solicitudes de cotización/contacto.');
+    }
+    if (capabilities.faq) {
+      lines.push('- Responder preguntas sobre Sin Envolturas, precios, comisiones, regalos, pagos y soporte.');
+    }
+    if (capabilities.invitedEventLookup) {
+      lines.push('- Consultar información de eventos asociados al usuario, como invitaciones, RSVP, anfitrión/celebrado y órdenes recientes.');
+    }
+
+    return lines.length > 0 ? lines.join('\n') : '- Explicar qué información necesita para derivar al canal correcto.';
+  }
+
+  private resolveFeatureFlags(): AgentFeatureFlags {
+    return {
+      providerPlanning: true,
+      providerSearch: true,
+      providerQuoteRequests: true,
+      faq: true,
+      invitedEventLookup: true,
+      ...this.options.features,
+    };
   }
 
   private hasShortlistedProviderNeeds(plan: PersistedPlan): boolean {

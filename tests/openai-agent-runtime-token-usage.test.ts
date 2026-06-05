@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import type { ComposeReplyRequest, TokenUsage, ToolUsage } from '../src/runtime/contracts';
+import type { AgentFeatureFlags } from '../src/runtime/config';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 
-function createRuntimeForTokenUsageTests(): OpenAiAgentRuntime {
+function createRuntimeForTokenUsageTests(
+  features?: AgentFeatureFlags,
+): OpenAiAgentRuntime {
   return new OpenAiAgentRuntime({
     apiKey: 'test-key',
     replyModel: 'gpt-5.4-mini',
@@ -14,6 +17,7 @@ function createRuntimeForTokenUsageTests(): OpenAiAgentRuntime {
     providerDetailLookupLimit: 3,
     promptLoader: {} as never,
     providerGateway: {} as never,
+    features,
   });
 }
 
@@ -81,6 +85,28 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       total_tokens: 1000,
       cached_input_tokens: 300,
     });
+  });
+});
+
+describe('OpenAiAgentRuntime capability context', () => {
+  it('summarizes only enabled capabilities for welcome-style replies', () => {
+    const runtime = createRuntimeForTokenUsageTests({
+      providerPlanning: true,
+      providerSearch: false,
+      providerQuoteRequests: false,
+      faq: true,
+      invitedEventLookup: false,
+    });
+    const typedRuntime = runtime as unknown as {
+      summarizeEnabledCapabilities: () => string;
+    };
+
+    const summary = typedRuntime.summarizeEnabledCapabilities();
+
+    expect(summary).toContain('Planificar un evento');
+    expect(summary).toContain('Responder preguntas sobre Sin Envolturas');
+    expect(summary).not.toContain('buscar/recomendar opciones');
+    expect(summary).not.toContain('Consultar información de eventos asociados');
   });
 });
 

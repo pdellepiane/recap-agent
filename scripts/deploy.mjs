@@ -66,6 +66,11 @@ run(
     `ProviderVectorMaxResults=${process.env.PROVIDER_VECTOR_MAX_RESULTS ?? env.PROVIDER_VECTOR_MAX_RESULTS ?? '12'}`,
     `ProviderVectorScoreThreshold=${process.env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? '0.2'}`,
     `SinEnvolturasGuestServiceBaseUrl=${process.env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? 'https://se-v2-api-dev.jnq.io/api/guest-service'}`,
+    `AgentFeatureProviderPlanning=${process.env.AGENT_FEATURE_PROVIDER_PLANNING ?? env.AGENT_FEATURE_PROVIDER_PLANNING ?? 'true'}`,
+    `AgentFeatureProviderSearch=${process.env.AGENT_FEATURE_PROVIDER_SEARCH ?? env.AGENT_FEATURE_PROVIDER_SEARCH ?? 'true'}`,
+    `AgentFeatureProviderQuoteRequests=${process.env.AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS ?? env.AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS ?? 'true'}`,
+    `AgentFeatureFaq=${process.env.AGENT_FEATURE_FAQ ?? env.AGENT_FEATURE_FAQ ?? 'true'}`,
+    `AgentFeatureInvitedEventLookup=${process.env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? 'true'}`,
   ],
   { env: awsEnv },
 );

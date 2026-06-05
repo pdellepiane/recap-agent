@@ -53,6 +53,15 @@ export type AppConfig = {
     vectorStoreId: string | null;
     enabled: boolean;
   };
+  features: AgentFeatureFlags;
+};
+
+export type AgentFeatureFlags = {
+  providerPlanning: boolean;
+  providerSearch: boolean;
+  providerQuoteRequests: boolean;
+  faq: boolean;
+  invitedEventLookup: boolean;
 };
 
 const environmentSchema = z.object({
@@ -90,6 +99,11 @@ const environmentSchema = z.object({
   KB_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Knowledge Base'),
   KB_VECTOR_STORE_ID: z.string().optional(),
   KB_ENABLED: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_PROVIDER_PLANNING: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_PROVIDER_SEARCH: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_FAQ: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_INVITED_EVENT_LOOKUP: z.enum(['true', 'false']).default('true'),
 });
 
 export function getConfig(): AppConfig {
@@ -146,6 +160,13 @@ export function getConfig(): AppConfig {
       vectorStoreName: environment.KB_VECTOR_STORE_NAME,
       vectorStoreId: environment.KB_VECTOR_STORE_ID ?? null,
       enabled: environment.KB_ENABLED === 'true',
+    },
+    features: {
+      providerPlanning: environment.AGENT_FEATURE_PROVIDER_PLANNING === 'true',
+      providerSearch: environment.AGENT_FEATURE_PROVIDER_SEARCH === 'true',
+      providerQuoteRequests: environment.AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS === 'true',
+      faq: environment.AGENT_FEATURE_FAQ === 'true',
+      invitedEventLookup: environment.AGENT_FEATURE_INVITED_EVENT_LOOKUP === 'true',
     },
   };
 }

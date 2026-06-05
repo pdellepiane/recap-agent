@@ -4445,7 +4445,12 @@ describe('AgentService', () => {
           structuredMessage: {
             type: 'welcome',
             greeting_es: '¡Hola! Soy el asistente de Sin Envolturas.',
-            ask_es: 'Puedo ayudarte con preguntas sobre nuestros servicios o armar un plan con proveedores. Cuéntame tu evento ideal o empecemos proveedor por proveedor.',
+            ask_es: 'Puedo ayudarte de varias formas. Elige por dónde quieres empezar.',
+            capability_lines_es: [
+              'armar un plan con proveedores para tu evento',
+              'responder preguntas sobre nuestros servicios',
+              'consultar información de eventos asociados a tu correo o teléfono',
+            ],
             requested_fields_es: [],
           },
         };
@@ -4472,7 +4477,8 @@ describe('AgentService', () => {
     expect(response.trace.intent).toBeNull();
     expect(response.plan.provider_needs).toHaveLength(0);
     expect(response.outbound.text).toContain('Soy el asistente de Sin Envolturas');
-    expect(response.outbound.text).toContain('preguntas sobre nuestros servicios');
+    expect(response.outbound.text).toContain('Armar un plan con proveedores');
+    expect(response.outbound.text).toContain('Consultar información de eventos');
   });
 
   it('keeps otro as a valid event type when planning evidence exists', async () => {

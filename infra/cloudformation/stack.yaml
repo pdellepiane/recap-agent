@@ -71,6 +71,36 @@ Parameters:
     Type: String
     Default: ''
     Description: OpenAI vector store ID for file_search (empty to disable KB)
+  AgentFeatureProviderPlanning:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  AgentFeatureProviderSearch:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  AgentFeatureProviderQuoteRequests:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  AgentFeatureFaq:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  AgentFeatureInvitedEventLookup:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Resources:
   PlansTable:
@@ -183,6 +213,11 @@ Resources:
           PROVIDER_VECTOR_SCORE_THRESHOLD: !Ref ProviderVectorScoreThreshold
           KB_ENABLED: !Ref KbEnabled
           KB_VECTOR_STORE_ID: !Ref KbVectorStoreId
+          AGENT_FEATURE_PROVIDER_PLANNING: !Ref AgentFeatureProviderPlanning
+          AGENT_FEATURE_PROVIDER_SEARCH: !Ref AgentFeatureProviderSearch
+          AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS: !Ref AgentFeatureProviderQuoteRequests
+          AGENT_FEATURE_FAQ: !Ref AgentFeatureFaq
+          AGENT_FEATURE_INVITED_EVENT_LOOKUP: !Ref AgentFeatureInvitedEventLookup
 
   RuntimeFunctionUrl:
     Type: AWS::Lambda::Url
