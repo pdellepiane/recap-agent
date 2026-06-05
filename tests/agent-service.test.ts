@@ -209,6 +209,43 @@ class InvitedEventRuntime extends FakeRuntime {
   }
 }
 
+class MisclassifiedInvitedEventFollowUpRuntime extends FakeRuntime {
+  override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    void request;
+    return {
+      intent: 'detallar_proveedor',
+      intentConfidence: 0.74,
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'El usuario pide info de Paolo y Mariana.',
+      selectedProviderHints: [],
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: testProviderFitCriteria,
+      providerDetailRequest: {
+        provider: {
+          providerId: null,
+          providerTitle: 'Paolo y Mariana',
+          category: null,
+          hint: 'paolo y mariana',
+        },
+        category: null,
+        requestedDepth: 'full',
+      },
+    };
+  }
+}
+
 class FakeGateway implements ProviderGateway {
   public searchCalls = 0;
 
@@ -398,27 +435,51 @@ class FakeGateway implements ProviderGateway {
     input: UserEventLookupInput,
   ): Promise<UserEventLookupResult | null> {
     return {
-      user: { id: 42, email: input.email ?? null, phone: input.phone ?? null },
-      events: [],
-      recent_orders: [],
-      guest_in_events: [
+      lookup: input,
+      user: {
+        id: 42,
+        fullName: 'María García',
+        email: input.email ?? null,
+        fullPhone: input.phone ?? null,
+      },
+      events: [
         {
-          id: 312,
-          has_responded: true,
-          will_attend: true,
-          has_couple: true,
-          event: {
-            id: 205,
-            name: 'Cumpleaños de Ana',
-            datetime: '2026-06-15T19:00:00Z',
+          relation: 'guest',
+          eventId: 205,
+          slug: 'cumple-ana-2026',
+          name: 'Cumpleaños de Ana',
+          type: null,
+          datetime: '2026-06-15T19:00:00Z',
+          stage: null,
+          isVisible: null,
+          isPublic: null,
+          currency: null,
+          country: null,
+          guestStatus: {
+            hasResponded: true,
+            willAttend: true,
+            hasCouple: true,
+            responseDate: '2026-04-10T09:00:00Z',
           },
+          hostType: null,
+          hostPermission: null,
+          hostStatus: null,
+          celebratedType: null,
+          amountCollected: null,
+          amountTransferred: null,
+          transactionsCount: null,
+          invitedGuestCount: null,
+          confirmedGuestCount: null,
+          orders: [],
         },
       ],
-      host_in_events: [],
-      celebrated_in: [],
-      subscriptions: [],
-      summary: { guest_in_events_count: 1 },
-      raw: {},
+      counts: {
+        ownerEvents: 0,
+        guestEvents: 1,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
     };
   }
 
@@ -579,6 +640,49 @@ describe('AgentService', () => {
         'consultar_evento_invitado',
       );
     }
+  });
+
+  it('keeps invited event follow-ups in consultar_evento_invitado even when extraction says provider detail', async () => {
+    const runtime = new MisclassifiedInvitedEventFollowUpRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    const externalUserId = 'paolo.delepias@gmail.com';
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-invited-follow-up',
+          channel: 'terminal_whatsapp',
+          externalUserId,
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: externalUserId,
+        },
+      ),
+      reason: 'seed-invited-follow-up',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId,
+      text: 'Dame la info de Paolo y Mariana',
+      messageId: 'msg-invited-follow-up',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('consultar_evento_invitado');
+    expect(response.trace.intent).toBe('consultar_evento_invitado');
+    expect(response.trace.turn_decision.routeKind).toBe('invited_event_lookup');
+    expect(runtime.composeRequests.at(-1)?.currentNode).toBe('consultar_evento_invitado');
+    expect(gateway.searchCalls).toBe(0);
   });
 
   it('persists the plan after extraction and moves to recommendation when search succeeds', async () => {

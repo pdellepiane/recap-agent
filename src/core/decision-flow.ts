@@ -17,11 +17,12 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
     return 'entrevista';
   }
 
-  if (
-    plan.current_node === 'consultar_faq' ||
-    plan.current_node === 'consultar_evento_invitado'
-  ) {
-    // Returning from informational modes: resume planning where it makes sense.
+  if (plan.current_node === 'consultar_evento_invitado') {
+    return 'consultar_evento_invitado';
+  }
+
+  if (plan.current_node === 'consultar_faq') {
+    // Returning from KB mode: resume planning where it makes sense.
     if (plan.intent && plan.event_type) {
       return 'entrevista';
     }

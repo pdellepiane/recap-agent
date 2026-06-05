@@ -1266,7 +1266,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       lookup_user_event_context: tool({
         name: 'lookup_user_event_context',
         description:
-          'Busca la información de Sin Envolturas asociada al usuario que pregunta, incluyendo eventos donde es invitado, anfitrión, celebrado, sus eventos propios y órdenes recientes. Usa email exacto o teléfono.',
+          'Busca un resumen compacto de eventos de Sin Envolturas asociados al usuario que pregunta: invitado, anfitrión, celebrado, eventos propios y órdenes recientes. El email debe ser exacto; el teléfono se compara con phone_number.',
         parameters: z
           .object({
             email: z.string().email().nullish(),

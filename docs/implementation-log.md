@@ -1787,6 +1787,39 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Tighten invited event lookup follow-ups and payload shape
+
+- Kept `consultar_evento_invitado` as the resume node so event lookup follow-up questions do not fall back to planning interview mode.
+- Added a deterministic guard that keeps short invited-event follow-ups in the invited-event route when the extractor mislabels them as provider detail and there is no provider context.
+- Replaced the model-facing guest-service output with a compact typed event summary: user id/name/contact, grouped event summaries, RSVP status, host/celebrated metadata, aggregate event fields, and minimal recent-order summaries.
+- Removed raw endpoint data, bank accounts, addresses, documents, subscriptions, and unrelated user profile fields from the tool output.
+- Clarified prompts for multi-event disambiguation and follow-up matching by event name/slug.
+- Added tests for invited-event resume behavior, misclassified follow-up handling, compact email lookup output, and phone lookup URL mapping.
+
+Reason:
+- Live terminal testing showed a follow-up like "dame la info de paolo y mariana" routed to `entrevista` as provider detail. The previous tool also exposed the full endpoint payload to the model, wasting tokens and carrying unnecessary sensitive fields.
+
+Decision:
+- Keep this mode stateful at the node level and parse the endpoint response in TypeScript before the agent sees it. Email and phone are both supported by the endpoint contract from the pasted notes: email is exact-match and phone matches `phone_number`.
+
+Files changed:
+- `src/core/decision-flow.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/provider-gateway.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `src/evals/targets/offline.ts`
+- `prompts/extractors/conflict_resolution.txt`
+- `prompts/nodes/consultar_evento_invitado/system.txt`
+- `prompts/nodes/consultar_evento_invitado/tool_policy.txt`
+- `prompts/nodes/consultar_evento_invitado/response_contract.txt`
+- `prompts/nodes/consultar_evento_invitado/transition_policy.txt`
+- `tests/agent-service.test.ts`
+- `tests/batch4-state-machine.test.ts`
+- `tests/decision-flow.test.ts`
+- `tests/sinenvolturas-gateway.test.ts`
+- `docs/implementation-log.md`
+
 ### Add invited event lookup mode
 
 - Added a `consultar_evento_invitado` intent and decision node for questions about events associated with the asking user.

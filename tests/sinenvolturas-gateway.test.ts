@@ -139,8 +139,58 @@ describe('SinEnvolturasGateway strict search mapping', () => {
       'https://api.example.test/guest-service/user-lookup?email=maria.garcia%40gmail.com',
     );
     expect(result?.user?.email).toBe('maria.garcia@gmail.com');
-    expect(result?.guest_in_events).toHaveLength(1);
-    expect(result?.summary?.guest_in_events_count).toBe(1);
+    expect(result?.events).toHaveLength(1);
+    const event = result?.events[0];
+    expect(event?.relation).toBe('guest');
+    expect(event?.eventId).toBe(205);
+    expect(event?.name).toBe('Cumpleaños de Ana');
+    expect(event?.datetime).toBe('2026-06-15T19:00:00Z');
+    expect(event?.guestStatus?.willAttend).toBe(true);
+    expect(result?.counts.guestEvents).toBe(1);
+    expect(result).not.toHaveProperty('raw');
+    expect(result).not.toHaveProperty('guest_in_events');
+  });
+
+  it('looks up user event context by phone through the guest service endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          status: true,
+          errors: null,
+          error: null,
+          data: {
+            user: { id: 42, phone_number: '987654321', full_phone: '+51 987654321' },
+            events: [],
+            recent_orders: [],
+            guest_in_events: [],
+            host_in_events: [],
+            celebrated_in: [],
+            subscriptions: [],
+            summary: {},
+          },
+        };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestServiceBaseUrl: 'https://api.example.test/guest-service',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    const result = await gateway.lookupUserEventContext({
+      email: null,
+      phone: '987654321',
+    });
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/guest-service/user-lookup?phone=987654321',
+    );
+    expect(result?.lookup).toEqual({ email: null, phone: '987654321' });
+    expect(result?.user?.fullPhone).toBe('+51 987654321');
   });
 
   it('keeps category matches when provider location granularity is broader than the plan city', async () => {

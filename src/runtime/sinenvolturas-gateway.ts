@@ -23,6 +23,9 @@ import type {
   QuoteRequestInput,
   UserEventLookupInput,
   UserEventLookupResult,
+  UserEventOrderSummary,
+  UserEventRelation,
+  UserEventSummary,
 } from './provider-gateway';
 
 type ApiEnvelope<T> = {
@@ -493,7 +496,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return null;
     }
 
-    return this.toUserEventLookupResult(response.data);
+    return this.toUserEventLookupResult(input, response.data);
   }
 
   async createQuoteRequest(
@@ -882,18 +885,145 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return `https://sinenvolturas.com/proveedores/${slug}`;
   }
 
-  private toUserEventLookupResult(data: Record<string, unknown>): UserEventLookupResult {
+  private toUserEventLookupResult(
+    input: UserEventLookupInput,
+    data: Record<string, unknown>,
+  ): UserEventLookupResult {
+    const orders = this.recordArray(data.recent_orders).map((order) =>
+      this.toUserEventOrderSummary(order),
+    );
+    const ordersByEventId = this.groupOrdersByEventId(
+      this.recordArray(data.recent_orders),
+      orders,
+    );
+    const events: UserEventSummary[] = [
+      ...this.recordArray(data.events).map((event) =>
+        this.toUserEventSummary('owner', event, event, ordersByEventId),
+      ),
+      ...this.recordArray(data.guest_in_events).map((guest) =>
+        this.toUserEventSummary('guest', guest, this.recordOrNull(guest.event), ordersByEventId),
+      ),
+      ...this.recordArray(data.host_in_events).map((host) =>
+        this.toUserEventSummary('host', host, this.recordOrNull(host.event), ordersByEventId),
+      ),
+      ...this.recordArray(data.celebrated_in).map((celebrated) =>
+        this.toUserEventSummary(
+          'celebrated',
+          celebrated,
+          this.recordOrNull(celebrated.event),
+          ordersByEventId,
+        ),
+      ),
+    ];
+
+    const eventIds = new Set(events.map((event) => event.eventId).filter((id): id is number => id !== null));
+    const orderOnlyEvents = this.recordArray(data.recent_orders)
+      .filter((order) => {
+        const event = this.recordOrNull(order.event);
+        const eventId = event ? this.numberField(event, 'id') : null;
+        return eventId !== null && !eventIds.has(eventId);
+      })
+      .map((order) =>
+        this.toUserEventSummary('order', order, this.recordOrNull(order.event), ordersByEventId),
+      );
+
+    const user = this.recordOrNull(data.user);
     return {
-      user: this.recordOrNull(data.user),
-      events: this.recordArray(data.events),
-      recent_orders: this.recordArray(data.recent_orders),
-      guest_in_events: this.recordArray(data.guest_in_events),
-      host_in_events: this.recordArray(data.host_in_events),
-      celebrated_in: this.recordArray(data.celebrated_in),
-      subscriptions: this.recordArray(data.subscriptions),
-      summary: this.recordOrNull(data.summary),
-      raw: data,
+      lookup: input,
+      user: user
+        ? {
+            id: this.numberField(user, 'id'),
+            fullName: this.stringField(user, 'full_name'),
+            email: this.stringField(user, 'email'),
+            fullPhone: this.stringField(user, 'full_phone'),
+          }
+        : null,
+      events: [...events, ...orderOnlyEvents],
+      counts: {
+        ownerEvents: this.recordArray(data.events).length,
+        guestEvents: this.recordArray(data.guest_in_events).length,
+        hostEvents: this.recordArray(data.host_in_events).length,
+        celebratedEvents: this.recordArray(data.celebrated_in).length,
+        recentOrders: orders.length,
+      },
     };
+  }
+
+  private toUserEventSummary(
+    relation: UserEventRelation,
+    source: Record<string, unknown>,
+    event: Record<string, unknown> | null,
+    ordersByEventId: Map<number, UserEventOrderSummary[]>,
+  ): UserEventSummary {
+    const eventId = event ? this.numberField(event, 'id') : this.numberField(source, 'event_id');
+    const currency = this.recordOrNull(event?.currency ?? source.currency);
+    const country = this.recordOrNull(event?.country ?? source.country);
+    return {
+      relation,
+      eventId,
+      slug: event ? this.stringField(event, 'slug') : null,
+      name: event ? this.stringField(event, 'name') : this.stringField(source, 'name'),
+      type: event ? this.stringField(event, 'type') : null,
+      datetime: event ? this.stringField(event, 'datetime') : null,
+      stage: event ? this.stringField(event, 'stage') : null,
+      isVisible: event ? this.booleanField(event, 'is_visible') : null,
+      isPublic: event ? this.booleanField(event, 'is_public') : null,
+      currency: currency
+        ? this.stringField(currency, 'cod_alpha') ?? this.stringField(currency, 'name')
+        : null,
+      country: country ? this.stringField(country, 'name') : null,
+      guestStatus: relation === 'guest'
+        ? {
+            hasResponded: this.booleanField(source, 'has_responded'),
+            willAttend: this.booleanField(source, 'will_attend'),
+            hasCouple: this.booleanField(source, 'has_couple'),
+            responseDate: this.stringField(source, 'response_date'),
+          }
+        : null,
+      hostType: relation === 'host' ? this.stringField(source, 'type') : null,
+      hostPermission: relation === 'host' ? this.stringField(source, 'permission') : null,
+      hostStatus: relation === 'host' ? this.stringField(source, 'status') : null,
+      celebratedType: relation === 'celebrated' ? this.stringField(source, 'type') : null,
+      amountCollected: event ? this.numberField(event, 'amount_collected') : null,
+      amountTransferred: event ? this.numberField(event, 'amount_transferred') : null,
+      transactionsCount: event ? this.numberField(event, 'transactions_count') : null,
+      invitedGuestCount: event ? this.numberField(event, 'invited_guest') : null,
+      confirmedGuestCount: event ? this.numberField(event, 'confirmed_guest') : null,
+      orders: eventId === null ? [] : ordersByEventId.get(eventId) ?? [],
+    };
+  }
+
+  private toUserEventOrderSummary(order: Record<string, unknown>): UserEventOrderSummary {
+    const paymentMethod = this.recordOrNull(order.payment_method);
+    return {
+      id: this.numberField(order, 'id'),
+      incrementId: this.stringField(order, 'increment_id'),
+      giftType: this.stringField(order, 'gift_type'),
+      grandTotal: this.numberField(order, 'grand_total'),
+      paymentStatus: this.stringField(order, 'payment_status'),
+      shippingStatus: this.stringField(order, 'shipping_status'),
+      createdAt: this.stringField(order, 'created_at'),
+      paymentMethod: paymentMethod ? this.stringField(paymentMethod, 'name') : null,
+    };
+  }
+
+  private groupOrdersByEventId(
+    rawOrders: Record<string, unknown>[],
+    orders: UserEventOrderSummary[],
+  ): Map<number, UserEventOrderSummary[]> {
+    const byEventId = new Map<number, UserEventOrderSummary[]>();
+    rawOrders.forEach((rawOrder, index) => {
+      const event = this.recordOrNull(rawOrder.event);
+      const eventId = event ? this.numberField(event, 'id') : null;
+      const order = orders[index];
+      if (eventId === null || !order) {
+        return;
+      }
+      const current = byEventId.get(eventId) ?? [];
+      current.push(order);
+      byEventId.set(eventId, current);
+    });
+    return byEventId;
   }
 
   private recordArray(value: unknown): Record<string, unknown>[] {
@@ -910,6 +1040,28 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return null;
     }
     return value as Record<string, unknown>;
+  }
+
+  private stringField(source: Record<string, unknown>, key: string): string | null {
+    const value = source[key];
+    return typeof value === 'string' && value.trim().length > 0 ? value : null;
+  }
+
+  private numberField(source: Record<string, unknown>, key: string): number | null {
+    const value = source[key];
+    if (typeof value === 'number' && Number.isFinite(value)) {
+      return value;
+    }
+    if (typeof value === 'string') {
+      const parsed = Number(value);
+      return Number.isFinite(parsed) ? parsed : null;
+    }
+    return null;
+  }
+
+  private booleanField(source: Record<string, unknown>, key: string): boolean | null {
+    const value = source[key];
+    return typeof value === 'boolean' ? value : null;
   }
 
   private findWebsiteUrl(

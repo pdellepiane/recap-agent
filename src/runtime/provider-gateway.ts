@@ -89,16 +89,72 @@ export type UserEventLookupInput =
       phone: string;
     };
 
+export type UserEventRelation =
+  | 'owner'
+  | 'guest'
+  | 'host'
+  | 'celebrated'
+  | 'order';
+
+export type UserEventGuestStatus = {
+  hasResponded: boolean | null;
+  willAttend: boolean | null;
+  hasCouple: boolean | null;
+  responseDate: string | null;
+};
+
+export type UserEventOrderSummary = {
+  id: number | null;
+  incrementId: string | null;
+  giftType: string | null;
+  grandTotal: number | null;
+  paymentStatus: string | null;
+  shippingStatus: string | null;
+  createdAt: string | null;
+  paymentMethod: string | null;
+};
+
+export type UserEventSummary = {
+  relation: UserEventRelation;
+  eventId: number | null;
+  slug: string | null;
+  name: string | null;
+  type: string | null;
+  datetime: string | null;
+  stage: string | null;
+  isVisible: boolean | null;
+  isPublic: boolean | null;
+  currency: string | null;
+  country: string | null;
+  guestStatus: UserEventGuestStatus | null;
+  hostType: string | null;
+  hostPermission: string | null;
+  hostStatus: string | null;
+  celebratedType: string | null;
+  amountCollected: number | null;
+  amountTransferred: number | null;
+  transactionsCount: number | null;
+  invitedGuestCount: number | null;
+  confirmedGuestCount: number | null;
+  orders: UserEventOrderSummary[];
+};
+
 export type UserEventLookupResult = {
-  user: Record<string, unknown> | null;
-  events: Record<string, unknown>[];
-  recent_orders: Record<string, unknown>[];
-  guest_in_events: Record<string, unknown>[];
-  host_in_events: Record<string, unknown>[];
-  celebrated_in: Record<string, unknown>[];
-  subscriptions: Record<string, unknown>[];
-  summary: Record<string, unknown> | null;
-  raw: Record<string, unknown>;
+  lookup: UserEventLookupInput;
+  user: {
+    id: number | null;
+    fullName: string | null;
+    email: string | null;
+    fullPhone: string | null;
+  } | null;
+  events: UserEventSummary[];
+  counts: {
+    ownerEvents: number;
+    guestEvents: number;
+    hostEvents: number;
+    celebratedEvents: number;
+    recentOrders: number;
+  };
 };
 
 export interface ProviderGateway {

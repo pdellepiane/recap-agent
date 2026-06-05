@@ -298,6 +298,7 @@ export class AgentService {
     let errorMessage: string | null = null;
     const applyExtractionStartedAt = Date.now();
     extraction = this.guardGenericElicitation(extraction);
+    extraction = this.guardInvitedEventFollowUp(workingPlan, extraction);
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
     const { plan: extractedPlan, validationError } = this.applyExtraction(
       workingPlan,
@@ -1959,6 +1960,58 @@ export class AgentService {
     return {
       ...extraction,
       intent: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      providerQueryIntents: [],
+      providerPlanOperations: [],
+      providerExplanationRequest: null,
+      providerDetailRequest: null,
+    };
+  }
+
+  private guardInvitedEventFollowUp(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): ExtractionResult {
+    if (plan.current_node !== 'consultar_evento_invitado') {
+      return extraction;
+    }
+
+    const explicitModeSwitchIntents = new Set([
+      'elicitar_necesidades',
+      'buscar_proveedores',
+      'refinar_busqueda',
+      'ver_opciones',
+      'confirmar_proveedor',
+      'modificar_plan_proveedores',
+      'retomar_plan',
+      'cerrar',
+      'pausar',
+      'consultar_faq',
+      'consultar_evento_invitado',
+    ]);
+    if (extraction.intent && explicitModeSwitchIntents.has(extraction.intent)) {
+      return extraction;
+    }
+
+    const hasProviderContext =
+      plan.provider_needs.length > 0 ||
+      plan.recommended_providers.length > 0 ||
+      plan.recommended_provider_ids.length > 0;
+    if (
+      hasProviderContext &&
+      (
+        extraction.intent === 'detallar_proveedor' ||
+        extraction.intent === 'explicar_recomendacion'
+      )
+    ) {
+      return extraction;
+    }
+
+    return {
+      ...extraction,
+      intent: 'consultar_evento_invitado',
       vendorCategory: null,
       vendorCategories: [],
       activeNeedCategory: null,

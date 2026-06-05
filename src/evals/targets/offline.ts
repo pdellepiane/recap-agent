@@ -315,15 +315,21 @@ class FixtureProviderGateway implements ProviderGateway {
     input: UserEventLookupInput,
   ): Promise<UserEventLookupResult | null> {
     return {
-      user: { email: input.email ?? null, phone: input.phone ?? null },
+      lookup: input,
+      user: {
+        id: null,
+        fullName: null,
+        email: input.email ?? null,
+        fullPhone: input.phone ?? null,
+      },
       events: [],
-      recent_orders: [],
-      guest_in_events: [],
-      host_in_events: [],
-      celebrated_in: [],
-      subscriptions: [],
-      summary: null,
-      raw: {},
+      counts: {
+        ownerEvents: 0,
+        guestEvents: 0,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
     };
   }
 
