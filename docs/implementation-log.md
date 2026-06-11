@@ -1787,6 +1787,40 @@ Files changed:
 - `tests/agent-service.test.ts`
 - `docs/implementation-log.md`
 
+### Add deterministic auth gate for invited event lookup
+
+- Added persisted `guest_auth` state for `consultar_evento_invitado` with code-requested, authenticated, email-not-found, failed, token, expiry, error, and request timestamp fields.
+- Added gateway methods for guest login-code request, login-code verification, and bearer-token authenticated guest event lookup.
+- Moved invited event authentication and event lookup out of LLM tool selection and into `AgentService`; the reply model now receives authenticated event context only after deterministic verification succeeds.
+- Disabled `lookup_user_event_context` as an allowed tool for `consultar_evento_invitado` and updated Spanish node prompts to phrase auth states without deciding auth.
+- Added CloudFormation, deploy-script, and README env support for `SINENVOLTURAS_GUEST_AUTH_BASE_URL`.
+- Added gateway and agent-service regression tests for unknown email rejection, code request, invalid code, successful token persistence, token reuse, and token failure re-auth.
+
+Reason:
+- Event details are user-specific and should not depend on model discretion. Unknown emails must be rejected before code entry, and the model should never decide whether to trust an email, send a code, validate a code, or call authenticated lookup.
+
+Decision:
+- Persist guest bearer tokens in the plan until expiry or authenticated lookup failure, using a 24-hour default expiry if the API response does not provide one. Redact tokens from prompt context and trace inputs/outputs while preserving auth status and deterministic tool traces.
+
+Files changed:
+- `src/core/plan.ts`
+- `src/runtime/provider-gateway.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/prompt-manifest.ts`
+- `src/runtime/config.ts`
+- `src/lambda/handler.ts`
+- `prompts/nodes/consultar_evento_invitado/system.txt`
+- `prompts/nodes/consultar_evento_invitado/tool_policy.txt`
+- `prompts/nodes/consultar_evento_invitado/response_contract.txt`
+- `infra/cloudformation/stack.yaml`
+- `scripts/deploy.mjs`
+- `README.md`
+- `tests/sinenvolturas-gateway.test.ts`
+- `tests/agent-service.test.ts`
+- `tests/prompt-loader.test.ts`
+
 ### Simplify invited event list fields
 
 - Changed invited-event responses to present event information as a simple list with the user-relevant fields: name, URL, place, date, attendance confirmation, and companion indication.

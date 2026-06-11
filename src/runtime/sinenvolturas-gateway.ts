@@ -12,6 +12,8 @@ import type {
   CategoryLocationProviderSearchInput,
   CreateProviderReviewInput,
   FavoriteRequestInput,
+  GuestLoginCodeRequestResult,
+  GuestLoginCodeVerificationResult,
   KeywordProviderSearchInput,
   MarketplaceCategory,
   MarketplaceLocation,
@@ -110,6 +112,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     private readonly options: {
       baseUrl: string;
       guestServiceBaseUrl?: string;
+      guestAuthBaseUrl?: string;
       persistedSearchLimit: number;
       summarySearchWordLimit: number;
       searchMode?: ProviderSearchMode;
@@ -499,6 +502,79 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return this.toUserEventLookupResult(input, response.data);
   }
 
+  async requestGuestLoginCode(email: string): Promise<GuestLoginCodeRequestResult> {
+    const response = await this.postGuestAuthJson<ApiEnvelope<Record<string, unknown>>>(
+      '/request-login-code',
+      { email },
+      { throwOnHttpError: false },
+    );
+
+    if (!response.ok) {
+      return {
+        status: response.status === 404 ? 'email_not_found' : 'failed',
+        error: this.authErrorMessage(response.body) ?? `Guest auth request failed with ${response.status}`,
+      };
+    }
+
+    const body = response.body;
+    if (body.status === true) {
+      return { status: 'sent' };
+    }
+
+    return {
+      status: this.isEmailNotFoundAuthError(body) ? 'email_not_found' : 'failed',
+      error: this.authErrorMessage(body) ?? 'No se pudo enviar el código.',
+    };
+  }
+
+  async verifyGuestLoginCode(
+    email: string,
+    code: string,
+  ): Promise<GuestLoginCodeVerificationResult> {
+    const response = await this.postGuestAuthJson<ApiEnvelope<Record<string, unknown>>>(
+      '/login-code',
+      { email, code },
+      { throwOnHttpError: false },
+    );
+
+    if (!response.ok) {
+      return {
+        status: response.status === 401 || response.status === 422 ? 'invalid_code' : 'failed',
+        error: this.authErrorMessage(response.body) ?? `Guest login failed with ${response.status}`,
+      };
+    }
+
+    const body = response.body;
+    const token = this.extractAuthToken(body);
+    if (body.status === true && token) {
+      return {
+        status: 'authenticated',
+        token,
+        tokenExpiresAt: this.extractTokenExpiry(body) ?? this.defaultGuestTokenExpiry(),
+      };
+    }
+
+    return {
+      status: this.isInvalidCodeAuthError(body) ? 'invalid_code' : 'failed',
+      error: this.authErrorMessage(body) ?? 'El código no pudo validarse.',
+    };
+  }
+
+  async lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null> {
+    const response = await this.fetchGuestServiceJson<ApiEnvelope<Record<string, unknown>>>(
+      '/user-lookup',
+      {
+        authorization: `Bearer ${token}`,
+      },
+    );
+
+    if (!response.status || !response.data) {
+      return null;
+    }
+
+    return this.toUserEventLookupResult({ email: null, phone: '' }, response.data);
+  }
+
   async createQuoteRequest(
     input: QuoteRequestInput,
   ): Promise<Record<string, unknown>> {
@@ -844,15 +920,193 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return (await response.json()) as T;
   }
 
-  private async fetchGuestServiceJson<T>(pathname: string): Promise<T> {
+  private async fetchGuestServiceJson<T>(
+    pathname: string,
+    headers?: Record<string, string>,
+  ): Promise<T> {
     const baseUrl = this.options.guestServiceBaseUrl ?? this.options.baseUrl;
-    const response = await fetch(`${baseUrl}${pathname}`);
+    const response = headers
+      ? await fetch(`${baseUrl}${pathname}`, { headers })
+      : await fetch(`${baseUrl}${pathname}`);
 
     if (!response.ok) {
       throw new Error(`Guest service API request failed with ${response.status}`);
     }
 
     return (await response.json()) as T;
+  }
+
+  private async postGuestAuthJson<T>(
+    pathname: string,
+    body: Record<string, unknown>,
+    options?: { throwOnHttpError?: boolean },
+  ): Promise<{ ok: boolean; status: number; body: T }> {
+    const baseUrl = this.options.guestAuthBaseUrl ?? 'https://se-v2-api-dev.jnq.io/api-web/user';
+    const response = await fetch(`${baseUrl}${pathname}`, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    const parsedBody = (await response.json().catch(() => ({}))) as T;
+
+    if (!response.ok && options?.throwOnHttpError !== false) {
+      throw new Error(`Guest auth API request failed with ${response.status}`);
+    }
+
+    return {
+      ok: response.ok,
+      status: response.status,
+      body: parsedBody,
+    };
+  }
+
+  private authErrorMessage(body: unknown): string | null {
+    if (!body || typeof body !== 'object') {
+      return null;
+    }
+    const record = body as Record<string, unknown>;
+    if (typeof record.error === 'string' && record.error.trim()) {
+      return record.error;
+    }
+    if (typeof record.message === 'string' && record.message.trim()) {
+      return record.message;
+    }
+    if (Array.isArray(record.errors)) {
+      const first = record.errors.find((entry): entry is string => typeof entry === 'string');
+      if (first) {
+        return first;
+      }
+    }
+    if (record.errors && typeof record.errors === 'object') {
+      for (const entry of Object.values(record.errors as Record<string, unknown>)) {
+        if (typeof entry === 'string') {
+          return entry;
+        }
+        if (Array.isArray(entry)) {
+          const first = entry.find((item): item is string => typeof item === 'string');
+          if (first) {
+            return first;
+          }
+        }
+      }
+    }
+    return null;
+  }
+
+  private isEmailNotFoundAuthError(body: unknown): boolean {
+    const message = this.authErrorMessage(body)?.toLowerCase() ?? '';
+    return (
+      message.includes('not found') ||
+      message.includes('not registered') ||
+      message.includes('no existe') ||
+      message.includes('no encontrado') ||
+      message.includes('no registrado')
+    );
+  }
+
+  private isInvalidCodeAuthError(body: unknown): boolean {
+    const message = this.authErrorMessage(body)?.toLowerCase() ?? '';
+    return (
+      message.includes('invalid') ||
+      message.includes('expired') ||
+      message.includes('incorrect') ||
+      message.includes('inválido') ||
+      message.includes('vencido') ||
+      message.includes('incorrecto')
+    );
+  }
+
+  private extractAuthToken(body: unknown): string | null {
+    const candidates = this.collectAuthTokenCandidates(body);
+    return candidates.find((candidate) => candidate.trim().length > 0) ?? null;
+  }
+
+  private collectAuthTokenCandidates(value: unknown): string[] {
+    if (!value || typeof value !== 'object') {
+      return [];
+    }
+    const record = value as Record<string, unknown>;
+    const directKeys = ['token', 'access_token', 'accessToken', 'auth_token', 'authToken', 'bearer_token', 'bearerToken'];
+    const direct = directKeys
+      .map((key) => record[key])
+      .filter((entry): entry is string => typeof entry === 'string');
+    const nested = ['data', 'user', 'auth']
+      .flatMap((key) => this.collectAuthTokenCandidates(record[key]));
+    return [...direct, ...nested];
+  }
+
+  private extractTokenExpiry(body: unknown): string | null {
+    if (!body || typeof body !== 'object') {
+      return null;
+    }
+    const record = body as Record<string, unknown>;
+    const expiry = this.readStringDeep(record, [
+      'expires_at',
+      'expiresAt',
+      'token_expires_at',
+      'tokenExpiresAt',
+      'expiration',
+    ]);
+    if (expiry) {
+      const timestamp = Date.parse(expiry);
+      return Number.isNaN(timestamp) ? null : new Date(timestamp).toISOString();
+    }
+    const expiresIn = this.readNumberDeep(record, ['expires_in', 'expiresIn']);
+    if (expiresIn !== null && expiresIn > 0) {
+      return new Date(Date.now() + expiresIn * 1000).toISOString();
+    }
+    return null;
+  }
+
+  private readStringDeep(value: unknown, keys: string[]): string | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    for (const key of keys) {
+      if (typeof record[key] === 'string' && record[key].trim()) {
+        return record[key];
+      }
+    }
+    for (const nestedKey of ['data', 'user', 'auth']) {
+      const nested = this.readStringDeep(record[nestedKey], keys);
+      if (nested) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  private readNumberDeep(value: unknown, keys: string[]): number | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    for (const key of keys) {
+      const entry = record[key];
+      if (typeof entry === 'number' && Number.isFinite(entry)) {
+        return entry;
+      }
+      if (typeof entry === 'string') {
+        const parsed = Number.parseInt(entry, 10);
+        if (Number.isFinite(parsed)) {
+          return parsed;
+        }
+      }
+    }
+    for (const nestedKey of ['data', 'user', 'auth']) {
+      const nested = this.readNumberDeep(record[nestedKey], keys);
+      if (nested !== null) {
+        return nested;
+      }
+    }
+    return null;
+  }
+
+  private defaultGuestTokenExpiry(): string {
+    return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   }
 
   private async postJson<T>(

@@ -8,6 +8,7 @@ import type { ToolInputTrace } from '../core/trace';
 import type { TurnDecision } from '../core/turn-decision';
 
 import type { StructuredMessage } from './structured-message';
+import type { UserEventLookupResult } from './provider-gateway';
 import type { ProviderFitCriteria } from './provider-fit';
 import type {
   CloseAction,
@@ -69,6 +70,7 @@ export type ComposeReplyRequest = {
   promptBundleId: string;
   promptFilePaths: string[];
   toolUsage: ToolUsage;
+  invitedEventLookupResult?: UserEventLookupResult | null;
 };
 
 export type ComposeReplyResult = {

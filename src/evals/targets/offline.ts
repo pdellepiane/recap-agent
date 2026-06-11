@@ -333,6 +333,42 @@ class FixtureProviderGateway implements ProviderGateway {
     };
   }
 
+  async requestGuestLoginCode(): Promise<{ status: 'sent' }> {
+    return { status: 'sent' };
+  }
+
+  async verifyGuestLoginCode(): Promise<{
+    status: 'authenticated';
+    token: string;
+    tokenExpiresAt: string;
+  }> {
+    return {
+      status: 'authenticated',
+      token: 'offline-token',
+      tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+  }
+
+  async lookupAuthenticatedGuest(): Promise<UserEventLookupResult | null> {
+    return {
+      lookup: { email: null, phone: '' },
+      user: {
+        id: null,
+        fullName: null,
+        email: null,
+        fullPhone: null,
+      },
+      events: [],
+      counts: {
+        ownerEvents: 0,
+        guestEvents: 0,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
+    };
+  }
+
   async createQuoteRequest(input: QuoteRequestInput): Promise<Record<string, unknown>> {
     return { ok: true, requestId: ulid(), input };
   }

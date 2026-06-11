@@ -178,6 +178,6 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   consultar_evento_invitado: {
     files: buildNodeFiles('consultar_evento_invitado'),
-    allowedTools: ['lookup_user_event_context'],
+    allowedTools: [],
   },
 };

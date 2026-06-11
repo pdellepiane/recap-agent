@@ -35,12 +35,13 @@ describe('PromptLoader', () => {
     expect(faqBundle.instructions).toContain('reclamo se gestiona directamente con la marca');
     expect(faqBundle.instructions).toContain('chat de la web');
     expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
-    expect(invitedEventBundle.instructions).toContain('lookup_user_event_context');
+    expect(invitedEventBundle.instructions).toContain('Contexto autenticado de evento invitado');
+    expect(invitedEventBundle.instructions).toContain('Ninguna.');
     expect(invitedEventBundle.instructions).toContain('está invitado');
     expect(invitedEventBundle.instructions).toContain('nombre, url, lugar, fecha');
     expect(invitedEventBundle.instructions).toContain('asistencia confirmada');
     expect(invitedEventBundle.instructions).toContain('acompañantes indicado/no indicado');
-    expect(invitedEventBundle.instructions).toContain('ya está podado para ahorrar tokens');
+    expect(invitedEventBundle.instructions).toContain('no pidas código');
     expect(extractorBundle.instructions).toContain('consultar_evento_invitado');
     expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
     expect(extractorBundle.instructions).toContain('diseñar una web externa');

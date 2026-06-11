@@ -44,6 +44,27 @@ export const planLifecycleValues = ['active', 'finished'] as const;
 
 export type PlanLifecycleState = (typeof planLifecycleValues)[number];
 
+export const guestAuthStatusValues = [
+  'none',
+  'code_requested',
+  'authenticated',
+  'email_not_found',
+  'failed',
+] as const;
+
+export type GuestAuthStatus = (typeof guestAuthStatusValues)[number];
+
+export const guestAuthStateSchema = z.object({
+  status: z.enum(guestAuthStatusValues),
+  email: z.string().nullable(),
+  token: z.string().nullable(),
+  token_expires_at: z.string().nullable(),
+  last_error: z.string().nullable(),
+  requested_at: z.string().nullable(),
+});
+
+export type GuestAuthState = z.infer<typeof guestAuthStateSchema>;
+
 export const providerNeedStatusValues = [
   'identified',
   'search_ready',
@@ -79,6 +100,14 @@ export const planSchema = z.object({
   contact_name: z.string().nullable().default(null),
   contact_email: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
+  guest_auth: guestAuthStateSchema.default({
+    status: 'none',
+    email: null,
+    token: null,
+    token_expires_at: null,
+    last_error: null,
+    requested_at: null,
+  }),
   current_node: decisionNodeSchema,
   intent: z.enum(planIntentValues).nullable(),
   intent_confidence: z.number().min(0).max(1).nullable(),
@@ -182,6 +211,14 @@ export function createEmptyPlan(args: {
     contact_name: null,
     contact_email: null,
     contact_phone: null,
+    guest_auth: {
+      status: 'none',
+      email: null,
+      token: null,
+      token_expires_at: null,
+      last_error: null,
+      requested_at: null,
+    },
     current_node: 'contacto_inicial',
     intent: null,
     intent_confidence: null,

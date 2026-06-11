@@ -259,6 +259,49 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
+  async requestGuestLoginCode(email: string): Promise<{ status: 'sent' }> {
+    void email;
+    return { status: 'sent' };
+  }
+
+  async verifyGuestLoginCode(
+    email: string,
+    code: string,
+  ): Promise<{
+    status: 'authenticated';
+    token: string;
+    tokenExpiresAt: string;
+  }> {
+    void email;
+    void code;
+    return {
+      status: 'authenticated',
+      token: 'fake-token',
+      tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+  }
+
+  async lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null> {
+    void token;
+    return {
+      lookup: { email: null, phone: '' },
+      user: {
+        id: null,
+        fullName: null,
+        email: null,
+        fullPhone: null,
+      },
+      events: [],
+      counts: {
+        ownerEvents: 0,
+        guestEvents: 0,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
+    };
+  }
+
   async createQuoteRequest(
     input: QuoteRequestInput,
   ): Promise<Record<string, unknown>> {

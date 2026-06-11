@@ -197,6 +197,173 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result?.user?.fullPhone).toBe('+51 987654321');
   });
 
+  it('requests guest login codes through the auth endpoint', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          status: true,
+          errors: null,
+          error: null,
+          data: {},
+        };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestAuthBaseUrl: 'https://api.example.test/user',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    const result = await gateway.requestGuestLoginCode('maria@example.com');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/user/request-login-code',
+      {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({ email: 'maria@example.com' }),
+      },
+    );
+    expect(result).toEqual({ status: 'sent' });
+  });
+
+  it('maps missing guest emails without treating them as code challenges', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 404,
+      async json() {
+        return {
+          status: false,
+          error: 'email not found',
+          errors: null,
+          data: null,
+        };
+      },
+    }));
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestAuthBaseUrl: 'https://api.example.test/user',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    await expect(gateway.requestGuestLoginCode('missing@example.com')).resolves.toEqual({
+      status: 'email_not_found',
+      error: 'email not found',
+    });
+  });
+
+  it('verifies guest login codes and extracts token metadata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          status: true,
+          error: null,
+          errors: null,
+          data: {
+            access_token: 'token-123',
+            expires_in: 3600,
+          },
+        };
+      },
+    }));
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestAuthBaseUrl: 'https://api.example.test/user',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    const result = await gateway.verifyGuestLoginCode('maria@example.com', '123456');
+
+    expect(result.status).toBe('authenticated');
+    if (result.status === 'authenticated') {
+      expect(result.token).toBe('token-123');
+      expect(Date.parse(result.tokenExpiresAt)).toBeGreaterThan(Date.now());
+    }
+  });
+
+  it('maps invalid guest login codes', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: false,
+      status: 422,
+      async json() {
+        return {
+          status: false,
+          error: 'invalid code',
+          errors: null,
+          data: null,
+        };
+      },
+    }));
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestAuthBaseUrl: 'https://api.example.test/user',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    await expect(gateway.verifyGuestLoginCode('maria@example.com', '000000')).resolves.toEqual({
+      status: 'invalid_code',
+      error: 'invalid code',
+    });
+  });
+
+  it('looks up authenticated guest context with a bearer token', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      async json() {
+        return {
+          status: true,
+          errors: null,
+          error: null,
+          data: {
+            user: { id: 42, email: 'maria@example.com' },
+            events: [],
+            recent_orders: [],
+            guest_in_events: [],
+            host_in_events: [],
+            celebrated_in: [],
+            subscriptions: [],
+            summary: {},
+          },
+        };
+      },
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestServiceBaseUrl: 'https://api.example.test/guest-service',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    const result = await gateway.lookupAuthenticatedGuest('token-123');
+
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/guest-service/user-lookup',
+      {
+        headers: {
+          authorization: 'Bearer token-123',
+        },
+      },
+    );
+    expect(result?.user?.email).toBe('maria@example.com');
+  });
+
   it('keeps category matches when provider location granularity is broader than the plan city', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

@@ -159,6 +159,26 @@ export type UserEventLookupResult = {
   };
 };
 
+export type GuestLoginCodeRequestResult =
+  | {
+      status: 'sent';
+    }
+  | {
+      status: 'email_not_found' | 'failed';
+      error: string;
+    };
+
+export type GuestLoginCodeVerificationResult =
+  | {
+      status: 'authenticated';
+      token: string;
+      tokenExpiresAt: string;
+    }
+  | {
+      status: 'invalid_code' | 'failed';
+      error: string;
+    };
+
 export interface ProviderGateway {
   listCategories(): Promise<MarketplaceCategory[]>;
   getCategoryBySlug(slug: string): Promise<MarketplaceCategory | null>;
@@ -187,6 +207,12 @@ export interface ProviderGateway {
   }): Promise<ProviderSummary[]>;
   listUserEventsVendorContext(userId: number): Promise<Record<string, unknown>[]>;
   lookupUserEventContext(input: UserEventLookupInput): Promise<UserEventLookupResult | null>;
+  requestGuestLoginCode(email: string): Promise<GuestLoginCodeRequestResult>;
+  verifyGuestLoginCode(
+    email: string,
+    code: string,
+  ): Promise<GuestLoginCodeVerificationResult>;
+  lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null>;
   createQuoteRequest(input: QuoteRequestInput): Promise<Record<string, unknown>>;
   addVendorToEventFavorites(input: FavoriteRequestInput): Promise<Record<string, unknown>>;
   createProviderReview(input: CreateProviderReviewInput): Promise<Record<string, unknown>>;

@@ -485,6 +485,79 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
+  async requestGuestLoginCode(
+    email: string,
+  ): Promise<Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>>> {
+    void email;
+    return { status: 'sent' };
+  }
+
+  async verifyGuestLoginCode(
+    email: string,
+    code: string,
+  ): Promise<Awaited<ReturnType<ProviderGateway['verifyGuestLoginCode']>>> {
+    void email;
+    void code;
+    return {
+      status: 'authenticated',
+      token: 'fake-token',
+      tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    };
+  }
+
+  async lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null> {
+    void token;
+    return {
+      lookup: { email: null, phone: '' },
+      user: {
+        id: 42,
+        fullName: 'María García',
+        email: null,
+        fullPhone: null,
+      },
+      events: [
+        {
+          relation: 'guest',
+          eventId: 205,
+          slug: 'cumple-ana-2026',
+          url: 'https://sinenvolturas.com/cumple-ana-2026',
+          name: 'Cumpleaños de Ana',
+          place: 'Perú',
+          type: null,
+          datetime: '2026-06-15T19:00:00Z',
+          stage: null,
+          isVisible: null,
+          isPublic: null,
+          currency: null,
+          country: null,
+          guestStatus: {
+            hasResponded: true,
+            willAttend: true,
+            hasCouple: true,
+            responseDate: '2026-04-10T09:00:00Z',
+          },
+          hostType: null,
+          hostPermission: null,
+          hostStatus: null,
+          celebratedType: null,
+          amountCollected: null,
+          amountTransferred: null,
+          transactionsCount: null,
+          invitedGuestCount: null,
+          confirmedGuestCount: null,
+          orders: [],
+        },
+      ],
+      counts: {
+        ownerEvents: 0,
+        guestEvents: 1,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
+    };
+  }
+
   async createQuoteRequest(
     input: QuoteRequestInput,
   ): Promise<Record<string, unknown>> {
@@ -501,6 +574,101 @@ class FakeGateway implements ProviderGateway {
     input: CreateProviderReviewInput,
   ): Promise<Record<string, unknown>> {
     return { ok: true, input };
+  }
+}
+
+class AuthScenarioGateway extends FakeGateway {
+  public requestCodeCalls = 0;
+  public verifyCodeCalls = 0;
+  public authenticatedLookupCalls = 0;
+  public lastRequestedEmail: string | null = null;
+  public lastVerifiedCode: string | null = null;
+  public requestCodeResult: Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>> = {
+    status: 'sent',
+  };
+  public verificationResult: Awaited<ReturnType<ProviderGateway['verifyGuestLoginCode']>> = {
+    status: 'authenticated',
+    token: 'auth-token',
+    tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+  };
+  public authenticatedLookupResult: UserEventLookupResult | null = {
+    lookup: { email: null, phone: '' },
+    user: {
+      id: 42,
+      fullName: 'María García',
+      email: 'maria@example.com',
+      fullPhone: null,
+    },
+    events: [
+      {
+        relation: 'guest',
+        eventId: 205,
+        slug: 'cumple-ana-2026',
+        url: 'https://sinenvolturas.com/cumple-ana-2026',
+        name: 'Cumpleaños de Ana',
+        place: 'Perú',
+        type: null,
+        datetime: '2026-06-15T19:00:00Z',
+        stage: null,
+        isVisible: null,
+        isPublic: null,
+        currency: null,
+        country: null,
+        guestStatus: {
+          hasResponded: true,
+          willAttend: true,
+          hasCouple: true,
+          responseDate: '2026-04-10T09:00:00Z',
+        },
+        hostType: null,
+        hostPermission: null,
+        hostStatus: null,
+        celebratedType: null,
+        amountCollected: null,
+        amountTransferred: null,
+        transactionsCount: null,
+        invitedGuestCount: null,
+        confirmedGuestCount: null,
+        orders: [],
+      },
+    ],
+    counts: {
+      ownerEvents: 0,
+      guestEvents: 1,
+      hostEvents: 0,
+      celebratedEvents: 0,
+      recentOrders: 0,
+    },
+  };
+  public authenticatedLookupError: string | null = null;
+
+  override async requestGuestLoginCode(
+    email: string,
+  ): Promise<Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>>> {
+    this.requestCodeCalls += 1;
+    this.lastRequestedEmail = email;
+    return this.requestCodeResult;
+  }
+
+  override async verifyGuestLoginCode(
+    email: string,
+    code: string,
+  ): Promise<Awaited<ReturnType<ProviderGateway['verifyGuestLoginCode']>>> {
+    void email;
+    this.verifyCodeCalls += 1;
+    this.lastVerifiedCode = code;
+    return this.verificationResult;
+  }
+
+  override async lookupAuthenticatedGuest(
+    token: string,
+  ): Promise<UserEventLookupResult | null> {
+    void token;
+    this.authenticatedLookupCalls += 1;
+    if (this.authenticatedLookupError) {
+      throw new Error(this.authenticatedLookupError);
+    }
+    return this.authenticatedLookupResult;
   }
 }
 
@@ -642,6 +810,277 @@ describe('AgentService', () => {
         'consultar_evento_invitado',
       );
     }
+  });
+
+  it('auto-rejects unknown guest auth emails without asking for a code', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    gateway.requestCodeResult = {
+      status: 'email_not_found',
+      error: 'email not found',
+    };
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'missing@example.com',
+      text: '¿A qué hora es mi evento?',
+      messageId: 'msg-auth-missing',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('consultar_evento_invitado');
+    expect(response.plan.guest_auth.status).toBe('email_not_found');
+    expect(gateway.requestCodeCalls).toBe(1);
+    expect(gateway.verifyCodeCalls).toBe(0);
+    expect(gateway.authenticatedLookupCalls).toBe(0);
+    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
+    expect(response.trace.tools_called).toContain('request_guest_login_code');
+    expect(response.trace.tools_called).not.toContain('verify_guest_login_code');
+  });
+
+  it('requests one login code for known guest auth emails', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: '¿A qué hora es mi evento?',
+      messageId: 'msg-auth-request',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.guest_auth.status).toBe('code_requested');
+    expect(response.plan.guest_auth.email).toBe('maria@example.com');
+    expect(response.plan.guest_auth.token).toBeNull();
+    expect(gateway.requestCodeCalls).toBe(1);
+    expect(gateway.verifyCodeCalls).toBe(0);
+    expect(gateway.authenticatedLookupCalls).toBe(0);
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain('código');
+  });
+
+  it('keeps the code challenge active after a wrong guest auth code', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    gateway.verificationResult = {
+      status: 'invalid_code',
+      error: 'invalid code',
+    };
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-wrong-code',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'maria@example.com',
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: 'maria@example.com',
+          guest_auth: {
+            status: 'code_requested',
+            email: 'maria@example.com',
+            token: null,
+            token_expires_at: null,
+            last_error: null,
+            requested_at: '2026-06-11T00:00:00.000Z',
+          },
+        },
+      ),
+      reason: 'seed-code-requested',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: '000000',
+      messageId: 'msg-auth-wrong-code',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.guest_auth.status).toBe('code_requested');
+    expect(response.plan.guest_auth.last_error).toBe('invalid code');
+    expect(gateway.verifyCodeCalls).toBe(1);
+    expect(gateway.lastVerifiedCode).toBe('000000');
+    expect(gateway.authenticatedLookupCalls).toBe(0);
+    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
+  });
+
+  it('persists the token and injects event context after a correct guest auth code', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-correct-code',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'maria@example.com',
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: 'maria@example.com',
+          guest_auth: {
+            status: 'code_requested',
+            email: 'maria@example.com',
+            token: null,
+            token_expires_at: null,
+            last_error: null,
+            requested_at: '2026-06-11T00:00:00.000Z',
+          },
+        },
+      ),
+      reason: 'seed-code-requested',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: '123456',
+      messageId: 'msg-auth-correct-code',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.guest_auth.status).toBe('authenticated');
+    expect(response.plan.guest_auth.token).toBe('auth-token');
+    expect(gateway.verifyCodeCalls).toBe(1);
+    expect(gateway.authenticatedLookupCalls).toBe(1);
+    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult?.events[0]?.name).toBe(
+      'Cumpleaños de Ana',
+    );
+  });
+
+  it('reuses a valid guest auth token on follow-up without sending another code', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-authenticated',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'maria@example.com',
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: 'maria@example.com',
+          guest_auth: {
+            status: 'authenticated',
+            email: 'maria@example.com',
+            token: 'auth-token',
+            token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            last_error: null,
+            requested_at: '2026-06-11T00:00:00.000Z',
+          },
+        },
+      ),
+      reason: 'seed-authenticated',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: '¿y la hora?',
+      messageId: 'msg-auth-follow-up',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.guest_auth.status).toBe('authenticated');
+    expect(gateway.requestCodeCalls).toBe(0);
+    expect(gateway.verifyCodeCalls).toBe(0);
+    expect(gateway.authenticatedLookupCalls).toBe(1);
+    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult?.events).toHaveLength(1);
+  });
+
+  it('clears a failing guest auth token and requests re-authentication', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    gateway.authenticatedLookupError = 'Guest service API request failed with 401';
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-expired-token',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'maria@example.com',
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: 'maria@example.com',
+          guest_auth: {
+            status: 'authenticated',
+            email: 'maria@example.com',
+            token: 'expired-token',
+            token_expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
+            last_error: null,
+            requested_at: '2026-06-11T00:00:00.000Z',
+          },
+        },
+      ),
+      reason: 'seed-expired-token',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: '¿y la hora?',
+      messageId: 'msg-auth-failure',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(gateway.authenticatedLookupCalls).toBe(1);
+    expect(gateway.requestCodeCalls).toBe(1);
+    expect(response.plan.guest_auth.status).toBe('code_requested');
+    expect(response.plan.guest_auth.token).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
   });
 
   it('keeps invited event follow-ups in consultar_evento_invitado even when extraction says provider detail', async () => {

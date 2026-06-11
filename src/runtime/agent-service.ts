@@ -64,7 +64,7 @@ import type {
 } from './extraction-schemas';
 import { parseInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
-import type { ProviderGateway } from './provider-gateway';
+import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
 import type { PlanStore } from '../storage/plan-store';
 
@@ -202,20 +202,38 @@ export class AgentService {
           : finishedExtraction.intent === 'consultar_evento_invitado'
             ? 'consultar_evento_invitado'
             : 'necesidad_cubierta';
+        let planForReply = existingPlan;
+        let finishedInvitedEventLookupResult: UserEventLookupResult | null = null;
+        let finishedErrorMessage: string | null = null;
+        if (respondNode === 'consultar_evento_invitado') {
+          const authResult = await this.resolveInvitedEventAuthentication({
+            plan: mergePlan(existingPlan, { current_node: respondNode }),
+            userMessage: inbound.text,
+            toolUsage,
+          });
+          planForReply = authResult.plan;
+          finishedInvitedEventLookupResult = authResult.lookupResult;
+          finishedErrorMessage = authResult.message;
+          await this.dependencies.planStore.save({
+            plan: planForReply,
+            reason: respondNode,
+          });
+        }
         const bundle = await this.dependencies.promptLoader.loadNodeBundle(respondNode);
         const reply = await this.dependencies.runtime.composeReply({
           currentNode: respondNode,
           previousNode: existingPlan.current_node,
           userMessage: inbound.text,
-          plan: existingPlan,
+          plan: planForReply,
           extraction: finishedExtraction,
           missingFields: finishedSufficiency.missingFields,
           searchReady: finishedSufficiency.searchReady,
           providerResults: finishedProviders,
-          errorMessage: null,
+          errorMessage: finishedErrorMessage,
           promptBundleId: bundle.id,
           promptFilePaths: bundle.filePaths,
           toolUsage,
+          invitedEventLookupResult: finishedInvitedEventLookupResult,
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -225,10 +243,10 @@ export class AgentService {
           plan: existingPlan,
           outbound: {
             text: this.renderReply(reply, finishedProviders, inbound.channel),
-            conversationId: existingPlan.conversation_id,
+            conversationId: planForReply.conversation_id,
           },
           trace: this.buildTrace({
-            plan: existingPlan,
+            plan: planForReply,
             previousNode: existingPlan.current_node,
             currentNode: respondNode,
             nodePath: [existingPlan.current_node, 'existe_plan_guardado', respondNode],
@@ -240,12 +258,12 @@ export class AgentService {
             toolUsage,
             providerResults: finishedProviders,
             recommendationFunnel: this.resolveRecommendationFunnel(null, finishedProviders),
-            planPersisted: false,
-            planPersistReason: null,
+            planPersisted: respondNode === 'consultar_evento_invitado',
+            planPersistReason: respondNode === 'consultar_evento_invitado' ? respondNode : null,
             timingMs,
             tokenUsage,
             searchStrategy: 'none',
-            operationalNote: null,
+            operationalNote: finishedErrorMessage,
           }),
         };
       }
@@ -368,6 +386,7 @@ export class AgentService {
     let searchStrategy: SearchStrategyTrace = 'none';
     let planPersistReason: string | null = null;
     let planPersisted = false;
+    let invitedEventLookupResult: UserEventLookupResult | null = null;
     const persistPlan = async (plan: PlanSnapshot, reason: string) => {
       const savePlanStartedAt = Date.now();
       await this.dependencies.planStore.save({
@@ -622,10 +641,7 @@ export class AgentService {
       };
     }
 
-    if (
-      extraction.intent === 'consultar_faq' ||
-      extraction.intent === 'consultar_evento_invitado'
-    ) {
+    if (extraction.intent === 'consultar_faq') {
       currentNode = extraction.intent;
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
@@ -651,8 +667,85 @@ export class AgentService {
         providerResults,
         errorMessage,
         promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage,
+        });
+      tokenUsage.reply = reply.tokenUsage ?? null;
+      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      const recommendationFunnel = this.resolveRecommendationFunnel(
+        reply.recommendationFunnel ?? null,
+        providerResults,
+      );
+      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+
+      await persistPlan(planToSave, planPersistReason ?? currentNode);
+      timingMs.total = Date.now() - handleTurnStartedAt;
+
+      return {
+        plan: planToSave,
+        outbound: {
+          text: this.renderReply(reply, providerResults, inbound.channel),
+          conversationId: planToSave.conversation_id,
+        },
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode,
+          currentNode,
+          nodePath,
+          extraction,
+          missingFields: sufficiency.missingFields,
+          searchReady: sufficiency.searchReady,
+          promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage,
+          providerResults,
+          recommendationFunnel: recommendationFunnel,
+          planPersisted: true,
+          planPersistReason: planPersistReason,
+          timingMs,
+          tokenUsage,
+          searchStrategy,
+          operationalNote: errorMessage,
+        }),
+      };
+    }
+
+    if (extraction.intent === 'consultar_evento_invitado') {
+      currentNode = 'consultar_evento_invitado';
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+
+      const authResult = await this.resolveInvitedEventAuthentication({
+        plan: mergePlan(mergedPlan, { current_node: currentNode }),
+        userMessage: inbound.text,
+        toolUsage,
+      });
+      const planToSave = authResult.plan;
+      errorMessage = authResult.message;
+      invitedEventLookupResult = authResult.lookupResult;
+      await persistPlan(planToSave, currentNode);
+      planPersisted = true;
+      planPersistReason = currentNode;
+
+      const promptBundleStartedAt = Date.now();
+      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+      const composeReplyStartedAt = Date.now();
+      const reply = await this.dependencies.runtime.composeReply({
+        currentNode,
+        previousNode,
+        userMessage: inbound.text,
+        plan: planToSave,
+        extraction,
+        missingFields: sufficiency.missingFields,
+        searchReady: sufficiency.searchReady,
+        providerResults,
+        errorMessage,
+        promptBundleId: bundle.id,
         promptFilePaths: bundle.filePaths,
         toolUsage,
+        invitedEventLookupResult,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -992,6 +1085,7 @@ export class AgentService {
       promptFilePaths: promptBundle.filePaths,
       toolUsage,
       turnDecision,
+      invitedEventLookupResult,
     });
     tokenUsage.reply = reply.tokenUsage ?? null;
     tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
@@ -1057,6 +1151,294 @@ export class AgentService {
       cached_input_tokens:
         (first?.cached_input_tokens ?? 0) + (second?.cached_input_tokens ?? 0),
     };
+  }
+
+  private async resolveInvitedEventAuthentication(args: {
+    plan: PlanSnapshot;
+    userMessage: string;
+    toolUsage: ToolUsage;
+  }): Promise<{
+    plan: PlanSnapshot;
+    message: string;
+    lookupResult: UserEventLookupResult | null;
+  }> {
+    const email = this.resolveGuestAuthEmail(args.plan, args.userMessage);
+    if (!email) {
+      return {
+        plan: this.resetGuestAuth(args.plan, null),
+        message: 'Pide el correo con el que está registrado o invitado en Sin Envolturas para poder consultar sus eventos.',
+        lookupResult: null,
+      };
+    }
+
+    if (!this.isValidEmail(email)) {
+      return {
+        plan: this.resetGuestAuth(args.plan, null),
+        message: 'El correo no parece válido. Pide que lo envíe completo para consultar sus eventos.',
+        lookupResult: null,
+      };
+    }
+
+    const planForEmail =
+      args.plan.guest_auth.email === email
+        ? args.plan
+        : this.resetGuestAuth(args.plan, email);
+
+    if (this.hasValidGuestAuthToken(planForEmail)) {
+      const lookup = await this.lookupAuthenticatedGuestWithTrace(
+        planForEmail.guest_auth.token ?? '',
+        args.toolUsage,
+      );
+      if (lookup.ok) {
+        return {
+          plan: planForEmail,
+          message: 'Usuario autenticado. Responde solo con el contexto autenticado de evento invitado.',
+          lookupResult: lookup.result,
+        };
+      }
+      const resetPlan = this.resetGuestAuth(planForEmail, email, lookup.error);
+      return await this.requestGuestCode(resetPlan, email, args.toolUsage);
+    }
+
+    const code = this.extractGuestLoginCode(args.userMessage);
+    if (planForEmail.guest_auth.status === 'code_requested' && code) {
+      return await this.verifyGuestCode(planForEmail, email, code, args.toolUsage);
+    }
+
+    if (planForEmail.guest_auth.status === 'code_requested') {
+      return {
+        plan: planForEmail,
+        message: 'Ya se envió un código a ese correo. Pide el código para continuar.',
+        lookupResult: null,
+      };
+    }
+
+    return await this.requestGuestCode(planForEmail, email, args.toolUsage);
+  }
+
+  private resolveGuestAuthEmail(plan: PlanSnapshot, userMessage: string): string | null {
+    return (
+      (plan.contact_email && this.isValidEmail(plan.contact_email) ? plan.contact_email : null) ??
+      this.extractEmailFromText(userMessage) ??
+      (this.isValidEmail(plan.external_user_id) ? plan.external_user_id : null) ??
+      plan.contact_email
+    );
+  }
+
+  private extractEmailFromText(text: string): string | null {
+    return text.match(/[^\s@]+@[^\s@]+\.[^\s@]{2,}/iu)?.[0] ?? null;
+  }
+
+  private extractGuestLoginCode(text: string): string | null {
+    const matches = text.match(/\b[A-Za-z0-9]{4,8}\b/gu) ?? [];
+    return matches.find((match) => /\d/u.test(match)) ?? null;
+  }
+
+  private hasValidGuestAuthToken(plan: PlanSnapshot): boolean {
+    if (plan.guest_auth.status !== 'authenticated' || !plan.guest_auth.token) {
+      return false;
+    }
+    if (!plan.guest_auth.token_expires_at) {
+      return true;
+    }
+    return Date.parse(plan.guest_auth.token_expires_at) > Date.now();
+  }
+
+  private resetGuestAuth(
+    plan: PlanSnapshot,
+    email: string | null,
+    lastError: string | null = null,
+  ): PlanSnapshot {
+    return mergePlan(plan, {
+      guest_auth: {
+        status: 'none',
+        email,
+        token: null,
+        token_expires_at: null,
+        last_error: lastError,
+        requested_at: null,
+      },
+    });
+  }
+
+  private async requestGuestCode(
+    plan: PlanSnapshot,
+    email: string,
+    toolUsage: ToolUsage,
+  ): Promise<{
+    plan: PlanSnapshot;
+    message: string;
+    lookupResult: UserEventLookupResult | null;
+  }> {
+    this.recordDeterministicToolInput(toolUsage, 'request_guest_login_code', { email });
+    const result = await this.dependencies.providerGateway.requestGuestLoginCode(email);
+    this.recordDeterministicToolOutput(toolUsage, 'request_guest_login_code', result);
+
+    if (result.status === 'sent') {
+      return {
+        plan: mergePlan(plan, {
+          contact_email: email,
+          guest_auth: {
+            status: 'code_requested',
+            email,
+            token: null,
+            token_expires_at: null,
+            last_error: null,
+            requested_at: new Date().toISOString(),
+          },
+        }),
+        message: 'Se envió un código al correo. Pide el código para continuar.',
+        lookupResult: null,
+      };
+    }
+
+    if (result.status === 'email_not_found') {
+      return {
+        plan: mergePlan(plan, {
+          contact_email: email,
+          guest_auth: {
+            status: 'email_not_found',
+            email,
+            token: null,
+            token_expires_at: null,
+            last_error: result.error,
+            requested_at: null,
+          },
+        }),
+        message: 'No se encontró ese correo en Sin Envolturas. No pidas código; pide revisar el correo usado para la invitación o registro.',
+        lookupResult: null,
+      };
+    }
+
+    return {
+      plan: mergePlan(plan, {
+        contact_email: email,
+        guest_auth: {
+          status: 'failed',
+          email,
+          token: null,
+          token_expires_at: null,
+          last_error: result.error,
+          requested_at: null,
+        },
+      }),
+      message: 'No se pudo enviar el código por ahora. Pide intentar nuevamente en unos minutos.',
+      lookupResult: null,
+    };
+  }
+
+  private async verifyGuestCode(
+    plan: PlanSnapshot,
+    email: string,
+    code: string,
+    toolUsage: ToolUsage,
+  ): Promise<{
+    plan: PlanSnapshot;
+    message: string;
+    lookupResult: UserEventLookupResult | null;
+  }> {
+    this.recordDeterministicToolInput(toolUsage, 'verify_guest_login_code', {
+      email,
+      code: '[redacted]',
+    });
+    const result = await this.dependencies.providerGateway.verifyGuestLoginCode(email, code);
+    this.recordDeterministicToolOutput(toolUsage, 'verify_guest_login_code', {
+      ...result,
+      token: result.status === 'authenticated' ? '[redacted]' : undefined,
+    });
+
+    if (result.status !== 'authenticated') {
+      return {
+        plan: mergePlan(plan, {
+          guest_auth: {
+            ...plan.guest_auth,
+            status: 'code_requested',
+            token: null,
+            token_expires_at: null,
+            last_error: result.error,
+          },
+        }),
+        message: 'El código no pudo validarse. Pide revisar el código o solicitar otro correo si corresponde.',
+        lookupResult: null,
+      };
+    }
+
+    const authenticatedPlan = mergePlan(plan, {
+      contact_email: email,
+      guest_auth: {
+        status: 'authenticated',
+        email,
+        token: result.token,
+        token_expires_at: result.tokenExpiresAt,
+        last_error: null,
+        requested_at: plan.guest_auth.requested_at,
+      },
+    });
+    const lookup = await this.lookupAuthenticatedGuestWithTrace(result.token, toolUsage);
+    if (lookup.ok) {
+      return {
+        plan: authenticatedPlan,
+        message: 'Usuario autenticado. Responde solo con el contexto autenticado de evento invitado.',
+        lookupResult: lookup.result,
+      };
+    }
+
+    return {
+      plan: this.resetGuestAuth(authenticatedPlan, email, lookup.error),
+      message: 'La sesión no pudo consultar eventos. Pide volver a validar el correo para continuar.',
+      lookupResult: null,
+    };
+  }
+
+  private async lookupAuthenticatedGuestWithTrace(
+    token: string,
+    toolUsage: ToolUsage,
+  ): Promise<
+    | { ok: true; result: UserEventLookupResult | null }
+    | { ok: false; error: string }
+  > {
+    this.recordDeterministicToolInput(toolUsage, 'lookup_authenticated_guest', {
+      authorization: 'Bearer [redacted]',
+    });
+    try {
+      const result = await this.dependencies.providerGateway.lookupAuthenticatedGuest(token);
+      this.recordDeterministicToolOutput(toolUsage, 'lookup_authenticated_guest', result);
+      return { ok: true, result };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.recordDeterministicToolOutput(toolUsage, 'lookup_authenticated_guest', {
+        error: message,
+      });
+      return { ok: false, error: message };
+    }
+  }
+
+  private recordDeterministicToolInput(
+    toolUsage: ToolUsage,
+    tool: string,
+    input: Record<string, unknown>,
+  ): void {
+    if (!toolUsage.considered.includes(tool)) {
+      toolUsage.considered.push(tool);
+    }
+    toolUsage.inputs.push({
+      tool,
+      input: JSON.stringify(input, null, 2),
+    });
+  }
+
+  private recordDeterministicToolOutput(
+    toolUsage: ToolUsage,
+    tool: string,
+    output: unknown,
+  ): void {
+    if (!toolUsage.called.includes(tool)) {
+      toolUsage.called.push(tool);
+    }
+    toolUsage.outputs.push({
+      tool,
+      output: JSON.stringify(output, null, 2),
+    });
   }
 
   private resolveRecommendationFunnel(

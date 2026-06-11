@@ -561,7 +561,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.toolUsage.considered.length > 0
         ? request.toolUsage.considered.join(', ')
         : 'ninguna';
-    const stripProviders = request.currentNode === 'consultar_faq';
+    const stripProviders =
+      request.currentNode === 'consultar_faq' ||
+      request.currentNode === 'consultar_evento_invitado';
     const includeAllGroupedProviders =
       request.currentNode === 'elicitacion_necesidades' &&
       this.hasShortlistedProviderNeeds(request.plan);
@@ -594,6 +596,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         null,
         2,
       )}`,
+      request.currentNode === 'consultar_evento_invitado'
+        ? `Contexto autenticado de evento invitado: ${JSON.stringify(request.invitedEventLookupResult ?? null, null, 2)}`
+        : null,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       `Foco operativo del turno: ${focusNeedCategory ?? 'ninguno todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
@@ -1599,6 +1604,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       contact_name: plan.contact_name,
       contact_email: plan.contact_email,
       contact_phone: plan.contact_phone,
+      guest_auth: {
+        status: plan.guest_auth.status,
+        email: plan.guest_auth.email,
+        token_present: Boolean(plan.guest_auth.token),
+        token_expires_at: plan.guest_auth.token_expires_at,
+        last_error: plan.guest_auth.last_error,
+        requested_at: plan.guest_auth.requested_at,
+      },
       current_node: plan.current_node,
       intent: plan.intent,
       event_type: plan.event_type,
