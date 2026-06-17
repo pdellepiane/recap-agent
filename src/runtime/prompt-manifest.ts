@@ -35,7 +35,6 @@ export const toolNames = [
   'get_event_vendor_context',
   'list_event_favorite_providers',
   'list_user_events_vendor_context',
-  'lookup_user_event_context',
   'create_quote_request',
   'add_vendor_to_event_favorites',
   'create_provider_review',

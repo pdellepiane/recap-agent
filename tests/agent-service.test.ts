@@ -505,14 +505,17 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null> {
-    void token;
+  async lookupAuthenticatedGuest(args: {
+    token: string;
+    email: string;
+  }): Promise<UserEventLookupResult | null> {
+    void args.token;
     return {
-      lookup: { email: null, phone: '' },
+      lookup: { email: args.email, phone: null },
       user: {
         id: 42,
         fullName: 'María García',
-        email: null,
+        email: args.email,
         fullPhone: null,
       },
       events: [
@@ -582,6 +585,7 @@ class AuthScenarioGateway extends FakeGateway {
   public verifyCodeCalls = 0;
   public authenticatedLookupCalls = 0;
   public lastRequestedEmail: string | null = null;
+  public lastLookupEmail: string | null = null;
   public lastVerifiedCode: string | null = null;
   public requestCodeResult: Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>> = {
     status: 'sent',
@@ -661,14 +665,29 @@ class AuthScenarioGateway extends FakeGateway {
   }
 
   override async lookupAuthenticatedGuest(
-    token: string,
+    args: {
+      token: string;
+      email: string;
+    },
   ): Promise<UserEventLookupResult | null> {
-    void token;
+    void args.token;
+    this.lastLookupEmail = args.email;
     this.authenticatedLookupCalls += 1;
     if (this.authenticatedLookupError) {
       throw new Error(this.authenticatedLookupError);
     }
-    return this.authenticatedLookupResult;
+    return this.authenticatedLookupResult
+      ? {
+          ...this.authenticatedLookupResult,
+          lookup: { email: args.email, phone: null },
+          user: this.authenticatedLookupResult.user
+            ? {
+                ...this.authenticatedLookupResult.user,
+                email: args.email,
+              }
+            : null,
+        }
+      : null;
   }
 }
 
@@ -975,8 +994,12 @@ describe('AgentService', () => {
 
     expect(response.plan.guest_auth.status).toBe('authenticated');
     expect(response.plan.guest_auth.token).toBe('auth-token');
+    expect(Date.parse(response.plan.guest_auth.token_expires_at ?? '')).toBeGreaterThan(
+      Date.now() + 23 * 60 * 60 * 1000,
+    );
     expect(gateway.verifyCodeCalls).toBe(1);
     expect(gateway.authenticatedLookupCalls).toBe(1);
+    expect(gateway.lastLookupEmail).toBe('maria@example.com');
     expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult?.events[0]?.name).toBe(
       'Cumpleaños de Ana',
     );
@@ -1029,10 +1052,61 @@ describe('AgentService', () => {
     expect(gateway.requestCodeCalls).toBe(0);
     expect(gateway.verifyCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(1);
+    expect(gateway.lastLookupEmail).toBe('maria@example.com');
     expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult?.events).toHaveLength(1);
   });
 
-  it('clears a failing guest auth token and requests re-authentication', async () => {
+  it('requests a new code after the 24 hour guest auth session expires', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-expired-auth-window',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'maria@example.com',
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: 'maria@example.com',
+          guest_auth: {
+            status: 'authenticated',
+            email: 'maria@example.com',
+            token: 'old-token',
+            token_expires_at: new Date(Date.now() - 1000).toISOString(),
+            last_error: null,
+            requested_at: '2026-06-11T00:00:00.000Z',
+          },
+        },
+      ),
+      reason: 'seed-expired-auth-window',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: '¿y la hora?',
+      messageId: 'msg-auth-24h-expired',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(gateway.requestCodeCalls).toBe(1);
+    expect(gateway.verifyCodeCalls).toBe(0);
+    expect(gateway.authenticatedLookupCalls).toBe(0);
+    expect(response.plan.guest_auth.status).toBe('code_requested');
+    expect(response.plan.guest_auth.token).toBeNull();
+  });
+
+  it('clears a failing guest auth token and asks for re-authentication without requesting a code twice', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1077,10 +1151,11 @@ describe('AgentService', () => {
     });
 
     expect(gateway.authenticatedLookupCalls).toBe(1);
-    expect(gateway.requestCodeCalls).toBe(1);
-    expect(response.plan.guest_auth.status).toBe('code_requested');
+    expect(gateway.requestCodeCalls).toBe(0);
+    expect(response.plan.guest_auth.status).toBe('none');
     expect(response.plan.guest_auth.token).toBeNull();
     expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain('validar tu correo nuevamente');
   });
 
   it('keeps invited event follow-ups in consultar_evento_invitado even when extraction says provider detail', async () => {

@@ -138,7 +138,7 @@ describe('WhatsAppMessageRenderer', () => {
         ask_es: '¿Qué tipo de evento quieres planificar?',
         capability_lines_es: [
           'armar un plan con proveedores',
-          'consultar eventos a los que estás invitado',
+          'consultar eventos asociados a tu cuenta',
         ],
         requested_fields_es: [
           'tipo de evento',
@@ -150,7 +150,7 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toBe(
-        '¡Hola! Soy tu asistente.\n\n¿Qué tipo de evento quieres planificar?\n\n- Armar un plan con proveedores.\n- Consultar eventos a los que estás invitado.\n\n- Tipo de evento.\n- Ubicación.\n- Invitados aproximados.',
+        '¡Hola! Soy tu asistente.\n\n¿Qué tipo de evento quieres planificar?\n\n- Armar un plan con proveedores.\n- Consultar eventos asociados a tu cuenta.\n\n- Tipo de evento.\n- Ubicación.\n- Invitados aproximados.',
       );
     });
 

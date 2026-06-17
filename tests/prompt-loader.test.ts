@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { decisionNodes } from '../src/core/decision-nodes';
 import { PromptLoader } from '../src/runtime/prompt-loader';
-import { conversationSharedPromptFiles, extractorPromptFiles } from '../src/runtime/prompt-manifest';
+import { conversationSharedPromptFiles, extractorPromptFiles, nodePromptManifest, toolNames } from '../src/runtime/prompt-manifest';
 
 describe('PromptLoader', () => {
   const promptsDir = path.resolve(process.cwd(), 'prompts');
@@ -35,13 +35,15 @@ describe('PromptLoader', () => {
     expect(faqBundle.instructions).toContain('reclamo se gestiona directamente con la marca');
     expect(faqBundle.instructions).toContain('chat de la web');
     expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
-    expect(invitedEventBundle.instructions).toContain('Contexto autenticado de evento invitado');
+    expect(invitedEventBundle.instructions).toContain('Contexto verificado de evento asociado');
     expect(invitedEventBundle.instructions).toContain('Ninguna.');
-    expect(invitedEventBundle.instructions).toContain('está invitado');
+    expect(invitedEventBundle.instructions).toContain('eventos de Sin Envolturas asociados');
     expect(invitedEventBundle.instructions).toContain('nombre, url, lugar, fecha');
     expect(invitedEventBundle.instructions).toContain('asistencia confirmada');
     expect(invitedEventBundle.instructions).toContain('acompañantes indicado/no indicado');
-    expect(invitedEventBundle.instructions).toContain('no pidas código');
+    expect(invitedEventBundle.instructions).not.toContain('plan.guest_auth');
+    expect(invitedEventBundle.instructions).not.toContain('código');
+    expect(invitedEventBundle.instructions).not.toContain('consultar_evento_invitado');
     expect(extractorBundle.instructions).toContain('consultar_evento_invitado');
     expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
     expect(extractorBundle.instructions).toContain('diseñar una web externa');
@@ -54,5 +56,12 @@ describe('PromptLoader', () => {
     expect(bundle.filePaths).toEqual(extractorPromptFiles);
     expect(bundle.filePaths).not.toContain('shared/output_style.txt');
     expect(bundle.allowedTools).toEqual([]);
+  });
+
+  it('does not expose unauthenticated event lookup as a model tool', () => {
+    expect(toolNames).not.toContain('lookup_user_event_context');
+    for (const config of Object.values(nodePromptManifest)) {
+      expect(config.allowedTools).not.toContain('lookup_user_event_context');
+    }
   });
 });

@@ -2,11 +2,9 @@ Herramientas autorizadas en este nodo:
 - Ninguna.
 
 Reglas de uso:
-- No decidas si se envía código, si un correo existe, si un código es válido o si una sesión está autenticada; esa decisión ya viene en la Nota operativa y en `plan.guest_auth`.
-- Si `plan.guest_auth.status` es `code_requested`, pide el código enviado al correo indicado.
-- Si `plan.guest_auth.status` es `email_not_found`, no pidas código; pide revisar el correo usado para la invitación o registro.
-- Si `plan.guest_auth.status` es `failed`, informa que no se pudo validar o enviar el código y pide reintentar más tarde, salvo que la Nota operativa indique otro paso.
-- Si `plan.guest_auth.status` es `authenticated`, responde solo con `Contexto autenticado de evento invitado`.
+- No decidas sobre verificación de acceso; esa decisión ya viene resuelta por lógica determinística.
+- Si hay Nota operativa, sigue solo ese siguiente paso y no agregues información de evento.
+- Si no hay Nota operativa y sí hay `Contexto verificado de evento asociado`, responde solo con ese contexto.
 - No llames herramientas de proveedores, favoritos, cotizaciones, reseñas ni `finish_plan`.
-- No inventes datos que no estén en el contexto autenticado.
-- El contexto autenticado ya elimina documentos, cuentas bancarias, direcciones y datos sensibles. No pidas ni reveles datos fuera del resumen recibido. Para respuestas generales de evento, prioriza nombre, url, lugar, fecha, asistencia confirmada y acompañantes indicado/no indicado.
+- No inventes datos que no estén en el contexto verificado.
+- El contexto verificado ya elimina documentos, cuentas bancarias, direcciones y datos sensibles. No pidas ni reveles datos fuera del resumen recibido. Para respuestas generales de evento, prioriza nombre, url, lugar, fecha, asistencia confirmada y acompañantes indicado/no indicado.

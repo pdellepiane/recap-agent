@@ -240,7 +240,7 @@ export class AgentService {
         timingMs.compose_reply += Date.now() - extractionStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
-          plan: existingPlan,
+          plan: planForReply,
           outbound: {
             text: this.renderReply(reply, finishedProviders, inbound.channel),
             conversationId: planForReply.conversation_id,
@@ -1159,14 +1159,14 @@ export class AgentService {
     toolUsage: ToolUsage;
   }): Promise<{
     plan: PlanSnapshot;
-    message: string;
+    message: string | null;
     lookupResult: UserEventLookupResult | null;
   }> {
     const email = this.resolveGuestAuthEmail(args.plan, args.userMessage);
     if (!email) {
       return {
         plan: this.resetGuestAuth(args.plan, null),
-        message: 'Pide el correo con el que está registrado o invitado en Sin Envolturas para poder consultar sus eventos.',
+        message: 'Pide el correo con el que está registrado o asociado a eventos en Sin Envolturas para poder consultarlos.',
         lookupResult: null,
       };
     }
@@ -1187,17 +1187,21 @@ export class AgentService {
     if (this.hasValidGuestAuthToken(planForEmail)) {
       const lookup = await this.lookupAuthenticatedGuestWithTrace(
         planForEmail.guest_auth.token ?? '',
+        email,
         args.toolUsage,
       );
       if (lookup.ok) {
         return {
           plan: planForEmail,
-          message: 'Usuario autenticado. Responde solo con el contexto autenticado de evento invitado.',
+          message: null,
           lookupResult: lookup.result,
         };
       }
-      const resetPlan = this.resetGuestAuth(planForEmail, email, lookup.error);
-      return await this.requestGuestCode(resetPlan, email, args.toolUsage);
+      return {
+        plan: this.resetGuestAuth(planForEmail, email, lookup.error),
+        message: 'No pude consultar tus eventos con la sesión guardada. Para proteger tu información, necesito validar tu correo nuevamente.',
+        lookupResult: null,
+      };
     }
 
     const code = this.extractGuestLoginCode(args.userMessage);
@@ -1267,7 +1271,7 @@ export class AgentService {
     toolUsage: ToolUsage,
   ): Promise<{
     plan: PlanSnapshot;
-    message: string;
+    message: string | null;
     lookupResult: UserEventLookupResult | null;
   }> {
     this.recordDeterministicToolInput(toolUsage, 'request_guest_login_code', { email });
@@ -1305,7 +1309,7 @@ export class AgentService {
             requested_at: null,
           },
         }),
-        message: 'No se encontró ese correo en Sin Envolturas. No pidas código; pide revisar el correo usado para la invitación o registro.',
+        message: 'No se encontró ese correo en Sin Envolturas. No pidas código; pide revisar el correo usado para el evento o registro.',
         lookupResult: null,
       };
     }
@@ -1334,7 +1338,7 @@ export class AgentService {
     toolUsage: ToolUsage,
   ): Promise<{
     plan: PlanSnapshot;
-    message: string;
+    message: string | null;
     lookupResult: UserEventLookupResult | null;
   }> {
     this.recordDeterministicToolInput(toolUsage, 'verify_guest_login_code', {
@@ -1374,11 +1378,11 @@ export class AgentService {
         requested_at: plan.guest_auth.requested_at,
       },
     });
-    const lookup = await this.lookupAuthenticatedGuestWithTrace(result.token, toolUsage);
+    const lookup = await this.lookupAuthenticatedGuestWithTrace(result.token, email, toolUsage);
     if (lookup.ok) {
       return {
         plan: authenticatedPlan,
-        message: 'Usuario autenticado. Responde solo con el contexto autenticado de evento invitado.',
+        message: null,
         lookupResult: lookup.result,
       };
     }
@@ -1392,16 +1396,21 @@ export class AgentService {
 
   private async lookupAuthenticatedGuestWithTrace(
     token: string,
+    email: string,
     toolUsage: ToolUsage,
   ): Promise<
     | { ok: true; result: UserEventLookupResult | null }
     | { ok: false; error: string }
   > {
     this.recordDeterministicToolInput(toolUsage, 'lookup_authenticated_guest', {
+      email,
       authorization: 'Bearer [redacted]',
     });
     try {
-      const result = await this.dependencies.providerGateway.lookupAuthenticatedGuest(token);
+      const result = await this.dependencies.providerGateway.lookupAuthenticatedGuest({
+        token,
+        email,
+      });
       this.recordDeterministicToolOutput(toolUsage, 'lookup_authenticated_guest', result);
       return { ok: true, result };
     } catch (error) {

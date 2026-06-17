@@ -10,6 +10,7 @@ export type UploadBatchResult = {
 
 export class OpenAiKnowledgeUploader {
   private readonly client: OpenAI;
+  private static readonly defaultSource = 'recap-agent-knowledge-sync';
 
   constructor(private readonly config: KnowledgeBaseSyncConfig) {
     this.client = new OpenAI({ apiKey: config.openAiApiKey });
@@ -38,7 +39,8 @@ export class OpenAiKnowledgeUploader {
       file_ids: uploadedFiles.map((f) => f.id),
       attributes: {
         batch_id: batchId,
-        source: 'recap-agent-knowledge-sync',
+        source: OpenAiKnowledgeUploader.defaultSource,
+        ...this.config.uploadAttributes,
       },
     });
 
@@ -57,9 +59,18 @@ export class OpenAiKnowledgeUploader {
   async cleanupOldBatches(vectorStoreId: string, currentBatchId: string): Promise<void> {
     const allFiles = await this.client.vectorStores.files.list(vectorStoreId);
 
-    const filesToDelete = allFiles.data.filter(
-      (f) => f.attributes && (f.attributes as Record<string, string>)['batch_id'] !== currentBatchId,
-    );
+    const filesToDelete = allFiles.data.filter((file) => {
+      const attributes = file.attributes as Record<string, unknown> | null;
+      if (!attributes || attributes.batch_id === currentBatchId) {
+        return false;
+      }
+
+      if (this.config.cleanupScopeSource) {
+        return attributes.source === this.config.cleanupScopeSource;
+      }
+
+      return true;
+    });
 
     if (filesToDelete.length === 0) {
       console.log('No old vector store files to clean up');

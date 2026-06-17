@@ -110,6 +110,98 @@ describe('OpenAiAgentRuntime capability context', () => {
   });
 });
 
+describe('OpenAiAgentRuntime event auth prompt isolation', () => {
+  it('does not expose guest auth internals to consultar_evento_invitado replies', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('consultar_evento_invitado');
+    request.plan.intent = 'consultar_evento_invitado';
+    request.plan.current_node = 'consultar_evento_invitado';
+    request.plan.contact_email = 'maria@example.com';
+    request.plan.guest_auth = {
+      status: 'authenticated',
+      email: 'maria@example.com',
+      token: 'secret-token',
+      token_expires_at: '2026-06-17T00:00:00.000Z',
+      last_error: null,
+      requested_at: '2026-06-16T00:00:00.000Z',
+    };
+    request.invitedEventLookupResult = {
+      lookup: { email: 'maria@example.com', phone: null },
+      user: {
+        id: 42,
+        fullName: 'María García',
+        email: 'maria@example.com',
+        fullPhone: null,
+      },
+      events: [],
+      counts: {
+        ownerEvents: 0,
+        guestEvents: 0,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
+    };
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        request: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, {
+      available_candidates: 0,
+      context_candidates: 0,
+      context_candidate_ids: [],
+      presentation_limit: 0,
+    });
+
+    expect(input).toContain('Contexto verificado de evento asociado');
+    expect(input).not.toContain('guest_auth');
+    expect(input).not.toContain('secret-token');
+    expect(input).not.toContain('token_present');
+    expect(input).not.toContain('token_expires_at');
+    expect(input).not.toContain('consultar_evento_invitado');
+    expect(input).not.toContain('invited_event_lookup');
+  });
+
+  it('does not include authenticated event context before deterministic lookup succeeds', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('consultar_evento_invitado');
+    request.plan.intent = 'consultar_evento_invitado';
+    request.errorMessage = 'Se envió un código al correo. Pide el código para continuar.';
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        request: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, {
+      available_candidates: 0,
+      context_candidates: 0,
+      context_candidate_ids: [],
+      presentation_limit: 0,
+    });
+
+    expect(input).toContain('Se envió un código al correo');
+    expect(input).not.toContain('Contexto verificado de evento asociado');
+    expect(input).not.toContain('guest_auth');
+    expect(input).not.toContain('consultar_evento_invitado');
+    expect(input).not.toContain('invited_event_lookup');
+  });
+});
+
 function createComposeRequest(
   currentNode: ComposeReplyRequest['currentNode'],
 ): ComposeReplyRequest {

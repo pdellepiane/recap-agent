@@ -577,13 +577,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.turnDecision?.focusNeedCategory ?? activeNeed?.category ?? null;
 
     const parts: Array<string | null> = [
-      `Nodo previo: ${request.previousNode}`,
-      `Nodo actual: ${request.currentNode}`,
+      `Nodo previo: ${this.modelVisibleNodeName(request.previousNode)}`,
+      `Nodo actual: ${this.modelVisibleNodeName(request.currentNode)}`,
       `Mensaje del usuario: ${request.userMessage}`,
       request.turnDecision
         ? `Decisión determinística del estado: ${JSON.stringify({
-            route_kind: request.turnDecision.routeKind,
-            presentation_scope: request.turnDecision.presentationScope,
+            route_kind: request.currentNode === 'consultar_evento_invitado'
+              ? 'associated_event_lookup'
+              : request.turnDecision.routeKind,
+            presentation_scope: request.currentNode === 'consultar_evento_invitado'
+              ? 'associated_event_lookup'
+              : request.turnDecision.presentationScope,
             provider_search_mode: request.turnDecision.providerSearchMode,
             focus_need_category: request.turnDecision.focusNeedCategory,
             needs_to_present: request.turnDecision.needsToPresent,
@@ -596,16 +600,22 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         null,
         2,
       )}`,
-      request.currentNode === 'consultar_evento_invitado'
-        ? `Contexto autenticado de evento invitado: ${JSON.stringify(request.invitedEventLookupResult ?? null, null, 2)}`
+      request.currentNode === 'consultar_evento_invitado' && request.invitedEventLookupResult
+        ? `Contexto verificado de evento asociado: ${JSON.stringify(request.invitedEventLookupResult, null, 2)}`
         : null,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       `Foco operativo del turno: ${focusNeedCategory ?? 'ninguno todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
-      `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
+      request.currentNode === 'consultar_evento_invitado'
+        ? 'Faltantes por necesidad: ninguno'
+        : `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
       this.buildMissingFieldsInstruction(request),
-      `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
-      `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
+      request.currentNode === 'consultar_evento_invitado'
+        ? 'Faltantes: ninguno'
+        : `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
+      request.currentNode === 'consultar_evento_invitado'
+        ? 'Listo para buscar: no aplica'
+        : `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
       `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
     ];
 
@@ -638,7 +648,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return entries.length > 0 ? entries.join(' | ') : 'ninguno';
   }
 
+  private modelVisibleNodeName(node: ComposeReplyRequest['currentNode']): string {
+    return node === 'consultar_evento_invitado'
+      ? 'consultar_evento_asociado'
+      : node;
+  }
+
   private buildMissingFieldsInstruction(request: ComposeReplyRequest): string {
+    if (request.currentNode === 'consultar_evento_invitado') {
+      return 'No pidas datos de proveedores ni datos de planificación; este turno solo consulta eventos asociados a la cuenta.';
+    }
+
     const hasPlanMissingFields = request.missingFields.length > 0;
     const hasNeedMissingFields = request.plan.provider_needs.some(
       (need) => need.missing_fields.length > 0,
@@ -672,7 +692,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private buildReplyExtractionSnapshot(extraction: ComposeReplyRequest['extraction']): Record<string, unknown> {
     return {
-      intent: extraction.intent,
+      intent: extraction.intent === 'consultar_evento_invitado'
+        ? 'consultar_evento_asociado'
+        : extraction.intent,
       provider_explanation_request: extraction.providerExplanationRequest ?? null,
       provider_detail_request: extraction.providerDetailRequest ?? null,
       provider_plan_operations: extraction.providerPlanOperations ?? [],
@@ -741,7 +763,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       lines.push('- Responder preguntas sobre Sin Envolturas, precios, comisiones, regalos, pagos y soporte.');
     }
     if (capabilities.invitedEventLookup) {
-      lines.push('- Consultar información de eventos asociados al usuario, como invitaciones, RSVP, anfitrión/celebrado y órdenes recientes.');
+      lines.push('- Consultar información de eventos asociados al usuario, como RSVP, rol en el evento, anfitrión/celebrado y órdenes recientes.');
     }
 
     return lines.length > 0 ? lines.join('\n') : '- Explicar qué información necesita para derivar al canal correcto.';
@@ -1305,34 +1327,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           return result;
         },
       }),
-      lookup_user_event_context: tool({
-        name: 'lookup_user_event_context',
-        description:
-          'Busca un resumen compacto de eventos de Sin Envolturas asociados al usuario que pregunta: invitado, anfitrión, celebrado, eventos propios y órdenes recientes. El email debe ser exacto; el teléfono se compara con phone_number.',
-        parameters: z
-          .object({
-            email: z.string().email().nullish(),
-            phone: z.string().min(6).nullish(),
-          })
-          .strict()
-          .refine(
-            (input) => Boolean(input.email) || Boolean(input.phone),
-            'email or phone is required',
-          ),
-        execute: async ({ email, phone }) => {
-          const input = {
-            email: email ?? null,
-            phone: phone ?? null,
-          };
-          this.recordToolInput(toolUsage, 'lookup_user_event_context', input);
-          toolUsage.called.push('lookup_user_event_context');
-          const result = await this.options.providerGateway.lookupUserEventContext(
-            email ? { email, phone: null } : { email: null, phone: phone ?? '' },
-          );
-          this.recordToolOutput(toolUsage, 'lookup_user_event_context', result);
-          return result;
-        },
-      }),
       create_quote_request: tool({
         name: 'create_quote_request',
         description:
@@ -1604,16 +1598,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       contact_name: plan.contact_name,
       contact_email: plan.contact_email,
       contact_phone: plan.contact_phone,
-      guest_auth: {
-        status: plan.guest_auth.status,
-        email: plan.guest_auth.email,
-        token_present: Boolean(plan.guest_auth.token),
-        token_expires_at: plan.guest_auth.token_expires_at,
-        last_error: plan.guest_auth.last_error,
-        requested_at: plan.guest_auth.requested_at,
-      },
-      current_node: plan.current_node,
-      intent: plan.intent,
+      current_node: this.modelVisibleNodeName(plan.current_node),
+      intent: plan.intent === 'consultar_evento_invitado'
+        ? 'consultar_evento_asociado'
+        : plan.intent,
       event_type: plan.event_type,
       focus_need_category: focusNeedCategory,
       vendor_category: plan.vendor_category,

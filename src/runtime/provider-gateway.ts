@@ -212,7 +212,10 @@ export interface ProviderGateway {
     email: string,
     code: string,
   ): Promise<GuestLoginCodeVerificationResult>;
-  lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null>;
+  lookupAuthenticatedGuest(args: {
+    token: string;
+    email: string;
+  }): Promise<UserEventLookupResult | null>;
   createQuoteRequest(input: QuoteRequestInput): Promise<Record<string, unknown>>;
   addVendorToEventFavorites(input: FavoriteRequestInput): Promise<Record<string, unknown>>;
   createProviderReview(input: CreateProviderReviewInput): Promise<Record<string, unknown>>;

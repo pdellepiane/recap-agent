@@ -261,7 +261,8 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     });
   });
 
-  it('verifies guest login codes and extracts token metadata', async () => {
+  it('verifies guest login codes and extracts nested credential token metadata', async () => {
+    const before = Date.now();
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
@@ -271,8 +272,13 @@ describe('SinEnvolturasGateway strict search mapping', () => {
           error: null,
           errors: null,
           data: {
-            access_token: 'token-123',
-            expires_in: 3600,
+            user: {
+              credentials: {
+                access_token: 'token-123',
+                token_type: 'bearer',
+                expires_in: 1784213372,
+              },
+            },
           },
         };
       },
@@ -290,18 +296,20 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result.status).toBe('authenticated');
     if (result.status === 'authenticated') {
       expect(result.token).toBe('token-123');
-      expect(Date.parse(result.tokenExpiresAt)).toBeGreaterThan(Date.now());
+      const expiresAt = Date.parse(result.tokenExpiresAt);
+      expect(expiresAt).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000 - 1000);
+      expect(expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000 + 1000);
     }
   });
 
   it('maps invalid guest login codes', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
       ok: false,
-      status: 422,
+      status: 400,
       async json() {
         return {
           status: false,
-          error: 'invalid code',
+          error: 'Invalid or expired code',
           errors: null,
           data: null,
         };
@@ -317,11 +325,11 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     await expect(gateway.verifyGuestLoginCode('maria@example.com', '000000')).resolves.toEqual({
       status: 'invalid_code',
-      error: 'invalid code',
+      error: 'Invalid or expired code',
     });
   });
 
-  it('looks up authenticated guest context with a bearer token', async () => {
+  it('looks up authenticated guest context with bearer token and verified email', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       async json() {
@@ -351,10 +359,13 @@ describe('SinEnvolturasGateway strict search mapping', () => {
       summarySearchWordLimit: 10,
     });
 
-    const result = await gateway.lookupAuthenticatedGuest('token-123');
+    const result = await gateway.lookupAuthenticatedGuest({
+      token: 'token-123',
+      email: 'maria@example.com',
+    });
 
     expect(fetchMock).toHaveBeenCalledWith(
-      'https://api.example.test/guest-service/user-lookup',
+      'https://api.example.test/guest-service/user-lookup?email=maria%40example.com',
       {
         headers: {
           authorization: 'Bearer token-123',

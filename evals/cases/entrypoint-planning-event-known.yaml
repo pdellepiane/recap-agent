@@ -2,7 +2,7 @@ template: template.base-both-targets
 id: entrypoint.event_known_no_active_need
 suite: entrypoint_planning
 version: 1
-description: Event is known but no provider need is active yet, so the agent should stay in planning mode.
+description: Event is known but no provider search should run before the agent clarifies planning needs.
 tags:
   - planning
   - greeting
@@ -11,7 +11,7 @@ variables:
   event_type: boda
   location: lima
 inputs:
-  - text: hola, me gustaria planear un {{event_type}} en {{location}}
+  - text: hola, me gustaria planear una {{event_type}} en {{location}}
 fixtures:
   offline:
     extractionsByTurn:
@@ -35,7 +35,9 @@ fixtures:
 expectations:
   - id: final-node
     type: node_transition
-    to: entrevista
+    allowed:
+      - to: entrevista
+      - to: elicitacion_necesidades
   - id: event-type
     type: plan_field_equals
     path: event_type
@@ -53,4 +55,5 @@ expectations:
     mustNotCall:
       - search_providers_from_plan
 notes:
-  - Mirrors the broad planning opening that should not force a category immediately.
+  - Mirrors the broad planning opening that may stay in interview mode or elicit multi-need planning, but must not search providers immediately.
+  - Keeps the Spanish article grammatical for boda so the event-type assertion remains meaningful.

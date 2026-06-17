@@ -1,5 +1,115 @@
 # Implementation Log
 
+## 2026-06-16
+
+### Make live FAQ ATC assertions paraphrase-tolerant
+
+**Reason:** The live FAQ KB source eval used brittle exact Spanish surface forms
+for ATC gift-claim guidance, while the deployed Lambda can validly paraphrase the
+same facts.
+
+**Changes:**
+- Replaced exact ATC containment phrases with regex assertions that still require
+  the no-obligation/no-responsibility-to-buy fact.
+- Added a paraphrase-tolerant claim-handling regex that requires a claim/problem
+  signal tied to the brand, product, Shop, or store context.
+- Left the official Tawk.to card-commission assertions unchanged.
+
+**Decision:** Keep the assertion fact-specific rather than generic, but allow
+valid Spanish paraphrases from live model output.
+
+### Strengthen live FAQ KB source assertions
+
+**Reason:** The live FAQ KB source eval had permissive source markers, so it could
+pass on generic text when the local semantic judge was skipped.
+
+**Changes:**
+- Tightened the official Tawk.to FAQ assertion to require the exact card-payment
+  facts for foreign cards: `3.70% + IGV / IVA` and `0.40 USD + IGV / IVA`, plus
+  the payment-method/foreign-card context.
+- Tightened the ATC suggested-response assertion to require the gift-claim policy
+  facts: the user is not obligated to buy the gift and product/Shop claims go
+  directly through the product brand.
+
+**Decision:** Keep content-marker assertions instead of full-response equality so
+the live answer can vary while still proving both retrieved source families were
+used.
+
+### Add live FAQ KB source coverage eval
+
+**Reason:** The FAQ knowledge base needed a token-consuming live validation that
+confirms answers can use both preserved official Tawk.to FAQ snippets and the new
+ATC/Notion suggested-response template snippets.
+
+**Changes:**
+- Added `live.faq_kb_sources_official_and_atc`, a live FAQ flow that asks for
+  card-payment commission details and gift/product claim guidance in one turn.
+- Added the focused `live_faq_kb_sources` suite for targeted live validation.
+- Asserted the `consultar_faq` route, `file_search` usage, absence of provider
+  search/results, FAQ trace retrieval output, official commission markers, ATC
+  gift-claim markers, and a semantic both-source coverage rubric.
+
+**Decision:** Keep this as a dedicated live suite so the source-coverage eval can
+be run independently from the broader live benchmark while still consuming the
+real deployed Lambda/runtime target.
+
+### Refresh entrypoint planning live-smoke expectation
+
+**Reason:** The live smoke case for a known event planning opener had a stale node
+expectation. Current event-plan-first routing can validly enter multi-need
+elicitation without performing provider search.
+
+**Changes:**
+- Updated `entrypoint.event_known_no_active_need` to allow either `entrevista` or
+  `elicitacion_necesidades` as the first transition.
+- Corrected the Spanish input from `un boda` to `una boda` so the event type
+  assertion continues to validate a known-event opener.
+- Kept the no-provider-search assertion to continue guarding against premature
+  provider lookup.
+
+**Decision:** Treat the observed `contacto_inicial->elicitacion_necesidades`
+transition as valid planning behavior and avoid runtime routing changes.
+
+### Scope ATC supplemental FAQ knowledge-base cleanup
+
+**Reason:** The supplemental ATC FAQ sync reused full FAQ replacement cleanup, so
+uploading only ATC response-sample files could delete unrelated FAQ files from the
+same OpenAI vector store.
+
+**Changes:**
+- Added optional source-scoping metadata to knowledge-base uploads.
+- Configured `sync:faq-atc-kb` uploads with `source: notion_customer_service_templates`,
+  `source_kind: response_sample`, `channel: chat`, and `status: Vigente`.
+- Scoped ATC cleanup to only stale vector-store files with the same ATC source,
+  preserving existing non-ATC FAQ files.
+- Added regression tests that mock vector-store files and verify old FAQ files survive
+  while stale ATC files can be removed.
+
+**Decision:** Keep normal FAQ sync cleanup behavior unchanged when no cleanup source
+scope is configured; only supplemental ATC sync uses source-scoped cleanup.
+
+### ATC supplemental FAQ knowledge-base templates
+
+**Reason:** Customer-service response samples exported from ATC/Notion should enrich
+FAQ file-search retrieval without changing deterministic conversational routing.
+
+**Changes:**
+- Added a local-export source seam and parser for ATC template CSV/markdown exports.
+- Normalized eligible Chat/Listo/Vigente templates into standalone supplemental FAQ
+  markdown files for vector-store ingestion, excluding Desestimado templates by
+  default and reporting missing triggers as quality debt.
+- Added generation and sync scripts for the supplemental KB output directory.
+- Updated the `consultar_faq` prompt to follow retrieved customer-service samples
+  closely when they fit the user's question.
+- Added tests for ingestion counts/drop rules, trigger handling, no runtime trigger
+  routing, and KB/provider vector-store separation.
+
+**Decision:**
+- Keep triggers as semantic retrieval hints inside generated KB documents only; do
+  not introduce exact-string or keyword routing for conversational flow decisions.
+- Generate separate supplemental files instead of appending to existing FAQ docs.
+
+
 ## 2026-05-14
 
 ### Canonical schema normalization
@@ -1785,6 +1895,66 @@ Decision:
 Files changed:
 - `src/runtime/agent-service.ts`
 - `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
+### Hard-enforce invisible associated-event auth flow
+
+- Hid `guest_auth` and internal auth metadata from the reply model prompt snapshot.
+- Removed `lookup_user_event_context` from the model-callable tool registry and added manifest coverage to keep it unavailable.
+- Masked the historical `consultar_evento_invitado` node name as `consultar_evento_asociado` in prompt headings and reply context so model-facing wording covers hosts, owners, guests, celebrated users, and buyers.
+- Changed model-facing event context from authenticated-event wording to verified associated-event wording.
+- Parsed the real login-code response shape at `data.user.credentials.access_token`.
+- Persisted successful event auth for exactly 24 hours, ignoring backend `expires_in` for agent-session lifetime.
+- Reused valid persisted auth across follow-up sessions, requested a new code after expiry, and cleared failing lookup tokens without immediately requesting another code in the same turn.
+- Added prompt isolation, gateway token parsing, 24-hour auth-window, expired-token, and no-model-lookup regression coverage.
+
+Reason:
+- The model should not decide or see internal auth state unless deterministic code needs it to ask a user-facing next step. The live API also returns access tokens under `credentials`, which could make correct codes appear invalid.
+
+Decision:
+- Keep auth and lookup fully deterministic in `AgentService`; the LLM only receives a user-facing next-step note or sanitized verified event context. Preserve internal node names and state-machine enums to avoid a broad migration, but mask them in model-visible prompt text.
+
+Files changed:
+- `src/runtime/agent-service.ts`
+- `src/runtime/openai-agent-runtime.ts`
+- `src/runtime/prompt-loader.ts`
+- `src/runtime/prompt-manifest.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `prompts/extractors/field_definitions.txt`
+- `prompts/extractors/conflict_resolution.txt`
+- `prompts/nodes/consultar_evento_invitado/system.txt`
+- `prompts/nodes/consultar_evento_invitado/response_contract.txt`
+- `prompts/nodes/consultar_evento_invitado/tool_policy.txt`
+- `prompts/nodes/consultar_evento_invitado/transition_policy.txt`
+- `tests/agent-service.test.ts`
+- `tests/sinenvolturas-gateway.test.ts`
+- `tests/openai-agent-runtime-token-usage.test.ts`
+- `tests/prompt-loader.test.ts`
+- `tests/message-renderer.test.ts`
+- `docs/implementation-log.md`
+
+### Require verified email on authenticated guest lookup
+
+- Changed authenticated guest event lookup to require both the bearer token and the verified email used during login-code validation.
+- Updated `SinEnvolturasGateway.lookupAuthenticatedGuest` to call `/user-lookup?email=<verified-email>` with `Authorization: Bearer <token>`.
+- Kept the lookup deterministic in `AgentService`: code validation and lookup happen together, and the model only receives the authenticated event context.
+- Mapped the observed `400 {"error":"Invalid or expired code"}` login-code response to `invalid_code` so the flow asks for the code again instead of failing generically.
+- Updated service, gateway, state-machine, and offline eval fakes/tests to enforce the token-plus-email lookup contract.
+
+Reason:
+- Raw API validation showed that `/api/guest-service/user-lookup` returns `422` when called with only a bearer token; it requires `email` or `phone` even after login-code validation. This caused an invalid agent response after successful code verification.
+
+Decision:
+- Use the same verified email for lookup immediately after successful code validation and for persisted-token follow-ups. Do not expose direct lookup as a model tool in `consultar_evento_invitado`.
+
+Files changed:
+- `src/runtime/provider-gateway.ts`
+- `src/runtime/sinenvolturas-gateway.ts`
+- `src/runtime/agent-service.ts`
+- `src/evals/targets/offline.ts`
+- `tests/sinenvolturas-gateway.test.ts`
+- `tests/agent-service.test.ts`
+- `tests/batch4-state-machine.test.ts`
 - `docs/implementation-log.md`
 
 ### Add deterministic auth gate for invited event lookup

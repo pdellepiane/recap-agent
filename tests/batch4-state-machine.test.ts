@@ -281,14 +281,17 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null> {
-    void token;
+  async lookupAuthenticatedGuest(args: {
+    token: string;
+    email: string;
+  }): Promise<UserEventLookupResult | null> {
+    void args.token;
     return {
-      lookup: { email: null, phone: '' },
+      lookup: { email: args.email, phone: null },
       user: {
         id: null,
         fullName: null,
-        email: null,
+        email: args.email,
         fullPhone: null,
       },
       events: [],

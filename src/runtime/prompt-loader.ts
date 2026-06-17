@@ -45,7 +45,7 @@ export class PromptLoader {
     );
 
     const instructions = contents
-      .map(({ relativePath, content }) => `## ${relativePath}\n${content.trim()}`)
+      .map(({ relativePath, content }) => `## ${this.displayPath(relativePath)}\n${content.trim()}`)
       .join('\n\n');
 
     const id = crypto
@@ -64,5 +64,12 @@ export class PromptLoader {
       instructions,
       allowedTools,
     };
+  }
+
+  private displayPath(relativePath: string): string {
+    return relativePath.replace(
+      'nodes/consultar_evento_invitado/',
+      'nodes/consultar_evento_asociado/',
+    );
   }
 }

@@ -34,4 +34,6 @@ export interface KnowledgeBaseSyncConfig {
   openAiApiKey: string;
   vectorStoreName: string;
   vectorStoreId: string | null;
+  uploadAttributes?: Record<string, string | number | boolean>;
+  cleanupScopeSource?: string;
 }

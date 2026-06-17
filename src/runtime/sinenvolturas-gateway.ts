@@ -538,9 +538,15 @@ export class SinEnvolturasGateway implements ProviderGateway {
     );
 
     if (!response.ok) {
+      const authError = this.authErrorMessage(response.body);
       return {
-        status: response.status === 401 || response.status === 422 ? 'invalid_code' : 'failed',
-        error: this.authErrorMessage(response.body) ?? `Guest login failed with ${response.status}`,
+        status:
+          response.status === 400 && this.isInvalidCodeAuthError(response.body)
+            ? 'invalid_code'
+            : response.status === 401 || response.status === 422
+              ? 'invalid_code'
+              : 'failed',
+        error: authError ?? `Guest login failed with ${response.status}`,
       };
     }
 
@@ -550,7 +556,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return {
         status: 'authenticated',
         token,
-        tokenExpiresAt: this.extractTokenExpiry(body) ?? this.defaultGuestTokenExpiry(),
+        tokenExpiresAt: this.defaultGuestTokenExpiry(),
       };
     }
 
@@ -560,11 +566,17 @@ export class SinEnvolturasGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(token: string): Promise<UserEventLookupResult | null> {
+  async lookupAuthenticatedGuest(args: {
+    token: string;
+    email: string;
+  }): Promise<UserEventLookupResult | null> {
+    const searchParams = new URLSearchParams();
+    searchParams.set('email', args.email);
+
     const response = await this.fetchGuestServiceJson<ApiEnvelope<Record<string, unknown>>>(
-      '/user-lookup',
+      `/user-lookup?${searchParams.toString()}`,
       {
-        authorization: `Bearer ${token}`,
+        authorization: `Bearer ${args.token}`,
       },
     );
 
@@ -572,7 +584,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return null;
     }
 
-    return this.toUserEventLookupResult({ email: null, phone: '' }, response.data);
+    return this.toUserEventLookupResult({ email: args.email, phone: null }, response.data);
   }
 
   async createQuoteRequest(
@@ -1032,7 +1044,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const direct = directKeys
       .map((key) => record[key])
       .filter((entry): entry is string => typeof entry === 'string');
-    const nested = ['data', 'user', 'auth']
+    const nested = ['data', 'user', 'auth', 'credentials']
       .flatMap((key) => this.collectAuthTokenCandidates(record[key]));
     return [...direct, ...nested];
   }
@@ -1070,7 +1082,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
         return record[key];
       }
     }
-    for (const nestedKey of ['data', 'user', 'auth']) {
+    for (const nestedKey of ['data', 'user', 'auth', 'credentials']) {
       const nested = this.readStringDeep(record[nestedKey], keys);
       if (nested) {
         return nested;
@@ -1096,7 +1108,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
         }
       }
     }
-    for (const nestedKey of ['data', 'user', 'auth']) {
+    for (const nestedKey of ['data', 'user', 'auth', 'credentials']) {
       const nested = this.readNumberDeep(record[nestedKey], keys);
       if (nested !== null) {
         return nested;

@@ -1,0 +1,68 @@
+template: template.base-live
+id: live.faq_kb_sources_official_and_atc
+suite: live_faq_kb_sources
+version: 1
+description: FAQ retrieval should answer from both official Tawk.to FAQ content and ATC suggested-response/template snippets without provider search.
+tags:
+  - live
+  - faq
+  - knowledge-base
+  - atc-template
+inputs:
+  - text: "Necesito dos datos de FAQ: ¿qué comisión cobra Sin Envolturas si un invitado paga con tarjeta? Además, si tengo un problema con un regalo de mi web, ¿estoy obligado a comprarlo o debo reclamar con la marca?"
+expectations:
+  - id: enters-faq-node
+    type: node_transition
+    to: consultar_faq
+  - id: faq-file-search-called
+    type: tool_usage
+    mustCall:
+      - file_search
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+    maxTotalCalls: 2
+  - id: faq-trace-confirms-file-search
+    type: trace_field_equals
+    path: faq_resolution_summary.file_search_called
+    expected: true
+  - id: faq-trace-has-retrieval-output
+    type: trace_field_number
+    path: faq_resolution_summary.file_search_output_count
+    min: 1
+  - id: no-provider-results
+    type: provider_result_count
+    max: 0
+  - id: official-tawk-commission-signal
+    type: text_contains
+    allOf:
+      - tarjeta
+      - tarjetas extranjeras
+    regex:
+      - '3\.70% \+ IGV\s*/\s*IVA'
+      - '0\.40 USD \+ IGV\s*/\s*IVA'
+  - id: atc-template-gift-claim-signal
+    type: text_contains
+    regex:
+      - '(?:[Nn]o\s+(?:est[áa]s|est[aá]|hay|tienes|debes|te\s+corresponde)|[Nn]o\s+es|[Ss]in\s+obligaci[oó]n)[^.!?\n]*(?:obligad[oa]|obligatori[oa]|compr(?:ar|arlo)?|adquirir|hacer\s+la\s+compra|realizar\s+la\s+compra|regalo)'
+      - '(?:reclamo|reclamar|garant[ií]a|problema|inconveniente)[^.!?\n]*(?:marca(?:\s+del\s+producto)?|producto|Shop|tienda)|(?:marca(?:\s+del\s+producto)?|producto|Shop|tienda)[^.!?\n]*(?:reclamo|reclamar|garant[ií]a|problema|inconveniente)'
+  - id: semantic-both-source-coverage
+    type: text_semantic
+    severity: hard
+    minScore: 0.75
+    rubric: >-
+      The answer must address both independent FAQ needs: official Sin Envolturas
+      commission/card-payment information from the Tawk.to FAQ knowledge base, and
+      the ATC customer-service suggested response for gift/product claims explaining
+      whether the user is obligated to buy the gift and how brand/product claims are
+      handled. It should not recommend event providers.
+  - id: no-kb-missing-fallback
+    type: text_not_contains
+    phrases:
+      - No tengo esa información específica en mi base de conocimiento
+  - id: one-turn-budget
+    type: budget_constraints
+    maxTurns: 1
+    maxToolCalls: 2
