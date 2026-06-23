@@ -468,11 +468,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       location: plan.location,
       budget_signal: plan.budget_signal,
       guest_range: plan.guest_range,
-      missing_fields: plan.missing_fields,
+      missing_fields: plan.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
       provider_needs: plan.provider_needs.map((need) => ({
         category: need.category,
         status: need.status,
-        missing_fields: need.missing_fields,
+        missing_fields: need.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
         selected_provider_ids: need.selected_provider_ids,
         selected_provider_hints: need.selected_provider_hints,
         sub_query_results: (need.sub_query_results ?? []).map((result) => ({
@@ -1608,11 +1608,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       location: plan.location,
       budget_signal: plan.budget_signal,
       guest_range: plan.guest_range,
-      missing_fields: plan.missing_fields,
+      missing_fields: plan.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
       provider_needs: plan.provider_needs.map((need) => ({
         category: need.category,
         status: need.status,
-        missing_fields: need.missing_fields,
+        missing_fields: need.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
         selected_provider_ids: need.selected_provider_ids,
         selected_provider_titles: need.selected_provider_ids
           .map((selectedProviderId) =>
@@ -1629,6 +1629,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       conversation_summary: this.truncateText(plan.conversation_summary, 300),
       open_questions: plan.open_questions.slice(0, 5),
     };
+  }
+
+  private userVisibleMissingFieldLabel(field: string): string {
+    const labels: Record<string, string> = {
+      vendor_category: 'tipo de proveedor o servicio',
+      location: 'ubicación',
+      budget_or_guest_range: 'presupuesto o cantidad aproximada de invitados',
+    };
+
+    return labels[field] ?? field.replace(/_/gu, ' ');
   }
 
   private stripRawFields(value: unknown): unknown {

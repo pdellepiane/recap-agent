@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildTurnPerfRecord, toCliPerfSummary } from '../src/logs/trace/perf';
+import {
+  buildTurnPerfRecord,
+  detectAssistantMessageQualityFlags,
+  redactSensitiveText,
+  toCliPerfSummary,
+} from '../src/logs/trace/perf';
 
 describe('perf trace module', () => {
   it('builds a stable turn perf record with derived ratios', () => {
@@ -20,9 +25,39 @@ describe('perf trace module', () => {
         prompt_file_paths: ['prompts/nodes/recomendar/system.txt'],
         tools_considered: ['search_providers_from_plan'],
         tools_called: ['search_providers_from_plan'],
-        tool_inputs: [],
-        tool_outputs: [],
-        provider_results: [],
+        tool_inputs: [
+          {
+            tool: 'search_providers_from_plan',
+            input: '{"email":"planner@example.com","phone":"+51 954779067","category":"Catering"}',
+          },
+        ],
+        tool_outputs: [
+          {
+            tool: 'search_providers_from_plan',
+            output: '{"providers":[{"id":7,"title":"La Botanería"}],"url":"https://example.com/private"}',
+          },
+        ],
+        provider_results: [
+          {
+            id: 7,
+            title: 'La Botanería',
+            slug: 'la-botaneria',
+            category: 'Catering',
+            location: 'Lima',
+            priceLevel: 'mid',
+            rating: '4.8',
+            reason: 'coincide',
+            detailUrl: 'https://sinenvolturas.com/proveedores/la-botaneria',
+            websiteUrl: null,
+            minPrice: null,
+            maxPrice: null,
+            promoBadge: null,
+            promoSummary: null,
+            descriptionSnippet: null,
+            serviceHighlights: [],
+            termsHighlights: [],
+          },
+        ],
         recommendation_funnel: {
           available_candidates: 4,
           context_candidates: 2,
@@ -162,6 +197,9 @@ describe('perf trace module', () => {
       externalUserId: 'user-1',
       messageId: 'msg-1',
       userMessage: 'hola',
+      assistantMessage: 'Compárteme tu teléfono +51 954779067 y revisa https://example.com filecite turn1 file 0',
+      includeAssistantMessagePreview: true,
+      structuredMessageKind: 'contact_request',
       capturedAt,
       retentionDays: 30,
     });
@@ -173,6 +211,26 @@ describe('perf trace module', () => {
     expect(record.external_user_hash).toHaveLength(64);
     expect(record.user_message_hash).toHaveLength(64);
     expect(record.user_message_preview).toBe('hola');
+    expect(record.assistant_message_length).toBeGreaterThan(0);
+    expect(record.assistant_message_hash).toHaveLength(64);
+    expect(record.assistant_message_preview_redacted).toContain('[phone]');
+    expect(record.assistant_message_preview_redacted).toContain('[url]');
+    expect(record.assistant_message_quality_flags).toEqual([
+      'file_citation_artifact',
+      'command_like_contact_prompt',
+    ]);
+    expect(record.structured_message_kind).toBe('contact_request');
+    expect(record.tool_input_previews_redacted[0]?.preview_redacted).toContain('[email]');
+    expect(record.tool_input_previews_redacted[0]?.preview_redacted).toContain('[phone]');
+    expect(record.tool_output_previews_redacted[0]?.preview_redacted).toContain('[url]');
+    expect(record.provider_result_summaries).toEqual([
+      {
+        id: 7,
+        title: 'La Botanería',
+        category: 'Catering',
+        location: 'Lima',
+      },
+    ]);
     expect(record.search_strategy).toBe('search_from_plan');
     expect(record.prompt_bundle_id).toBe('bundle-1');
     expect(record.prompt_file_paths).toEqual(['prompts/nodes/recomendar/system.txt']);
@@ -210,6 +268,11 @@ describe('perf trace module', () => {
       user_message_length: 4,
       user_message_hash: 'hash-msg',
       user_message_preview: 'hola',
+      assistant_message_length: null,
+      assistant_message_hash: null,
+      assistant_message_preview_redacted: null,
+      assistant_message_quality_flags: [],
+      structured_message_kind: null,
       runtime_latency_ms: 999,
       timing_ms: {
         total: 999,
@@ -242,6 +305,8 @@ describe('perf trace module', () => {
       prompt_file_paths: ['prompts/nodes/recomendar/system.txt'],
       tools_considered: ['search_providers_from_plan'],
       tools_called: ['search_providers_from_plan'],
+      tool_input_previews_redacted: [],
+      tool_output_previews_redacted: [],
       search_strategy: 'search_from_plan',
       turn_decision: {
         nextNode: 'recomendar',
@@ -338,6 +403,10 @@ describe('perf trace module', () => {
       },
       provider_results_count: 2,
       provider_result_ids: [1, 2],
+      provider_result_summaries: [
+        { id: 1, title: 'Uno', category: 'Catering', location: 'Lima' },
+        { id: 2, title: 'Dos', category: 'Catering', location: 'Lima' },
+      ],
       missing_fields_count: 0,
       missing_fields: [],
       search_ready: true,
@@ -355,5 +424,27 @@ describe('perf trace module', () => {
     expect(summary.total_tokens).toBe(1100);
     expect(summary.cache_hit_rate).toBe(0.2);
     expect(summary.extraction_to_compose_ratio).toBe(0.75);
+  });
+
+  it('redacts sensitive assistant output and flags wording regressions', () => {
+    const redacted = redactSensitiveText(
+      'Escribe a ana@example.com, llama al +51 954 779 067, usa 123456 y abre https://example.com.',
+    );
+
+    expect(redacted).toBe(
+      'Escribe a [email], llama al [phone], usa [code] y abre [url]',
+    );
+    expect(detectAssistantMessageQualityFlags(
+      [
+        'Puedo ayudarte a armar un plan.',
+        'También puedo buscar proveedores.',
+        'Compárteme tu teléfono.',
+        'filecite turn1 file 0',
+      ].join('\n'),
+    )).toEqual([
+      'file_citation_artifact',
+      'command_like_contact_prompt',
+      'welcome_menu_template',
+    ]);
   });
 });

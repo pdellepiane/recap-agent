@@ -108,6 +108,39 @@ describe('OpenAiAgentRuntime capability context', () => {
     expect(summary).not.toContain('buscar/recomendar opciones');
     expect(summary).not.toContain('Consultar información de eventos asociados');
   });
+
+  it('maps internal missing fields to user-facing labels in prompt snapshots', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('entrevista');
+    request.plan.missing_fields = ['vendor_category', 'budget_or_guest_range'];
+    request.plan.provider_needs = [
+      {
+        category: 'Catering',
+        status: 'identified',
+        preferences: [],
+        hard_constraints: [],
+        missing_fields: ['location'],
+        recommended_provider_ids: [],
+        recommended_providers: [],
+        selected_provider_ids: [],
+        selected_provider_hints: [],
+      },
+    ];
+    const typedRuntime = runtime as unknown as {
+      buildPromptPlanSnapshot: (
+        plan: ComposeReplyRequest['plan'],
+        focusNeedCategory: ComposeReplyRequest['plan']['active_need_category'],
+      ) => { missing_fields: string[]; provider_needs: Array<{ missing_fields: string[] }> };
+    };
+
+    const snapshot = typedRuntime.buildPromptPlanSnapshot(request.plan, null);
+
+    expect(snapshot.missing_fields).toEqual([
+      'tipo de proveedor o servicio',
+      'presupuesto o cantidad aproximada de invitados',
+    ]);
+    expect(snapshot.provider_needs[0]?.missing_fields).toEqual(['ubicación']);
+  });
 });
 
 describe('OpenAiAgentRuntime event auth prompt isolation', () => {

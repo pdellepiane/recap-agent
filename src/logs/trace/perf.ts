@@ -2,6 +2,28 @@ import crypto from 'node:crypto';
 
 import type { TurnTrace } from '../../core/trace';
 
+export type AssistantMessageQualityFlag =
+  | 'empty_message'
+  | 'near_empty_message'
+  | 'file_citation_artifact'
+  | 'command_like_contact_prompt'
+  | 'welcome_menu_template'
+  | 'repeated_line';
+
+export type RedactedTracePreview = {
+  tool: string;
+  length: number;
+  hash: string;
+  preview_redacted: string;
+};
+
+export type ProviderResultPerfSummary = {
+  id: number;
+  title: string;
+  category: string | null;
+  location: string | null;
+};
+
 export type TurnPerfRecord = {
   pk: string;
   sk: string;
@@ -19,6 +41,11 @@ export type TurnPerfRecord = {
   user_message_length: number;
   user_message_hash: string;
   user_message_preview: string;
+  assistant_message_length: number | null;
+  assistant_message_hash: string | null;
+  assistant_message_preview_redacted: string | null;
+  assistant_message_quality_flags: AssistantMessageQualityFlag[];
+  structured_message_kind: string | null;
   runtime_latency_ms: number;
   timing_ms: TurnTrace['timing_ms'];
   token_usage: TurnTrace['token_usage'];
@@ -30,6 +57,8 @@ export type TurnPerfRecord = {
   tools_considered: string[];
   tools_called_count: number;
   tools_called: string[];
+  tool_input_previews_redacted: RedactedTracePreview[];
+  tool_output_previews_redacted: RedactedTracePreview[];
   search_strategy: TurnTrace['search_strategy'];
   turn_decision: TurnTrace['turn_decision'];
   route_kind: TurnTrace['route_kind'];
@@ -48,6 +77,7 @@ export type TurnPerfRecord = {
   faq_resolution_summary: TurnTrace['faq_resolution_summary'];
   provider_results_count: number;
   provider_result_ids: number[];
+  provider_result_summaries: ProviderResultPerfSummary[];
   missing_fields_count: number;
   missing_fields: string[];
   search_ready: boolean;
@@ -86,6 +116,9 @@ export function buildTurnPerfRecord(args: {
   externalUserId: string;
   messageId: string;
   userMessage: string;
+  assistantMessage?: string | null;
+  includeAssistantMessagePreview?: boolean;
+  structuredMessageKind?: string | null;
   capturedAt?: Date;
   retentionDays: number;
 }): TurnPerfRecord {
@@ -104,6 +137,7 @@ export function buildTurnPerfRecord(args: {
       : null;
 
   const funnel = args.trace.recommendation_funnel;
+  const assistantMessage = args.assistantMessage ?? null;
 
   return {
     pk: `CONVERSATION#${conversationKey}`,
@@ -122,6 +156,15 @@ export function buildTurnPerfRecord(args: {
     user_message_length: args.userMessage.length,
     user_message_hash: sha256(args.userMessage),
     user_message_preview: truncateText(args.userMessage, 160),
+    assistant_message_length: assistantMessage?.length ?? null,
+    assistant_message_hash: assistantMessage ? sha256(assistantMessage) : null,
+    assistant_message_preview_redacted: assistantMessage && args.includeAssistantMessagePreview
+      ? truncateText(redactSensitiveText(assistantMessage), 240)
+      : null,
+    assistant_message_quality_flags: assistantMessage
+      ? detectAssistantMessageQualityFlags(assistantMessage)
+      : [],
+    structured_message_kind: args.structuredMessageKind ?? null,
     runtime_latency_ms: args.trace.timing_ms.total,
     timing_ms: args.trace.timing_ms,
     token_usage: args.trace.token_usage,
@@ -133,6 +176,12 @@ export function buildTurnPerfRecord(args: {
     tools_considered: args.trace.tools_considered,
     tools_called_count: args.trace.tools_called.length,
     tools_called: args.trace.tools_called,
+    tool_input_previews_redacted: args.trace.tool_inputs.map((entry) =>
+      toRedactedTracePreview(entry.tool, entry.input),
+    ),
+    tool_output_previews_redacted: args.trace.tool_outputs.map((entry) =>
+      toRedactedTracePreview(entry.tool, entry.output),
+    ),
     search_strategy: args.trace.search_strategy,
     turn_decision: args.trace.turn_decision,
     route_kind: args.trace.route_kind,
@@ -151,6 +200,12 @@ export function buildTurnPerfRecord(args: {
     faq_resolution_summary: args.trace.faq_resolution_summary,
     provider_results_count: args.trace.provider_results.length,
     provider_result_ids: args.trace.provider_results.map((provider) => provider.id),
+    provider_result_summaries: args.trace.provider_results.map((provider) => ({
+      id: provider.id,
+      title: provider.title,
+      category: provider.category ?? null,
+      location: provider.location ?? null,
+    })),
     missing_fields_count: args.trace.missing_fields.length,
     missing_fields: args.trace.missing_fields,
     search_ready: args.trace.search_ready,
@@ -163,6 +218,60 @@ export function buildTurnPerfRecord(args: {
     recommendation_funnel_context_candidates: funnel?.context_candidates ?? null,
     recommendation_funnel_presentation_limit: funnel?.presentation_limit ?? null,
   };
+}
+
+function toRedactedTracePreview(tool: string, value: string): RedactedTracePreview {
+  return {
+    tool,
+    length: value.length,
+    hash: sha256(value),
+    preview_redacted: truncateText(redactSensitiveText(value), 360),
+  };
+}
+
+export function redactSensitiveText(value: string): string {
+  return value
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/giu, '[email]')
+    .replace(/\bhttps?:\/\/\S+/giu, '[url]')
+    .replace(/(?:\+?\d[\d\s().-]{7,}\d)/gu, '[phone]')
+    .replace(/\b\d{4,8}\b/gu, '[code]');
+}
+
+export function detectAssistantMessageQualityFlags(value: string): AssistantMessageQualityFlag[] {
+  const flags: AssistantMessageQualityFlag[] = [];
+  const normalized = value.trim();
+  const lower = normalized.toLowerCase();
+
+  if (normalized.length === 0) {
+    flags.push('empty_message');
+  } else if (normalized.length < 12) {
+    flags.push('near_empty_message');
+  }
+
+  if (/\bfilecite\s+turn\d+\s+file\s+\d+\b/iu.test(value)) {
+    flags.push('file_citation_artifact');
+  }
+
+  if (/\b(?:comp[aá]rteme|env[ií]ame)\b/iu.test(value)) {
+    flags.push('command_like_contact_prompt');
+  }
+
+  const welcomeSignals = [
+    'puedo ayudarte a',
+    'armar un plan',
+    'buscar proveedores',
+    'consultar datos de tu evento',
+  ].filter((signal) => lower.includes(signal)).length;
+  if (welcomeSignals >= 2) {
+    flags.push('welcome_menu_template');
+  }
+
+  const repeatedLineCount = countRepeatedMeaningfulLines(normalized);
+  if (repeatedLineCount > 0) {
+    flags.push('repeated_line');
+  }
+
+  return flags;
 }
 
 export function toCliPerfSummary(
@@ -204,4 +313,21 @@ function truncateText(value: string, maxLength: number): string {
   }
 
   return `${normalized.slice(0, Math.max(0, maxLength - 1))}…`;
+}
+
+function countRepeatedMeaningfulLines(value: string): number {
+  const seen = new Set<string>();
+  let repeated = 0;
+  for (const line of value.split(/\r?\n/u)) {
+    const normalized = line.trim().toLowerCase();
+    if (normalized.length < 16) {
+      continue;
+    }
+    if (seen.has(normalized)) {
+      repeated += 1;
+      continue;
+    }
+    seen.add(normalized);
+  }
+  return repeated;
 }

@@ -6497,4 +6497,372 @@ describe('AgentService', () => {
     ]);
     expect(response.outbound.text).toContain('Catering: EDO');
   });
+
+  it('resends guest auth code on non-code follow-up while code challenge is active', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-code-resend',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'maria@example.com',
+        }),
+        {
+          current_node: 'consultar_evento_invitado',
+          intent: 'consultar_evento_invitado',
+          contact_email: 'maria@example.com',
+          guest_auth: {
+            status: 'code_requested',
+            email: 'maria@example.com',
+            token: null,
+            token_expires_at: null,
+            last_error: null,
+            requested_at: '2026-06-11T00:00:00.000Z',
+          },
+        },
+      ),
+      reason: 'seed-code-requested',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'maria@example.com',
+      text: 'No me llega',
+      messageId: 'msg-auth-resend',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.guest_auth.status).toBe('code_requested');
+    expect(gateway.requestCodeCalls).toBe(1);
+    expect(gateway.verifyCodeCalls).toBe(0);
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain('reenvió');
+    expect(response.trace.tools_called).toContain('request_guest_login_code');
+  });
+
+  it('does not coerce an unknown provider name to a similar generic first token', async () => {
+    class UnknownProviderRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'modificar_plan_proveedores',
+          intentConfidence: 0.92,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario menciona Baby Baloo.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerPlanOperations: [
+            {
+              type: 'select_provider',
+              category: 'Bebés',
+              preferences: [],
+              hardConstraints: [],
+              queryIntent: null,
+              rerunSearch: false,
+              provider: {
+                providerId: null,
+                providerTitle: 'Baby Baloo',
+                category: 'Bebés',
+                hint: null,
+              },
+              removeProvider: null,
+              addProvider: null,
+            },
+          ],
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-baby-baloo',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-baby-baloo',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'baby_shower',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Bebés',
+          provider_needs: [
+            {
+              category: 'Bebés',
+              status: 'shortlisted',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [73],
+              recommended_providers: [
+                { id: 73, title: 'Baby Loli', category: 'Bebés', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const service = new AgentService({
+      planStore,
+      runtime: new UnknownProviderRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-baby-baloo',
+      text: 'quiero a baby baloo',
+      messageId: 'msg-baby-baloo',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const need = response.plan.provider_needs.find((item) => item.category === 'Bebés');
+    expect(need?.selected_provider_ids).toEqual([]);
+    expect(need?.status).toBe('shortlisted');
+    expect(response.trace.operational_note).toContain('No pude identificar');
+  });
+
+  it('clears selected provider state when applying unselect_provider', async () => {
+    class UnselectRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'modificar_plan_proveedores',
+          intentConfidence: 0.95,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario ya no quiere Baby Loli.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: testProviderFitCriteria,
+          providerPlanOperations: [
+            {
+              type: 'unselect_provider',
+              category: 'Bebés',
+              preferences: [],
+              hardConstraints: [],
+              queryIntent: null,
+              rerunSearch: false,
+              provider: {
+                providerId: 73,
+                providerTitle: null,
+                category: 'Bebés',
+                hint: null,
+              },
+              removeProvider: null,
+              addProvider: null,
+            },
+          ],
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-unselect-provider',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-unselect-provider',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'baby_shower',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Bebés',
+          provider_needs: [
+            {
+              category: 'Bebés',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [73],
+              recommended_providers: [
+                { id: 73, title: 'Baby Loli', category: 'Bebés', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [73],
+              selected_provider_hints: ['Baby Loli'],
+            },
+          ],
+        },
+      ),
+    });
+
+    const service = new AgentService({
+      planStore,
+      runtime: new UnselectRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-unselect-provider',
+      text: 'no quiero quedarme con baby loli',
+      messageId: 'msg-unselect-provider',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const need = response.plan.provider_needs.find((item) => item.category === 'Bebés');
+    expect(need?.selected_provider_ids).toEqual([]);
+    expect(need?.selected_provider_hints).toEqual([]);
+    expect(need?.status).toBe('shortlisted');
+    expect(response.plan.selected_provider_ids).toEqual([]);
+  });
+
+  it('accepts a valid international phone from raw text even when extraction has a local phone', async () => {
+    class PhoneCorrectionRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'cerrar',
+          intentConfidence: 0.95,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario corrige su teléfono.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: '954779067',
+          providerFitCriteria: testProviderFitCriteria,
+          closeAction: { type: 'request_contact' },
+          providerPlanOperations: [],
+          providerQueryIntents: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-phone-correction',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-phone-correction',
+        }),
+        {
+          current_node: 'crear_lead_cerrar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
+          contact_phone: null,
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [1],
+              recommended_providers: [
+                { id: 1, title: 'Foto Uno', category: 'Fotografía y video', location: 'Lima', priceLevel: 'mid', reason: null, serviceHighlights: [], termsHighlights: [] },
+              ],
+              selected_provider_ids: [1],
+              selected_provider_hints: ['Foto Uno'],
+            },
+          ],
+        },
+      ),
+    });
+
+    const response = await new AgentService({
+      planStore,
+      runtime: new PhoneCorrectionRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-phone-correction',
+      text: '+51 954779067',
+      messageId: 'msg-phone-correction',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.contact_phone).toBe('51954779067');
+    expect(response.trace.contact_validation_summary.status).toBe('valid');
+    expect(response.trace.operational_note).toBeNull();
+  });
+
+  it('sanitizes file citation artifacts before returning and logging assistant output', async () => {
+    class CitationRuntime extends FakeRuntime {
+      override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return { text: 'Puedes revisar tu lista aquí. filecite turn1 file 0' };
+      }
+    }
+
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new CitationRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-citation',
+      text: 'hola, necesito proveedores',
+      messageId: 'msg-citation',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.outbound.text).toBe('Puedes revisar tu lista aquí.');
+  });
 });

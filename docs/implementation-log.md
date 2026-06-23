@@ -1,5 +1,78 @@
 # Implementation Log
 
+## 2026-06-22
+
+### Architecture and implementation report
+
+**Reason:** The thesis deliverable needed a detailed Spanish academic technical
+report describing the current `recap-agent` architecture and implementation,
+using the repository as authoritative evidence plus implementation logs, docs,
+analysis dossiers, Notion context, and AWS development deployment state.
+
+**Changes:**
+- Added a Sullivan-template-based LaTeX report under `docs/thesis/architecture-report/`.
+- Copied the report template class, bibliography file, and image assets into the
+  repo so the report is git-trackable and self-contained.
+- Adapted the copied class locally for the installed TinyTeX package set while
+  preserving the report structure.
+- Added native LaTeX/TikZ architecture, state-machine, and turn-pipeline diagrams.
+- Added an analysis dossier documenting sources, AWS checks, Notion checks, and
+  repeatable build commands.
+
+**Decision:** Keep the report body at architecture level without direct code
+excerpts or code-file references, while still grounding claims in the current
+implementation and deployed development environment.
+
+Validation:
+- `pdflatex -interaction=nonstopmode -halt-on-error recap-agent-architecture-report.tex`
+- `bibtex recap-agent-architecture-report`
+- Two final `pdflatex` passes; final log check found no unresolved references,
+  no empty bibliography, and no overfull boxes.
+
+## 2026-06-19
+
+### Batch 3 objective feedback fixes
+
+**Reason:** Batch 3 feedback exposed objective failures in routing, provider
+selection state, auth-code recovery, output hygiene, contact validation, FAQ
+retrieval guidance, and turn observability. DynamoDB perf logs also lacked final
+assistant-output evidence, which made wording regressions dependent on screenshots.
+
+**Changes:**
+- Added privacy-aware outbound observability to turn perf records: assistant
+  message length/hash/redacted preview, quality flags, structured message kind,
+  redacted tool input/output previews, and provider result summaries.
+- Added a CloudFormation/config flag, `PERF_CAPTURE_ASSISTANT_PREVIEW`, to control
+  redacted assistant preview capture while preserving TTL-based retention.
+- Centralized outbound rendering through one service helper and sanitize leaked
+  `filecite turnN file N` artifacts before channel delivery or logging.
+- Mapped internal missing-field ids to user-facing Spanish labels in extractor and
+  reply prompt snapshots.
+- Changed guest-event auth follow-ups in an active `code_requested` state to resend
+  the code instead of dead-ending on "send me the code".
+- Tightened provider alias resolution so generic first tokens such as "baby" cannot
+  coerce unknown provider names like Baby Baloo into Baby Loli, while preserving
+  meaningful first-name provider selection.
+- Fixed contact phone validation precedence so a valid international phone in raw
+  user text can clear a local/partial model extraction.
+- Strengthened Spanish extractor and FAQ prompts for event-specific lookup,
+  confirmed/invited guest questions, unknown provider preservation, unselect/defer
+  operations, multi-front handling, and batch-3 FAQ retrieval topics.
+- Added regression coverage in service, prompt-loader, OpenAI runtime snapshot, and
+  perf-trace tests.
+
+**Decision:** Keep conversational flow decisions grounded in structured extraction
+and state-machine evidence. Deterministic logic was limited to validation,
+sanitization, logging, and already-established auth/plan states.
+
+Validation:
+- `npm run check`
+- `npm run deploy`
+- Live Lambda smoke for "Tengo un problema con mi evento" routed to
+  `consultar_evento_invitado`.
+- DynamoDB perf smoke confirmed persisted assistant-message preview/hash/quality
+  fields and structured message kind.
+
 ## 2026-06-16
 
 ### Make live FAQ ATC assertions paraphrase-tolerant
@@ -2681,4 +2754,76 @@ Decision:
 Files changed:
 - `src/runtime/agent-service.ts`
 - `tests/agent-service.test.ts`
+- `docs/implementation-log.md`
+
+### Refine architecture report diagrams and prose
+
+- Rewrote the thesis architecture report into broader academic prose sections with fewer nested headings.
+- Shortened the report while preserving the implementation, AWS, OpenAI, Notion, and repository evidence gathered for the original version.
+- Replaced the previous dense flow diagrams with cleaner TikZ figures.
+- Added a dedicated AWS architecture topology figure that shows the channel boundary, runtime stack, sync stacks, OpenAI Agents/Vector Stores, DynamoDB, Secrets Manager, CloudWatch, EventBridge, S3, and Sin Envolturas APIs.
+- Validated the revised PDF with a full LaTeX/BibTeX build, LaTeX log checks, and rendered-page visual inspection.
+
+Reason:
+- The first report draft was technically complete but read too much like structured notes, and two TikZ diagrams became visually mangled in the compiled PDF.
+- The final report needs a more paper-like narrative and an architecture diagram that can later be redrawn with official AWS logos.
+
+Decision:
+- Keep the report source and rendered PDF under the copied Sullivan-template report directory.
+- Treat the new AWS figure as an implementation-faithful topology rather than a branded final artwork, so it remains easy to replace nodes with official logos later.
+- No Lambda redeploy was required because this was documentation-only.
+
+Files changed:
+- `docs/thesis/architecture-report/recap-agent-architecture-report.tex`
+- `docs/thesis/architecture-report/recap-agent-architecture-report.pdf`
+- `analysis/architecture-implementation-report/how-to-repeat.md`
+- `analysis/architecture-implementation-report/dates/2026-06-22.md`
+- `docs/implementation-log.md`
+
+### Replace internal report bibliography with public sources
+
+- Removed internal Notion/project-document entries from the report bibliography.
+- Added public bibliography entries for the UNAM technical-report writing guide, official AWS service documentation, official OpenAI Agents and Retrieval documentation, and selected academic conversational-agent/RAG sources from the provided AF.csv export.
+- Replaced direct internal-document citations in the prose with public citations where they support report form, serverless architecture, agent orchestration, retrieval, and production conversational-agent design.
+- Removed the internal "Fuentes utilizadas" appendix table so the rendered bibliography contains only public or academic sources.
+- Rebuilt the report and resolved bibliography typography warnings.
+
+Reason:
+- The report bibliography should be defensible for thesis review and should not cite private project artifacts such as Notion pages, internal implementation logs, or deployment inspection notes as formal references.
+
+Decision:
+- Keep internal evidence as the basis for architectural description, but exclude it from formal bibliography.
+- Use official AWS/OpenAI documentation for platform claims and academic papers only for broader conversational-agent context.
+- No Lambda redeploy was required because this was documentation-only.
+
+Files changed:
+- `docs/thesis/architecture-report/recap-agent-architecture-report.tex`
+- `docs/thesis/architecture-report/recap-agent-architecture-report.pdf`
+- `docs/thesis/architecture-report/sample.bib`
+- `docs/implementation-log.md`
+
+### Apply advisor feedback to architecture report
+
+- Removed the "Proyecto de tesis" presentation line from the cover and metadata.
+- Added UTEC and Sin Envolturas logo slots to the cover and page header.
+- Cleaned the report `Images/` directory and replaced template assets with stable UTEC and Sin Envolturas placeholder PDFs plus a README that documents how to swap in final logos.
+- Rewrote the documentary summary, introduction, architecture, conversational model, provider integration, persistence, observability, contracts, and discussion passages according to advisor feedback.
+- Reworked the AWS architecture TikZ figure so AWS, OpenAI, and Sin Envolturas API boundaries are visually grouped, boxes are separated, arrows are clearer, and the color legend is explicit.
+- Simplified the runtime cycle figure by removing a return-loop arrow that clipped the first node.
+- Rebuilt the PDF, checked LaTeX logs, and visually inspected rendered pages for the cover and diagrams.
+
+Reason:
+- Advisor feedback requested clearer institutional branding, more formal academic prose, stronger examples, better explanation of state-machine and hybrid-search concepts, explicit contract traceability, and less crowded figures.
+
+Decision:
+- Use stable logo filenames under `docs/thesis/architecture-report/Images/` (`utec-logo.pdf` and `sin-envolturas-logo.pdf`) and draw LaTeX placeholder boxes when the final images are not present.
+- Keep the AWS architecture as a TikZ topology that can later be redrawn with official service logos.
+- No Lambda redeploy was required because this was documentation-only.
+
+Files changed:
+- `docs/thesis/architecture-report/recap-agent-architecture-report.tex`
+- `docs/thesis/architecture-report/recap-agent-architecture-report.pdf`
+- `docs/thesis/architecture-report/Images/README.md`
+- `docs/thesis/architecture-report/Images/utec-logo.pdf`
+- `docs/thesis/architecture-report/Images/sin-envolturas-logo.pdf`
 - `docs/implementation-log.md`

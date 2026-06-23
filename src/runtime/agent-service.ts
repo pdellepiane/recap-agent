@@ -241,10 +241,7 @@ export class AgentService {
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
           plan: planForReply,
-          outbound: {
-            text: this.renderReply(reply, finishedProviders, inbound.channel),
-            conversationId: planForReply.conversation_id,
-          },
+          outbound: this.renderOutbound(reply, finishedProviders, inbound.channel, planForReply.conversation_id),
           trace: this.buildTrace({
             plan: planForReply,
             previousNode: existingPlan.current_node,
@@ -437,10 +434,7 @@ export class AgentService {
 
       return {
         plan: planToSave,
-        outbound: {
-          text: this.renderReply(reply, providerResults, inbound.channel),
-          conversationId: planToSave.conversation_id,
-        },
+        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
         trace: this.buildTrace({
           plan: planToSave,
           previousNode,
@@ -546,10 +540,7 @@ export class AgentService {
 
         return {
           plan: planToSave,
-          outbound: {
-            text: this.renderReply(reply, providerResults, inbound.channel),
-            conversationId: planToSave.conversation_id,
-          },
+          outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
           trace: this.buildTrace({
             plan: planToSave,
             previousNode,
@@ -614,10 +605,7 @@ export class AgentService {
 
       return {
         plan: planToSave,
-        outbound: {
-          text: this.renderReply(reply, providerResults, inbound.channel),
-          conversationId: planToSave.conversation_id,
-        },
+        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
         trace: this.buildTrace({
           plan: planToSave,
           previousNode,
@@ -683,10 +671,7 @@ export class AgentService {
 
       return {
         plan: planToSave,
-        outbound: {
-          text: this.renderReply(reply, providerResults, inbound.channel),
-          conversationId: planToSave.conversation_id,
-        },
+        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
         trace: this.buildTrace({
           plan: planToSave,
           previousNode,
@@ -760,10 +745,7 @@ export class AgentService {
 
       return {
         plan: planToSave,
-        outbound: {
-          text: this.renderReply(reply, providerResults, inbound.channel),
-          conversationId: planToSave.conversation_id,
-        },
+        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
         trace: this.buildTrace({
           plan: planToSave,
           previousNode,
@@ -1106,10 +1088,7 @@ export class AgentService {
 
     return {
       plan: planAfterFlow,
-      outbound: {
-        text: this.renderReply(reply, providerResults, inbound.channel),
-        conversationId: planAfterFlow.conversation_id,
-      },
+      outbound: this.renderOutbound(reply, providerResults, inbound.channel, planAfterFlow.conversation_id),
       trace: this.buildTrace({
         plan: planAfterFlow,
         previousNode,
@@ -1210,11 +1189,9 @@ export class AgentService {
     }
 
     if (planForEmail.guest_auth.status === 'code_requested') {
-      return {
-        plan: planForEmail,
-        message: 'Ya se envió un código a ese correo. Pide el código para continuar.',
-        lookupResult: null,
-      };
+      return await this.requestGuestCode(planForEmail, email, args.toolUsage, {
+        resend: true,
+      });
     }
 
     return await this.requestGuestCode(planForEmail, email, args.toolUsage);
@@ -1269,6 +1246,7 @@ export class AgentService {
     plan: PlanSnapshot,
     email: string,
     toolUsage: ToolUsage,
+    options: { resend?: boolean } = {},
   ): Promise<{
     plan: PlanSnapshot;
     message: string | null;
@@ -1291,7 +1269,9 @@ export class AgentService {
             requested_at: new Date().toISOString(),
           },
         }),
-        message: 'Se envió un código al correo. Pide el código para continuar.',
+        message: options.resend
+          ? 'Se reenvió un código al correo. Pide revisar spam o promociones, confirmar que el correo esté bien escrito, o enviar otro correo si quiere cambiarlo.'
+          : 'Se envió un código al correo. Pide el código para continuar.',
         lookupResult: null,
       };
     }
@@ -2104,7 +2084,10 @@ export class AgentService {
     };
 
     const extractionPhoneError = this.describePhoneValidationError(extraction.contactPhone);
-    if (extractionPhoneError !== null) {
+    if (
+      extractionPhoneError !== null &&
+      (plan.contact_phone === null || !this.isValidPhone(plan.contact_phone))
+    ) {
       return {
         status: 'invalid',
         field: 'phone',
@@ -2245,15 +2228,16 @@ export class AgentService {
     const normalizedChannelPhone = this.normalizePhone(channelPhone);
     const inferredPhoneCandidate = this.extractContactPhoneCandidate(userMessage);
     const inferredPhone = this.normalizePhone(inferredPhoneCandidate);
-    const phoneValidationError =
-      this.describePhoneValidationError(guardedExtraction.contactPhone) ??
-      this.describePhoneValidationError(inferredPhoneCandidate);
-
     const nextPhone =
       normalizedExtractorPhone ??
       inferredPhone ??
       normalizedChannelPhone ??
       plan.contact_phone;
+    const phoneValidationError =
+      normalizedExtractorPhone || inferredPhone || normalizedChannelPhone
+        ? null
+        : this.describePhoneValidationError(guardedExtraction.contactPhone) ??
+          this.describePhoneValidationError(inferredPhoneCandidate);
 
     const nextEmail = guardedExtraction.contactEmail ?? plan.contact_email;
     const nextName = guardedExtraction.contactName ?? plan.contact_name;
@@ -3605,7 +3589,19 @@ export class AgentService {
     }
 
     const firstToken = normalizedTitle.split(/\s+/)[0] ?? '';
-    if (firstToken.length >= 3) {
+    const genericFirstTokens = new Set([
+      'baby',
+      'bebe',
+      'bebes',
+      'eventos',
+      'fiestas',
+      'grupo',
+      'servicios',
+    ]);
+    if (
+      firstToken.length >= 3 &&
+      !genericFirstTokens.has(firstToken)
+    ) {
       aliases.add(firstToken);
     }
 
@@ -4018,22 +4014,40 @@ export class AgentService {
     ].some((keyword) => normalized.includes(keyword));
   }
 
-  private renderReply(
+  private renderOutbound(
     reply: { text: string; structuredMessage?: StructuredMessage },
     providerResults: ProviderSummary[],
     channel: string,
-  ): string {
+    conversationId: string | null,
+  ): NormalizedOutboundMessage {
+    const structuredMessageKind = reply.structuredMessage?.type ?? null;
     if (reply.structuredMessage) {
       const renderer = this.dependencies.renderers[channel]
         ?? this.dependencies.renderers['whatsapp'];
       if (renderer) {
-        return renderer.render({
-          message: reply.structuredMessage,
-          providerResults,
-        });
+        return {
+          text: this.sanitizeAssistantOutput(renderer.render({
+            message: reply.structuredMessage,
+            providerResults,
+          })),
+          conversationId,
+          structuredMessageKind,
+        };
       }
     }
 
-    return reply.text;
+    return {
+      text: this.sanitizeAssistantOutput(reply.text),
+      conversationId,
+      structuredMessageKind,
+    };
+  }
+
+  private sanitizeAssistantOutput(value: string): string {
+    return value
+      .replace(/\bfilecite\s+turn\d+\s+file\s+\d+\b/giu, '')
+      .replace(/[ \t]{2,}/gu, ' ')
+      .replace(/[ \t]+\n/gu, '\n')
+      .trim();
   }
 }

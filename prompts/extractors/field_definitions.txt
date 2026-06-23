@@ -13,8 +13,8 @@ Definiciones de campos:
   - retomar_plan: quiere seguir desde un plan ya guardado.
   - cerrar: quiere cerrar el plan o avanzar a contactar/cotizar con proveedores ya elegidos.
   - pausar: quiere dejarlo para después o retomarlo luego.
-  - consultar_faq: quiere hacer una pregunta sobre Sin Envolturas, precios, comisiones, funcionalidades, pagos, listas de regalo, soporte, capacidades de la plataforma, reclamos de productos, compras del Shop, o cualquier tema de la base de conocimiento. También úsalo cuando el usuario pida algo fuera de alcance pero relacionado con Sin Envolturas, por ejemplo diseñar una web externa o pedir contacto humano por un error.
-  - consultar_evento_invitado: quiere consultar información de un evento real de Sin Envolturas asociado al usuario que pregunta, ya sea como asistente, anfitrión, celebrado, dueño del evento o comprador. Úsalo para preguntas sobre fecha, hora, nombre del evento, RSVP, acompañante, anfitrión, rol del usuario, evento propio, evento donde es host/celebrado, regalos u órdenes de ese evento. Ejemplos: "¿a qué hora es mi evento?", "¿confirmé asistencia?", "¿puedo llevar acompañante?", "¿cuál es la boda de Ana?", "¿qué evento tengo en Sin Envolturas?".
+  - consultar_faq: quiere hacer una pregunta general sobre Sin Envolturas, precios, comisiones, funcionalidades, pagos, listas de regalo, soporte, capacidades de la plataforma, reclamos de productos, compras del Shop, o cualquier tema de la base de conocimiento que no requiera identificar un evento real del usuario. También úsalo cuando el usuario pida algo fuera de alcance pero relacionado con Sin Envolturas, por ejemplo diseñar una web externa o pedir contacto humano por un error.
+  - consultar_evento_invitado: quiere consultar información de un evento real de Sin Envolturas asociado al usuario que pregunta, ya sea como asistente, anfitrión, celebrado, dueño del evento o comprador. Úsalo para preguntas sobre fecha, hora, nombre del evento, RSVP, confirmados, invitados, acompañante, anfitrión, rol del usuario, evento propio, evento donde es host/celebrado, regalos u órdenes de ese evento. Si dice que tiene un problema con "mi evento", que no puede compartir su evento, o pregunta cómo ver o revisar datos de "mi evento", "mis invitados", "los confirmados" o "todo en un solo lugar", es consultar_evento_invitado, no un saludo ni onboarding genérico. Ejemplos: "tengo un problema con mi evento", "no puedo compartir mi evento", "¿a qué hora es mi evento?", "¿confirmé asistencia?", "¿dónde veo los confirmados?", "¿puedo llevar acompañante?", "¿cuál es la boda de Ana?", "¿qué evento tengo en Sin Envolturas?".
 
 - secondaryIntents:
   - lista opcional de ints adicionales presentes en el mensaje, además del intent principal.
@@ -75,6 +75,7 @@ Definiciones de campos:
   - lista de índices, nombres parciales o referencias claras a proveedores ya recomendados.
   - si el usuario elige una o varias opciones desde una shortlist visible y la referencia es resoluble con el plan base, incluye cada referencia como un elemento.
   - captura selecciones plurales como "la primera y la tercera", "EDO y Dulcefina" o "estos dos".
+  - no reemplaces nombres de proveedores desconocidos por nombres parecidos del plan. Si el usuario escribe un nombre que no coincide con seguridad, conserva el texto literal como hint o deja la referencia sin resolver para pedir aclaración.
   - usa [] solo si la referencia sigue siendo genuinamente ambigua incluso con la shortlist del plan base.
 
 - pauseRequested:
@@ -131,6 +132,7 @@ Definiciones de campos:
   - lista estructurada de cambios explícitos al plan.
   - usa únicamente tipos soportados: add_need, update_need, delete_need, select_provider, unselect_provider, replace_provider, defer_need, reactivate_need.
   - no uses heurísticas por palabras clave: si no puedes representar el cambio con una operación estructurada clara, deja la lista vacía y usa intentConfidence bajo.
+  - si el usuario rechaza una opción recomendada o seleccionada ("no quiero quedarme con X", "saca X", "no X"), usa unselect_provider con provider estructurado si X es resoluble. Si X no es resoluble, no inventes el proveedor.
   - si el usuario dice que no quiere ninguna opción de una necesidad ya recomendada o quiere cerrar sin proveedor para esa necesidad, usa defer_need, no delete_need. delete_need es solo para borrar una necesidad del plan cuando el usuario pide quitarla explícitamente.
 
 - closeAction:
@@ -139,7 +141,7 @@ Definiciones de campos:
   - category se usa únicamente con type=defer_need; para confirm_close, request_contact, abandon_plan y clarify debe ser null aunque exista una necesidad activa.
   - reason se usa únicamente con type=clarify; para confirm_close, defer_need, request_contact y abandon_plan debe ser null.
   - si el usuario pide cerrar o contactar con proveedores ya elegidos, usa type=confirm_close o request_contact sin category.
-  - si el usuario decide continuar sin una necesidad pendiente, usa type=defer_need con category canónica.
+  - si el usuario decide continuar sin una necesidad pendiente, usa type=defer_need con category canónica. Esto incluye respuestas negativas como "ninguna" cuando el sistema acaba de preguntar qué proveedor quiere para una necesidad pendiente.
 
 - providerExplanationRequest:
   - objeto cuando el usuario pide comparar o justificar proveedores.

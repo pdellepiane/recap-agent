@@ -35,6 +35,9 @@ describe('PromptLoader', () => {
     expect(faqBundle.instructions).toContain('reclamo se gestiona directamente con la marca');
     expect(faqBundle.instructions).toContain('chat de la web');
     expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
+    expect(faqBundle.instructions).toContain('beneficios, descuentos, Shop');
+    expect(faqBundle.instructions).toContain('transmisión en vivo');
+    expect(faqBundle.instructions).toContain('tipos de regalos');
     expect(invitedEventBundle.instructions).toContain('Contexto verificado de evento asociado');
     expect(invitedEventBundle.instructions).toContain('Ninguna.');
     expect(invitedEventBundle.instructions).toContain('eventos de Sin Envolturas asociados');
@@ -48,6 +51,22 @@ describe('PromptLoader', () => {
     expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
     expect(extractorBundle.instructions).toContain('diseñar una web externa');
     expect(extractorBundle.instructions).toContain('reclamos de productos');
+    expect(extractorBundle.instructions).toContain('dónde veo los confirmados');
+    expect(extractorBundle.instructions).toContain('tengo un problema con mi evento');
+    expect(extractorBundle.instructions).toContain('no puedo compartir mi evento');
+    expect(extractorBundle.instructions).toContain('mis invitados');
+    expect(extractorBundle.instructions).toContain('no reemplaces nombres de proveedores desconocidos');
+    expect(extractorBundle.instructions).toContain('no quiero quedarme con X');
+    expect(extractorBundle.instructions).toContain('respuestas negativas como "ninguna"');
+    expect(welcomeBundle.instructions).toContain('presupuesto o cantidad aproximada de invitados');
+  });
+
+  it('keeps multi-front prompt guidance enabled for explicit parallel needs', async () => {
+    const bundle = await loader.loadNodeBundle('entrevista');
+
+    expect(bundle.instructions).toContain('menciona varios servicios explícitos');
+    expect(bundle.instructions).toContain('avanza con todos los que estén listos');
+    expect(bundle.instructions).not.toContain('no intentes resolverlos todos en un turno');
   });
 
   it('loads extractor prompts without conversational style files', async () => {

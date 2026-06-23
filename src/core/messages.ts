@@ -13,4 +13,5 @@ export type NormalizedInboundMessage = {
 export type NormalizedOutboundMessage = {
   text: string;
   conversationId: string | null;
+  structuredMessageKind: string | null;
 };

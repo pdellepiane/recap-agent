@@ -68,6 +68,9 @@ export async function handler(
       externalUserId: body.user_id,
       messageId,
       userMessage: body.text,
+      assistantMessage: response.outbound.text,
+      includeAssistantMessagePreview: config.performance.captureAssistantPreview,
+      structuredMessageKind: response.outbound.structuredMessageKind,
       retentionDays: config.performance.retentionDays,
     });
     let perf: CliPerfSummary | undefined;

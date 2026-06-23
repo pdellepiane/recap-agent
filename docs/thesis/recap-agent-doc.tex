@@ -1,0 +1,1100 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Paquetes básicos ---
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[spanish]{babel}
+\usepackage[a4paper,margin=2.5cm]{geometry}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{tabularx}
+\usepackage{graphicx}
+\usepackage{amsmath}
+
+% --- Hipervínculos ---
+\hypersetup{
+  colorlinks=true,
+  linkcolor=blue!60!black,
+  urlcolor=blue!60!black,
+  citecolor=blue!60!black,
+  pdftitle={recap-agent: agente conversacional serverless para Sin Envolturas},
+  pdfauthor={Tesis}
+}
+
+% --- Estilo para código (usando fancyvrb) ---
+\usepackage{fancyvrb}
+\definecolor{codebg}{RGB}{248,248,248}
+\definecolor{codegray}{RGB}{60,60,60}
+
+\DefineVerbatimEnvironment{codeblock}{Verbatim}{
+  fontfamily=tt,
+  fontsize=\small,
+  frame=single,
+  framerule=0pt,
+  framesep=8pt,
+  xleftmargin=1em,
+  xrightmargin=1em,
+  formatcom=\color{codegray}
+}
+
+\newcommand{\code}[1]{{\ttfamily\color{codegray}#1}}
+
+% Título y autor
+\title{\textbf{recap-agent}\\[0.4em]
+       \large Runtime conversacional serverless para Sin Envolturas:\\
+       arquitectura, decisiones y características clave}
+\author{Documentación derivada de \texttt{docs/implementation-log.md} y del código fuente}
+\date{Generado el 9 de junio de 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+\noindent
+Este documento describe \texttt{recap-agent}, un agente conversacional serverless
+desplegado sobre AWS Lambda y modelado en torno a un grafo de estados que
+refleja el \emph{Flujo de estados} definido para el producto. La arquitectura
+combina el SDK de OpenAI Agents (un agente conversacional más un extractor
+estructurado), persistencia por turno en DynamoDB, una puerta de enlace real
+contra el marketplace de Sin Envolturas y una búsqueda híbrida (API +
+vector store) para proveedores. El runtime es agnóstico al canal: el
+comportamiento de WhatsApp, webchat y la terminal CLI se resuelve en una capa
+de adaptadores delgada, mientras que el núcleo de la aplicación sólo conoce
+\texttt{channel} y \texttt{user\_id} como datos de entrada. El presente
+artículo resume la arquitectura del sistema, las decisiones de diseño más
+relevantes, las características clave implementadas y la evolución que
+recoge el log de implementación mantenido desde el inicio del proyecto.
+\end{abstract}
+
+\tableofcontents
+\bigskip
+
+% ============================================================
+\section{Introducción y motivación}
+% ============================================================
+
+\texttt{recap-agent} nace como un \emph{runtime conversacional serverless} cuyo
+objetivo es asistir a usuarios de \textbf{Sin Envolturas} en la planificación
+de eventos: detectar el tipo de evento, elicitar necesidades de proveedores,
+buscar y recomendar, gestionar selecciones múltiples, y finalmente cerrar el
+plan enviando cotizaciones a los proveedores elegidos. La motivación original
+era doble:
+
+\begin{enumerate}[leftmargin=*,itemsep=2pt]
+  \item Reemplazar un cliente terminal improvisado por un servicio desplegado
+        que pueda ser invocado por canales reales (WhatsApp, webchat), sin
+        sacrificar la trazabilidad de la conversación.
+  \item Garantizar que las decisiones de flujo no dependan de coincidencias
+        de cadenas en el texto del usuario, sino de evidencia estructurada
+        producida por un agente extractor y validada por un esquema de
+        estados tipado.
+\end{enumerate}
+
+El proyecto se escribe íntegramente en TypeScript, usa el runtime
+\texttt{nodejs24.x} tanto en local como en Lambda, aplica tipado estricto con
+\texttt{any} explícitamente prohibido, y mantiene sus prompts en español
+dentro del repositorio como archivos de texto bajo \texttt{prompts/}
+asociados a nodos del grafo de estados.
+
+% ============================================================
+\section{Arquitectura general}
+% ============================================================
+
+\subsection{Vista de capas}
+
+El sistema se organiza en cinco capas, todas ellas desplegadas en una única
+plantilla de CloudFormation (\texttt{infra/cloudformation/stack.yaml}):
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Capa de canal} (\texttt{src/terminal/}): CLI de desarrollo
+        que emula WhatsApp; en producción se reemplaza por adaptadores
+        específicos de cada canal, sin tocar el núcleo.
+  \item \textbf{Entry point} (\texttt{src/lambda/handler.ts}): handler de
+        AWS Lambda que invoca el runtime, serializa el turno y persiste
+        telemetría. Es la única superficie HTTP del sistema.
+  \item \textbf{Runtime de aplicación} (\texttt{src/runtime/}): orquesta
+        extracción, búsqueda, render, persistencia y telemetría. Alberga
+        la integración con OpenAI Agents, el gateway de Sin Envolturas y
+        los renderers por canal.
+  \item \textbf{Núcleo de dominio} (\texttt{src/core/}): grafo de
+        decisión, plan persistente tipado, suficiencia, decisión por
+        turno, prioridades por tipo de evento y trazabilidad.
+  \item \textbf{Almacenamiento} (\texttt{src/storage/}): interfaces
+        \texttt{PlanStore} y \texttt{PerfStore} con implementaciones
+        DynamoDB e in-memory.
+\end{itemize}
+
+\begin{figure}[h!]
+\centering
+\begin{tabularx}{\linewidth}{|>{\raggedright\arraybackslash}p{3.2cm}|>{\raggedright\arraybackslash}X|}
+\hline
+\textbf{Capa} & \textbf{Responsabilidad} \\
+\hline
+Canal & Webhook y presentación específica de cada canal (WhatsApp, webchat, terminal). \\
+\hline
+Lambda & Punto de entrada HTTP, persistencia de telemetría, respuesta síncrona única por turno. \\
+\hline
+Runtime & Orquestación del turno: extractor estructurado, búsqueda, render, persistencia del plan, telemetría. \\
+\hline
+Núcleo & Modelo del plan, nodos de decisión, suficiencia, decisión por turno, prioridades por evento. \\
+\hline
+Almacenamiento & Persistencia por \texttt{(channel, externalUserId)} en DynamoDB (planes y métricas). \\
+\hline
+\end{tabularx}
+\caption{Resumen de capas del runtime.}
+\end{figure}
+
+\subsection{Despliegue en AWS}
+
+La plantilla de CloudFormation (\texttt{recap-agent-runtime}) crea:
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item Una función Lambda sobre \texttt{nodejs24.x}, con 90 segundos de
+        timeout y 1024\,MB de memoria, accesible vía \emph{Function URL}
+        sin autenticación (la autenticación por canal es responsabilidad
+        del adaptador).
+  \item Dos tablas DynamoDB en modo \texttt{PAY\_PER\_REQUEST}:
+        \texttt{<stack>-plans} (planes por usuario) y
+        \texttt{<stack>-perf} (telemetría con GSI \texttt{channel-user-turns}
+        y TTL configurable vía \texttt{PERF\_RETENTION\_DAYS}, por defecto 30 días).
+  \item Un rol IAM con permisos mínimos sobre DynamoDB y Secrets Manager
+        para resolver la API key de OpenAI en tiempo de ejecución.
+  \item Un secreto de OpenAI que se sincroniza desde el \texttt{.env} local
+        mediante \texttt{scripts/deploy.mjs}.
+\end{itemize}
+
+Stacks auxiliares (\texttt{recap-agent-provider-sync-dev},
+\texttt{recap-agent-knowledge-sync-dev}) mantienen los vector stores de
+proveedores y de la base de conocimiento respectivamente.
+
+% ============================================================
+\section{Núcleo de dominio}
+% ============================================================
+
+\subsection{Grafo de decisión}
+
+El corazón del sistema es un \textbf{grafo de estados} explícito definido en
+\texttt{src/core/decision-nodes.ts}. Cada turno del usuario es procesado en
+uno de 26 nodos posibles, entre los que se incluyen:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \textbf{Entrada}: \texttt{contacto\_inicial}, \texttt{deteccion\_intencion},
+        \texttt{existe\_plan\_guardado}.
+  \item \textbf{Elicitación}: \texttt{entrevista}, \texttt{elicitacion\_necesidades},
+        \texttt{minimos\_para\_buscar}, \texttt{aclarar\_pedir\_faltante},
+        \texttt{usuario\_responde}.
+  \item \textbf{Búsqueda y recomendación}: \texttt{buscar\_proveedores},
+        \texttt{busqueda\_exitosa}, \texttt{hay\_resultados},
+        \texttt{recomendar}, \texttt{refinar\_criterios}.
+  \item \textbf{Selección y refinamiento}: \texttt{usuario\_elige\_proveedor},
+        \texttt{anadir\_a\_proveedores\_recomendados},
+        \texttt{seguir\_refinando\_guardar\_plan}, \texttt{continua}.
+  \item \textbf{Cierre}: \texttt{accion\_final\_exitosa},
+        \texttt{necesidad\_cubierta}, \texttt{crear\_lead\_cerrar},
+        \texttt{guardar\_seleccion\_reintentar\_luego},
+        \texttt{guardar\_cerrar\_temporalmente},
+        \texttt{informar\_error\_reintento}, \texttt{reintentar}.
+  \item \textbf{Modos informativos}: \texttt{consultar\_faq} y
+        \texttt{consultar\_evento\_invitado}, habilitados como nodos de
+        primera clase con sus propios prompts y herramientas.
+\end{itemize}
+
+Cada nodo tiene asociado un \emph{manifiesto de prompt} en
+\texttt{src/runtime/prompt-manifest.ts} que determina qué archivos del
+directorio \texttt{prompts/nodes/<nodo>/} se cargan y qué herramientas
+puede invocar el agente conversacional. Esta es la materialización del
+principio de ``los prompts son contrato'': el runtime no infiere qué
+herramientas están permitidas, las lee del manifiesto.
+
+\subsection{Modelo del plan}
+
+El plan es la unidad durable de estado conversacional. Se modela con Zod
+en \texttt{src/core/plan.ts} e incluye, entre otros:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Identidad: \texttt{plan\_id}, \texttt{channel},
+        \texttt{external\_user\_id}, \texttt{conversation\_id},
+        \texttt{lifecycle\_state} (\texttt{active} | \texttt{finished}).
+  \item Estado de flujo: \texttt{current\_node}, \texttt{intent},
+        \texttt{intent\_confidence}.
+  \item Datos del evento: \texttt{event\_type} (canónico:
+        \texttt{boda}, \texttt{cumpleanos}, \texttt{corporativo},
+        \texttt{baby\_shower}, \texttt{graduacion}, \texttt{bautizo},
+        \texttt{aniversario}, \texttt{quinceanos}, \texttt{otro}),
+        \texttt{location}, \texttt{budget\_signal}, \texttt{guest\_range}
+        y el árbol de \textbf{necesidades de proveedores}
+        (\texttt{provider\_needs}).
+  \item Datos de contacto (\texttt{contact\_name}, \texttt{contact\_email},
+        \texttt{contact\_phone}) y resumen conversacional
+        (\texttt{conversation\_summary}, \texttt{last\_user\_goal},
+        \texttt{open\_questions}, \texttt{assumptions}).
+  \item Listas planas para compatibilidad (\texttt{recommended\_provider\_ids},
+        \texttt{selected\_provider\_ids}, \texttt{selected\_provider\_hints}).
+\end{itemize}
+
+La función \texttt{normalizeRawPlan} se ejecuta en el \emph{boundary} de
+carga para mapear cualquier valor heredado a los enums canónicos,
+incluyendo la migración de los antiguos campos singulares
+\texttt{selected\_provider\_id} y \texttt{selected\_provider\_hint} a sus
+versiones en arreglo.
+
+\subsection{Suficiencia y \emph{TurnDecision}}
+
+\texttt{computeSearchSufficiency} evalúa si un plan está listo para buscar
+proveedores: requiere categoría de proveedor, ubicación, y
+\texttt{budget\_signal} o \texttt{guest\_range}. Esta comprobación
+determinista se complementa con \texttt{computeNeedSearchSufficiencies},
+que aplica la misma regla a cada necesidad del plan.
+
+\texttt{TurnDecision} (\texttt{src/core/turn-decision.ts}) es el
+\emph{contrato de ruteo} del turno. Tras la extracción estructurada, el
+runtime acumula evidencia (\texttt{DecisionEvidence}) y produce un
+\texttt{TurnDecision} validado con Zod que contiene:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \texttt{nextNode}: el nodo que ejecutará la lógica de
+        aplicación.
+  \item \texttt{routeKind}: tipo de ruta
+        (\texttt{ask\_event\_context}, \texttt{clarify\_missing\_fields},
+        \texttt{single\_need\_search}, \texttt{multi\_need\_search},
+        \texttt{present\_existing\_shortlist}, \texttt{apply\_selection},
+        \texttt{modify\_plan}, \texttt{faq}, \texttt{invited\_event\_lookup},
+        \texttt{close}, \texttt{pause}, \texttt{error}).
+  \item \texttt{providerSearchMode}: \texttt{none},
+        \texttt{single\_need\_from\_plan}, \texttt{multi\_need\_query\_intents},
+        \texttt{existing\_shortlist}.
+  \item \texttt{presentationScope}, \texttt{focusNeedCategory},
+        \texttt{needsToSearch}, \texttt{needsToPresent},
+        \texttt{invariantStatus} y \texttt{invariantViolations}.
+\end{itemize}
+
+El principio clave es: \textbf{el modelo produce interpretación
+estructurada; el código de aplicación decide las consecuencias}. De este
+modo, el ruteo, la persistencia y la trazabilidad son siempre
+deterministas, y se pueden cubrir con tests unitarios.
+
+\subsection{Foco por sesión}
+
+\texttt{sessionFocusSchema} define un objeto persistente que se almacena
+como ítem compañero en la tabla de planes. Permite que un mismo usuario
+en la misma sesión concentre un frente de trabajo (por ejemplo, ante una
+consulta ambigua entre varias necesidades) sin que el runtime caiga en un
+estado activo obsoleto. Los adaptadores pueden pasar \texttt{session\_id}
+en el cuerpo de la Lambda para habilitar este comportamiento.
+
+% ============================================================
+\section{Runtime de aplicación}
+% ============================================================
+
+\subsection{Pipeline de un turno}
+
+Cada turno entrante pasa por una pipeline en
+\texttt{src/runtime/agent-service.ts} que se puede resumir en:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item Carga del plan desde DynamoDB por
+        \texttt{(channel, externalUserId)}.
+  \item Validación de invariantes: si el plan está \texttt{finished}, se
+        emite respuesta determinista en español sin extractor ni
+        composición.
+  \item Cálculo de \texttt{DecisionEvidence} y \texttt{TurnDecision}.
+  \item Extracción estructurada con el \emph{agente extractor}
+        (modelo \texttt{OPENAI\_EXTRACTOR\_MODEL}) usando un esquema Zod
+        estable.
+  \item Fusión de la extracción con el plan: se preservan hechos
+        conocidos (rango de invitados, ubicación, evento) cuando la
+        extracción devuelve \texttt{unknown} o nulo.
+  \item Aplicación de operaciones estructuradas de plan
+        (añadir, actualizar, eliminar, diferir, reactivar, seleccionar,
+        reemplazar) y selección de proveedor basada en pista del
+        extractor (\texttt{selectedProviderHint}) con respaldo
+        determinista de alias/ordinales.
+  \item Decisión del modo de búsqueda: ninguno,
+        \texttt{single\_need\_from\_plan},
+        \texttt{multi\_need\_query\_intents} o
+        \texttt{existing\_shortlist}.
+  \item Búsqueda y enriquecimiento de proveedores vía el gateway.
+  \item Reranking determinista con \texttt{providerFitCriteria}
+        (criterios estructurados que el extractor debe producir).
+  \item Composición de la respuesta con el \emph{agente conversacional}
+        (modelo \texttt{OPENAI\_MODEL}) usando un esquema de salida
+        estructurado por nodo (\texttt{welcome}, \texttt{recommendation},
+        \texttt{multi\_need\_recommendation}, \texttt{close},
+        \texttt{contact\_request}, \texttt{generic}).
+  \item Render por canal (\texttt{whatsapp}, \texttt{webchat},
+        \texttt{terminal\_whatsapp}).
+  \item Persistencia del plan y construcción del registro de telemetría
+        (\texttt{buildTurnPerfRecord}).
+\end{enumerate}
+
+\subsection{Modelo event-plan-first}
+
+El runtime está explícitamente orientado a un \textbf{plan de evento
+primero}, no a una búsqueda puntual. El esquema del plan contiene un
+arreglo de \texttt{provider\_needs}, cada una con su propia categoría,
+preferencias, restricciones, \texttt{recommended\_providers},
+\texttt{sub\_query\_results} y selección múltiple. El campo
+\texttt{active\_need\_category} proyecta la necesidad activa para
+mantener compatibilidades con el modelo y la trazabilidad.
+
+El catálogo canónico de categorías de proveedor
+(\texttt{src/core/provider-category.ts}) se mantiene sincronizado con
+los nombres oficiales de la API de Sin Envolturas y se usa como enum Zod
+(\texttt{providerCategorySchema}). Adicionalmente, se exponen
+\emph{buckets} (Catering, Entretenimiento, Belleza, etc.) que se
+expanden a varias categorías canónicas para alimentar búsquedas
+paralelas.
+
+\subsection{Gateway de Sin Envolturas}
+
+La clase \texttt{SinEnvolturasGateway}
+(\texttt{src/runtime/sinenvolturas-gateway.ts}) implementa el contrato
+\texttt{ProviderGateway} y se conecta a la API real del marketplace
+(\texttt{https://api.sinenvolturas.com/api-web/vendor}). El conjunto de
+operaciones validadas cubre, entre otras:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \texttt{list\_categories}, \texttt{get\_category\_by\_slug},
+        \texttt{list\_locations}.
+  \item Búsqueda: \texttt{search\_providers\_from\_plan},
+        \texttt{search\_providers\_by\_keyword},
+        \texttt{search\_providers\_by\_category\_location},
+        \texttt{search\_providers\_by\_query\_intent},
+        \texttt{get\_relevant\_providers}.
+  \item Detalle: \texttt{get\_provider\_detail},
+        \texttt{get\_provider\_detail\_and\_track\_view},
+        \texttt{get\_related\_providers},
+        \texttt{list\_provider\_reviews}.
+  \item Contexto: \texttt{get\_event\_vendor\_context},
+        \texttt{list\_event\_favorite\_providers},
+        \texttt{list\_user\_events\_vendor\_context},
+        \texttt{lookup\_user\_event\_context}.
+  \item Cierre: \texttt{create\_quote\_request},
+        \texttt{add\_vendor\_to\_event\_favorites},
+        \texttt{create\_provider\_review},
+        \texttt{finish\_plan}.
+\end{itemize}
+
+El gateway ofrece una estrategia mixta de búsqueda (API + vector) que
+ejecuta en paralelo \texttt{GET /filtered} y \texttt{GET /filtered/full},
+deduplica por identificador de proveedor y combina campos
+(metadata) para maximizar la completitud sin expandir la superficie de
+herramientas que ve el modelo.
+
+\subsection{Búsqueda híbrida con vector store}
+
+La clase \texttt{ProviderVectorSearchGateway}
+(\texttt{src/runtime/provider-vector-search.ts}) consulta un vector
+store de OpenAI dedicado (\texttt{Sin Envolturas Provider Search})
+poblado por la pipeline \texttt{provider-sync} con un archivo Markdown
+por proveedor. La estrategia de búsqueda se controla con
+\texttt{PROVIDER\_SEARCH\_MODE} (\texttt{api}, \texttt{vector},
+\texttt{hybrid}). Las claves canónicas de los filtros de OpenAI se
+resuelven en runtime para evitar el problema de \emph{case sensitivity}
+que en su momento descartó resultados (por ejemplo, ``Catering'').
+
+El reranking final siempre pasa por el selector determinista de
+categoría/ubicación, lo que garantiza que la búsqueda vectorial sólo
+\emph{recupera candidatos} y la presentación final se queda con los
+proveedores correctos para el país y la ciudad del plan. Esta decisión
+se tomó tras observar que un plan de fotografía en Lurín
+(Lima/Perú) regresaba candidatos de México.
+
+\subsection{Prompts como contrato}
+
+Cada nodo carga tres archivos desde \texttt{prompts/nodes/<nodo>/}:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \texttt{system.txt}: objetivo, restricciones y comportamiento
+        de salida del nodo.
+  \item \texttt{response\_contract.txt}: contrato de la salida
+        estructurada esperada.
+  \item \texttt{tool\_policy.txt}: herramientas permitidas en el nodo.
+\end{itemize}
+
+El agente extractor consume, además, un \emph{bundle} propio bajo
+\texttt{prompts/extractors/} (\texttt{system},
+\texttt{field\_definitions}, \texttt{conflict\_resolution},
+\texttt{domain\_knowledge}, \texttt{normalization\_rules},
+\texttt{examples.md}), mientras que los prompts compartidos viven en
+\texttt{prompts/shared/} (estilo, disciplina de flujo, estrategia de
+preguntas, anti-patrones, conocimiento de dominio). El bundle se
+inyecta con un \texttt{cacheKey} estable para que la caché de
+prompts de OpenAI funcione efectivamente.
+
+\subsection{Guardrails nativos}
+
+El runtime aplica \emph{input} e \emph{output guardrails} del SDK de
+OpenAI Agents:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Bloqueo de intentos de prompt injection o de revelación de
+        instrucciones internas.
+  \item Normalización del correo de soporte al canónico
+        \texttt{hola@sinenvolturas.com} si el modelo emite una variante
+        corrupta o inventada.
+\end{itemize}
+
+Ambas reglas tienen tests de regresión dedicados.
+
+% ============================================================
+\section{Características clave implementadas}
+% ============================================================
+
+A continuación, una selección de las capacidades más representativas del
+runtime tal como se documentan en \texttt{docs/implementation-log.md}.
+
+\begin{longtable}{p{4.6cm}p{10.8cm}}
+\toprule
+\textbf{Característica} & \textbf{Descripción} \\
+\midrule
+\endhead
+
+Plan de evento primero &
+El plan admite múltiples \texttt{provider\_needs} simultáneas; la
+búsqueda de un único proveedor se modela como un caso particular de
+este esquema. La categoría activa se proyecta y se normaliza con las
+prioridades por tipo de evento. \\
+
+Selección múltiple de proveedores &
+\texttt{selected\_provider\_ids} y \texttt{selected\_provider\_hints}
+son arreglos. La elección se resuelve con pistas estructuradas del
+extractor (alias, ordinales, descriptores como ``la de tablas de
+queso'') y con respaldo determinista de matching. La
+\texttt{finish\_plan} crea una solicitud de cotización por cada
+proveedor seleccionado. \\
+
+Elicitación estructurada multi-necesidad &
+El nodo \texttt{elicitacion\_necesidades} produce varios
+\texttt{provider\_needs} con \emph{sub-queries} y
+\texttt{providerQueryIntents} en una sola pasada cuando la solicitud
+del usuario es detallada. La compuerta de \emph{detailed elicitation}
+decide si se lanza una búsqueda o un menú inicial. \\
+
+Búsqueda híbrida API + vector store &
+Combina los endpoints \texttt{/filtered} y \texttt{/filtered/full} con
+un vector store OpenAI dedicado. Deduplica por id, expande buckets
+(``Catering'' $\to$ \texttt{[Catering, Licores]}) y aplica un selector
+determinista de categoría/ubicación. Los candidatos vectoriales
+pasan obligatoriamente por el selector antes de llegar al modelo. \\
+
+Enriquecimiento previo a la recomendación &
+Antes de persistir y enviar los resultados al agente conversacional,
+el runtime consulta el endpoint de detalle para obtener
+\textit{promos}, \textit{service highlights}, \textit{terms} y la URL
+de la ficha del proveedor. La presentación final cuenta con
+diferenciadores concretos en lugar de texto improvisado. \\
+
+Embudo de recomendación de dos etapas &
+El runtime conserva y envía al agente de respuesta un top-15
+persistente, y el prompt restringe la presentación visible a un
+top-5 (\texttt{PRESENTATION\_PROVIDER\_LIMIT}). El bloque
+\texttt{recommendation\_funnel} del trace expone el embudo. \\
+
+Reranking estructurado por \texttt{providerFitCriteria} &
+El extractor emite criterios de ajuste (presupuesto, tipo de evento,
+preferencias, restricciones duras) que el runtime aplica de forma
+determinista sobre el detalle del proveedor. El agente conversacional
+no rerankea proveedores: sólo decide cómo presentar el shortlist ya
+ordenado. \\
+
+Manejo de múltiples selecciones en un mismo turno &
+Cuando un usuario combina ``quiero al DJ Pulga y ahora muéstrame
+catering'', la extracción incluye \texttt{secondaryIntents} y la
+selección del DJ se preserva aunque la intención principal sea
+\texttt{buscar\_proveedores}. La pista de selección se autocompleta
+por heurística de alias cuando el extractor no la emite. \\
+
+Nodos informativos de primera clase &
+\texttt{consultar\_faq} y \texttt{consultar\_evento\_invitado} son
+nodos del grafo, no herramientas sueltas. Tienen su propio bundle de
+prompts, herramientas dedicadas (\texttt{file\_search} en
+\texttt{consultar\_faq}, \texttt{lookup\_user\_event\_context} en
+\texttt{consultar\_evento\_invitado}) y rutas claras de entrada y
+salida. FAQ exige la invocación real del tool antes de responder. \\
+
+Cierre con cotización real (\texttt{finish\_plan}) &
+La herramienta \texttt{finish\_plan} itera sobre todas las
+necesidades con proveedor seleccionado y llama a
+\texttt{POST /api-web/vendor/quote} por cada uno. Devuelve un
+\texttt{status} agregado (\texttt{success}, \texttt{partial},
+\texttt{failed}) y, en éxito, muta el plan a
+\texttt{lifecycle\_state: finished} y a
+\texttt{current\_node: necesidad\_cubierta}. \\
+
+Telemetría por turno siempre activa &
+Cada turno produce un \texttt{TurnTrace} con tiempos por etapa,
+herramientas, parámetros, errores, embudo de recomendación y
+resúmenes estructurados (decisión, extracción, plan). El registro
+se persiste en la tabla de perf con TTL configurable y se devuelve
+al cliente sólo cuando \texttt{client\_mode=cli}. \\
+
+Renderers por canal deterministas &
+La salida del agente se parsea en estructuras tipadas
+(\texttt{welcome}, \texttt{recommendation}, etc.) y se proyecta a
+WhatsApp (\texttt{*negrita*} y emojis), webchat (texto plano con
+viñetas y URLs) o terminal. El formato nunca queda a criterio del
+modelo. \\
+
+CLI de desarrollo que emula WhatsApp &
+La terminal apunta siempre a la Function URL desplegada (no corre un
+agente local), emula el contrato del canal, expone trace, plan y
+perf en cada turno, soporta \texttt{/help}, \texttt{/config},
+\texttt{/plan} y \texttt{/exit}, y muestra una línea de progreso
+\textit{in-place} con fases. \\
+
+\bottomrule
+\caption{Resumen de características clave.}
+\end{longtable}
+
+% ============================================================
+\section{Decisiones de diseño relevantes}
+% ============================================================
+
+\subsection{Determinismo de ruteo y parseo canónico}
+
+El proyecto se aleja explícitamente del \emph{matching} de cadenas o
+palabras clave en favor de evidencia estructurada validada por Zod. El
+log documenta múltiples decisiones consecutivas en este sentido:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Normalización canónica de tipos de evento, niveles de precio,
+        categorías de proveedor, claves de país y nodos de decisión.
+  \item Eliminación de la autoridad del modelo sobre
+        \texttt{actions} generadas: el control de flujo queda en
+        manos de la combinación de \texttt{intent}, pista de selección,
+        estado del nodo y estado persistente.
+  \item \texttt{providerFitCriteria} como contrato estructurado para
+        reordenar proveedores: el extractor lo emite y el runtime lo
+        aplica de forma determinista.
+  \item Esquemas Zod para \emph{close actions}, \emph{provider
+        references}, \emph{plan operations}, \emph{query intents},
+        \emph{explanations} y \emph{detail requests} en
+        \texttt{src/runtime/extraction-schemas.ts}.
+\end{itemize}
+
+\subsection{\emph{TurnDecision} como contrato de ruteo}
+
+La conversión del grafo implícito en un objeto
+\texttt{TurnDecision} validado por Zod resolvió un bug persistente: el
+\texttt{active\_need} quedaba obsoleto tras turnos multi-frente, lo que
+provocaba que el sistema ignorase nuevas necesidades para centrarse
+sólo en la más antigua. Con \texttt{TurnDecision}, el modelo interpreta
+y el código enruta; los tests pueden asegurar que
+\texttt{turn\_decision.nextNode} coincide con el nodo ejecutado.
+
+\subsection{Persistencia \emph{event-plan-first} con migración limpia}
+
+El plan migró de campos singulares (\texttt{selected\_provider\_id},
+\texttt{selected\_provider\_hint}) a arreglos. \texttt{normalizeRawPlan}
+realiza la migración en el \emph{boundary} de carga, lo que evita
+mantener un shim de retrocompatibilidad en el código de aplicación y
+permite que la purga de planes antiguos sea un paso explícito.
+
+\subsection{Embedding, prompt cache y retries}
+
+El runtime apunta a la familia \texttt{gpt-5.4} con dos modelos
+(\texttt{gpt-5.4-mini} para respuesta y \texttt{gpt-5.4-nano} para
+extracción) y configura:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \texttt{promptCacheRetention} (\texttt{in-memory} o
+        \texttt{24h}) con un \texttt{cacheKey} estable por bundle.
+  \item \texttt{maxRetries: 3} en el cliente OpenAI y
+        \texttt{retryPolicies.any(retryPolicies.httpStatus([429]),
+        retryPolicies.networkError())} con backoff exponencial y
+        jitter ($1\,\mathrm{s} \to 30\,\mathrm{s}$) para tolerar ventanas
+        de TPM de 20 segundos.
+  \item Snapshots compactos del plan en extractores y composición de
+        respuesta para reducir tokens.
+  \item \texttt{reasoning.effort: none} y \texttt{text.verbosity: low}
+        en el runtime de respuesta para minimizar latencia.
+\end{itemize}
+
+\subsection{Canales agnósticos y \texttt{client\_mode}}
+
+El núcleo sólo conoce \texttt{channel} y \texttt{user\_id}; no contiene
+lógica de WhatsApp. La respuesta se serializa siempre con un campo
+\texttt{message} compatible con cualquier cliente. Los diagnósticos
+(\texttt{trace}, \texttt{perf}, \texttt{plan}) se devuelven únicamente
+cuando el cliente declara \texttt{client\_mode: "cli"}, de modo que
+los canales de consumo no ven datos internos. Los adaptadores son
+responsables de la autenticación de webhook, la idempotencia, el
+formateo final y la captura de feedback.
+
+\subsection{Telemetría de bajo costo}
+
+Las trazas se persisten en una tabla DynamoDB con TTL
+(\texttt{ttl\_epoch\_seconds}) y un GSI para consultas por canal/usuario.
+Los registros contienen resúmenes estructurados (\texttt{extraction\_summary},
+\texttt{plan\_summary}, \texttt{recommendation\_funnel}) y un
+\texttt{user\_message\_preview} truncado, suficientes para reconstruir
+interacciones fallidas sin almacenar blobs crudos.
+
+\subsection{Prompts versionados y migraciones limpias}
+
+El proyecto no mantiene shims de retrocompatibilidad: cada cambio
+sustancial va acompañado de una migración atómica en planes, fixtures
+y casos de evaluación. Los prompts viven como texto en español en
+\texttt{prompts/} y el runtime los carga por nodo, lo que permite
+auditar la trazabilidad de cada cambio en el log de implementación.
+
+% ============================================================
+\section{Sistema de prompts y conocimiento}
+% ============================================================
+
+\subsection{Estructura de \texttt{prompts/}}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \texttt{shared/}: sistema base, alcance, conocimiento de
+        dominio, estilo, disciplina de flujo, estrategia de preguntas,
+        anti-patrones comunes.
+  \item \texttt{nodes/<nodo>/system.txt}, \texttt{response\_contract.txt},
+        \texttt{tool\_policy.txt}: contrato por nodo.
+  \item \texttt{extractors/}: bundle específico para el agente extractor
+        (\texttt{field\_definitions}, \texttt{normalization\_rules},
+        \texttt{conflict\_resolution}, \texttt{examples}, etc.).
+\end{itemize}
+
+La carga se hace a través de \texttt{PromptLoader}
+(\texttt{src/runtime/prompt-loader.ts}) y se cachea por bundle para
+aprovechar la caché de prompts de OpenAI.
+
+\subsection{Capa de conocimiento (FAQ)}
+
+El sistema integra una \emph{base de conocimiento} derivada de la
+\textit{help center} pública de Sin Envolturas. El proceso completo
+está descrito en \texttt{docs/knowledge-base-integration.md}:
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item \texttt{TawkHelpScraper} descarga los artículos de
+        \texttt{https://sinenvolturas.tawk.help}.
+  \item El formateador produce un archivo Markdown por artículo con
+        \emph{frontmatter} YAML (\texttt{title}, \texttt{slug},
+        \texttt{category}, \texttt{article\_type}, \texttt{tags},
+        \texttt{source\_url}, \texttt{last\_updated},
+        \texttt{related\_topics}).
+  \item \texttt{OpenAiKnowledgeUploader} sube los artículos a un vector
+        store de OpenAI en lotes (\texttt{uploadBatch}) y elimina los
+        archivos de lotes anteriores (\texttt{cleanupOldBatches}).
+  \item Un Lambda de sincronización (\texttt{recap-agent-knowledge-sync-dev})
+        corre semanalmente con \texttt{rate(7 days)} desde
+        EventBridge.
+  \item El nodo \texttt{consultar\_faq} recibe la herramienta
+        hospedada \texttt{file\_search} restringida a ese vector
+        store.
+\end{enumerate}
+
+En la práctica, la descarga inicial tuvo que hacerse localmente porque
+Tawk bloquea las IP de AWS Lambda y GitHub Actions.
+
+% ============================================================
+\section{Marco de evaluación}
+% ============================================================
+
+El sistema incluye un \emph{marco de evaluación nativo} descrito en
+\texttt{docs/evaluation-framework.md} y \texttt{src/evals/}. Sus
+principios son:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \textbf{Casos versionados en YAML}: \texttt{evals/cases/}
+        contiene escenarios; \texttt{evals/templates/} expone bases
+        reutilizables; \texttt{evals/fixtures/} tiene planes semilla
+        y fragmentos de respuesta de proveedores.
+  \item \textbf{Dos targets}: \texttt{offline} (in-memory,
+        determinista, ideal para CI) y \texttt{live\_lambda} (invoca
+        la Function URL desplegada y normaliza la respuesta al mismo
+        sobre de resultado).
+  \item \textbf{Expectativas por capas}: campos de plan, transiciones
+        de nodo, herramientas invocadas, conteo de proveedores, campos
+        de traza, comparaciones tolerantes de texto y jueces
+        semánticos opcionales.
+  \item \textbf{Métricas SOTA}: \texttt{tool\_precision},
+        \texttt{tool\_recall}, \texttt{tool\_F1}, cobertura de ramas,
+        tasas de paso de estado y trayectoria, tasa de persistencia,
+        tasa de acierto de caché, distribución de latencia y totales
+        de tokens.
+  \item \textbf{Artefactos para BI}: cada corrida emite
+        \texttt{report.json}/\texttt{report.md},
+        \texttt{dashboard.json} y \texttt{dashboard.csv} bajo
+        \texttt{.eval-runs/<run-id>/}.
+  \item \textbf{Concurrencia}: el runner soporta
+        \texttt{--parallel <n>} con un pool acotado que preserva el
+        orden determinista de los resultados.
+  \item \textbf{Eval observable}: \texttt{eval:observable-live} es un
+        runner que imprime sólo la transcripción (turno del usuario y
+        respuesta del agente) usando un planificador con estado y
+        turnos barajados, para inspección manual de la conversación
+        real.
+\end{itemize}
+
+Los \emph{suites} principales son \texttt{smoke}, \texttt{dev\_regression},
+\texttt{benchmark\_full}, \texttt{feedback\_regression},
+\texttt{live\_smoke}, \texttt{live\_comprehensive} y
+\texttt{live\_feedback\_token\_regression}.
+
+% ============================================================
+\section{Evolución del proyecto}
+% ============================================================
+
+El log de implementación (\texttt{docs/implementation-log.md}) recoge
+cronológicamente los hitos del proyecto. La tabla~\ref{tab:hitos}
+resume los más representativos.
+
+\begin{longtable}{p{2.4cm}p{4.0cm}p{9.0cm}}
+\toprule
+\textbf{Fecha} & \textbf{Hito} & \textbf{Resumen} \\
+\midrule
+\endhead
+
+2026-04-05 & Esqueleto del runtime &
+Convenciones en \texttt{AGENTS.md}, scaffolding de TypeScript,
+arquitectura basada en grafo de nodos, \texttt{PlanStore} con
+DynamoDB e in-memory, primer SDK de OpenAI Agents y gateway real
+contra Sin Envolturas. \\
+
+2026-04-05 & Secreto en AWS Secrets Manager &
+La API key de OpenAI se resuelve en tiempo de ejecución desde
+Secrets Manager; \texttt{deploy.mjs} sincroniza el secreto desde
+\texttt{.env}. \\
+
+2026-04-06 & Prompts por nodo &
+Los prompts pasan de ser texto suelto a bundles estructurados
+(\texttt{system}, \texttt{response\_contract}, \texttt{tool\_policy}),
+compartidos entre conversacional y extractor, con alcance de
+herramientas por nodo. \\
+
+2026-04-07 & Configuración centralizada y prohibición de \texttt{any} &
+\texttt{src/runtime/config.ts} se vuelve la fuente de verdad para
+modelos, límites de búsqueda y canal por defecto; ESLint y TS
+aplican el veto de \texttt{any} explícito. \\
+
+2026-04-07 & \texttt{nodejs24.x} de extremo a extremo &
+Local, Lambda y \texttt{.nvmrc} se alinean en Node 24 LTS. \\
+
+2026-04-08 & \emph{Event-plan-first} &
+El plan admite múltiples \texttt{provider\_needs} con
+\texttt{active\_need\_category}. Se reescriben extractor y prompts
+para razonar sobre el evento y no sobre un proveedor puntual. \\
+
+2026-04-12 & Marco de evaluación nativo &
+Aparecen \texttt{src/evals/} y los activos en \texttt{evals/}, con
+expectativas en capas y dos targets (offline y live). \\
+
+2026-04-14 & Búsqueda resiliente a ubicación dispersa &
+El gateway prefiere coincidencias exactas de ciudad, pero recurre a
+candidatos de la categoría con metadatos más amplios cuando la
+granularidad de la ubicación es insuficiente. \\
+
+2026-04-20 & Búsqueda mixta de proveedores y embudo 15 $\to$ 5 &
+Se consultan \texttt{/filtered} y \texttt{/filtered/full}, se
+fusionan los resultados y se entrega al modelo de respuesta un
+top-15, restringido a un top-5 visible. \\
+
+2026-04-20 & \texttt{finish\_plan}, ciclo de vida y TTL &
+Aparecen \texttt{lifecycle\_state}, \texttt{contact\_name},
+\texttt{contact\_email} y la herramienta
+\texttt{finish\_plan}, con TTL de 24\,h en el plan
+\texttt{finished} (luego retirado). \\
+
+2026-04-23 & Cotización real y separación pausa/cierre &
+\texttt{finish\_plan} llama a
+\texttt{POST /api-web/vendor/quote} por proveedor seleccionado;
+\texttt{pausar} se separa de \texttt{cerrar} y el nodo
+\texttt{crear\_lead\_cerrar} ejecuta un flujo de tres pasos
+(contacto $\to$ resumen $\to$ confirmación). \\
+
+2026-04-28 & Integración real de la KB de Tawk &
+Se conecta el vector store con \texttt{file\_search}, se rediseña
+el scraper (un archivo por artículo con metadatos), se crea el
+stack \texttt{recap-agent-knowledge-sync-dev} y se documenta la
+limitación de IP. \\
+
+2026-04-30 & Renderers por canal estructurados &
+Las respuestas se parsean en estructuras tipadas antes de
+renderizarse en WhatsApp o webchat. La terminal emula WhatsApp. \\
+
+2026-05-05 & Heurísticas de selección multi-intención &
+Aparecen \texttt{secondaryIntents},
+\texttt{resolveEffectiveSelectionHint} y el prompt
+correspondiente para evitar la pérdida de
+\texttt{selectedProviderHint} en turnos que combinan selección con
+apertura de nueva necesidad. \\
+
+2026-05-05 & Búsqueda vectorial de proveedores &
+Se añade \texttt{provider-sync} (scrape + formato + upload) y el
+modo \texttt{hybrid} en el gateway. \\
+
+2026-05-06 & Categorías canónicas y filtros vectoriales &
+Las categorías dejan de tener alias heurísticos y pasan a ser un
+enum Zod; los filtros del vector store usan la clave canónica
+exacta, lo que recupera a proveedores como Dulcefina. \\
+
+2026-05-07 & Múltiples proveedores por necesidad &
+Los campos \texttt{selected\_provider\_*} pasan a arreglos; la
+resolución de selección admite ordinales, alias y descriptores.
+\texttt{finish\_plan} crea cotizaciones por cada proveedor
+seleccionado. \\
+
+2026-05-14 & Normalización canónica final &
+Tipos de evento, niveles de precio, claves de país y nodos de
+decisión se consolidan en módulos canónicos. Se eliminan las
+\texttt{actions} generadas como ruta de control. \\
+
+2026-05-22 & Nodo \texttt{consultar\_evento\_invitado} y telemetría ampliada &
+Se añade el modo de consulta de eventos como invitado
+(\texttt{lookup\_user\_event\_context}) y se amplían los
+\texttt{TurnTrace} y \texttt{TurnPerfRecord} con resúmenes
+estructurados. \\
+
+2026-06-04 & \texttt{TurnDecision} autoritativo y búsqueda por sub-queries &
+La decisión del turno pasa a ser el contrato principal de ruteo; se
+introduce la búsqueda por sub-consulta dentro de una misma
+necesidad para no colapsar ``sushi + torta'' en un solo shortlist. \\
+
+\bottomrule
+\caption{Hitos del proyecto.}
+\label{tab:hitos}
+\end{longtable}
+
+% ============================================================
+\section{Entorno, despliegue y operaciones}
+% ============================================================
+
+\subsection{Entorno local y comandos}
+
+El repositorio requiere \texttt{node$\geq$24} y Bun opcional. Los
+comandos principales son:
+
+\begin{codeblock}
+npm install
+npm run typecheck   # tsc --noEmit
+npm run lint        # eslint
+npm test            # vitest run
+npm run check       # typecheck + lint + test
+npm run build       # esbuild -> dist/
+npm run deploy      # scripts/deploy.mjs (Lambda + CloudFormation)
+npm run terminal    # CLI contra la Function URL desplegada
+npm run eval        # suite offline/live
+npm run eval:observable-live  # transcript barajado en vivo
+\end{codeblock}
+
+\noindent\textbf{Cuadro:} Comandos principales del repositorio.
+
+\subsection{Configuración tipada}
+
+\texttt{src/runtime/config.ts} define un esquema Zod sobre variables
+de entorno y un objeto \texttt{AppConfig} tipado que el handler y los
+componentes consumen. La configuración cubre:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item OpenAI: API key, \texttt{OPENAI\_SECRET\_ID}, modelos,
+        \texttt{promptCacheRetention}.
+  \item AWS: región, tablas DynamoDB.
+  \item Sin Envolturas: \texttt{SINENVOLTURAS\_BASE\_URL},
+        \texttt{SINENVOLTURAS\_GUEST\_SERVICE\_BASE\_URL}, modo de
+        búsqueda, vector store.
+  \item Recomendación: \texttt{REPLY\_PROVIDER\_LIMIT},
+        \texttt{PRESENTATION\_PROVIDER\_LIMIT},
+        \texttt{PROVIDER\_DETAIL\_LOOKUP\_LIMIT}.
+  \item Telemetría: \texttt{PERF\_TABLE\_NAME},
+        \texttt{PERF\_RETENTION\_DAYS}.
+  \item Knowledge base: \texttt{KB\_ENABLED},
+        \texttt{KB\_BASE\_URL}, \texttt{KB\_VECTOR\_STORE\_ID}.
+  \item \emph{Feature flags} del agente:
+        \texttt{AGENT\_FEATURE\_PROVIDER\_PLANNING},
+        \texttt{\_SEARCH}, \texttt{\_QUOTE\_REQUESTS},
+        \texttt{\_FAQ}, \texttt{\_INVITED\_EVENT\_LOOKUP}.
+\end{itemize}
+
+Los \emph{feature flags} controlan, por ejemplo, el menú de bienvenida
+dinámico, lo que permite activar o desactivar capacidades sin tocar
+prompts.
+
+\subsection{Despliegue}
+
+\begin{enumerate}[leftmargin=*,itemsep=1pt]
+  \item \texttt{node scripts/build.mjs} produce \texttt{dist/}
+        con \texttt{lambda/index.js},
+        \texttt{knowledge-sync/index.js}, etc.
+  \item \texttt{scripts/deploy.mjs} sube el artefacto a S3 y
+        despliega la plantilla de CloudFormation.
+  \item El secreto de OpenAI se sincroniza desde \texttt{.env} a
+        Secrets Manager; el Lambda lo lee en tiempo de ejecución.
+\end{enumerate}
+
+El endpoint público de desarrollo documentado es
+
+\begin{center}
+\texttt{https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/}
+\end{center}
+
+con stack \texttt{recap-agent-runtime}, tablas
+\texttt{recap-agent-runtime-plans} y
+\texttt{recap-agent-runtime-perf}.
+
+\subsection{Operación}
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item Purga de planes de terminal: \texttt{npm run purge:terminal-plans}
+        con \texttt{--dry-run} o \texttt{--yes}.
+  \item Sync manual de proveedores: \texttt{npm run sync:providers}.
+  \item Sync manual de la base de conocimiento:
+        \texttt{KB\_SKIP\_UPLOAD=true npx tsx scripts/sync-knowledge-base.ts}.
+\end{itemize}
+
+% ============================================================
+\section{Limitaciones conocidas y trabajo futuro}
+% ============================================================
+
+\begin{itemize}[leftmargin=*,itemsep=2pt]
+  \item \textbf{Tawk bloquea AWS Lambda y GitHub Actions}, por lo que
+        la descarga inicial de la base de conocimiento debe hacerse
+        desde una máquina local; el \emph{Lambda} sólo se encarga del
+        ciclo de subida al vector store.
+  \item El scraping y la sincronización inicial del vector store de
+        proveedores requieren intervención manual para crear el
+        recurso en OpenAI; existe un comando
+        \texttt{npm run sync:providers} para poblarlo después.
+  \item \textbf{Streaming fuera de alcance}: el canal de WhatsApp no
+        soporta respuestas en flujo. Por convención del proyecto, el
+        terminal emula WhatsApp y no introduce capacidades nuevas.
+  \item El webhook de WhatsApp y la autenticación de los adaptadores
+        se mantienen intencionalmente fuera de \texttt{src/runtime/};
+        son responsabilidad de cada adaptador de canal.
+  \item El catálogo canónico de categorías y tipos de evento requiere
+      reindexar el vector store y los planes antiguos cuando se
+      amplían (cambios disruptivos sin \emph{shims} de
+      retrocompatibilidad).
+\end{itemize}
+
+% ============================================================
+\section{Conclusiones}
+% ============================================================
+
+\texttt{recap-agent} demuestra que es posible construir un agente
+conversacional serverless, multicanal y de baja operación, sin
+sacrificar la trazabilidad ni la calidad de las decisiones de flujo.
+Los principios que el proyecto ha consolidado a lo largo de su
+evolución son:
+
+\begin{itemize}[leftmargin=*,itemsep=1pt]
+  \item \textbf{El modelo interpreta, el código decide}: extracción
+        estructurada + \texttt{TurnDecision} determinista.
+  \item \textbf{Plan de evento primero, no proveedor}: las
+        necesidades múltiples, los sub-queries y las prioridades por
+        tipo de evento se modelan como ciudadanos de primera clase.
+  \item \textbf{Prompts como contrato}: cada nodo define su
+        comportamiento vía bundles versionados en español.
+  \item \textbf{Canales y almacenamiento como adaptadores delgados}:
+        el núcleo permanece agnóstico y testeable.
+  \item \textbf{Evaluación por capas}: casos reutilizables,
+        expectativas estructuradas y métricas SOTA en el mismo marco.
+  \item \textbf{Telemetría barata y útil}: trazas por turno con TTL
+        y resúmenes estructurados, expuestas al cliente sólo en modo
+        \texttt{cli}.
+\end{itemize}
+
+El resultado es un sistema que puede desplegarse con
+\texttt{npm run deploy}, ejercitarse con \texttt{npm run terminal} o
+con \texttt{npm run eval}, y extenderse añadiendo un nuevo nodo al
+grafo, un nuevo \emph{feature flag} o un nuevo canal, sin reescribir
+el núcleo.
+
+% ============================================================
+\appendix
+\section{Apéndice A: Variables de entorno clave}
+% ============================================================
+
+\begin{longtable}{p{6.0cm}p{3.5cm}p{6.0cm}}
+\toprule
+\textbf{Variable} & \textbf{Por defecto} & \textbf{Propósito} \\
+\midrule
+\endhead
+
+\texttt{OPENAI\_MODEL} & \texttt{gpt-5.4-mini} & Modelo de respuesta. \\
+\texttt{OPENAI\_EXTRACTOR\_MODEL} & \texttt{gpt-5.4-nano} & Modelo extractor. \\
+\texttt{OPENAI\_PROMPT\_CACHE\_RETENTION} & \texttt{in-memory} & Retención de caché de prompts. \\
+\texttt{AWS\_REGION} & \texttt{us-east-1} & Región AWS. \\
+\texttt{PLANS\_TABLE\_NAME} & \texttt{recap-agent-plans} & Tabla DynamoDB de planes. \\
+\texttt{PERF\_TABLE\_NAME} & \texttt{recap-agent-runtime-perf} & Tabla de telemetría. \\
+\texttt{PERF\_RETENTION\_DAYS} & \texttt{30} & TTL de la tabla de perf. \\
+\texttt{PROMPTS\_DIR} & \texttt{/var/task/prompts} & Ruta al bundle de prompts. \\
+\texttt{SINENVOLTURAS\_BASE\_URL} &
+  \texttt{https://api.sinenvolturas.com/api-web/vendor} &
+  Base de la API del marketplace. \\
+\texttt{SINENVOLTURAS\_GUEST\_SERVICE\_BASE\_URL} &
+  \texttt{https://se-v2-api-dev.jnq.io/api/guest-service} &
+  Base del servicio de invitados. \\
+\texttt{DEFAULT\_INBOUND\_CHANNEL} & \texttt{terminal\_whatsapp} & Canal por defecto. \\
+\texttt{PROVIDER\_SEARCH\_LIMIT} & \texttt{12} & Candidatos persistidos. \\
+\texttt{SEARCH\_SUMMARY\_WORD\_LIMIT} & \texttt{5} & Resumen de búsqueda. \\
+\texttt{REPLY\_PROVIDER\_LIMIT} & \texttt{6} & Top que recibe el LLM. \\
+\texttt{PRESENTATION\_PROVIDER\_LIMIT} & \texttt{6} & Top visible al usuario. \\
+\texttt{PROVIDER\_DETAIL\_LOOKUP\_LIMIT} & \texttt{3} & Detalles por turno. \\
+\texttt{PROVIDER\_SEARCH\_MODE} & \texttt{hybrid} & \texttt{api}/\texttt{vector}/\texttt{hybrid}. \\
+\texttt{PROVIDER\_VECTOR\_STORE\_ID} & (vacío) & ID del vector store de proveedores. \\
+\texttt{KB\_ENABLED} & \texttt{true} & Habilita la KB. \\
+\texttt{KB\_VECTOR\_STORE\_ID} & (vacío) & ID del vector store de la KB. \\
+\texttt{AGENT\_FEATURE\_*} & \texttt{true} & Feature flags por capacidad. \\
+
+\bottomrule
+\caption{Principales variables de entorno del runtime.}
+\end{longtable}
+
+% ============================================================
+\section{Apéndice B: Estructura del repositorio}
+% ============================================================
+
+\begin{codeblock}
+recap-agent/
+  AGENTS.md
+  README.md
+  docs/
+    implementation-log.md
+    channel-integration.md
+    evaluation-framework.md
+    knowledge-base-integration.md
+    feedback-implementation-plan.md
+    feedback-test-coverage.md
+    provider-vector-search.md
+  infra/
+    cloudformation/stack.yaml
+    knowledge-sync.yml
+    provider-sync.yml
+  prompts/
+    shared/         (base_system, output_style, ...)
+    nodes/<nodo>/   (system, response_contract, tool_policy)
+    extractors/     (system, field_definitions, ...)
+  src/
+    core/           (decision-nodes, plan, sufficiency, turn-decision, ...)
+    runtime/        (agent-service, openai-agent-runtime, gateways, ...)
+    storage/        (plan-store, perf-store, adapters Dynamo/in-memory)
+    lambda/handler.ts
+    terminal/client.ts
+    knowledge-sync/ (scraper, formatter, uploader, sync, handler)
+    provider-sync/  (fetcher, formatter, uploader, sync, handler)
+    evals/          (case-schema, runner, reporting, targets, scorers)
+    logs/trace/perf.ts
+  evals/
+    cases/          (escenarios YAML)
+    templates/      (plantillas base)
+    fixtures/       (planes semilla y respuestas de proveedores)
+    suites/         (smoke, dev_regression, benchmark_full, ...)
+    matrices/       (matrices de modelos y configuraciones)
+  scripts/          (build, deploy, purge, sync-*)
+  tests/            (vitest)
+  package.json
+  tsconfig.json
+  eslint.config.mjs
+  .env.example
+\end{codeblock}
+
+\noindent\textbf{Cuadro:} Estructura principal del repositorio.
+
+\end{document}

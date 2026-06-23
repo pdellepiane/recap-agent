@@ -47,6 +47,7 @@ export type AppConfig = {
   performance: {
     tableName: string | null;
     retentionDays: number;
+    captureAssistantPreview: boolean;
   };
   knowledgeBase: {
     baseUrl: string;
@@ -100,6 +101,7 @@ const environmentSchema = z.object({
   PROVIDER_DETAIL_LOOKUP_LIMIT: z.coerce.number().int().positive().default(3),
   PERF_TABLE_NAME: z.string().min(1).optional(),
   PERF_RETENTION_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  PERF_CAPTURE_ASSISTANT_PREVIEW: z.enum(['true', 'false']).default('true'),
   KB_BASE_URL: z.string().url().default('https://sinenvolturas.tawk.help'),
   KB_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Knowledge Base'),
   KB_VECTOR_STORE_ID: z.string().optional(),
@@ -160,6 +162,7 @@ export function getConfig(): AppConfig {
     performance: {
       tableName: environment.PERF_TABLE_NAME ?? null,
       retentionDays: environment.PERF_RETENTION_DAYS,
+      captureAssistantPreview: environment.PERF_CAPTURE_ASSISTANT_PREVIEW === 'true',
     },
     knowledgeBase: {
       baseUrl: environment.KB_BASE_URL,
