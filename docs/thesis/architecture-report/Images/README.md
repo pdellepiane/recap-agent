@@ -1,11 +1,10 @@
-Place final report images in this directory.
+Report image assets.
 
-Expected logo files:
+- `utec-logo.png`: UTEC logo used in the cover and page header.
+- `sin-envolturas-logo.jpeg`: Sin Envolturas logo used in the cover and page header.
+- `arq se.drawio.svg`: editable architecture diagram exported from draw.io.
+- `architecture-diagram.svg`: report-ready SVG derivative with a widened canvas and light-mode colors.
+- `architecture-diagram.pdf`: PDF conversion consumed by LaTeX.
 
-- `utec-logo.pdf`
-- `sin-envolturas-logo.pdf`
-
-The current files are placeholder PDFs. Replace them in place with the final
-logos using the same filenames. The LaTeX report also draws framed text
-placeholders when these files are missing, so the document still compiles while
-final artwork is being prepared.
+When the architecture diagram is updated in draw.io, regenerate the derivative
+SVG/PDF before rebuilding the report.

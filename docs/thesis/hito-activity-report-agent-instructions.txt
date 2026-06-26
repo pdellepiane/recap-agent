@@ -1,0 +1,310 @@
+INSTRUCCIONES PARA LLENAR EL INFORME DE ACTIVIDADES DEL HITO
+
+Objetivo de este archivo
+Este archivo entrega a otro agente toda la informacion necesaria para completar el formato de informe de actividades usado como referencia. El agente debe llenar solamente las secciones de actividades realizadas y programacion de actividades del siguiente periodo. No debe completar, inventar ni redactar otras secciones del formato.
+
+Reglas de llenado
+1. Redactar en espanol formal, claro y conciso.
+2. Mantener el enfoque en actividades ejecutadas, entregables tecnicos y resultados alcanzados durante el hito.
+3. No incluir fragmentos de codigo, rutas de archivos, nombres internos de ramas ni comandos.
+4. No citar documentos internos dentro del formato final. Si se necesita sustento, usar la informacion tecnica sintetizada aqui como base narrativa.
+5. Usar "Lima, Peru" como lugar para actividades de analisis, desarrollo, documentacion y validacion remota. Cuando la actividad sea de despliegue o infraestructura, se puede escribir "Lima, Peru / AWS us-east-1".
+6. En la columna de fecha, usar el periodo real del hito que indique el responsable del informe. Si el formato exige rangos por actividad y no hay otra indicacion, distribuir las actividades entre marzo, abril, mayo y junio de 2026 segun las fechas indicadas en este archivo.
+7. Evitar lenguaje demasiado tecnico en la tabla. El informe debe ser entendible para evaluadores de proyecto, pero suficientemente especifico para evidenciar avance.
+8. Si el formato tiene poco espacio, resumir cada actividad en una sola oracion. Si permite mas detalle, usar la version extendida propuesta.
+
+Contexto sintetico del proyecto para el agente
+El proyecto desarrollado es recap-agent, un prototipo funcional de agente conversacional para Sin Envolturas. Su finalidad es ayudar a usuarios que planifican eventos a estructurar necesidades, consultar proveedores reales, recibir recomendaciones y avanzar hacia solicitudes de contacto o cotizacion. El sistema esta disenado para operar inicialmente con comportamiento compatible con WhatsApp, pero mantiene una arquitectura agnostica de canal para permitir web client, terminal de evaluacion u otros canales.
+
+La solucion combina un runtime conversacional propio, OpenAI para interpretacion y generacion, busqueda semantica mediante vector stores, integracion con APIs de Sin Envolturas, persistencia de planes de evento, telemetria por turno y despliegue serverless en AWS. El trabajo del hito incluyo arquitectura, implementacion, prompts, evaluacion, despliegue, observabilidad, documentacion y correcciones derivadas de pruebas.
+
+Fechas de planeamiento recuperadas de Notion
+Esta informacion sirve para ordenar cronologicamente las primeras actividades del hito. No copiar nombres de paginas de Notion ni mencionar Notion en el formato final.
+
+- 19/03/2026: se documento el Project Charter del proyecto, incluyendo objetivo general, alcance, objetivos especificos, stakeholders, requerimientos funcionales y no funcionales, entregables esperados, metodologia incremental, criterios de exito, supuestos y restricciones.
+- 19/03/2026: se elaboro el mapeo de capacidades de la API del marketplace como herramientas del agente; se validaron documental y empiricamente endpoints de proveedores, categorias, ubicaciones, favoritos, resenas y acciones de cotizacion.
+- 19/03/2026 al 20/03/2026: se valido el uso de OpenAI Agent Builder / Agents para determinar que capacidades podia cubrir OpenAI y que componentes seguian requiriendo una capa propia de tools, wrappers o backend adicional.
+- 24/03/2026: se definio un patron de request/response para acciones MCP o tools, con un endpoint uniforme por accion, payload estructurado, respuesta estandar y fachada sobre endpoints existentes.
+- 30/03/2026: se dejo trazada la decision de arquitectura sobre OpenAI Agent Builder / Agents, descartando una ruta completamente sin infraestructura para WhatsApp y adoptando una capa minima propia para canal y tools.
+- 31/03/2026: se documento el diseno de arquitectura comparando la hipotesis inicial con la arquitectura propuesta de tres capas: canal, adaptacion e inteligencia/integracion.
+- 31/03/2026 al 05/04/2026: se planifico e inicio la implementacion de la base tecnica del servicio que orquesta conversacion, tools y estado.
+
+Seccion a completar: actividades realizadas y resultados alcanzados
+La tabla del formato tiene tres columnas: Actividad detallada, Fecha y Lugar. El agente debe convertir las siguientes actividades en filas de tabla. Puede fusionar filas si necesita menos espacio, pero no debe perder los hitos principales.
+
+Actividad P1
+Actividad detallada:
+Definicion del Project Charter del agente conversacional, incluyendo alcance, objetivos, stakeholders, requerimientos, entregables, metodologia, criterios de exito, supuestos y restricciones.
+Fecha sugerida:
+19/03/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se establecio el marco inicial del proyecto como prototipo funcional de tesis para recomendacion de proveedores de eventos en Sin Envolturas, con WhatsApp como canal piloto y arquitectura preparada para futuros canales.
+
+Actividad P2
+Actividad detallada:
+Mapeo de capacidades de la API del marketplace para determinar que endpoints podian encapsularse como herramientas del agente.
+Fecha sugerida:
+19/03/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se identificaron capacidades de descubrimiento, filtrado, enriquecimiento y acciones basicas sobre proveedores, ademas de limites funcionales como disponibilidad, contratacion completa y operaciones post-seleccion.
+
+Actividad P3
+Actividad detallada:
+Validacion del uso de OpenAI Agent Builder / Agents como base tecnologica del prototipo y analisis de componentes externos necesarios.
+Fecha sugerida:
+19/03/2026 al 20/03/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se concluyo que OpenAI era adecuado para orquestacion conversacional, interpretacion, seleccion de herramientas y generacion de respuestas, pero que el proyecto requeria una capa propia para WhatsApp, tools, autenticacion, trazabilidad e integracion con datos vivos.
+
+Actividad P4
+Actividad detallada:
+Definicion de un patron uniforme de request/response para acciones MCP o tools orientadas a proveedores, categorias, ubicaciones y cierre de contacto.
+Fecha sugerida:
+24/03/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se propuso una fachada tecnica sobre endpoints existentes, basada en acciones, contexto, payload estructurado, respuesta uniforme y manejo comun de errores.
+
+Actividad P5
+Actividad detallada:
+Toma de decision arquitectonica sobre el uso de OpenAI y la necesidad de una capa minima propia para canal e integraciones.
+Fecha sugerida:
+30/03/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se abandono la hipotesis de una solucion completamente sin infraestructura para WhatsApp y se adopto una separacion entre canal, adaptador, orquestacion conversacional y tools de negocio.
+
+Actividad P6
+Actividad detallada:
+Documentacion del diseno de arquitectura comparando la arquitectura asumida inicialmente con la arquitectura propuesta de tres capas.
+Fecha sugerida:
+31/03/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se definio una arquitectura mas realista para piloto productivo, con WhatsApp como canal, adapter webhook ligero, OpenAI como nucleo conversacional y backend de tools para APIs de Sin Envolturas.
+
+Actividad P7
+Actividad detallada:
+Planificacion e inicio de la implementacion base del servicio encargado de orquestar conversacion, tools y estado.
+Fecha sugerida:
+31/03/2026 al 05/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se preparo la transicion desde planeamiento arquitectonico hacia implementacion, definiendo estructura base, separacion por capas y servicio inicial ejecutable.
+
+Actividad 1
+Actividad detallada:
+Diseno de la arquitectura general del agente conversacional, separando adaptador de canal, runtime conversacional, integraciones de negocio, persistencia, observabilidad y evaluacion.
+Fecha sugerida:
+05/04/2026 al 16/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se definio una arquitectura modular y agnostica de canal, compatible con WhatsApp, web client y terminal de evaluacion, evitando que la logica del canal quedara acoplada al nucleo conversacional.
+
+Actividad 2
+Actividad detallada:
+Implementacion del primer runtime funcional del agente, con procesamiento de turnos, estado conversacional, herramientas de proveedor y cliente de depuracion por terminal.
+Fecha sugerida:
+05/04/2026 al 07/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se obtuvo una primera version ejecutable capaz de recibir mensajes, estructurar informacion del evento y coordinar respuestas del agente.
+
+Actividad 3
+Actividad detallada:
+Reorganizacion de prompts por nodos de flujo, con contratos separados para objetivo, respuesta, politica de herramientas y transiciones.
+Fecha sugerida:
+06/04/2026 al 23/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Los prompts quedaron versionados como texto auditable y asociados a nodos especificos de conversacion, facilitando trazabilidad y mantenimiento.
+
+Actividad 4
+Actividad detallada:
+Diseno e implementacion del modelo de plan de evento como estado persistente multi-necesidad, permitiendo gestionar varios frentes de proveedores dentro de una misma conversacion.
+Fecha sugerida:
+07/04/2026 al 14/05/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+El agente puede conservar necesidades independientes como local, catering, musica o fotografia, sin perder selecciones previas cuando el usuario cambia de frente.
+
+Actividad 5
+Actividad detallada:
+Integracion de busqueda de proveedores usando una estrategia hibrida entre APIs de Sin Envolturas y recuperacion semantica en vector stores.
+Fecha sugerida:
+05/05/2026 al 07/05/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+La recomendacion de proveedores mejoro al combinar informacion estructurada del marketplace con similitud semantica sobre descripciones, servicios y categorias.
+
+Actividad 6
+Actividad detallada:
+Normalizacion de categorias, tipos de evento, rangos de precios, criterios de busqueda y resumenes de proveedores para reducir inconsistencias en recomendaciones.
+Fecha sugerida:
+05/05/2026 al 14/05/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se fortalecio la consistencia del dominio y se redujeron errores por categorias no canonicas o informacion incompleta.
+
+Actividad 7
+Actividad detallada:
+Auditoria de cobertura de informacion de proveedores y analisis de calidad de datos del marketplace.
+Fecha sugerida:
+10/04/2026 al 14/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se identificaron brechas de cobertura en campos como descripcion, servicios, promociones, ubicacion, precios y terminos, lo que permitio ajustar la forma en que el agente justifica recomendaciones.
+
+Actividad 8
+Actividad detallada:
+Implementacion de persistencia de planes, continuidad conversacional y telemetria por turno.
+Fecha sugerida:
+16/04/2026 al 20/04/2026
+Lugar:
+Lima, Peru / AWS us-east-1
+Resultado alcanzado:
+El sistema puede reanudar conversaciones, conservar estado por usuario y registrar trazas de nodo, herramientas, latencia, tokens y resultados de busqueda.
+
+Actividad 9
+Actividad detallada:
+Desarrollo de un marco de evaluacion offline y live para validar comportamiento conversacional, trayectorias de estado, uso de herramientas y resultados de proveedor.
+Fecha sugerida:
+12/04/2026 al 20/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se implemento una superficie de pruebas reproducible que permite comparar comportamiento local y comportamiento desplegado sin depender de transcripciones exactas.
+
+Actividad 10
+Actividad detallada:
+Despliegue y endurecimiento de infraestructura serverless en AWS mediante CloudFormation, incluyendo runtime principal, sincronizacion de proveedores, sincronizacion de conocimiento y recursos administrados.
+Fecha sugerida:
+05/04/2026 al 28/04/2026
+Lugar:
+Lima, Peru / AWS us-east-1
+Resultado alcanzado:
+Se conto con un entorno de desarrollo operativo en AWS, con Lambda, DynamoDB, Secrets Manager, CloudWatch, S3, EventBridge y vector stores asociados al flujo del agente.
+
+Actividad 11
+Actividad detallada:
+Implementacion de la base de conocimiento para preguntas frecuentes, separada de la busqueda comercial de proveedores.
+Fecha sugerida:
+28/04/2026 al 16/06/2026
+Lugar:
+Lima, Peru / AWS us-east-1
+Resultado alcanzado:
+El agente puede responder preguntas operativas o de soporte sin contaminar el estado de busqueda de proveedores, y luego retomar la planificacion del evento.
+
+Actividad 12
+Actividad detallada:
+Integracion del flujo de cierre y solicitud de contacto con proveedores, incluyendo validacion temprana de telefono y correo.
+Fecha sugerida:
+20/04/2026 al 30/04/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+El sistema puede avanzar desde una seleccion de proveedores hacia solicitudes de cotizacion o contacto, reduciendo errores por datos incompletos o invalidos.
+
+Actividad 13
+Actividad detallada:
+Mejoras de robustez conversacional para seleccion multiple de proveedores, recuperacion de codigo de invitado, correcciones parciales de contacto, descarte de necesidades y preservacion de selecciones.
+Fecha sugerida:
+30/04/2026 al 19/06/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se corrigieron fallos observados en pruebas y se fortalecio la capacidad del agente para manejar conversaciones no lineales sin romper el plan persistente.
+
+Actividad 14
+Actividad detallada:
+Ampliacion de observabilidad de respuestas, herramientas y calidad de salida mediante trazas, resumenes redactados, hashes y senales de diagnostico.
+Fecha sugerida:
+13/04/2026 al 19/06/2026
+Lugar:
+Lima, Peru / AWS us-east-1
+Resultado alcanzado:
+La investigacion de fallos conversacionales dejo de depender solo de capturas manuales y paso a contar con evidencia operacional por turno.
+
+Actividad 15
+Actividad detallada:
+Validacion de comportamiento compatible con WhatsApp, manteniendo respuestas sincronas, breves y sin dependencia de streaming.
+Fecha sugerida:
+07/04/2026 al 19/06/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+El diseno se mantuvo alineado con las restricciones del canal objetivo, sin introducir capacidades que no pudieran trasladarse al flujo real de WhatsApp.
+
+Actividad 16
+Actividad detallada:
+Preparacion del informe tecnico de arquitectura e implementacion del proyecto, con diagramas, bibliografia publica y descripcion formal del sistema.
+Fecha sugerida:
+22/06/2026 al 23/06/2026
+Lugar:
+Lima, Peru
+Resultado alcanzado:
+Se elaboro un informe tecnico en LaTeX que consolida arquitectura, modelo conversacional, integraciones, persistencia, evaluacion, riesgos y conclusiones del prototipo.
+
+Version resumida para tabla con poco espacio
+Si el formato no permite tantas filas, usar estas actividades agregadas:
+
+1. Definicion del Project Charter, alcance funcional, requerimientos y criterios tecnicos iniciales del agente conversacional.
+2. Validacion de capacidades del marketplace y mapeo de endpoints como posibles tools del agente.
+3. Evaluacion de OpenAI Agent Builder / Agents y decision de arquitectura con capa propia para canal, tools e integraciones.
+4. Definicion del patron request/response para acciones MCP o tools sobre APIs de Sin Envolturas.
+5. Documentacion de la arquitectura propuesta de tres capas: canal, adaptacion e inteligencia/integracion.
+6. Diseno de arquitectura serverless y agnostica de canal para el agente conversacional.
+7. Implementacion del runtime conversacional con estado persistente y plan de evento multi-necesidad.
+8. Versionado y reorganizacion de prompts por nodos de flujo conversacional.
+9. Integracion de busqueda hibrida de proveedores mediante APIs internas y recuperacion semantica.
+10. Implementacion de base de conocimiento FAQ separada de la busqueda de proveedores.
+11. Desarrollo de flujo de cierre con seleccion de proveedores y validacion de datos de contacto.
+12. Despliegue de infraestructura en AWS y configuracion de recursos serverless.
+13. Implementacion de telemetria, trazas y diagnosticos de calidad por turno.
+14. Desarrollo de suites de evaluacion offline y live para validar el comportamiento del agente.
+15. Elaboracion del informe tecnico de arquitectura e implementacion.
+
+Seccion a completar: programacion de actividades para el siguiente periodo
+El formato pide un listado. El agente debe usar vineta simple y redactar como actividades futuras, no como resultados ya logrados.
+
+Lista recomendada:
+- Endurecer el adaptador productivo de WhatsApp, incluyendo validacion de webhook, idempotencia, manejo de reintentos, rate limits y politicas de abuso.
+- Ampliar la cobertura estructurada de proveedores en el marketplace, especialmente ubicacion, servicios, precios, promociones, terminos, disponibilidad y evidencias comparativas.
+- Fortalecer la sincronizacion de proveedores y conocimiento, incorporando validaciones previas de calidad de datos antes de actualizar los vector stores.
+- Ejecutar evaluaciones live mas amplias con conversaciones completas de usuarios de prueba y escenarios multi-necesidad.
+- Incorporar metricas longitudinales de uso, continuidad conversacional, conversion a contacto y calidad de recomendacion.
+- Preparar la integracion final con el canal de WhatsApp y validar el comportamiento con mensajes reales o simulaciones equivalentes.
+- Revisar y ampliar los prompts conversacionales a partir de feedback de usuarios y resultados de evaluacion.
+- Mejorar el dashboard o reporte de evaluacion para facilitar seguimiento de latencia, tokens, herramientas utilizadas y fallos recurrentes.
+- Producir una version final de la arquitectura con iconografia oficial y estilo visual listo para presentacion.
+- Preparar una ronda de pruebas con stakeholders de Sin Envolturas para validar claridad, utilidad y tono de las recomendaciones.
+
+Instrucciones de redaccion para el agente que llenara el formato
+1. Para la columna "Actividad detallada", usar la primera oracion de cada actividad y, si hay espacio, anadir el resultado alcanzado en la misma celda despues de punto seguido.
+2. Para la columna "Fecha", usar el rango sugerido o reemplazarlo por el rango oficial del hito si el usuario lo entrega.
+3. Para la columna "Lugar", usar "Lima, Peru" salvo en actividades de despliegue o infraestructura, donde conviene usar "Lima, Peru / AWS us-east-1".
+4. Si se necesita reducir extension, usar la "Version resumida para tabla con poco espacio".
+5. No agregar secciones adicionales al formato. No completar campos de evaluacion, valoracion, objetivos cuantitativos, firmas ni informacion administrativa.
+6. Mantener todas las actividades en pasado y todos los pendientes del siguiente periodo en infinitivo.
+7. Evitar afirmaciones como "completado al 100%" o "avance alto"; el formato solicitado no debe incluir valoraciones cuantitativas ni juicios evaluativos.
+8. No mencionar que la informacion proviene de un repositorio, de logs, de documentos internos o de un agente. El informe final debe leerse como una declaracion de actividades del proyecto.
+
+Texto base breve opcional para introducir la tabla si el formato permite una linea introductoria
+Durante el periodo del hito se avanzo en el diseno, implementacion, despliegue y validacion de un prototipo de agente conversacional serverless para Sin Envolturas, orientado a estructurar necesidades de eventos, recomendar proveedores y habilitar solicitudes de contacto mediante una arquitectura agnostica de canal.

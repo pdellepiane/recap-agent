@@ -4044,10 +4044,12 @@ export class AgentService {
   }
 
   private sanitizeAssistantOutput(value: string): string {
-    return value
+    const sanitized = value
       .replace(/\bfilecite\s+turn\d+\s+file\s+\d+\b/giu, '')
       .replace(/[ \t]{2,}/gu, ' ')
       .replace(/[ \t]+\n/gu, '\n')
       .trim();
+
+    return sanitized.replace(/\.(?=\s*$)/u, '');
   }
 }

@@ -6841,7 +6841,7 @@ describe('AgentService', () => {
     expect(response.trace.operational_note).toBeNull();
   });
 
-  it('sanitizes file citation artifacts before returning and logging assistant output', async () => {
+  it('sanitizes file citation artifacts and avoids a final plain period', async () => {
     class CitationRuntime extends FakeRuntime {
       override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
         this.composeRequests.push(request);
@@ -6863,6 +6863,6 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.outbound.text).toBe('Puedes revisar tu lista aquí.');
+    expect(response.outbound.text).toBe('Puedes revisar tu lista aquí');
   });
 });

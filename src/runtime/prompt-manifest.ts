@@ -2,6 +2,7 @@ import type { DecisionNode } from '../core/decision-nodes';
 
 export const conversationSharedPromptFiles = [
   'shared/base_system.txt',
+  'shared/agent_personality.txt',
   'shared/domain_scope.txt',
   'shared/domain_knowledge.txt',
   'shared/output_style.txt',
