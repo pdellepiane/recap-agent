@@ -3520,14 +3520,20 @@ must not infer capacity or service suitability from provider existence alone.
 
 - Limited the provider-sync Lambda to one concurrent execution.
 - Made stale vector-file cleanup tolerate an already-deleted file.
+- Paginated the complete vector-file inventory and delete stale files with
+  bounded concurrency.
+- Increased the sync timeout to cover indexing plus full-batch replacement.
 
 ### Reason
 
 The deployment-triggered scheduled refresh overlapped a manual refresh. One
 execution deleted vector files still being polled by the other, producing a
-404 and leaving both refreshes without a trustworthy success result.
+404 and leaving both refreshes without a trustworthy success result. A
+follow-up inventory also found 1,985 files across eleven batches because the
+old cleanup inspected only the first API page.
 
 ### Decision
 
 Provider index replacement is a singleton operation. Serialize executions at
-the Lambda boundary and keep cleanup idempotent for stale-list races.
+the Lambda boundary, enumerate every page, and keep cleanup idempotent for
+stale-list races.

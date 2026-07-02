@@ -86,24 +86,30 @@ export class OpenAiProviderUploader {
     vectorStoreId: string,
     currentBatchId: string,
   ): Promise<void> {
-    const allFiles = await this.client.vectorStores.files.list(vectorStoreId);
-    const staleFiles = allFiles.data.filter((file) => {
+    const allFiles = [];
+    for await (const file of this.client.vectorStores.files.list(
+      vectorStoreId,
+      { limit: 100 },
+    )) {
+      allFiles.push(file);
+    }
+    const staleFiles = allFiles.filter((file) => {
       const attributes = file.attributes as Record<string, unknown> | null;
       return attributes?.batch_id !== currentBatchId;
     });
 
-    for (const file of staleFiles) {
-      try {
-        await this.client.vectorStores.files.delete(file.id, {
-          vector_store_id: vectorStoreId,
-        });
-      } catch (error) {
-        if (!isNotFoundError(error)) {
-          throw error;
+    await this.mapWithConcurrency(staleFiles, 8, async (file) => {
+        try {
+          await this.client.vectorStores.files.delete(file.id, {
+            vector_store_id: vectorStoreId,
+          });
+        } catch (error) {
+          if (!isNotFoundError(error)) {
+            throw error;
+          }
+          console.log(`Provider vector file ${file.id} was already absent during cleanup`);
         }
-        console.log(`Provider vector file ${file.id} was already absent during cleanup`);
-      }
-    }
+      });
   }
 
   private async ensureVectorStore(): Promise<string> {
