@@ -3356,3 +3356,21 @@ spend the confirmatory run until every targeted gate passes.
 Use this artifact as the direct pre-intervention comparator for the untouched
 V2 confirmation. Keep the original V1 grading as historical evidence rather
 than silently replacing it.
+
+## Automate confirmatory live gates
+
+- Added a typed live-gate command covering all five missing-location cases plus
+  multi-need, pause/resume, no-results, recovery, selection, closure,
+  auditorium, audiovisual-taxonomy, and cross-category rendering checks.
+- The command exits nonzero if any semantic invariant or V2 hard gate fails and
+  preserves its normal evaluation artifacts.
+
+### Reason
+
+The fourth study must not be spent based on informal spot checks. A repeatable
+go/no-go command makes the precommitted criteria executable and auditable.
+
+### Decision
+
+Require `npm run eval:confirmatory-gates` to pass against the deployed
+development Lambda before starting the untouched 50×3 confirmation.
