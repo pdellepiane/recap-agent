@@ -3,6 +3,7 @@ import { ulid } from 'ulid';
 import type { DecisionNode } from '../core/decision-nodes';
 import { extractionPersistenceNodes } from '../core/decision-nodes';
 import { resolveResumeNode } from '../core/decision-flow';
+import type { EventType } from '../core/event-type';
 import {
   prioritizedProviderCategoriesForEvent,
   starterProviderCategoriesForEvent,
@@ -55,7 +56,12 @@ import {
 import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
 import type { MessageRenderer } from './message-renderer';
-import { rankProvidersForCriteria } from './provider-fit';
+import {
+  inferCurrencyFromBudget,
+  parseBudgetAmount,
+  rankProvidersForCriteria,
+  type ProviderFitCriteria,
+} from './provider-fit';
 import { createSubQueryFitCriteria, selectProvidersForSubQuery } from './provider-sub-query-selection';
 import type {
   ProviderPlanOperation,
@@ -88,6 +94,17 @@ type ProviderSelectionMatch = {
   selectedProvider: ProviderSummary;
   hint: string;
 };
+
+export function selectStarterProviderCategories(args: {
+  eventType: EventType | null;
+  explicitCategories: ProviderCategory[];
+  maxNeeds: number;
+}): ProviderCategory[] {
+  const explicit = Array.from(new Set(args.explicitCategories));
+  return explicit.length > 0 && explicit.length <= 3
+    ? explicit.slice(0, args.maxNeeds)
+    : starterProviderCategoriesForEvent(args.eventType, args.maxNeeds);
+}
 
 type ProviderSearchExecutionResult = {
   providers: ProviderSummary[];
@@ -942,7 +959,10 @@ export class AgentService {
           }
           providerResults = rankProvidersForCriteria(
             enrichedProviders,
-            extraction.providerFitCriteria,
+            this.completeProviderFitCriteria(
+              extraction.providerFitCriteria,
+              planAfterFlow,
+            ),
           );
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
           const activeNeed = getActiveNeed(planAfterFlow);
@@ -3062,7 +3082,10 @@ export class AgentService {
             });
             const providerSearchStartedAt = Date.now();
             const fitCriteria = createSubQueryFitCriteria({
-              baseCriteria: queryIntent.fitCriteria,
+              baseCriteria: this.completeProviderFitCriteria(
+                queryIntent.fitCriteria,
+                args.plan,
+              ),
               subQuery,
             });
             const searchResult = await this.dependencies.providerGateway.searchProvidersByQueryIntent({
@@ -3091,7 +3114,10 @@ export class AgentService {
             const result = selectProvidersForSubQuery({
               subQuery,
               providers: enriched,
-              baseCriteria: queryIntent.fitCriteria,
+              baseCriteria: this.completeProviderFitCriteria(
+                queryIntent.fitCriteria,
+                args.plan,
+              ),
             });
             args.timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
             return result;
@@ -3184,11 +3210,11 @@ export class AgentService {
     const queryIntents = extraction.providerQueryIntents ?? [];
 
     const allowedCategories = prioritizedProviderCategoriesForEvent(extraction.eventType);
-    const extractedExplicitCategories = new Set([
-      extraction.vendorCategory,
-      extraction.activeNeedCategory,
-      ...extraction.vendorCategories,
-    ].filter((category): category is ProviderCategory => Boolean(category)));
+    const extractedExplicitCategories = new Set(
+      queryIntents
+        .filter((queryIntent) => queryIntent.retrievalReady)
+        .map((queryIntent) => queryIntent.category),
+    );
     const explicitCategories =
       extractedExplicitCategories.size > 0 && extractedExplicitCategories.size <= 3
         ? extractedExplicitCategories
@@ -3206,10 +3232,11 @@ export class AgentService {
       });
 
     if (!this.hasDetailedElicitationConcept(extraction)) {
-      const starterCategories = Array.from(new Set([
-        ...starterProviderCategoriesForEvent(extraction.eventType, MAX_STARTER_NEEDS),
-        ...explicitCategories,
-      ])).slice(0, MAX_STARTER_NEEDS);
+      const starterCategories = selectStarterProviderCategories({
+        eventType: extraction.eventType,
+        explicitCategories: [...explicitCategories],
+        maxNeeds: MAX_STARTER_NEEDS,
+      });
       const rankedByCategory = new Map(
         ranked.map((queryIntent) => [queryIntent.category, queryIntent]),
       );
@@ -3315,6 +3342,21 @@ export class AgentService {
       );
 
     return hasQuery && hasEventScale;
+  }
+
+  private completeProviderFitCriteria(
+    criteria: ProviderFitCriteria,
+    plan: PlanSnapshot,
+  ): ProviderFitCriteria {
+    if (criteria.budgetAmount !== null || !plan.budget_signal) {
+      return criteria;
+    }
+    return {
+      ...criteria,
+      budgetAmount: parseBudgetAmount(plan.budget_signal),
+      budgetCurrency:
+        criteria.budgetCurrency ?? inferCurrencyFromBudget(plan.budget_signal),
+    };
   }
 
   private async executeProviderSearch(args: {

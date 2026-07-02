@@ -2961,6 +2961,32 @@ unknown-granularity providers only when no verified local candidate exists, and
 retain reliability, cost, latency, shortlist availability, and catalog
 concentration as guardrails.
 
+## Tighten explicit-need and budget propagation after targeted live gate
+
+- Ran six targeted live scenarios after the initial location/category fix.
+- Confirmed that contradictory Ica and Mexico providers were removed from all
+  targeted Lima/San Isidro/Miraflores results.
+- Changed starter-need projection to preserve only query-intent categories that
+  the structured extractor marked retrieval-ready; broad event planning still
+  receives the normal compact starter menu.
+- Filled a missing structured fit-budget amount from the already persisted plan
+  budget before both single-need and sub-query ranking.
+- Added regression coverage for explicit single/multi-need preservation and
+  broad-plan fallback behavior.
+
+### Reason
+
+The targeted gate showed that a direct single-category request could still be
+expanded into default event categories and that a qualitative low budget could
+be lost when a model-produced fit object left its numeric budget field null.
+
+### Decision
+
+Use structured retrieval readiness as the evidence that a provider category is
+an established current need. Deterministic code may complete a missing numeric
+budget tier from persisted structured state, but it must not infer new needs
+from message text.
+
 ## Add reproducible technical evaluation study
 
 - Completed the previously declared benchmark metrics by calculating latency,
