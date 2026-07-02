@@ -58,6 +58,7 @@ import type { TokenUsage } from './contracts';
 import type { MessageRenderer } from './message-renderer';
 import {
   inferCurrencyFromBudget,
+  isProviderEligibleForCriteria,
   parseBudgetAmount,
   rankProvidersForCriteria,
   type ProviderFitCriteria,
@@ -957,12 +958,15 @@ export class AgentService {
           if (!extraction.providerFitCriteria) {
             throw new Error('Extractor did not return provider fit criteria.');
           }
+          const completeFitCriteria = this.completeProviderFitCriteria(
+            extraction.providerFitCriteria,
+            planAfterFlow,
+          );
           providerResults = rankProvidersForCriteria(
             enrichedProviders,
-            this.completeProviderFitCriteria(
-              extraction.providerFitCriteria,
-              planAfterFlow,
-            ),
+            completeFitCriteria,
+          ).filter((provider) =>
+            isProviderEligibleForCriteria(provider, completeFitCriteria),
           );
           timingMs.provider_enrichment += Date.now() - providerEnrichmentStartedAt;
           const activeNeed = getActiveNeed(planAfterFlow);

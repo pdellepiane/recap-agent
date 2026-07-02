@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { ProviderSummary } from '../src/core/provider';
 import {
   createProviderFitCriteria,
+  isProviderEligibleForCriteria,
   normalizeBudgetTier,
   parseBudgetAmount,
   rankProvidersForCriteria,
@@ -136,5 +137,33 @@ describe('rankProvidersForCriteria', () => {
     expect(ranked.find((p) => p.id === 135)?.fitWarnings).toContain(
       'Proveedor orientado principalmente a bodas.',
     );
+  });
+
+  it('rejects severe low-budget and explicit avoid conflicts', () => {
+    const criteria = {
+      eventType: 'cumpleanos' as const,
+      needCategory: 'Catering',
+      location: 'Lima',
+      budgetAmount: 1000,
+      budgetCurrency: 'PEN' as const,
+      mustHave: [],
+      shouldAvoid: ['solo bodas'],
+      rankingNotes: '',
+    };
+    const [expensive] = rankProvidersForCriteria([
+      createProvider({
+        priceLevel: 'high',
+        description: 'Catering para eventos.',
+      }),
+    ], criteria);
+    const [excluded] = rankProvidersForCriteria([
+      createProvider({
+        priceLevel: 'mid',
+        description: 'Catering solo bodas.',
+      }),
+    ], criteria);
+
+    expect(expensive && isProviderEligibleForCriteria(expensive, criteria)).toBe(false);
+    expect(excluded && isProviderEligibleForCriteria(excluded, criteria)).toBe(false);
   });
 });

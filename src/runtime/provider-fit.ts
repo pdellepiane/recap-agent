@@ -165,6 +165,22 @@ export function rankProvidersForCriteria(
     });
 }
 
+export function isProviderEligibleForCriteria(
+  provider: ProviderSummary,
+  criteria: ProviderFitCriteria,
+): boolean {
+  const tags = provider.fitTags ?? [];
+  const budgetTier = normalizeBudgetTier(criteria.budgetAmount);
+  const hasStrictBudgetRisk =
+    (budgetTier === 'very_low' || budgetTier === 'low') &&
+    tags.includes('budget_risk');
+  return (
+    !hasStrictBudgetRisk &&
+    !tags.includes('constraint_risk') &&
+    !tags.includes('need_mismatch')
+  );
+}
+
 export function scoreProviderForCriteria(
   provider: ProviderSummary,
   criteria: ProviderFitCriteria,

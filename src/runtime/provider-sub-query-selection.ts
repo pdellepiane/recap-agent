@@ -6,7 +6,10 @@ import type {
 } from '../core/provider-sub-query';
 import { normalizeToProviderCategory } from '../core/provider-category';
 import type { ProviderFitCriteria, ScoredProviderSummary } from './provider-fit';
-import { rankProvidersForCriteria } from './provider-fit';
+import {
+  isProviderEligibleForCriteria,
+  rankProvidersForCriteria,
+} from './provider-fit';
 
 const MIN_STRONG_MATCH_SCORE = 40;
 
@@ -60,7 +63,10 @@ export function selectProvidersForSubQuery(args: {
       return left.id - right.id;
     });
   const selected = ranked
-    .filter((provider) => (provider.fitScore ?? 0) >= MIN_STRONG_MATCH_SCORE)
+    .filter((provider) =>
+      (provider.fitScore ?? 0) >= MIN_STRONG_MATCH_SCORE &&
+      isProviderEligibleForCriteria(provider, criteria),
+    )
     .slice(0, args.subQuery.maxSelections);
 
   return {

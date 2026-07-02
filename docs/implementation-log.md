@@ -2987,6 +2987,22 @@ an established current need. Deterministic code may complete a missing numeric
 budget tier from persisted structured state, but it must not infer new needs
 from message text.
 
+## Reject severe fit conflicts from shortlists
+
+- Added a shared provider-eligibility gate after ranking.
+- Low and very-low budget plans now exclude candidates tagged with
+  `budget_risk` instead of presenting an expensive provider as the only option.
+- Candidates with explicit avoid-constraint evidence or a known need mismatch
+  are also excluded.
+- Applied the same gate to single-need and structured sub-query retrieval.
+
+### Reason
+
+The second targeted live gate correctly identified a high-price music provider
+as a budget risk for a minimum-budget request, but still displayed it. An honest
+no-match/refinement outcome is more useful than a shortlist that knowingly
+violates a strong constraint.
+
 ## Add reproducible technical evaluation study
 
 - Completed the previously declared benchmark metrics by calculating latency,
