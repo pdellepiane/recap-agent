@@ -3166,3 +3166,25 @@ Use iteration three as the preferred semantic and reliability snapshot, while
 preserving iteration one as the best observed need-coverage ratio. Leave the
 fourth paid iteration unused until a causal improvement and a stable
 expected-need denominator are defined.
+
+## Audit publication readiness
+
+- Added a human-readable inventory of all 50 frozen scenarios and their stable
+  iteration-three pass/fail outcomes.
+- Consolidated the complete functional, recommendation, architecture,
+  workflow, cost, and grounding results in the analysis dossier.
+- Backfilled the dossier's dated note, source inventory, and durable findings.
+- Recorded that the iteration-three manual grounding sample remains unscored.
+
+### Reason
+
+A publication decision requires the negative and incomplete evidence alongside
+the successful constraint and reliability metrics. Aggregate charts alone hide
+which route families failed and whether human grounding judgments are complete.
+
+### Decision
+
+Do not present the current study as evidence of general recommender efficacy.
+It can support a transparent engineering and evaluation case study. Require a
+corrected versioned benchmark, genuine behavior fixes, completed manual audit,
+and untouched confirmatory run before making performance claims.
