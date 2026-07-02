@@ -1,0 +1,528 @@
+{
+  "runId": "eval-2026-07-02T05-56-46-018Z-fdabfcbb",
+  "caseId": "study.corporate.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.5,
+  "totalLatencyMs": 8125,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista"
+  ],
+  "planDiffSummary": [
+    "current_node=\"entrevista\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"corporativo\"",
+    "location=\"Lima\"",
+    "budget_signal=\"presupuesto mínimo\"",
+    "guest_range=\"201+\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T05-39-57-869Z/runs/eval-2026-07-02T05-56-46-018Z-fdabfcbb/artifacts/study-repetition-2/study.corporate.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->entrevista. Allowed=*->recomendar, *->aclarar_pedir_faltante, *->informar_error_reintento."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was false instead of true."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.5,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 8125,
+    "p95_latency_ms": 8125,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.5,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 21686,
+    "cache_hit_rate": 0.8631808899653322
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito un auditorio dentro del aeropuerto de Lima para 900 personas mañana y con presupuesto mínimo."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara ubicar bien la búsqueda, necesito confirmar una sola cosa: ¿quieres que lo trate como un local o auditorio en Lima, o necesitas que sea sí o sí dentro del aeropuerto?",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWGQ6PTQRQBE08RBH7RRW78K",
+        "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+        "plan_id": "01KWGQ6F9A3GW95WXZ9RNJ70H3",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "vendor_category"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "list_locations"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "list_locations",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "list_locations",
+            "output": "[\n  {\n    \"cityId\": null,\n    \"countryId\": 173,\n    \"city\": null,\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": null,\n      \"country_id\": 173,\n      \"city\": null,\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 68127,\n    \"countryId\": 142,\n    \"city\": \"Aguascalientes\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 68127,\n      \"country_id\": 142,\n      \"city\": \"Aguascalientes\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69103,\n    \"countryId\": 142,\n    \"city\": \"Cholula\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69103,\n      \"country_id\": 142,\n      \"city\": \"Cholula\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 72102,\n    \"countryId\": 142,\n    \"city\": \"Ciudad de México\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 72102,\n      \"country_id\": 142,\n      \"city\": \"Ciudad de México\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69615,\n    \"countryId\": 142,\n    \"city\": \"Cuernavaca\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69615,\n      \"country_id\": 142,\n      \"city\": \"Cuernavaca\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 142544,\n    \"countryId\": 142,\n    \"city\": \"Guadalajara\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 142544,\n      \"country_id\": 142,\n      \"city\": \"Guadalajara\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 71666,\n    \"countryId\": 142,\n    \"city\": \"León\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 71666,\n      \"country_id\": 142,\n      \"city\": \"León\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74228,\n    \"countryId\": 142,\n    \"city\": \"San Miguel de Allende\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74228,\n      \"country_id\": 142,\n      \"city\": \"San Miguel de Allende\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74985,\n    \"countryId\": 142,\n    \"city\": \"Santiago de Querétaro\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74985,\n      \"country_id\": 142,\n      \"city\": \"Santiago de Querétaro\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 75804,\n    \"countryId\": 142,\n    \"city\": \"Tulum\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 75804,\n      \"country_id\": 142,\n      \"city\": \"Tulum\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 80701,\n    \"countryId\": 173,\n    \"city\": \"Lima\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80701,\n      \"country_id\": 173,\n      \"city\": \"Lima\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80777,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Arequipa\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80777,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Arequipa\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80843,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Ica\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80843,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Ica\",\n      \"country\": \"Perú\"\n    }\n  }\n]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 7732,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 4960,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2749,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11423,
+            "output_tokens": 550,
+            "total_tokens": 11973,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 9634,
+            "output_tokens": 79,
+            "total_tokens": 9713,
+            "cached_input_tokens": 7168
+          },
+          "total": {
+            "input_tokens": 21057,
+            "output_tokens": 629,
+            "total_tokens": 21686,
+            "cached_input_tokens": 18176
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGQ6PTQRQBE08RBH7RRW78K",
+        "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+        "runtime_latency_ms": 7732,
+        "extraction_latency_ms": 4960,
+        "compose_latency_ms": 2749,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 21686,
+        "cached_input_tokens": 18176,
+        "cache_hit_rate": 0.8631808899653322,
+        "extraction_to_compose_ratio": 1.804292469989087,
+        "captured_at": "2026-07-02T06:10:35.991Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGQ6F9A3GW95WXZ9RNJ70H3",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.corporate.09-bd1e3176",
+        "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "corporativo",
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": "Lima",
+        "budget_signal": "presupuesto mínimo",
+        "guest_range": "201+",
+        "preferences": [
+          "auditorio dentro del aeropuerto"
+        ],
+        "hard_constraints": [
+          "auditorio dentro del aeropuerto",
+          "900 personas",
+          "mañana"
+        ],
+        "missing_fields": [
+          "vendor_category"
+        ],
+        "provider_needs": [],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El evento es corporativo por estar descrito como auditorio para muchas personas y ubicación logística."
+        ],
+        "conversation_summary": "Búsqueda de auditorio dentro del aeropuerto de Lima para 900 personas, mañana, con presupuesto mínimo. Frente activo: Locales.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:10:33.231Z"
+      },
+      "latencyMs": 8125,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara ubicar bien la búsqueda, necesito confirmar una sola cosa: ¿quieres que lo trate como un local o auditorio en Lima, o necesitas que sea sí o sí dentro del aeropuerto?",
+        "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+        "plan_id": "01KWGQ6F9A3GW95WXZ9RNJ70H3",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWGQ6PTQRQBE08RBH7RRW78K",
+          "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+          "plan_id": "01KWGQ6F9A3GW95WXZ9RNJ70H3",
+          "previous_node": "contacto_inicial",
+          "next_node": "entrevista",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "entrevista"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "vendor_category"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "list_locations"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "list_locations",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "list_locations",
+              "output": "[\n  {\n    \"cityId\": null,\n    \"countryId\": 173,\n    \"city\": null,\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": null,\n      \"country_id\": 173,\n      \"city\": null,\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 68127,\n    \"countryId\": 142,\n    \"city\": \"Aguascalientes\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 68127,\n      \"country_id\": 142,\n      \"city\": \"Aguascalientes\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69103,\n    \"countryId\": 142,\n    \"city\": \"Cholula\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69103,\n      \"country_id\": 142,\n      \"city\": \"Cholula\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 72102,\n    \"countryId\": 142,\n    \"city\": \"Ciudad de México\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 72102,\n      \"country_id\": 142,\n      \"city\": \"Ciudad de México\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69615,\n    \"countryId\": 142,\n    \"city\": \"Cuernavaca\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69615,\n      \"country_id\": 142,\n      \"city\": \"Cuernavaca\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 142544,\n    \"countryId\": 142,\n    \"city\": \"Guadalajara\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 142544,\n      \"country_id\": 142,\n      \"city\": \"Guadalajara\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 71666,\n    \"countryId\": 142,\n    \"city\": \"León\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 71666,\n      \"country_id\": 142,\n      \"city\": \"León\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74228,\n    \"countryId\": 142,\n    \"city\": \"San Miguel de Allende\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74228,\n      \"country_id\": 142,\n      \"city\": \"San Miguel de Allende\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74985,\n    \"countryId\": 142,\n    \"city\": \"Santiago de Querétaro\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74985,\n      \"country_id\": 142,\n      \"city\": \"Santiago de Querétaro\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 75804,\n    \"countryId\": 142,\n    \"city\": \"Tulum\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 75804,\n      \"country_id\": 142,\n      \"city\": \"Tulum\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 80701,\n    \"countryId\": 173,\n    \"city\": \"Lima\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80701,\n      \"country_id\": 173,\n      \"city\": \"Lima\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80777,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Arequipa\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80777,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Arequipa\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80843,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Ica\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80843,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Ica\",\n      \"country\": \"Perú\"\n    }\n  }\n]"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 7732,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 4960,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2749,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11423,
+              "output_tokens": 550,
+              "total_tokens": 11973,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 9634,
+              "output_tokens": 79,
+              "total_tokens": 9713,
+              "cached_input_tokens": 7168
+            },
+            "total": {
+              "input_tokens": 21057,
+              "output_tokens": 629,
+              "total_tokens": 21686,
+              "cached_input_tokens": 18176
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGQ6F9A3GW95WXZ9RNJ70H3",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.corporate.09-bd1e3176",
+          "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "corporativo",
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": "Lima",
+          "budget_signal": "presupuesto mínimo",
+          "guest_range": "201+",
+          "preferences": [
+            "auditorio dentro del aeropuerto"
+          ],
+          "hard_constraints": [
+            "auditorio dentro del aeropuerto",
+            "900 personas",
+            "mañana"
+          ],
+          "missing_fields": [
+            "vendor_category"
+          ],
+          "provider_needs": [],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El evento es corporativo por estar descrito como auditorio para muchas personas y ubicación logística."
+          ],
+          "conversation_summary": "Búsqueda de auditorio dentro del aeropuerto de Lima para 900 personas, mañana, con presupuesto mínimo. Frente activo: Locales.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:10:33.231Z"
+        },
+        "perf": {
+          "trace_id": "01KWGQ6PTQRQBE08RBH7RRW78K",
+          "conversation_id": "conv_6a4600d94d2c8196b6de52d41571c3600dd52714832c4c5c",
+          "runtime_latency_ms": 7732,
+          "extraction_latency_ms": 4960,
+          "compose_latency_ms": 2749,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 21686,
+          "cached_input_tokens": 18176,
+          "cache_hit_rate": 0.8631808899653322,
+          "extraction_to_compose_ratio": 1.804292469989087,
+          "captured_at": "2026-07-02T06:10:35.991Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:10:36.068Z",
+  "completedAt": "2026-07-02T06:10:36.070Z"
+}

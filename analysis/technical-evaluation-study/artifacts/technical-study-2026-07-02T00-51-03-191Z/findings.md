@@ -369,6 +369,11 @@ Generated from immutable evaluation artifacts. This dossier reports technical be
       "compatible": 247,
       "rate": 1
     },
+    "eventServiceApplicability": {
+      "applicable": 239,
+      "supported": 45,
+      "rate": 0.18828451882845187
+    },
     "needRecommendationCoverage": {
       "needsObserved": 201,
       "needsWithRecommendations": 170,

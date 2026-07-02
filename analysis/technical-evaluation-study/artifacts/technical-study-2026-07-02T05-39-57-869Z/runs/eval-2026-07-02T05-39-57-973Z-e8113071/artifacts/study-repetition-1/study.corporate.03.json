@@ -1,0 +1,1887 @@
+{
+  "runId": "eval-2026-07-02T05-39-57-973Z-e8113071",
+  "caseId": "study.corporate.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.6363636363636364,
+  "totalLatencyMs": 16231,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"corporativo\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"alto\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Otros:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T05-39-57-869Z/runs/eval-2026-07-02T05-39-57-973Z-e8113071/artifacts/study-repetition-1/study.corporate.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 3 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-2",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.6363636363636364,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 11 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 16231,
+    "p95_latency_ms": 16231,
+    "tool_calls_total": 3,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.6666666666666666,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 18651,
+    "cache_hit_rate": 0.846305533000812
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo una conferencia corporativa en Lima para 180 personas. Necesito local, catering y audiovisuales, presupuesto alto."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta que encaja con tu conferencia en Lima para 180 personas. Te dejo lo más alineado para empezar por el local y seguir con el resto del evento\n\nLocales\nLocal para conferencia corporativa en Lima, con capacidad para unas 180 personas y presupuesto alto\n1. Casa Club 147 - local/venue para conferencia (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con un espacio para eventos corporativos y con el tamaño del grupo que mencionaste\n Limitación: La ficha lo ubica en Cieneguilla, así que conviene revisar si te sirve esa zona.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n2. Casa Club 147 - local/venue para conferencia (Perú · $$$ · promo: 10% Off Alquiler local)\n Es la opción recomendada para este frente por su perfil de espacio amplio y cómodo\n Limitación: La ubicación no queda en Lima céntrica; puede ser una buena alternativa si la zona no es un límite.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nCatering para conferencia corporativa en Lima, pensado para 180 personas\n1. FCatering - catering corporativo (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n Su propuesta está orientada a eventos y encaja bien con un formato corporativo\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\nOtros\nAudiovisuales para conferencia, con sonido y proyección para un auditorio grande\n1. Shop Sin Envolturas - audiovisuales para conferencia (Lima, Perú · $$ · promo: 10% OFF)\n Es la opción disponible para complementar la producción del evento\n Limitación: La ficha corresponde a tienda general, así que el encaje con audiovisuales puede ser parcial.\n Ficha: https://sinenvolturas.com/proveedores/shop-sin-envolturas\n\nPodemos empezar por revisar primero el local y, después, ajustar catering y audiovisuales según el estilo que quieras para la conferencia",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGP367EW6B4K7R8A0NGGXR8",
+        "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+        "plan_id": "01KWGP2PH1CPH2TX9T90E8TW1J",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local/venue para conferencia\",\n  \"queryStrings\": [\n    \"local para conferencia corporativa en Lima para 180 personas\",\n    \"espacio para eventos corporativos en Lima 180 asistentes\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering corporativo\",\n  \"queryStrings\": [\n    \"catering para conferencia corporativa en Lima para 180 personas\",\n    \"coffee break/almuerzo para evento corporativo Lima 180 asistentes\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Otros\",\n  \"label\": \"audiovisuales para conferencia\",\n  \"queryStrings\": [\n    \"audiovisuales para conferencia en Lima 180 personas\",\n    \"sonido e iluminación y proyección para evento corporativo Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"catering corporativo\",\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8731752719023472\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8760902606682159\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8417745512805012\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"audiovisuales para conferencia\",\n  \"providers\": [\n    {\n      \"id\": 1,\n      \"title\": \"Shop Sin Envolturas\",\n      \"category\": \"Otros\",\n      \"retrievalScore\": 0.48428452055852284\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"local/venue para conferencia\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6028337618617806\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6028337618617806,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con catering corporativo según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.8760902606682159,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con audiovisuales para conferencia según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.48428452055852284,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6028337618617806,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 137,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8760902606682159,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 1,
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.48428452055852284,
+            "fit_score": 100
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 3,
+          "context_candidates": 3,
+          "context_candidate_ids": [
+            147,
+            137,
+            1
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 16082,
+          "load_plan": 6,
+          "prepare_working_plan": 1,
+          "extraction": 9119,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 7905,
+          "provider_enrichment": 247,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4137,
+          "save_plan": 26
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11428,
+            "output_tokens": 997,
+            "total_tokens": 12425,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5814,
+            "output_tokens": 412,
+            "total_tokens": 6226,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17242,
+            "output_tokens": 1409,
+            "total_tokens": 18651,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGP367EW6B4K7R8A0NGGXR8",
+        "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+        "runtime_latency_ms": 16082,
+        "extraction_latency_ms": 9119,
+        "compose_latency_ms": 4137,
+        "tools_called_count": 3,
+        "provider_results_count": 3,
+        "recommendation_context_candidates": 3,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18651,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.846305533000812,
+        "extraction_to_compose_ratio": 2.2042542905487066,
+        "captured_at": "2026-07-02T05:51:12.110Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGP2PH1CPH2TX9T90E8TW1J",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.03-60d5582f",
+        "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "corporativo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "alto",
+        "guest_range": "101-200",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "para conferencia corporativa",
+              "capacidad para ~180 personas"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.6028337618617806,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_local_conferencia",
+                  "label": "local/venue para conferencia",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para conferencia corporativa en Lima para 180 personas",
+                    "espacio para eventos corporativos en Lima 180 asistentes"
+                  ],
+                  "mustHave": [
+                    "capacidad para ~180 personas",
+                    "para conferencia corporativa"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6028337618617806,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "para 180 personas",
+              "para evento corporativo"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              137
+            ],
+            "recommended_providers": [
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con catering corporativo según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.8760902606682159,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_catering_corpo",
+                  "label": "catering corporativo",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering para conferencia corporativa en Lima para 180 personas",
+                    "coffee break/almuerzo para evento corporativo Lima 180 asistentes"
+                  ],
+                  "mustHave": [
+                    "para 180 personas",
+                    "estilo corporativo"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  137,
+                  153,
+                  136
+                ],
+                "selected_provider_ids": [
+                  137
+                ],
+                "candidates": [
+                  {
+                    "id": 137,
+                    "title": "FCatering",
+                    "slug": "fcatering",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "FCatering encaja con catering corporativo según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Vale de 300 Dólares",
+                    "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                    "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Propuestas gastronómicas personalizadas",
+                      "Montaje y servicio de alimentos",
+                      "Atención para eventos sociales y corporativos"
+                    ],
+                    "termsHighlights": [
+                      "Válido solo para clientes de Sin Envolturas.",
+                      "Válido únicamente en Lima.",
+                      "Beneficio no transferible ni acumulable.",
+                      "Válido de lunes a viernes en horario laboral.",
+                      "Aplica solo para anfitriones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.8760902606682159,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 153,
+                    "title": "BAPO",
+                    "slug": "bapo",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "BAPO encaja con catering corporativo según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                    "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                    "serviceHighlights": [
+                      "Servicios de catering",
+                      "Preguntar por paquetes"
+                    ],
+                    "termsHighlights": [
+                      "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "No acumulable con otros descuentos y/o promociones"
+                    ],
+                    "eventTypes": [],
+                    "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.8417745512805012,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 136,
+                    "title": "4Foodies",
+                    "slug": "4foodies",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "4Foodies encaja con catering corporativo según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                    "websiteUrl": "https://www.4foodies.pe",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                    "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Tablas de quesos",
+                      "Mesas gastronómicas",
+                      "Implementación y montaje de servicio",
+                      "Propuestas personalizadas según el evento"
+                    ],
+                    "termsHighlights": [
+                      "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                      "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                      "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                      "Válido para Lima (previa validación de zona de cobertura)."
+                    ],
+                    "eventTypes": [],
+                    "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                    "fitScore": 95,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.8731752719023472,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Otros",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "audiovisuales para conferencia corporativa",
+              "proyección/sonido"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              1
+            ],
+            "recommended_providers": [
+              {
+                "id": 1,
+                "title": "Shop Sin Envolturas",
+                "slug": "shop-sin-envolturas",
+                "category": "Otros",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "5.0",
+                "reason": "Shop Sin Envolturas encaja con audiovisuales para conferencia según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% OFF",
+                "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                "serviceHighlights": [
+                  "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                ],
+                "termsHighlights": [
+                  "El descuento no aplica sobre descuento.",
+                  "El descuento no aplica para algunos productos y servicios, consultar."
+                ],
+                "eventTypes": [],
+                "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.48428452055852284,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_audiovisuales_conferencia",
+                  "label": "audiovisuales para conferencia",
+                  "category": "Otros",
+                  "queryStrings": [
+                    "audiovisuales para conferencia en Lima 180 personas",
+                    "sonido e iluminación y proyección para evento corporativo Lima"
+                  ],
+                  "mustHave": [
+                    "audiovisuales para conferencia corporativa",
+                    "proyección/sonido para gran auditorio"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  1
+                ],
+                "selected_provider_ids": [
+                  1
+                ],
+                "candidates": [
+                  {
+                    "id": 1,
+                    "title": "Shop Sin Envolturas",
+                    "slug": "shop-sin-envolturas",
+                    "category": "Otros",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "5.0",
+                    "reason": "Shop Sin Envolturas encaja con audiovisuales para conferencia según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                    "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% OFF",
+                    "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                    "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                    "serviceHighlights": [
+                      "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                    ],
+                    "termsHighlights": [
+                      "El descuento no aplica sobre descuento.",
+                      "El descuento no aplica para algunos productos y servicios, consultar."
+                    ],
+                    "eventTypes": [],
+                    "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.48428452055852284,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6028337618617806,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“audiovisuales” corresponde a una necesidad de proveedores dentro de la categoría “Otros” (no se menciona una categoría específica como Música/ Fotografía y video)."
+        ],
+        "conversation_summary": "Conferencia corporativa en Lima para 180 personas; presupuesto alto. Necesita local, catering y audiovisuales. Frente activo: local.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T05:51:07.946Z"
+      },
+      "latencyMs": 16231,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta que encaja con tu conferencia en Lima para 180 personas. Te dejo lo más alineado para empezar por el local y seguir con el resto del evento\n\nLocales\nLocal para conferencia corporativa en Lima, con capacidad para unas 180 personas y presupuesto alto\n1. Casa Club 147 - local/venue para conferencia (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con un espacio para eventos corporativos y con el tamaño del grupo que mencionaste\n Limitación: La ficha lo ubica en Cieneguilla, así que conviene revisar si te sirve esa zona.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n2. Casa Club 147 - local/venue para conferencia (Perú · $$$ · promo: 10% Off Alquiler local)\n Es la opción recomendada para este frente por su perfil de espacio amplio y cómodo\n Limitación: La ubicación no queda en Lima céntrica; puede ser una buena alternativa si la zona no es un límite.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nCatering para conferencia corporativa en Lima, pensado para 180 personas\n1. FCatering - catering corporativo (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n Su propuesta está orientada a eventos y encaja bien con un formato corporativo\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\nOtros\nAudiovisuales para conferencia, con sonido y proyección para un auditorio grande\n1. Shop Sin Envolturas - audiovisuales para conferencia (Lima, Perú · $$ · promo: 10% OFF)\n Es la opción disponible para complementar la producción del evento\n Limitación: La ficha corresponde a tienda general, así que el encaje con audiovisuales puede ser parcial.\n Ficha: https://sinenvolturas.com/proveedores/shop-sin-envolturas\n\nPodemos empezar por revisar primero el local y, después, ajustar catering y audiovisuales según el estilo que quieras para la conferencia",
+        "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+        "plan_id": "01KWGP2PH1CPH2TX9T90E8TW1J",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGP367EW6B4K7R8A0NGGXR8",
+          "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+          "plan_id": "01KWGP2PH1CPH2TX9T90E8TW1J",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local/venue para conferencia\",\n  \"queryStrings\": [\n    \"local para conferencia corporativa en Lima para 180 personas\",\n    \"espacio para eventos corporativos en Lima 180 asistentes\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering corporativo\",\n  \"queryStrings\": [\n    \"catering para conferencia corporativa en Lima para 180 personas\",\n    \"coffee break/almuerzo para evento corporativo Lima 180 asistentes\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Otros\",\n  \"label\": \"audiovisuales para conferencia\",\n  \"queryStrings\": [\n    \"audiovisuales para conferencia en Lima 180 personas\",\n    \"sonido e iluminación y proyección para evento corporativo Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"catering corporativo\",\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8731752719023472\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8760902606682159\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8417745512805012\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"audiovisuales para conferencia\",\n  \"providers\": [\n    {\n      \"id\": 1,\n      \"title\": \"Shop Sin Envolturas\",\n      \"category\": \"Otros\",\n      \"retrievalScore\": 0.48428452055852284\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"local/venue para conferencia\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6028337618617806\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6028337618617806,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con catering corporativo según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.8760902606682159,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 1,
+              "title": "Shop Sin Envolturas",
+              "slug": "shop-sin-envolturas",
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "5.0",
+              "reason": "Shop Sin Envolturas encaja con audiovisuales para conferencia según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+              "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+              "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "serviceHighlights": [
+                "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+              ],
+              "termsHighlights": [
+                "El descuento no aplica sobre descuento.",
+                "El descuento no aplica para algunos productos y servicios, consultar."
+              ],
+              "eventTypes": [],
+              "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.48428452055852284,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6028337618617806,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 137,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8760902606682159,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 1,
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.48428452055852284,
+              "fit_score": 100
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 3,
+            "context_candidates": 3,
+            "context_candidate_ids": [
+              147,
+              137,
+              1
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 16082,
+            "load_plan": 6,
+            "prepare_working_plan": 1,
+            "extraction": 9119,
+            "apply_extraction": 2,
+            "compute_sufficiency": 0,
+            "provider_search": 7905,
+            "provider_enrichment": 247,
+            "prompt_bundle_load": 0,
+            "compose_reply": 4137,
+            "save_plan": 26
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11428,
+              "output_tokens": 997,
+              "total_tokens": 12425,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5814,
+              "output_tokens": 412,
+              "total_tokens": 6226,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17242,
+              "output_tokens": 1409,
+              "total_tokens": 18651,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGP2PH1CPH2TX9T90E8TW1J",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.03-60d5582f",
+          "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "corporativo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "alto",
+          "guest_range": "101-200",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "para conferencia corporativa",
+                "capacidad para ~180 personas"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.6028337618617806,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_local_conferencia",
+                    "label": "local/venue para conferencia",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para conferencia corporativa en Lima para 180 personas",
+                      "espacio para eventos corporativos en Lima 180 asistentes"
+                    ],
+                    "mustHave": [
+                      "capacidad para ~180 personas",
+                      "para conferencia corporativa"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6028337618617806,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "para 180 personas",
+                "para evento corporativo"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                137
+              ],
+              "recommended_providers": [
+                {
+                  "id": 137,
+                  "title": "FCatering",
+                  "slug": "fcatering",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "FCatering encaja con catering corporativo según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Vale de 300 Dólares",
+                  "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                  "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Propuestas gastronómicas personalizadas",
+                    "Montaje y servicio de alimentos",
+                    "Atención para eventos sociales y corporativos"
+                  ],
+                  "termsHighlights": [
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.8760902606682159,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_catering_corpo",
+                    "label": "catering corporativo",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering para conferencia corporativa en Lima para 180 personas",
+                      "coffee break/almuerzo para evento corporativo Lima 180 asistentes"
+                    ],
+                    "mustHave": [
+                      "para 180 personas",
+                      "estilo corporativo"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    137,
+                    153,
+                    136
+                  ],
+                  "selected_provider_ids": [
+                    137
+                  ],
+                  "candidates": [
+                    {
+                      "id": 137,
+                      "title": "FCatering",
+                      "slug": "fcatering",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "FCatering encaja con catering corporativo según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Vale de 300 Dólares",
+                      "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                      "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Propuestas gastronómicas personalizadas",
+                        "Montaje y servicio de alimentos",
+                        "Atención para eventos sociales y corporativos"
+                      ],
+                      "termsHighlights": [
+                        "Válido solo para clientes de Sin Envolturas.",
+                        "Válido únicamente en Lima.",
+                        "Beneficio no transferible ni acumulable.",
+                        "Válido de lunes a viernes en horario laboral.",
+                        "Aplica solo para anfitriones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.8760902606682159,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 153,
+                      "title": "BAPO",
+                      "slug": "bapo",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "BAPO encaja con catering corporativo según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                      "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                      "serviceHighlights": [
+                        "Servicios de catering",
+                        "Preguntar por paquetes"
+                      ],
+                      "termsHighlights": [
+                        "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "No acumulable con otros descuentos y/o promociones"
+                      ],
+                      "eventTypes": [],
+                      "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.8417745512805012,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 136,
+                      "title": "4Foodies",
+                      "slug": "4foodies",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "4Foodies encaja con catering corporativo según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                      "websiteUrl": "https://www.4foodies.pe",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                      "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Tablas de quesos",
+                        "Mesas gastronómicas",
+                        "Implementación y montaje de servicio",
+                        "Propuestas personalizadas según el evento"
+                      ],
+                      "termsHighlights": [
+                        "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                        "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                        "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                        "Válido para Lima (previa validación de zona de cobertura)."
+                      ],
+                      "eventTypes": [],
+                      "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "fitScore": 95,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.8731752719023472,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Otros",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "audiovisuales para conferencia corporativa",
+                "proyección/sonido"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                1
+              ],
+              "recommended_providers": [
+                {
+                  "id": 1,
+                  "title": "Shop Sin Envolturas",
+                  "slug": "shop-sin-envolturas",
+                  "category": "Otros",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "5.0",
+                  "reason": "Shop Sin Envolturas encaja con audiovisuales para conferencia según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                  "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% OFF",
+                  "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                  "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                  "serviceHighlights": [
+                    "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                  ],
+                  "termsHighlights": [
+                    "El descuento no aplica sobre descuento.",
+                    "El descuento no aplica para algunos productos y servicios, consultar."
+                  ],
+                  "eventTypes": [],
+                  "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.48428452055852284,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_audiovisuales_conferencia",
+                    "label": "audiovisuales para conferencia",
+                    "category": "Otros",
+                    "queryStrings": [
+                      "audiovisuales para conferencia en Lima 180 personas",
+                      "sonido e iluminación y proyección para evento corporativo Lima"
+                    ],
+                    "mustHave": [
+                      "audiovisuales para conferencia corporativa",
+                      "proyección/sonido para gran auditorio"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    1
+                  ],
+                  "selected_provider_ids": [
+                    1
+                  ],
+                  "candidates": [
+                    {
+                      "id": 1,
+                      "title": "Shop Sin Envolturas",
+                      "slug": "shop-sin-envolturas",
+                      "category": "Otros",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "5.0",
+                      "reason": "Shop Sin Envolturas encaja con audiovisuales para conferencia según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                      "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% OFF",
+                      "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                      "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                      "serviceHighlights": [
+                        "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                      ],
+                      "termsHighlights": [
+                        "El descuento no aplica sobre descuento.",
+                        "El descuento no aplica para algunos productos y servicios, consultar."
+                      ],
+                      "eventTypes": [],
+                      "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.48428452055852284,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local/venue para conferencia según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6028337618617806,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“audiovisuales” corresponde a una necesidad de proveedores dentro de la categoría “Otros” (no se menciona una categoría específica como Música/ Fotografía y video)."
+          ],
+          "conversation_summary": "Conferencia corporativa en Lima para 180 personas; presupuesto alto. Necesita local, catering y audiovisuales. Frente activo: local.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T05:51:07.946Z"
+        },
+        "perf": {
+          "trace_id": "01KWGP367EW6B4K7R8A0NGGXR8",
+          "conversation_id": "conv_6a45fc4c08a08197af9336b4e756f1320499c3a6ae8c3ddf",
+          "runtime_latency_ms": 16082,
+          "extraction_latency_ms": 9119,
+          "compose_latency_ms": 4137,
+          "tools_called_count": 3,
+          "provider_results_count": 3,
+          "recommendation_context_candidates": 3,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18651,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.846305533000812,
+          "extraction_to_compose_ratio": 2.2042542905487066,
+          "captured_at": "2026-07-02T05:51:12.110Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T05:51:12.139Z",
+  "completedAt": "2026-07-02T05:51:12.139Z"
+}

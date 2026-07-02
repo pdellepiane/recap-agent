@@ -3087,3 +3087,32 @@ decoration needs.
 Use provider-catalog evidence only after the structured event-plan sub-query has
 selected the category. This validation ranks and filters provider suitability;
 it does not inspect user wording or decide conversational flow.
+
+## Execute semantic-fit evaluation iteration
+
+- Deployed the semantic service-fit changes to the development Lambda through
+  the repository CloudFormation workflow and verified the active Node.js 24,
+  1 GB, 90-second configuration and model aliases.
+- Executed the frozen 50-scenario manifest three times, producing 150 immutable
+  conversation artifacts.
+- Added event-service applicability to the generated recommendation-quality
+  summary so event-oriented evidence among home-and-decoration recommendations
+  is measured directly rather than inferred from category correctness.
+
+### Result
+
+- Location mismatches remained at zero, category satisfaction was 99.87%, and
+  budget compatibility remained 100%.
+- Event-service evidence among home-and-decoration provider appearances rose
+  from 53.03% in iteration one to 54.69% in iteration two.
+- Unique provider exposure rose from 54 to 57, flaky scenarios fell from four
+  to three, and priced cost fell from USD 1.081 to USD 1.055.
+- Need recommendation coverage fell from 86.15% to 83.00%, p95 conversation
+  latency rose from 26.4 to 28.2 seconds, and one conversation timed out.
+
+### Decision
+
+Retain the iteration-two snapshot for its targeted semantic improvement, but
+do not claim a general quality increase. Treat the coverage and timeout changes
+as explicit regressions and require any later iteration to recover coverage
+without weakening location, category, budget, or event-service safeguards.

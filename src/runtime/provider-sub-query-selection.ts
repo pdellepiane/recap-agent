@@ -97,7 +97,7 @@ function applyMustHaveEvidenceBoost(
     fitWarnings.add(`No hay evidencia exacta de ${subQuery.label} en la ficha.`);
   }
   const eventServiceEvidence =
-    subQuery.category !== 'Hogar y deco' || hasEventServiceEvidence(provider);
+    subQuery.category !== 'Hogar y deco' || providerHasEventServiceEvidence(provider);
   if (eventServiceEvidence) {
     fitTags.add('event_service_evidence');
   } else {
@@ -128,7 +128,7 @@ function hasRequiredSubQueryEvidence(
   return mustHaveSatisfied && eventServiceSatisfied;
 }
 
-function hasEventServiceEvidence(provider: ProviderSummary): boolean {
+export function providerHasEventServiceEvidence(provider: ProviderSummary): boolean {
   const providerText = normalizeText([
     provider.descriptionSnippet ?? '',
     provider.description ?? '',

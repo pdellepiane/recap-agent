@@ -1,0 +1,880 @@
+{
+  "runId": "eval-2026-07-02T06-14-10-953Z-b8311967",
+  "caseId": "study.birthday.08",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 46790,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista",
+    "entrevista->consultar_faq"
+  ],
+  "planDiffSummary": [
+    "current_node=\"consultar_faq\"",
+    "intent=\"consultar_faq\"",
+    "event_type=\"cumpleanos\"",
+    "location=\"Lima\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T05-39-57-869Z/runs/eval-2026-07-02T06-14-10-953Z-b8311967/artifacts/study-repetition-3/study.birthday.08.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition entrevista->consultar_faq."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 7 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 23395,
+    "p95_latency_ms": 38840,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 0.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.19230769230769232,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 39797,
+    "cache_hit_rate": 0.7954479901408081
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un cumpleaños en Lima."
+      },
+      "outputText": "Claro, te ayudo con eso\n\n¿Qué frente quieres resolver primero para tu cumpleaños: Locales, Catering, Música, Fotografía y video o Hogar y deco?",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWGQV8NX4VXQ9ZT9B6V9JBJS",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 38689,
+          "load_plan": 9,
+          "prepare_working_plan": 0,
+          "extraction": 36656,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 7,
+          "compose_reply": 1994,
+          "save_plan": 17
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11410,
+            "output_tokens": 1210,
+            "total_tokens": 12620,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4928,
+            "output_tokens": 53,
+            "total_tokens": 4981,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 16338,
+            "output_tokens": 1263,
+            "total_tokens": 17601,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGQV8NX4VXQ9ZT9B6V9JBJS",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "runtime_latency_ms": 38689,
+        "extraction_latency_ms": 36656,
+        "compose_latency_ms": 1994,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17601,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.861794589301016,
+        "extraction_to_compose_ratio": 18.383149448345034,
+        "captured_at": "2026-07-02T06:21:49.629Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.08-b59e2b1c",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.66,
+        "event_type": "cumpleanos",
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario planea un cumpleaños (event_type=especificado) y su ubicación/ciudad es Lima."
+        ],
+        "conversation_summary": "El usuario planea un cumpleaños en Lima; aún no define necesidades específicas de proveedores.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:21:47.613Z"
+      },
+      "latencyMs": 38840,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\n¿Qué frente quieres resolver primero para tu cumpleaños: Locales, Catering, Música, Fotografía y video o Hogar y deco?",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWGQV8NX4VXQ9ZT9B6V9JBJS",
+          "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+          "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+          "previous_node": "contacto_inicial",
+          "next_node": "entrevista",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "entrevista"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 38689,
+            "load_plan": 9,
+            "prepare_working_plan": 0,
+            "extraction": 36656,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 7,
+            "compose_reply": 1994,
+            "save_plan": 17
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11410,
+              "output_tokens": 1210,
+              "total_tokens": 12620,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4928,
+              "output_tokens": 53,
+              "total_tokens": 4981,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 16338,
+              "output_tokens": 1263,
+              "total_tokens": 17601,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.08-b59e2b1c",
+          "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.66,
+          "event_type": "cumpleanos",
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario planea un cumpleaños (event_type=especificado) y su ubicación/ciudad es Lima."
+          ],
+          "conversation_summary": "El usuario planea un cumpleaños en Lima; aún no define necesidades específicas de proveedores.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:21:47.613Z"
+        },
+        "perf": {
+          "trace_id": "01KWGQV8NX4VXQ9ZT9B6V9JBJS",
+          "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+          "runtime_latency_ms": 38689,
+          "extraction_latency_ms": 36656,
+          "compose_latency_ms": 1994,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17601,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.861794589301016,
+          "extraction_to_compose_ratio": 18.383149448345034,
+          "captured_at": "2026-07-02T06:21:49.629Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "¿Cómo contacto a un proveedor desde Sin Envolturas?"
+      },
+      "outputText": "Sí, claro. Puedes contactar al proveedor desde Sin Envolturas a través del chat de la web, y si necesitas ayuda también puedes escribir a hola@sinenvolturas.com. Para casos de reclamos de compra en el Shop, la indicación es hacerlo directamente con la marca del producto, y desde Sin Envolturas te ayudan a ponerte en contacto con esa marca si lo necesitas\n\nSi quieres, también puedo ayudarte a revisar opciones para tu cumpleaños en Lima",
+      "currentNode": "consultar_faq",
+      "trace": {
+        "trace_id": "01KWGQVGEM1S9N7V4WGDGQRD3C",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+        "previous_node": "entrevista",
+        "next_node": "consultar_faq",
+        "node_path": [
+          "entrevista",
+          "existe_plan_guardado",
+          "consultar_faq"
+        ],
+        "intent": "consultar_faq",
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "dcfc03857498",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/consultar_faq/system.txt",
+          "nodes/consultar_faq/response_contract.txt",
+          "nodes/consultar_faq/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "file_search"
+        ],
+        "tools_called": [
+          "file_search"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "file_search",
+            "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Cómo contacto a un proveedor desde Sin Envolturas?\",\n    \"contactar a un proveedor desde Sin Envolturas\",\n    \"cómo contacto a un proveedor en Sin Envolturas\"\n  ]\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "file_search",
+            "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": true,
+          "kb_query_present": true,
+          "file_search_called": true,
+          "file_search_output_count": 1
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "consultar_faq",
+        "timing_ms": {
+          "total": 7570,
+          "load_plan": 9,
+          "prepare_working_plan": 0,
+          "extraction": 2759,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 2,
+          "compose_reply": 4753,
+          "save_plan": 46
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11463,
+            "output_tokens": 221,
+            "total_tokens": 11684,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 10336,
+            "output_tokens": 176,
+            "total_tokens": 10512,
+            "cached_input_tokens": 5248
+          },
+          "total": {
+            "input_tokens": 21799,
+            "output_tokens": 397,
+            "total_tokens": 22196,
+            "cached_input_tokens": 16256
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGQVGEM1S9N7V4WGDGQRD3C",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "runtime_latency_ms": 7570,
+        "extraction_latency_ms": 2759,
+        "compose_latency_ms": 4753,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 22196,
+        "cached_input_tokens": 16256,
+        "cache_hit_rate": 0.7457222808385706,
+        "extraction_to_compose_ratio": 0.580475489164738,
+        "captured_at": "2026-07-02T06:21:57.589Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.08-b59e2b1c",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "consultar_faq",
+        "intent": "consultar_faq",
+        "intent_confidence": 0.9,
+        "event_type": "cumpleanos",
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario planea un cumpleaños (event_type=especificado) y su ubicación/ciudad es Lima."
+        ],
+        "conversation_summary": "El usuario pregunta cómo contactar a un proveedor desde Sin Envolturas. No solicita selección de proveedores ni cambia el plan del cumpleaños en Lima.",
+        "last_user_goal": "consultar_faq",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:21:52.787Z"
+      },
+      "latencyMs": 7950,
+      "rawTargetResponse": {
+        "message": "Sí, claro. Puedes contactar al proveedor desde Sin Envolturas a través del chat de la web, y si necesitas ayuda también puedes escribir a hola@sinenvolturas.com. Para casos de reclamos de compra en el Shop, la indicación es hacerlo directamente con la marca del producto, y desde Sin Envolturas te ayudan a ponerte en contacto con esa marca si lo necesitas\n\nSi quieres, también puedo ayudarte a revisar opciones para tu cumpleaños en Lima",
+        "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+        "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+        "current_node": "consultar_faq",
+        "trace": {
+          "trace_id": "01KWGQVGEM1S9N7V4WGDGQRD3C",
+          "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+          "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+          "previous_node": "entrevista",
+          "next_node": "consultar_faq",
+          "node_path": [
+            "entrevista",
+            "existe_plan_guardado",
+            "consultar_faq"
+          ],
+          "intent": "consultar_faq",
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "dcfc03857498",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/consultar_faq/system.txt",
+            "nodes/consultar_faq/response_contract.txt",
+            "nodes/consultar_faq/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "file_search"
+          ],
+          "tools_called": [
+            "file_search"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "file_search",
+              "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Cómo contacto a un proveedor desde Sin Envolturas?\",\n    \"contactar a un proveedor desde Sin Envolturas\",\n    \"cómo contacto a un proveedor en Sin Envolturas\"\n  ]\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "file_search",
+              "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": true,
+            "kb_query_present": true,
+            "file_search_called": true,
+            "file_search_output_count": 1
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "consultar_faq",
+          "timing_ms": {
+            "total": 7570,
+            "load_plan": 9,
+            "prepare_working_plan": 0,
+            "extraction": 2759,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 2,
+            "compose_reply": 4753,
+            "save_plan": 46
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11463,
+              "output_tokens": 221,
+              "total_tokens": 11684,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 10336,
+              "output_tokens": 176,
+              "total_tokens": 10512,
+              "cached_input_tokens": 5248
+            },
+            "total": {
+              "input_tokens": 21799,
+              "output_tokens": 397,
+              "total_tokens": 22196,
+              "cached_input_tokens": 16256
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGQT2X585ZWDDWDY27Y3HAM",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.08-b59e2b1c",
+          "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "consultar_faq",
+          "intent": "consultar_faq",
+          "intent_confidence": 0.9,
+          "event_type": "cumpleanos",
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario planea un cumpleaños (event_type=especificado) y su ubicación/ciudad es Lima."
+          ],
+          "conversation_summary": "El usuario pregunta cómo contactar a un proveedor desde Sin Envolturas. No solicita selección de proveedores ni cambia el plan del cumpleaños en Lima.",
+          "last_user_goal": "consultar_faq",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:21:52.787Z"
+        },
+        "perf": {
+          "trace_id": "01KWGQVGEM1S9N7V4WGDGQRD3C",
+          "conversation_id": "conv_6a46037baeec81949021e4e73b73cdc50db5cd826a59ffe8",
+          "runtime_latency_ms": 7570,
+          "extraction_latency_ms": 2759,
+          "compose_latency_ms": 4753,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 22196,
+          "cached_input_tokens": 16256,
+          "cache_hit_rate": 0.7457222808385706,
+          "extraction_to_compose_ratio": 0.580475489164738,
+          "captured_at": "2026-07-02T06:21:57.589Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:21:57.615Z",
+  "completedAt": "2026-07-02T06:21:57.616Z"
+}

@@ -1,0 +1,115 @@
+{
+  "runId": "eval-2026-07-02T06-14-10-953Z-b8311967",
+  "caseId": "study.birthday.05",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "errored",
+  "hardGatePassed": false,
+  "finalScore": 0.25,
+  "totalLatencyMs": 0,
+  "totalToolCalls": 0,
+  "nodeTransitions": [],
+  "planDiffSummary": [
+    "Runtime error: Live Lambda returned HTTP 502: Internal Server Error"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T05-39-57-869Z/runs/eval-2026-07-02T06-14-10-953Z-b8311967/artifacts/study-repetition-3/study.birthday.05.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed missing-turn. Allowed=*->seguir_refinando_guardar_plan, *->crear_lead_cerrar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Trace field plan_persisted was undefined instead of true."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was undefined instead of false."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field event_type was undefined instead of \"cumpleanos\"."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.25,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 0,
+    "avg_latency_ms": 0,
+    "p95_latency_ms": 0,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0,
+    "state_expectation_pass_rate": 0,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 0,
+    "total_tokens": 0,
+    "cache_hit_rate": 0
+  },
+  "turns": [],
+  "startedAt": "2026-07-02T06:20:16.763Z",
+  "completedAt": "2026-07-02T06:20:16.769Z"
+}

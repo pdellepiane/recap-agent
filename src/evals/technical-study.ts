@@ -4,6 +4,7 @@ import path from 'node:path';
 import { decisionNodes } from '../core/decision-nodes';
 import { classifyLocationCompatibility } from '../core/location';
 import { normalizeToProviderCategory } from '../core/provider-category';
+import { providerHasEventServiceEvidence } from '../runtime/provider-sub-query-selection';
 import {
   evalReportSchema,
   type EvalCase,
@@ -521,6 +522,8 @@ function buildRecommendationQualitySummary(results: EvalResult[]) {
   let categorySatisfied = 0;
   let budgetApplicable = 0;
   let budgetCompatible = 0;
+  let eventServiceApplicable = 0;
+  let eventServiceSupported = 0;
   let needsObserved = 0;
   let needsWithRecommendations = 0;
   const providerExposure = new Map<number, number>();
@@ -576,6 +579,12 @@ function buildRecommendationQualitySummary(results: EvalResult[]) {
             budgetCompatible += 1;
           }
         }
+        if (normalizeToProviderCategory(provider.category) === 'Hogar y deco') {
+          eventServiceApplicable += 1;
+          if (providerHasEventServiceEvidence(provider)) {
+            eventServiceSupported += 1;
+          }
+        }
       }
     }
   }
@@ -610,6 +619,14 @@ function buildRecommendationQualitySummary(results: EvalResult[]) {
       applicable: budgetApplicable,
       compatible: budgetCompatible,
       rate: budgetApplicable === 0 ? 0 : budgetCompatible / budgetApplicable,
+    },
+    eventServiceApplicability: {
+      applicable: eventServiceApplicable,
+      supported: eventServiceSupported,
+      rate:
+        eventServiceApplicable === 0
+          ? 0
+          : eventServiceSupported / eventServiceApplicable,
     },
     needRecommendationCoverage: {
       needsObserved,

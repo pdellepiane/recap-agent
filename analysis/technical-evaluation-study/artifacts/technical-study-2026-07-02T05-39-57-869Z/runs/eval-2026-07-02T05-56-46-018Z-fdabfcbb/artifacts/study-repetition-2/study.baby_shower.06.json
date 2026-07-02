@@ -1,0 +1,1625 @@
+{
+  "runId": "eval-2026-07-02T05-56-46-018Z-fdabfcbb",
+  "caseId": "study.baby_shower.06",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.625,
+  "totalLatencyMs": 18691,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades",
+    "elicitacion_necesidades->guardar_cerrar_temporalmente",
+    "guardar_cerrar_temporalmente->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"retomar_plan\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "provider_needs=Locales:search_ready, Catering:identified, Bebés:identified, Florería y papelería:identified, Fotografía y video:identified"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T05-39-57-869Z/runs/eval-2026-07-02T05-56-46-018Z-fdabfcbb/artifacts/study-repetition-2/study.baby_shower.06.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: entrevista."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed guardar_cerrar_temporalmente->aclarar_pedir_faltante. Allowed=*->entrevista, *->elicitacion_necesidades."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.625,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 6230.333333333333,
+    "p95_latency_ms": 7933,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 52891,
+    "cache_hit_rate": 0.8228323587499516
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un baby shower en Lima y necesito decoración."
+      },
+      "outputText": "Claro, te ayudo con eso. Para tu baby shower en Lima ya quedaron detectadas varias necesidades del plan: locales, catering, bebés, florería y papelería, fotografía y video, y decoración\n\nComo todavía no hay opciones elegidas, te sugiero empezar por decoración, que es lo que me pediste primero. También podemos pasar luego a locales, catering, bebés, florería y papelería o fotografía y video\n\nPara avanzar mejor, solo me falta una señal de presupuesto o cantidad aproximada de invitados\n\nSi quieres, empezamos por decoración y ajustamos el resto del plan después",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGPYSVSN5ET5YV9TRDS7KK7",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 7504,
+          "load_plan": 8,
+          "prepare_working_plan": 1,
+          "extraction": 5054,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 2,
+          "compose_reply": 2416,
+          "save_plan": 17
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11416,
+            "output_tokens": 429,
+            "total_tokens": 11845,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5080,
+            "output_tokens": 142,
+            "total_tokens": 5222,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 16496,
+            "output_tokens": 571,
+            "total_tokens": 17067,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGPYSVSN5ET5YV9TRDS7KK7",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "runtime_latency_ms": 7504,
+        "extraction_latency_ms": 5054,
+        "compose_latency_ms": 2416,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17067,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8845780795344326,
+        "extraction_to_compose_ratio": 2.091887417218543,
+        "captured_at": "2026-07-02T06:06:16.954Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-ea4ae1f0",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.78,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Bebés",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“decoración” se refiere a Hogar y deco (decoración/diseño)."
+        ],
+        "conversation_summary": "El usuario planea un baby shower en Lima y solicita decoración (Hogar y deco).",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:06:14.520Z"
+      },
+      "latencyMs": 7933,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso. Para tu baby shower en Lima ya quedaron detectadas varias necesidades del plan: locales, catering, bebés, florería y papelería, fotografía y video, y decoración\n\nComo todavía no hay opciones elegidas, te sugiero empezar por decoración, que es lo que me pediste primero. También podemos pasar luego a locales, catering, bebés, florería y papelería o fotografía y video\n\nPara avanzar mejor, solo me falta una señal de presupuesto o cantidad aproximada de invitados\n\nSi quieres, empezamos por decoración y ajustamos el resto del plan después",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGPYSVSN5ET5YV9TRDS7KK7",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 7504,
+            "load_plan": 8,
+            "prepare_working_plan": 1,
+            "extraction": 5054,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 2,
+            "compose_reply": 2416,
+            "save_plan": 17
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11416,
+              "output_tokens": 429,
+              "total_tokens": 11845,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5080,
+              "output_tokens": 142,
+              "total_tokens": 5222,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 16496,
+              "output_tokens": 571,
+              "total_tokens": 17067,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-ea4ae1f0",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.78,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Bebés",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“decoración” se refiere a Hogar y deco (decoración/diseño)."
+          ],
+          "conversation_summary": "El usuario planea un baby shower en Lima y solicita decoración (Hogar y deco).",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:06:14.520Z"
+        },
+        "perf": {
+          "trace_id": "01KWGPYSVSN5ET5YV9TRDS7KK7",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "runtime_latency_ms": 7504,
+          "extraction_latency_ms": 5054,
+          "compose_latency_ms": 2416,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17067,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8845780795344326,
+          "extraction_to_compose_ratio": 2.091887417218543,
+          "captured_at": "2026-07-02T06:06:16.954Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Pausa el plan."
+      },
+      "outputText": "Listo, dejé el plan pausado y puedes retomarlo cuando quieras sin empezar de cero\n\nSi vuelves después, seguimos con tu baby shower en Lima desde donde lo dejamos",
+      "currentNode": "guardar_cerrar_temporalmente",
+      "trace": {
+        "trace_id": "01KWGPYYZYFQGJD3013BKB5M14",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "previous_node": "elicitacion_necesidades",
+        "next_node": "guardar_cerrar_temporalmente",
+        "node_path": [
+          "elicitacion_necesidades",
+          "existe_plan_guardado",
+          "aclarar_pedir_faltante",
+          "guardar_cerrar_temporalmente"
+        ],
+        "intent": "pausar",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "7a5e9a75d285",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/guardar_cerrar_temporalmente/system.txt",
+          "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+          "nodes/guardar_cerrar_temporalmente/tool_policy.txt"
+        ],
+        "tools_considered": [],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "guardar_cerrar_temporalmente",
+        "timing_ms": {
+          "total": 4897,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 3204,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1672,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11656,
+            "output_tokens": 277,
+            "total_tokens": 11933,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5252,
+            "output_tokens": 54,
+            "total_tokens": 5306,
+            "cached_input_tokens": 2816
+          },
+          "total": {
+            "input_tokens": 16908,
+            "output_tokens": 331,
+            "total_tokens": 17239,
+            "cached_input_tokens": 13824
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGPYYZYFQGJD3013BKB5M14",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "runtime_latency_ms": 4897,
+        "extraction_latency_ms": 3204,
+        "compose_latency_ms": 1672,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17239,
+        "cached_input_tokens": 13824,
+        "cache_hit_rate": 0.8176011355571328,
+        "extraction_to_compose_ratio": 1.9162679425837321,
+        "captured_at": "2026-07-02T06:06:22.206Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-ea4ae1f0",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "guardar_cerrar_temporalmente",
+        "intent": "pausar",
+        "intent_confidence": 1,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Bebés",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“decoración” se refiere a Hogar y deco (decoración/diseño).",
+          "El usuario pausa todo el plan, no cambia proveedores ni prioridades."
+        ],
+        "conversation_summary": "Plan pausado para baby shower en Lima. Necesidades identificadas: Locales (activa), Catering, Bebés, Florería y papelería, Fotografía y video. Sin proveedores seleccionados.",
+        "last_user_goal": "pausar",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:06:20.522Z"
+      },
+      "latencyMs": 5263,
+      "rawTargetResponse": {
+        "message": "Listo, dejé el plan pausado y puedes retomarlo cuando quieras sin empezar de cero\n\nSi vuelves después, seguimos con tu baby shower en Lima desde donde lo dejamos",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "current_node": "guardar_cerrar_temporalmente",
+        "trace": {
+          "trace_id": "01KWGPYYZYFQGJD3013BKB5M14",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+          "previous_node": "elicitacion_necesidades",
+          "next_node": "guardar_cerrar_temporalmente",
+          "node_path": [
+            "elicitacion_necesidades",
+            "existe_plan_guardado",
+            "aclarar_pedir_faltante",
+            "guardar_cerrar_temporalmente"
+          ],
+          "intent": "pausar",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "7a5e9a75d285",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/guardar_cerrar_temporalmente/system.txt",
+            "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+            "nodes/guardar_cerrar_temporalmente/tool_policy.txt"
+          ],
+          "tools_considered": [],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "guardar_cerrar_temporalmente",
+          "timing_ms": {
+            "total": 4897,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 3204,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1672,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11656,
+              "output_tokens": 277,
+              "total_tokens": 11933,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5252,
+              "output_tokens": 54,
+              "total_tokens": 5306,
+              "cached_input_tokens": 2816
+            },
+            "total": {
+              "input_tokens": 16908,
+              "output_tokens": 331,
+              "total_tokens": 17239,
+              "cached_input_tokens": 13824
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-ea4ae1f0",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "guardar_cerrar_temporalmente",
+          "intent": "pausar",
+          "intent_confidence": 1,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Bebés",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“decoración” se refiere a Hogar y deco (decoración/diseño).",
+            "El usuario pausa todo el plan, no cambia proveedores ni prioridades."
+          ],
+          "conversation_summary": "Plan pausado para baby shower en Lima. Necesidades identificadas: Locales (activa), Catering, Bebés, Florería y papelería, Fotografía y video. Sin proveedores seleccionados.",
+          "last_user_goal": "pausar",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:06:20.522Z"
+        },
+        "perf": {
+          "trace_id": "01KWGPYYZYFQGJD3013BKB5M14",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "runtime_latency_ms": 4897,
+          "extraction_latency_ms": 3204,
+          "compose_latency_ms": 1672,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17239,
+          "cached_input_tokens": 13824,
+          "cache_hit_rate": 0.8176011355571328,
+          "extraction_to_compose_ratio": 1.9162679425837321,
+          "captured_at": "2026-07-02T06:06:22.206Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Continuemos con el baby shower."
+      },
+      "outputText": "Claro, seguimos con tu baby shower\n\nPara avanzar con locales, solo me falta el presupuesto o la cantidad aproximada de invitados",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWGPZ4837V8NBZG993QWK9NF",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "previous_node": "guardar_cerrar_temporalmente",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "guardar_cerrar_temporalmente",
+          "existe_plan_guardado",
+          "aclarar_pedir_faltante",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "retomar_plan",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "aclarar_pedir_faltante",
+        "timing_ms": {
+          "total": 4953,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 3418,
+          "apply_extraction": 0,
+          "compute_sufficiency": 1,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1508,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11659,
+            "output_tokens": 300,
+            "total_tokens": 11959,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6583,
+            "output_tokens": 43,
+            "total_tokens": 6626,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 18242,
+            "output_tokens": 343,
+            "total_tokens": 18585,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGPZ4837V8NBZG993QWK9NF",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "runtime_latency_ms": 4953,
+        "extraction_latency_ms": 3418,
+        "compose_latency_ms": 1508,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18585,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.7718451924131126,
+        "extraction_to_compose_ratio": 2.2665782493368702,
+        "captured_at": "2026-07-02T06:06:27.587Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-ea4ae1f0",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "retomar_plan",
+        "intent_confidence": 0.8,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Bebés",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“decoración” se refiere a Hogar y deco (decoración/diseño).",
+          "El usuario pausa todo el plan, no cambia proveedores ni prioridades.",
+          "El usuario quiere continuar el plan pausado del baby shower y avanzar con la necesidad activa actual: Locales."
+        ],
+        "conversation_summary": "Plan pausado para baby shower en Lima. Necesidad activa a retomar: Locales. Aún sin proveedores seleccionados. Otras necesidades identificadas: Catering, Bebés, Florería y papelería, Fotografía y video.",
+        "last_user_goal": "retomar_plan",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:06:26.067Z"
+      },
+      "latencyMs": 5495,
+      "rawTargetResponse": {
+        "message": "Claro, seguimos con tu baby shower\n\nPara avanzar con locales, solo me falta el presupuesto o la cantidad aproximada de invitados",
+        "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+        "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWGPZ4837V8NBZG993QWK9NF",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+          "previous_node": "guardar_cerrar_temporalmente",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "guardar_cerrar_temporalmente",
+            "existe_plan_guardado",
+            "aclarar_pedir_faltante",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "retomar_plan",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "aclarar_pedir_faltante",
+          "timing_ms": {
+            "total": 4953,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 3418,
+            "apply_extraction": 0,
+            "compute_sufficiency": 1,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1508,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11659,
+              "output_tokens": 300,
+              "total_tokens": 11959,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6583,
+              "output_tokens": 43,
+              "total_tokens": 6626,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 18242,
+              "output_tokens": 343,
+              "total_tokens": 18585,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGPYJHH8H6EDRYVP79T033N",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-ea4ae1f0",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "retomar_plan",
+          "intent_confidence": 0.8,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Bebés",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“decoración” se refiere a Hogar y deco (decoración/diseño).",
+            "El usuario pausa todo el plan, no cambia proveedores ni prioridades.",
+            "El usuario quiere continuar el plan pausado del baby shower y avanzar con la necesidad activa actual: Locales."
+          ],
+          "conversation_summary": "Plan pausado para baby shower en Lima. Necesidad activa a retomar: Locales. Aún sin proveedores seleccionados. Otras necesidades identificadas: Catering, Bebés, Florería y papelería, Fotografía y video.",
+          "last_user_goal": "retomar_plan",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:06:26.067Z"
+        },
+        "perf": {
+          "trace_id": "01KWGPZ4837V8NBZG993QWK9NF",
+          "conversation_id": "conv_6a45ffd697d8819683b78bc549a6b66c0c8ea0ef69108367",
+          "runtime_latency_ms": 4953,
+          "extraction_latency_ms": 3418,
+          "compose_latency_ms": 1508,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18585,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.7718451924131126,
+          "extraction_to_compose_ratio": 2.2665782493368702,
+          "captured_at": "2026-07-02T06:06:27.587Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:06:27.745Z",
+  "completedAt": "2026-07-02T06:06:27.745Z"
+}

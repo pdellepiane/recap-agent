@@ -1,0 +1,429 @@
+# Technical Evaluation Findings
+
+Generated from immutable evaluation artifacts. This dossier reports technical behavior only; it does not include user testing or baseline comparison.
+
+## Reproducibility
+
+- Manifest: technical-evaluation-50-v1
+- Transition registry: decision-flow-v1-2026-07-01
+- Raw summary: [summary.json](summary.json)
+- Conversation table: [conversations.csv](conversations.csv)
+- Grounding audit population: [grounding.csv](grounding.csv)
+
+## Findings
+
+```json
+{
+  "studyId": "technical-study-2026-07-02T05-39-57-869Z",
+  "dryRun": false,
+  "manifestId": "technical-evaluation-50-v1",
+  "manifestVersion": 1,
+  "frozenAt": "2026-07-01T00:00:00-05:00",
+  "repetitions": 3,
+  "distinctScenarios": 50,
+  "executedConversations": 150,
+  "completed": 36,
+  "completionRate": 0.24,
+  "completionWilson95": {
+    "lower": 0.17869313331595332,
+    "upper": 0.31429139375544646
+  },
+  "outcomes": {
+    "failed_assertion": 113,
+    "completed": 36,
+    "timeout": 1
+  },
+  "eventGroups": {
+    "wedding": 30,
+    "birthday": 30,
+    "baby_shower": 30,
+    "corporate": 30,
+    "social": 30
+  },
+  "routeFamilies": {
+    "recommendation": 15,
+    "clarification": 15,
+    "multi_need": 15,
+    "refinement": 15,
+    "selection": 15,
+    "pause_resume": 15,
+    "closure": 15,
+    "faq": 15,
+    "no_results": 15,
+    "error_recovery": 15
+  },
+  "outcomesByEventGroup": {
+    "wedding": {
+      "failed_assertion": 27,
+      "completed": 3
+    },
+    "birthday": {
+      "failed_assertion": 17,
+      "completed": 12,
+      "timeout": 1
+    },
+    "baby_shower": {
+      "failed_assertion": 27,
+      "completed": 3
+    },
+    "corporate": {
+      "failed_assertion": 27,
+      "completed": 3
+    },
+    "social": {
+      "completed": 15,
+      "failed_assertion": 15
+    }
+  },
+  "outcomesByRouteFamily": {
+    "recommendation": {
+      "failed_assertion": 10,
+      "completed": 5
+    },
+    "clarification": {
+      "failed_assertion": 15
+    },
+    "multi_need": {
+      "failed_assertion": 15
+    },
+    "refinement": {
+      "failed_assertion": 9,
+      "completed": 6
+    },
+    "selection": {
+      "failed_assertion": 9,
+      "completed": 5,
+      "timeout": 1
+    },
+    "pause_resume": {
+      "failed_assertion": 15
+    },
+    "closure": {
+      "failed_assertion": 10,
+      "completed": 5
+    },
+    "faq": {
+      "completed": 15
+    },
+    "no_results": {
+      "failed_assertion": 15
+    },
+    "error_recovery": {
+      "failed_assertion": 15
+    }
+  },
+  "expectationPassRates": {
+    "expected-node-path": {
+      "passed": 94,
+      "total": 150,
+      "rate": 0.6266666666666667
+    },
+    "terminal-node": {
+      "passed": 79,
+      "total": 150,
+      "rate": 0.5266666666666666
+    },
+    "persistence": {
+      "passed": 149,
+      "total": 150,
+      "rate": 0.9933333333333333
+    },
+    "search-state": {
+      "passed": 99,
+      "total": 150,
+      "rate": 0.66
+    },
+    "shortlist": {
+      "passed": 45,
+      "total": 45,
+      "rate": 1
+    },
+    "event-type": {
+      "passed": 143,
+      "total": 150,
+      "rate": 0.9533333333333334
+    },
+    "need-0": {
+      "passed": 53,
+      "total": 135,
+      "rate": 0.3925925925925926
+    },
+    "token-usage": {
+      "passed": 150,
+      "total": 150,
+      "rate": 1
+    },
+    "turn-budget": {
+      "passed": 150,
+      "total": 150,
+      "rate": 1
+    },
+    "need-1": {
+      "passed": 9,
+      "total": 15,
+      "rate": 0.6
+    },
+    "need-2": {
+      "passed": 6,
+      "total": 12,
+      "rate": 0.5
+    },
+    "need-3": {
+      "passed": 0,
+      "total": 3,
+      "rate": 0
+    }
+  },
+  "repeatability": {
+    "stableCompletedCount": 10,
+    "stableFailedCount": 37,
+    "flakyCount": 3,
+    "flakyRate": 0.06,
+    "stableCompleted": [
+      "study.wedding.08",
+      "study.birthday.04",
+      "study.birthday.08",
+      "study.baby_shower.08",
+      "study.corporate.08",
+      "study.social.01",
+      "study.social.04",
+      "study.social.05",
+      "study.social.07",
+      "study.social.08"
+    ],
+    "stableFailed": [
+      "study.wedding.01",
+      "study.wedding.02",
+      "study.wedding.03",
+      "study.wedding.04",
+      "study.wedding.05",
+      "study.wedding.06",
+      "study.wedding.07",
+      "study.wedding.09",
+      "study.wedding.10",
+      "study.birthday.02",
+      "study.birthday.03",
+      "study.birthday.06",
+      "study.birthday.09",
+      "study.birthday.10",
+      "study.baby_shower.01",
+      "study.baby_shower.02",
+      "study.baby_shower.03",
+      "study.baby_shower.04",
+      "study.baby_shower.05",
+      "study.baby_shower.06",
+      "study.baby_shower.07",
+      "study.baby_shower.09",
+      "study.baby_shower.10",
+      "study.corporate.01",
+      "study.corporate.02",
+      "study.corporate.03",
+      "study.corporate.04",
+      "study.corporate.05",
+      "study.corporate.06",
+      "study.corporate.07",
+      "study.corporate.09",
+      "study.corporate.10",
+      "study.social.02",
+      "study.social.03",
+      "study.social.06",
+      "study.social.09",
+      "study.social.10"
+    ],
+    "flaky": [
+      "study.birthday.01",
+      "study.birthday.05",
+      "study.birthday.07"
+    ]
+  },
+  "uniqueObservedRoutes": 17,
+  "nodeCoverage": {
+    "observed": 18,
+    "total": 26,
+    "rate": 0.6923076923076923,
+    "nodes": [
+      "aclarar_pedir_faltante",
+      "anadir_a_proveedores_recomendados",
+      "buscar_proveedores",
+      "busqueda_exitosa",
+      "consultar_faq",
+      "contacto_inicial",
+      "crear_lead_cerrar",
+      "deteccion_intencion",
+      "elicitacion_necesidades",
+      "entrevista",
+      "existe_plan_guardado",
+      "guardar_cerrar_temporalmente",
+      "hay_resultados",
+      "minimos_para_buscar",
+      "recomendar",
+      "refinar_criterios",
+      "seguir_refinando_guardar_plan",
+      "usuario_elige_proveedor"
+    ]
+  },
+  "transitionCoverage": {
+    "registryVersion": "decision-flow-v1-2026-07-01",
+    "observed": 32,
+    "total": 49,
+    "rate": 0.6530612244897959
+  },
+  "latencyMs": {
+    "mean": 18655.133333333335,
+    "median": 18386.5,
+    "p95": 28177,
+    "min": 0,
+    "max": 46790
+  },
+  "nodeLatencyMs": {
+    "recomendar": {
+      "visits": 124,
+      "meanMs": 11507.129032258064,
+      "p95Ms": 14774
+    },
+    "elicitacion_necesidades": {
+      "visits": 25,
+      "meanMs": 15568.4,
+      "p95Ms": 19395
+    },
+    "seguir_refinando_guardar_plan": {
+      "visits": 41,
+      "meanMs": 6716.951219512195,
+      "p95Ms": 9640
+    },
+    "guardar_cerrar_temporalmente": {
+      "visits": 15,
+      "meanMs": 5335.8,
+      "p95Ms": 6513
+    },
+    "crear_lead_cerrar": {
+      "visits": 15,
+      "meanMs": 7437,
+      "p95Ms": 8784
+    },
+    "consultar_faq": {
+      "visits": 15,
+      "meanMs": 8983.8,
+      "p95Ms": 20150
+    },
+    "refinar_criterios": {
+      "visits": 11,
+      "meanMs": 12844.454545454546,
+      "p95Ms": 27151
+    },
+    "entrevista": {
+      "visits": 15,
+      "meanMs": 13197.466666666667,
+      "p95Ms": 38840
+    },
+    "aclarar_pedir_faltante": {
+      "visits": 7,
+      "meanMs": 5883,
+      "p95Ms": 7449
+    }
+  },
+  "tokensPerConversation": {
+    "mean": 33672.36,
+    "median": 34336,
+    "p95": 61600,
+    "min": 0,
+    "max": 79646
+  },
+  "toolCallsPerConversation": {
+    "mean": 1.94,
+    "median": 2,
+    "p95": 5,
+    "min": 0,
+    "max": 8
+  },
+  "pricedCostUsdPerConversation": {
+    "mean": 0.007032266310726669,
+    "median": 0.006424512314,
+    "p95": 0.0133658540302,
+    "min": 0,
+    "max": 0.018372730973400003
+  },
+  "totalPricedCostUsd": 1.0548399466090004,
+  "grounding": {
+    "requiredTurns": 238,
+    "groundedTurns": 238
+  },
+  "recommendationQuality": {
+    "displayedProviders": 763,
+    "uniqueProviders": 57,
+    "meanShortlistSize": 3.391111111111111,
+    "locationConstraint": {
+      "applicable": 601,
+      "satisfied": 517,
+      "unknown": 84,
+      "mismatched": 0,
+      "strictSatisfactionRate": 0.8602329450915142,
+      "mismatchRate": 0
+    },
+    "categoryConstraint": {
+      "applicable": 763,
+      "satisfied": 762,
+      "satisfactionRate": 0.9986893840104849
+    },
+    "budgetCompatibility": {
+      "applicable": 133,
+      "compatible": 133,
+      "rate": 1
+    },
+    "eventServiceApplicability": {
+      "applicable": 64,
+      "supported": 35,
+      "rate": 0.546875
+    },
+    "needRecommendationCoverage": {
+      "needsObserved": 200,
+      "needsWithRecommendations": 166,
+      "rate": 0.83
+    },
+    "exposure": {
+      "hhi": 0.05686836640219594,
+      "topProviderShare": 0.09567496723460026
+    }
+  },
+  "runtimeErrors": [
+    {
+      "scenarioId": "study.birthday.05",
+      "configLabel": "study-repetition-3",
+      "message": "Runtime error: Live Lambda returned HTTP 502: Internal Server Error"
+    }
+  ],
+  "pricing": {
+    "version": "2026-07-01",
+    "effectiveDate": "2026-07-01",
+    "sources": [
+      "https://developers.openai.com/api/docs/models/gpt-5.4-mini",
+      "https://openai.com/index/introducing-gpt-5-4-mini-and-nano/",
+      "https://aws.amazon.com/lambda/pricing/"
+    ],
+    "models": {
+      "gpt-5.4-mini": {
+        "inputPerMillionUsd": 0.75,
+        "cachedInputPerMillionUsd": 0.075,
+        "outputPerMillionUsd": 4.5
+      },
+      "gpt-5.4-nano": {
+        "inputPerMillionUsd": 0.2,
+        "cachedInputPerMillionUsd": 0.02,
+        "outputPerMillionUsd": 1.25
+      }
+    },
+    "lambda": {
+      "requestUsd": 2e-7,
+      "gbSecondUsd": 0.0000166667,
+      "memoryGb": 1
+    }
+  }
+}
+```
+
+## Limitations
+
+- Results describe the development deployment and marketplace snapshot at execution time.
+- Internal marketplace API calls are counted but not assigned an invented monetary price.
+- Deterministic grounding verifies structured provenance and attributes; free-text recommendation rationales still require the separate manual audit rubric.
+- No claims about user satisfaction, adoption, or superiority over a baseline are supported by this study.
