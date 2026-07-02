@@ -3116,3 +3116,24 @@ Retain the iteration-two snapshot for its targeted semantic improvement, but
 do not claim a general quality increase. Treat the coverage and timeout changes
 as explicit regressions and require any later iteration to recover coverage
 without weakening location, category, budget, or event-service safeguards.
+
+## Restore evidence-ranked provider coverage
+
+- Kept structured sub-query must-have evidence as a positive fit signal and
+  warning source, but removed it as a universal hard eligibility requirement.
+- Preserved the hard event-service evidence requirement for
+  `Hogar y deco` event sub-queries.
+
+### Reason
+
+Iteration two reduced need recommendation coverage from 86.15% to 83.00%.
+The missing-needs breakdown grew primarily in `Locales`, `Música`, and
+`Florería y papelería`, where marketplace descriptions do not consistently
+repeat every structured must-have phrase. Treating incomplete descriptive
+metadata as proof of incompatibility created false no-match outcomes.
+
+### Decision
+
+Use must-have catalog evidence to rank candidates unless the constraint has a
+domain-specific, independently verifiable safety rule. Continue to reject
+home-and-decoration candidates that lack event-service evidence.

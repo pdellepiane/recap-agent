@@ -121,11 +121,9 @@ function hasRequiredSubQueryEvidence(
   subQuery: ProviderNeedSubQuery,
 ): boolean {
   const tags = provider.fitTags ?? [];
-  const mustHaveSatisfied =
-    subQuery.mustHave.length === 0 || tags.includes('must_have_evidence');
   const eventServiceSatisfied =
     subQuery.category !== 'Hogar y deco' || tags.includes('event_service_evidence');
-  return mustHaveSatisfied && eventServiceSatisfied;
+  return eventServiceSatisfied;
 }
 
 export function providerHasEventServiceEvidence(provider: ProviderSummary): boolean {
