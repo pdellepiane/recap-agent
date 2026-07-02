@@ -46,7 +46,8 @@ The retrospective V2 baseline contains 165 expected need instances:
 ### Confirmatory system
 
 - Runtime snapshot starts at commit `2559335` plus later reviewed fixes.
-- Manifest: `technical-evaluation-50-v3`.
+- Final runtime snapshot: commit `c384d80`.
+- Manifest: `technical-evaluation-50-v4`, an auditable overlay on immutable V3.
 - This is the only configuration eligible for the fourth 50×3 live run.
 
 ## Component ablations
@@ -76,7 +77,11 @@ Before spending the fourth run:
    store under `Otros`.
 6. Multi-need output contains no cross-category provider rows.
 7. Pause/resume, no-results, recovery, selection, and closure targeted cases
-   reach a V2-allowed terminal state.
+   reach a V4-allowed terminal state.
+
+All seven automated gates passed in the 13-case development-Lambda run
+`eval-2026-07-02T14-54-51-736Z-bc56222c`. The independent grounding review
+remains a prerequisite for the fourth full run.
 
 The full run is confirmatory: no tuning may occur after inspecting its results.
 If a gate fails, fix it before the run and preserve another rollback commit.
