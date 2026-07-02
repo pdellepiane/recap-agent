@@ -3374,3 +3374,41 @@ go/no-go command makes the precommitted criteria executable and auditable.
 
 Require `npm run eval:confirmatory-gates` to pass against the deployed
 development Lambda before starting the untouched 50×3 confirmation.
+
+## Close focused-need sufficiency bypass
+
+- Required focused and session-focused categories to appear in the
+  deterministic `readyByPlan` set before selecting single-need search.
+- Added a regression test for the exact live failure shape: a focused catering
+  need with guest count and budget but no location and no query-intent array.
+
+### Reason
+
+The first confirmatory gate proved the query-intent fix covered only one branch.
+When extraction emitted a focused category without query intents, the runtime
+still searched despite `location` remaining in global missing fields.
+
+### Decision
+
+Apply one readiness authority to every search entry path. Focus determines
+which ready need to search; it cannot make an insufficient need ready.
+
+## Preserve V2 and freeze corrected V3 benchmark
+
+- Preserved the committed V2 manifest unchanged after its first live gate.
+- Added V3 with corrected pause/resume and closure telemetry endpoints.
+- Changed recovery cases lacking both guest count and budget to expect
+  clarification instead of an invalid search.
+- Added explicit corporate context to the corporate-auditorium input; the V2
+  description had corporate context that its Spanish conversation omitted.
+- Switched future study and confirmatory-gate commands to V3.
+
+### Reason
+
+The first V2 gate exposed benchmark errors as well as runtime errors. Rewriting
+an already exercised frozen manifest would erase that evidence.
+
+### Decision
+
+Treat every exercised manifest as immutable. Correct semantics only in a new
+version, and reserve V3 as the final precommitted confirmatory manifest.

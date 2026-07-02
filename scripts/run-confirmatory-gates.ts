@@ -28,7 +28,7 @@ async function main(): Promise<void> {
   const manifestPath = path.join(
     evalsDir,
     'studies',
-    'technical-evaluation-50-v2.json',
+    'technical-evaluation-50-v3.json',
   );
   const cases = (await loadTechnicalStudyCases(manifestPath))
     .filter((evalCase) => GATE_CASE_IDS.has(evalCase.id));
@@ -45,7 +45,7 @@ async function main(): Promise<void> {
     target: 'live_lambda',
     dryRun: false,
     caseOverrides: cases,
-    configLabel: 'confirmatory-v2-gates',
+    configLabel: 'confirmatory-v3-gates',
   });
   const failures: string[] = [];
 
@@ -118,7 +118,7 @@ async function main(): Promise<void> {
         .map((expectation) => expectation.id)
         .join(', ');
       failures.push(
-        `${result.caseId}: V2 hard gate failed (${failedHardExpectations || 'unknown'})`,
+        `${result.caseId}: V3 hard gate failed (${failedHardExpectations || 'unknown'})`,
       );
     }
   }

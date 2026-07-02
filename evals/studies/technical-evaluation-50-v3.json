@@ -1,0 +1,1265 @@
+{
+  "id": "technical-evaluation-50-v3",
+  "version": 3,
+  "frozenAt": "2026-07-02T09:35:00-05:00",
+  "repetitions": 3,
+  "scenarios": [
+    {
+      "id": "study.wedding.01",
+      "eventGroup": "wedding",
+      "routeFamily": "recommendation",
+      "description": "Complete wedding photography request.",
+      "inputs": [
+        "Busco fotografía y video natural para mi boda en Miraflores, Lima, para 120 invitados. Presupuesto medio-alto."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.wedding.02",
+      "eventGroup": "wedding",
+      "routeFamily": "clarification",
+      "description": "Wedding catering request missing location.",
+      "inputs": [
+        "Necesito catering para una boda de 80 personas con presupuesto medio."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.wedding.03",
+      "eventGroup": "wedding",
+      "routeFamily": "multi_need",
+      "description": "Wedding with three simultaneous provider needs.",
+      "inputs": [
+        "Organizo una boda elegante en Lima para 150 personas. Necesito local, catering y música en vivo; presupuesto alto."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Locales",
+        "Catering",
+        "Música"
+      ],
+      "expectedNodes": [
+        "elicitacion_necesidades"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "elicitacion_necesidades"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.wedding.04",
+      "eventGroup": "wedding",
+      "routeFamily": "refinement",
+      "description": "Refine wedding photography after initial shortlist.",
+      "inputs": [
+        "Quiero fotógrafos para mi boda en Lima para 100 personas.",
+        "Prefiero estilo documental, luz natural y nada de poses rígidas. Busca opciones más afines."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.wedding.05",
+      "eventGroup": "wedding",
+      "routeFamily": "selection",
+      "description": "Select the first wedding photography option.",
+      "inputs": [
+        "Busco fotógrafos para mi boda en Lima para 90 invitados.",
+        "Elijo la primera opción de fotografía."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan",
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.wedding.06",
+      "eventGroup": "wedding",
+      "routeFamily": "pause_resume",
+      "description": "Pause and resume a wedding plan.",
+      "inputs": [
+        "Planeo una boda en Lima para 70 personas y necesito catering.",
+        "Pausa el plan por ahora.",
+        "Quiero continuar con mi boda."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "guardar_cerrar_temporalmente",
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.wedding.07",
+      "eventGroup": "wedding",
+      "routeFamily": "closure",
+      "description": "Close after selecting a wedding provider.",
+      "inputs": [
+        "Necesito fotografía para mi boda en Lima para 60 personas.",
+        "Elijo la primera opción.",
+        "Quiero cerrar. Soy Ana Torres, ana.torres@example.com, +51 987654321."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "crear_lead_cerrar"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": true,
+      "terminalNodes": [
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.wedding.08",
+      "eventGroup": "wedding",
+      "routeFamily": "faq",
+      "description": "Wedding planning followed by marketplace FAQ.",
+      "inputs": [
+        "Estoy planeando una boda en Lima para 100 personas.",
+        "¿Sin Envolturas cobra comisión por contactar proveedores?"
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [],
+      "expectedNodes": [
+        "consultar_faq"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "consultar_faq"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.wedding.09",
+      "eventGroup": "wedding",
+      "routeFamily": "no_results",
+      "description": "Highly constrained wedding venue request.",
+      "inputs": [
+        "Busco un local submarino para boda en Lima, 500 invitados, presupuesto muy bajo y disponible mañana."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "refinar_criterios"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "refinar_criterios"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.wedding.10",
+      "eventGroup": "wedding",
+      "routeFamily": "error_recovery",
+      "description": "Wedding search followed by a recovery clarification.",
+      "inputs": [
+        "Necesito un local para boda en Lima para 100 personas.",
+        "Si no encuentras coincidencia exacta, amplía a Lima Metropolitana y conserva el presupuesto medio."
+      ],
+      "expectedEventType": "boda",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.birthday.01",
+      "eventGroup": "birthday",
+      "routeFamily": "recommendation",
+      "description": "Complete birthday catering request.",
+      "inputs": [
+        "Necesito catering divertido para un cumpleaños en Surco, Lima, de 45 personas y presupuesto medio."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.birthday.02",
+      "eventGroup": "birthday",
+      "routeFamily": "clarification",
+      "description": "Birthday DJ request missing location.",
+      "inputs": [
+        "Quiero DJ para un cumpleaños de 30 personas."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Música"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.birthday.03",
+      "eventGroup": "birthday",
+      "routeFamily": "multi_need",
+      "description": "Birthday with catering and decoration.",
+      "inputs": [
+        "Haré un cumpleaños infantil en San Borja para 35 personas. Necesito catering y decoración colorida, presupuesto medio."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Catering",
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "elicitacion_necesidades"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "elicitacion_necesidades"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.birthday.04",
+      "eventGroup": "birthday",
+      "routeFamily": "refinement",
+      "description": "Refine birthday catering preferences.",
+      "inputs": [
+        "Busco catering para cumpleaños en Lima para 50 personas.",
+        "Que tenga opciones vegetarianas y una presentación informal pero cuidada."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.birthday.05",
+      "eventGroup": "birthday",
+      "routeFamily": "selection",
+      "description": "Select birthday catering shortlist item.",
+      "inputs": [
+        "Necesito catering para cumpleaños en Lima para 40 personas.",
+        "Me quedo con la primera opción."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan",
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.birthday.06",
+      "eventGroup": "birthday",
+      "routeFamily": "pause_resume",
+      "description": "Pause and resume birthday planning.",
+      "inputs": [
+        "Planeo un cumpleaños en Lima para 25 personas y necesito música.",
+        "Guardemos esto y continúo después.",
+        "Retomemos el plan del cumpleaños."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Música"
+      ],
+      "expectedNodes": [
+        "guardar_cerrar_temporalmente",
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.birthday.07",
+      "eventGroup": "birthday",
+      "routeFamily": "closure",
+      "description": "Birthday provider lead closure.",
+      "inputs": [
+        "Busco catering para cumpleaños en Lima para 30 personas.",
+        "Elijo la primera opción.",
+        "Deseo cerrar. Soy Luis Pérez, luis.perez@example.com, +51 986123456."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "crear_lead_cerrar"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": true,
+      "terminalNodes": [
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.birthday.08",
+      "eventGroup": "birthday",
+      "routeFamily": "faq",
+      "description": "Birthday context with support FAQ.",
+      "inputs": [
+        "Planeo un cumpleaños en Lima.",
+        "¿Cómo contacto a un proveedor desde Sin Envolturas?"
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [],
+      "expectedNodes": [
+        "consultar_faq"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "consultar_faq"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.birthday.09",
+      "eventGroup": "birthday",
+      "routeFamily": "no_results",
+      "description": "Overconstrained birthday entertainment request.",
+      "inputs": [
+        "Necesito una banda de astronautas reales para un cumpleaños en Lima mañana, presupuesto mínimo."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Música"
+      ],
+      "expectedNodes": [
+        "refinar_criterios"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "refinar_criterios"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.birthday.10",
+      "eventGroup": "birthday",
+      "routeFamily": "error_recovery",
+      "description": "Birthday request broadened after restrictive result.",
+      "inputs": [
+        "Busco animación temática medieval para cumpleaños en Lurín, 20 personas.",
+        "Si no hay, amplía la búsqueda a entretenimiento para cumpleaños en Lima."
+      ],
+      "expectedEventType": "cumpleanos",
+      "expectedNeedCategories": [
+        "Baile"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.baby_shower.01",
+      "eventGroup": "baby_shower",
+      "routeFamily": "recommendation",
+      "description": "Complete baby shower venue request.",
+      "inputs": [
+        "Busco un local delicado para baby shower en Miraflores, 40 personas, presupuesto medio."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.baby_shower.02",
+      "eventGroup": "baby_shower",
+      "routeFamily": "clarification",
+      "description": "Baby shower decoration request missing location.",
+      "inputs": [
+        "Necesito decoración pastel para un baby shower de 35 invitados."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.baby_shower.03",
+      "eventGroup": "baby_shower",
+      "routeFamily": "multi_need",
+      "description": "Baby shower with venue, catering, and decoration.",
+      "inputs": [
+        "Organizo un baby shower en Lima para 50 personas. Necesito local, catering y decoración sobria, presupuesto medio."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Locales",
+        "Catering",
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "elicitacion_necesidades"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "elicitacion_necesidades"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.baby_shower.04",
+      "eventGroup": "baby_shower",
+      "routeFamily": "refinement",
+      "description": "Refine baby shower venue to space-only.",
+      "inputs": [
+        "Busco local para baby shower en Lima para 45 personas.",
+        "Solo quiero el espacio, sin catering ni decoración incluidos."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.baby_shower.05",
+      "eventGroup": "baby_shower",
+      "routeFamily": "selection",
+      "description": "Select first baby shower venue.",
+      "inputs": [
+        "Necesito local para baby shower en Lima para 40 personas.",
+        "Selecciona la primera opción de local."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan",
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.baby_shower.06",
+      "eventGroup": "baby_shower",
+      "routeFamily": "pause_resume",
+      "description": "Pause and resume baby shower planning.",
+      "inputs": [
+        "Planeo un baby shower en Lima y necesito decoración.",
+        "Pausa el plan.",
+        "Continuemos con el baby shower."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "guardar_cerrar_temporalmente",
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.baby_shower.07",
+      "eventGroup": "baby_shower",
+      "routeFamily": "closure",
+      "description": "Close baby shower venue lead.",
+      "inputs": [
+        "Busco local para baby shower en Lima para 40 personas.",
+        "Elijo la primera opción.",
+        "Quiero cerrar. Soy Carla Ruiz, carla.ruiz@example.com, +51 985222333."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "crear_lead_cerrar"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": true,
+      "terminalNodes": [
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.baby_shower.08",
+      "eventGroup": "baby_shower",
+      "routeFamily": "faq",
+      "description": "Baby shower context with gift-list FAQ.",
+      "inputs": [
+        "Estoy organizando un baby shower.",
+        "¿Sin Envolturas ofrece lista de regalos?"
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [],
+      "expectedNodes": [
+        "consultar_faq"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "consultar_faq"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.baby_shower.09",
+      "eventGroup": "baby_shower",
+      "routeFamily": "no_results",
+      "description": "Overconstrained baby shower venue.",
+      "inputs": [
+        "Busco un local en una isla privada dentro de Lima para baby shower, 20 personas y presupuesto muy bajo."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "refinar_criterios"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "refinar_criterios"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.baby_shower.10",
+      "eventGroup": "baby_shower",
+      "routeFamily": "error_recovery",
+      "description": "Broaden baby shower decoration search.",
+      "inputs": [
+        "Necesito decoración japonesa tradicional para baby shower en Lurín.",
+        "Si no hay coincidencia exacta, busca decoración minimalista en Lima."
+      ],
+      "expectedEventType": "baby_shower",
+      "expectedNeedCategories": [
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.corporate.01",
+      "eventGroup": "corporate",
+      "routeFamily": "recommendation",
+      "description": "Complete corporate venue request.",
+      "inputs": [
+        "Busco local profesional para evento corporativo en San Isidro, 100 asistentes, presupuesto alto."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.corporate.02",
+      "eventGroup": "corporate",
+      "routeFamily": "clarification",
+      "description": "Corporate audiovisual request missing location.",
+      "inputs": [
+        "Necesito producción audiovisual para un evento corporativo de 200 asistentes."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.corporate.03",
+      "eventGroup": "corporate",
+      "routeFamily": "multi_need",
+      "description": "Corporate event with venue, catering, and audiovisual needs.",
+      "inputs": [
+        "Organizo una conferencia corporativa en Lima para 180 personas. Necesito local, catering y audiovisuales, presupuesto alto."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Locales",
+        "Catering",
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "elicitacion_necesidades"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "elicitacion_necesidades"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.corporate.04",
+      "eventGroup": "corporate",
+      "routeFamily": "refinement",
+      "description": "Refine corporate venue requirements.",
+      "inputs": [
+        "Busco local corporativo en Lima para 120 personas.",
+        "Debe tener imagen ejecutiva, accesibilidad y espacio para una presentación."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.corporate.05",
+      "eventGroup": "corporate",
+      "routeFamily": "selection",
+      "description": "Select corporate venue option.",
+      "inputs": [
+        "Necesito local para evento corporativo en Lima para 80 personas.",
+        "Selecciona la primera opción."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan",
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.corporate.06",
+      "eventGroup": "corporate",
+      "routeFamily": "pause_resume",
+      "description": "Pause and resume corporate event plan.",
+      "inputs": [
+        "Planeo un evento corporativo en Lima y necesito catering.",
+        "Guarda el plan y lo retomamos luego.",
+        "Retomemos el evento corporativo."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "guardar_cerrar_temporalmente",
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.corporate.07",
+      "eventGroup": "corporate",
+      "routeFamily": "closure",
+      "description": "Close corporate venue lead.",
+      "inputs": [
+        "Busco local corporativo en Lima para 60 personas.",
+        "Elijo la primera opción.",
+        "Deseo cerrar. Soy Mario León, mario.leon@example.com, +51 984777888."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "crear_lead_cerrar"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": true,
+      "terminalNodes": [
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.corporate.08",
+      "eventGroup": "corporate",
+      "routeFamily": "faq",
+      "description": "Corporate context with marketplace support FAQ.",
+      "inputs": [
+        "Estoy preparando un evento corporativo.",
+        "¿Qué información reciben los proveedores cuando pido contacto?"
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [],
+      "expectedNodes": [
+        "consultar_faq"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "consultar_faq"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.corporate.09",
+      "eventGroup": "corporate",
+      "routeFamily": "no_results",
+      "description": "Overconstrained corporate venue request.",
+      "inputs": [
+        "Necesito un auditorio dentro del aeropuerto de Lima para un evento corporativo de 900 personas mañana y con presupuesto mínimo."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Locales"
+      ],
+      "expectedNodes": [
+        "refinar_criterios"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "refinar_criterios"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.corporate.10",
+      "eventGroup": "corporate",
+      "routeFamily": "error_recovery",
+      "description": "Broaden corporate audiovisual search.",
+      "inputs": [
+        "Busco hologramas para evento corporativo en Lima.",
+        "Si no existen, amplía a producción audiovisual profesional."
+      ],
+      "expectedEventType": "corporativo",
+      "expectedNeedCategories": [
+        "Fotografía y video"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.social.01",
+      "eventGroup": "social",
+      "routeFamily": "recommendation",
+      "description": "Complete anniversary catering request.",
+      "inputs": [
+        "Busco catering elegante para aniversario en Barranco, Lima, 30 personas y presupuesto alto."
+      ],
+      "expectedEventType": "aniversario",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.social.02",
+      "eventGroup": "social",
+      "routeFamily": "clarification",
+      "description": "Graduation music request missing location.",
+      "inputs": [
+        "Necesito música para una graduación de 150 personas."
+      ],
+      "expectedEventType": "graduacion",
+      "expectedNeedCategories": [
+        "Música"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.social.03",
+      "eventGroup": "social",
+      "routeFamily": "multi_need",
+      "description": "Quinceañera with multiple provider needs.",
+      "inputs": [
+        "Organizo un quinceaños en Lima para 120 personas. Necesito local, fotografía, música y decoración, presupuesto medio-alto."
+      ],
+      "expectedEventType": "quinceanos",
+      "expectedNeedCategories": [
+        "Locales",
+        "Fotografía y video",
+        "Música",
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "elicitacion_necesidades"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "elicitacion_necesidades"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.social.04",
+      "eventGroup": "social",
+      "routeFamily": "refinement",
+      "description": "Refine anniversary catering.",
+      "inputs": [
+        "Busco catering para aniversario en Lima para 25 personas.",
+        "Prefiero una cena íntima, moderna y con opciones sin gluten."
+      ],
+      "expectedEventType": "aniversario",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "recomendar"
+      ],
+      "expectSearch": true,
+      "expectShortlist": true,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "recomendar",
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.social.05",
+      "eventGroup": "social",
+      "routeFamily": "selection",
+      "description": "Select graduation music option.",
+      "inputs": [
+        "Necesito música para graduación en Lima para 100 personas.",
+        "Elijo la primera opción."
+      ],
+      "expectedEventType": "graduacion",
+      "expectedNeedCategories": [
+        "Música"
+      ],
+      "expectedNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan",
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.social.06",
+      "eventGroup": "social",
+      "routeFamily": "pause_resume",
+      "description": "Pause and resume baptism planning.",
+      "inputs": [
+        "Planeo un bautizo en Lima y necesito catering.",
+        "Pausa el plan por ahora.",
+        "Continuemos con el bautizo."
+      ],
+      "expectedEventType": "bautizo",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "guardar_cerrar_temporalmente",
+        "seguir_refinando_guardar_plan"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "seguir_refinando_guardar_plan"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.social.07",
+      "eventGroup": "social",
+      "routeFamily": "closure",
+      "description": "Close anniversary catering lead.",
+      "inputs": [
+        "Busco catering para aniversario en Lima para 20 personas.",
+        "Elijo la primera opción.",
+        "Quiero cerrar. Soy Rosa Díaz, rosa.diaz@example.com, +51 983444555."
+      ],
+      "expectedEventType": "aniversario",
+      "expectedNeedCategories": [
+        "Catering"
+      ],
+      "expectedNodes": [
+        "crear_lead_cerrar"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": true,
+      "terminalNodes": [
+        "crear_lead_cerrar"
+      ],
+      "maxTurns": 3
+    },
+    {
+      "id": "study.social.08",
+      "eventGroup": "social",
+      "routeFamily": "faq",
+      "description": "Social-event context with website support FAQ.",
+      "inputs": [
+        "Estoy organizando una graduación.",
+        "¿Sin Envolturas diseña páginas web para eventos?"
+      ],
+      "expectedEventType": "graduacion",
+      "expectedNeedCategories": [],
+      "expectedNodes": [
+        "consultar_faq"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "consultar_faq"
+      ],
+      "maxTurns": 2
+    },
+    {
+      "id": "study.social.09",
+      "eventGroup": "social",
+      "routeFamily": "no_results",
+      "description": "Overconstrained graduation entertainment request.",
+      "inputs": [
+        "Busco una orquesta sinfónica completa para graduación en Lurín mañana y con presupuesto muy bajo."
+      ],
+      "expectedEventType": "graduacion",
+      "expectedNeedCategories": [
+        "Música"
+      ],
+      "expectedNodes": [
+        "refinar_criterios"
+      ],
+      "expectSearch": true,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "refinar_criterios"
+      ],
+      "maxTurns": 1
+    },
+    {
+      "id": "study.social.10",
+      "eventGroup": "social",
+      "routeFamily": "error_recovery",
+      "description": "Broaden quinceañera decoration search.",
+      "inputs": [
+        "Necesito decoración futurista con robots para quinceaños en Lima.",
+        "Si no hay coincidencia exacta, busca decoración moderna para quinceaños."
+      ],
+      "expectedEventType": "quinceanos",
+      "expectedNeedCategories": [
+        "Hogar y deco"
+      ],
+      "expectedNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "expectSearch": false,
+      "expectShortlist": false,
+      "expectPersistence": true,
+      "expectClosure": false,
+      "terminalNodes": [
+        "aclarar_pedir_faltante"
+      ],
+      "maxTurns": 2
+    }
+  ]
+}

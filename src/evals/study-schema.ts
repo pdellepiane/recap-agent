@@ -61,9 +61,18 @@ const technicalStudyManifestV2Schema = z.object({
   scenarios: z.array(studyScenarioV2Schema).length(50),
 });
 
+const technicalStudyManifestV3Schema = z.object({
+  id: z.literal('technical-evaluation-50-v3'),
+  version: z.literal(3),
+  frozenAt: z.string(),
+  repetitions: z.literal(3),
+  scenarios: z.array(studyScenarioV2Schema).length(50),
+});
+
 export const technicalStudyManifestSchema = z.discriminatedUnion('version', [
   technicalStudyManifestV1Schema,
   technicalStudyManifestV2Schema,
+  technicalStudyManifestV3Schema,
 ]).superRefine((manifest, context) => {
   const ids = new Set(manifest.scenarios.map((scenario) => scenario.id));
   if (ids.size !== manifest.scenarios.length) {

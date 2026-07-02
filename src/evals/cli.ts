@@ -112,7 +112,7 @@ program
     const studyDir = await runTechnicalStudy({
       evalsDir: path.resolve(process.cwd(), 'evals'),
       outputDir: path.resolve(process.cwd(), 'analysis/technical-evaluation-study/artifacts'),
-      manifestPath: path.resolve(process.cwd(), 'evals/studies/technical-evaluation-50-v2.json'),
+      manifestPath: path.resolve(process.cwd(), 'evals/studies/technical-evaluation-50-v3.json'),
       pricingPath: path.resolve(process.cwd(), 'evals/studies/pricing-2026-07-01.json'),
       dryRun: Boolean(options.dryRun),
     });

@@ -46,7 +46,7 @@ The retrospective V2 baseline contains 165 expected need instances:
 ### Confirmatory system
 
 - Runtime snapshot starts at commit `2559335` plus later reviewed fixes.
-- Manifest: `technical-evaluation-50-v2`.
+- Manifest: `technical-evaluation-50-v3`.
 - This is the only configuration eligible for the fourth 50×3 live run.
 
 ## Component ablations

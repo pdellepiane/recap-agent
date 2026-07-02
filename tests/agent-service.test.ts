@@ -4177,6 +4177,65 @@ describe('AgentService', () => {
     expect(gateway.searchCalls).toBe(0);
   });
 
+  it('does not let a focused need bypass missing global location', async () => {
+    class MissingLocationFocusedNeedRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.96,
+          eventType: 'boda',
+          vendorCategory: 'Catering',
+          vendorCategories: ['Catering'],
+          activeNeedCategory: 'Catering',
+          location: null,
+          budgetSignal: 'medio',
+          guestRange: '51-100',
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Boda con catering y presupuesto; falta ubicación.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            needCategory: 'Catering',
+            location: null,
+          },
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new MissingLocationFocusedNeedRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-missing-location-focused-need',
+      text: 'Necesito catering para una boda de 80 personas con presupuesto medio.',
+      messageId: 'msg-missing-location-focused-need',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(response.trace.search_ready).toBe(false);
+    expect(response.trace.missing_fields).toContain('location');
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+    expect(gateway.searchCalls).toBe(0);
+  });
+
   it('does not let stale active need downgrade a current multi-need provider request', async () => {
     class MultiFrontRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {

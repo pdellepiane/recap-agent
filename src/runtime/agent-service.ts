@@ -1771,6 +1771,7 @@ export class AgentService {
     const focusedCategory = extraction.activeNeedCategory ?? extraction.vendorCategory;
     if (
       focusedCategory &&
+      readyByPlan.has(focusedCategory) &&
       (
         extraction.intent === 'buscar_proveedores' ||
         extraction.intent === 'confirmar_proveedor' ||
@@ -1785,6 +1786,7 @@ export class AgentService {
     const sessionFocusCategory = sessionFocus?.activeNeedCategory ?? null;
     if (
       sessionFocusCategory &&
+      readyByPlan.has(sessionFocusCategory) &&
       (
         extraction.intent === 'buscar_proveedores' ||
         extraction.intent === 'refinar_busqueda'

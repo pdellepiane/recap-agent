@@ -7,7 +7,7 @@ import { technicalStudyManifestSchema } from '../src/evals/study-schema';
 
 describe('technical study manifest', () => {
   it('keeps every frozen version unique and balanced at ten scenarios per event group', () => {
-    for (const version of [1, 2]) {
+    for (const version of [1, 2, 3]) {
       const manifestPath = path.resolve(
         process.cwd(),
         `evals/studies/technical-evaluation-50-v${version}.json`,
