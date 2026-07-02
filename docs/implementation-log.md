@@ -3537,3 +3537,19 @@ old cleanup inspected only the first API page.
 Provider index replacement is a singleton operation. Serialize executions at
 the Lambda boundary, enumerate every page, and keep cleanup idempotent for
 stale-list races.
+
+## Tolerate vector-index read-after-write lag
+
+- Treat a 404 while polling a newly created vector-file association as
+  transient until the normal indexing timeout expires.
+
+### Reason
+
+The first refresh into a clean vector store created all provider associations,
+but OpenAI temporarily returned 404 for one association during the completion
+poll. Failing immediately abandoned an otherwise recoverable batch.
+
+### Decision
+
+Creation followed by retrieval is eventually consistent. Keep the association
+pending on 404; still fail on explicit `failed`/`cancelled` status or timeout.

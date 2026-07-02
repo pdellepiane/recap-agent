@@ -147,9 +147,17 @@ export class OpenAiProviderUploader {
       }
 
       for (const fileId of Array.from(pending)) {
-        const file = await this.client.vectorStores.files.retrieve(fileId, {
-          vector_store_id: vectorStoreId,
-        });
+        let file: { status: string };
+        try {
+          file = await this.client.vectorStores.files.retrieve(fileId, {
+            vector_store_id: vectorStoreId,
+          });
+        } catch (error) {
+          if (isNotFoundError(error)) {
+            continue;
+          }
+          throw error;
+        }
 
         if (file.status === 'completed') {
           pending.delete(fileId);
