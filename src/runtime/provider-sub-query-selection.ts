@@ -65,7 +65,8 @@ export function selectProvidersForSubQuery(args: {
   const selected = ranked
     .filter((provider) =>
       (provider.fitScore ?? 0) >= MIN_STRONG_MATCH_SCORE &&
-      isProviderEligibleForCriteria(provider, criteria),
+      isProviderEligibleForCriteria(provider, criteria) &&
+      hasRequiredSubQueryEvidence(provider, args.subQuery),
     )
     .slice(0, args.subQuery.maxSelections);
 
@@ -95,13 +96,56 @@ function applyMustHaveEvidenceBoost(
   if (evidence.matches === 0 && subQuery.mustHave.length > 0) {
     fitWarnings.add(`No hay evidencia exacta de ${subQuery.label} en la ficha.`);
   }
+  const eventServiceEvidence =
+    subQuery.category !== 'Hogar y deco' || hasEventServiceEvidence(provider);
+  if (eventServiceEvidence) {
+    fitTags.add('event_service_evidence');
+  } else {
+    fitWarnings.add('La ficha no demuestra un servicio orientado a eventos.');
+  }
 
   return {
     ...provider,
-    fitScore: clampScore(baseScore + evidence.score),
+    fitScore: clampScore(
+      baseScore +
+      evidence.score +
+      (subQuery.category === 'Hogar y deco' && eventServiceEvidence ? 14 : 0),
+    ),
     fitTags: Array.from(fitTags),
     fitWarnings: Array.from(fitWarnings),
   };
+}
+
+function hasRequiredSubQueryEvidence(
+  provider: ProviderSubQueryCandidate,
+  subQuery: ProviderNeedSubQuery,
+): boolean {
+  const tags = provider.fitTags ?? [];
+  const mustHaveSatisfied =
+    subQuery.mustHave.length === 0 || tags.includes('must_have_evidence');
+  const eventServiceSatisfied =
+    subQuery.category !== 'Hogar y deco' || tags.includes('event_service_evidence');
+  return mustHaveSatisfied && eventServiceSatisfied;
+}
+
+function hasEventServiceEvidence(provider: ProviderSummary): boolean {
+  const providerText = normalizeText([
+    provider.descriptionSnippet ?? '',
+    provider.description ?? '',
+    provider.serviceHighlights.join(' '),
+    provider.termsHighlights.join(' '),
+  ].join(' '));
+  return [
+    'evento',
+    'eventos',
+    'boda',
+    'bodas',
+    'matrimonio',
+    'baby shower',
+    'cumpleanos',
+    'quinceanos',
+    'celebracion',
+  ].some((signal) => providerText.includes(signal));
 }
 
 function scoreMustHaveEvidence(

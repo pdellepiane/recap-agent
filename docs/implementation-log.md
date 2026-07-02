@@ -3060,3 +3060,30 @@ public rate.
 - Deterministic provider provenance passed for all grounding-required turns,
   while the manual audit exposed location and category suitability as the
   dominant remaining grounding risk.
+
+## Improve semantic event-service fit
+
+- Preserved hybrid-retrieval relevance as the tie-breaker when providers have
+  equal structured fit scores.
+- Required home-and-decoration candidates to contain evidence that their
+  offering is intended for events before they can enter an event shortlist.
+- Required structured sub-query must-have evidence when a provider need
+  declares explicit must-have constraints.
+- Added a bounded fit boost for verified event-service evidence so a relevant
+  event decorator can clear the strong-match threshold while ordinary home
+  retail remains excluded.
+- Added regression coverage for retrieval tie-breaking and event-decoration
+  eligibility.
+
+### Reason
+
+The first optimization iteration eliminated known location and category
+conflicts, but manual review still found semantically weak providers within
+otherwise correct categories, especially home retailers returned for event
+decoration needs.
+
+### Decision
+
+Use provider-catalog evidence only after the structured event-plan sub-query has
+selected the category. This validation ranks and filters provider suitability;
+it does not inspect user wording or decide conversational flow.

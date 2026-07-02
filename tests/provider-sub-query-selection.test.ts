@@ -36,7 +36,7 @@ function provider(input: Partial<ProviderSummary> & { id: number; title: string 
     serviceHighlights: input.serviceHighlights ?? [],
     termsHighlights: [],
     description: input.description ?? null,
-    eventTypes: ['boda'],
+    eventTypes: input.eventTypes ?? ['boda'],
     retrievalScore: input.retrievalScore ?? null,
     retrievalSource: input.retrievalSource ?? 'vector',
   };
@@ -103,5 +103,47 @@ describe('provider sub-query selection', () => {
 
     expect(result.candidate_provider_ids).toEqual([2]);
     expect(result.selected_provider_ids).toEqual([2]);
+  });
+
+  it('requires event-service evidence for home and decoration providers', () => {
+    const result = selectProvidersForSubQuery({
+      subQuery: subQuery({
+        id: 'decoracion',
+        label: 'decoración minimalista',
+        category: 'Hogar y deco',
+        queryStrings: ['decoración minimalista para baby shower'],
+        mustHave: [],
+        maxSelections: 2,
+      }),
+      baseCriteria: {
+        ...criteria,
+        eventType: 'baby_shower',
+        needCategory: 'Hogar y deco',
+      },
+      providers: [
+        provider({
+          id: 1,
+          title: 'Tienda de muebles',
+          category: 'Hogar y deco',
+          descriptionSnippet: 'Muebles modernos para sala y dormitorio.',
+        }),
+        provider({
+          id: 2,
+          title: 'Nina Creativa',
+          category: 'Hogar y deco',
+          descriptionSnippet: 'Recuerdos y velas personalizadas para baby showers y eventos.',
+          eventTypes: ['baby_shower'],
+        }),
+      ],
+    });
+
+    expect(result.candidate_provider_ids).toEqual([2, 1]);
+    expect(result.selected_provider_ids).toEqual([2]);
+    expect(result.candidates.find((candidate) => candidate.id === 2)?.fitTags).toContain(
+      'event_service_evidence',
+    );
+    expect(result.candidates.find((candidate) => candidate.id === 1)?.fitWarnings).toContain(
+      'La ficha no demuestra un servicio orientado a eventos.',
+    );
   });
 });

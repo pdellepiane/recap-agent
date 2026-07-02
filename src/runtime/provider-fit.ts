@@ -161,6 +161,11 @@ export function rankProvidersForCriteria(
       if (scoreDelta !== 0) {
         return scoreDelta;
       }
+      const retrievalDelta =
+        (right.retrievalScore ?? 0) - (left.retrievalScore ?? 0);
+      if (retrievalDelta !== 0) {
+        return retrievalDelta;
+      }
       return left.id - right.id;
     });
 }

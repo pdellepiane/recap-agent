@@ -139,6 +139,24 @@ describe('rankProvidersForCriteria', () => {
     );
   });
 
+  it('uses retrieval relevance before provider id for equal fit scores', () => {
+    const criteria = {
+      eventType: 'boda' as const,
+      needCategory: 'Catering',
+      location: 'Lima',
+      budgetAmount: null,
+      budgetCurrency: null,
+      mustHave: [],
+      shouldAvoid: [],
+      rankingNotes: '',
+    };
+    const ranked = rankProvidersForCriteria([
+      createProvider({ id: 1, retrievalScore: 0.2 }),
+      createProvider({ id: 2, retrievalScore: 0.9 }),
+    ], criteria);
+    expect(ranked.map((provider) => provider.id)).toEqual([2, 1]);
+  });
+
   it('rejects severe low-budget and explicit avoid conflicts', () => {
     const criteria = {
       eventType: 'cumpleanos' as const,
