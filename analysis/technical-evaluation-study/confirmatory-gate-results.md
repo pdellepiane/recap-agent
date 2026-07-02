@@ -25,3 +25,22 @@ The blinded worksheet `independent-grounding-review.csv` must be completed by
 an independent reviewer using `manual-grounding-rubric.md`. Allowed judgments
 are `pass`, `fail`, and `not_applicable`. The primary reviewer judgments must
 remain hidden until the independent worksheet is complete.
+
+## Independent review and clean-index rerun
+
+The independent review was completed on 2026-07-02. After preserving complete
+provider ficha notes, the provider index was rebuilt in vector store
+`vs_6a46f023fcec8191ac12fe2c44b1612b`:
+
+- 182 files;
+- one batch (`providers-20260702T231442`);
+- 182 completed;
+- runtime and sync CloudFormation stacks reference the same store.
+
+The final clean-index targeted run was
+`.eval-confirmatory-gates/eval-2026-07-02T23-17-44-525Z-2b735984`.
+All explicit confirmatory safety gates passed and there were no runtime errors.
+The harness passed 12/13 cases: `study.birthday.02` correctly clarified the
+missing location without search, but its structured event type was null rather
+than `cumpleanos`. Preserve this as observed extraction instability rather than
+tuning the frozen study around one stochastic miss.

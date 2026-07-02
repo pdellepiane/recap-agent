@@ -26,6 +26,12 @@ They do not automatically make the attributes of a displayed provider false.
 Conversely, missing catalog evidence for capacity, event suitability, or a
 service cannot support a positive recommendation rationale.
 
+The clean provider index contains one completed 182-document batch with full
+localized ficha notes. Its final 13-case targeted run passed every safety gate,
+with one harness miss caused by a null birthday event type. This is evidence
+for measuring extraction repeatability in the untouched study, not for
+post-hoc prompt tuning.
+
 ## Publication assessment
 
 The evidence is not ready for a high-performing recommender or efficacy claim.
