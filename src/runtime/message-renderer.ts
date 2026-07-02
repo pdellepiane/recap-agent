@@ -1,4 +1,5 @@
 import type { ProviderSummary } from '../core/provider';
+import { normalizeToProviderCategory } from '../core/provider-category';
 import { formatPriceLevel } from '../core/price-level';
 import type {
   ProviderNeedRecommendation,
@@ -129,6 +130,13 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     providerMap: Map<number, ProviderSummary>,
   ): string | null {
     const cards = need.providers
+      .filter((rec) => {
+        const provider = providerMap.get(rec.provider_id);
+        return (
+          provider !== undefined &&
+          normalizeToProviderCategory(provider.category) === need.category
+        );
+      })
       .map((rec, index) => this.renderCompactProviderRow(rec, providerMap, index))
       .filter((card): card is string => card !== null);
 

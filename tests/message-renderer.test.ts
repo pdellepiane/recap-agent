@@ -413,6 +413,35 @@ describe('WhatsAppMessageRenderer', () => {
 
       expect(result).toBe('Encontré opciones para comparar.\n\nRevisemos el primer frente.');
     });
+
+    it('does not render a provider under a mismatched need category', () => {
+      const message: StructuredMessage = {
+        type: 'multi_need_recommendation',
+        intro_es: 'Encontré opciones para comparar.',
+        needs: [
+          {
+            category: 'Locales',
+            summary_es: 'Para el local.',
+            providers: [
+              {
+                provider_id: 1,
+                rationale_es: 'No corresponde a esta categoría.',
+                caveat_es: null,
+              },
+            ],
+          },
+        ],
+        next_step_es: 'Revisemos el primer frente.',
+      };
+
+      const result = renderer.render({
+        message,
+        providerResults: [createProvider({ category: 'Catering' })],
+      });
+
+      expect(result).toBe('Encontré opciones para comparar.\n\nRevisemos el primer frente.');
+      expect(result).not.toContain('No corresponde a esta categoría.');
+    });
   });
 
   describe('contact_request messages', () => {

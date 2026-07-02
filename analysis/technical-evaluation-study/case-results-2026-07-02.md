@@ -98,8 +98,10 @@ The exact Spanish turns and typed expectations are in
 ### Grounding
 
 - Deterministic provenance: 239/239 grounding-required turns.
-- The 20-row iteration-3 manual audit remains entirely `pending`; final
-  rationale, attribute, and hard-constraint faithfulness rates are unavailable.
+- Primary review of the 20-row iteration-3 manual audit found provider
+  existence 20/20, attribute faithfulness 19/20, recommendation-rationale
+  support 6/10 applicable turns, and hard-constraint consistency 14/20.
+- Independent second review and disagreement adjudication remain outstanding.
 
 ## Interpretation warning
 

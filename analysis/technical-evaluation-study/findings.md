@@ -14,7 +14,10 @@ The strict completion result is not a valid general task-success estimate:
 several expected-need labels are noncanonical and some paths are too narrow.
 Benchmark contamination is not a blanket explanation, because clarification,
 multi-need, pause/resume, no-results, and recovery had no strict completions.
-The iteration-3 manual grounding sample has not been judged.
+The iteration-3 primary grounding review is complete: provider existence
+20/20, attribute faithfulness 19/20, recommendation-rationale support 6/10
+applicable turns, and hard-constraint consistency 14/20. An independent second
+review remains outstanding.
 
 ## Publication assessment
 

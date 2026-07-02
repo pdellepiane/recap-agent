@@ -3254,3 +3254,83 @@ extraction breadth with retrieval success.
 Never rewrite v1 or reinterpret its raw outcomes. Use v2 only for future
 confirmatory evidence, validate its categories at load time, and report the
 separate expected-need denominators instead of a single ambiguous rate.
+
+## Complete primary review of iteration-three grounding sample
+
+- Scored all 20 reproducibly sampled iteration-three turns for provider
+  existence, attribute faithfulness, rationale support, and hard-constraint
+  consistency.
+- Marked selection and closure rationales `not_applicable` rather than treating
+  action confirmations as recommendation explanations.
+- Recorded evidence-specific notes for unsupported capacity, event-type,
+  decoration, audiovisual, promotion, and location claims.
+
+### Result
+
+- Provider existence: 20/20.
+- Attribute faithfulness: 19/20.
+- Recommendation rationale support: 6/10 applicable recommendation turns.
+- Hard-constraint consistency: 14/20.
+
+### Decision
+
+Treat these as primary-review results only. Publication-quality manual grounding
+evidence still requires an independent second reviewer and disagreement
+adjudication; do not manufacture reviewer independence within one agent run.
+
+## Prevent cross-category rows in multi-need rendering
+
+- Added a deterministic renderer invariant requiring each provider card to
+  match the canonical category of its multi-need section.
+- Added regression coverage proving a catering provider cannot render under
+  `Locales`, even if a malformed model response places its ID there.
+
+### Reason
+
+The primary grounding review found a wedding response that repeated every
+provider under every need and labeled the wrong-category rows “No corresponde a
+esta categoría.” The underlying plan was correctly grouped; the structured
+reply violated that grouping.
+
+### Decision
+
+Treat the plan/provider category relation as a rendering invariant. The model
+may explain and order valid cards, but it cannot move a provider into a
+different typed need section.
+
+## Normalize audiovisual production to the catalog taxonomy
+
+- Added explicit structured-extraction normalization from `audiovisuales` and
+  `producción audiovisual` to canonical `Fotografía y video`.
+
+### Reason
+
+The primary audit found the generic Sin Envolturas store selected under
+`Otros` as audiovisual support. The marketplace has no standalone audiovisual
+category; relevant production providers live under `Fotografía y video`.
+
+### Decision
+
+Resolve the semantic-to-catalog mapping in typed extraction so retrieval uses
+the correct catalog category. Do not paper over an incorrect need by allowing
+cross-category fallback.
+
+## Define baseline and ablation protocol
+
+- Declared immutable historical and pre-confirmatory baseline snapshots.
+- Mapped each recommendation-system component to its disabled/enabled commits
+  and direct outcome measures.
+- Added explicit targeted gates that must pass before the fourth full run.
+- Declared the fourth run untouched after execution to prevent test-set tuning.
+
+### Reason
+
+Iteration comparisons alone are not a defensible baseline when the benchmark
+grading changed. A publication-ready comparison needs immutable configurations,
+comparable metric definitions, and a precommitted confirmatory boundary.
+
+### Decision
+
+Use historical raw traces only for unchanged metrics or separately labeled
+retrospective V2 regrading. Never overwrite historical summaries, and do not
+spend the confirmatory run until every targeted gate passes.
