@@ -1,0 +1,3746 @@
+{
+  "runId": "eval-2026-07-02T04-56-59-923Z-1fb3f808",
+  "caseId": "study.wedding.08",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 0.8571428571428571,
+  "totalLatencyMs": 24956,
+  "totalToolCalls": 5,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades",
+    "elicitacion_necesidades->consultar_faq"
+  ],
+  "planDiffSummary": [
+    "current_node=\"consultar_faq\"",
+    "intent=\"consultar_faq\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Fotografía y video:shortlisted, Música:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T04-41-32-379Z/runs/eval-2026-07-02T04-56-59-923Z-1fb3f808/artifacts/study-repetition-2/study.wedding.08.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition elicitacion_necesidades->consultar_faq."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was true instead of false."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.8571428571428571,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 7 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 12478,
+    "p95_latency_ms": 17316,
+    "tool_calls_total": 5,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 2.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.19230769230769232,
+    "state_expectation_pass_rate": 0.6666666666666666,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 43386,
+    "cache_hit_rate": 0.7426274103854209
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Estoy planeando una boda en Lima para 100 personas."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que me pediste para la boda en Lima\n\nLocales\nPara el lugar, encontré una opción de salón/espacio para bodas que calza con la capacidad aproximada que necesitan\n1. Casa Club 147 - local para boda (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con boda en Lima y con un evento de este tamaño; además aparece como espacio para celebraciones y matrimonios\n Limitación: La ubicación indicada es Cieneguilla, no Lima centro.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, hay una alternativa pensada para eventos y bodas en Lima con ajuste al tamaño del grupo\n1. FCatering - catering para boda (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n Su ficha lo orienta a catering para eventos y se ajusta a una boda para 100 personas\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\nFotografía y video\nPara foto y video, encontré una propuesta enfocada en matrimonios con cobertura audiovisual\n1. Agalux Studio - fotografía y video para boda (Lima, Perú · $$ · promo: 100 S/. Dscto)\n Está orientado a bodas y cobertura audiovisual, así que encaja bien con este evento\n Ficha: https://sinenvolturas.com/proveedores/agalux-studio\n\nMúsica\nPara música, hay una opción especializada en bodas y eventos privados\n1. Dj Bufi - música para boda (Lima, Perú · $$$ · promo: 20% off)\n Su experiencia está centrada en bodas y eventos, por lo que es una buena base para esta celebración\n Limitación: El nivel de precio aparece como alto.\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi\n\nPodemos empezar por revisar el frente de Locales y luego ajustar o quitar opciones en los demás frentes",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGK4KCT53DTDWM8HV9NAS7A",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local para boda\",\n  \"queryStrings\": [\n    \"local para boda en Lima\",\n    \"salón o espacio para 100 personas en Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para boda\",\n  \"queryStrings\": [\n    \"catering para boda en Lima para 100 personas\",\n    \"menú para boda en Lima (100 invitados)\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotografía y video para boda\",\n  \"queryStrings\": [\n    \"fotógrafo y video para boda en Lima\",\n    \"paquete fotografía y video para 100 invitados Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música para boda\",\n  \"queryStrings\": [\n    \"música para boda en Lima (DJ o banda)\",\n    \"DJ para boda en Lima 100 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"catering para boda\",\n  \"providers\": [\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7390689889421448\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.679096842273038\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"música para boda\",\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.8399610522922828\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"fotografía y video para boda\",\n  \"providers\": [\n    {\n      \"id\": 142,\n      \"title\": \"Agalux Studio\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.8819427286646576\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"local para boda\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.7303467512807994\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7303467512807994,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7390689889421448,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 142,
+            "title": "Agalux Studio",
+            "slug": "agalux-studio",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+            "websiteUrl": null,
+            "minPrice": "6000.00",
+            "maxPrice": null,
+            "promoBadge": "100 S/. Dscto",
+            "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+            "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+            "serviceHighlights": [
+              "Cobertura audiovisual para matrimonios",
+              "Fotografía y/o video de bodas",
+              "Paquetes personalizados según el tipo de evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Descuentos y beneficios no acumulables",
+              "Beneficio transferible",
+              "Válido en todo el Perú",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.8819427286646576,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8399610522922828,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7303467512807994,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 137,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7390689889421448,
+            "fit_score": 94
+          },
+          {
+            "provider_id": 142,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8819427286646576,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8399610522922828,
+            "fit_score": 89
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            147,
+            137,
+            142,
+            187
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 17133,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 8489,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 14001,
+          "provider_enrichment": 2189,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3789,
+          "save_plan": 27
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11415,
+            "output_tokens": 1022,
+            "total_tokens": 12437,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6099,
+            "output_tokens": 413,
+            "total_tokens": 6512,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17514,
+            "output_tokens": 1435,
+            "total_tokens": 18949,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGK4KCT53DTDWM8HV9NAS7A",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "runtime_latency_ms": 17133,
+        "extraction_latency_ms": 8489,
+        "compose_latency_ms": 3789,
+        "tools_called_count": 4,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18949,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8331620417951353,
+        "extraction_to_compose_ratio": 2.240432831881763,
+        "captured_at": "2026-07-02T04:59:32.634Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.wedding.08-4e795d3c",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.9,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.7303467512807994,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_local_boda",
+                  "label": "local para boda",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para boda en Lima",
+                    "salón o espacio para 100 personas en Lima"
+                  ],
+                  "mustHave": [
+                    "capacidad para ~100 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7303467512807994,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              137
+            ],
+            "recommended_providers": [
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 94,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.7390689889421448,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_catering_boda",
+                  "label": "catering para boda",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering para boda en Lima para 100 personas",
+                    "menú para boda en Lima (100 invitados)"
+                  ],
+                  "mustHave": [
+                    "servicio para ~100 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  137,
+                  153
+                ],
+                "selected_provider_ids": [
+                  137
+                ],
+                "candidates": [
+                  {
+                    "id": 137,
+                    "title": "FCatering",
+                    "slug": "fcatering",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Vale de 300 Dólares",
+                    "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                    "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Propuestas gastronómicas personalizadas",
+                      "Montaje y servicio de alimentos",
+                      "Atención para eventos sociales y corporativos"
+                    ],
+                    "termsHighlights": [
+                      "Válido solo para clientes de Sin Envolturas.",
+                      "Válido únicamente en Lima.",
+                      "Beneficio no transferible ni acumulable.",
+                      "Válido de lunes a viernes en horario laboral.",
+                      "Aplica solo para anfitriones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7390689889421448,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 153,
+                    "title": "BAPO",
+                    "slug": "bapo",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                    "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                    "serviceHighlights": [
+                      "Servicios de catering",
+                      "Preguntar por paquetes"
+                    ],
+                    "termsHighlights": [
+                      "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "No acumulable con otros descuentos y/o promociones"
+                    ],
+                    "eventTypes": [],
+                    "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                    "fitScore": 93,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.679096842273038,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              142
+            ],
+            "recommended_providers": [
+              {
+                "id": 142,
+                "title": "Agalux Studio",
+                "slug": "agalux-studio",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                "websiteUrl": null,
+                "minPrice": "6000.00",
+                "maxPrice": null,
+                "promoBadge": "100 S/. Dscto",
+                "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                "serviceHighlights": [
+                  "Cobertura audiovisual para matrimonios",
+                  "Fotografía y/o video de bodas",
+                  "Paquetes personalizados según el tipo de evento",
+                  "Producción y edición del material final"
+                ],
+                "termsHighlights": [
+                  "Descuentos y beneficios no acumulables",
+                  "Beneficio transferible",
+                  "Válido en todo el Perú",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.8819427286646576,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_foto_video_boda",
+                  "label": "fotografía y video para boda",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotógrafo y video para boda en Lima",
+                    "paquete fotografía y video para 100 invitados Lima"
+                  ],
+                  "mustHave": [
+                    "cobertura de boda"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  142
+                ],
+                "selected_provider_ids": [
+                  142
+                ],
+                "candidates": [
+                  {
+                    "id": 142,
+                    "title": "Agalux Studio",
+                    "slug": "agalux-studio",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                    "websiteUrl": null,
+                    "minPrice": "6000.00",
+                    "maxPrice": null,
+                    "promoBadge": "100 S/. Dscto",
+                    "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                    "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                    "serviceHighlights": [
+                      "Cobertura audiovisual para matrimonios",
+                      "Fotografía y/o video de bodas",
+                      "Paquetes personalizados según el tipo de evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Descuentos y beneficios no acumulables",
+                      "Beneficio transferible",
+                      "Válido en todo el Perú",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8819427286646576,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              187
+            ],
+            "recommended_providers": [
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 89,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8399610522922828,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_musica_boda",
+                  "label": "música para boda",
+                  "category": "Música",
+                  "queryStrings": [
+                    "música para boda en Lima (DJ o banda)",
+                    "DJ para boda en Lima 100 personas"
+                  ],
+                  "mustHave": [],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  187
+                ],
+                "selected_provider_ids": [
+                  187
+                ],
+                "candidates": [
+                  {
+                    "id": 187,
+                    "title": "Dj Bufi",
+                    "slug": "dj-bufi",
+                    "category": "Música",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "20% off",
+                    "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                    "serviceHighlights": [
+                      "Asesoría personalizada en todo el proceso del evento",
+                      "DJ profesional para todo tipo de eventos.",
+                      "Sonido profesional para ceremonias, recepciones y fiestas.",
+                      "Iluminación ambiental y decorativa.",
+                      "Luces para pista de baile y efectos especiales.",
+                      "Musicalización personalizada según el estilo del evento."
+                    ],
+                    "termsHighlights": [
+                      "Valido solo para Lima. Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                    "fitScore": 89,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.8399610522922828,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7303467512807994,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El rango de invitados se infiere de '100 personas'.",
+          "Para una boda en Lima, las necesidades iniciales probables incluyen local, catering, fotografía y música."
+        ],
+        "conversation_summary": "Plan: boda en Lima para ~100 personas. Aún no se definieron proveedores ni categoría activa; se priorizan necesidades iniciales de Locales, Catering, Fotografía y video y Música.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T04:59:28.817Z"
+      },
+      "latencyMs": 17316,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que me pediste para la boda en Lima\n\nLocales\nPara el lugar, encontré una opción de salón/espacio para bodas que calza con la capacidad aproximada que necesitan\n1. Casa Club 147 - local para boda (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con boda en Lima y con un evento de este tamaño; además aparece como espacio para celebraciones y matrimonios\n Limitación: La ubicación indicada es Cieneguilla, no Lima centro.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, hay una alternativa pensada para eventos y bodas en Lima con ajuste al tamaño del grupo\n1. FCatering - catering para boda (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n Su ficha lo orienta a catering para eventos y se ajusta a una boda para 100 personas\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\nFotografía y video\nPara foto y video, encontré una propuesta enfocada en matrimonios con cobertura audiovisual\n1. Agalux Studio - fotografía y video para boda (Lima, Perú · $$ · promo: 100 S/. Dscto)\n Está orientado a bodas y cobertura audiovisual, así que encaja bien con este evento\n Ficha: https://sinenvolturas.com/proveedores/agalux-studio\n\nMúsica\nPara música, hay una opción especializada en bodas y eventos privados\n1. Dj Bufi - música para boda (Lima, Perú · $$$ · promo: 20% off)\n Su experiencia está centrada en bodas y eventos, por lo que es una buena base para esta celebración\n Limitación: El nivel de precio aparece como alto.\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi\n\nPodemos empezar por revisar el frente de Locales y luego ajustar o quitar opciones en los demás frentes",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGK4KCT53DTDWM8HV9NAS7A",
+          "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+          "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local para boda\",\n  \"queryStrings\": [\n    \"local para boda en Lima\",\n    \"salón o espacio para 100 personas en Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para boda\",\n  \"queryStrings\": [\n    \"catering para boda en Lima para 100 personas\",\n    \"menú para boda en Lima (100 invitados)\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotografía y video para boda\",\n  \"queryStrings\": [\n    \"fotógrafo y video para boda en Lima\",\n    \"paquete fotografía y video para 100 invitados Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música para boda\",\n  \"queryStrings\": [\n    \"música para boda en Lima (DJ o banda)\",\n    \"DJ para boda en Lima 100 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"catering para boda\",\n  \"providers\": [\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7390689889421448\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.679096842273038\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"música para boda\",\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.8399610522922828\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"fotografía y video para boda\",\n  \"providers\": [\n    {\n      \"id\": 142,\n      \"title\": \"Agalux Studio\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.8819427286646576\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"local para boda\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.7303467512807994\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7303467512807994,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 94,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7390689889421448,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 142,
+              "title": "Agalux Studio",
+              "slug": "agalux-studio",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+              "websiteUrl": null,
+              "minPrice": "6000.00",
+              "maxPrice": null,
+              "promoBadge": "100 S/. Dscto",
+              "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+              "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+              "serviceHighlights": [
+                "Cobertura audiovisual para matrimonios",
+                "Fotografía y/o video de bodas",
+                "Paquetes personalizados según el tipo de evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Descuentos y beneficios no acumulables",
+                "Beneficio transferible",
+                "Válido en todo el Perú",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.8819427286646576,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8399610522922828,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7303467512807994,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 137,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7390689889421448,
+              "fit_score": 94
+            },
+            {
+              "provider_id": 142,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8819427286646576,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8399610522922828,
+              "fit_score": 89
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 4,
+            "context_candidates": 4,
+            "context_candidate_ids": [
+              147,
+              137,
+              142,
+              187
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 17133,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 8489,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 14001,
+            "provider_enrichment": 2189,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3789,
+            "save_plan": 27
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11415,
+              "output_tokens": 1022,
+              "total_tokens": 12437,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6099,
+              "output_tokens": 413,
+              "total_tokens": 6512,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17514,
+              "output_tokens": 1435,
+              "total_tokens": 18949,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.wedding.08-4e795d3c",
+          "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.9,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.7303467512807994,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_local_boda",
+                    "label": "local para boda",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para boda en Lima",
+                      "salón o espacio para 100 personas en Lima"
+                    ],
+                    "mustHave": [
+                      "capacidad para ~100 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7303467512807994,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                137
+              ],
+              "recommended_providers": [
+                {
+                  "id": 137,
+                  "title": "FCatering",
+                  "slug": "fcatering",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Vale de 300 Dólares",
+                  "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                  "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Propuestas gastronómicas personalizadas",
+                    "Montaje y servicio de alimentos",
+                    "Atención para eventos sociales y corporativos"
+                  ],
+                  "termsHighlights": [
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "fitScore": 94,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.7390689889421448,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_catering_boda",
+                    "label": "catering para boda",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering para boda en Lima para 100 personas",
+                      "menú para boda en Lima (100 invitados)"
+                    ],
+                    "mustHave": [
+                      "servicio para ~100 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    137,
+                    153
+                  ],
+                  "selected_provider_ids": [
+                    137
+                  ],
+                  "candidates": [
+                    {
+                      "id": 137,
+                      "title": "FCatering",
+                      "slug": "fcatering",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Vale de 300 Dólares",
+                      "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                      "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Propuestas gastronómicas personalizadas",
+                        "Montaje y servicio de alimentos",
+                        "Atención para eventos sociales y corporativos"
+                      ],
+                      "termsHighlights": [
+                        "Válido solo para clientes de Sin Envolturas.",
+                        "Válido únicamente en Lima.",
+                        "Beneficio no transferible ni acumulable.",
+                        "Válido de lunes a viernes en horario laboral.",
+                        "Aplica solo para anfitriones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7390689889421448,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 153,
+                      "title": "BAPO",
+                      "slug": "bapo",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                      "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                      "serviceHighlights": [
+                        "Servicios de catering",
+                        "Preguntar por paquetes"
+                      ],
+                      "termsHighlights": [
+                        "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "No acumulable con otros descuentos y/o promociones"
+                      ],
+                      "eventTypes": [],
+                      "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                      "fitScore": 93,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.679096842273038,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                142
+              ],
+              "recommended_providers": [
+                {
+                  "id": 142,
+                  "title": "Agalux Studio",
+                  "slug": "agalux-studio",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                  "websiteUrl": null,
+                  "minPrice": "6000.00",
+                  "maxPrice": null,
+                  "promoBadge": "100 S/. Dscto",
+                  "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                  "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                  "serviceHighlights": [
+                    "Cobertura audiovisual para matrimonios",
+                    "Fotografía y/o video de bodas",
+                    "Paquetes personalizados según el tipo de evento",
+                    "Producción y edición del material final"
+                  ],
+                  "termsHighlights": [
+                    "Descuentos y beneficios no acumulables",
+                    "Beneficio transferible",
+                    "Válido en todo el Perú",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.8819427286646576,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_foto_video_boda",
+                    "label": "fotografía y video para boda",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotógrafo y video para boda en Lima",
+                      "paquete fotografía y video para 100 invitados Lima"
+                    ],
+                    "mustHave": [
+                      "cobertura de boda"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    142
+                  ],
+                  "selected_provider_ids": [
+                    142
+                  ],
+                  "candidates": [
+                    {
+                      "id": 142,
+                      "title": "Agalux Studio",
+                      "slug": "agalux-studio",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                      "websiteUrl": null,
+                      "minPrice": "6000.00",
+                      "maxPrice": null,
+                      "promoBadge": "100 S/. Dscto",
+                      "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                      "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                      "serviceHighlights": [
+                        "Cobertura audiovisual para matrimonios",
+                        "Fotografía y/o video de bodas",
+                        "Paquetes personalizados según el tipo de evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Descuentos y beneficios no acumulables",
+                        "Beneficio transferible",
+                        "Válido en todo el Perú",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8819427286646576,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                187
+              ],
+              "recommended_providers": [
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 89,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8399610522922828,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_musica_boda",
+                    "label": "música para boda",
+                    "category": "Música",
+                    "queryStrings": [
+                      "música para boda en Lima (DJ o banda)",
+                      "DJ para boda en Lima 100 personas"
+                    ],
+                    "mustHave": [],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    187
+                  ],
+                  "selected_provider_ids": [
+                    187
+                  ],
+                  "candidates": [
+                    {
+                      "id": 187,
+                      "title": "Dj Bufi",
+                      "slug": "dj-bufi",
+                      "category": "Música",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "20% off",
+                      "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                      "serviceHighlights": [
+                        "Asesoría personalizada en todo el proceso del evento",
+                        "DJ profesional para todo tipo de eventos.",
+                        "Sonido profesional para ceremonias, recepciones y fiestas.",
+                        "Iluminación ambiental y decorativa.",
+                        "Luces para pista de baile y efectos especiales.",
+                        "Musicalización personalizada según el estilo del evento."
+                      ],
+                      "termsHighlights": [
+                        "Valido solo para Lima. Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                      "fitScore": 89,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.8399610522922828,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7303467512807994,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El rango de invitados se infiere de '100 personas'.",
+            "Para una boda en Lima, las necesidades iniciales probables incluyen local, catering, fotografía y música."
+          ],
+          "conversation_summary": "Plan: boda en Lima para ~100 personas. Aún no se definieron proveedores ni categoría activa; se priorizan necesidades iniciales de Locales, Catering, Fotografía y video y Música.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T04:59:28.817Z"
+        },
+        "perf": {
+          "trace_id": "01KWGK4KCT53DTDWM8HV9NAS7A",
+          "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+          "runtime_latency_ms": 17133,
+          "extraction_latency_ms": 8489,
+          "compose_latency_ms": 3789,
+          "tools_called_count": 4,
+          "provider_results_count": 4,
+          "recommendation_context_candidates": 4,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18949,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8331620417951353,
+          "extraction_to_compose_ratio": 2.240432831881763,
+          "captured_at": "2026-07-02T04:59:32.634Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "¿Sin Envolturas cobra comisión por contactar proveedores?"
+      },
+      "outputText": "No, no cobra comisión por contactar proveedores. Crear tu cuenta en Sin Envolturas es gratis, y la comisión aplica a los regalos o a las transferencias de fondos, según cómo elijas configurarla\n\nAdemás, puedes elegir si la comisión la asumen tus invitados o tú como anfitrión; si la asumes tú, el invitado paga el monto exacto del regalo y luego se descuenta la comisión antes de transferir los fondos\n\nSi quieres, también te explico cómo funciona la comisión en regalos y transferencias con un ejemplo simple",
+      "currentNode": "consultar_faq",
+      "trace": {
+        "trace_id": "01KWGK4TQYC59Z4A7G64K3CFZM",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+        "previous_node": "elicitacion_necesidades",
+        "next_node": "consultar_faq",
+        "node_path": [
+          "elicitacion_necesidades",
+          "existe_plan_guardado",
+          "consultar_faq"
+        ],
+        "intent": "consultar_faq",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "dcfc03857498",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/consultar_faq/system.txt",
+          "nodes/consultar_faq/response_contract.txt",
+          "nodes/consultar_faq/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "file_search"
+        ],
+        "tools_called": [
+          "file_search"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "file_search",
+            "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Sin Envolturas cobra comisión por contactar proveedores?\",\n    \"Sin Envolturas comisión por contactar proveedores\",\n    \"comisión contactar proveedores Sin Envolturas\"\n  ]\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "file_search",
+            "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7303467512807994,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7303467512807994,
+            "fit_score": 100
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": true,
+          "kb_query_present": true,
+          "file_search_called": true,
+          "file_search_output_count": 1
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "consultar_faq",
+        "timing_ms": {
+          "total": 7087,
+          "load_plan": 9,
+          "prepare_working_plan": 0,
+          "extraction": 2320,
+          "apply_extraction": 2,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4720,
+          "save_plan": 35
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11769,
+            "output_tokens": 208,
+            "total_tokens": 11977,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 12256,
+            "output_tokens": 204,
+            "total_tokens": 12460,
+            "cached_input_tokens": 5248
+          },
+          "total": {
+            "input_tokens": 24025,
+            "output_tokens": 412,
+            "total_tokens": 24437,
+            "cached_input_tokens": 16256
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGK4TQYC59Z4A7G64K3CFZM",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "runtime_latency_ms": 7087,
+        "extraction_latency_ms": 2320,
+        "compose_latency_ms": 4720,
+        "tools_called_count": 1,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 24437,
+        "cached_input_tokens": 16256,
+        "cache_hit_rate": 0.6766285119667014,
+        "extraction_to_compose_ratio": 0.4915254237288136,
+        "captured_at": "2026-07-02T04:59:40.158Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.wedding.08-4e795d3c",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "consultar_faq",
+        "intent": "consultar_faq",
+        "intent_confidence": 0.88,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.7303467512807994,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_local_boda",
+                  "label": "local para boda",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para boda en Lima",
+                    "salón o espacio para 100 personas en Lima"
+                  ],
+                  "mustHave": [
+                    "capacidad para ~100 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7303467512807994,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              137
+            ],
+            "recommended_providers": [
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 94,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.7390689889421448,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_catering_boda",
+                  "label": "catering para boda",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering para boda en Lima para 100 personas",
+                    "menú para boda en Lima (100 invitados)"
+                  ],
+                  "mustHave": [
+                    "servicio para ~100 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  137,
+                  153
+                ],
+                "selected_provider_ids": [
+                  137
+                ],
+                "candidates": [
+                  {
+                    "id": 137,
+                    "title": "FCatering",
+                    "slug": "fcatering",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Vale de 300 Dólares",
+                    "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                    "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Propuestas gastronómicas personalizadas",
+                      "Montaje y servicio de alimentos",
+                      "Atención para eventos sociales y corporativos"
+                    ],
+                    "termsHighlights": [
+                      "Válido solo para clientes de Sin Envolturas.",
+                      "Válido únicamente en Lima.",
+                      "Beneficio no transferible ni acumulable.",
+                      "Válido de lunes a viernes en horario laboral.",
+                      "Aplica solo para anfitriones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7390689889421448,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 153,
+                    "title": "BAPO",
+                    "slug": "bapo",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                    "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                    "serviceHighlights": [
+                      "Servicios de catering",
+                      "Preguntar por paquetes"
+                    ],
+                    "termsHighlights": [
+                      "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "No acumulable con otros descuentos y/o promociones"
+                    ],
+                    "eventTypes": [],
+                    "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                    "fitScore": 93,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.679096842273038,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              142
+            ],
+            "recommended_providers": [
+              {
+                "id": 142,
+                "title": "Agalux Studio",
+                "slug": "agalux-studio",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                "websiteUrl": null,
+                "minPrice": "6000.00",
+                "maxPrice": null,
+                "promoBadge": "100 S/. Dscto",
+                "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                "serviceHighlights": [
+                  "Cobertura audiovisual para matrimonios",
+                  "Fotografía y/o video de bodas",
+                  "Paquetes personalizados según el tipo de evento",
+                  "Producción y edición del material final"
+                ],
+                "termsHighlights": [
+                  "Descuentos y beneficios no acumulables",
+                  "Beneficio transferible",
+                  "Válido en todo el Perú",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.8819427286646576,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_foto_video_boda",
+                  "label": "fotografía y video para boda",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotógrafo y video para boda en Lima",
+                    "paquete fotografía y video para 100 invitados Lima"
+                  ],
+                  "mustHave": [
+                    "cobertura de boda"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  142
+                ],
+                "selected_provider_ids": [
+                  142
+                ],
+                "candidates": [
+                  {
+                    "id": 142,
+                    "title": "Agalux Studio",
+                    "slug": "agalux-studio",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                    "websiteUrl": null,
+                    "minPrice": "6000.00",
+                    "maxPrice": null,
+                    "promoBadge": "100 S/. Dscto",
+                    "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                    "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                    "serviceHighlights": [
+                      "Cobertura audiovisual para matrimonios",
+                      "Fotografía y/o video de bodas",
+                      "Paquetes personalizados según el tipo de evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Descuentos y beneficios no acumulables",
+                      "Beneficio transferible",
+                      "Válido en todo el Perú",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8819427286646576,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              187
+            ],
+            "recommended_providers": [
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 89,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8399610522922828,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_musica_boda",
+                  "label": "música para boda",
+                  "category": "Música",
+                  "queryStrings": [
+                    "música para boda en Lima (DJ o banda)",
+                    "DJ para boda en Lima 100 personas"
+                  ],
+                  "mustHave": [],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  187
+                ],
+                "selected_provider_ids": [
+                  187
+                ],
+                "candidates": [
+                  {
+                    "id": 187,
+                    "title": "Dj Bufi",
+                    "slug": "dj-bufi",
+                    "category": "Música",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "20% off",
+                    "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                    "serviceHighlights": [
+                      "Asesoría personalizada en todo el proceso del evento",
+                      "DJ profesional para todo tipo de eventos.",
+                      "Sonido profesional para ceremonias, recepciones y fiestas.",
+                      "Iluminación ambiental y decorativa.",
+                      "Luces para pista de baile y efectos especiales.",
+                      "Musicalización personalizada según el estilo del evento."
+                    ],
+                    "termsHighlights": [
+                      "Valido solo para Lima. Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                    "fitScore": 89,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.8399610522922828,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7303467512807994,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El rango de invitados se infiere de '100 personas'.",
+          "Para una boda en Lima, las necesidades iniciales probables incluyen local, catering, fotografía y música."
+        ],
+        "conversation_summary": "El usuario pregunta por la política de comisiones de Sin Envolturas al contactar proveedores.",
+        "last_user_goal": "consultar_faq",
+        "open_questions": [],
+        "updated_at": "2026-07-02T04:59:35.401Z"
+      },
+      "latencyMs": 7640,
+      "rawTargetResponse": {
+        "message": "No, no cobra comisión por contactar proveedores. Crear tu cuenta en Sin Envolturas es gratis, y la comisión aplica a los regalos o a las transferencias de fondos, según cómo elijas configurarla\n\nAdemás, puedes elegir si la comisión la asumen tus invitados o tú como anfitrión; si la asumes tú, el invitado paga el monto exacto del regalo y luego se descuenta la comisión antes de transferir los fondos\n\nSi quieres, también te explico cómo funciona la comisión en regalos y transferencias con un ejemplo simple",
+        "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+        "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+        "current_node": "consultar_faq",
+        "trace": {
+          "trace_id": "01KWGK4TQYC59Z4A7G64K3CFZM",
+          "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+          "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+          "previous_node": "elicitacion_necesidades",
+          "next_node": "consultar_faq",
+          "node_path": [
+            "elicitacion_necesidades",
+            "existe_plan_guardado",
+            "consultar_faq"
+          ],
+          "intent": "consultar_faq",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "dcfc03857498",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/consultar_faq/system.txt",
+            "nodes/consultar_faq/response_contract.txt",
+            "nodes/consultar_faq/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "file_search"
+          ],
+          "tools_called": [
+            "file_search"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "file_search",
+              "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Sin Envolturas cobra comisión por contactar proveedores?\",\n    \"Sin Envolturas comisión por contactar proveedores\",\n    \"comisión contactar proveedores Sin Envolturas\"\n  ]\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "file_search",
+              "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7303467512807994,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7303467512807994,
+              "fit_score": 100
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": true,
+            "kb_query_present": true,
+            "file_search_called": true,
+            "file_search_output_count": 1
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              147
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "consultar_faq",
+          "timing_ms": {
+            "total": 7087,
+            "load_plan": 9,
+            "prepare_working_plan": 0,
+            "extraction": 2320,
+            "apply_extraction": 2,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4720,
+            "save_plan": 35
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11769,
+              "output_tokens": 208,
+              "total_tokens": 11977,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 12256,
+              "output_tokens": 204,
+              "total_tokens": 12460,
+              "cached_input_tokens": 5248
+            },
+            "total": {
+              "input_tokens": 24025,
+              "output_tokens": 412,
+              "total_tokens": 24437,
+              "cached_input_tokens": 16256
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGK42NHZNFAXV3309K474EW",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.wedding.08-4e795d3c",
+          "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "consultar_faq",
+          "intent": "consultar_faq",
+          "intent_confidence": 0.88,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.7303467512807994,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_local_boda",
+                    "label": "local para boda",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para boda en Lima",
+                      "salón o espacio para 100 personas en Lima"
+                    ],
+                    "mustHave": [
+                      "capacidad para ~100 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7303467512807994,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                137
+              ],
+              "recommended_providers": [
+                {
+                  "id": 137,
+                  "title": "FCatering",
+                  "slug": "fcatering",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Vale de 300 Dólares",
+                  "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                  "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Propuestas gastronómicas personalizadas",
+                    "Montaje y servicio de alimentos",
+                    "Atención para eventos sociales y corporativos"
+                  ],
+                  "termsHighlights": [
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "fitScore": 94,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.7390689889421448,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_catering_boda",
+                    "label": "catering para boda",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering para boda en Lima para 100 personas",
+                      "menú para boda en Lima (100 invitados)"
+                    ],
+                    "mustHave": [
+                      "servicio para ~100 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    137,
+                    153
+                  ],
+                  "selected_provider_ids": [
+                    137
+                  ],
+                  "candidates": [
+                    {
+                      "id": 137,
+                      "title": "FCatering",
+                      "slug": "fcatering",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "FCatering encaja con catering para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Vale de 300 Dólares",
+                      "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                      "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Propuestas gastronómicas personalizadas",
+                        "Montaje y servicio de alimentos",
+                        "Atención para eventos sociales y corporativos"
+                      ],
+                      "termsHighlights": [
+                        "Válido solo para clientes de Sin Envolturas.",
+                        "Válido únicamente en Lima.",
+                        "Beneficio no transferible ni acumulable.",
+                        "Válido de lunes a viernes en horario laboral.",
+                        "Aplica solo para anfitriones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7390689889421448,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 153,
+                      "title": "BAPO",
+                      "slug": "bapo",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                      "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                      "serviceHighlights": [
+                        "Servicios de catering",
+                        "Preguntar por paquetes"
+                      ],
+                      "termsHighlights": [
+                        "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "No acumulable con otros descuentos y/o promociones"
+                      ],
+                      "eventTypes": [],
+                      "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                      "fitScore": 93,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.679096842273038,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                142
+              ],
+              "recommended_providers": [
+                {
+                  "id": 142,
+                  "title": "Agalux Studio",
+                  "slug": "agalux-studio",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                  "websiteUrl": null,
+                  "minPrice": "6000.00",
+                  "maxPrice": null,
+                  "promoBadge": "100 S/. Dscto",
+                  "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                  "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                  "serviceHighlights": [
+                    "Cobertura audiovisual para matrimonios",
+                    "Fotografía y/o video de bodas",
+                    "Paquetes personalizados según el tipo de evento",
+                    "Producción y edición del material final"
+                  ],
+                  "termsHighlights": [
+                    "Descuentos y beneficios no acumulables",
+                    "Beneficio transferible",
+                    "Válido en todo el Perú",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.8819427286646576,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_foto_video_boda",
+                    "label": "fotografía y video para boda",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotógrafo y video para boda en Lima",
+                      "paquete fotografía y video para 100 invitados Lima"
+                    ],
+                    "mustHave": [
+                      "cobertura de boda"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    142
+                  ],
+                  "selected_provider_ids": [
+                    142
+                  ],
+                  "candidates": [
+                    {
+                      "id": 142,
+                      "title": "Agalux Studio",
+                      "slug": "agalux-studio",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Agalux Studio encaja con fotografía y video para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                      "websiteUrl": null,
+                      "minPrice": "6000.00",
+                      "maxPrice": null,
+                      "promoBadge": "100 S/. Dscto",
+                      "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                      "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                      "serviceHighlights": [
+                        "Cobertura audiovisual para matrimonios",
+                        "Fotografía y/o video de bodas",
+                        "Paquetes personalizados según el tipo de evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Descuentos y beneficios no acumulables",
+                        "Beneficio transferible",
+                        "Válido en todo el Perú",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8819427286646576,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                187
+              ],
+              "recommended_providers": [
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 89,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8399610522922828,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_musica_boda",
+                    "label": "música para boda",
+                    "category": "Música",
+                    "queryStrings": [
+                      "música para boda en Lima (DJ o banda)",
+                      "DJ para boda en Lima 100 personas"
+                    ],
+                    "mustHave": [],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    187
+                  ],
+                  "selected_provider_ids": [
+                    187
+                  ],
+                  "candidates": [
+                    {
+                      "id": 187,
+                      "title": "Dj Bufi",
+                      "slug": "dj-bufi",
+                      "category": "Música",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Dj Bufi encaja con música para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "20% off",
+                      "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                      "serviceHighlights": [
+                        "Asesoría personalizada en todo el proceso del evento",
+                        "DJ profesional para todo tipo de eventos.",
+                        "Sonido profesional para ceremonias, recepciones y fiestas.",
+                        "Iluminación ambiental y decorativa.",
+                        "Luces para pista de baile y efectos especiales.",
+                        "Musicalización personalizada según el estilo del evento."
+                      ],
+                      "termsHighlights": [
+                        "Valido solo para Lima. Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                      "fitScore": 89,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.8399610522922828,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7303467512807994,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El rango de invitados se infiere de '100 personas'.",
+            "Para una boda en Lima, las necesidades iniciales probables incluyen local, catering, fotografía y música."
+          ],
+          "conversation_summary": "El usuario pregunta por la política de comisiones de Sin Envolturas al contactar proveedores.",
+          "last_user_goal": "consultar_faq",
+          "open_questions": [],
+          "updated_at": "2026-07-02T04:59:35.401Z"
+        },
+        "perf": {
+          "trace_id": "01KWGK4TQYC59Z4A7G64K3CFZM",
+          "conversation_id": "conv_6a45f030e3b48196882674864e5bed480a1b88efcb9ca5b4",
+          "runtime_latency_ms": 7087,
+          "extraction_latency_ms": 2320,
+          "compose_latency_ms": 4720,
+          "tools_called_count": 1,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 24437,
+          "cached_input_tokens": 16256,
+          "cache_hit_rate": 0.6766285119667014,
+          "extraction_to_compose_ratio": 0.4915254237288136,
+          "captured_at": "2026-07-02T04:59:40.158Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T04:59:40.339Z",
+  "completedAt": "2026-07-02T04:59:40.341Z"
+}

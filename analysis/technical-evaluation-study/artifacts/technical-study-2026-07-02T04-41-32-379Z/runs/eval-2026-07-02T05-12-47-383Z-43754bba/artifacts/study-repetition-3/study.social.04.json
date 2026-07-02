@@ -1,0 +1,3078 @@
+{
+  "runId": "eval-2026-07-02T05-12-47-383Z-43754bba",
+  "caseId": "study.social.04",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 22536,
+  "totalToolCalls": 2,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"aniversario\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"Lima\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Catering:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T04-41-32-379Z/runs/eval-2026-07-02T05-12-47-383Z-43754bba/artifacts/study-repetition-3/study.social.04.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition recomendar->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 4 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 9 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 11268,
+    "p95_latency_ms": 12062,
+    "tool_calls_total": 2,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.34615384615384615,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 35059,
+    "cache_hit_rate": 0.8843095798219232
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco catering para aniversario en Lima para 25 personas."
+      },
+      "outputText": "Encontré 4 opciones de catering en Lima que encajan para tu aniversario y unas 25 personas\n\n1. FCatering\n Tiene enfoque en eventos y una propuesta sólida para una celebración como aniversario, con buena relación entre servicio y costo\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: Vale de 300 Dólares.\n Nota: Incluye vale de 300 dólares.\n\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\n2. BAPO\n Destaca por su cocina asiática y trae 10% de descuento, útil si buscas una propuesta distinta\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Suele ser una opción más específica por estilo de comida.\n\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\n3. 4Foodies\n Ofrece catering para eventos con una presentación cuidada y una propuesta pensada para experiencias memorables\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Precio más alto que otras alternativas.\n\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\n4. Galería Gourmand\n Apunta a una experiencia más gourmet, con foco en comida y presentación para eventos\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: La propuesta está muy orientada a eventos formales.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGMSHVQNBMFX076X12ACWX5",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Catering\",\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"slug\": \"4foodies\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/4foodies\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"slug\": \"fcatering\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/fcatering\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"Vale de 300 Dólares\",\n      \"promoSummary\": \"Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas\",\n      \"descriptionSnippet\": \"FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.\",\n      \"serviceHighlights\": [\n        \"Catering para eventos\",\n        \"Propuestas gastronómicas personalizadas\",\n        \"Montaje y servicio de alimentos\",\n        \"Atención para eventos sociales y corporativos\"\n      ],\n      \"termsHighlights\": [\n        \"Válido solo para clientes de Sin Envolturas.\",\n        \"Válido únicamente en Lima.\",\n        \"Beneficio no transferible ni acumulable.\",\n        \"Válido de lunes a viernes en horario laboral.\",\n        \"Aplica solo para anfitriones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8068118273152539,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    },\n    {\n      \"id\": 138,\n      \"title\": \"Galería Gourmand\",\n      \"slug\": \"galeria-gourmand\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/galeria-gourmand\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"slug\": \"bapo\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bapo\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.\",\n      \"descriptionSnippet\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.\",\n      \"serviceHighlights\": [\n        \"Servicios de catering\",\n        \"Preguntar por paquetes\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.\",\n        \"Válido solo para Lima Metropolitana o consultando disponibilidad\",\n        \"Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery\",\n        \"No acumulable con otros descuentos y/o promociones\"\n      ],\n      \"description\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.799785554062784,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8068118273152539,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.799785554062784,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 138,
+            "title": "Galería Gourmand",
+            "slug": "galeria-gourmand",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+            "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "serviceHighlights": [
+              "Catering gourmet para matrimonios civiles y eventos",
+              "Alquiler de menaje",
+              "Propuestas gastronómicas personalizadas",
+              "Servicio para eventos sociales"
+            ],
+            "termsHighlights": [
+              "Aplica para matrimonios civiles y alquiler de menaje.",
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "eventTypes": [],
+            "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 137,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8068118273152539,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 153,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.799785554062784,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 136,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 138,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            137,
+            153,
+            136,
+            138
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 10324,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 4720,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2613,
+          "provider_enrichment": 120,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2838,
+          "save_plan": 22
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11413,
+            "output_tokens": 456,
+            "total_tokens": 11869,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4607,
+            "output_tokens": 249,
+            "total_tokens": 4856,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 16020,
+            "output_tokens": 705,
+            "total_tokens": 16725,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGMSHVQNBMFX076X12ACWX5",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "runtime_latency_ms": 10324,
+        "extraction_latency_ms": 4720,
+        "compose_latency_ms": 2838,
+        "tools_called_count": 1,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16725,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.9108614232209737,
+        "extraction_to_compose_ratio": 1.6631430584918958,
+        "captured_at": "2026-07-02T05:28:27.767Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.social.04-ccf560e9",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.92,
+        "event_type": "aniversario",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              137,
+              153,
+              136,
+              138
+            ],
+            "recommended_providers": [
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8068118273152539,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 153,
+                "title": "BAPO",
+                "slug": "bapo",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                "serviceHighlights": [
+                  "Servicios de catering",
+                  "Preguntar por paquetes"
+                ],
+                "termsHighlights": [
+                  "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "No acumulable con otros descuentos y/o promociones"
+                ],
+                "eventTypes": [],
+                "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.799785554062784,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 136,
+                "title": "4Foodies",
+                "slug": "4foodies",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                "websiteUrl": "https://www.4foodies.pe",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Tablas de quesos",
+                  "Mesas gastronómicas",
+                  "Implementación y montaje de servicio",
+                  "Propuestas personalizadas según el evento"
+                ],
+                "termsHighlights": [
+                  "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "eventTypes": [],
+                "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 138,
+                "title": "Galería Gourmand",
+                "slug": "galeria-gourmand",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "serviceHighlights": [
+                  "Catering gourmet para matrimonios civiles y eventos",
+                  "Alquiler de menaje",
+                  "Propuestas gastronómicas personalizadas",
+                  "Servicio para eventos sociales"
+                ],
+                "termsHighlights": [
+                  "Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Los pedidos deben realizarse con 48 horas de anticipación."
+                ],
+                "eventTypes": [],
+                "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          137,
+          153,
+          136,
+          138
+        ],
+        "recommended_providers": [
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8068118273152539,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.799785554062784,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 138,
+            "title": "Galería Gourmand",
+            "slug": "galeria-gourmand",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+            "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "serviceHighlights": [
+              "Catering gourmet para matrimonios civiles y eventos",
+              "Alquiler de menaje",
+              "Propuestas gastronómicas personalizadas",
+              "Servicio para eventos sociales"
+            ],
+            "termsHighlights": [
+              "Aplica para matrimonios civiles y alquiler de menaje.",
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "eventTypes": [],
+            "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "25 personas implica un rango de 21-50 invitados."
+        ],
+        "conversation_summary": "Necesita catering para un aniversario en Lima para 25 personas.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T05:28:24.908Z"
+      },
+      "latencyMs": 10474,
+      "rawTargetResponse": {
+        "message": "Encontré 4 opciones de catering en Lima que encajan para tu aniversario y unas 25 personas\n\n1. FCatering\n Tiene enfoque en eventos y una propuesta sólida para una celebración como aniversario, con buena relación entre servicio y costo\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: Vale de 300 Dólares.\n Nota: Incluye vale de 300 dólares.\n\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\n2. BAPO\n Destaca por su cocina asiática y trae 10% de descuento, útil si buscas una propuesta distinta\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Suele ser una opción más específica por estilo de comida.\n\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\n3. 4Foodies\n Ofrece catering para eventos con una presentación cuidada y una propuesta pensada para experiencias memorables\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Precio más alto que otras alternativas.\n\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\n4. Galería Gourmand\n Apunta a una experiencia más gourmet, con foco en comida y presentación para eventos\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: La propuesta está muy orientada a eventos formales.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGMSHVQNBMFX076X12ACWX5",
+          "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+          "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Catering\",\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"slug\": \"4foodies\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/4foodies\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"slug\": \"fcatering\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/fcatering\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"Vale de 300 Dólares\",\n      \"promoSummary\": \"Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas\",\n      \"descriptionSnippet\": \"FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.\",\n      \"serviceHighlights\": [\n        \"Catering para eventos\",\n        \"Propuestas gastronómicas personalizadas\",\n        \"Montaje y servicio de alimentos\",\n        \"Atención para eventos sociales y corporativos\"\n      ],\n      \"termsHighlights\": [\n        \"Válido solo para clientes de Sin Envolturas.\",\n        \"Válido únicamente en Lima.\",\n        \"Beneficio no transferible ni acumulable.\",\n        \"Válido de lunes a viernes en horario laboral.\",\n        \"Aplica solo para anfitriones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8068118273152539,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    },\n    {\n      \"id\": 138,\n      \"title\": \"Galería Gourmand\",\n      \"slug\": \"galeria-gourmand\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/galeria-gourmand\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"slug\": \"bapo\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bapo\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.\",\n      \"descriptionSnippet\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.\",\n      \"serviceHighlights\": [\n        \"Servicios de catering\",\n        \"Preguntar por paquetes\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.\",\n        \"Válido solo para Lima Metropolitana o consultando disponibilidad\",\n        \"Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery\",\n        \"No acumulable con otros descuentos y/o promociones\"\n      ],\n      \"description\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.799785554062784,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8068118273152539,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.799785554062784,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 136,
+              "title": "4Foodies",
+              "slug": "4foodies",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+              "websiteUrl": "https://www.4foodies.pe",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+              "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Tablas de quesos",
+                "Mesas gastronómicas",
+                "Implementación y montaje de servicio",
+                "Propuestas personalizadas según el evento"
+              ],
+              "termsHighlights": [
+                "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                "Válido para Lima (previa validación de zona de cobertura)."
+              ],
+              "eventTypes": [],
+              "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 138,
+              "title": "Galería Gourmand",
+              "slug": "galeria-gourmand",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+              "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "serviceHighlights": [
+                "Catering gourmet para matrimonios civiles y eventos",
+                "Alquiler de menaje",
+                "Propuestas gastronómicas personalizadas",
+                "Servicio para eventos sociales"
+              ],
+              "termsHighlights": [
+                "Aplica para matrimonios civiles y alquiler de menaje.",
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Los pedidos deben realizarse con 48 horas de anticipación."
+              ],
+              "eventTypes": [],
+              "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 137,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8068118273152539,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 153,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.799785554062784,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 136,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 138,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 4,
+            "context_candidates": 4,
+            "context_candidate_ids": [
+              137,
+              153,
+              136,
+              138
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 10324,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 4720,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2613,
+            "provider_enrichment": 120,
+            "prompt_bundle_load": 0,
+            "compose_reply": 2838,
+            "save_plan": 22
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11413,
+              "output_tokens": 456,
+              "total_tokens": 11869,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4607,
+              "output_tokens": 249,
+              "total_tokens": 4856,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 16020,
+              "output_tokens": 705,
+              "total_tokens": 16725,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.social.04-ccf560e9",
+          "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.92,
+          "event_type": "aniversario",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                137,
+                153,
+                136,
+                138
+              ],
+              "recommended_providers": [
+                {
+                  "id": 137,
+                  "title": "FCatering",
+                  "slug": "fcatering",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Vale de 300 Dólares",
+                  "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                  "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Propuestas gastronómicas personalizadas",
+                    "Montaje y servicio de alimentos",
+                    "Atención para eventos sociales y corporativos"
+                  ],
+                  "termsHighlights": [
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8068118273152539,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 153,
+                  "title": "BAPO",
+                  "slug": "bapo",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                  "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                  "serviceHighlights": [
+                    "Servicios de catering",
+                    "Preguntar por paquetes"
+                  ],
+                  "termsHighlights": [
+                    "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                    "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                    "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                    "No acumulable con otros descuentos y/o promociones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.799785554062784,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 136,
+                  "title": "4Foodies",
+                  "slug": "4foodies",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                  "websiteUrl": "https://www.4foodies.pe",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                  "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Tablas de quesos",
+                    "Mesas gastronómicas",
+                    "Implementación y montaje de servicio",
+                    "Propuestas personalizadas según el evento"
+                  ],
+                  "termsHighlights": [
+                    "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                    "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                    "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                    "Válido para Lima (previa validación de zona de cobertura)."
+                  ],
+                  "eventTypes": [],
+                  "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 138,
+                  "title": "Galería Gourmand",
+                  "slug": "galeria-gourmand",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                  "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                  "serviceHighlights": [
+                    "Catering gourmet para matrimonios civiles y eventos",
+                    "Alquiler de menaje",
+                    "Propuestas gastronómicas personalizadas",
+                    "Servicio para eventos sociales"
+                  ],
+                  "termsHighlights": [
+                    "Aplica para matrimonios civiles y alquiler de menaje.",
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Los pedidos deben realizarse con 48 horas de anticipación."
+                  ],
+                  "eventTypes": [],
+                  "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            137,
+            153,
+            136,
+            138
+          ],
+          "recommended_providers": [
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8068118273152539,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.799785554062784,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 136,
+              "title": "4Foodies",
+              "slug": "4foodies",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+              "websiteUrl": "https://www.4foodies.pe",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+              "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Tablas de quesos",
+                "Mesas gastronómicas",
+                "Implementación y montaje de servicio",
+                "Propuestas personalizadas según el evento"
+              ],
+              "termsHighlights": [
+                "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                "Válido para Lima (previa validación de zona de cobertura)."
+              ],
+              "eventTypes": [],
+              "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 138,
+              "title": "Galería Gourmand",
+              "slug": "galeria-gourmand",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+              "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "serviceHighlights": [
+                "Catering gourmet para matrimonios civiles y eventos",
+                "Alquiler de menaje",
+                "Propuestas gastronómicas personalizadas",
+                "Servicio para eventos sociales"
+              ],
+              "termsHighlights": [
+                "Aplica para matrimonios civiles y alquiler de menaje.",
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Los pedidos deben realizarse con 48 horas de anticipación."
+              ],
+              "eventTypes": [],
+              "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "25 personas implica un rango de 21-50 invitados."
+          ],
+          "conversation_summary": "Necesita catering para un aniversario en Lima para 25 personas.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T05:28:24.908Z"
+        },
+        "perf": {
+          "trace_id": "01KWGMSHVQNBMFX076X12ACWX5",
+          "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+          "runtime_latency_ms": 10324,
+          "extraction_latency_ms": 4720,
+          "compose_latency_ms": 2838,
+          "tools_called_count": 1,
+          "provider_results_count": 4,
+          "recommendation_context_candidates": 4,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16725,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.9108614232209737,
+          "extraction_to_compose_ratio": 1.6631430584918958,
+          "captured_at": "2026-07-02T05:28:27.767Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Prefiero una cena íntima, moderna y con opciones sin gluten."
+      },
+      "outputText": "Ajusté la selección hacia catering con un estilo más íntimo y moderno, ideal para tu aniversario en Lima\n\n1. BAPO\n Su propuesta asiática y de presentaciones modernas encaja muy bien con una cena elegante y distinta\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Puede sentirse más marcado por su estilo gastronómico.\n\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\n2. 4Foodies\n Tiene una propuesta cuidada para eventos y puede adaptarse bien a un formato íntimo con buena presentación\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Conviene confirmar opciones del menú sin gluten.\n\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\n3. Galería Gourmand\n Es la opción más orientada a una experiencia gastronómica cuidada, útil si quieres algo más sofisticado\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: Su enfoque es más formal que casual.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand\n\n4. FCatering\n Mantiene una propuesta sólida para eventos y puede ser una alternativa equilibrada si buscas algo más accesible\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: Vale de 300 Dólares.\n Nota: Viene con un vale de 300 dólares.\n\n Ficha: https://sinenvolturas.com/proveedores/fcatering",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGMSXHKKVFM76KBW3RDSC8V",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Catering\",\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"slug\": \"4foodies\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/4foodies\",\n      \"websiteUrl\": \"https://www.4foodies.pe\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off\",\n      \"promoSummary\": \"10% de descuento en el servicio de catering para los clientes de Sin Envolturas\",\n      \"descriptionSnippet\": \"4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.\",\n      \"serviceHighlights\": [\n        \"Catering para eventos\",\n        \"Tablas de quesos\",\n        \"Mesas gastronómicas\",\n        \"Implementación y montaje de servicio\",\n        \"Propuestas personalizadas según el evento\"\n      ],\n      \"termsHighlights\": [\n        \"El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.\",\n        \"El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).\",\n        \"En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.\",\n        \"Válido para Lima (previa validación de zona de cobertura).\"\n      ],\n      \"description\": \"4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8375525715049239,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"slug\": \"fcatering\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/fcatering\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 138,\n      \"title\": \"Galería Gourmand\",\n      \"slug\": \"galeria-gourmand\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/galeria-gourmand\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"slug\": \"bapo\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bapo\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.\",\n      \"descriptionSnippet\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.\",\n      \"serviceHighlights\": [\n        \"Servicios de catering\",\n        \"Preguntar por paquetes\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.\",\n        \"Válido solo para Lima Metropolitana o consultando disponibilidad\",\n        \"Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery\",\n        \"No acumulable con otros descuentos y/o promociones\"\n      ],\n      \"description\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8360270467376015,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8375525715049239,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8360270467376015,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 138,
+            "title": "Galería Gourmand",
+            "slug": "galeria-gourmand",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+            "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "serviceHighlights": [
+              "Catering gourmet para matrimonios civiles y eventos",
+              "Alquiler de menaje",
+              "Propuestas gastronómicas personalizadas",
+              "Servicio para eventos sociales"
+            ],
+            "termsHighlights": [
+              "Aplica para matrimonios civiles y alquiler de menaje.",
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "eventTypes": [],
+            "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 136,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8375525715049239,
+            "fit_score": 81
+          },
+          {
+            "provider_id": 153,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8360270467376015,
+            "fit_score": 81
+          },
+          {
+            "provider_id": 137,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 138,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            136,
+            153,
+            137,
+            138
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 11185,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 4922,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 3219,
+          "provider_enrichment": 80,
+          "prompt_bundle_load": 0,
+          "compose_reply": 2924,
+          "save_plan": 25
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11540,
+            "output_tokens": 521,
+            "total_tokens": 12061,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6021,
+            "output_tokens": 252,
+            "total_tokens": 6273,
+            "cached_input_tokens": 4096
+          },
+          "total": {
+            "input_tokens": 17561,
+            "output_tokens": 773,
+            "total_tokens": 18334,
+            "cached_input_tokens": 15104
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGMSXHKKVFM76KBW3RDSC8V",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "runtime_latency_ms": 11185,
+        "extraction_latency_ms": 4922,
+        "compose_latency_ms": 2924,
+        "tools_called_count": 1,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18334,
+        "cached_input_tokens": 15104,
+        "cache_hit_rate": 0.8600876943226468,
+        "extraction_to_compose_ratio": 1.683310533515732,
+        "captured_at": "2026-07-02T05:28:39.731Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.social.04-ccf560e9",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.85,
+        "event_type": "aniversario",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "preferences": [
+          "cena íntima",
+          "moderna",
+          "opciones sin gluten"
+        ],
+        "hard_constraints": [
+          "opciones sin gluten"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [
+              "cena íntima",
+              "moderna",
+              "opciones sin gluten"
+            ],
+            "hard_constraints": [
+              "opciones sin gluten"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              136,
+              153,
+              137,
+              138
+            ],
+            "recommended_providers": [
+              {
+                "id": 136,
+                "title": "4Foodies",
+                "slug": "4foodies",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                "websiteUrl": "https://www.4foodies.pe",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Tablas de quesos",
+                  "Mesas gastronómicas",
+                  "Implementación y montaje de servicio",
+                  "Propuestas personalizadas según el evento"
+                ],
+                "termsHighlights": [
+                  "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "eventTypes": [],
+                "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8375525715049239,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 153,
+                "title": "BAPO",
+                "slug": "bapo",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                "serviceHighlights": [
+                  "Servicios de catering",
+                  "Preguntar por paquetes"
+                ],
+                "termsHighlights": [
+                  "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "No acumulable con otros descuentos y/o promociones"
+                ],
+                "eventTypes": [],
+                "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8360270467376015,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 138,
+                "title": "Galería Gourmand",
+                "slug": "galeria-gourmand",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "serviceHighlights": [
+                  "Catering gourmet para matrimonios civiles y eventos",
+                  "Alquiler de menaje",
+                  "Propuestas gastronómicas personalizadas",
+                  "Servicio para eventos sociales"
+                ],
+                "termsHighlights": [
+                  "Aplica para matrimonios civiles y alquiler de menaje.",
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Los pedidos deben realizarse con 48 horas de anticipación."
+                ],
+                "eventTypes": [],
+                "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          136,
+          153,
+          137,
+          138
+        ],
+        "recommended_providers": [
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8375525715049239,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8360270467376015,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 138,
+            "title": "Galería Gourmand",
+            "slug": "galeria-gourmand",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+            "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "serviceHighlights": [
+              "Catering gourmet para matrimonios civiles y eventos",
+              "Alquiler de menaje",
+              "Propuestas gastronómicas personalizadas",
+              "Servicio para eventos sociales"
+            ],
+            "termsHighlights": [
+              "Aplica para matrimonios civiles y alquiler de menaje.",
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Los pedidos deben realizarse con 48 horas de anticipación."
+            ],
+            "eventTypes": [],
+            "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "25 personas implica un rango de 21-50 invitados."
+        ],
+        "conversation_summary": "Aniversario en Lima (21-50). Foco actual: catering para una cena íntima, moderna y con opciones sin gluten.",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T05:28:36.787Z"
+      },
+      "latencyMs": 12062,
+      "rawTargetResponse": {
+        "message": "Ajusté la selección hacia catering con un estilo más íntimo y moderno, ideal para tu aniversario en Lima\n\n1. BAPO\n Su propuesta asiática y de presentaciones modernas encaja muy bien con una cena elegante y distinta\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Puede sentirse más marcado por su estilo gastronómico.\n\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\n2. 4Foodies\n Tiene una propuesta cuidada para eventos y puede adaptarse bien a un formato íntimo con buena presentación\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Conviene confirmar opciones del menú sin gluten.\n\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\n3. Galería Gourmand\n Es la opción más orientada a una experiencia gastronómica cuidada, útil si quieres algo más sofisticado\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% Off.\n Nota: Su enfoque es más formal que casual.\n\n Ficha: https://sinenvolturas.com/proveedores/galeria-gourmand\n\n4. FCatering\n Mantiene una propuesta sólida para eventos y puede ser una alternativa equilibrada si buscas algo más accesible\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: Vale de 300 Dólares.\n Nota: Viene con un vale de 300 dólares.\n\n Ficha: https://sinenvolturas.com/proveedores/fcatering",
+        "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+        "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGMSXHKKVFM76KBW3RDSC8V",
+          "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+          "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+          "previous_node": "recomendar",
+          "next_node": "recomendar",
+          "node_path": [
+            "recomendar",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Catering\",\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"slug\": \"4foodies\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/4foodies\",\n      \"websiteUrl\": \"https://www.4foodies.pe\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off\",\n      \"promoSummary\": \"10% de descuento en el servicio de catering para los clientes de Sin Envolturas\",\n      \"descriptionSnippet\": \"4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.\",\n      \"serviceHighlights\": [\n        \"Catering para eventos\",\n        \"Tablas de quesos\",\n        \"Mesas gastronómicas\",\n        \"Implementación y montaje de servicio\",\n        \"Propuestas personalizadas según el evento\"\n      ],\n      \"termsHighlights\": [\n        \"El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.\",\n        \"El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).\",\n        \"En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.\",\n        \"Válido para Lima (previa validación de zona de cobertura).\"\n      ],\n      \"description\": \"4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8375525715049239,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"slug\": \"fcatering\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/fcatering\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 138,\n      \"title\": \"Galería Gourmand\",\n      \"slug\": \"galeria-gourmand\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/galeria-gourmand\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"slug\": \"bapo\",\n      \"category\": \"Catering\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bapo\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.\",\n      \"descriptionSnippet\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.\",\n      \"serviceHighlights\": [\n        \"Servicios de catering\",\n        \"Preguntar por paquetes\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.\",\n        \"Válido solo para Lima Metropolitana o consultando disponibilidad\",\n        \"Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery\",\n        \"No acumulable con otros descuentos y/o promociones\"\n      ],\n      \"description\": \"Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8360270467376015,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Catering, opera en Lima, Perú\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 136,
+              "title": "4Foodies",
+              "slug": "4foodies",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+              "websiteUrl": "https://www.4foodies.pe",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+              "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Tablas de quesos",
+                "Mesas gastronómicas",
+                "Implementación y montaje de servicio",
+                "Propuestas personalizadas según el evento"
+              ],
+              "termsHighlights": [
+                "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                "Válido para Lima (previa validación de zona de cobertura)."
+              ],
+              "eventTypes": [],
+              "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8375525715049239,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8360270467376015,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 138,
+              "title": "Galería Gourmand",
+              "slug": "galeria-gourmand",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+              "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "serviceHighlights": [
+                "Catering gourmet para matrimonios civiles y eventos",
+                "Alquiler de menaje",
+                "Propuestas gastronómicas personalizadas",
+                "Servicio para eventos sociales"
+              ],
+              "termsHighlights": [
+                "Aplica para matrimonios civiles y alquiler de menaje.",
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Los pedidos deben realizarse con 48 horas de anticipación."
+              ],
+              "eventTypes": [],
+              "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 136,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8375525715049239,
+              "fit_score": 81
+            },
+            {
+              "provider_id": 153,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8360270467376015,
+              "fit_score": 81
+            },
+            {
+              "provider_id": 137,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 138,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 4,
+            "context_candidates": 4,
+            "context_candidate_ids": [
+              136,
+              153,
+              137,
+              138
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 11185,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 4922,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 3219,
+            "provider_enrichment": 80,
+            "prompt_bundle_load": 0,
+            "compose_reply": 2924,
+            "save_plan": 25
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11540,
+              "output_tokens": 521,
+              "total_tokens": 12061,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6021,
+              "output_tokens": 252,
+              "total_tokens": 6273,
+              "cached_input_tokens": 4096
+            },
+            "total": {
+              "input_tokens": 17561,
+              "output_tokens": 773,
+              "total_tokens": 18334,
+              "cached_input_tokens": 15104
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGMS7S9RVGERBV4NETFTH9W",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.social.04-ccf560e9",
+          "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.85,
+          "event_type": "aniversario",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "preferences": [
+            "cena íntima",
+            "moderna",
+            "opciones sin gluten"
+          ],
+          "hard_constraints": [
+            "opciones sin gluten"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [
+                "cena íntima",
+                "moderna",
+                "opciones sin gluten"
+              ],
+              "hard_constraints": [
+                "opciones sin gluten"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                136,
+                153,
+                137,
+                138
+              ],
+              "recommended_providers": [
+                {
+                  "id": 136,
+                  "title": "4Foodies",
+                  "slug": "4foodies",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                  "websiteUrl": "https://www.4foodies.pe",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                  "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Tablas de quesos",
+                    "Mesas gastronómicas",
+                    "Implementación y montaje de servicio",
+                    "Propuestas personalizadas según el evento"
+                  ],
+                  "termsHighlights": [
+                    "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                    "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                    "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                    "Válido para Lima (previa validación de zona de cobertura)."
+                  ],
+                  "eventTypes": [],
+                  "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "fitScore": 81,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8375525715049239,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 153,
+                  "title": "BAPO",
+                  "slug": "bapo",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                  "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                  "serviceHighlights": [
+                    "Servicios de catering",
+                    "Preguntar por paquetes"
+                  ],
+                  "termsHighlights": [
+                    "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                    "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                    "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                    "No acumulable con otros descuentos y/o promociones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "fitScore": 81,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8360270467376015,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 137,
+                  "title": "FCatering",
+                  "slug": "fcatering",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Vale de 300 Dólares",
+                  "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                  "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Propuestas gastronómicas personalizadas",
+                    "Montaje y servicio de alimentos",
+                    "Atención para eventos sociales y corporativos"
+                  ],
+                  "termsHighlights": [
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 138,
+                  "title": "Galería Gourmand",
+                  "slug": "galeria-gourmand",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                  "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                  "serviceHighlights": [
+                    "Catering gourmet para matrimonios civiles y eventos",
+                    "Alquiler de menaje",
+                    "Propuestas gastronómicas personalizadas",
+                    "Servicio para eventos sociales"
+                  ],
+                  "termsHighlights": [
+                    "Aplica para matrimonios civiles y alquiler de menaje.",
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Los pedidos deben realizarse con 48 horas de anticipación."
+                  ],
+                  "eventTypes": [],
+                  "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            136,
+            153,
+            137,
+            138
+          ],
+          "recommended_providers": [
+            {
+              "id": 136,
+              "title": "4Foodies",
+              "slug": "4foodies",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "4Foodies encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+              "websiteUrl": "https://www.4foodies.pe",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+              "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Tablas de quesos",
+                "Mesas gastronómicas",
+                "Implementación y montaje de servicio",
+                "Propuestas personalizadas según el evento"
+              ],
+              "termsHighlights": [
+                "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                "Válido para Lima (previa validación de zona de cobertura)."
+              ],
+              "eventTypes": [],
+              "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8375525715049239,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8360270467376015,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 138,
+              "title": "Galería Gourmand",
+              "slug": "galeria-gourmand",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Galería Gourmand encaja con catering según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+              "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "serviceHighlights": [
+                "Catering gourmet para matrimonios civiles y eventos",
+                "Alquiler de menaje",
+                "Propuestas gastronómicas personalizadas",
+                "Servicio para eventos sociales"
+              ],
+              "termsHighlights": [
+                "Aplica para matrimonios civiles y alquiler de menaje.",
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Los pedidos deben realizarse con 48 horas de anticipación."
+              ],
+              "eventTypes": [],
+              "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "25 personas implica un rango de 21-50 invitados."
+          ],
+          "conversation_summary": "Aniversario en Lima (21-50). Foco actual: catering para una cena íntima, moderna y con opciones sin gluten.",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T05:28:36.787Z"
+        },
+        "perf": {
+          "trace_id": "01KWGMSXHKKVFM76KBW3RDSC8V",
+          "conversation_id": "conv_6a45f6f8f89c8194bfc6910fc220ab3606fec5a91bb222fd",
+          "runtime_latency_ms": 11185,
+          "extraction_latency_ms": 4922,
+          "compose_latency_ms": 2924,
+          "tools_called_count": 1,
+          "provider_results_count": 4,
+          "recommendation_context_candidates": 4,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18334,
+          "cached_input_tokens": 15104,
+          "cache_hit_rate": 0.8600876943226468,
+          "extraction_to_compose_ratio": 1.683310533515732,
+          "captured_at": "2026-07-02T05:28:39.731Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T05:28:39.860Z",
+  "completedAt": "2026-07-02T05:28:39.860Z"
+}

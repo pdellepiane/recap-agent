@@ -1,0 +1,1160 @@
+{
+  "runId": "eval-2026-07-02T04-41-32-469Z-1e5950f4",
+  "caseId": "study.baby_shower.08",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 19455,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades",
+    "elicitacion_necesidades->consultar_faq"
+  ],
+  "planDiffSummary": [
+    "current_node=\"consultar_faq\"",
+    "intent=\"consultar_faq\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "provider_needs=Locales:search_ready, Catering:identified, Bebés:identified, Florería y papelería:identified, Fotografía y video:identified"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T04-41-32-379Z/runs/eval-2026-07-02T04-41-32-469Z-1e5950f4/artifacts/study-repetition-1/study.baby_shower.08.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition elicitacion_necesidades->consultar_faq."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 7 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 9727.5,
+    "p95_latency_ms": 10870,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 0.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.19230769230769232,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 41224,
+    "cache_hit_rate": 0.7793047696038804
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Estoy organizando un baby shower."
+      },
+      "outputText": "Claro, te ayudo con eso.\n\nDetecté estas partes del baby shower para empezar: Locales, Catering, Bebés, Florería y papelería, Fotografía y video y Hogar y deco.\n\nComo todavía no hay opciones encontradas, te sugiero empezar por Catering o por Locales, según qué quieras resolver primero.\n\nMe faltan solo la ubicación y una señal de presupuesto o cantidad aproximada de invitados para avanzar mejor.\n\nSi quieres, podemos arrancar por Catering y luego seguimos con el resto del plan",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGJKP4VBE578GAVH722BSYV",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [
+          "location",
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 10638,
+          "load_plan": 6,
+          "prepare_working_plan": 1,
+          "extraction": 8304,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2301,
+          "save_plan": 17
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11410,
+            "output_tokens": 1126,
+            "total_tokens": 12536,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5486,
+            "output_tokens": 123,
+            "total_tokens": 5609,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 16896,
+            "output_tokens": 1249,
+            "total_tokens": 18145,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGJKP4VBE578GAVH722BSYV",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "runtime_latency_ms": 10638,
+        "extraction_latency_ms": 8304,
+        "compose_latency_ms": 2301,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18145,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8636363636363636,
+        "extraction_to_compose_ratio": 3.6088657105606257,
+        "captured_at": "2026-07-02T04:50:18.395Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.08-41fa484c",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.82,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "location",
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Bebés",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El evento mencionado (baby shower) se asocia a necesidades típicas: local/venue, catering, fotografía/video, música y decoración/hogar."
+        ],
+        "conversation_summary": "El usuario indica que está organizando un baby shower. No hay ciudad, presupuesto, rango de invitados ni proveedores seleccionados todavía.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T04:50:16.074Z"
+      },
+      "latencyMs": 10870,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso.\n\nDetecté estas partes del baby shower para empezar: Locales, Catering, Bebés, Florería y papelería, Fotografía y video y Hogar y deco.\n\nComo todavía no hay opciones encontradas, te sugiero empezar por Catering o por Locales, según qué quieras resolver primero.\n\nMe faltan solo la ubicación y una señal de presupuesto o cantidad aproximada de invitados para avanzar mejor.\n\nSi quieres, podemos arrancar por Catering y luego seguimos con el resto del plan",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGJKP4VBE578GAVH722BSYV",
+          "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+          "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [
+            "location",
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 10638,
+            "load_plan": 6,
+            "prepare_working_plan": 1,
+            "extraction": 8304,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2301,
+            "save_plan": 17
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11410,
+              "output_tokens": 1126,
+              "total_tokens": 12536,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5486,
+              "output_tokens": 123,
+              "total_tokens": 5609,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 16896,
+              "output_tokens": 1249,
+              "total_tokens": 18145,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.08-41fa484c",
+          "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.82,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "location",
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Bebés",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El evento mencionado (baby shower) se asocia a necesidades típicas: local/venue, catering, fotografía/video, música y decoración/hogar."
+          ],
+          "conversation_summary": "El usuario indica que está organizando un baby shower. No hay ciudad, presupuesto, rango de invitados ni proveedores seleccionados todavía.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T04:50:16.074Z"
+        },
+        "perf": {
+          "trace_id": "01KWGJKP4VBE578GAVH722BSYV",
+          "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+          "runtime_latency_ms": 10638,
+          "extraction_latency_ms": 8304,
+          "compose_latency_ms": 2301,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18145,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8636363636363636,
+          "extraction_to_compose_ratio": 3.6088657105606257,
+          "captured_at": "2026-07-02T04:50:18.395Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "¿Sin Envolturas ofrece lista de regalos?"
+      },
+      "outputText": "Sí, claro. En Sin Envolturas puedes crear una lista de regalos para tu evento y personalizarla con los regalos que quieras incluir\n\nArmarla es fácil: te registras, eliges el tipo de evento, completas los datos generales, ajustas la configuración y agregas los regalos a tu lista\n\nSi quieres, también te puedo contar cómo funciona el dinero de los regalos o cómo empezar tu lista paso a paso",
+      "currentNode": "consultar_faq",
+      "trace": {
+        "trace_id": "01KWGJKYHJDTYYCFNAF0H50EPN",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+        "previous_node": "elicitacion_necesidades",
+        "next_node": "consultar_faq",
+        "node_path": [
+          "elicitacion_necesidades",
+          "existe_plan_guardado",
+          "consultar_faq"
+        ],
+        "intent": "consultar_faq",
+        "missing_fields": [
+          "location",
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "dcfc03857498",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/consultar_faq/system.txt",
+          "nodes/consultar_faq/response_contract.txt",
+          "nodes/consultar_faq/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "file_search"
+        ],
+        "tools_called": [
+          "file_search"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "file_search",
+            "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Sin Envolturas ofrece lista de regalos?\",\n    \"Sin Envolturas lista de regalos\",\n    \"creación de lista de regalos Sin Envolturas\"\n  ]\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "file_search",
+            "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": true,
+          "kb_query_present": true,
+          "file_search_called": true,
+          "file_search_output_count": 1
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "consultar_faq",
+        "timing_ms": {
+          "total": 8059,
+          "load_plan": 6,
+          "prepare_working_plan": 1,
+          "extraction": 2407,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 5632,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11668,
+            "output_tokens": 212,
+            "total_tokens": 11880,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 11020,
+            "output_tokens": 179,
+            "total_tokens": 11199,
+            "cached_input_tokens": 5248
+          },
+          "total": {
+            "input_tokens": 22688,
+            "output_tokens": 391,
+            "total_tokens": 23079,
+            "cached_input_tokens": 16256
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGJKYHJDTYYCFNAF0H50EPN",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "runtime_latency_ms": 8059,
+        "extraction_latency_ms": 2407,
+        "compose_latency_ms": 5632,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 23079,
+        "cached_input_tokens": 16256,
+        "cache_hit_rate": 0.7165021156558533,
+        "extraction_to_compose_ratio": 0.42737926136363635,
+        "captured_at": "2026-07-02T04:50:26.994Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.08-41fa484c",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "consultar_faq",
+        "intent": "consultar_faq",
+        "intent_confidence": 0.9,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "location",
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Bebés",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Florería y papelería",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El evento mencionado (baby shower) se asocia a necesidades típicas: local/venue, catering, fotografía/video, música y decoración/hogar."
+        ],
+        "conversation_summary": "El usuario pregunta si Sin Envolturas ofrece lista de regalos; no hay cambios en el plan del baby shower.",
+        "last_user_goal": "consultar_faq",
+        "open_questions": [],
+        "updated_at": "2026-07-02T04:50:21.350Z"
+      },
+      "latencyMs": 8585,
+      "rawTargetResponse": {
+        "message": "Sí, claro. En Sin Envolturas puedes crear una lista de regalos para tu evento y personalizarla con los regalos que quieras incluir\n\nArmarla es fácil: te registras, eliges el tipo de evento, completas los datos generales, ajustas la configuración y agregas los regalos a tu lista\n\nSi quieres, también te puedo contar cómo funciona el dinero de los regalos o cómo empezar tu lista paso a paso",
+        "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+        "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+        "current_node": "consultar_faq",
+        "trace": {
+          "trace_id": "01KWGJKYHJDTYYCFNAF0H50EPN",
+          "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+          "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+          "previous_node": "elicitacion_necesidades",
+          "next_node": "consultar_faq",
+          "node_path": [
+            "elicitacion_necesidades",
+            "existe_plan_guardado",
+            "consultar_faq"
+          ],
+          "intent": "consultar_faq",
+          "missing_fields": [
+            "location",
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "dcfc03857498",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/consultar_faq/system.txt",
+            "nodes/consultar_faq/response_contract.txt",
+            "nodes/consultar_faq/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "file_search"
+          ],
+          "tools_called": [
+            "file_search"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "file_search",
+              "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Sin Envolturas ofrece lista de regalos?\",\n    \"Sin Envolturas lista de regalos\",\n    \"creación de lista de regalos Sin Envolturas\"\n  ]\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "file_search",
+              "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": true,
+            "kb_query_present": true,
+            "file_search_called": true,
+            "file_search_output_count": 1
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "consultar_faq",
+          "timing_ms": {
+            "total": 8059,
+            "load_plan": 6,
+            "prepare_working_plan": 1,
+            "extraction": 2407,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 5632,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11668,
+              "output_tokens": 212,
+              "total_tokens": 11880,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 11020,
+              "output_tokens": 179,
+              "total_tokens": 11199,
+              "cached_input_tokens": 5248
+            },
+            "total": {
+              "input_tokens": 22688,
+              "output_tokens": 391,
+              "total_tokens": 23079,
+              "cached_input_tokens": 16256
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGJKBRJNFA3H0RDABRXG2WR",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.08-41fa484c",
+          "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "consultar_faq",
+          "intent": "consultar_faq",
+          "intent_confidence": 0.9,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "location",
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Bebés",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Florería y papelería",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El evento mencionado (baby shower) se asocia a necesidades típicas: local/venue, catering, fotografía/video, música y decoración/hogar."
+          ],
+          "conversation_summary": "El usuario pregunta si Sin Envolturas ofrece lista de regalos; no hay cambios en el plan del baby shower.",
+          "last_user_goal": "consultar_faq",
+          "open_questions": [],
+          "updated_at": "2026-07-02T04:50:21.350Z"
+        },
+        "perf": {
+          "trace_id": "01KWGJKYHJDTYYCFNAF0H50EPN",
+          "conversation_id": "conv_6a45ee0827d08197a51ac95f92a2f4130d2e1a8e59ff1c0d",
+          "runtime_latency_ms": 8059,
+          "extraction_latency_ms": 2407,
+          "compose_latency_ms": 5632,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 23079,
+          "cached_input_tokens": 16256,
+          "cache_hit_rate": 0.7165021156558533,
+          "extraction_to_compose_ratio": 0.42737926136363635,
+          "captured_at": "2026-07-02T04:50:26.994Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T04:50:27.104Z",
+  "completedAt": "2026-07-02T04:50:27.104Z"
+}

@@ -1,0 +1,2243 @@
+{
+  "runId": "eval-2026-07-02T04-56-59-923Z-1fb3f808",
+  "caseId": "study.social.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.5833333333333334,
+  "totalLatencyMs": 18266,
+  "totalToolCalls": 4,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"elicitar_necesidades\"",
+    "event_type=\"quinceanos\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"medio-alto\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Locales:shortlisted, Fotografía y video:shortlisted, Música:shortlisted, Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T04-41-32-379Z/runs/eval-2026-07-02T04-56-59-923Z-1fb3f808/artifacts/study-repetition-2/study.social.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 4 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-2",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-3",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.5833333333333334,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 12 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 18266,
+    "p95_latency_ms": 18266,
+    "tool_calls_total": 4,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.5714285714285714,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 19144,
+    "cache_hit_rate": 0.8289496108617849
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo un quinceaños en Lima para 120 personas. Necesito local, fotografía, música y decoración, presupuesto medio-alto."
+      },
+      "outputText": "Busqué proveedores en Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que pediste para tu quinceaños en Lima\n\nLocales\nPara el local, encontré una opción de espacio para eventos que encaja con un quinceaños para 120 personas y queda alineada con un presupuesto medio-alto\n1. Casa Club 147 - local/espacio para eventos (Perú · $$$ · promo: 10% Off Alquiler local)\n Es un espacio para eventos pensado para celebraciones y su perfil encaja con el tipo de evento y el tamaño que mencionaste\n Limitación: Está ubicado en Cieneguilla y su señal de precio es alta, así que conviene revisar si te calza por ubicación y presupuesto.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nFotografía y video\nPara foto y video, encontré una propuesta integral pensada para cubrir el evento completo\n1. Uriel Santisteban Photography & Film - fotografía y video para quinceaños (Lima, Perú · $$$$ · promo: 5% Off)\n Su ficha indica cobertura de fotografía y video para eventos y encaja con un quinceaños\n Limitación: La señal de precio es muy alta, así que conviene tenerlo en cuenta al comparar.\n Ficha: https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\n\nMúsica\nPara la música, la opción encontrada apunta a DJ para eventos con sonido e iluminación\n1. Dj Freddy Bobadilla - música para quinceaños (Perú · $$$ · promo: 10% Off)\n Encaja con la animación musical de un quinceaños y además suma iluminación y sonido\n Limitación: La señal de precio es alta, por lo que vale la pena revisarla contra tu presupuesto.\n Ficha: https://sinenvolturas.com/proveedores/dj-freddy-bobadilla\n\nHogar y deco\nPara decoración, encontré una alternativa de ambientación y productos personalizados que puede complementar bien la fiesta\n1. M'APPELLE - decoración de quinceaños (Perú · $$ · promo: 10% off)\n Su propuesta puede servir para detalles decorativos y ambientación del evento\n Limitación: Su foco principal es madera y productos personalizados, así que encaja mejor como decoración complementaria.\n Ficha: https://sinenvolturas.com/proveedores/mappelle\n\nPodemos revisar frente por frente para confirmar, cambiar o quitar opciones. Si quieres, empezamos por el local",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGKRF0AKKAVJQEWF9HVSMJ4",
+        "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+        "plan_id": "01KWGKQXAAQVRHC6GFZMTXNHTF",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local/espacio para eventos\",\n  \"queryStrings\": [\n    \"local para quinceaños\",\n    \"salón para quinceaños\",\n    \"espacio para eventos 120 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotografía y video para quinceaños\",\n  \"queryStrings\": [\n    \"fotógrafo para quinceaños\",\n    \"fotografía quinceaños 120 personas\",\n    \"video para quinceaños\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música para quinceaños\",\n  \"queryStrings\": [\n    \"DJ para quinceaños\",\n    \"banda para quinceaños\",\n    \"música en vivo para quinceaños\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración de quinceaños\",\n  \"queryStrings\": [\n    \"decoración para quinceaños\",\n    \"decoración salón quinceaños\",\n    \"ambientación quinceaños\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"local/espacio para eventos\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6956498189329637\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"fotografía y video para quinceaños\",\n  \"providers\": [\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.744507022569817\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"decoración de quinceaños\",\n  \"providers\": [\n    {\n      \"id\": 8,\n      \"title\": \"M'APPELLE\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.541462078146901\n    },\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5241881434433907\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"música para quinceaños\",\n  \"providers\": [\n    {\n      \"id\": 119,\n      \"title\": \"Dj Siles\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.690658866130882\n    },\n    {\n      \"id\": 120,\n      \"title\": \"Dj Freddy Bobadilla\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.6908097404500616\n    },\n    {\n      \"id\": 174,\n      \"title\": \"Dj pulga\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.5925529601260907\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.6956498189329637,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 133,
+            "title": "Uriel Santisteban Photography & Film",
+            "slug": "uriel-santisteban-photography-film",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Uriel Santisteban Photography & Film encaja con fotografía y video para quinceaños según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+            "websiteUrl": "https://www.urielsantisteban.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% Off",
+            "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+            "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+            "serviceHighlights": [
+              "Fotografía para matrimonios",
+              "Video de bodas",
+              "Paquetes combinados de fotografía + video",
+              "Cobertura integral del evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Ambos servicios deben pertenecer a la misma categoría",
+              "Para más información, consultar paquetes disponibles con el proveedor",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.744507022569817,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 120,
+            "title": "Dj Freddy Bobadilla",
+            "slug": "dj-freddy-bobadilla",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Freddy Bobadilla encaja con música para quinceaños según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+            "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Iluminación para celebraciones",
+              "Sonido profesional",
+              "Musicalización adaptada al tipo de evento"
+            ],
+            "termsHighlights": [
+              "Beneficio válido en servicio de DJ, luces y sonido",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.6908097404500616,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 8,
+            "title": "M'APPELLE",
+            "slug": "mappelle",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "M'APPELLE encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+            "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+            "serviceHighlights": [
+              "Diseño y elaboración de productos personalizados en madera",
+              "Grabado láser de nombres, frases, fotografías y diseños especiales",
+              "Creación de regalos personalizados para fechas especiales",
+              "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+              "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+            "fitScore": 78,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.541462078146901,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6956498189329637,
+            "fit_score": 94
+          },
+          {
+            "provider_id": 133,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.744507022569817,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 120,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6908097404500616,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 8,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.541462078146901,
+            "fit_score": 78
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            147,
+            133,
+            120,
+            8
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 18118,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 10648,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 11134,
+          "provider_enrichment": 293,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4078,
+          "save_plan": 28
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11428,
+            "output_tokens": 1054,
+            "total_tokens": 12482,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6175,
+            "output_tokens": 487,
+            "total_tokens": 6662,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17603,
+            "output_tokens": 1541,
+            "total_tokens": 19144,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGKRF0AKKAVJQEWF9HVSMJ4",
+        "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+        "runtime_latency_ms": 18118,
+        "extraction_latency_ms": 10648,
+        "compose_latency_ms": 4078,
+        "tools_called_count": 4,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 19144,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8289496108617849,
+        "extraction_to_compose_ratio": 2.611083864639529,
+        "captured_at": "2026-07-02T05:10:23.498Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGKQXAAQVRHC6GFZMTXNHTF",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.social.03-dd5c3d24",
+        "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.9,
+        "event_type": "quinceanos",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "medio-alto",
+        "guest_range": "101-200",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "capacidad para 120 personas"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 94,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.6956498189329637,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_local_venue",
+                  "label": "local/espacio para eventos",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para quinceaños",
+                    "salón para quinceaños",
+                    "espacio para eventos 120 personas"
+                  ],
+                  "mustHave": [
+                    "capacidad para 120 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.6956498189329637,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              133
+            ],
+            "recommended_providers": [
+              {
+                "id": 133,
+                "title": "Uriel Santisteban Photography & Film",
+                "slug": "uriel-santisteban-photography-film",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "Uriel Santisteban Photography & Film encaja con fotografía y video para quinceaños según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                "websiteUrl": "https://www.urielsantisteban.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "5% Off",
+                "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                "serviceHighlights": [
+                  "Fotografía para matrimonios",
+                  "Video de bodas",
+                  "Paquetes combinados de fotografía + video",
+                  "Cobertura integral del evento",
+                  "Producción y edición del material final"
+                ],
+                "termsHighlights": [
+                  "Ambos servicios deben pertenecer a la misma categoría",
+                  "Para más información, consultar paquetes disponibles con el proveedor",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.744507022569817,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_foto_video_quince",
+                  "label": "fotografía y video para quinceaños",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotógrafo para quinceaños",
+                    "fotografía quinceaños 120 personas",
+                    "video para quinceaños"
+                  ],
+                  "mustHave": [],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  133
+                ],
+                "selected_provider_ids": [
+                  133
+                ],
+                "candidates": [
+                  {
+                    "id": 133,
+                    "title": "Uriel Santisteban Photography & Film",
+                    "slug": "uriel-santisteban-photography-film",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Uriel Santisteban Photography & Film encaja con fotografía y video para quinceaños según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                    "websiteUrl": "https://www.urielsantisteban.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% Off",
+                    "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                    "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                    "serviceHighlights": [
+                      "Fotografía para matrimonios",
+                      "Video de bodas",
+                      "Paquetes combinados de fotografía + video",
+                      "Cobertura integral del evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Ambos servicios deben pertenecer a la misma categoría",
+                      "Para más información, consultar paquetes disponibles con el proveedor",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                    "fitScore": 80,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.744507022569817,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              120
+            ],
+            "recommended_providers": [
+              {
+                "id": 120,
+                "title": "Dj Freddy Bobadilla",
+                "slug": "dj-freddy-bobadilla",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Freddy Bobadilla encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                "serviceHighlights": [
+                  "Servicio de DJ para eventos",
+                  "Iluminación para celebraciones",
+                  "Sonido profesional",
+                  "Musicalización adaptada al tipo de evento"
+                ],
+                "termsHighlights": [
+                  "Beneficio válido en servicio de DJ, luces y sonido",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.6908097404500616,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_musica_quince",
+                  "label": "música para quinceaños",
+                  "category": "Música",
+                  "queryStrings": [
+                    "DJ para quinceaños",
+                    "banda para quinceaños",
+                    "música en vivo para quinceaños"
+                  ],
+                  "mustHave": [],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  120,
+                  119,
+                  174
+                ],
+                "selected_provider_ids": [
+                  120
+                ],
+                "candidates": [
+                  {
+                    "id": 120,
+                    "title": "Dj Freddy Bobadilla",
+                    "slug": "dj-freddy-bobadilla",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Dj Freddy Bobadilla encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                    "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                    "serviceHighlights": [
+                      "Servicio de DJ para eventos",
+                      "Iluminación para celebraciones",
+                      "Sonido profesional",
+                      "Musicalización adaptada al tipo de evento"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio válido en servicio de DJ, luces y sonido",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                    "fitScore": 80,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.6908097404500616,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 119,
+                    "title": "Dj Siles",
+                    "slug": "dj-siles",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Dj Siles encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "15% Off",
+                    "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+                    "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                    "serviceHighlights": [
+                      "Servicio de DJ para eventos",
+                      "Alquiler de equipos de sonido",
+                      "Iluminación para eventos",
+                      "Musicalización personalizada según el tipo de celebración"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio válido para servicios de DJ, sonido e iluminación",
+                      "Para más información, consultar términos y condiciones con el proveedor",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                    "fitScore": 80,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.690658866130882,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 174,
+                    "title": "Dj pulga",
+                    "slug": "dj-pulga",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Dj pulga encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+                    "websiteUrl": null,
+                    "minPrice": "3000.00",
+                    "maxPrice": null,
+                    "promoBadge": "35% off",
+                    "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+                    "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+                    "serviceHighlights": [
+                      "Servicio de DJ para eventos",
+                      "Musicalización personalizada según el tipo de celebración",
+                      "Música para fiestas, reuniones y eventos corporativos",
+                      "Asesoría en la selección musical"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio exclusivo para clientes de Sin Envolturas",
+                      "No transferible ni acumulable con otras promociones",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+                    "fitScore": 79,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.5925529601260907,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              8
+            ],
+            "recommended_providers": [
+              {
+                "id": 8,
+                "title": "M'APPELLE",
+                "slug": "mappelle",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "M'APPELLE encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                "serviceHighlights": [
+                  "Diseño y elaboración de productos personalizados en madera",
+                  "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                  "Creación de regalos personalizados para fechas especiales",
+                  "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                  "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                ],
+                "termsHighlights": [
+                  "Preguntar por términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                "fitScore": 78,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.541462078146901,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_deco_quince",
+                  "label": "decoración de quinceaños",
+                  "category": "Hogar y deco",
+                  "queryStrings": [
+                    "decoración para quinceaños",
+                    "decoración salón quinceaños",
+                    "ambientación quinceaños"
+                  ],
+                  "mustHave": [],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  8,
+                  77
+                ],
+                "selected_provider_ids": [
+                  8
+                ],
+                "candidates": [
+                  {
+                    "id": 8,
+                    "title": "M'APPELLE",
+                    "slug": "mappelle",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "M'APPELLE encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                    "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                    "serviceHighlights": [
+                      "Diseño y elaboración de productos personalizados en madera",
+                      "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                      "Creación de regalos personalizados para fechas especiales",
+                      "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                      "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                    ],
+                    "termsHighlights": [
+                      "Preguntar por términos y condiciones"
+                    ],
+                    "eventTypes": [],
+                    "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                    "fitScore": 78,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.541462078146901,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 77,
+                    "title": "AE MAISON",
+                    "slug": "ae-maison",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "AE MAISON encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                    "websiteUrl": "https://www.aemaison.pe/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% off",
+                    "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                    "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                    "serviceHighlights": [
+                      "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                      "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                      "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                    ],
+                    "termsHighlights": [
+                      "Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                    "fitScore": 78,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.5241881434433907,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.6956498189329637,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "Decoración interpretada como necesidad de Hogar y deco (decoración/diseño del espacio)."
+        ],
+        "conversation_summary": "Quinceaños en Lima para 120 personas. Requiere local, fotografía, música y decoración; presupuesto medio-alto. No se ha elegido proveedor aún.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T05:10:19.391Z"
+      },
+      "latencyMs": 18266,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores en Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que pediste para tu quinceaños en Lima\n\nLocales\nPara el local, encontré una opción de espacio para eventos que encaja con un quinceaños para 120 personas y queda alineada con un presupuesto medio-alto\n1. Casa Club 147 - local/espacio para eventos (Perú · $$$ · promo: 10% Off Alquiler local)\n Es un espacio para eventos pensado para celebraciones y su perfil encaja con el tipo de evento y el tamaño que mencionaste\n Limitación: Está ubicado en Cieneguilla y su señal de precio es alta, así que conviene revisar si te calza por ubicación y presupuesto.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nFotografía y video\nPara foto y video, encontré una propuesta integral pensada para cubrir el evento completo\n1. Uriel Santisteban Photography & Film - fotografía y video para quinceaños (Lima, Perú · $$$$ · promo: 5% Off)\n Su ficha indica cobertura de fotografía y video para eventos y encaja con un quinceaños\n Limitación: La señal de precio es muy alta, así que conviene tenerlo en cuenta al comparar.\n Ficha: https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\n\nMúsica\nPara la música, la opción encontrada apunta a DJ para eventos con sonido e iluminación\n1. Dj Freddy Bobadilla - música para quinceaños (Perú · $$$ · promo: 10% Off)\n Encaja con la animación musical de un quinceaños y además suma iluminación y sonido\n Limitación: La señal de precio es alta, por lo que vale la pena revisarla contra tu presupuesto.\n Ficha: https://sinenvolturas.com/proveedores/dj-freddy-bobadilla\n\nHogar y deco\nPara decoración, encontré una alternativa de ambientación y productos personalizados que puede complementar bien la fiesta\n1. M'APPELLE - decoración de quinceaños (Perú · $$ · promo: 10% off)\n Su propuesta puede servir para detalles decorativos y ambientación del evento\n Limitación: Su foco principal es madera y productos personalizados, así que encaja mejor como decoración complementaria.\n Ficha: https://sinenvolturas.com/proveedores/mappelle\n\nPodemos revisar frente por frente para confirmar, cambiar o quitar opciones. Si quieres, empezamos por el local",
+        "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+        "plan_id": "01KWGKQXAAQVRHC6GFZMTXNHTF",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGKRF0AKKAVJQEWF9HVSMJ4",
+          "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+          "plan_id": "01KWGKQXAAQVRHC6GFZMTXNHTF",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local/espacio para eventos\",\n  \"queryStrings\": [\n    \"local para quinceaños\",\n    \"salón para quinceaños\",\n    \"espacio para eventos 120 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotografía y video para quinceaños\",\n  \"queryStrings\": [\n    \"fotógrafo para quinceaños\",\n    \"fotografía quinceaños 120 personas\",\n    \"video para quinceaños\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música para quinceaños\",\n  \"queryStrings\": [\n    \"DJ para quinceaños\",\n    \"banda para quinceaños\",\n    \"música en vivo para quinceaños\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración de quinceaños\",\n  \"queryStrings\": [\n    \"decoración para quinceaños\",\n    \"decoración salón quinceaños\",\n    \"ambientación quinceaños\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"local/espacio para eventos\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6956498189329637\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"fotografía y video para quinceaños\",\n  \"providers\": [\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.744507022569817\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"decoración de quinceaños\",\n  \"providers\": [\n    {\n      \"id\": 8,\n      \"title\": \"M'APPELLE\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.541462078146901\n    },\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5241881434433907\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"música para quinceaños\",\n  \"providers\": [\n    {\n      \"id\": 119,\n      \"title\": \"Dj Siles\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.690658866130882\n    },\n    {\n      \"id\": 120,\n      \"title\": \"Dj Freddy Bobadilla\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.6908097404500616\n    },\n    {\n      \"id\": 174,\n      \"title\": \"Dj pulga\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.5925529601260907\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 94,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.6956498189329637,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 133,
+              "title": "Uriel Santisteban Photography & Film",
+              "slug": "uriel-santisteban-photography-film",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Uriel Santisteban Photography & Film encaja con fotografía y video para quinceaños según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+              "websiteUrl": "https://www.urielsantisteban.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% Off",
+              "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+              "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+              "serviceHighlights": [
+                "Fotografía para matrimonios",
+                "Video de bodas",
+                "Paquetes combinados de fotografía + video",
+                "Cobertura integral del evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Ambos servicios deben pertenecer a la misma categoría",
+                "Para más información, consultar paquetes disponibles con el proveedor",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.744507022569817,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 120,
+              "title": "Dj Freddy Bobadilla",
+              "slug": "dj-freddy-bobadilla",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Freddy Bobadilla encaja con música para quinceaños según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+              "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Iluminación para celebraciones",
+                "Sonido profesional",
+                "Musicalización adaptada al tipo de evento"
+              ],
+              "termsHighlights": [
+                "Beneficio válido en servicio de DJ, luces y sonido",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.6908097404500616,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 8,
+              "title": "M'APPELLE",
+              "slug": "mappelle",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "M'APPELLE encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+              "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+              "serviceHighlights": [
+                "Diseño y elaboración de productos personalizados en madera",
+                "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                "Creación de regalos personalizados para fechas especiales",
+                "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+              ],
+              "termsHighlights": [
+                "Preguntar por términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+              "fitScore": 78,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.541462078146901,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6956498189329637,
+              "fit_score": 94
+            },
+            {
+              "provider_id": 133,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.744507022569817,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 120,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6908097404500616,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 8,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.541462078146901,
+              "fit_score": 78
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 4,
+            "context_candidates": 4,
+            "context_candidate_ids": [
+              147,
+              133,
+              120,
+              8
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 18118,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 10648,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 11134,
+            "provider_enrichment": 293,
+            "prompt_bundle_load": 0,
+            "compose_reply": 4078,
+            "save_plan": 28
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11428,
+              "output_tokens": 1054,
+              "total_tokens": 12482,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6175,
+              "output_tokens": 487,
+              "total_tokens": 6662,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17603,
+              "output_tokens": 1541,
+              "total_tokens": 19144,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGKQXAAQVRHC6GFZMTXNHTF",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.social.03-dd5c3d24",
+          "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.9,
+          "event_type": "quinceanos",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "medio-alto",
+          "guest_range": "101-200",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "capacidad para 120 personas"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 94,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.6956498189329637,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_local_venue",
+                    "label": "local/espacio para eventos",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para quinceaños",
+                      "salón para quinceaños",
+                      "espacio para eventos 120 personas"
+                    ],
+                    "mustHave": [
+                      "capacidad para 120 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.6956498189329637,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                133
+              ],
+              "recommended_providers": [
+                {
+                  "id": 133,
+                  "title": "Uriel Santisteban Photography & Film",
+                  "slug": "uriel-santisteban-photography-film",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "Uriel Santisteban Photography & Film encaja con fotografía y video para quinceaños según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                  "websiteUrl": "https://www.urielsantisteban.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "5% Off",
+                  "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                  "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                  "serviceHighlights": [
+                    "Fotografía para matrimonios",
+                    "Video de bodas",
+                    "Paquetes combinados de fotografía + video",
+                    "Cobertura integral del evento",
+                    "Producción y edición del material final"
+                  ],
+                  "termsHighlights": [
+                    "Ambos servicios deben pertenecer a la misma categoría",
+                    "Para más información, consultar paquetes disponibles con el proveedor",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.744507022569817,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_foto_video_quince",
+                    "label": "fotografía y video para quinceaños",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotógrafo para quinceaños",
+                      "fotografía quinceaños 120 personas",
+                      "video para quinceaños"
+                    ],
+                    "mustHave": [],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    133
+                  ],
+                  "selected_provider_ids": [
+                    133
+                  ],
+                  "candidates": [
+                    {
+                      "id": 133,
+                      "title": "Uriel Santisteban Photography & Film",
+                      "slug": "uriel-santisteban-photography-film",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Uriel Santisteban Photography & Film encaja con fotografía y video para quinceaños según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                      "websiteUrl": "https://www.urielsantisteban.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% Off",
+                      "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                      "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                      "serviceHighlights": [
+                        "Fotografía para matrimonios",
+                        "Video de bodas",
+                        "Paquetes combinados de fotografía + video",
+                        "Cobertura integral del evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Ambos servicios deben pertenecer a la misma categoría",
+                        "Para más información, consultar paquetes disponibles con el proveedor",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                      "fitScore": 80,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.744507022569817,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                120
+              ],
+              "recommended_providers": [
+                {
+                  "id": 120,
+                  "title": "Dj Freddy Bobadilla",
+                  "slug": "dj-freddy-bobadilla",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Freddy Bobadilla encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                  "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                  "serviceHighlights": [
+                    "Servicio de DJ para eventos",
+                    "Iluminación para celebraciones",
+                    "Sonido profesional",
+                    "Musicalización adaptada al tipo de evento"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio válido en servicio de DJ, luces y sonido",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.6908097404500616,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_musica_quince",
+                    "label": "música para quinceaños",
+                    "category": "Música",
+                    "queryStrings": [
+                      "DJ para quinceaños",
+                      "banda para quinceaños",
+                      "música en vivo para quinceaños"
+                    ],
+                    "mustHave": [],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    120,
+                    119,
+                    174
+                  ],
+                  "selected_provider_ids": [
+                    120
+                  ],
+                  "candidates": [
+                    {
+                      "id": 120,
+                      "title": "Dj Freddy Bobadilla",
+                      "slug": "dj-freddy-bobadilla",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Dj Freddy Bobadilla encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                      "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                      "serviceHighlights": [
+                        "Servicio de DJ para eventos",
+                        "Iluminación para celebraciones",
+                        "Sonido profesional",
+                        "Musicalización adaptada al tipo de evento"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio válido en servicio de DJ, luces y sonido",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                      "fitScore": 80,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.6908097404500616,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 119,
+                      "title": "Dj Siles",
+                      "slug": "dj-siles",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Dj Siles encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "15% Off",
+                      "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+                      "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                      "serviceHighlights": [
+                        "Servicio de DJ para eventos",
+                        "Alquiler de equipos de sonido",
+                        "Iluminación para eventos",
+                        "Musicalización personalizada según el tipo de celebración"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio válido para servicios de DJ, sonido e iluminación",
+                        "Para más información, consultar términos y condiciones con el proveedor",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                      "fitScore": 80,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.690658866130882,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 174,
+                      "title": "Dj pulga",
+                      "slug": "dj-pulga",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Dj pulga encaja con música para quinceaños según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+                      "websiteUrl": null,
+                      "minPrice": "3000.00",
+                      "maxPrice": null,
+                      "promoBadge": "35% off",
+                      "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+                      "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+                      "serviceHighlights": [
+                        "Servicio de DJ para eventos",
+                        "Musicalización personalizada según el tipo de celebración",
+                        "Música para fiestas, reuniones y eventos corporativos",
+                        "Asesoría en la selección musical"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio exclusivo para clientes de Sin Envolturas",
+                        "No transferible ni acumulable con otras promociones",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+                      "fitScore": 79,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.5925529601260907,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                8
+              ],
+              "recommended_providers": [
+                {
+                  "id": 8,
+                  "title": "M'APPELLE",
+                  "slug": "mappelle",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "M'APPELLE encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                  "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                  "serviceHighlights": [
+                    "Diseño y elaboración de productos personalizados en madera",
+                    "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                    "Creación de regalos personalizados para fechas especiales",
+                    "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                    "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                  ],
+                  "termsHighlights": [
+                    "Preguntar por términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                  "fitScore": 78,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.541462078146901,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_deco_quince",
+                    "label": "decoración de quinceaños",
+                    "category": "Hogar y deco",
+                    "queryStrings": [
+                      "decoración para quinceaños",
+                      "decoración salón quinceaños",
+                      "ambientación quinceaños"
+                    ],
+                    "mustHave": [],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    8,
+                    77
+                  ],
+                  "selected_provider_ids": [
+                    8
+                  ],
+                  "candidates": [
+                    {
+                      "id": 8,
+                      "title": "M'APPELLE",
+                      "slug": "mappelle",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "M'APPELLE encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                      "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                      "serviceHighlights": [
+                        "Diseño y elaboración de productos personalizados en madera",
+                        "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                        "Creación de regalos personalizados para fechas especiales",
+                        "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                        "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                      ],
+                      "termsHighlights": [
+                        "Preguntar por términos y condiciones"
+                      ],
+                      "eventTypes": [],
+                      "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                      "fitScore": 78,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.541462078146901,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 77,
+                      "title": "AE MAISON",
+                      "slug": "ae-maison",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "AE MAISON encaja con decoración de quinceaños según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                      "websiteUrl": "https://www.aemaison.pe/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% off",
+                      "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                      "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                      "serviceHighlights": [
+                        "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                        "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                        "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                      ],
+                      "termsHighlights": [
+                        "Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                      "fitScore": 78,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.5241881434433907,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local/espacio para eventos según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 94,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.6956498189329637,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "Decoración interpretada como necesidad de Hogar y deco (decoración/diseño del espacio)."
+          ],
+          "conversation_summary": "Quinceaños en Lima para 120 personas. Requiere local, fotografía, música y decoración; presupuesto medio-alto. No se ha elegido proveedor aún.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T05:10:19.391Z"
+        },
+        "perf": {
+          "trace_id": "01KWGKRF0AKKAVJQEWF9HVSMJ4",
+          "conversation_id": "conv_6a45f2bb75b481968f14b80fdaa119f50de1df2a74fba510",
+          "runtime_latency_ms": 18118,
+          "extraction_latency_ms": 10648,
+          "compose_latency_ms": 4078,
+          "tools_called_count": 4,
+          "provider_results_count": 4,
+          "recommendation_context_candidates": 4,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 19144,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8289496108617849,
+          "extraction_to_compose_ratio": 2.611083864639529,
+          "captured_at": "2026-07-02T05:10:23.498Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T05:10:23.528Z",
+  "completedAt": "2026-07-02T05:10:23.528Z"
+}

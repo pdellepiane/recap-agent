@@ -1,0 +1,1101 @@
+{
+  "runId": "eval-2026-07-02T04-41-32-469Z-1e5950f4",
+  "caseId": "study.wedding.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.625,
+  "totalLatencyMs": 13814,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"muy bajo\"",
+    "guest_range=\"201+\"",
+    "provider_needs=Locales:no_providers_available, Catering:no_providers_available, Fotografía y video:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T04-41-32-379Z/runs/eval-2026-07-02T04-41-32-469Z-1e5950f4/artifacts/study-repetition-1/study.wedding.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->aclarar_pedir_faltante, *->informar_error_reintento."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.625,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 13814,
+    "p95_latency_ms": 13814,
+    "tool_calls_total": 3,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 17804,
+    "cache_hit_rate": 0.6588066311568616
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco un local submarino para boda en Lima, 500 invitados, presupuesto muy bajo y disponible mañana."
+      },
+      "outputText": "Entendí que buscas una boda en Lima con un local submarino para 500 invitados, presupuesto muy bajo y para mañana\n\nPor ahora no hay proveedores disponibles para Locales, Catering ni Fotografía y video en lo que revisamos\n\nPodemos empezar por el local y, si quieres, ajustar también Catering y Fotografía y video para ver qué sí encaja con tu evento\n\nSi prefieres, te ayudo a cambiar el tipo de local o a afinar el presupuesto para abrir más opciones",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGJ9K06JJYCNKYGKYFQA43A",
+        "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+        "plan_id": "01KWGJ962WGZV9D4B1VY8YANBT",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local submarino en Lima\",\n  \"queryStrings\": [\n    \"local submarino para boda en Lima\",\n    \"venue submarino para boda Lima\",\n    \"salón submarino para eventos en Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering económico para evento grande\",\n  \"queryStrings\": [\n    \"catering económico para 500 personas en Lima\",\n    \"catering muy bajo presupuesto boda 500 Lima\",\n    \"menú económico para boda Lima 500\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotografía y video para boda en Lima (500)\",\n  \"queryStrings\": [\n    \"fotografía y video boda en Lima 500 invitados\",\n    \"servicio de foto video boda Lima\",\n    \"fotógrafo y videógrafo para boda Lima 500\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"fotografía y video para boda en Lima (500)\",\n  \"providers\": [\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.9140213750238293\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"local submarino en Lima\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.5458342411720079\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"catering económico para evento grande\",\n  \"providers\": [\n    {\n      \"id\": 130,\n      \"title\": \"Erika Fernandez Bodas & Eventos\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8094445721540455\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 13231,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 7818,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 7727,
+          "provider_enrichment": 221,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2627,
+          "save_plan": 28
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11424,
+            "output_tokens": 977,
+            "total_tokens": 12401,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5285,
+            "output_tokens": 118,
+            "total_tokens": 5403,
+            "cached_input_tokens": 0
+          },
+          "total": {
+            "input_tokens": 16709,
+            "output_tokens": 1095,
+            "total_tokens": 17804,
+            "cached_input_tokens": 11008
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGJ9K06JJYCNKYGKYFQA43A",
+        "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+        "runtime_latency_ms": 13231,
+        "extraction_latency_ms": 7818,
+        "compose_latency_ms": 2627,
+        "tools_called_count": 3,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17804,
+        "cached_input_tokens": 11008,
+        "cache_hit_rate": 0.6588066311568616,
+        "extraction_to_compose_ratio": 2.9760182717929196,
+        "captured_at": "2026-07-02T04:44:47.494Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGJ962WGZV9D4B1VY8YANBT",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.wedding.09-e8f00efc",
+        "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "muy bajo",
+        "guest_range": "201+",
+        "preferences": [
+          "local submarino"
+        ],
+        "hard_constraints": [
+          "disponible mañana",
+          "boda",
+          "local submarino",
+          "muy bajo presupuesto",
+          "500 invitados"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "no_providers_available",
+            "preferences": [
+              "local submarino"
+            ],
+            "hard_constraints": [
+              "disponible mañana",
+              "capacidad para 500 invitados",
+              "boda"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "local_submarino_boda_lima",
+                  "label": "local submarino en Lima",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local submarino para boda en Lima",
+                    "venue submarino para boda Lima",
+                    "salón submarino para eventos en Lima"
+                  ],
+                  "mustHave": [
+                    "local submarino",
+                    "boda",
+                    "Lima",
+                    "disponible mañana",
+                    "capacidad para 500 invitados"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 puede servir para local submarino en Lima, pero precio medio-alto para un presupuesto muy ajustado.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 96,
+                    "fitWarnings": [
+                      "Precio medio-alto para un presupuesto muy ajustado."
+                    ],
+                    "fitTags": [
+                      "budget_risk",
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.5458342411720079,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": "No encontramos un match fuerte para local submarino en Lima."
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "no_providers_available",
+            "preferences": [],
+            "hard_constraints": [
+              "presupuesto muy bajo",
+              "500 invitados"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "catering_low_budget_para_evento",
+                  "label": "catering económico para evento grande",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering económico para 500 personas en Lima",
+                    "catering muy bajo presupuesto boda 500 Lima",
+                    "menú económico para boda Lima 500"
+                  ],
+                  "mustHave": [
+                    "presupuesto muy bajo",
+                    "500 invitados",
+                    "boda",
+                    "Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  130
+                ],
+                "selected_provider_ids": [],
+                "candidates": [
+                  {
+                    "id": 130,
+                    "title": "Erika Fernandez Bodas & Eventos",
+                    "slug": "erika-fernandez-bodas-eventos",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Erika Fernandez Bodas & Eventos puede servir para catering económico para evento grande, pero precio medio-alto para un presupuesto muy ajustado.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/erika-fernandez-bodas-eventos",
+                    "websiteUrl": "https://erikafernandez.pe/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Vale de S/. 500 de descuento",
+                    "promoSummary": "Vale de S/.500 de descuento en servicio de catering.",
+                    "descriptionSnippet": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+                    "serviceHighlights": [
+                      "Catering para matrimonios y eventos",
+                      "Planificación y coordinación de eventos",
+                      "Diseño de propuestas personalizadas",
+                      "Montaje y servicio integral"
+                    ],
+                    "termsHighlights": [
+                      "Válido únicamente para novios de Sin Envolturas.",
+                      "Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+                      "Válido para nuevos contratos.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+                    "fitScore": 100,
+                    "fitWarnings": [
+                      "Precio medio-alto para un presupuesto muy ajustado."
+                    ],
+                    "fitTags": [
+                      "budget_risk",
+                      "event_match",
+                      "need_match",
+                      "preference_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8094445721540455,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": "No encontramos un match fuerte para catering económico para evento grande."
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "no_providers_available",
+            "preferences": [],
+            "hard_constraints": [
+              "boda",
+              "500 invitados"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "foto_video_boda_lima_500",
+                  "label": "fotografía y video para boda en Lima (500)",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotografía y video boda en Lima 500 invitados",
+                    "servicio de foto video boda Lima",
+                    "fotógrafo y videógrafo para boda Lima 500"
+                  ],
+                  "mustHave": [
+                    "boda",
+                    "Lima",
+                    "500 invitados"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  133
+                ],
+                "selected_provider_ids": [],
+                "candidates": [
+                  {
+                    "id": 133,
+                    "title": "Uriel Santisteban Photography & Film",
+                    "slug": "uriel-santisteban-photography-film",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Uriel Santisteban Photography & Film puede servir para fotografía y video para boda en Lima (500), pero precio muy alto para el presupuesto indicado.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                    "websiteUrl": "https://www.urielsantisteban.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% Off",
+                    "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                    "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                    "serviceHighlights": [
+                      "Fotografía para matrimonios",
+                      "Video de bodas",
+                      "Paquetes combinados de fotografía + video",
+                      "Cobertura integral del evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Ambos servicios deben pertenecer a la misma categoría",
+                      "Para más información, consultar paquetes disponibles con el proveedor",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                    "fitScore": 74,
+                    "fitWarnings": [
+                      "Precio muy alto para el presupuesto indicado."
+                    ],
+                    "fitTags": [
+                      "budget_risk",
+                      "event_match",
+                      "need_match",
+                      "preference_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.9140213750238293,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": "No encontramos un match fuerte para fotografía y video para boda en Lima (500)."
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Búsqueda de local submarino para una boda en Lima, para 500 invitados, con presupuesto muy bajo y disponibilidad para mañana. Frente activo: Locales.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T04:44:44.840Z"
+      },
+      "latencyMs": 13814,
+      "rawTargetResponse": {
+        "message": "Entendí que buscas una boda en Lima con un local submarino para 500 invitados, presupuesto muy bajo y para mañana\n\nPor ahora no hay proveedores disponibles para Locales, Catering ni Fotografía y video en lo que revisamos\n\nPodemos empezar por el local y, si quieres, ajustar también Catering y Fotografía y video para ver qué sí encaja con tu evento\n\nSi prefieres, te ayudo a cambiar el tipo de local o a afinar el presupuesto para abrir más opciones",
+        "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+        "plan_id": "01KWGJ962WGZV9D4B1VY8YANBT",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGJ9K06JJYCNKYGKYFQA43A",
+          "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+          "plan_id": "01KWGJ962WGZV9D4B1VY8YANBT",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local submarino en Lima\",\n  \"queryStrings\": [\n    \"local submarino para boda en Lima\",\n    \"venue submarino para boda Lima\",\n    \"salón submarino para eventos en Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering económico para evento grande\",\n  \"queryStrings\": [\n    \"catering económico para 500 personas en Lima\",\n    \"catering muy bajo presupuesto boda 500 Lima\",\n    \"menú económico para boda Lima 500\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotografía y video para boda en Lima (500)\",\n  \"queryStrings\": [\n    \"fotografía y video boda en Lima 500 invitados\",\n    \"servicio de foto video boda Lima\",\n    \"fotógrafo y videógrafo para boda Lima 500\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"fotografía y video para boda en Lima (500)\",\n  \"providers\": [\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.9140213750238293\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"local submarino en Lima\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.5458342411720079\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"catering económico para evento grande\",\n  \"providers\": [\n    {\n      \"id\": 130,\n      \"title\": \"Erika Fernandez Bodas & Eventos\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8094445721540455\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 13231,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 7818,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 7727,
+            "provider_enrichment": 221,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2627,
+            "save_plan": 28
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11424,
+              "output_tokens": 977,
+              "total_tokens": 12401,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5285,
+              "output_tokens": 118,
+              "total_tokens": 5403,
+              "cached_input_tokens": 0
+            },
+            "total": {
+              "input_tokens": 16709,
+              "output_tokens": 1095,
+              "total_tokens": 17804,
+              "cached_input_tokens": 11008
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGJ962WGZV9D4B1VY8YANBT",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.wedding.09-e8f00efc",
+          "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "muy bajo",
+          "guest_range": "201+",
+          "preferences": [
+            "local submarino"
+          ],
+          "hard_constraints": [
+            "disponible mañana",
+            "boda",
+            "local submarino",
+            "muy bajo presupuesto",
+            "500 invitados"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "no_providers_available",
+              "preferences": [
+                "local submarino"
+              ],
+              "hard_constraints": [
+                "disponible mañana",
+                "capacidad para 500 invitados",
+                "boda"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "local_submarino_boda_lima",
+                    "label": "local submarino en Lima",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local submarino para boda en Lima",
+                      "venue submarino para boda Lima",
+                      "salón submarino para eventos en Lima"
+                    ],
+                    "mustHave": [
+                      "local submarino",
+                      "boda",
+                      "Lima",
+                      "disponible mañana",
+                      "capacidad para 500 invitados"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 puede servir para local submarino en Lima, pero precio medio-alto para un presupuesto muy ajustado.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 96,
+                      "fitWarnings": [
+                        "Precio medio-alto para un presupuesto muy ajustado."
+                      ],
+                      "fitTags": [
+                        "budget_risk",
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.5458342411720079,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": "No encontramos un match fuerte para local submarino en Lima."
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "no_providers_available",
+              "preferences": [],
+              "hard_constraints": [
+                "presupuesto muy bajo",
+                "500 invitados"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "catering_low_budget_para_evento",
+                    "label": "catering económico para evento grande",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering económico para 500 personas en Lima",
+                      "catering muy bajo presupuesto boda 500 Lima",
+                      "menú económico para boda Lima 500"
+                    ],
+                    "mustHave": [
+                      "presupuesto muy bajo",
+                      "500 invitados",
+                      "boda",
+                      "Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    130
+                  ],
+                  "selected_provider_ids": [],
+                  "candidates": [
+                    {
+                      "id": 130,
+                      "title": "Erika Fernandez Bodas & Eventos",
+                      "slug": "erika-fernandez-bodas-eventos",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Erika Fernandez Bodas & Eventos puede servir para catering económico para evento grande, pero precio medio-alto para un presupuesto muy ajustado.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/erika-fernandez-bodas-eventos",
+                      "websiteUrl": "https://erikafernandez.pe/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Vale de S/. 500 de descuento",
+                      "promoSummary": "Vale de S/.500 de descuento en servicio de catering.",
+                      "descriptionSnippet": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+                      "serviceHighlights": [
+                        "Catering para matrimonios y eventos",
+                        "Planificación y coordinación de eventos",
+                        "Diseño de propuestas personalizadas",
+                        "Montaje y servicio integral"
+                      ],
+                      "termsHighlights": [
+                        "Válido únicamente para novios de Sin Envolturas.",
+                        "Para acceder al beneficio, deberán identificarse como clientes al momento de solicitar el presupuesto o reunión.",
+                        "Válido para nuevos contratos.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Erika Fernández Bodas & Eventos es un servicio especializado en la organización de matrimonios y eventos, ofreciendo propuestas integrales de catering y planificación para crear celebraciones únicas y memorables.",
+                      "fitScore": 100,
+                      "fitWarnings": [
+                        "Precio medio-alto para un presupuesto muy ajustado."
+                      ],
+                      "fitTags": [
+                        "budget_risk",
+                        "event_match",
+                        "need_match",
+                        "preference_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8094445721540455,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": "No encontramos un match fuerte para catering económico para evento grande."
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "no_providers_available",
+              "preferences": [],
+              "hard_constraints": [
+                "boda",
+                "500 invitados"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "foto_video_boda_lima_500",
+                    "label": "fotografía y video para boda en Lima (500)",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotografía y video boda en Lima 500 invitados",
+                      "servicio de foto video boda Lima",
+                      "fotógrafo y videógrafo para boda Lima 500"
+                    ],
+                    "mustHave": [
+                      "boda",
+                      "Lima",
+                      "500 invitados"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    133
+                  ],
+                  "selected_provider_ids": [],
+                  "candidates": [
+                    {
+                      "id": 133,
+                      "title": "Uriel Santisteban Photography & Film",
+                      "slug": "uriel-santisteban-photography-film",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Uriel Santisteban Photography & Film puede servir para fotografía y video para boda en Lima (500), pero precio muy alto para el presupuesto indicado.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                      "websiteUrl": "https://www.urielsantisteban.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% Off",
+                      "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                      "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                      "serviceHighlights": [
+                        "Fotografía para matrimonios",
+                        "Video de bodas",
+                        "Paquetes combinados de fotografía + video",
+                        "Cobertura integral del evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Ambos servicios deben pertenecer a la misma categoría",
+                        "Para más información, consultar paquetes disponibles con el proveedor",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                      "fitScore": 74,
+                      "fitWarnings": [
+                        "Precio muy alto para el presupuesto indicado."
+                      ],
+                      "fitTags": [
+                        "budget_risk",
+                        "event_match",
+                        "need_match",
+                        "preference_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.9140213750238293,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": "No encontramos un match fuerte para fotografía y video para boda en Lima (500)."
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Búsqueda de local submarino para una boda en Lima, para 500 invitados, con presupuesto muy bajo y disponibilidad para mañana. Frente activo: Locales.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T04:44:44.840Z"
+        },
+        "perf": {
+          "trace_id": "01KWGJ9K06JJYCNKYGKYFQA43A",
+          "conversation_id": "conv_6a45ecbcec4081968bb4b5c19d961c070cf6b231ecd84548",
+          "runtime_latency_ms": 13231,
+          "extraction_latency_ms": 7818,
+          "compose_latency_ms": 2627,
+          "tools_called_count": 3,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17804,
+          "cached_input_tokens": 11008,
+          "cache_hit_rate": 0.6588066311568616,
+          "extraction_to_compose_ratio": 2.9760182717929196,
+          "captured_at": "2026-07-02T04:44:47.494Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T04:44:47.692Z",
+  "completedAt": "2026-07-02T04:44:47.693Z"
+}
