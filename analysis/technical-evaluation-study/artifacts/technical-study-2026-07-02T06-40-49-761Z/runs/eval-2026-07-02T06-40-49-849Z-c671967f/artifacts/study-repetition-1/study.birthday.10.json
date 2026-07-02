@@ -1,0 +1,1500 @@
+{
+  "runId": "eval-2026-07-02T06-40-49-849Z-c671967f",
+  "caseId": "study.birthday.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.875,
+  "totalLatencyMs": 23456,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Otros\"",
+    "active_need_category=\"Otros\"",
+    "location=\"Lima\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Otros:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-40-49-849Z-c671967f/artifacts/study-repetition-1/study.birthday.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition recomendar->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.875,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 11728,
+    "p95_latency_ms": 13944,
+    "tool_calls_total": 3,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 1.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.34615384615384615,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 40655,
+    "cache_hit_rate": 0.8757275605023996
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco animación temática medieval para cumpleaños en Lurín, 20 personas."
+      },
+      "outputText": "Encontré una opción para animación temática medieval para cumpleaños en Lurín, pensada para un grupo pequeño de 20 personas\n\n1. Shop Sin Envolturas\n Es la única opción vigente en el listado y viene con descuento 10% OFF, así que puede servir como punto de partida para armar la animación temática\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% OFF.\n Nota: La ficha visible no confirma que sea animación medieval; conviene ajustarla si buscas una propuesta más específica.\n\n Ficha: https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGSEMVDBRCP1P9C43QZBBT2",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Otros\",\n  \"location\": \"Lurín\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 1,\n      \"title\": \"Shop Sin Envolturas\",\n      \"slug\": \"shop-sin-envolturas\",\n      \"category\": \"Otros\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"5.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/shop-sin-envolturas\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Otros, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con animación temática medieval según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 1,
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 42
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            1
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 9359,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 4435,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 2774,
+          "provider_enrichment": 63,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2031,
+          "save_plan": 24
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11420,
+            "output_tokens": 529,
+            "total_tokens": 11949,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4472,
+            "output_tokens": 124,
+            "total_tokens": 4596,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15892,
+            "output_tokens": 653,
+            "total_tokens": 16545,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGSEMVDBRCP1P9C43QZBBT2",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "runtime_latency_ms": 9359,
+        "extraction_latency_ms": 4435,
+        "compose_latency_ms": 2031,
+        "tools_called_count": 1,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16545,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8859803674804934,
+        "extraction_to_compose_ratio": 2.1836533727227967,
+        "captured_at": "2026-07-02T06:49:53.261Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.birthday.10-5c050a7c",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "cumpleanos",
+        "vendor_category": "Otros",
+        "active_need_category": "Otros",
+        "location": "Lurín",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "preferences": [
+          "animación temática medieval"
+        ],
+        "hard_constraints": [
+          "cumpleaños",
+          "animación temática medieval",
+          "Lurín",
+          "20 personas"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Otros",
+            "status": "shortlisted",
+            "preferences": [
+              "animación temática medieval"
+            ],
+            "hard_constraints": [
+              "cumpleaños",
+              "animación temática medieval",
+              "Lurín",
+              "20 personas"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              1
+            ],
+            "recommended_providers": [
+              {
+                "id": 1,
+                "title": "Shop Sin Envolturas",
+                "slug": "shop-sin-envolturas",
+                "category": "Otros",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "5.0",
+                "reason": "Shop Sin Envolturas encaja con animación temática medieval según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% OFF",
+                "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                "serviceHighlights": [
+                  "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                ],
+                "termsHighlights": [
+                  "El descuento no aplica sobre descuento.",
+                  "El descuento no aplica para algunos productos y servicios, consultar."
+                ],
+                "eventTypes": [],
+                "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                "fitScore": 42,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_uncertain"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          1
+        ],
+        "recommended_providers": [
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con animación temática medieval según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "El usuario busca un proveedor de animación temática medieval para un cumpleaños en Lurín, para 20 personas.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:49:51.190Z"
+      },
+      "latencyMs": 9512,
+      "rawTargetResponse": {
+        "message": "Encontré una opción para animación temática medieval para cumpleaños en Lurín, pensada para un grupo pequeño de 20 personas\n\n1. Shop Sin Envolturas\n Es la única opción vigente en el listado y viene con descuento 10% OFF, así que puede servir como punto de partida para armar la animación temática\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% OFF.\n Nota: La ficha visible no confirma que sea animación medieval; conviene ajustarla si buscas una propuesta más específica.\n\n Ficha: https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGSEMVDBRCP1P9C43QZBBT2",
+          "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+          "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Otros\",\n  \"location\": \"Lurín\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 1,\n      \"title\": \"Shop Sin Envolturas\",\n      \"slug\": \"shop-sin-envolturas\",\n      \"category\": \"Otros\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"5.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/shop-sin-envolturas\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Otros, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 1,
+              "title": "Shop Sin Envolturas",
+              "slug": "shop-sin-envolturas",
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "5.0",
+              "reason": "Shop Sin Envolturas encaja con animación temática medieval según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+              "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+              "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "serviceHighlights": [
+                "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+              ],
+              "termsHighlights": [
+                "El descuento no aplica sobre descuento.",
+                "El descuento no aplica para algunos productos y servicios, consultar."
+              ],
+              "eventTypes": [],
+              "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 1,
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 42
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              1
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 9359,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 4435,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 2774,
+            "provider_enrichment": 63,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2031,
+            "save_plan": 24
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11420,
+              "output_tokens": 529,
+              "total_tokens": 11949,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4472,
+              "output_tokens": 124,
+              "total_tokens": 4596,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15892,
+              "output_tokens": 653,
+              "total_tokens": 16545,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.birthday.10-5c050a7c",
+          "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "cumpleanos",
+          "vendor_category": "Otros",
+          "active_need_category": "Otros",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "preferences": [
+            "animación temática medieval"
+          ],
+          "hard_constraints": [
+            "cumpleaños",
+            "animación temática medieval",
+            "Lurín",
+            "20 personas"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Otros",
+              "status": "shortlisted",
+              "preferences": [
+                "animación temática medieval"
+              ],
+              "hard_constraints": [
+                "cumpleaños",
+                "animación temática medieval",
+                "Lurín",
+                "20 personas"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                1
+              ],
+              "recommended_providers": [
+                {
+                  "id": 1,
+                  "title": "Shop Sin Envolturas",
+                  "slug": "shop-sin-envolturas",
+                  "category": "Otros",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "5.0",
+                  "reason": "Shop Sin Envolturas encaja con animación temática medieval según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                  "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% OFF",
+                  "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                  "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                  "serviceHighlights": [
+                    "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                  ],
+                  "termsHighlights": [
+                    "El descuento no aplica sobre descuento.",
+                    "El descuento no aplica para algunos productos y servicios, consultar."
+                  ],
+                  "eventTypes": [],
+                  "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                  "fitScore": 42,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_uncertain"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            1
+          ],
+          "recommended_providers": [
+            {
+              "id": 1,
+              "title": "Shop Sin Envolturas",
+              "slug": "shop-sin-envolturas",
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "5.0",
+              "reason": "Shop Sin Envolturas encaja con animación temática medieval según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+              "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+              "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "serviceHighlights": [
+                "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+              ],
+              "termsHighlights": [
+                "El descuento no aplica sobre descuento.",
+                "El descuento no aplica para algunos productos y servicios, consultar."
+              ],
+              "eventTypes": [],
+              "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "El usuario busca un proveedor de animación temática medieval para un cumpleaños en Lurín, para 20 personas.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:49:51.190Z"
+        },
+        "perf": {
+          "trace_id": "01KWGSEMVDBRCP1P9C43QZBBT2",
+          "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+          "runtime_latency_ms": 9359,
+          "extraction_latency_ms": 4435,
+          "compose_latency_ms": 2031,
+          "tools_called_count": 1,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16545,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8859803674804934,
+          "extraction_to_compose_ratio": 2.1836533727227967,
+          "captured_at": "2026-07-02T06:49:53.261Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay, amplía la búsqueda a entretenimiento para cumpleaños en Lima."
+      },
+      "outputText": "Amplié la búsqueda a entretenimiento para cumpleaños en Lima y encontré varias opciones del área de Otros",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGSF2CG351NZV108BWX90ED",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "get_related_providers"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Otros\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\n  \"provider_id\": 1\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 1,\n      \"title\": \"Shop Sin Envolturas\",\n      \"slug\": \"shop-sin-envolturas\",\n      \"category\": \"Otros\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"5.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/shop-sin-envolturas\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Otros, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[\n  {\n    \"id\": 103,\n    \"title\": \"WONDERPHONE | 10% DE DSCTO EN EL SERVICIO PARA EVENTOS\",\n    \"slug\": \"wonderphone\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/wonderphone\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 98,\n    \"title\": \"THE RAZOR CLUB | 20% DE DSCTO. EN TODOS LOS SERVICIOS\",\n    \"slug\": \"the-razor-club\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/the-razor-club\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 93,\n    \"title\": \"RINGO AUDIO GUEST BOOK | 10% DE DESCUENTO\",\n    \"slug\": \"ringo-audio-guest-book\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/ringo-audio-guest-book\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 83,\n    \"title\": \"TEAM BRIDE | 10% DE DSCTO EN PRODUCTOS SELECCIONADOS\",\n    \"slug\": \"team-bride\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/team-bride\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 82,\n    \"title\": \"FESTIVITY | 10% DE DSCTO EN TODA LA TIENDA\",\n    \"slug\": \"festivity\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/festivity\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 56,\n    \"title\": \"HOLOS | 20% DE DSCTO. EN TODAS LAS MEMBRESÍAS MENSUALES\",\n    \"slug\": \"holos\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/holos\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con entretenimiento (Otros) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 1,
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            1
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 13394,
+          "load_plan": 98,
+          "prepare_working_plan": 1,
+          "extraction": 4743,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 3652,
+          "provider_enrichment": 67,
+          "prompt_bundle_load": 0,
+          "compose_reply": 4800,
+          "save_plan": 23
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11511,
+            "output_tokens": 471,
+            "total_tokens": 11982,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 11769,
+            "output_tokens": 359,
+            "total_tokens": 12128,
+            "cached_input_tokens": 9216
+          },
+          "total": {
+            "input_tokens": 23280,
+            "output_tokens": 830,
+            "total_tokens": 24110,
+            "cached_input_tokens": 20224
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGSF2CG351NZV108BWX90ED",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "runtime_latency_ms": 13394,
+        "extraction_latency_ms": 4743,
+        "compose_latency_ms": 4800,
+        "tools_called_count": 2,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 24110,
+        "cached_input_tokens": 20224,
+        "cache_hit_rate": 0.8687285223367698,
+        "extraction_to_compose_ratio": 0.988125,
+        "captured_at": "2026-07-02T06:50:07.120Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.birthday.10-5c050a7c",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.72,
+        "event_type": "cumpleanos",
+        "vendor_category": "Otros",
+        "active_need_category": "Otros",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "preferences": [
+          "animación temática medieval",
+          "entretenimiento"
+        ],
+        "hard_constraints": [
+          "cumpleaños",
+          "animación temática medieval",
+          "Lurín",
+          "20 personas",
+          "Lima"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Otros",
+            "status": "shortlisted",
+            "preferences": [
+              "animación temática medieval",
+              "entretenimiento"
+            ],
+            "hard_constraints": [
+              "cumpleaños",
+              "animación temática medieval",
+              "Lurín",
+              "20 personas",
+              "Lima"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              1
+            ],
+            "recommended_providers": [
+              {
+                "id": 1,
+                "title": "Shop Sin Envolturas",
+                "slug": "shop-sin-envolturas",
+                "category": "Otros",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "5.0",
+                "reason": "Shop Sin Envolturas encaja con entretenimiento (Otros) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% OFF",
+                "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                "serviceHighlights": [
+                  "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                ],
+                "termsHighlights": [
+                  "El descuento no aplica sobre descuento.",
+                  "El descuento no aplica para algunos productos y servicios, consultar."
+                ],
+                "eventTypes": [],
+                "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          1
+        ],
+        "recommended_providers": [
+          {
+            "id": 1,
+            "title": "Shop Sin Envolturas",
+            "slug": "shop-sin-envolturas",
+            "category": "Otros",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "5.0",
+            "reason": "Shop Sin Envolturas encaja con entretenimiento (Otros) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+            "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+            "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+            "serviceHighlights": [
+              "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+            ],
+            "termsHighlights": [
+              "El descuento no aplica sobre descuento.",
+              "El descuento no aplica para algunos productos y servicios, consultar."
+            ],
+            "eventTypes": [],
+            "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "El usuario tiene un cumpleaños (1-20) y busca ampliar la búsqueda a entretenimiento en Lima; el frente activo sigue siendo Otros.",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:50:02.298Z"
+      },
+      "latencyMs": 13944,
+      "rawTargetResponse": {
+        "message": "Amplié la búsqueda a entretenimiento para cumpleaños en Lima y encontré varias opciones del área de Otros",
+        "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+        "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGSF2CG351NZV108BWX90ED",
+          "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+          "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+          "previous_node": "recomendar",
+          "next_node": "recomendar",
+          "node_path": [
+            "recomendar",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "get_related_providers"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Otros\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "get_related_providers",
+              "input": "{\n  \"provider_id\": 1\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 1,\n      \"title\": \"Shop Sin Envolturas\",\n      \"slug\": \"shop-sin-envolturas\",\n      \"category\": \"Otros\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"5.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/shop-sin-envolturas\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Otros, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+            },
+            {
+              "tool": "get_related_providers",
+              "output": "[\n  {\n    \"id\": 103,\n    \"title\": \"WONDERPHONE | 10% DE DSCTO EN EL SERVICIO PARA EVENTOS\",\n    \"slug\": \"wonderphone\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/wonderphone\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 98,\n    \"title\": \"THE RAZOR CLUB | 20% DE DSCTO. EN TODOS LOS SERVICIOS\",\n    \"slug\": \"the-razor-club\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/the-razor-club\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 93,\n    \"title\": \"RINGO AUDIO GUEST BOOK | 10% DE DESCUENTO\",\n    \"slug\": \"ringo-audio-guest-book\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/ringo-audio-guest-book\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 83,\n    \"title\": \"TEAM BRIDE | 10% DE DSCTO EN PRODUCTOS SELECCIONADOS\",\n    \"slug\": \"team-bride\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/team-bride\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 82,\n    \"title\": \"FESTIVITY | 10% DE DSCTO EN TODA LA TIENDA\",\n    \"slug\": \"festivity\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/festivity\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 56,\n    \"title\": \"HOLOS | 20% DE DSCTO. EN TODAS LAS MEMBRESÍAS MENSUALES\",\n    \"slug\": \"holos\",\n    \"category\": \"Otros\",\n    \"location\": null,\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/holos\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 1,
+              "title": "Shop Sin Envolturas",
+              "slug": "shop-sin-envolturas",
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "5.0",
+              "reason": "Shop Sin Envolturas encaja con entretenimiento (Otros) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+              "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+              "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "serviceHighlights": [
+                "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+              ],
+              "termsHighlights": [
+                "El descuento no aplica sobre descuento.",
+                "El descuento no aplica para algunos productos y servicios, consultar."
+              ],
+              "eventTypes": [],
+              "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 1,
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              1
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 13394,
+            "load_plan": 98,
+            "prepare_working_plan": 1,
+            "extraction": 4743,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 3652,
+            "provider_enrichment": 67,
+            "prompt_bundle_load": 0,
+            "compose_reply": 4800,
+            "save_plan": 23
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11511,
+              "output_tokens": 471,
+              "total_tokens": 11982,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 11769,
+              "output_tokens": 359,
+              "total_tokens": 12128,
+              "cached_input_tokens": 9216
+            },
+            "total": {
+              "input_tokens": 23280,
+              "output_tokens": 830,
+              "total_tokens": 24110,
+              "cached_input_tokens": 20224
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGSEBQ451NA4FXQN6Z2BKKK",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.birthday.10-5c050a7c",
+          "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.72,
+          "event_type": "cumpleanos",
+          "vendor_category": "Otros",
+          "active_need_category": "Otros",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "preferences": [
+            "animación temática medieval",
+            "entretenimiento"
+          ],
+          "hard_constraints": [
+            "cumpleaños",
+            "animación temática medieval",
+            "Lurín",
+            "20 personas",
+            "Lima"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Otros",
+              "status": "shortlisted",
+              "preferences": [
+                "animación temática medieval",
+                "entretenimiento"
+              ],
+              "hard_constraints": [
+                "cumpleaños",
+                "animación temática medieval",
+                "Lurín",
+                "20 personas",
+                "Lima"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                1
+              ],
+              "recommended_providers": [
+                {
+                  "id": 1,
+                  "title": "Shop Sin Envolturas",
+                  "slug": "shop-sin-envolturas",
+                  "category": "Otros",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "5.0",
+                  "reason": "Shop Sin Envolturas encaja con entretenimiento (Otros) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+                  "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% OFF",
+                  "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+                  "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+                  "serviceHighlights": [
+                    "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+                  ],
+                  "termsHighlights": [
+                    "El descuento no aplica sobre descuento.",
+                    "El descuento no aplica para algunos productos y servicios, consultar."
+                  ],
+                  "eventTypes": [],
+                  "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            1
+          ],
+          "recommended_providers": [
+            {
+              "id": 1,
+              "title": "Shop Sin Envolturas",
+              "slug": "shop-sin-envolturas",
+              "category": "Otros",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "5.0",
+              "reason": "Shop Sin Envolturas encaja con entretenimiento (Otros) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/shop-sin-envolturas",
+              "websiteUrl": "https://www.shop.sinenvolturas.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "10% de descuento en nuestra tienda virtual, exclusivo para clientes de Sin Envolturas. Puedes consultarnos por tu cupón.",
+              "descriptionSnippet": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa.",
+              "serviceHighlights": [
+                "Ya sea tu matri, la llegada de tu bebé o tu nueva casa, y disfruta de tus descuento exclusivo por ser cliente de Sin Envolturas."
+              ],
+              "termsHighlights": [
+                "El descuento no aplica sobre descuento.",
+                "El descuento no aplica para algunos productos y servicios, consultar."
+              ],
+              "eventTypes": [],
+              "description": "Entra a nuestra tienda virtual y encuentra todo lo que necesitas para esa nueva etapa. https://www.shop.sinenvolturas.pe/",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "El usuario tiene un cumpleaños (1-20) y busca ampliar la búsqueda a entretenimiento en Lima; el frente activo sigue siendo Otros.",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:50:02.298Z"
+        },
+        "perf": {
+          "trace_id": "01KWGSF2CG351NZV108BWX90ED",
+          "conversation_id": "conv_6a460a0f45d08197862ad37d6bec5d5c03db1fb20b669e02",
+          "runtime_latency_ms": 13394,
+          "extraction_latency_ms": 4743,
+          "compose_latency_ms": 4800,
+          "tools_called_count": 2,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 24110,
+          "cached_input_tokens": 20224,
+          "cache_hit_rate": 0.8687285223367698,
+          "extraction_to_compose_ratio": 0.988125,
+          "captured_at": "2026-07-02T06:50:07.120Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:50:07.255Z",
+  "completedAt": "2026-07-02T06:50:07.256Z"
+}

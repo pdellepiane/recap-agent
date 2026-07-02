@@ -1,0 +1,505 @@
+{
+  "runId": "eval-2026-07-02T06-40-49-849Z-c671967f",
+  "caseId": "study.corporate.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.375,
+  "totalLatencyMs": 7117,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista"
+  ],
+  "planDiffSummary": [
+    "current_node=\"entrevista\"",
+    "intent=\"buscar_proveedores\"",
+    "location=\"Aeropuerto de Lima\"",
+    "budget_signal=\"mínimo\"",
+    "guest_range=\"201+\""
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-40-49-849Z-c671967f/artifacts/study-repetition-1/study.corporate.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->entrevista. Allowed=*->recomendar, *->aclarar_pedir_faltante, *->informar_error_reintento."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was false instead of true."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field event_type was null instead of \"corporativo\"."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.375,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 7117,
+    "p95_latency_ms": 7117,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.25,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 16551,
+    "cache_hit_rate": 0.8846999685830977
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito un auditorio dentro del aeropuerto de Lima para 900 personas mañana y con presupuesto mínimo."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara avanzar, necesito confirmar una sola cosa: ¿quieres que lo tratemos como un local o auditorio para evento?",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWGSSBR06VZE5SMY28FY5N2Y",
+        "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+        "plan_id": "01KWGSS54SWQZM59003Z6QAMRP",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "vendor_category"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 6765,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 4997,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1740,
+          "save_plan": 13
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11422,
+            "output_tokens": 585,
+            "total_tokens": 12007,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4493,
+            "output_tokens": 51,
+            "total_tokens": 4544,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15915,
+            "output_tokens": 636,
+            "total_tokens": 16551,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGSSBR06VZE5SMY28FY5N2Y",
+        "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+        "runtime_latency_ms": 6765,
+        "extraction_latency_ms": 4997,
+        "compose_latency_ms": 1740,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16551,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8846999685830977,
+        "extraction_to_compose_ratio": 2.87183908045977,
+        "captured_at": "2026-07-02T06:55:44.385Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGSS54SWQZM59003Z6QAMRP",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.09-b5638fbe",
+        "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": null,
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": "Aeropuerto de Lima",
+        "budget_signal": "mínimo",
+        "guest_range": "201+",
+        "preferences": [
+          "auditorio dentro del aeropuerto"
+        ],
+        "hard_constraints": [
+          "auditorio dentro del aeropuerto de Lima",
+          "para 900 personas",
+          "mañana"
+        ],
+        "missing_fields": [
+          "vendor_category"
+        ],
+        "provider_needs": [],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El requerimiento es para un espacio tipo auditorio/venue (no catering).",
+          "“presupuesto mínimo” implica buscar opciones de menor costo dentro de lo disponible."
+        ],
+        "conversation_summary": "Búsqueda de auditorio/espacio dentro del aeropuerto de Lima para 900 personas mañana, con presupuesto mínimo.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:55:42.630Z"
+      },
+      "latencyMs": 7117,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara avanzar, necesito confirmar una sola cosa: ¿quieres que lo tratemos como un local o auditorio para evento?",
+        "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+        "plan_id": "01KWGSS54SWQZM59003Z6QAMRP",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWGSSBR06VZE5SMY28FY5N2Y",
+          "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+          "plan_id": "01KWGSS54SWQZM59003Z6QAMRP",
+          "previous_node": "contacto_inicial",
+          "next_node": "entrevista",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "entrevista"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "vendor_category"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 6765,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 4997,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1740,
+            "save_plan": 13
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11422,
+              "output_tokens": 585,
+              "total_tokens": 12007,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4493,
+              "output_tokens": 51,
+              "total_tokens": 4544,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15915,
+              "output_tokens": 636,
+              "total_tokens": 16551,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGSS54SWQZM59003Z6QAMRP",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.09-b5638fbe",
+          "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": null,
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": "Aeropuerto de Lima",
+          "budget_signal": "mínimo",
+          "guest_range": "201+",
+          "preferences": [
+            "auditorio dentro del aeropuerto"
+          ],
+          "hard_constraints": [
+            "auditorio dentro del aeropuerto de Lima",
+            "para 900 personas",
+            "mañana"
+          ],
+          "missing_fields": [
+            "vendor_category"
+          ],
+          "provider_needs": [],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El requerimiento es para un espacio tipo auditorio/venue (no catering).",
+            "“presupuesto mínimo” implica buscar opciones de menor costo dentro de lo disponible."
+          ],
+          "conversation_summary": "Búsqueda de auditorio/espacio dentro del aeropuerto de Lima para 900 personas mañana, con presupuesto mínimo.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:55:42.630Z"
+        },
+        "perf": {
+          "trace_id": "01KWGSSBR06VZE5SMY28FY5N2Y",
+          "conversation_id": "conv_6a460b6eb1bc81958de7e87dc71dbfde07db6c6f90dc0583",
+          "runtime_latency_ms": 6765,
+          "extraction_latency_ms": 4997,
+          "compose_latency_ms": 1740,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16551,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8846999685830977,
+          "extraction_to_compose_ratio": 2.87183908045977,
+          "captured_at": "2026-07-02T06:55:44.385Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:55:44.445Z",
+  "completedAt": "2026-07-02T06:55:44.445Z"
+}

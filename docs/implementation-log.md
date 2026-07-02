@@ -3137,3 +3137,32 @@ metadata as proof of incompatibility created false no-match outcomes.
 Use must-have catalog evidence to rank candidates unless the constraint has a
 domain-specific, independently verifiable safety rule. Continue to reject
 home-and-decoration candidates that lack event-service evidence.
+
+## Execute coverage-recovery evaluation iteration
+
+- Deployed the evidence-ranked coverage change through CloudFormation.
+- Ran a four-case live gate spanning two multi-need plans and two event
+  decoration recovery paths, with all requested needs shortlisted and both
+  decoration paths retaining event-service evidence.
+- Executed the frozen 50-scenario manifest three times and preserved all 150
+  raw conversation artifacts.
+
+### Result
+
+- Known location mismatches remained at zero; category and budget satisfaction
+  were both 100%.
+- Event-service evidence among home-and-decoration appearances increased to
+  57.35%, unique displayed providers increased to 59, and all scenario outcomes
+  were stable across repetitions.
+- No conversation timed out. P95 conversation latency was 27.30 seconds and
+  total priced cost was USD 1.065.
+- The final-plan need-coverage ratio fell to 80.29% because observed extracted
+  needs increased to 208 while needs with recommendations remained nearly flat
+  at 167. This metric does not separate extraction breadth from retrieval.
+
+### Decision
+
+Use iteration three as the preferred semantic and reliability snapshot, while
+preserving iteration one as the best observed need-coverage ratio. Leave the
+fourth paid iteration unused until a causal improvement and a stable
+expected-need denominator are defined.

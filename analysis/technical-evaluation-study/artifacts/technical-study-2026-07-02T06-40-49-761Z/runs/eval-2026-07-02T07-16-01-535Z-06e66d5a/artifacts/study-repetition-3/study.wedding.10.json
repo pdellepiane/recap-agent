@@ -1,0 +1,1585 @@
+{
+  "runId": "eval-2026-07-02T07-16-01-535Z-06e66d5a",
+  "caseId": "study.wedding.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.875,
+  "totalLatencyMs": 23409,
+  "totalToolCalls": 6,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima Metropolitana\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Locales:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T07-16-01-535Z-06e66d5a/artifacts/study-repetition-3/study.wedding.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition recomendar->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.875,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 11704.5,
+    "p95_latency_ms": 13295,
+    "tool_calls_total": 6,
+    "unique_tools_called": 3,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.34615384615384615,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 48861,
+    "cache_hit_rate": 0.9144778314772011
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito un local para boda en Lima para 100 personas."
+      },
+      "outputText": "Encontré una opción de local para boda en Lima que encaja con 100 personas\n\n1. Casa Club 147\n Casa Club 147 ofrece alquiler de local para eventos y espacios amplios pensados para matrimonios, además tiene 10% de descuento para clientes de Sin Envolturas\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: Está en Cieneguilla y el beneficio está sujeto a disponibilidad; no tengo reseñas visibles para este proveedor.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGV4V1KDW54V5M7BWF2KFRQ",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "list_provider_reviews",
+          "list_provider_reviews",
+          "list_provider_reviews"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 147\n}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "input": "{\n  \"provider_id\": 147\n}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "input": "{\n  \"provider_id\": 147\n}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "input": "{\n  \"provider_id\": 147\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7369368095025844,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima)\"\n    }\n  ]\n}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "output": "[]"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\n  \"id\": 147,\n  \"title\": \"Casa Club 147\",\n  \"slug\": \"casa-club-147\",\n  \"category\": \"Locales\",\n  \"location\": \"Perú\",\n  \"priceLevel\": \"high\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n  \"websiteUrl\": \"https://casaclub147.com/\",\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"10% Off Alquiler local\",\n  \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n  \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n  \"serviceHighlights\": [\n    \"Alquiler de local para eventos\",\n    \"Espacios para matrimonios\",\n    \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n    \"Eventos institucionales\",\n    \"Alojamiento para hasta 32 personas\"\n  ],\n  \"termsHighlights\": [\n    \"Beneficio no transferible ni acumulable con otras promociones.\",\n    \"Sujeto a disponibilidad.\"\n  ],\n  \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n  \"eventTypes\": []\n}"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "output": "[]"
+          },
+          {
+            "tool": "list_provider_reviews",
+            "output": "[]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7369368095025844,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7369368095025844,
+            "fit_score": 88
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 13061,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 5424,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2707,
+          "provider_enrichment": 70,
+          "prompt_bundle_load": 3,
+          "compose_reply": 4810,
+          "save_plan": 31
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11415,
+            "output_tokens": 489,
+            "total_tokens": 11904,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 18801,
+            "output_tokens": 210,
+            "total_tokens": 19011,
+            "cached_input_tokens": 16896
+          },
+          "total": {
+            "input_tokens": 30216,
+            "output_tokens": 699,
+            "total_tokens": 30915,
+            "cached_input_tokens": 27904
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGV4V1KDW54V5M7BWF2KFRQ",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "runtime_latency_ms": 13061,
+        "extraction_latency_ms": 5424,
+        "compose_latency_ms": 4810,
+        "tools_called_count": 5,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 30915,
+        "cached_input_tokens": 27904,
+        "cache_hit_rate": 0.9234842467566852,
+        "extraction_to_compose_ratio": 1.1276507276507277,
+        "captured_at": "2026-07-02T07:19:29.075Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.wedding.10-ed6d4e91",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "51-100",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 88,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7369368095025844,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7369368095025844,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "Se refiere a un local/venue para la boda en Lima para ~100 personas."
+        ],
+        "conversation_summary": "El usuario necesita un local para una boda en Lima para 100 personas; se inicia búsqueda de opciones de locales.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T07:19:24.232Z"
+      },
+      "latencyMs": 13295,
+      "rawTargetResponse": {
+        "message": "Encontré una opción de local para boda en Lima que encaja con 100 personas\n\n1. Casa Club 147\n Casa Club 147 ofrece alquiler de local para eventos y espacios amplios pensados para matrimonios, además tiene 10% de descuento para clientes de Sin Envolturas\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: Está en Cieneguilla y el beneficio está sujeto a disponibilidad; no tengo reseñas visibles para este proveedor.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGV4V1KDW54V5M7BWF2KFRQ",
+          "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+          "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "list_provider_reviews",
+            "list_provider_reviews",
+            "list_provider_reviews"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 147\n}"
+            },
+            {
+              "tool": "list_provider_reviews",
+              "input": "{\n  \"provider_id\": 147\n}"
+            },
+            {
+              "tool": "list_provider_reviews",
+              "input": "{\n  \"provider_id\": 147\n}"
+            },
+            {
+              "tool": "list_provider_reviews",
+              "input": "{\n  \"provider_id\": 147\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7369368095025844,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima)\"\n    }\n  ]\n}"
+            },
+            {
+              "tool": "list_provider_reviews",
+              "output": "[]"
+            },
+            {
+              "tool": "get_provider_detail",
+              "output": "{\n  \"id\": 147,\n  \"title\": \"Casa Club 147\",\n  \"slug\": \"casa-club-147\",\n  \"category\": \"Locales\",\n  \"location\": \"Perú\",\n  \"priceLevel\": \"high\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n  \"websiteUrl\": \"https://casaclub147.com/\",\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"10% Off Alquiler local\",\n  \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n  \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n  \"serviceHighlights\": [\n    \"Alquiler de local para eventos\",\n    \"Espacios para matrimonios\",\n    \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n    \"Eventos institucionales\",\n    \"Alojamiento para hasta 32 personas\"\n  ],\n  \"termsHighlights\": [\n    \"Beneficio no transferible ni acumulable con otras promociones.\",\n    \"Sujeto a disponibilidad.\"\n  ],\n  \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n  \"eventTypes\": []\n}"
+            },
+            {
+              "tool": "list_provider_reviews",
+              "output": "[]"
+            },
+            {
+              "tool": "list_provider_reviews",
+              "output": "[]"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 88,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7369368095025844,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7369368095025844,
+              "fit_score": 88
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              147
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 13061,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 5424,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2707,
+            "provider_enrichment": 70,
+            "prompt_bundle_load": 3,
+            "compose_reply": 4810,
+            "save_plan": 31
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11415,
+              "output_tokens": 489,
+              "total_tokens": 11904,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 18801,
+              "output_tokens": 210,
+              "total_tokens": 19011,
+              "cached_input_tokens": 16896
+            },
+            "total": {
+              "input_tokens": 30216,
+              "output_tokens": 699,
+              "total_tokens": 30915,
+              "cached_input_tokens": 27904
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.wedding.10-ed6d4e91",
+          "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "51-100",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 88,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7369368095025844,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 88,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7369368095025844,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "Se refiere a un local/venue para la boda en Lima para ~100 personas."
+          ],
+          "conversation_summary": "El usuario necesita un local para una boda en Lima para 100 personas; se inicia búsqueda de opciones de locales.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T07:19:24.232Z"
+        },
+        "perf": {
+          "trace_id": "01KWGV4V1KDW54V5M7BWF2KFRQ",
+          "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+          "runtime_latency_ms": 13061,
+          "extraction_latency_ms": 5424,
+          "compose_latency_ms": 4810,
+          "tools_called_count": 5,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 30915,
+          "cached_input_tokens": 27904,
+          "cache_hit_rate": 0.9234842467566852,
+          "extraction_to_compose_ratio": 1.1276507276507277,
+          "captured_at": "2026-07-02T07:19:29.075Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no encuentras coincidencia exacta, amplía a Lima Metropolitana y conserva el presupuesto medio."
+      },
+      "outputText": "Amplié la búsqueda a Lima Metropolitana y mantuve el rango de presupuesto medio; por ahora sigue saliendo una opción de local para boda\n\n1. Casa Club 147\n Casa Club 147 sigue siendo la mejor coincidencia disponible: ofrece alquiler de local para eventos, ambientes amplios para matrimonios y un 10% de descuento para clientes de Sin Envolturas\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: Está en Cieneguilla y el beneficio aplica sujeto a disponibilidad.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGV54RCH5RDZVY951TNJWKV",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima Metropolitana\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7761401690320241,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima Metropolitana), parece alineado al rango medio\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7761401690320241,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7761401690320241,
+            "fit_score": 88
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            147
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 9428,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 4366,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 2842,
+          "provider_enrichment": 65,
+          "prompt_bundle_load": 2,
+          "compose_reply": 2113,
+          "save_plan": 23
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11522,
+            "output_tokens": 447,
+            "total_tokens": 11969,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5852,
+            "output_tokens": 125,
+            "total_tokens": 5977,
+            "cached_input_tokens": 4608
+          },
+          "total": {
+            "input_tokens": 17374,
+            "output_tokens": 572,
+            "total_tokens": 17946,
+            "cached_input_tokens": 15616
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGV54RCH5RDZVY951TNJWKV",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "runtime_latency_ms": 9428,
+        "extraction_latency_ms": 4366,
+        "compose_latency_ms": 2113,
+        "tools_called_count": 1,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17946,
+        "cached_input_tokens": 15616,
+        "cache_hit_rate": 0.8988143202486474,
+        "extraction_to_compose_ratio": 2.0662565073355417,
+        "captured_at": "2026-07-02T07:19:39.020Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.wedding.10-ed6d4e91",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.85,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima Metropolitana",
+        "budget_signal": "medio",
+        "guest_range": "51-100",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 88,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7761401690320241,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7761401690320241,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "Se refiere a un local/venue para la boda en Lima para ~100 personas.",
+          "El usuario desea mantener el presupuesto medio (se deriva del contexto previo aunque el plan base no tenga budget_signal)."
+        ],
+        "conversation_summary": "Búsqueda de local para boda en Lima (51-100 personas). Se pide ampliar a Lima Metropolitana y mantener presupuesto medio.",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T07:19:36.883Z"
+      },
+      "latencyMs": 10114,
+      "rawTargetResponse": {
+        "message": "Amplié la búsqueda a Lima Metropolitana y mantuve el rango de presupuesto medio; por ahora sigue saliendo una opción de local para boda\n\n1. Casa Club 147\n Casa Club 147 sigue siendo la mejor coincidencia disponible: ofrece alquiler de local para eventos, ambientes amplios para matrimonios y un 10% de descuento para clientes de Sin Envolturas\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off Alquiler local.\n Nota: Está en Cieneguilla y el beneficio aplica sujeto a disponibilidad.\n\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147",
+        "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+        "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGV54RCH5RDZVY951TNJWKV",
+          "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+          "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+          "previous_node": "recomendar",
+          "next_node": "recomendar",
+          "node_path": [
+            "recomendar",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima Metropolitana\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7761401690320241,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima Metropolitana), parece alineado al rango medio\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 88,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7761401690320241,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7761401690320241,
+              "fit_score": 88
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              147
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 9428,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 4366,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 2842,
+            "provider_enrichment": 65,
+            "prompt_bundle_load": 2,
+            "compose_reply": 2113,
+            "save_plan": 23
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11522,
+              "output_tokens": 447,
+              "total_tokens": 11969,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5852,
+              "output_tokens": 125,
+              "total_tokens": 5977,
+              "cached_input_tokens": 4608
+            },
+            "total": {
+              "input_tokens": 17374,
+              "output_tokens": 572,
+              "total_tokens": 17946,
+              "cached_input_tokens": 15616
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGV4E9P6FD7BJNVN5868Y9E",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.wedding.10-ed6d4e91",
+          "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.85,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima Metropolitana",
+          "budget_signal": "medio",
+          "guest_range": "51-100",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 88,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7761401690320241,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con locales según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 88,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7761401690320241,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "Se refiere a un local/venue para la boda en Lima para ~100 personas.",
+            "El usuario desea mantener el presupuesto medio (se deriva del contexto previo aunque el plan base no tenga budget_signal)."
+          ],
+          "conversation_summary": "Búsqueda de local para boda en Lima (51-100 personas). Se pide ampliar a Lima Metropolitana y mantener presupuesto medio.",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T07:19:36.883Z"
+        },
+        "perf": {
+          "trace_id": "01KWGV54RCH5RDZVY951TNJWKV",
+          "conversation_id": "conv_6a4610fc4f4c8195a617a8fbfe07a38407badaa80188de1f",
+          "runtime_latency_ms": 9428,
+          "extraction_latency_ms": 4366,
+          "compose_latency_ms": 2113,
+          "tools_called_count": 1,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17946,
+          "cached_input_tokens": 15616,
+          "cache_hit_rate": 0.8988143202486474,
+          "extraction_to_compose_ratio": 2.0662565073355417,
+          "captured_at": "2026-07-02T07:19:39.020Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T07:19:39.325Z",
+  "completedAt": "2026-07-02T07:19:39.327Z"
+}

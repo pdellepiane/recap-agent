@@ -1,0 +1,1713 @@
+{
+  "runId": "eval-2026-07-02T07-16-01-535Z-06e66d5a",
+  "caseId": "study.baby_shower.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.6363636363636364,
+  "totalLatencyMs": 15291,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"elicitar_necesidades\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Hogar y deco:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T07-16-01-535Z-06e66d5a/artifacts/study-repetition-3/study.baby_shower.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 2 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-2",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.6363636363636364,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 11 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 15291,
+    "p95_latency_ms": 15291,
+    "tool_calls_total": 3,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.6666666666666666,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 18256,
+    "cache_hit_rate": 0.8535829189821585
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo un baby shower en Lima para 50 personas. Necesito local, catering y decoración sobria, presupuesto medio."
+      },
+      "outputText": "Busqué opciones en Sin Envolturas y armé una primera selección compacta con lo que encaja para tu baby shower en Lima\n\nLocales\nPara el local, encontré una opción que calza con un baby shower para 50 personas y un evento de presupuesto medio\n1. Casa Club 147 - local/espacio para baby shower (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja por tipo de evento y capacidad aproximada para una celebración de este tamaño\n Limitación: Está ubicado en Cieneguilla, así que puede no coincidir con una zona céntrica de Lima.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, encontré una alternativa alineada con un baby shower para 50 personas en Lima\n1. 4Foodies - catering para baby shower (Lima, Perú · $$$ · promo: 10% Off)\n Su servicio de catering encaja con el tipo de evento y la cantidad aproximada de invitados\n Limitación: Tiene señal de precio alta, así que puede quedar por encima de un presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\nPodemos empezar por revisar el local y luego ajustar catering o sumar la decoración sobria como siguiente frente",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGVCBM96SKC1MEQBEGNQ7R7",
+        "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+        "plan_id": "01KWGVBWTYVMEP1XGX0ZXV4QH0",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local/espacio para baby shower\",\n  \"queryStrings\": [\n    \"local para baby shower Lima 50 personas\",\n    \"espacio para baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para baby shower\",\n  \"queryStrings\": [\n    \"catering baby shower Lima 50 personas\",\n    \"menú para baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración sobria para baby shower\",\n  \"queryStrings\": [\n    \"decoración sobria baby shower Lima\",\n    \"decoración minimalista baby shower Lima 50 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"local/espacio para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6553973281089119\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"decoración sobria para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6389971901275082\n    },\n    {\n      \"id\": 105,\n      \"title\": \"ARQLAB\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5850500559693231\n    },\n    {\n      \"id\": 156,\n      \"title\": \"MAP DESING\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5760459112102286\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"catering para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7344026904094121\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6553973281089119,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 136,
+            "title": "4Foodies",
+            "slug": "4foodies",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "4Foodies encaja con catering para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+            "websiteUrl": "https://www.4foodies.pe",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+            "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Tablas de quesos",
+              "Mesas gastronómicas",
+              "Implementación y montaje de servicio",
+              "Propuestas personalizadas según el evento"
+            ],
+            "termsHighlights": [
+              "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+              "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+              "Válido para Lima (previa validación de zona de cobertura)."
+            ],
+            "eventTypes": [],
+            "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7344026904094121,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6553973281089119,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 136,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7344026904094121,
+            "fit_score": 100
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 2,
+          "context_candidates": 2,
+          "context_candidate_ids": [
+            147,
+            136
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 15154,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 8355,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 8786,
+          "provider_enrichment": 224,
+          "prompt_bundle_load": 2,
+          "compose_reply": 3484,
+          "save_plan": 28
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11428,
+            "output_tokens": 890,
+            "total_tokens": 12318,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5667,
+            "output_tokens": 271,
+            "total_tokens": 5938,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17095,
+            "output_tokens": 1161,
+            "total_tokens": 18256,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGVCBM96SKC1MEQBEGNQ7R7",
+        "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+        "runtime_latency_ms": 15154,
+        "extraction_latency_ms": 8355,
+        "compose_latency_ms": 3484,
+        "tools_called_count": 3,
+        "provider_results_count": 2,
+        "recommendation_context_candidates": 2,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18256,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8535829189821585,
+        "extraction_to_compose_ratio": 2.398105625717566,
+        "captured_at": "2026-07-02T07:23:35.433Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGVBWTYVMEP1XGX0ZXV4QH0",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.baby_shower.03-c10458c6",
+        "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.9,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "medio",
+        "guest_range": "21-50",
+        "preferences": [
+          "decoración sobria"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [
+              "decoración sobria (si aplica al espacio)"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.6553973281089119,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "locales_baby_shower",
+                  "label": "local/espacio para baby shower",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para baby shower Lima 50 personas",
+                    "espacio para baby shower Lima"
+                  ],
+                  "mustHave": [
+                    "capacidad aprox. 50",
+                    "apto para baby shower en Lima"
+                  ],
+                  "shouldAvoid": [
+                    "no especificado"
+                  ],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6553973281089119,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              136
+            ],
+            "recommended_providers": [
+              {
+                "id": 136,
+                "title": "4Foodies",
+                "slug": "4foodies",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "4Foodies encaja con catering para baby shower según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                "websiteUrl": "https://www.4foodies.pe",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Tablas de quesos",
+                  "Mesas gastronómicas",
+                  "Implementación y montaje de servicio",
+                  "Propuestas personalizadas según el evento"
+                ],
+                "termsHighlights": [
+                  "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                  "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                  "Válido para Lima (previa validación de zona de cobertura)."
+                ],
+                "eventTypes": [],
+                "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.7344026904094121,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "catering_baby_shower",
+                  "label": "catering para baby shower",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering baby shower Lima 50 personas",
+                    "menú para baby shower Lima"
+                  ],
+                  "mustHave": [
+                    "para 50 personas",
+                    "en Lima"
+                  ],
+                  "shouldAvoid": [
+                    "no especificado"
+                  ],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  136
+                ],
+                "selected_provider_ids": [
+                  136
+                ],
+                "candidates": [
+                  {
+                    "id": 136,
+                    "title": "4Foodies",
+                    "slug": "4foodies",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "4Foodies encaja con catering para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                    "websiteUrl": "https://www.4foodies.pe",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                    "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Tablas de quesos",
+                      "Mesas gastronómicas",
+                      "Implementación y montaje de servicio",
+                      "Propuestas personalizadas según el evento"
+                    ],
+                    "termsHighlights": [
+                      "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                      "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                      "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                      "Válido para Lima (previa validación de zona de cobertura)."
+                    ],
+                    "eventTypes": [],
+                    "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7344026904094121,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "no_providers_available",
+            "preferences": [
+              "decoración sobria",
+              "minimalista"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "decor_sobria_baby_shower",
+                  "label": "decoración sobria para baby shower",
+                  "category": "Hogar y deco",
+                  "queryStrings": [
+                    "decoración sobria baby shower Lima",
+                    "decoración minimalista baby shower Lima 50 personas"
+                  ],
+                  "mustHave": [
+                    "estilo sobrio",
+                    "en Lima"
+                  ],
+                  "shouldAvoid": [
+                    "no especificado"
+                  ],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  77,
+                  105,
+                  156
+                ],
+                "selected_provider_ids": [],
+                "candidates": [
+                  {
+                    "id": 77,
+                    "title": "AE MAISON",
+                    "slug": "ae-maison",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "AE MAISON encaja con decoración sobria para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                    "websiteUrl": "https://www.aemaison.pe/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% off",
+                    "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                    "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                    "serviceHighlights": [
+                      "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                      "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                      "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                    ],
+                    "termsHighlights": [
+                      "Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                    "fitScore": 93,
+                    "fitWarnings": [
+                      "La ficha no demuestra un servicio orientado a eventos."
+                    ],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.6389971901275082,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 105,
+                    "title": "ARQLAB",
+                    "slug": "arqlab",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "5.0",
+                    "reason": "ARQLAB encaja con decoración sobria para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+                    "websiteUrl": "https://www.arqlab.pe",
+                    "minPrice": "900.00",
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "10% en diseño de espacios.",
+                    "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+                    "serviceHighlights": [
+                      "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                      "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+                    ],
+                    "termsHighlights": [
+                      "Válido solo de Lunes a Viernes en horario laboral.",
+                      "No transferible ni acumulable.",
+                      "El descuento es solo para la etapa de diseño, no para implementación."
+                    ],
+                    "eventTypes": [],
+                    "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+                    "fitScore": 79,
+                    "fitWarnings": [
+                      "No hay evidencia exacta de decoración sobria para baby shower en la ficha.",
+                      "La ficha no demuestra un servicio orientado a eventos."
+                    ],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.5850500559693231,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 156,
+                    "title": "MAP DESING",
+                    "slug": "map-desing",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "MAP DESING encaja con decoración sobria para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+                    "websiteUrl": "https://www.mapdesignperu.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Hasta 50% off",
+                    "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+                    "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+                    "serviceHighlights": [
+                      "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+                      "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+                      "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+                    ],
+                    "termsHighlights": [
+                      "Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+                    "fitScore": 79,
+                    "fitWarnings": [
+                      "No hay evidencia exacta de decoración sobria para baby shower en la ficha.",
+                      "La ficha no demuestra un servicio orientado a eventos."
+                    ],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.5760459112102286,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": "No encontramos un match fuerte para decoración sobria para baby shower."
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6553973281089119,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“decoración sobria” corresponde a Hogar y deco"
+        ],
+        "conversation_summary": "Baby shower en Lima para 50 personas. Presupuesto medio. Necesita local/espacio, catering y decoración sobria.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T07:23:31.920Z"
+      },
+      "latencyMs": 15291,
+      "rawTargetResponse": {
+        "message": "Busqué opciones en Sin Envolturas y armé una primera selección compacta con lo que encaja para tu baby shower en Lima\n\nLocales\nPara el local, encontré una opción que calza con un baby shower para 50 personas y un evento de presupuesto medio\n1. Casa Club 147 - local/espacio para baby shower (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja por tipo de evento y capacidad aproximada para una celebración de este tamaño\n Limitación: Está ubicado en Cieneguilla, así que puede no coincidir con una zona céntrica de Lima.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, encontré una alternativa alineada con un baby shower para 50 personas en Lima\n1. 4Foodies - catering para baby shower (Lima, Perú · $$$ · promo: 10% Off)\n Su servicio de catering encaja con el tipo de evento y la cantidad aproximada de invitados\n Limitación: Tiene señal de precio alta, así que puede quedar por encima de un presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/4foodies\n\nPodemos empezar por revisar el local y luego ajustar catering o sumar la decoración sobria como siguiente frente",
+        "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+        "plan_id": "01KWGVBWTYVMEP1XGX0ZXV4QH0",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGVCBM96SKC1MEQBEGNQ7R7",
+          "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+          "plan_id": "01KWGVBWTYVMEP1XGX0ZXV4QH0",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local/espacio para baby shower\",\n  \"queryStrings\": [\n    \"local para baby shower Lima 50 personas\",\n    \"espacio para baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para baby shower\",\n  \"queryStrings\": [\n    \"catering baby shower Lima 50 personas\",\n    \"menú para baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración sobria para baby shower\",\n  \"queryStrings\": [\n    \"decoración sobria baby shower Lima\",\n    \"decoración minimalista baby shower Lima 50 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"local/espacio para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6553973281089119\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"decoración sobria para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6389971901275082\n    },\n    {\n      \"id\": 105,\n      \"title\": \"ARQLAB\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5850500559693231\n    },\n    {\n      \"id\": 156,\n      \"title\": \"MAP DESING\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5760459112102286\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"catering para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7344026904094121\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6553973281089119,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 136,
+              "title": "4Foodies",
+              "slug": "4foodies",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "4Foodies encaja con catering para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+              "websiteUrl": "https://www.4foodies.pe",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+              "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Tablas de quesos",
+                "Mesas gastronómicas",
+                "Implementación y montaje de servicio",
+                "Propuestas personalizadas según el evento"
+              ],
+              "termsHighlights": [
+                "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                "Válido para Lima (previa validación de zona de cobertura)."
+              ],
+              "eventTypes": [],
+              "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7344026904094121,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6553973281089119,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 136,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7344026904094121,
+              "fit_score": 100
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 2,
+            "context_candidates": 2,
+            "context_candidate_ids": [
+              147,
+              136
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 15154,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 8355,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 8786,
+            "provider_enrichment": 224,
+            "prompt_bundle_load": 2,
+            "compose_reply": 3484,
+            "save_plan": 28
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11428,
+              "output_tokens": 890,
+              "total_tokens": 12318,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5667,
+              "output_tokens": 271,
+              "total_tokens": 5938,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17095,
+              "output_tokens": 1161,
+              "total_tokens": 18256,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGVBWTYVMEP1XGX0ZXV4QH0",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.baby_shower.03-c10458c6",
+          "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.9,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "medio",
+          "guest_range": "21-50",
+          "preferences": [
+            "decoración sobria"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [
+                "decoración sobria (si aplica al espacio)"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.6553973281089119,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "locales_baby_shower",
+                    "label": "local/espacio para baby shower",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para baby shower Lima 50 personas",
+                      "espacio para baby shower Lima"
+                    ],
+                    "mustHave": [
+                      "capacidad aprox. 50",
+                      "apto para baby shower en Lima"
+                    ],
+                    "shouldAvoid": [
+                      "no especificado"
+                    ],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6553973281089119,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                136
+              ],
+              "recommended_providers": [
+                {
+                  "id": 136,
+                  "title": "4Foodies",
+                  "slug": "4foodies",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "4Foodies encaja con catering para baby shower según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                  "websiteUrl": "https://www.4foodies.pe",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                  "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Tablas de quesos",
+                    "Mesas gastronómicas",
+                    "Implementación y montaje de servicio",
+                    "Propuestas personalizadas según el evento"
+                  ],
+                  "termsHighlights": [
+                    "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                    "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                    "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                    "Válido para Lima (previa validación de zona de cobertura)."
+                  ],
+                  "eventTypes": [],
+                  "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.7344026904094121,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "catering_baby_shower",
+                    "label": "catering para baby shower",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering baby shower Lima 50 personas",
+                      "menú para baby shower Lima"
+                    ],
+                    "mustHave": [
+                      "para 50 personas",
+                      "en Lima"
+                    ],
+                    "shouldAvoid": [
+                      "no especificado"
+                    ],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    136
+                  ],
+                  "selected_provider_ids": [
+                    136
+                  ],
+                  "candidates": [
+                    {
+                      "id": 136,
+                      "title": "4Foodies",
+                      "slug": "4foodies",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "4Foodies encaja con catering para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                      "websiteUrl": "https://www.4foodies.pe",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                      "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Tablas de quesos",
+                        "Mesas gastronómicas",
+                        "Implementación y montaje de servicio",
+                        "Propuestas personalizadas según el evento"
+                      ],
+                      "termsHighlights": [
+                        "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                        "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                        "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                        "Válido para Lima (previa validación de zona de cobertura)."
+                      ],
+                      "eventTypes": [],
+                      "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7344026904094121,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "no_providers_available",
+              "preferences": [
+                "decoración sobria",
+                "minimalista"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "decor_sobria_baby_shower",
+                    "label": "decoración sobria para baby shower",
+                    "category": "Hogar y deco",
+                    "queryStrings": [
+                      "decoración sobria baby shower Lima",
+                      "decoración minimalista baby shower Lima 50 personas"
+                    ],
+                    "mustHave": [
+                      "estilo sobrio",
+                      "en Lima"
+                    ],
+                    "shouldAvoid": [
+                      "no especificado"
+                    ],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    77,
+                    105,
+                    156
+                  ],
+                  "selected_provider_ids": [],
+                  "candidates": [
+                    {
+                      "id": 77,
+                      "title": "AE MAISON",
+                      "slug": "ae-maison",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "AE MAISON encaja con decoración sobria para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                      "websiteUrl": "https://www.aemaison.pe/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% off",
+                      "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                      "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                      "serviceHighlights": [
+                        "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                        "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                        "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                      ],
+                      "termsHighlights": [
+                        "Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                      "fitScore": 93,
+                      "fitWarnings": [
+                        "La ficha no demuestra un servicio orientado a eventos."
+                      ],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.6389971901275082,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 105,
+                      "title": "ARQLAB",
+                      "slug": "arqlab",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "5.0",
+                      "reason": "ARQLAB encaja con decoración sobria para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+                      "websiteUrl": "https://www.arqlab.pe",
+                      "minPrice": "900.00",
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "10% en diseño de espacios.",
+                      "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+                      "serviceHighlights": [
+                        "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                        "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+                      ],
+                      "termsHighlights": [
+                        "Válido solo de Lunes a Viernes en horario laboral.",
+                        "No transferible ni acumulable.",
+                        "El descuento es solo para la etapa de diseño, no para implementación."
+                      ],
+                      "eventTypes": [],
+                      "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+                      "fitScore": 79,
+                      "fitWarnings": [
+                        "No hay evidencia exacta de decoración sobria para baby shower en la ficha.",
+                        "La ficha no demuestra un servicio orientado a eventos."
+                      ],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.5850500559693231,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 156,
+                      "title": "MAP DESING",
+                      "slug": "map-desing",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "MAP DESING encaja con decoración sobria para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+                      "websiteUrl": "https://www.mapdesignperu.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Hasta 50% off",
+                      "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+                      "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+                      "serviceHighlights": [
+                        "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+                        "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+                        "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+                      ],
+                      "termsHighlights": [
+                        "Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+                      "fitScore": 79,
+                      "fitWarnings": [
+                        "No hay evidencia exacta de decoración sobria para baby shower en la ficha.",
+                        "La ficha no demuestra un servicio orientado a eventos."
+                      ],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.5760459112102286,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": "No encontramos un match fuerte para decoración sobria para baby shower."
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con local/espacio para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6553973281089119,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“decoración sobria” corresponde a Hogar y deco"
+          ],
+          "conversation_summary": "Baby shower en Lima para 50 personas. Presupuesto medio. Necesita local/espacio, catering y decoración sobria.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T07:23:31.920Z"
+        },
+        "perf": {
+          "trace_id": "01KWGVCBM96SKC1MEQBEGNQ7R7",
+          "conversation_id": "conv_6a4611f412108196af08041a86e734f7025b64b6a5d571ac",
+          "runtime_latency_ms": 15154,
+          "extraction_latency_ms": 8355,
+          "compose_latency_ms": 3484,
+          "tools_called_count": 3,
+          "provider_results_count": 2,
+          "recommendation_context_candidates": 2,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18256,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8535829189821585,
+          "extraction_to_compose_ratio": 2.398105625717566,
+          "captured_at": "2026-07-02T07:23:35.433Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T07:23:35.475Z",
+  "completedAt": "2026-07-02T07:23:35.476Z"
+}

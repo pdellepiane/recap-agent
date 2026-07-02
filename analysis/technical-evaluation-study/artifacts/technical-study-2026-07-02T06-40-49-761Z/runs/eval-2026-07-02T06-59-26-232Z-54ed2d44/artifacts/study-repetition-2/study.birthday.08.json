@@ -1,0 +1,1145 @@
+{
+  "runId": "eval-2026-07-02T06-59-26-232Z-54ed2d44",
+  "caseId": "study.birthday.08",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 20274,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades",
+    "elicitacion_necesidades->consultar_faq"
+  ],
+  "planDiffSummary": [
+    "current_node=\"consultar_faq\"",
+    "intent=\"consultar_faq\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "provider_needs=Locales:search_ready, Catering:identified, Música:identified, Fotografía y video:identified, Hogar y deco:identified"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-59-26-232Z-54ed2d44/artifacts/study-repetition-2/study.birthday.08.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition elicitacion_necesidades->consultar_faq."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 7 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 10137,
+    "p95_latency_ms": 12413,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 0.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.19230769230769232,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 41474,
+    "cache_hit_rate": 0.6866295615382678
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un cumpleaños en Lima."
+      },
+      "outputText": "Claro, te ayudo con eso.\n\nYa tengo claro que es un cumpleaños en Lima y las necesidades detectadas son Locales, Catering, Música, Fotografía y video y Hogar y deco.\n\nPodemos empezar por Catering, que es el frente que quedó como foco de este turno. También te dejo el mapa general para que luego podamos ajustar el plan si quieres.\n\nAhora mismo falta presupuesto o cantidad aproximada de invitados, y eso ayuda a ordenar mejor las opciones.\n\nSi prefieres, empezamos por Catering y después seguimos con Locales o con el resto del evento",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGTB12TPANRGC3PBG7G3KW7",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "plan_id": "01KWGTAN38264KGQHTA48837N8",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 12280,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 9752,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2495,
+          "save_plan": 20
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11410,
+            "output_tokens": 1228,
+            "total_tokens": 12638,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5546,
+            "output_tokens": 132,
+            "total_tokens": 5678,
+            "cached_input_tokens": 0
+          },
+          "total": {
+            "input_tokens": 16956,
+            "output_tokens": 1360,
+            "total_tokens": 18316,
+            "cached_input_tokens": 11008
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGTB12TPANRGC3PBG7G3KW7",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "runtime_latency_ms": 12280,
+        "extraction_latency_ms": 9752,
+        "compose_latency_ms": 2495,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18316,
+        "cached_input_tokens": 11008,
+        "cache_hit_rate": 0.6492097192734135,
+        "extraction_to_compose_ratio": 3.908617234468938,
+        "captured_at": "2026-07-02T07:05:23.291Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGTAN38264KGQHTA48837N8",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.08-72a45a3b",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.78,
+        "event_type": "cumpleanos",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Plan de un cumpleaños en Lima; aún no se definieron frentes/proveedores ni restricciones.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T07:05:20.776Z"
+      },
+      "latencyMs": 12413,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso.\n\nYa tengo claro que es un cumpleaños en Lima y las necesidades detectadas son Locales, Catering, Música, Fotografía y video y Hogar y deco.\n\nPodemos empezar por Catering, que es el frente que quedó como foco de este turno. También te dejo el mapa general para que luego podamos ajustar el plan si quieres.\n\nAhora mismo falta presupuesto o cantidad aproximada de invitados, y eso ayuda a ordenar mejor las opciones.\n\nSi prefieres, empezamos por Catering y después seguimos con Locales o con el resto del evento",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "plan_id": "01KWGTAN38264KGQHTA48837N8",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGTB12TPANRGC3PBG7G3KW7",
+          "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+          "plan_id": "01KWGTAN38264KGQHTA48837N8",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 12280,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 9752,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2495,
+            "save_plan": 20
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11410,
+              "output_tokens": 1228,
+              "total_tokens": 12638,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5546,
+              "output_tokens": 132,
+              "total_tokens": 5678,
+              "cached_input_tokens": 0
+            },
+            "total": {
+              "input_tokens": 16956,
+              "output_tokens": 1360,
+              "total_tokens": 18316,
+              "cached_input_tokens": 11008
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGTAN38264KGQHTA48837N8",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.08-72a45a3b",
+          "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.78,
+          "event_type": "cumpleanos",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Plan de un cumpleaños en Lima; aún no se definieron frentes/proveedores ni restricciones.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T07:05:20.776Z"
+        },
+        "perf": {
+          "trace_id": "01KWGTB12TPANRGC3PBG7G3KW7",
+          "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+          "runtime_latency_ms": 12280,
+          "extraction_latency_ms": 9752,
+          "compose_latency_ms": 2495,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18316,
+          "cached_input_tokens": 11008,
+          "cache_hit_rate": 0.6492097192734135,
+          "extraction_to_compose_ratio": 3.908617234468938,
+          "captured_at": "2026-07-02T07:05:23.291Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "¿Cómo contacto a un proveedor desde Sin Envolturas?"
+      },
+      "outputText": "Claro, te ayudo con eso.\n\nPara contactar a un proveedor desde Sin Envolturas, puedes escribirnos por el chat de la web o a hola@sinenvolturas.com y te ayudamos a ponerlo en contacto con la marca o proveedor correspondiente. En los casos de reclamos de compra, la gestión se hace directamente con la marca del producto, y nosotros podemos facilitar ese contacto\n\nSi quieres, también puedo ayudarte a seguir con tu plan de cumpleaños y revisar Locales, Catering, Música, Fotografía y video u Hogar y deco",
+      "currentNode": "consultar_faq",
+      "trace": {
+        "trace_id": "01KWGTB8R1W1P4K868KQE5YJTE",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "plan_id": "01KWGTAN38264KGQHTA48837N8",
+        "previous_node": "elicitacion_necesidades",
+        "next_node": "consultar_faq",
+        "node_path": [
+          "elicitacion_necesidades",
+          "existe_plan_guardado",
+          "consultar_faq"
+        ],
+        "intent": "consultar_faq",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "dcfc03857498",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/consultar_faq/system.txt",
+          "nodes/consultar_faq/response_contract.txt",
+          "nodes/consultar_faq/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "file_search"
+        ],
+        "tools_called": [
+          "file_search"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "file_search",
+            "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Cómo contacto a un proveedor desde Sin Envolturas?\",\n    \"contactar a un proveedor desde Sin Envolturas\",\n    \"cómo hablar con un proveedor en Sin Envolturas\"\n  ]\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "file_search",
+            "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": true,
+          "kb_query_present": true,
+          "file_search_called": true,
+          "file_search_output_count": 1
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "consultar_faq",
+        "timing_ms": {
+          "total": 7461,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 2650,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4790,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11653,
+            "output_tokens": 214,
+            "total_tokens": 11867,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 11098,
+            "output_tokens": 193,
+            "total_tokens": 11291,
+            "cached_input_tokens": 5248
+          },
+          "total": {
+            "input_tokens": 22751,
+            "output_tokens": 407,
+            "total_tokens": 23158,
+            "cached_input_tokens": 16256
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGTB8R1W1P4K868KQE5YJTE",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "runtime_latency_ms": 7461,
+        "extraction_latency_ms": 2650,
+        "compose_latency_ms": 4790,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 23158,
+        "cached_input_tokens": 16256,
+        "cache_hit_rate": 0.7145180431629379,
+        "extraction_to_compose_ratio": 0.5532359081419624,
+        "captured_at": "2026-07-02T07:05:31.137Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGTAN38264KGQHTA48837N8",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.08-72a45a3b",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "consultar_faq",
+        "intent": "consultar_faq",
+        "intent_confidence": 0.85,
+        "event_type": "cumpleanos",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "need_priority_confirmation"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "El usuario pregunta cómo contactar a un proveedor desde Sin Envolturas. No hay cambios en las necesidades del plan.",
+        "last_user_goal": "consultar_faq",
+        "open_questions": [],
+        "updated_at": "2026-07-02T07:05:26.335Z"
+      },
+      "latencyMs": 7861,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso.\n\nPara contactar a un proveedor desde Sin Envolturas, puedes escribirnos por el chat de la web o a hola@sinenvolturas.com y te ayudamos a ponerlo en contacto con la marca o proveedor correspondiente. En los casos de reclamos de compra, la gestión se hace directamente con la marca del producto, y nosotros podemos facilitar ese contacto\n\nSi quieres, también puedo ayudarte a seguir con tu plan de cumpleaños y revisar Locales, Catering, Música, Fotografía y video u Hogar y deco",
+        "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+        "plan_id": "01KWGTAN38264KGQHTA48837N8",
+        "current_node": "consultar_faq",
+        "trace": {
+          "trace_id": "01KWGTB8R1W1P4K868KQE5YJTE",
+          "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+          "plan_id": "01KWGTAN38264KGQHTA48837N8",
+          "previous_node": "elicitacion_necesidades",
+          "next_node": "consultar_faq",
+          "node_path": [
+            "elicitacion_necesidades",
+            "existe_plan_guardado",
+            "consultar_faq"
+          ],
+          "intent": "consultar_faq",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "dcfc03857498",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/consultar_faq/system.txt",
+            "nodes/consultar_faq/response_contract.txt",
+            "nodes/consultar_faq/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "file_search"
+          ],
+          "tools_called": [
+            "file_search"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "file_search",
+              "input": "{\n  \"arguments\": null,\n  \"queries\": [\n    \"¿Cómo contacto a un proveedor desde Sin Envolturas?\",\n    \"contactar a un proveedor desde Sin Envolturas\",\n    \"cómo hablar con un proveedor en Sin Envolturas\"\n  ]\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "file_search",
+              "output": "{\n  \"status\": \"completed\",\n  \"result_count\": 6\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": true,
+            "kb_query_present": true,
+            "file_search_called": true,
+            "file_search_output_count": 1
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "consultar_faq",
+          "timing_ms": {
+            "total": 7461,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 2650,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4790,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11653,
+              "output_tokens": 214,
+              "total_tokens": 11867,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 11098,
+              "output_tokens": 193,
+              "total_tokens": 11291,
+              "cached_input_tokens": 5248
+            },
+            "total": {
+              "input_tokens": 22751,
+              "output_tokens": 407,
+              "total_tokens": 23158,
+              "cached_input_tokens": 16256
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGTAN38264KGQHTA48837N8",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.08-72a45a3b",
+          "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "consultar_faq",
+          "intent": "consultar_faq",
+          "intent_confidence": 0.85,
+          "event_type": "cumpleanos",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "need_priority_confirmation"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "El usuario pregunta cómo contactar a un proveedor desde Sin Envolturas. No hay cambios en las necesidades del plan.",
+          "last_user_goal": "consultar_faq",
+          "open_questions": [],
+          "updated_at": "2026-07-02T07:05:26.335Z"
+        },
+        "perf": {
+          "trace_id": "01KWGTB8R1W1P4K868KQE5YJTE",
+          "conversation_id": "conv_6a460db0d960819496d3746707ade9fc0c6e3019cde78712",
+          "runtime_latency_ms": 7461,
+          "extraction_latency_ms": 2650,
+          "compose_latency_ms": 4790,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 23158,
+          "cached_input_tokens": 16256,
+          "cache_hit_rate": 0.7145180431629379,
+          "extraction_to_compose_ratio": 0.5532359081419624,
+          "captured_at": "2026-07-02T07:05:31.137Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T07:05:31.186Z",
+  "completedAt": "2026-07-02T07:05:31.188Z"
+}

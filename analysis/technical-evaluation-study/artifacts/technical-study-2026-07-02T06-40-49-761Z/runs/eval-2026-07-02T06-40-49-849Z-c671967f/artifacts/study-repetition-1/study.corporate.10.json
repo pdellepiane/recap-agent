@@ -1,0 +1,2757 @@
+{
+  "runId": "eval-2026-07-02T06-40-49-849Z-c671967f",
+  "caseId": "study.corporate.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.75,
+  "totalLatencyMs": 20795,
+  "totalToolCalls": 5,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista",
+    "entrevista->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"corporativo\"",
+    "vendor_category=\"Fotografía y video\"",
+    "active_need_category=\"Fotografía y video\"",
+    "location=\"Lima\"",
+    "provider_needs=Fotografía y video:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-40-49-849Z-c671967f/artifacts/study-repetition-1/study.corporate.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition entrevista->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was false instead of true."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.75,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 10397.5,
+    "p95_latency_ms": 13747,
+    "tool_calls_total": 5,
+    "unique_tools_called": 3,
+    "tool_call_rate_per_turn": 2.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.38461538461538464,
+    "state_expectation_pass_rate": 0.5,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 45957,
+    "cache_hit_rate": 0.8499450389214169
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco hologramas para evento corporativo en Lima."
+      },
+      "outputText": "Claro, te ayudo con eso.\n\nPara avanzar, solo me falta que me digas qué tipo de proveedor o servicio buscas para ese evento en Lima. Si quieres, también puedes incluir un presupuesto aproximado o cuánta gente esperas",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWGSSKCWPN9AZD9Y7VMXTM72",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "list_categories",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 6905,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 4378,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 2,
+          "compose_reply": 2500,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11414,
+            "output_tokens": 479,
+            "total_tokens": 11893,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 9045,
+            "output_tokens": 80,
+            "total_tokens": 9125,
+            "cached_input_tokens": 7168
+          },
+          "total": {
+            "input_tokens": 20459,
+            "output_tokens": 559,
+            "total_tokens": 21018,
+            "cached_input_tokens": 18176
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGSSKCWPN9AZD9Y7VMXTM72",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "runtime_latency_ms": 6905,
+        "extraction_latency_ms": 4378,
+        "compose_latency_ms": 2500,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 21018,
+        "cached_input_tokens": 18176,
+        "cache_hit_rate": 0.8884109682780195,
+        "extraction_to_compose_ratio": 1.7512,
+        "captured_at": "2026-07-02T06:55:52.220Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.10-ee5daac8",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "corporativo",
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "hologramas"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“hologramas” corresponde a un servicio de entretenimiento/producción para eventos corporativos"
+        ],
+        "conversation_summary": "El usuario busca hologramas para un evento corporativo en Lima; aún no se definió la categoría exacta del proveedor en el plan.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:55:49.707Z"
+      },
+      "latencyMs": 7048,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso.\n\nPara avanzar, solo me falta que me digas qué tipo de proveedor o servicio buscas para ese evento en Lima. Si quieres, también puedes incluir un presupuesto aproximado o cuánta gente esperas",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWGSSKCWPN9AZD9Y7VMXTM72",
+          "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+          "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+          "previous_node": "contacto_inicial",
+          "next_node": "entrevista",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "entrevista"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "list_categories"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "list_categories",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 6905,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 4378,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 2,
+            "compose_reply": 2500,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11414,
+              "output_tokens": 479,
+              "total_tokens": 11893,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 9045,
+              "output_tokens": 80,
+              "total_tokens": 9125,
+              "cached_input_tokens": 7168
+            },
+            "total": {
+              "input_tokens": 20459,
+              "output_tokens": 559,
+              "total_tokens": 21018,
+              "cached_input_tokens": 18176
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.10-ee5daac8",
+          "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "corporativo",
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "hologramas"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“hologramas” corresponde a un servicio de entretenimiento/producción para eventos corporativos"
+          ],
+          "conversation_summary": "El usuario busca hologramas para un evento corporativo en Lima; aún no se definió la categoría exacta del proveedor en el plan.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:55:49.707Z"
+        },
+        "perf": {
+          "trace_id": "01KWGSSKCWPN9AZD9Y7VMXTM72",
+          "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+          "runtime_latency_ms": 6905,
+          "extraction_latency_ms": 4378,
+          "compose_latency_ms": 2500,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 21018,
+          "cached_input_tokens": 18176,
+          "cache_hit_rate": 0.8884109682780195,
+          "extraction_to_compose_ratio": 1.7512,
+          "captured_at": "2026-07-02T06:55:52.220Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no existen, amplía a producción audiovisual profesional."
+      },
+      "outputText": "Amplío a producción audiovisual profesional dentro de Fotografía y video; estas opciones encajan mejor para un evento corporativo en Lima\n\n1. Uriel Santisteban Photography & Film\n Tiene cobertura integral de fotografía + video y producción/edición final, ideal si buscas una solución audiovisual más robusta\n Ubicación: Lima, Perú.\n Precio: $$$$.\n Promo: 5% Off.\n Nota: El beneficio indica que ambos servicios deben ser de la misma categoría y está sujeto a disponibilidad.\n\n Ficha: https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\n\n2. Agalux Studio\n Ofrece paquetes personalizados de fotografía y/o video, con un perfil más flexible para ajustar al tipo de evento\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 100 S/. Dscto.\n Nota: El descuento aplica para bodas de más de 100 invitados; conviene confirmar si adapta el paquete a corporativo.\n\n Ficha: https://sinenvolturas.com/proveedores/agalux-studio\n\n3. Andrea Narváez\n Incluye fotografía y video con producción y edición, útil si priorizas un resultado cuidado y natural\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 30% Off.\n Nota: Su promoción está enfocada en niños y familias, así que habría que validar el encaje para corporativo.\n\n Ficha: https://sinenvolturas.com/proveedores/andrea-narvaez",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGST0KSX3T4XD51SMDHWVE4",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+        "previous_node": "entrevista",
+        "next_node": "recomendar",
+        "node_path": [
+          "entrevista",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_provider_detail",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Fotografía y video\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 133\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 142\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 58\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 54\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 33\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 60\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 33,\n      \"title\": \"Spotlight Studio\",\n      \"slug\": \"spotlight-studio\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/spotlight-studio\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 54,\n      \"title\": \"Fotostory\",\n      \"slug\": \"fotostory\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/fotostory\",\n      \"websiteUrl\": null,\n      \"minPrice\": \"150.00\",\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 58,\n      \"title\": \"Andrea Narváez\",\n      \"slug\": \"andrea-narvaez\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/andrea-narvaez\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 60,\n      \"title\": \"Maria Bashi\",\n      \"slug\": \"maria-bashi\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/maria-bashi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 90,\n      \"title\": \"Carlos Schult\",\n      \"slug\": \"carlos-schult\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/carlos-schult\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"slug\": \"uriel-santisteban-photography-film\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\",\n      \"websiteUrl\": \"https://www.urielsantisteban.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"5% Off\",\n      \"promoSummary\": \"5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).\",\n      \"descriptionSnippet\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.\",\n      \"serviceHighlights\": [\n        \"Fotografía para matrimonios\",\n        \"Video de bodas\",\n        \"Paquetes combinados de fotografía + video\",\n        \"Cobertura integral del evento\",\n        \"Producción y edición del material final\"\n      ],\n      \"termsHighlights\": [\n        \"Ambos servicios deben pertenecer a la misma categoría\",\n        \"Para más información, consultar paquetes disponibles con el proveedor\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8870931774785737,\n      \"retrievalSource\": \"vector\",\n      \"reason\": \"coincide semánticamente con la búsqueda\"\n    },\n    {\n      \"id\": 142,\n      \"title\": \"Agalux Studio\",\n      \"slug\": \"agalux-studio\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/agalux-studio\",\n      \"websiteUrl\": null,\n      \"minPrice\": \"6000.00\",\n      \"maxPrice\": null,\n      \"promoBadge\": \"100 S/. Dscto\",\n      \"promoSummary\": \"100 soles de descuento para bodas de +100 invitados.\",\n      \"descriptionSnippet\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.\",\n      \"serviceHighlights\": [\n        \"Cobertura audiovisual para matrimonios\",\n        \"Fotografía y/o video de bodas\",\n        \"Paquetes personalizados según el tipo de evento\",\n        \"Producción y edición del material final\"\n      ],\n      \"termsHighlights\": [\n        \"Descuentos y beneficios no acumulables\",\n        \"Beneficio transferible\",\n        \"Válido en todo el Perú\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8713863057269178,\n      \"retrievalSource\": \"vector\",\n      \"reason\": \"coincide semánticamente con la búsqueda\"\n    }\n  ]\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\n  \"id\": 58,\n  \"title\": \"Andrea Narváez\",\n  \"slug\": \"andrea-narvaez\",\n  \"category\": \"Fotografía y video\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"high\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/andrea-narvaez\",\n  \"websiteUrl\": null,\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"30% Off\",\n  \"promoSummary\": \"30% de dscto. en sesión de fotos en exteriores para niños y familias\",\n  \"descriptionSnippet\": \"Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.\",\n  \"serviceHighlights\": [\n    \"Sesiones de fotos en exteriores\",\n    \"Fotografía y video para niños y familias\",\n    \"Cobertura de momentos especiales\",\n    \"Producción y edición de contenido\"\n  ],\n  \"termsHighlights\": [\n    \"Beneficio válido para clientes de Sin Envolturas\",\n    \"No acumulable con otras promociones\",\n    \"Sujeto a disponibilidad\"\n  ],\n  \"description\": \"Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.\",\n  \"eventTypes\": []\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\n  \"id\": 142,\n  \"title\": \"Agalux Studio\",\n  \"slug\": \"agalux-studio\",\n  \"category\": \"Fotografía y video\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"mid\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/agalux-studio\",\n  \"websiteUrl\": null,\n  \"minPrice\": \"6000.00\",\n  \"maxPrice\": null,\n  \"promoBadge\": \"100 S/. Dscto\",\n  \"promoSummary\": \"100 soles de descuento para bodas de +100 invitados.\",\n  \"descriptionSnippet\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.\",\n  \"serviceHighlights\": [\n    \"Cobertura audiovisual para matrimonios\",\n    \"Fotografía y/o video de bodas\",\n    \"Paquetes personalizados según el tipo de evento\",\n    \"Producción y edición del material final\"\n  ],\n  \"termsHighlights\": [\n    \"Descuentos y beneficios no acumulables\",\n    \"Beneficio transferible\",\n    \"Válido en todo el Perú\",\n    \"Sujeto a disponibilidad\"\n  ],\n  \"description\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.\",\n  \"eventTypes\": []\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\n  \"id\": 133,\n  \"title\": \"Uriel Santisteban Photography & Film\",\n  \"slug\": \"uriel-santisteban-photography-film\",\n  \"category\": \"Fotografía y video\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"very_high\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\",\n  \"websiteUrl\": \"https://www.urielsantisteban.com/\",\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"5% Off\",\n  \"promoSummary\": \"5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).\",\n  \"descriptionSnippet\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.\",\n  \"serviceHighlights\": [\n    \"Fotografía para matrimonios\",\n    \"Video de bodas\",\n    \"Paquetes combinados de fotografía + video\",\n    \"Cobertura integral del evento\",\n    \"Producción y edición del material final\"\n  ],\n  \"termsHighlights\": [\n    \"Ambos servicios deben pertenecer a la misma categoría\",\n    \"Para más información, consultar paquetes disponibles con el proveedor\",\n    \"Sujeto a disponibilidad\"\n  ],\n  \"description\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.\",\n  \"eventTypes\": []\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 133,
+            "title": "Uriel Santisteban Photography & Film",
+            "slug": "uriel-santisteban-photography-film",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Uriel Santisteban Photography & Film encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+            "websiteUrl": "https://www.urielsantisteban.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% Off",
+            "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+            "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+            "serviceHighlights": [
+              "Fotografía para matrimonios",
+              "Video de bodas",
+              "Paquetes combinados de fotografía + video",
+              "Cobertura integral del evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Ambos servicios deben pertenecer a la misma categoría",
+              "Para más información, consultar paquetes disponibles con el proveedor",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8870931774785737,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 142,
+            "title": "Agalux Studio",
+            "slug": "agalux-studio",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Agalux Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+            "websiteUrl": null,
+            "minPrice": "6000.00",
+            "maxPrice": null,
+            "promoBadge": "100 S/. Dscto",
+            "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+            "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+            "serviceHighlights": [
+              "Cobertura audiovisual para matrimonios",
+              "Fotografía y/o video de bodas",
+              "Paquetes personalizados según el tipo de evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Descuentos y beneficios no acumulables",
+              "Beneficio transferible",
+              "Válido en todo el Perú",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8713863057269178,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 58,
+            "title": "Andrea Narváez",
+            "slug": "andrea-narvaez",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Andrea Narváez encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/andrea-narvaez",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "30% Off",
+            "promoSummary": "30% de dscto. en sesión de fotos en exteriores para niños y familias",
+            "descriptionSnippet": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.",
+            "serviceHighlights": [
+              "Sesiones de fotos en exteriores",
+              "Fotografía y video para niños y familias",
+              "Cobertura de momentos especiales",
+              "Producción y edición de contenido"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para clientes de Sin Envolturas",
+              "No acumulable con otras promociones",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 54,
+            "title": "Fotostory",
+            "slug": "fotostory",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Fotostory encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+            "websiteUrl": "https://fotostory.pe/",
+            "minPrice": "150.00",
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en todos los fotobooks",
+            "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+            "serviceHighlights": [
+              "Fotobooks",
+              "Tazas con fotos",
+              "Cuadros personalizados",
+              "y más"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+            "fitScore": 50,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 33,
+            "title": "Spotlight Studio",
+            "slug": "spotlight-studio",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Spotlight Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/spotlight-studio",
+            "websiteUrl": "https://www.spotlight.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el paquete de bodas\r\n10% de descuento en servicio contratado para Bridal Shower",
+            "descriptionSnippet": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers.",
+            "serviceHighlights": [
+              "Paquetes para bodas",
+              "Experiencias para bridal shower",
+              "Servicios personalizados según el tipo de celebración"
+            ],
+            "termsHighlights": [
+              "No acumulable con otras promociones",
+              "Para acceder al beneficio, escribir al correo indicando “Paquete de bodas con Sin Envolturas”",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers. Su propuesta combina estilo, detalle y una ejecución cuidada para crear eventos memorables.",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 60,
+            "title": "Maria Bashi",
+            "slug": "maria-bashi",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Maria Bashi encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+            "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+            "serviceHighlights": [
+              "Sesiones de recién nacidos",
+              "Sesiones de bebés",
+              "Sesiones familiares",
+              "Sesiones de embarazo",
+              "Sesiones en casa, estudio o exteriores"
+            ],
+            "termsHighlights": [
+              "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+              "La sesión de embarazo incluye a la pareja.",
+              "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+              "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+              "Beneficio sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 90,
+            "title": "Carlos Schult",
+            "slug": "carlos-schult",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Carlos Schult encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/carlos-schult",
+            "websiteUrl": "https://goo.su/9rmDCWQ",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Gratis",
+            "promoSummary": "Sesión pre boda de regalo en cualquier opción de la web",
+            "descriptionSnippet": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables.",
+            "serviceHighlights": [
+              "Sesión pre boda",
+              "Fotografía para matrimonios",
+              "Cobertura de eventos",
+              "Acompañamiento y asesoría para capturar los mejores momentos"
+            ],
+            "termsHighlights": [
+              "Incluye sesión pre boda de regalo en cualquier opción contratada",
+              "No transferible",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables. Su estilo busca retratar cada historia de manera natural, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 133,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8870931774785737,
+            "fit_score": 81
+          },
+          {
+            "provider_id": 142,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8713863057269178,
+            "fit_score": 81
+          },
+          {
+            "provider_id": 58,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 54,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 50
+          },
+          {
+            "provider_id": 33,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 42
+          },
+          {
+            "provider_id": 60,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 42
+          },
+          {
+            "provider_id": 90,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 42
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 7,
+          "context_candidates": 6,
+          "context_candidate_ids": [
+            133,
+            142,
+            58,
+            54,
+            33,
+            60
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 13115,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 4496,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2938,
+          "provider_enrichment": 346,
+          "prompt_bundle_load": 1,
+          "compose_reply": 5297,
+          "save_plan": 24
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11463,
+            "output_tokens": 465,
+            "total_tokens": 11928,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 12655,
+            "output_tokens": 356,
+            "total_tokens": 13011,
+            "cached_input_tokens": 8704
+          },
+          "total": {
+            "input_tokens": 24118,
+            "output_tokens": 821,
+            "total_tokens": 24939,
+            "cached_input_tokens": 19712
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGST0KSX3T4XD51SMDHWVE4",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "runtime_latency_ms": 13115,
+        "extraction_latency_ms": 4496,
+        "compose_latency_ms": 5297,
+        "tools_called_count": 4,
+        "provider_results_count": 7,
+        "recommendation_context_candidates": 6,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 24939,
+        "cached_input_tokens": 19712,
+        "cache_hit_rate": 0.817314868562899,
+        "extraction_to_compose_ratio": 0.8487823296205399,
+        "captured_at": "2026-07-02T06:56:05.753Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.10-ee5daac8",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.8,
+        "event_type": "corporativo",
+        "vendor_category": "Fotografía y video",
+        "active_need_category": "Fotografía y video",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "hologramas",
+          "producción audiovisual profesional"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [
+              "producción audiovisual profesional"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              133,
+              142,
+              58,
+              54,
+              33,
+              60,
+              90
+            ],
+            "recommended_providers": [
+              {
+                "id": 133,
+                "title": "Uriel Santisteban Photography & Film",
+                "slug": "uriel-santisteban-photography-film",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "Uriel Santisteban Photography & Film encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                "websiteUrl": "https://www.urielsantisteban.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "5% Off",
+                "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                "serviceHighlights": [
+                  "Fotografía para matrimonios",
+                  "Video de bodas",
+                  "Paquetes combinados de fotografía + video",
+                  "Cobertura integral del evento",
+                  "Producción y edición del material final"
+                ],
+                "termsHighlights": [
+                  "Ambos servicios deben pertenecer a la misma categoría",
+                  "Para más información, consultar paquetes disponibles con el proveedor",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8870931774785737,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 142,
+                "title": "Agalux Studio",
+                "slug": "agalux-studio",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Agalux Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                "websiteUrl": null,
+                "minPrice": "6000.00",
+                "maxPrice": null,
+                "promoBadge": "100 S/. Dscto",
+                "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                "serviceHighlights": [
+                  "Cobertura audiovisual para matrimonios",
+                  "Fotografía y/o video de bodas",
+                  "Paquetes personalizados según el tipo de evento",
+                  "Producción y edición del material final"
+                ],
+                "termsHighlights": [
+                  "Descuentos y beneficios no acumulables",
+                  "Beneficio transferible",
+                  "Válido en todo el Perú",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8713863057269178,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 58,
+                "title": "Andrea Narváez",
+                "slug": "andrea-narvaez",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Andrea Narváez encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/andrea-narvaez",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "30% Off",
+                "promoSummary": "30% de dscto. en sesión de fotos en exteriores para niños y familias",
+                "descriptionSnippet": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.",
+                "serviceHighlights": [
+                  "Sesiones de fotos en exteriores",
+                  "Fotografía y video para niños y familias",
+                  "Cobertura de momentos especiales",
+                  "Producción y edición de contenido"
+                ],
+                "termsHighlights": [
+                  "Beneficio válido para clientes de Sin Envolturas",
+                  "No acumulable con otras promociones",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 54,
+                "title": "Fotostory",
+                "slug": "fotostory",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Fotostory encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+                "websiteUrl": "https://fotostory.pe/",
+                "minPrice": "150.00",
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en todos los fotobooks",
+                "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+                "serviceHighlights": [
+                  "Fotobooks",
+                  "Tazas con fotos",
+                  "Cuadros personalizados",
+                  "y más"
+                ],
+                "termsHighlights": [
+                  "Preguntar por términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+                "fitScore": 50,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_uncertain"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 33,
+                "title": "Spotlight Studio",
+                "slug": "spotlight-studio",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Spotlight Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/spotlight-studio",
+                "websiteUrl": "https://www.spotlight.com.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el paquete de bodas\r\n10% de descuento en servicio contratado para Bridal Shower",
+                "descriptionSnippet": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers.",
+                "serviceHighlights": [
+                  "Paquetes para bodas",
+                  "Experiencias para bridal shower",
+                  "Servicios personalizados según el tipo de celebración"
+                ],
+                "termsHighlights": [
+                  "No acumulable con otras promociones",
+                  "Para acceder al beneficio, escribir al correo indicando “Paquete de bodas con Sin Envolturas”",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers. Su propuesta combina estilo, detalle y una ejecución cuidada para crear eventos memorables.",
+                "fitScore": 42,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_uncertain"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 60,
+                "title": "Maria Bashi",
+                "slug": "maria-bashi",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Maria Bashi encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+                "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                "serviceHighlights": [
+                  "Sesiones de recién nacidos",
+                  "Sesiones de bebés",
+                  "Sesiones familiares",
+                  "Sesiones de embarazo",
+                  "Sesiones en casa, estudio o exteriores"
+                ],
+                "termsHighlights": [
+                  "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                  "La sesión de embarazo incluye a la pareja.",
+                  "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                  "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                  "Beneficio sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                "fitScore": 42,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_uncertain"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 90,
+                "title": "Carlos Schult",
+                "slug": "carlos-schult",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Carlos Schult encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/carlos-schult",
+                "websiteUrl": "https://goo.su/9rmDCWQ",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Gratis",
+                "promoSummary": "Sesión pre boda de regalo en cualquier opción de la web",
+                "descriptionSnippet": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables.",
+                "serviceHighlights": [
+                  "Sesión pre boda",
+                  "Fotografía para matrimonios",
+                  "Cobertura de eventos",
+                  "Acompañamiento y asesoría para capturar los mejores momentos"
+                ],
+                "termsHighlights": [
+                  "Incluye sesión pre boda de regalo en cualquier opción contratada",
+                  "No transferible",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables. Su estilo busca retratar cada historia de manera natural, creando recuerdos que perduran en el tiempo.",
+                "fitScore": 42,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_uncertain"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          133,
+          142,
+          58,
+          54,
+          33,
+          60,
+          90
+        ],
+        "recommended_providers": [
+          {
+            "id": 133,
+            "title": "Uriel Santisteban Photography & Film",
+            "slug": "uriel-santisteban-photography-film",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Uriel Santisteban Photography & Film encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+            "websiteUrl": "https://www.urielsantisteban.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% Off",
+            "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+            "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+            "serviceHighlights": [
+              "Fotografía para matrimonios",
+              "Video de bodas",
+              "Paquetes combinados de fotografía + video",
+              "Cobertura integral del evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Ambos servicios deben pertenecer a la misma categoría",
+              "Para más información, consultar paquetes disponibles con el proveedor",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8870931774785737,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 142,
+            "title": "Agalux Studio",
+            "slug": "agalux-studio",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Agalux Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+            "websiteUrl": null,
+            "minPrice": "6000.00",
+            "maxPrice": null,
+            "promoBadge": "100 S/. Dscto",
+            "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+            "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+            "serviceHighlights": [
+              "Cobertura audiovisual para matrimonios",
+              "Fotografía y/o video de bodas",
+              "Paquetes personalizados según el tipo de evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Descuentos y beneficios no acumulables",
+              "Beneficio transferible",
+              "Válido en todo el Perú",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8713863057269178,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 58,
+            "title": "Andrea Narváez",
+            "slug": "andrea-narvaez",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Andrea Narváez encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/andrea-narvaez",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "30% Off",
+            "promoSummary": "30% de dscto. en sesión de fotos en exteriores para niños y familias",
+            "descriptionSnippet": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.",
+            "serviceHighlights": [
+              "Sesiones de fotos en exteriores",
+              "Fotografía y video para niños y familias",
+              "Cobertura de momentos especiales",
+              "Producción y edición de contenido"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para clientes de Sin Envolturas",
+              "No acumulable con otras promociones",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 54,
+            "title": "Fotostory",
+            "slug": "fotostory",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Fotostory encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+            "websiteUrl": "https://fotostory.pe/",
+            "minPrice": "150.00",
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en todos los fotobooks",
+            "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+            "serviceHighlights": [
+              "Fotobooks",
+              "Tazas con fotos",
+              "Cuadros personalizados",
+              "y más"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+            "fitScore": 50,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 33,
+            "title": "Spotlight Studio",
+            "slug": "spotlight-studio",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Spotlight Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/spotlight-studio",
+            "websiteUrl": "https://www.spotlight.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el paquete de bodas\r\n10% de descuento en servicio contratado para Bridal Shower",
+            "descriptionSnippet": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers.",
+            "serviceHighlights": [
+              "Paquetes para bodas",
+              "Experiencias para bridal shower",
+              "Servicios personalizados según el tipo de celebración"
+            ],
+            "termsHighlights": [
+              "No acumulable con otras promociones",
+              "Para acceder al beneficio, escribir al correo indicando “Paquete de bodas con Sin Envolturas”",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers. Su propuesta combina estilo, detalle y una ejecución cuidada para crear eventos memorables.",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 60,
+            "title": "Maria Bashi",
+            "slug": "maria-bashi",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Maria Bashi encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+            "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+            "serviceHighlights": [
+              "Sesiones de recién nacidos",
+              "Sesiones de bebés",
+              "Sesiones familiares",
+              "Sesiones de embarazo",
+              "Sesiones en casa, estudio o exteriores"
+            ],
+            "termsHighlights": [
+              "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+              "La sesión de embarazo incluye a la pareja.",
+              "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+              "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+              "Beneficio sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 90,
+            "title": "Carlos Schult",
+            "slug": "carlos-schult",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Carlos Schult encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/carlos-schult",
+            "websiteUrl": "https://goo.su/9rmDCWQ",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Gratis",
+            "promoSummary": "Sesión pre boda de regalo en cualquier opción de la web",
+            "descriptionSnippet": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables.",
+            "serviceHighlights": [
+              "Sesión pre boda",
+              "Fotografía para matrimonios",
+              "Cobertura de eventos",
+              "Acompañamiento y asesoría para capturar los mejores momentos"
+            ],
+            "termsHighlights": [
+              "Incluye sesión pre boda de regalo en cualquier opción contratada",
+              "No transferible",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables. Su estilo busca retratar cada historia de manera natural, creando recuerdos que perduran en el tiempo.",
+            "fitScore": 42,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_uncertain"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“hologramas” corresponde a un servicio de entretenimiento/producción para eventos corporativos",
+          "La necesidad actual del plan es audiovisual (p. ej., hologramas) y se solicita ampliarla a producción audiovisual profesional."
+        ],
+        "conversation_summary": "Evento corporativo en Lima. Se solicita ampliar la necesidad audiovisual a producción audiovisual profesional. Frente activo: Fotografía y video.",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:56:00.431Z"
+      },
+      "latencyMs": 13747,
+      "rawTargetResponse": {
+        "message": "Amplío a producción audiovisual profesional dentro de Fotografía y video; estas opciones encajan mejor para un evento corporativo en Lima\n\n1. Uriel Santisteban Photography & Film\n Tiene cobertura integral de fotografía + video y producción/edición final, ideal si buscas una solución audiovisual más robusta\n Ubicación: Lima, Perú.\n Precio: $$$$.\n Promo: 5% Off.\n Nota: El beneficio indica que ambos servicios deben ser de la misma categoría y está sujeto a disponibilidad.\n\n Ficha: https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\n\n2. Agalux Studio\n Ofrece paquetes personalizados de fotografía y/o video, con un perfil más flexible para ajustar al tipo de evento\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 100 S/. Dscto.\n Nota: El descuento aplica para bodas de más de 100 invitados; conviene confirmar si adapta el paquete a corporativo.\n\n Ficha: https://sinenvolturas.com/proveedores/agalux-studio\n\n3. Andrea Narváez\n Incluye fotografía y video con producción y edición, útil si priorizas un resultado cuidado y natural\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 30% Off.\n Nota: Su promoción está enfocada en niños y familias, así que habría que validar el encaje para corporativo.\n\n Ficha: https://sinenvolturas.com/proveedores/andrea-narvaez",
+        "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+        "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGST0KSX3T4XD51SMDHWVE4",
+          "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+          "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+          "previous_node": "entrevista",
+          "next_node": "recomendar",
+          "node_path": [
+            "entrevista",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_provider_detail",
+            "get_provider_detail"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Fotografía y video\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 133\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 142\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 58\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 54\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 33\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 60\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 33,\n      \"title\": \"Spotlight Studio\",\n      \"slug\": \"spotlight-studio\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/spotlight-studio\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 54,\n      \"title\": \"Fotostory\",\n      \"slug\": \"fotostory\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/fotostory\",\n      \"websiteUrl\": null,\n      \"minPrice\": \"150.00\",\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 58,\n      \"title\": \"Andrea Narváez\",\n      \"slug\": \"andrea-narvaez\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/andrea-narvaez\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 60,\n      \"title\": \"Maria Bashi\",\n      \"slug\": \"maria-bashi\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/maria-bashi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 90,\n      \"title\": \"Carlos Schult\",\n      \"slug\": \"carlos-schult\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/carlos-schult\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Fotografía y video, opera en Lima, Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"slug\": \"uriel-santisteban-photography-film\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\",\n      \"websiteUrl\": \"https://www.urielsantisteban.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"5% Off\",\n      \"promoSummary\": \"5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).\",\n      \"descriptionSnippet\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.\",\n      \"serviceHighlights\": [\n        \"Fotografía para matrimonios\",\n        \"Video de bodas\",\n        \"Paquetes combinados de fotografía + video\",\n        \"Cobertura integral del evento\",\n        \"Producción y edición del material final\"\n      ],\n      \"termsHighlights\": [\n        \"Ambos servicios deben pertenecer a la misma categoría\",\n        \"Para más información, consultar paquetes disponibles con el proveedor\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8870931774785737,\n      \"retrievalSource\": \"vector\",\n      \"reason\": \"coincide semánticamente con la búsqueda\"\n    },\n    {\n      \"id\": 142,\n      \"title\": \"Agalux Studio\",\n      \"slug\": \"agalux-studio\",\n      \"category\": \"Fotografía y video\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/agalux-studio\",\n      \"websiteUrl\": null,\n      \"minPrice\": \"6000.00\",\n      \"maxPrice\": null,\n      \"promoBadge\": \"100 S/. Dscto\",\n      \"promoSummary\": \"100 soles de descuento para bodas de +100 invitados.\",\n      \"descriptionSnippet\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.\",\n      \"serviceHighlights\": [\n        \"Cobertura audiovisual para matrimonios\",\n        \"Fotografía y/o video de bodas\",\n        \"Paquetes personalizados según el tipo de evento\",\n        \"Producción y edición del material final\"\n      ],\n      \"termsHighlights\": [\n        \"Descuentos y beneficios no acumulables\",\n        \"Beneficio transferible\",\n        \"Válido en todo el Perú\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8713863057269178,\n      \"retrievalSource\": \"vector\",\n      \"reason\": \"coincide semánticamente con la búsqueda\"\n    }\n  ]\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "output": "{\n  \"id\": 58,\n  \"title\": \"Andrea Narváez\",\n  \"slug\": \"andrea-narvaez\",\n  \"category\": \"Fotografía y video\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"high\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/andrea-narvaez\",\n  \"websiteUrl\": null,\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"30% Off\",\n  \"promoSummary\": \"30% de dscto. en sesión de fotos en exteriores para niños y familias\",\n  \"descriptionSnippet\": \"Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.\",\n  \"serviceHighlights\": [\n    \"Sesiones de fotos en exteriores\",\n    \"Fotografía y video para niños y familias\",\n    \"Cobertura de momentos especiales\",\n    \"Producción y edición de contenido\"\n  ],\n  \"termsHighlights\": [\n    \"Beneficio válido para clientes de Sin Envolturas\",\n    \"No acumulable con otras promociones\",\n    \"Sujeto a disponibilidad\"\n  ],\n  \"description\": \"Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.\",\n  \"eventTypes\": []\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "output": "{\n  \"id\": 142,\n  \"title\": \"Agalux Studio\",\n  \"slug\": \"agalux-studio\",\n  \"category\": \"Fotografía y video\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"mid\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/agalux-studio\",\n  \"websiteUrl\": null,\n  \"minPrice\": \"6000.00\",\n  \"maxPrice\": null,\n  \"promoBadge\": \"100 S/. Dscto\",\n  \"promoSummary\": \"100 soles de descuento para bodas de +100 invitados.\",\n  \"descriptionSnippet\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.\",\n  \"serviceHighlights\": [\n    \"Cobertura audiovisual para matrimonios\",\n    \"Fotografía y/o video de bodas\",\n    \"Paquetes personalizados según el tipo de evento\",\n    \"Producción y edición del material final\"\n  ],\n  \"termsHighlights\": [\n    \"Descuentos y beneficios no acumulables\",\n    \"Beneficio transferible\",\n    \"Válido en todo el Perú\",\n    \"Sujeto a disponibilidad\"\n  ],\n  \"description\": \"Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.\",\n  \"eventTypes\": []\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "output": "{\n  \"id\": 133,\n  \"title\": \"Uriel Santisteban Photography & Film\",\n  \"slug\": \"uriel-santisteban-photography-film\",\n  \"category\": \"Fotografía y video\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"very_high\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\",\n  \"websiteUrl\": \"https://www.urielsantisteban.com/\",\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"5% Off\",\n  \"promoSummary\": \"5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).\",\n  \"descriptionSnippet\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.\",\n  \"serviceHighlights\": [\n    \"Fotografía para matrimonios\",\n    \"Video de bodas\",\n    \"Paquetes combinados de fotografía + video\",\n    \"Cobertura integral del evento\",\n    \"Producción y edición del material final\"\n  ],\n  \"termsHighlights\": [\n    \"Ambos servicios deben pertenecer a la misma categoría\",\n    \"Para más información, consultar paquetes disponibles con el proveedor\",\n    \"Sujeto a disponibilidad\"\n  ],\n  \"description\": \"Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.\",\n  \"eventTypes\": []\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 133,
+              "title": "Uriel Santisteban Photography & Film",
+              "slug": "uriel-santisteban-photography-film",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Uriel Santisteban Photography & Film encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+              "websiteUrl": "https://www.urielsantisteban.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% Off",
+              "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+              "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+              "serviceHighlights": [
+                "Fotografía para matrimonios",
+                "Video de bodas",
+                "Paquetes combinados de fotografía + video",
+                "Cobertura integral del evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Ambos servicios deben pertenecer a la misma categoría",
+                "Para más información, consultar paquetes disponibles con el proveedor",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8870931774785737,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 142,
+              "title": "Agalux Studio",
+              "slug": "agalux-studio",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Agalux Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+              "websiteUrl": null,
+              "minPrice": "6000.00",
+              "maxPrice": null,
+              "promoBadge": "100 S/. Dscto",
+              "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+              "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+              "serviceHighlights": [
+                "Cobertura audiovisual para matrimonios",
+                "Fotografía y/o video de bodas",
+                "Paquetes personalizados según el tipo de evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Descuentos y beneficios no acumulables",
+                "Beneficio transferible",
+                "Válido en todo el Perú",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8713863057269178,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 58,
+              "title": "Andrea Narváez",
+              "slug": "andrea-narvaez",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Andrea Narváez encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/andrea-narvaez",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "30% Off",
+              "promoSummary": "30% de dscto. en sesión de fotos en exteriores para niños y familias",
+              "descriptionSnippet": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.",
+              "serviceHighlights": [
+                "Sesiones de fotos en exteriores",
+                "Fotografía y video para niños y familias",
+                "Cobertura de momentos especiales",
+                "Producción y edición de contenido"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para clientes de Sin Envolturas",
+                "No acumulable con otras promociones",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 54,
+              "title": "Fotostory",
+              "slug": "fotostory",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Fotostory encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+              "websiteUrl": "https://fotostory.pe/",
+              "minPrice": "150.00",
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en todos los fotobooks",
+              "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+              "serviceHighlights": [
+                "Fotobooks",
+                "Tazas con fotos",
+                "Cuadros personalizados",
+                "y más"
+              ],
+              "termsHighlights": [
+                "Preguntar por términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+              "fitScore": 50,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 33,
+              "title": "Spotlight Studio",
+              "slug": "spotlight-studio",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Spotlight Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/spotlight-studio",
+              "websiteUrl": "https://www.spotlight.com.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el paquete de bodas\r\n10% de descuento en servicio contratado para Bridal Shower",
+              "descriptionSnippet": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers.",
+              "serviceHighlights": [
+                "Paquetes para bodas",
+                "Experiencias para bridal shower",
+                "Servicios personalizados según el tipo de celebración"
+              ],
+              "termsHighlights": [
+                "No acumulable con otras promociones",
+                "Para acceder al beneficio, escribir al correo indicando “Paquete de bodas con Sin Envolturas”",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers. Su propuesta combina estilo, detalle y una ejecución cuidada para crear eventos memorables.",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 60,
+              "title": "Maria Bashi",
+              "slug": "maria-bashi",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Maria Bashi encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+              "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+              "serviceHighlights": [
+                "Sesiones de recién nacidos",
+                "Sesiones de bebés",
+                "Sesiones familiares",
+                "Sesiones de embarazo",
+                "Sesiones en casa, estudio o exteriores"
+              ],
+              "termsHighlights": [
+                "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                "La sesión de embarazo incluye a la pareja.",
+                "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                "Beneficio sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 90,
+              "title": "Carlos Schult",
+              "slug": "carlos-schult",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Carlos Schult encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/carlos-schult",
+              "websiteUrl": "https://goo.su/9rmDCWQ",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Gratis",
+              "promoSummary": "Sesión pre boda de regalo en cualquier opción de la web",
+              "descriptionSnippet": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables.",
+              "serviceHighlights": [
+                "Sesión pre boda",
+                "Fotografía para matrimonios",
+                "Cobertura de eventos",
+                "Acompañamiento y asesoría para capturar los mejores momentos"
+              ],
+              "termsHighlights": [
+                "Incluye sesión pre boda de regalo en cualquier opción contratada",
+                "No transferible",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables. Su estilo busca retratar cada historia de manera natural, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 133,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8870931774785737,
+              "fit_score": 81
+            },
+            {
+              "provider_id": 142,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8713863057269178,
+              "fit_score": 81
+            },
+            {
+              "provider_id": 58,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 54,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 50
+            },
+            {
+              "provider_id": 33,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 42
+            },
+            {
+              "provider_id": 60,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 42
+            },
+            {
+              "provider_id": 90,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 42
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 7,
+            "context_candidates": 6,
+            "context_candidate_ids": [
+              133,
+              142,
+              58,
+              54,
+              33,
+              60
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 13115,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 4496,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2938,
+            "provider_enrichment": 346,
+            "prompt_bundle_load": 1,
+            "compose_reply": 5297,
+            "save_plan": 24
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11463,
+              "output_tokens": 465,
+              "total_tokens": 11928,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 12655,
+              "output_tokens": 356,
+              "total_tokens": 13011,
+              "cached_input_tokens": 8704
+            },
+            "total": {
+              "input_tokens": 24118,
+              "output_tokens": 821,
+              "total_tokens": 24939,
+              "cached_input_tokens": 19712
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGSSCNBDTC0TK8271PCEVBN",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.corporate.10-ee5daac8",
+          "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.8,
+          "event_type": "corporativo",
+          "vendor_category": "Fotografía y video",
+          "active_need_category": "Fotografía y video",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "hologramas",
+            "producción audiovisual profesional"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [
+                "producción audiovisual profesional"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                133,
+                142,
+                58,
+                54,
+                33,
+                60,
+                90
+              ],
+              "recommended_providers": [
+                {
+                  "id": 133,
+                  "title": "Uriel Santisteban Photography & Film",
+                  "slug": "uriel-santisteban-photography-film",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "Uriel Santisteban Photography & Film encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                  "websiteUrl": "https://www.urielsantisteban.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "5% Off",
+                  "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                  "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                  "serviceHighlights": [
+                    "Fotografía para matrimonios",
+                    "Video de bodas",
+                    "Paquetes combinados de fotografía + video",
+                    "Cobertura integral del evento",
+                    "Producción y edición del material final"
+                  ],
+                  "termsHighlights": [
+                    "Ambos servicios deben pertenecer a la misma categoría",
+                    "Para más información, consultar paquetes disponibles con el proveedor",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                  "fitScore": 81,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8870931774785737,
+                  "retrievalSource": "vector"
+                },
+                {
+                  "id": 142,
+                  "title": "Agalux Studio",
+                  "slug": "agalux-studio",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Agalux Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                  "websiteUrl": null,
+                  "minPrice": "6000.00",
+                  "maxPrice": null,
+                  "promoBadge": "100 S/. Dscto",
+                  "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                  "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                  "serviceHighlights": [
+                    "Cobertura audiovisual para matrimonios",
+                    "Fotografía y/o video de bodas",
+                    "Paquetes personalizados según el tipo de evento",
+                    "Producción y edición del material final"
+                  ],
+                  "termsHighlights": [
+                    "Descuentos y beneficios no acumulables",
+                    "Beneficio transferible",
+                    "Válido en todo el Perú",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                  "fitScore": 81,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8713863057269178,
+                  "retrievalSource": "vector"
+                },
+                {
+                  "id": 58,
+                  "title": "Andrea Narváez",
+                  "slug": "andrea-narvaez",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Andrea Narváez encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/andrea-narvaez",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "30% Off",
+                  "promoSummary": "30% de dscto. en sesión de fotos en exteriores para niños y familias",
+                  "descriptionSnippet": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.",
+                  "serviceHighlights": [
+                    "Sesiones de fotos en exteriores",
+                    "Fotografía y video para niños y familias",
+                    "Cobertura de momentos especiales",
+                    "Producción y edición de contenido"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio válido para clientes de Sin Envolturas",
+                    "No acumulable con otras promociones",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 54,
+                  "title": "Fotostory",
+                  "slug": "fotostory",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Fotostory encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+                  "websiteUrl": "https://fotostory.pe/",
+                  "minPrice": "150.00",
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en todos los fotobooks",
+                  "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+                  "serviceHighlights": [
+                    "Fotobooks",
+                    "Tazas con fotos",
+                    "Cuadros personalizados",
+                    "y más"
+                  ],
+                  "termsHighlights": [
+                    "Preguntar por términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+                  "fitScore": 50,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_uncertain"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 33,
+                  "title": "Spotlight Studio",
+                  "slug": "spotlight-studio",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Spotlight Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/spotlight-studio",
+                  "websiteUrl": "https://www.spotlight.com.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en el paquete de bodas\r\n10% de descuento en servicio contratado para Bridal Shower",
+                  "descriptionSnippet": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers.",
+                  "serviceHighlights": [
+                    "Paquetes para bodas",
+                    "Experiencias para bridal shower",
+                    "Servicios personalizados según el tipo de celebración"
+                  ],
+                  "termsHighlights": [
+                    "No acumulable con otras promociones",
+                    "Para acceder al beneficio, escribir al correo indicando “Paquete de bodas con Sin Envolturas”",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers. Su propuesta combina estilo, detalle y una ejecución cuidada para crear eventos memorables.",
+                  "fitScore": 42,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_uncertain"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 60,
+                  "title": "Maria Bashi",
+                  "slug": "maria-bashi",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Maria Bashi encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+                  "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                  "serviceHighlights": [
+                    "Sesiones de recién nacidos",
+                    "Sesiones de bebés",
+                    "Sesiones familiares",
+                    "Sesiones de embarazo",
+                    "Sesiones en casa, estudio o exteriores"
+                  ],
+                  "termsHighlights": [
+                    "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                    "La sesión de embarazo incluye a la pareja.",
+                    "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                    "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                    "Beneficio sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                  "fitScore": 42,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_uncertain"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 90,
+                  "title": "Carlos Schult",
+                  "slug": "carlos-schult",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Carlos Schult encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/carlos-schult",
+                  "websiteUrl": "https://goo.su/9rmDCWQ",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Gratis",
+                  "promoSummary": "Sesión pre boda de regalo en cualquier opción de la web",
+                  "descriptionSnippet": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables.",
+                  "serviceHighlights": [
+                    "Sesión pre boda",
+                    "Fotografía para matrimonios",
+                    "Cobertura de eventos",
+                    "Acompañamiento y asesoría para capturar los mejores momentos"
+                  ],
+                  "termsHighlights": [
+                    "Incluye sesión pre boda de regalo en cualquier opción contratada",
+                    "No transferible",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables. Su estilo busca retratar cada historia de manera natural, creando recuerdos que perduran en el tiempo.",
+                  "fitScore": 42,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_uncertain"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            133,
+            142,
+            58,
+            54,
+            33,
+            60,
+            90
+          ],
+          "recommended_providers": [
+            {
+              "id": 133,
+              "title": "Uriel Santisteban Photography & Film",
+              "slug": "uriel-santisteban-photography-film",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Uriel Santisteban Photography & Film encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+              "websiteUrl": "https://www.urielsantisteban.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% Off",
+              "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+              "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+              "serviceHighlights": [
+                "Fotografía para matrimonios",
+                "Video de bodas",
+                "Paquetes combinados de fotografía + video",
+                "Cobertura integral del evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Ambos servicios deben pertenecer a la misma categoría",
+                "Para más información, consultar paquetes disponibles con el proveedor",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8870931774785737,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 142,
+              "title": "Agalux Studio",
+              "slug": "agalux-studio",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Agalux Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+              "websiteUrl": null,
+              "minPrice": "6000.00",
+              "maxPrice": null,
+              "promoBadge": "100 S/. Dscto",
+              "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+              "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+              "serviceHighlights": [
+                "Cobertura audiovisual para matrimonios",
+                "Fotografía y/o video de bodas",
+                "Paquetes personalizados según el tipo de evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Descuentos y beneficios no acumulables",
+                "Beneficio transferible",
+                "Válido en todo el Perú",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8713863057269178,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 58,
+              "title": "Andrea Narváez",
+              "slug": "andrea-narvaez",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Andrea Narváez encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/andrea-narvaez",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "30% Off",
+              "promoSummary": "30% de dscto. en sesión de fotos en exteriores para niños y familias",
+              "descriptionSnippet": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia.",
+              "serviceHighlights": [
+                "Sesiones de fotos en exteriores",
+                "Fotografía y video para niños y familias",
+                "Cobertura de momentos especiales",
+                "Producción y edición de contenido"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para clientes de Sin Envolturas",
+                "No acumulable con otras promociones",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Andrea Narváez ofrece a los clientes de Sin Envolturas una propuesta de fotografía y video enfocada en capturar momentos auténticos en familia. Su estilo busca retratar de forma natural la conexión y espontaneidad, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 54,
+              "title": "Fotostory",
+              "slug": "fotostory",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Fotostory encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fotostory",
+              "websiteUrl": "https://fotostory.pe/",
+              "minPrice": "150.00",
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en todos los fotobooks",
+              "descriptionSnippet": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+              "serviceHighlights": [
+                "Fotobooks",
+                "Tazas con fotos",
+                "Cuadros personalizados",
+                "y más"
+              ],
+              "termsHighlights": [
+                "Preguntar por términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Fotostory es una empresa especializada en crear recuerdos personalizados a través de fotobooks, tazas y cuadros con imágenes, transformando momentos especiales en piezas únicas para conservar y revivir siempre.",
+              "fitScore": 50,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 33,
+              "title": "Spotlight Studio",
+              "slug": "spotlight-studio",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Spotlight Studio encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/spotlight-studio",
+              "websiteUrl": "https://www.spotlight.com.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el paquete de bodas\r\n10% de descuento en servicio contratado para Bridal Shower",
+              "descriptionSnippet": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers.",
+              "serviceHighlights": [
+                "Paquetes para bodas",
+                "Experiencias para bridal shower",
+                "Servicios personalizados según el tipo de celebración"
+              ],
+              "termsHighlights": [
+                "No acumulable con otras promociones",
+                "Para acceder al beneficio, escribir al correo indicando “Paquete de bodas con Sin Envolturas”",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Spotlight Studio ofrece a los clientes de Sin Envolturas una experiencia pensada para celebrar momentos especiales como bodas y bridal showers. Su propuesta combina estilo, detalle y una ejecución cuidada para crear eventos memorables.",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 60,
+              "title": "Maria Bashi",
+              "slug": "maria-bashi",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Maria Bashi encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+              "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+              "serviceHighlights": [
+                "Sesiones de recién nacidos",
+                "Sesiones de bebés",
+                "Sesiones familiares",
+                "Sesiones de embarazo",
+                "Sesiones en casa, estudio o exteriores"
+              ],
+              "termsHighlights": [
+                "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                "La sesión de embarazo incluye a la pareja.",
+                "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                "Beneficio sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 90,
+              "title": "Carlos Schult",
+              "slug": "carlos-schult",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Carlos Schult encaja con producción audiovisual (profesional) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/carlos-schult",
+              "websiteUrl": "https://goo.su/9rmDCWQ",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Gratis",
+              "promoSummary": "Sesión pre boda de regalo en cualquier opción de la web",
+              "descriptionSnippet": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables.",
+              "serviceHighlights": [
+                "Sesión pre boda",
+                "Fotografía para matrimonios",
+                "Cobertura de eventos",
+                "Acompañamiento y asesoría para capturar los mejores momentos"
+              ],
+              "termsHighlights": [
+                "Incluye sesión pre boda de regalo en cualquier opción contratada",
+                "No transferible",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Carlos Schult ofrece a los clientes de Sin Envolturas una propuesta fotográfica enfocada en capturar momentos reales y memorables. Su estilo busca retratar cada historia de manera natural, creando recuerdos que perduran en el tiempo.",
+              "fitScore": 42,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_uncertain"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“hologramas” corresponde a un servicio de entretenimiento/producción para eventos corporativos",
+            "La necesidad actual del plan es audiovisual (p. ej., hologramas) y se solicita ampliarla a producción audiovisual profesional."
+          ],
+          "conversation_summary": "Evento corporativo en Lima. Se solicita ampliar la necesidad audiovisual a producción audiovisual profesional. Frente activo: Fotografía y video.",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:56:00.431Z"
+        },
+        "perf": {
+          "trace_id": "01KWGST0KSX3T4XD51SMDHWVE4",
+          "conversation_id": "conv_6a460b75c3408193adfdbcf2946ebe7b050e927209180e17",
+          "runtime_latency_ms": 13115,
+          "extraction_latency_ms": 4496,
+          "compose_latency_ms": 5297,
+          "tools_called_count": 4,
+          "provider_results_count": 7,
+          "recommendation_context_candidates": 6,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 24939,
+          "cached_input_tokens": 19712,
+          "cache_hit_rate": 0.817314868562899,
+          "extraction_to_compose_ratio": 0.8487823296205399,
+          "captured_at": "2026-07-02T06:56:05.753Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:56:05.993Z",
+  "completedAt": "2026-07-02T06:56:05.994Z"
+}

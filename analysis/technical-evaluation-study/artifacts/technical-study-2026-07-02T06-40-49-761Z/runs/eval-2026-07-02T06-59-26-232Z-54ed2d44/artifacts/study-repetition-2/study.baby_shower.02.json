@@ -1,0 +1,3259 @@
+{
+  "runId": "eval-2026-07-02T06-59-26-232Z-54ed2d44",
+  "caseId": "study.baby_shower.02",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.625,
+  "totalLatencyMs": 13219,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Hogar y deco\"",
+    "active_need_category=\"Hogar y deco\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-59-26-232Z-54ed2d44/artifacts/study-repetition-2/study.baby_shower.02.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: aclarar_pedir_faltante."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->recomendar. Allowed=*->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.625,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 13219,
+    "p95_latency_ms": 13219,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 17134,
+    "cache_hit_rate": 0.8954894139306536
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito decoración pastel para un baby shower de 35 invitados."
+      },
+      "outputText": "Encontré opciones de Hogar y deco que pueden encajar con una decoración pastel para baby shower y 35 invitados\n\n1. M'APPELLE\n Hace piezas personalizadas en madera, útil para detalles decorativos y recuerdos con estilo suave o temático\n Ubicación: Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La ficha no confirma decoración completa del evento.\n\n Ficha: https://sinenvolturas.com/proveedores/mappelle\n\n2. GIRALINEA\n Tiene mobiliario personalizable, lo que ayuda a armar una base decorativa más cuidada y acorde al estilo pastel\n Ubicación: Perú.\n Precio: $$$$.\n Promo: Hasta 10% off.\n Nota: Suele apuntar a proyectos más premium.\n\n Ficha: https://sinenvolturas.com/proveedores/giralinea\n\n3. MCT STUDIO\n Trabaja diseño e interiorismo desde cero, así que puede encajar si buscas una ambientación más completa\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Puede ser más amplio que una decoración puntual.\n\n Ficha: https://sinenvolturas.com/proveedores/mct-studio\n\n4. MÓNICA VILLARÁN\n Ofrece accesorios y complementos para el hogar con estética ordenada, útil para sumar detalles decorativos\n Ubicación: Perú.\n Precio: $$.\n Promo: 15% off.\n Nota: No está descrita como decoración de baby shower específicamente.\n\n Ficha: https://sinenvolturas.com/proveedores/monica-villaran\n\n5. ARTE EN PAPEL\n Tiene papelería creativa personalizada y vinilos decorativos, muy alineado con una ambientación pastel para celebración\n Ubicación: Perú.\n Precio: $.\n Promo: 20% off.\n Nota: No se detalla si cubre montaje integral.\n\n Ficha: https://sinenvolturas.com/proveedores/arte-en-papel\n\n6. EL CUARTO DE BAÑO\n Aporta retratos personalizados, una opción especial si quieres un detalle decorativo o recuerdo más emotivo\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Es más un complemento artístico que decoración general.\n\n Ficha: https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGTDGBV1BC2T2ZDZQ1CF7C0",
+        "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+        "plan_id": "01KWGTD3Y2GGG2SWMZMX5S0Z16",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Hogar y deco\",\n  \"location\": null\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 8,\n      \"title\": \"M'APPELLE\",\n      \"slug\": \"mappelle\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/mappelle\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\\r\\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\\r\\nNo incluye servicios adicionales ni movilidad\",\n      \"descriptionSnippet\": \"M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.\",\n      \"serviceHighlights\": [\n        \"Diseño y elaboración de productos personalizados en madera\",\n        \"Grabado láser de nombres, frases, fotografías y diseños especiales\",\n        \"Creación de regalos personalizados para fechas especiales\",\n        \"Elaboración de cuadros, portafotos y decoraciones personalizadas\",\n        \"Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre\"\n      ],\n      \"termsHighlights\": [\n        \"Preguntar por términos y condiciones\"\n      ],\n      \"description\": \"M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7419555503757508,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Hogar y deco\"\n    },\n    {\n      \"id\": 19,\n      \"title\": \"MCT STUDIO\",\n      \"slug\": \"mct-studio\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/mct-studio\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 40,\n      \"title\": \"EL CUARTO DE BAÑO\",\n      \"slug\": \"el-cuarto-de-bano\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/el-cuarto-de-bano\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 57,\n      \"title\": \"MÓNICA VILLARÁN\",\n      \"slug\": \"monica-villaran\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/monica-villaran\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 64,\n      \"title\": \"ARTE EN PAPEL\",\n      \"slug\": \"arte-en-papel\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"low\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/arte-en-papel\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 70,\n      \"title\": \"KILA DESIGN\",\n      \"slug\": \"kila-design\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/kila-design\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"slug\": \"ae-maison\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/ae-maison\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 85,\n      \"title\": \"TEMPUR\",\n      \"slug\": \"tempur\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/tempur\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 87,\n      \"title\": \"DEPALISTO\",\n      \"slug\": \"depalisto\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/depalisto\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 99,\n      \"title\": \"AMARILLO 40\",\n      \"slug\": \"amarillo-40\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/amarillo-40\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 145,\n      \"title\": \"GIRALINEA\",\n      \"slug\": \"giralinea\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/giralinea\",\n      \"websiteUrl\": \"https://www.giralinea.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"Hasta 10% off\",\n      \"promoSummary\": \"-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\\r\\n-5% de descuento en alfombras y muebles.\",\n      \"descriptionSnippet\": \"Es un exclusivo showroom y marca de diseño de interiores en Perú.\",\n      \"serviceHighlights\": [\n        \"Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.\",\n        \"Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.\",\n        \"Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.\",\n        \"Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita.\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para anfitriones e invitados y solo en tienda física.\",\n        \"No transferible ni acumulable con otros descuentos o promociones.\",\n        \"No incluye productos en consignación ni para importar. No incluye rellenos de cojines.\"\n      ],\n      \"description\": \"Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7368506247878783,\n      \"retrievalSource\": \"vector\",\n      \"reason\": \"coincide semánticamente con la búsqueda\"\n    },\n    {\n      \"id\": 156,\n      \"title\": \"MAP DESING\",\n      \"slug\": \"map-desing\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/map-desing\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 8,
+            "title": "M'APPELLE",
+            "slug": "mappelle",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "M'APPELLE encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+            "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+            "serviceHighlights": [
+              "Diseño y elaboración de productos personalizados en madera",
+              "Grabado láser de nombres, frases, fotografías y diseños especiales",
+              "Creación de regalos personalizados para fechas especiales",
+              "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+              "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7419555503757508,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 145,
+            "title": "GIRALINEA",
+            "slug": "giralinea",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "GIRALINEA encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/giralinea",
+            "websiteUrl": "https://www.giralinea.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 10% off",
+            "promoSummary": "-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\r\n-5% de descuento en alfombras y muebles.",
+            "descriptionSnippet": "Es un exclusivo showroom y marca de diseño de interiores en Perú.",
+            "serviceHighlights": [
+              "Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.",
+              "Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.",
+              "Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.",
+              "Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita."
+            ],
+            "termsHighlights": [
+              "Válido para anfitriones e invitados y solo en tienda física.",
+              "No transferible ni acumulable con otros descuentos o promociones.",
+              "No incluye productos en consignación ni para importar. No incluye rellenos de cojines."
+            ],
+            "eventTypes": [],
+            "description": "Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7368506247878783,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 19,
+            "title": "MCT STUDIO",
+            "slug": "mct-studio",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "MCT STUDIO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/mct-studio",
+            "websiteUrl": "https://goo.su/7zWr6X",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en diseño",
+            "descriptionSnippet": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú.",
+            "serviceHighlights": [
+              "Arquitectura: Diseño estructural y funcional de espacios desde cero.",
+              "Diseño de Interiores: Creación de ambientes personalizados trabajando con modelos 3D para visualizar cada detalle antes de la ejecución.",
+              "Styling: Curaduría de piezas, materiales y texturas para dar el toque final a los espacios."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú. El estudio se especializa en crear espacios modernos y cálidos que integran elementos naturales para lograr equilibrio y armonía.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 40,
+            "title": "EL CUARTO DE BAÑO",
+            "slug": "el-cuarto-de-bano",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "EL CUARTO DE BAÑO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% en la línea hogar: batas de baño, sabanas, toallas, canastas, turbantes, vinchas, mantas y organizadores de maleta",
+            "descriptionSnippet": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño.",
+            "serviceHighlights": [
+              "Venta de Accesorios para el Hogar: Curaduría de piezas para el baño, sala y dormitorio, como canastas de mimbre, mantas de algodón y elementos de organización.",
+              "Artículos de Cuidado Personal y Viaje: Venta de neceseres, gorros de baño plastificados y accesorios diseñados para la playa y viajes."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño. Ofrecen una selección versátil que abarca desde la organización del baño hasta artículos de viaje y playa",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 57,
+            "title": "MÓNICA VILLARÁN",
+            "slug": "monica-villaran",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "MÓNICA VILLARÁN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/monica-villaran",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% off",
+            "promoSummary": "15% de dscto en retratos personalizados.",
+            "descriptionSnippet": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+            "serviceHighlights": [
+              "Ofrece servicios de retratos personalizados por encargo."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 64,
+            "title": "ARTE EN PAPEL",
+            "slug": "arte-en-papel",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "low",
+            "rating": "0.0",
+            "reason": "ARTE EN PAPEL encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arte-en-papel",
+            "websiteUrl": "https://arteenpapelperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "- 20% de descuento en viniles adhesivos para pared\r\n- Envíos solo a Lima Metropolitana \r\n- Tiempo de entrega de 3 a 5 días",
+            "descriptionSnippet": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+            "serviceHighlights": [
+              "Ofrece productos como etiquetas escolares, papelería para eventos y vinilos decorativos"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 70,
+            "title": "KILA DESIGN",
+            "slug": "kila-design",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "KILA DESIGN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/kila-design",
+            "websiteUrl": "https://goo.su/fysBE5",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% off",
+            "promoSummary": "15% de descuento para los clientes de la tienda.",
+            "descriptionSnippet": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+            "serviceHighlights": [
+              "Mobiliario: Mesas de centro, comedor, auxiliares, consolas, escritorios y estantes.",
+              "Diseño de Interiores: Transformación de espacios, remodelaciones y diseño personalizado.",
+              "Sostenibilidad: Fabricación de muebles a partir de mermas de madera (madera recuperada).",
+              "Estilos: Moderno, Industrial, Boho-Chic."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 77,
+            "title": "AE MAISON",
+            "slug": "ae-maison",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "AE MAISON encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+            "websiteUrl": "https://www.aemaison.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% off",
+            "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+            "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+            "serviceHighlights": [
+              "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+              "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+              "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 85,
+            "title": "TEMPUR",
+            "slug": "tempur",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "TEMPUR encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/tempur",
+            "websiteUrl": "https://tempurperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 25% off",
+            "promoSummary": "- 25% OFF en todo el portafolio para novios.\r\n- 20% OFF en colchones para invitados.\r\n- Regalo: Antifaz ergonómico Black Out por visitar nuestros showrooms.",
+            "descriptionSnippet": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+            "serviceHighlights": [
+              "Colchones : Modelos diseñados para diferentes niveles de firmeza y soporte.",
+              "Camas Inteligentes : Incluye bases articuladas a control remoto que permiten ajustar la posición de la cabeza, torso y piernas.",
+              "Almohadas : Variedad de formas (clásicas y ergonómicas) que incluyen tecnologías como SmartCool para mantener una temperatura fresca.",
+              "Accesorios : Sábanas de algodón Pima de 300 a 600 hilos, soportes para piernas y accesorios de oficina"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 87,
+            "title": "DEPALISTO",
+            "slug": "depalisto",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "DEPALISTO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/depalisto",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Dscto",
+            "promoSummary": "-Plan Básico (S/ 6 x m²): verificación de medidas según el RNE, control de acabados, revisión de instalaciones eléctricas y sanitarias, un informe técnico.\r\n-Plan Full (S/ 9 x m²), Plan básico, segunda verificación de observaciones, informes técnicos.",
+            "descriptionSnippet": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos.",
+            "serviceHighlights": [
+              "Inspección Completa (Depa Test): Revisión técnica detallada de acabados (pisos, paredes, muebles, granito, ventanas), instalaciones sanitarias (griferías, sumideros, fugas con cámara termográfica) e instalaciones eléctricas (tableros, tomas).",
+              "Certificación Depalisto: Sello de garantía independiente realizado por ingenieros y arquitectos que certifica que el departamento está en condiciones óptimas para ser habitado.",
+              "Acompañamiento Inmobiliario: Asesoría en la inspección antes de firmar la conformidad de entrega.",
+              "Mantenimiento Preventivo y Correctivo: Servicios adicionales para asegurar el buen funcionamiento del inmueble."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos. Su objetivo es asegurar que la propiedad cumpla con los estándares de calidad antes de la entrega, protegiendo la inversión del comprador mediante un análisis técnico independiente.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 99,
+            "title": "AMARILLO 40",
+            "slug": "amarillo-40",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "AMARILLO 40 encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/amarillo-40",
+            "websiteUrl": "https://www.amarillo40.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 15% off",
+            "promoSummary": "20% de descuento para anfitriones y 15% de descuento para invitados en servicio de diseño de ambientes (incluye desarrollo de planos) no incluye implementación de diseño o ejecución de proyecto.",
+            "descriptionSnippet": "Estudio de arquitectura y diseño de interiores.",
+            "serviceHighlights": [
+              "Diseño de Interiores Residencial: Desarrollo integral de conceptos de diseño para departamentos, casas y espacios comunes residenciales, adaptándolos al estilo de vida del cliente.",
+              "Arquitectura y Distribución: Planificación y optimización de espacios mediante la creación de planos, cortes y propuestas arquitectónicas detalladas.",
+              "Gestión y Supervisión de Obra: Control técnico y acompañamiento en el proceso de construcción y remodelación para asegurar que los acabados coincidan con el diseño proyectado.",
+              "Asesoría en Elección de Mobiliario y Acabados: Selección guiada de materiales, paletas de colores, luminarias y muebles funcionales para cada ambiente"
+            ],
+            "termsHighlights": [
+              "Valido en Lima y (provincia de manera remota), promoción no valida ni acumulable a otras promociones."
+            ],
+            "eventTypes": [],
+            "description": "Estudio de arquitectura y diseño de interiores. Es una firma liderada y creada por talento femenino, cuyo enfoque es codiseñar de la mano con los clientes para crear espacios que respondan a la escala humana y mejoren la rutina diaria de habitabilidad.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 156,
+            "title": "MAP DESING",
+            "slug": "map-desing",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "MAP DESING encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+            "websiteUrl": "https://www.mapdesignperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 50% off",
+            "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+            "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+            "serviceHighlights": [
+              "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+              "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+              "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 8,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7419555503757508,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 145,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7368506247878783,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 19,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 40,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 57,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 64,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 70,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 77,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 85,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 87,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 99,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 156,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 12,
+          "context_candidates": 6,
+          "context_candidate_ids": [
+            8,
+            145,
+            19,
+            40,
+            57,
+            64
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 12735,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 4335,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2928,
+          "provider_enrichment": 1142,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4280,
+          "save_plan": 34
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11416,
+            "output_tokens": 484,
+            "total_tokens": 11900,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4879,
+            "output_tokens": 355,
+            "total_tokens": 5234,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 16295,
+            "output_tokens": 839,
+            "total_tokens": 17134,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGTDGBV1BC2T2ZDZQ1CF7C0",
+        "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+        "runtime_latency_ms": 12735,
+        "extraction_latency_ms": 4335,
+        "compose_latency_ms": 4280,
+        "tools_called_count": 1,
+        "provider_results_count": 12,
+        "recommendation_context_candidates": 6,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17134,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8954894139306536,
+        "extraction_to_compose_ratio": 1.0128504672897196,
+        "captured_at": "2026-07-02T07:06:44.476Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGTD3Y2GGG2SWMZMX5S0Z16",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.02-862702c4",
+        "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "preferences": [
+          "estilo pastel"
+        ],
+        "hard_constraints": [
+          "decoración pastel",
+          "baby shower"
+        ],
+        "missing_fields": [
+          "location"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [
+              "estilo pastel"
+            ],
+            "hard_constraints": [
+              "decoración pastel",
+              "baby shower"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              8,
+              145,
+              19,
+              40,
+              57,
+              64,
+              70,
+              77,
+              85,
+              87,
+              99,
+              156
+            ],
+            "recommended_providers": [
+              {
+                "id": 8,
+                "title": "M'APPELLE",
+                "slug": "mappelle",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "M'APPELLE encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                "serviceHighlights": [
+                  "Diseño y elaboración de productos personalizados en madera",
+                  "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                  "Creación de regalos personalizados para fechas especiales",
+                  "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                  "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                ],
+                "termsHighlights": [
+                  "Preguntar por términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7419555503757508,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 145,
+                "title": "GIRALINEA",
+                "slug": "giralinea",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "GIRALINEA encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/giralinea",
+                "websiteUrl": "https://www.giralinea.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Hasta 10% off",
+                "promoSummary": "-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\r\n-5% de descuento en alfombras y muebles.",
+                "descriptionSnippet": "Es un exclusivo showroom y marca de diseño de interiores en Perú.",
+                "serviceHighlights": [
+                  "Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.",
+                  "Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.",
+                  "Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.",
+                  "Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita."
+                ],
+                "termsHighlights": [
+                  "Válido para anfitriones e invitados y solo en tienda física.",
+                  "No transferible ni acumulable con otros descuentos o promociones.",
+                  "No incluye productos en consignación ni para importar. No incluye rellenos de cojines."
+                ],
+                "eventTypes": [],
+                "description": "Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7368506247878783,
+                "retrievalSource": "vector"
+              },
+              {
+                "id": 19,
+                "title": "MCT STUDIO",
+                "slug": "mct-studio",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "MCT STUDIO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/mct-studio",
+                "websiteUrl": "https://goo.su/7zWr6X",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% de descuento en diseño",
+                "descriptionSnippet": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú.",
+                "serviceHighlights": [
+                  "Arquitectura: Diseño estructural y funcional de espacios desde cero.",
+                  "Diseño de Interiores: Creación de ambientes personalizados trabajando con modelos 3D para visualizar cada detalle antes de la ejecución.",
+                  "Styling: Curaduría de piezas, materiales y texturas para dar el toque final a los espacios."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú. El estudio se especializa en crear espacios modernos y cálidos que integran elementos naturales para lograr equilibrio y armonía.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 40,
+                "title": "EL CUARTO DE BAÑO",
+                "slug": "el-cuarto-de-bano",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "EL CUARTO DE BAÑO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% en la línea hogar: batas de baño, sabanas, toallas, canastas, turbantes, vinchas, mantas y organizadores de maleta",
+                "descriptionSnippet": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño.",
+                "serviceHighlights": [
+                  "Venta de Accesorios para el Hogar: Curaduría de piezas para el baño, sala y dormitorio, como canastas de mimbre, mantas de algodón y elementos de organización.",
+                  "Artículos de Cuidado Personal y Viaje: Venta de neceseres, gorros de baño plastificados y accesorios diseñados para la playa y viajes."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño. Ofrecen una selección versátil que abarca desde la organización del baño hasta artículos de viaje y playa",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 57,
+                "title": "MÓNICA VILLARÁN",
+                "slug": "monica-villaran",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "MÓNICA VILLARÁN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/monica-villaran",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "15% off",
+                "promoSummary": "15% de dscto en retratos personalizados.",
+                "descriptionSnippet": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+                "serviceHighlights": [
+                  "Ofrece servicios de retratos personalizados por encargo."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 64,
+                "title": "ARTE EN PAPEL",
+                "slug": "arte-en-papel",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "low",
+                "rating": "0.0",
+                "reason": "ARTE EN PAPEL encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/arte-en-papel",
+                "websiteUrl": "https://arteenpapelperu.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "- 20% de descuento en viniles adhesivos para pared\r\n- Envíos solo a Lima Metropolitana \r\n- Tiempo de entrega de 3 a 5 días",
+                "descriptionSnippet": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+                "serviceHighlights": [
+                  "Ofrece productos como etiquetas escolares, papelería para eventos y vinilos decorativos"
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones"
+                ],
+                "eventTypes": [],
+                "description": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 70,
+                "title": "KILA DESIGN",
+                "slug": "kila-design",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "KILA DESIGN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/kila-design",
+                "websiteUrl": "https://goo.su/fysBE5",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "15% off",
+                "promoSummary": "15% de descuento para los clientes de la tienda.",
+                "descriptionSnippet": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+                "serviceHighlights": [
+                  "Mobiliario: Mesas de centro, comedor, auxiliares, consolas, escritorios y estantes.",
+                  "Diseño de Interiores: Transformación de espacios, remodelaciones y diseño personalizado.",
+                  "Sostenibilidad: Fabricación de muebles a partir de mermas de madera (madera recuperada).",
+                  "Estilos: Moderno, Industrial, Boho-Chic."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 77,
+                "title": "AE MAISON",
+                "slug": "ae-maison",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "AE MAISON encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                "websiteUrl": "https://www.aemaison.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "5% off",
+                "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                "serviceHighlights": [
+                  "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                  "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                  "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 85,
+                "title": "TEMPUR",
+                "slug": "tempur",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "TEMPUR encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/tempur",
+                "websiteUrl": "https://tempurperu.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Hasta 25% off",
+                "promoSummary": "- 25% OFF en todo el portafolio para novios.\r\n- 20% OFF en colchones para invitados.\r\n- Regalo: Antifaz ergonómico Black Out por visitar nuestros showrooms.",
+                "descriptionSnippet": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+                "serviceHighlights": [
+                  "Colchones : Modelos diseñados para diferentes niveles de firmeza y soporte.",
+                  "Camas Inteligentes : Incluye bases articuladas a control remoto que permiten ajustar la posición de la cabeza, torso y piernas.",
+                  "Almohadas : Variedad de formas (clásicas y ergonómicas) que incluyen tecnologías como SmartCool para mantener una temperatura fresca.",
+                  "Accesorios : Sábanas de algodón Pima de 300 a 600 hilos, soportes para piernas y accesorios de oficina"
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 87,
+                "title": "DEPALISTO",
+                "slug": "depalisto",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "DEPALISTO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/depalisto",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Dscto",
+                "promoSummary": "-Plan Básico (S/ 6 x m²): verificación de medidas según el RNE, control de acabados, revisión de instalaciones eléctricas y sanitarias, un informe técnico.\r\n-Plan Full (S/ 9 x m²), Plan básico, segunda verificación de observaciones, informes técnicos.",
+                "descriptionSnippet": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos.",
+                "serviceHighlights": [
+                  "Inspección Completa (Depa Test): Revisión técnica detallada de acabados (pisos, paredes, muebles, granito, ventanas), instalaciones sanitarias (griferías, sumideros, fugas con cámara termográfica) e instalaciones eléctricas (tableros, tomas).",
+                  "Certificación Depalisto: Sello de garantía independiente realizado por ingenieros y arquitectos que certifica que el departamento está en condiciones óptimas para ser habitado.",
+                  "Acompañamiento Inmobiliario: Asesoría en la inspección antes de firmar la conformidad de entrega.",
+                  "Mantenimiento Preventivo y Correctivo: Servicios adicionales para asegurar el buen funcionamiento del inmueble."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos. Su objetivo es asegurar que la propiedad cumpla con los estándares de calidad antes de la entrega, protegiendo la inversión del comprador mediante un análisis técnico independiente.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 99,
+                "title": "AMARILLO 40",
+                "slug": "amarillo-40",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "AMARILLO 40 encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/amarillo-40",
+                "websiteUrl": "https://www.amarillo40.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Hasta 15% off",
+                "promoSummary": "20% de descuento para anfitriones y 15% de descuento para invitados en servicio de diseño de ambientes (incluye desarrollo de planos) no incluye implementación de diseño o ejecución de proyecto.",
+                "descriptionSnippet": "Estudio de arquitectura y diseño de interiores.",
+                "serviceHighlights": [
+                  "Diseño de Interiores Residencial: Desarrollo integral de conceptos de diseño para departamentos, casas y espacios comunes residenciales, adaptándolos al estilo de vida del cliente.",
+                  "Arquitectura y Distribución: Planificación y optimización de espacios mediante la creación de planos, cortes y propuestas arquitectónicas detalladas.",
+                  "Gestión y Supervisión de Obra: Control técnico y acompañamiento en el proceso de construcción y remodelación para asegurar que los acabados coincidan con el diseño proyectado.",
+                  "Asesoría en Elección de Mobiliario y Acabados: Selección guiada de materiales, paletas de colores, luminarias y muebles funcionales para cada ambiente"
+                ],
+                "termsHighlights": [
+                  "Valido en Lima y (provincia de manera remota), promoción no valida ni acumulable a otras promociones."
+                ],
+                "eventTypes": [],
+                "description": "Estudio de arquitectura y diseño de interiores. Es una firma liderada y creada por talento femenino, cuyo enfoque es codiseñar de la mano con los clientes para crear espacios que respondan a la escala humana y mejoren la rutina diaria de habitabilidad.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 156,
+                "title": "MAP DESING",
+                "slug": "map-desing",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "MAP DESING encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+                "websiteUrl": "https://www.mapdesignperu.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Hasta 50% off",
+                "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+                "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+                "serviceHighlights": [
+                  "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+                  "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+                  "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+                ],
+                "termsHighlights": [
+                  "Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          8,
+          145,
+          19,
+          40,
+          57,
+          64,
+          70,
+          77,
+          85,
+          87,
+          99,
+          156
+        ],
+        "recommended_providers": [
+          {
+            "id": 8,
+            "title": "M'APPELLE",
+            "slug": "mappelle",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "M'APPELLE encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+            "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+            "serviceHighlights": [
+              "Diseño y elaboración de productos personalizados en madera",
+              "Grabado láser de nombres, frases, fotografías y diseños especiales",
+              "Creación de regalos personalizados para fechas especiales",
+              "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+              "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+            ],
+            "termsHighlights": [
+              "Preguntar por términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7419555503757508,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 145,
+            "title": "GIRALINEA",
+            "slug": "giralinea",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "GIRALINEA encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/giralinea",
+            "websiteUrl": "https://www.giralinea.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 10% off",
+            "promoSummary": "-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\r\n-5% de descuento en alfombras y muebles.",
+            "descriptionSnippet": "Es un exclusivo showroom y marca de diseño de interiores en Perú.",
+            "serviceHighlights": [
+              "Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.",
+              "Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.",
+              "Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.",
+              "Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita."
+            ],
+            "termsHighlights": [
+              "Válido para anfitriones e invitados y solo en tienda física.",
+              "No transferible ni acumulable con otros descuentos o promociones.",
+              "No incluye productos en consignación ni para importar. No incluye rellenos de cojines."
+            ],
+            "eventTypes": [],
+            "description": "Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7368506247878783,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 19,
+            "title": "MCT STUDIO",
+            "slug": "mct-studio",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "MCT STUDIO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/mct-studio",
+            "websiteUrl": "https://goo.su/7zWr6X",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en diseño",
+            "descriptionSnippet": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú.",
+            "serviceHighlights": [
+              "Arquitectura: Diseño estructural y funcional de espacios desde cero.",
+              "Diseño de Interiores: Creación de ambientes personalizados trabajando con modelos 3D para visualizar cada detalle antes de la ejecución.",
+              "Styling: Curaduría de piezas, materiales y texturas para dar el toque final a los espacios."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú. El estudio se especializa en crear espacios modernos y cálidos que integran elementos naturales para lograr equilibrio y armonía.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 40,
+            "title": "EL CUARTO DE BAÑO",
+            "slug": "el-cuarto-de-bano",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "EL CUARTO DE BAÑO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% en la línea hogar: batas de baño, sabanas, toallas, canastas, turbantes, vinchas, mantas y organizadores de maleta",
+            "descriptionSnippet": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño.",
+            "serviceHighlights": [
+              "Venta de Accesorios para el Hogar: Curaduría de piezas para el baño, sala y dormitorio, como canastas de mimbre, mantas de algodón y elementos de organización.",
+              "Artículos de Cuidado Personal y Viaje: Venta de neceseres, gorros de baño plastificados y accesorios diseñados para la playa y viajes."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño. Ofrecen una selección versátil que abarca desde la organización del baño hasta artículos de viaje y playa",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 57,
+            "title": "MÓNICA VILLARÁN",
+            "slug": "monica-villaran",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "MÓNICA VILLARÁN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/monica-villaran",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% off",
+            "promoSummary": "15% de dscto en retratos personalizados.",
+            "descriptionSnippet": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+            "serviceHighlights": [
+              "Ofrece servicios de retratos personalizados por encargo."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 64,
+            "title": "ARTE EN PAPEL",
+            "slug": "arte-en-papel",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "low",
+            "rating": "0.0",
+            "reason": "ARTE EN PAPEL encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arte-en-papel",
+            "websiteUrl": "https://arteenpapelperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "- 20% de descuento en viniles adhesivos para pared\r\n- Envíos solo a Lima Metropolitana \r\n- Tiempo de entrega de 3 a 5 días",
+            "descriptionSnippet": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+            "serviceHighlights": [
+              "Ofrece productos como etiquetas escolares, papelería para eventos y vinilos decorativos"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones"
+            ],
+            "eventTypes": [],
+            "description": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 70,
+            "title": "KILA DESIGN",
+            "slug": "kila-design",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "KILA DESIGN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/kila-design",
+            "websiteUrl": "https://goo.su/fysBE5",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% off",
+            "promoSummary": "15% de descuento para los clientes de la tienda.",
+            "descriptionSnippet": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+            "serviceHighlights": [
+              "Mobiliario: Mesas de centro, comedor, auxiliares, consolas, escritorios y estantes.",
+              "Diseño de Interiores: Transformación de espacios, remodelaciones y diseño personalizado.",
+              "Sostenibilidad: Fabricación de muebles a partir de mermas de madera (madera recuperada).",
+              "Estilos: Moderno, Industrial, Boho-Chic."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 77,
+            "title": "AE MAISON",
+            "slug": "ae-maison",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "AE MAISON encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+            "websiteUrl": "https://www.aemaison.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% off",
+            "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+            "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+            "serviceHighlights": [
+              "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+              "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+              "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 85,
+            "title": "TEMPUR",
+            "slug": "tempur",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "TEMPUR encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/tempur",
+            "websiteUrl": "https://tempurperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 25% off",
+            "promoSummary": "- 25% OFF en todo el portafolio para novios.\r\n- 20% OFF en colchones para invitados.\r\n- Regalo: Antifaz ergonómico Black Out por visitar nuestros showrooms.",
+            "descriptionSnippet": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+            "serviceHighlights": [
+              "Colchones : Modelos diseñados para diferentes niveles de firmeza y soporte.",
+              "Camas Inteligentes : Incluye bases articuladas a control remoto que permiten ajustar la posición de la cabeza, torso y piernas.",
+              "Almohadas : Variedad de formas (clásicas y ergonómicas) que incluyen tecnologías como SmartCool para mantener una temperatura fresca.",
+              "Accesorios : Sábanas de algodón Pima de 300 a 600 hilos, soportes para piernas y accesorios de oficina"
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 87,
+            "title": "DEPALISTO",
+            "slug": "depalisto",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "DEPALISTO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/depalisto",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Dscto",
+            "promoSummary": "-Plan Básico (S/ 6 x m²): verificación de medidas según el RNE, control de acabados, revisión de instalaciones eléctricas y sanitarias, un informe técnico.\r\n-Plan Full (S/ 9 x m²), Plan básico, segunda verificación de observaciones, informes técnicos.",
+            "descriptionSnippet": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos.",
+            "serviceHighlights": [
+              "Inspección Completa (Depa Test): Revisión técnica detallada de acabados (pisos, paredes, muebles, granito, ventanas), instalaciones sanitarias (griferías, sumideros, fugas con cámara termográfica) e instalaciones eléctricas (tableros, tomas).",
+              "Certificación Depalisto: Sello de garantía independiente realizado por ingenieros y arquitectos que certifica que el departamento está en condiciones óptimas para ser habitado.",
+              "Acompañamiento Inmobiliario: Asesoría en la inspección antes de firmar la conformidad de entrega.",
+              "Mantenimiento Preventivo y Correctivo: Servicios adicionales para asegurar el buen funcionamiento del inmueble."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos. Su objetivo es asegurar que la propiedad cumpla con los estándares de calidad antes de la entrega, protegiendo la inversión del comprador mediante un análisis técnico independiente.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 99,
+            "title": "AMARILLO 40",
+            "slug": "amarillo-40",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "AMARILLO 40 encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/amarillo-40",
+            "websiteUrl": "https://www.amarillo40.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 15% off",
+            "promoSummary": "20% de descuento para anfitriones y 15% de descuento para invitados en servicio de diseño de ambientes (incluye desarrollo de planos) no incluye implementación de diseño o ejecución de proyecto.",
+            "descriptionSnippet": "Estudio de arquitectura y diseño de interiores.",
+            "serviceHighlights": [
+              "Diseño de Interiores Residencial: Desarrollo integral de conceptos de diseño para departamentos, casas y espacios comunes residenciales, adaptándolos al estilo de vida del cliente.",
+              "Arquitectura y Distribución: Planificación y optimización de espacios mediante la creación de planos, cortes y propuestas arquitectónicas detalladas.",
+              "Gestión y Supervisión de Obra: Control técnico y acompañamiento en el proceso de construcción y remodelación para asegurar que los acabados coincidan con el diseño proyectado.",
+              "Asesoría en Elección de Mobiliario y Acabados: Selección guiada de materiales, paletas de colores, luminarias y muebles funcionales para cada ambiente"
+            ],
+            "termsHighlights": [
+              "Valido en Lima y (provincia de manera remota), promoción no valida ni acumulable a otras promociones."
+            ],
+            "eventTypes": [],
+            "description": "Estudio de arquitectura y diseño de interiores. Es una firma liderada y creada por talento femenino, cuyo enfoque es codiseñar de la mano con los clientes para crear espacios que respondan a la escala humana y mejoren la rutina diaria de habitabilidad.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 156,
+            "title": "MAP DESING",
+            "slug": "map-desing",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "MAP DESING encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+            "websiteUrl": "https://www.mapdesignperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Hasta 50% off",
+            "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+            "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+            "serviceHighlights": [
+              "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+              "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+              "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+            ],
+            "termsHighlights": [
+              "Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Baby shower con 35 invitados; se requiere decoración pastel.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T07:06:40.160Z"
+      },
+      "latencyMs": 13219,
+      "rawTargetResponse": {
+        "message": "Encontré opciones de Hogar y deco que pueden encajar con una decoración pastel para baby shower y 35 invitados\n\n1. M'APPELLE\n Hace piezas personalizadas en madera, útil para detalles decorativos y recuerdos con estilo suave o temático\n Ubicación: Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La ficha no confirma decoración completa del evento.\n\n Ficha: https://sinenvolturas.com/proveedores/mappelle\n\n2. GIRALINEA\n Tiene mobiliario personalizable, lo que ayuda a armar una base decorativa más cuidada y acorde al estilo pastel\n Ubicación: Perú.\n Precio: $$$$.\n Promo: Hasta 10% off.\n Nota: Suele apuntar a proyectos más premium.\n\n Ficha: https://sinenvolturas.com/proveedores/giralinea\n\n3. MCT STUDIO\n Trabaja diseño e interiorismo desde cero, así que puede encajar si buscas una ambientación más completa\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Puede ser más amplio que una decoración puntual.\n\n Ficha: https://sinenvolturas.com/proveedores/mct-studio\n\n4. MÓNICA VILLARÁN\n Ofrece accesorios y complementos para el hogar con estética ordenada, útil para sumar detalles decorativos\n Ubicación: Perú.\n Precio: $$.\n Promo: 15% off.\n Nota: No está descrita como decoración de baby shower específicamente.\n\n Ficha: https://sinenvolturas.com/proveedores/monica-villaran\n\n5. ARTE EN PAPEL\n Tiene papelería creativa personalizada y vinilos decorativos, muy alineado con una ambientación pastel para celebración\n Ubicación: Perú.\n Precio: $.\n Promo: 20% off.\n Nota: No se detalla si cubre montaje integral.\n\n Ficha: https://sinenvolturas.com/proveedores/arte-en-papel\n\n6. EL CUARTO DE BAÑO\n Aporta retratos personalizados, una opción especial si quieres un detalle decorativo o recuerdo más emotivo\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% off.\n Nota: Es más un complemento artístico que decoración general.\n\n Ficha: https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+        "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+        "plan_id": "01KWGTD3Y2GGG2SWMZMX5S0Z16",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGTDGBV1BC2T2ZDZQ1CF7C0",
+          "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+          "plan_id": "01KWGTD3Y2GGG2SWMZMX5S0Z16",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "location"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Hogar y deco\",\n  \"location\": null\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 8,\n      \"title\": \"M'APPELLE\",\n      \"slug\": \"mappelle\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/mappelle\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\\r\\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\\r\\nNo incluye servicios adicionales ni movilidad\",\n      \"descriptionSnippet\": \"M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.\",\n      \"serviceHighlights\": [\n        \"Diseño y elaboración de productos personalizados en madera\",\n        \"Grabado láser de nombres, frases, fotografías y diseños especiales\",\n        \"Creación de regalos personalizados para fechas especiales\",\n        \"Elaboración de cuadros, portafotos y decoraciones personalizadas\",\n        \"Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre\"\n      ],\n      \"termsHighlights\": [\n        \"Preguntar por términos y condiciones\"\n      ],\n      \"description\": \"M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7419555503757508,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Hogar y deco\"\n    },\n    {\n      \"id\": 19,\n      \"title\": \"MCT STUDIO\",\n      \"slug\": \"mct-studio\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/mct-studio\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 40,\n      \"title\": \"EL CUARTO DE BAÑO\",\n      \"slug\": \"el-cuarto-de-bano\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/el-cuarto-de-bano\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 57,\n      \"title\": \"MÓNICA VILLARÁN\",\n      \"slug\": \"monica-villaran\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/monica-villaran\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 64,\n      \"title\": \"ARTE EN PAPEL\",\n      \"slug\": \"arte-en-papel\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"low\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/arte-en-papel\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 70,\n      \"title\": \"KILA DESIGN\",\n      \"slug\": \"kila-design\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/kila-design\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"slug\": \"ae-maison\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/ae-maison\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 85,\n      \"title\": \"TEMPUR\",\n      \"slug\": \"tempur\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/tempur\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 87,\n      \"title\": \"DEPALISTO\",\n      \"slug\": \"depalisto\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/depalisto\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 99,\n      \"title\": \"AMARILLO 40\",\n      \"slug\": \"amarillo-40\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/amarillo-40\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 145,\n      \"title\": \"GIRALINEA\",\n      \"slug\": \"giralinea\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/giralinea\",\n      \"websiteUrl\": \"https://www.giralinea.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"Hasta 10% off\",\n      \"promoSummary\": \"-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\\r\\n-5% de descuento en alfombras y muebles.\",\n      \"descriptionSnippet\": \"Es un exclusivo showroom y marca de diseño de interiores en Perú.\",\n      \"serviceHighlights\": [\n        \"Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.\",\n        \"Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.\",\n        \"Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.\",\n        \"Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita.\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para anfitriones e invitados y solo en tienda física.\",\n        \"No transferible ni acumulable con otros descuentos o promociones.\",\n        \"No incluye productos en consignación ni para importar. No incluye rellenos de cojines.\"\n      ],\n      \"description\": \"Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7368506247878783,\n      \"retrievalSource\": \"vector\",\n      \"reason\": \"coincide semánticamente con la búsqueda\"\n    },\n    {\n      \"id\": 156,\n      \"title\": \"MAP DESING\",\n      \"slug\": \"map-desing\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/map-desing\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Hogar y deco\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 8,
+              "title": "M'APPELLE",
+              "slug": "mappelle",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "M'APPELLE encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+              "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+              "serviceHighlights": [
+                "Diseño y elaboración de productos personalizados en madera",
+                "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                "Creación de regalos personalizados para fechas especiales",
+                "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+              ],
+              "termsHighlights": [
+                "Preguntar por términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7419555503757508,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 145,
+              "title": "GIRALINEA",
+              "slug": "giralinea",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "GIRALINEA encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/giralinea",
+              "websiteUrl": "https://www.giralinea.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 10% off",
+              "promoSummary": "-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\r\n-5% de descuento en alfombras y muebles.",
+              "descriptionSnippet": "Es un exclusivo showroom y marca de diseño de interiores en Perú.",
+              "serviceHighlights": [
+                "Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.",
+                "Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.",
+                "Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.",
+                "Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita."
+              ],
+              "termsHighlights": [
+                "Válido para anfitriones e invitados y solo en tienda física.",
+                "No transferible ni acumulable con otros descuentos o promociones.",
+                "No incluye productos en consignación ni para importar. No incluye rellenos de cojines."
+              ],
+              "eventTypes": [],
+              "description": "Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7368506247878783,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 19,
+              "title": "MCT STUDIO",
+              "slug": "mct-studio",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "MCT STUDIO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/mct-studio",
+              "websiteUrl": "https://goo.su/7zWr6X",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en diseño",
+              "descriptionSnippet": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú.",
+              "serviceHighlights": [
+                "Arquitectura: Diseño estructural y funcional de espacios desde cero.",
+                "Diseño de Interiores: Creación de ambientes personalizados trabajando con modelos 3D para visualizar cada detalle antes de la ejecución.",
+                "Styling: Curaduría de piezas, materiales y texturas para dar el toque final a los espacios."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú. El estudio se especializa en crear espacios modernos y cálidos que integran elementos naturales para lograr equilibrio y armonía.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 40,
+              "title": "EL CUARTO DE BAÑO",
+              "slug": "el-cuarto-de-bano",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "EL CUARTO DE BAÑO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% en la línea hogar: batas de baño, sabanas, toallas, canastas, turbantes, vinchas, mantas y organizadores de maleta",
+              "descriptionSnippet": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño.",
+              "serviceHighlights": [
+                "Venta de Accesorios para el Hogar: Curaduría de piezas para el baño, sala y dormitorio, como canastas de mimbre, mantas de algodón y elementos de organización.",
+                "Artículos de Cuidado Personal y Viaje: Venta de neceseres, gorros de baño plastificados y accesorios diseñados para la playa y viajes."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño. Ofrecen una selección versátil que abarca desde la organización del baño hasta artículos de viaje y playa",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 57,
+              "title": "MÓNICA VILLARÁN",
+              "slug": "monica-villaran",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "MÓNICA VILLARÁN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/monica-villaran",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% off",
+              "promoSummary": "15% de dscto en retratos personalizados.",
+              "descriptionSnippet": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+              "serviceHighlights": [
+                "Ofrece servicios de retratos personalizados por encargo."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 64,
+              "title": "ARTE EN PAPEL",
+              "slug": "arte-en-papel",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "low",
+              "rating": "0.0",
+              "reason": "ARTE EN PAPEL encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arte-en-papel",
+              "websiteUrl": "https://arteenpapelperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "- 20% de descuento en viniles adhesivos para pared\r\n- Envíos solo a Lima Metropolitana \r\n- Tiempo de entrega de 3 a 5 días",
+              "descriptionSnippet": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+              "serviceHighlights": [
+                "Ofrece productos como etiquetas escolares, papelería para eventos y vinilos decorativos"
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 70,
+              "title": "KILA DESIGN",
+              "slug": "kila-design",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "KILA DESIGN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/kila-design",
+              "websiteUrl": "https://goo.su/fysBE5",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% off",
+              "promoSummary": "15% de descuento para los clientes de la tienda.",
+              "descriptionSnippet": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+              "serviceHighlights": [
+                "Mobiliario: Mesas de centro, comedor, auxiliares, consolas, escritorios y estantes.",
+                "Diseño de Interiores: Transformación de espacios, remodelaciones y diseño personalizado.",
+                "Sostenibilidad: Fabricación de muebles a partir de mermas de madera (madera recuperada).",
+                "Estilos: Moderno, Industrial, Boho-Chic."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 77,
+              "title": "AE MAISON",
+              "slug": "ae-maison",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "AE MAISON encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+              "websiteUrl": "https://www.aemaison.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% off",
+              "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+              "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+              "serviceHighlights": [
+                "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 85,
+              "title": "TEMPUR",
+              "slug": "tempur",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "TEMPUR encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/tempur",
+              "websiteUrl": "https://tempurperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 25% off",
+              "promoSummary": "- 25% OFF en todo el portafolio para novios.\r\n- 20% OFF en colchones para invitados.\r\n- Regalo: Antifaz ergonómico Black Out por visitar nuestros showrooms.",
+              "descriptionSnippet": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+              "serviceHighlights": [
+                "Colchones : Modelos diseñados para diferentes niveles de firmeza y soporte.",
+                "Camas Inteligentes : Incluye bases articuladas a control remoto que permiten ajustar la posición de la cabeza, torso y piernas.",
+                "Almohadas : Variedad de formas (clásicas y ergonómicas) que incluyen tecnologías como SmartCool para mantener una temperatura fresca.",
+                "Accesorios : Sábanas de algodón Pima de 300 a 600 hilos, soportes para piernas y accesorios de oficina"
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 87,
+              "title": "DEPALISTO",
+              "slug": "depalisto",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "DEPALISTO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/depalisto",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Dscto",
+              "promoSummary": "-Plan Básico (S/ 6 x m²): verificación de medidas según el RNE, control de acabados, revisión de instalaciones eléctricas y sanitarias, un informe técnico.\r\n-Plan Full (S/ 9 x m²), Plan básico, segunda verificación de observaciones, informes técnicos.",
+              "descriptionSnippet": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos.",
+              "serviceHighlights": [
+                "Inspección Completa (Depa Test): Revisión técnica detallada de acabados (pisos, paredes, muebles, granito, ventanas), instalaciones sanitarias (griferías, sumideros, fugas con cámara termográfica) e instalaciones eléctricas (tableros, tomas).",
+                "Certificación Depalisto: Sello de garantía independiente realizado por ingenieros y arquitectos que certifica que el departamento está en condiciones óptimas para ser habitado.",
+                "Acompañamiento Inmobiliario: Asesoría en la inspección antes de firmar la conformidad de entrega.",
+                "Mantenimiento Preventivo y Correctivo: Servicios adicionales para asegurar el buen funcionamiento del inmueble."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos. Su objetivo es asegurar que la propiedad cumpla con los estándares de calidad antes de la entrega, protegiendo la inversión del comprador mediante un análisis técnico independiente.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 99,
+              "title": "AMARILLO 40",
+              "slug": "amarillo-40",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "AMARILLO 40 encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/amarillo-40",
+              "websiteUrl": "https://www.amarillo40.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 15% off",
+              "promoSummary": "20% de descuento para anfitriones y 15% de descuento para invitados en servicio de diseño de ambientes (incluye desarrollo de planos) no incluye implementación de diseño o ejecución de proyecto.",
+              "descriptionSnippet": "Estudio de arquitectura y diseño de interiores.",
+              "serviceHighlights": [
+                "Diseño de Interiores Residencial: Desarrollo integral de conceptos de diseño para departamentos, casas y espacios comunes residenciales, adaptándolos al estilo de vida del cliente.",
+                "Arquitectura y Distribución: Planificación y optimización de espacios mediante la creación de planos, cortes y propuestas arquitectónicas detalladas.",
+                "Gestión y Supervisión de Obra: Control técnico y acompañamiento en el proceso de construcción y remodelación para asegurar que los acabados coincidan con el diseño proyectado.",
+                "Asesoría en Elección de Mobiliario y Acabados: Selección guiada de materiales, paletas de colores, luminarias y muebles funcionales para cada ambiente"
+              ],
+              "termsHighlights": [
+                "Valido en Lima y (provincia de manera remota), promoción no valida ni acumulable a otras promociones."
+              ],
+              "eventTypes": [],
+              "description": "Estudio de arquitectura y diseño de interiores. Es una firma liderada y creada por talento femenino, cuyo enfoque es codiseñar de la mano con los clientes para crear espacios que respondan a la escala humana y mejoren la rutina diaria de habitabilidad.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 156,
+              "title": "MAP DESING",
+              "slug": "map-desing",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "MAP DESING encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+              "websiteUrl": "https://www.mapdesignperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 50% off",
+              "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+              "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+              "serviceHighlights": [
+                "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+                "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+                "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 8,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7419555503757508,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 145,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7368506247878783,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 19,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 40,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 57,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 64,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 70,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 77,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 85,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 87,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 99,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 156,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 12,
+            "context_candidates": 6,
+            "context_candidate_ids": [
+              8,
+              145,
+              19,
+              40,
+              57,
+              64
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 12735,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 4335,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2928,
+            "provider_enrichment": 1142,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4280,
+            "save_plan": 34
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11416,
+              "output_tokens": 484,
+              "total_tokens": 11900,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4879,
+              "output_tokens": 355,
+              "total_tokens": 5234,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 16295,
+              "output_tokens": 839,
+              "total_tokens": 17134,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGTD3Y2GGG2SWMZMX5S0Z16",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.02-862702c4",
+          "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "preferences": [
+            "estilo pastel"
+          ],
+          "hard_constraints": [
+            "decoración pastel",
+            "baby shower"
+          ],
+          "missing_fields": [
+            "location"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [
+                "estilo pastel"
+              ],
+              "hard_constraints": [
+                "decoración pastel",
+                "baby shower"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                8,
+                145,
+                19,
+                40,
+                57,
+                64,
+                70,
+                77,
+                85,
+                87,
+                99,
+                156
+              ],
+              "recommended_providers": [
+                {
+                  "id": 8,
+                  "title": "M'APPELLE",
+                  "slug": "mappelle",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "M'APPELLE encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                  "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                  "serviceHighlights": [
+                    "Diseño y elaboración de productos personalizados en madera",
+                    "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                    "Creación de regalos personalizados para fechas especiales",
+                    "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                    "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                  ],
+                  "termsHighlights": [
+                    "Preguntar por términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7419555503757508,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 145,
+                  "title": "GIRALINEA",
+                  "slug": "giralinea",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "GIRALINEA encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/giralinea",
+                  "websiteUrl": "https://www.giralinea.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Hasta 10% off",
+                  "promoSummary": "-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\r\n-5% de descuento en alfombras y muebles.",
+                  "descriptionSnippet": "Es un exclusivo showroom y marca de diseño de interiores en Perú.",
+                  "serviceHighlights": [
+                    "Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.",
+                    "Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.",
+                    "Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.",
+                    "Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita."
+                  ],
+                  "termsHighlights": [
+                    "Válido para anfitriones e invitados y solo en tienda física.",
+                    "No transferible ni acumulable con otros descuentos o promociones.",
+                    "No incluye productos en consignación ni para importar. No incluye rellenos de cojines."
+                  ],
+                  "eventTypes": [],
+                  "description": "Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7368506247878783,
+                  "retrievalSource": "vector"
+                },
+                {
+                  "id": 19,
+                  "title": "MCT STUDIO",
+                  "slug": "mct-studio",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "MCT STUDIO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/mct-studio",
+                  "websiteUrl": "https://goo.su/7zWr6X",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% de descuento en diseño",
+                  "descriptionSnippet": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú.",
+                  "serviceHighlights": [
+                    "Arquitectura: Diseño estructural y funcional de espacios desde cero.",
+                    "Diseño de Interiores: Creación de ambientes personalizados trabajando con modelos 3D para visualizar cada detalle antes de la ejecución.",
+                    "Styling: Curaduría de piezas, materiales y texturas para dar el toque final a los espacios."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú. El estudio se especializa en crear espacios modernos y cálidos que integran elementos naturales para lograr equilibrio y armonía.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 40,
+                  "title": "EL CUARTO DE BAÑO",
+                  "slug": "el-cuarto-de-bano",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "EL CUARTO DE BAÑO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% en la línea hogar: batas de baño, sabanas, toallas, canastas, turbantes, vinchas, mantas y organizadores de maleta",
+                  "descriptionSnippet": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño.",
+                  "serviceHighlights": [
+                    "Venta de Accesorios para el Hogar: Curaduría de piezas para el baño, sala y dormitorio, como canastas de mimbre, mantas de algodón y elementos de organización.",
+                    "Artículos de Cuidado Personal y Viaje: Venta de neceseres, gorros de baño plastificados y accesorios diseñados para la playa y viajes."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño. Ofrecen una selección versátil que abarca desde la organización del baño hasta artículos de viaje y playa",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 57,
+                  "title": "MÓNICA VILLARÁN",
+                  "slug": "monica-villaran",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "MÓNICA VILLARÁN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/monica-villaran",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "15% off",
+                  "promoSummary": "15% de dscto en retratos personalizados.",
+                  "descriptionSnippet": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+                  "serviceHighlights": [
+                    "Ofrece servicios de retratos personalizados por encargo."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 64,
+                  "title": "ARTE EN PAPEL",
+                  "slug": "arte-en-papel",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "low",
+                  "rating": "0.0",
+                  "reason": "ARTE EN PAPEL encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/arte-en-papel",
+                  "websiteUrl": "https://arteenpapelperu.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "- 20% de descuento en viniles adhesivos para pared\r\n- Envíos solo a Lima Metropolitana \r\n- Tiempo de entrega de 3 a 5 días",
+                  "descriptionSnippet": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+                  "serviceHighlights": [
+                    "Ofrece productos como etiquetas escolares, papelería para eventos y vinilos decorativos"
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 70,
+                  "title": "KILA DESIGN",
+                  "slug": "kila-design",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "KILA DESIGN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/kila-design",
+                  "websiteUrl": "https://goo.su/fysBE5",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "15% off",
+                  "promoSummary": "15% de descuento para los clientes de la tienda.",
+                  "descriptionSnippet": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+                  "serviceHighlights": [
+                    "Mobiliario: Mesas de centro, comedor, auxiliares, consolas, escritorios y estantes.",
+                    "Diseño de Interiores: Transformación de espacios, remodelaciones y diseño personalizado.",
+                    "Sostenibilidad: Fabricación de muebles a partir de mermas de madera (madera recuperada).",
+                    "Estilos: Moderno, Industrial, Boho-Chic."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 77,
+                  "title": "AE MAISON",
+                  "slug": "ae-maison",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "AE MAISON encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                  "websiteUrl": "https://www.aemaison.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "5% off",
+                  "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                  "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                  "serviceHighlights": [
+                    "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                    "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                    "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 85,
+                  "title": "TEMPUR",
+                  "slug": "tempur",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "TEMPUR encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/tempur",
+                  "websiteUrl": "https://tempurperu.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Hasta 25% off",
+                  "promoSummary": "- 25% OFF en todo el portafolio para novios.\r\n- 20% OFF en colchones para invitados.\r\n- Regalo: Antifaz ergonómico Black Out por visitar nuestros showrooms.",
+                  "descriptionSnippet": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+                  "serviceHighlights": [
+                    "Colchones : Modelos diseñados para diferentes niveles de firmeza y soporte.",
+                    "Camas Inteligentes : Incluye bases articuladas a control remoto que permiten ajustar la posición de la cabeza, torso y piernas.",
+                    "Almohadas : Variedad de formas (clásicas y ergonómicas) que incluyen tecnologías como SmartCool para mantener una temperatura fresca.",
+                    "Accesorios : Sábanas de algodón Pima de 300 a 600 hilos, soportes para piernas y accesorios de oficina"
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 87,
+                  "title": "DEPALISTO",
+                  "slug": "depalisto",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "DEPALISTO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/depalisto",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Dscto",
+                  "promoSummary": "-Plan Básico (S/ 6 x m²): verificación de medidas según el RNE, control de acabados, revisión de instalaciones eléctricas y sanitarias, un informe técnico.\r\n-Plan Full (S/ 9 x m²), Plan básico, segunda verificación de observaciones, informes técnicos.",
+                  "descriptionSnippet": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos.",
+                  "serviceHighlights": [
+                    "Inspección Completa (Depa Test): Revisión técnica detallada de acabados (pisos, paredes, muebles, granito, ventanas), instalaciones sanitarias (griferías, sumideros, fugas con cámara termográfica) e instalaciones eléctricas (tableros, tomas).",
+                    "Certificación Depalisto: Sello de garantía independiente realizado por ingenieros y arquitectos que certifica que el departamento está en condiciones óptimas para ser habitado.",
+                    "Acompañamiento Inmobiliario: Asesoría en la inspección antes de firmar la conformidad de entrega.",
+                    "Mantenimiento Preventivo y Correctivo: Servicios adicionales para asegurar el buen funcionamiento del inmueble."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos. Su objetivo es asegurar que la propiedad cumpla con los estándares de calidad antes de la entrega, protegiendo la inversión del comprador mediante un análisis técnico independiente.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 99,
+                  "title": "AMARILLO 40",
+                  "slug": "amarillo-40",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "AMARILLO 40 encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/amarillo-40",
+                  "websiteUrl": "https://www.amarillo40.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Hasta 15% off",
+                  "promoSummary": "20% de descuento para anfitriones y 15% de descuento para invitados en servicio de diseño de ambientes (incluye desarrollo de planos) no incluye implementación de diseño o ejecución de proyecto.",
+                  "descriptionSnippet": "Estudio de arquitectura y diseño de interiores.",
+                  "serviceHighlights": [
+                    "Diseño de Interiores Residencial: Desarrollo integral de conceptos de diseño para departamentos, casas y espacios comunes residenciales, adaptándolos al estilo de vida del cliente.",
+                    "Arquitectura y Distribución: Planificación y optimización de espacios mediante la creación de planos, cortes y propuestas arquitectónicas detalladas.",
+                    "Gestión y Supervisión de Obra: Control técnico y acompañamiento en el proceso de construcción y remodelación para asegurar que los acabados coincidan con el diseño proyectado.",
+                    "Asesoría en Elección de Mobiliario y Acabados: Selección guiada de materiales, paletas de colores, luminarias y muebles funcionales para cada ambiente"
+                  ],
+                  "termsHighlights": [
+                    "Valido en Lima y (provincia de manera remota), promoción no valida ni acumulable a otras promociones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Estudio de arquitectura y diseño de interiores. Es una firma liderada y creada por talento femenino, cuyo enfoque es codiseñar de la mano con los clientes para crear espacios que respondan a la escala humana y mejoren la rutina diaria de habitabilidad.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 156,
+                  "title": "MAP DESING",
+                  "slug": "map-desing",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "MAP DESING encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+                  "websiteUrl": "https://www.mapdesignperu.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Hasta 50% off",
+                  "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+                  "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+                  "serviceHighlights": [
+                    "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+                    "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+                    "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+                  ],
+                  "termsHighlights": [
+                    "Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            8,
+            145,
+            19,
+            40,
+            57,
+            64,
+            70,
+            77,
+            85,
+            87,
+            99,
+            156
+          ],
+          "recommended_providers": [
+            {
+              "id": 8,
+              "title": "M'APPELLE",
+              "slug": "mappelle",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "M'APPELLE encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+              "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+              "serviceHighlights": [
+                "Diseño y elaboración de productos personalizados en madera",
+                "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                "Creación de regalos personalizados para fechas especiales",
+                "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+              ],
+              "termsHighlights": [
+                "Preguntar por términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7419555503757508,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 145,
+              "title": "GIRALINEA",
+              "slug": "giralinea",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "GIRALINEA encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/giralinea",
+              "websiteUrl": "https://www.giralinea.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 10% off",
+              "promoSummary": "-10% de descuento en cojines, mantas, luminarias, adornos tableware y wallpapers (en stock).\r\n-5% de descuento en alfombras y muebles.",
+              "descriptionSnippet": "Es un exclusivo showroom y marca de diseño de interiores en Perú.",
+              "serviceHighlights": [
+                "Mobiliario Personalizado: Venta de muebles con opción a elegir acabados y tapices exclusivos.",
+                "Diseño Textil y Papeles Tapiz: Amplia variedad de telas, tapices y papeles tapiz importados.",
+                "Decoración y Hogar: Cojines decorativos, rellenos de plumas, iluminación y adornos para el hogar.",
+                "Atención Personalizada: Venta bajo pedido por catálogo y showroom con atención por cita."
+              ],
+              "termsHighlights": [
+                "Válido para anfitriones e invitados y solo en tienda física.",
+                "No transferible ni acumulable con otros descuentos o promociones.",
+                "No incluye productos en consignación ni para importar. No incluye rellenos de cojines."
+              ],
+              "eventTypes": [],
+              "description": "Es un exclusivo showroom y marca de diseño de interiores en Perú. Ofrece productos importados y personalizados de alta calidad para el hogar, incluyendo muebles, telas, papeles tapiz, iluminación y adornos, con enfoque en durabilidad, estilo propio y atención personalizada en Lima.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7368506247878783,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 19,
+              "title": "MCT STUDIO",
+              "slug": "mct-studio",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "MCT STUDIO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/mct-studio",
+              "websiteUrl": "https://goo.su/7zWr6X",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en diseño",
+              "descriptionSnippet": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú.",
+              "serviceHighlights": [
+                "Arquitectura: Diseño estructural y funcional de espacios desde cero.",
+                "Diseño de Interiores: Creación de ambientes personalizados trabajando con modelos 3D para visualizar cada detalle antes de la ejecución.",
+                "Styling: Curaduría de piezas, materiales y texturas para dar el toque final a los espacios."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "MCT Studio es un estudio de arquitectura, interiorismo y diseño ubicado en Lima, Perú. El estudio se especializa en crear espacios modernos y cálidos que integran elementos naturales para lograr equilibrio y armonía.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 40,
+              "title": "EL CUARTO DE BAÑO",
+              "slug": "el-cuarto-de-bano",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "EL CUARTO DE BAÑO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/el-cuarto-de-bano",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% en la línea hogar: batas de baño, sabanas, toallas, canastas, turbantes, vinchas, mantas y organizadores de maleta",
+              "descriptionSnippet": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño.",
+              "serviceHighlights": [
+                "Venta de Accesorios para el Hogar: Curaduría de piezas para el baño, sala y dormitorio, como canastas de mimbre, mantas de algodón y elementos de organización.",
+                "Artículos de Cuidado Personal y Viaje: Venta de neceseres, gorros de baño plastificados y accesorios diseñados para la playa y viajes."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Marca peruana especializada en accesorios, organización y complementos para el hogar, destacando por productos que combinan funcionalidad y diseño. Ofrecen una selección versátil que abarca desde la organización del baño hasta artículos de viaje y playa",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 57,
+              "title": "MÓNICA VILLARÁN",
+              "slug": "monica-villaran",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "MÓNICA VILLARÁN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/monica-villaran",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% off",
+              "promoSummary": "15% de dscto en retratos personalizados.",
+              "descriptionSnippet": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+              "serviceHighlights": [
+                "Ofrece servicios de retratos personalizados por encargo."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Mónica Villarán es una destacada diseñadora peruana, se especializa en retratos artísticos a lápiz, carboncillo y acuarela, buscando capturar la esencia y emoción del sujeto.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 64,
+              "title": "ARTE EN PAPEL",
+              "slug": "arte-en-papel",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "low",
+              "rating": "0.0",
+              "reason": "ARTE EN PAPEL encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arte-en-papel",
+              "websiteUrl": "https://arteenpapelperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "- 20% de descuento en viniles adhesivos para pared\r\n- Envíos solo a Lima Metropolitana \r\n- Tiempo de entrega de 3 a 5 días",
+              "descriptionSnippet": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+              "serviceHighlights": [
+                "Ofrece productos como etiquetas escolares, papelería para eventos y vinilos decorativos"
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones"
+              ],
+              "eventTypes": [],
+              "description": "Arte en Papel es una marca peruana basada en Lima dedicada al diseño y papelería creativa personalizada.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 70,
+              "title": "KILA DESIGN",
+              "slug": "kila-design",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "KILA DESIGN encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/kila-design",
+              "websiteUrl": "https://goo.su/fysBE5",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% off",
+              "promoSummary": "15% de descuento para los clientes de la tienda.",
+              "descriptionSnippet": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+              "serviceHighlights": [
+                "Mobiliario: Mesas de centro, comedor, auxiliares, consolas, escritorios y estantes.",
+                "Diseño de Interiores: Transformación de espacios, remodelaciones y diseño personalizado.",
+                "Sostenibilidad: Fabricación de muebles a partir de mermas de madera (madera recuperada).",
+                "Estilos: Moderno, Industrial, Boho-Chic."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Empresa dedicada al diseño y fabricación de muebles con madera, modernos, industriales y boho-chic para el hogar.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 77,
+              "title": "AE MAISON",
+              "slug": "ae-maison",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "AE MAISON encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+              "websiteUrl": "https://www.aemaison.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% off",
+              "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+              "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+              "serviceHighlights": [
+                "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 85,
+              "title": "TEMPUR",
+              "slug": "tempur",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "TEMPUR encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/tempur",
+              "websiteUrl": "https://tempurperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 25% off",
+              "promoSummary": "- 25% OFF en todo el portafolio para novios.\r\n- 20% OFF en colchones para invitados.\r\n- Regalo: Antifaz ergonómico Black Out por visitar nuestros showrooms.",
+              "descriptionSnippet": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+              "serviceHighlights": [
+                "Colchones : Modelos diseñados para diferentes niveles de firmeza y soporte.",
+                "Camas Inteligentes : Incluye bases articuladas a control remoto que permiten ajustar la posición de la cabeza, torso y piernas.",
+                "Almohadas : Variedad de formas (clásicas y ergonómicas) que incluyen tecnologías como SmartCool para mantener una temperatura fresca.",
+                "Accesorios : Sábanas de algodón Pima de 300 a 600 hilos, soportes para piernas y accesorios de oficina"
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Tempur es una marca de tecnología para el descanso para personas que buscan solucionar problemas de espalda, mejorar su calidad de sueño o simplemente desean el máximo confort disponible.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 87,
+              "title": "DEPALISTO",
+              "slug": "depalisto",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "DEPALISTO encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/depalisto",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Dscto",
+              "promoSummary": "-Plan Básico (S/ 6 x m²): verificación de medidas según el RNE, control de acabados, revisión de instalaciones eléctricas y sanitarias, un informe técnico.\r\n-Plan Full (S/ 9 x m²), Plan básico, segunda verificación de observaciones, informes técnicos.",
+              "descriptionSnippet": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos.",
+              "serviceHighlights": [
+                "Inspección Completa (Depa Test): Revisión técnica detallada de acabados (pisos, paredes, muebles, granito, ventanas), instalaciones sanitarias (griferías, sumideros, fugas con cámara termográfica) e instalaciones eléctricas (tableros, tomas).",
+                "Certificación Depalisto: Sello de garantía independiente realizado por ingenieros y arquitectos que certifica que el departamento está en condiciones óptimas para ser habitado.",
+                "Acompañamiento Inmobiliario: Asesoría en la inspección antes de firmar la conformidad de entrega.",
+                "Mantenimiento Preventivo y Correctivo: Servicios adicionales para asegurar el buen funcionamiento del inmueble."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Empresa peruana especializada en la inspección técnica y el acompañamiento inmobiliario para la recepción de departamentos nuevos. Su objetivo es asegurar que la propiedad cumpla con los estándares de calidad antes de la entrega, protegiendo la inversión del comprador mediante un análisis técnico independiente.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 99,
+              "title": "AMARILLO 40",
+              "slug": "amarillo-40",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "AMARILLO 40 encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/amarillo-40",
+              "websiteUrl": "https://www.amarillo40.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 15% off",
+              "promoSummary": "20% de descuento para anfitriones y 15% de descuento para invitados en servicio de diseño de ambientes (incluye desarrollo de planos) no incluye implementación de diseño o ejecución de proyecto.",
+              "descriptionSnippet": "Estudio de arquitectura y diseño de interiores.",
+              "serviceHighlights": [
+                "Diseño de Interiores Residencial: Desarrollo integral de conceptos de diseño para departamentos, casas y espacios comunes residenciales, adaptándolos al estilo de vida del cliente.",
+                "Arquitectura y Distribución: Planificación y optimización de espacios mediante la creación de planos, cortes y propuestas arquitectónicas detalladas.",
+                "Gestión y Supervisión de Obra: Control técnico y acompañamiento en el proceso de construcción y remodelación para asegurar que los acabados coincidan con el diseño proyectado.",
+                "Asesoría en Elección de Mobiliario y Acabados: Selección guiada de materiales, paletas de colores, luminarias y muebles funcionales para cada ambiente"
+              ],
+              "termsHighlights": [
+                "Valido en Lima y (provincia de manera remota), promoción no valida ni acumulable a otras promociones."
+              ],
+              "eventTypes": [],
+              "description": "Estudio de arquitectura y diseño de interiores. Es una firma liderada y creada por talento femenino, cuyo enfoque es codiseñar de la mano con los clientes para crear espacios que respondan a la escala humana y mejoren la rutina diaria de habitabilidad.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 156,
+              "title": "MAP DESING",
+              "slug": "map-desing",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "MAP DESING encaja con hogar y deco (decoración) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/map-desing",
+              "websiteUrl": "https://www.mapdesignperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Hasta 50% off",
+              "promoSummary": "Descuento de hasta el 50%.\r\nNo transferible ni acumulable, válido para anfitriones e invitados.",
+              "descriptionSnippet": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial.",
+              "serviceHighlights": [
+                "Arquitectura y Diseño de Interiores: Desarrollo integral de conceptos, planos y modelado 3D para la remodelación de dormitorios, salas, cocinas y baños.",
+                "Diseño y Fabricación de Muebles: Creación de mobiliario a medida (clósets, consolas, centros de entretenimiento, espejos y vanities) adaptados a la distribución y el espacio del cliente.",
+                "Home Decor / Accesorios Exclusivos: Venta de elementos decorativos complementarios como espejos de diseño, organizadores de mesa, textiles y arte mural."
+              ],
+              "termsHighlights": [
+                "Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Estudio peruano enfocado en arquitectura de interiores, diseño residencial y comercial. El estudio ofrece diseño de espacios, fabricación de muebles a medida y venta de artículos decorativos",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Baby shower con 35 invitados; se requiere decoración pastel.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T07:06:40.160Z"
+        },
+        "perf": {
+          "trace_id": "01KWGTDGBV1BC2T2ZDZQ1CF7C0",
+          "conversation_id": "conv_6a460e003e40819793223dcb49ae9af90b23da7232ef8e50",
+          "runtime_latency_ms": 12735,
+          "extraction_latency_ms": 4335,
+          "compose_latency_ms": 4280,
+          "tools_called_count": 1,
+          "provider_results_count": 12,
+          "recommendation_context_candidates": 6,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17134,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8954894139306536,
+          "extraction_to_compose_ratio": 1.0128504672897196,
+          "captured_at": "2026-07-02T07:06:44.476Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T07:06:44.768Z",
+  "completedAt": "2026-07-02T07:06:44.768Z"
+}

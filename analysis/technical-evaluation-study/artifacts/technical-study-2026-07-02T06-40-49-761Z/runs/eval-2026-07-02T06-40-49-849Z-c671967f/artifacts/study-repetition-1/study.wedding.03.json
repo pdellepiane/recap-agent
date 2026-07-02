@@ -1,0 +1,1839 @@
+{
+  "runId": "eval-2026-07-02T06-40-49-849Z-c671967f",
+  "caseId": "study.wedding.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.7272727272727273,
+  "totalLatencyMs": 14995,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"elicitar_necesidades\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"alto\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Música:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-40-49-849Z-c671967f/artifacts/study-repetition-1/study.wedding.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 3 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-2",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.7272727272727273,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 11 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 14995,
+    "p95_latency_ms": 14995,
+    "tool_calls_total": 3,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.8333333333333334,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 18432,
+    "cache_hit_rate": 0.849013789492058
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo una boda elegante en Lima para 150 personas. Necesito local, catering y música en vivo; presupuesto alto."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con tu boda en Lima para 150 personas.\n\nLocales\nPara el local, encontré una opción que calza con una boda elegante y un grupo de este tamaño.\n1. Casa Club 147 - local para boda (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con bodas y con el rango de invitados, además de estar alineado con un presupuesto alto.\n Limitación: La ficha lo ubica en Cieneguilla, así que conviene validar si esa ubicación te funciona.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, la opción encontrada apunta a una propuesta de nivel alto y con enfoque distinto al menú tradicional.\n1. BAPO - catering para boda (Lima, Perú · $$$ · promo: 10% off)\n Es una alternativa de catering para eventos con señal de encaje para boda y presupuesto alto.\n Limitación: Su especialidad es comida asiática, así que conviene confirmar si ese estilo te gusta para la boda.\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\nMúsica\nPara música en vivo, encontré una propuesta pensada para boda y ceremonia.\n1. Coro Ricardo Venegas - música en vivo para boda (Perú · $$$ · promo: 10% Off)\n Encaja bien con celebraciones de boda y con una propuesta más formal o ceremonial.\n Limitación: Está más orientado a coro en vivo, así que conviene validar si buscas banda, grupo o formato coral.\n Ficha: https://sinenvolturas.com/proveedores/coro-ricardo-venegas\n\nPodemos empezar por revisar uno por uno para confirmar, cambiar o quitar opciones",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGRZEXANKXTRXHDY8WG59BY",
+        "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+        "plan_id": "01KWGRZ0MAT2EF1R3TD7T73RJ7",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"locales para boda\",\n  \"queryStrings\": [\n    \"local para boda\",\n    \"venue para boda\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para boda\",\n  \"queryStrings\": [\n    \"catering para boda\",\n    \"menú para boda\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música en vivo para boda\",\n  \"queryStrings\": [\n    \"música en vivo para boda\",\n    \"banda en vivo para boda\",\n    \"grupo musical para boda\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"catering para boda\",\n  \"providers\": [\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7293182614136181\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"locales para boda\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.7620702939925513\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"música en vivo para boda\",\n  \"providers\": [\n    {\n      \"id\": 123,\n      \"title\": \"Coro Ricardo Venegas\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.8462985699615168\n    },\n    {\n      \"id\": 163,\n      \"title\": \"Marco de Gennaro\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.7040734368832856\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [
+              "No hay evidencia exacta de locales para boda en la ficha."
+            ],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7620702939925513,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7293182614136181,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 123,
+            "title": "Coro Ricardo Venegas",
+            "slug": "coro-ricardo-venegas",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Coro Ricardo Venegas encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+            "websiteUrl": "https://www.cororicardovenegas.net/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+            "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+            "serviceHighlights": [
+              "Coro en vivo para bodas y ceremonias religiosas",
+              "Musicalización para misas y eventos especiales",
+              "Repertorio adaptado según el tipo de ceremonia",
+              "Asesoría en selección musical"
+            ],
+            "termsHighlights": [
+              "Válido para Lima y provincia",
+              "No transferible ni acumulable",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "preference_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.8462985699615168,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7620702939925513,
+            "fit_score": 88
+          },
+          {
+            "provider_id": 153,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7293182614136181,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 123,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8462985699615168,
+            "fit_score": 100
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 3,
+          "context_candidates": 3,
+          "context_candidate_ids": [
+            147,
+            153,
+            123
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 14631,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 7888,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 7024,
+          "provider_enrichment": 235,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3541,
+          "save_plan": 38
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11427,
+            "output_tokens": 882,
+            "total_tokens": 12309,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5760,
+            "output_tokens": 363,
+            "total_tokens": 6123,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17187,
+            "output_tokens": 1245,
+            "total_tokens": 18432,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGRZEXANKXTRXHDY8WG59BY",
+        "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+        "runtime_latency_ms": 14631,
+        "extraction_latency_ms": 7888,
+        "compose_latency_ms": 3541,
+        "tools_called_count": 3,
+        "provider_results_count": 3,
+        "recommendation_context_candidates": 3,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18432,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.849013789492058,
+        "extraction_to_compose_ratio": 2.227619316577238,
+        "captured_at": "2026-07-02T06:41:35.658Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGRZ0MAT2EF1R3TD7T73RJ7",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.wedding.03-5da4124a",
+        "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.9,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "alto",
+        "guest_range": "101-200",
+        "preferences": [
+          "boda elegante"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [
+              "boda elegante"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 88,
+                "fitWarnings": [
+                  "No hay evidencia exacta de locales para boda en la ficha."
+                ],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.7620702939925513,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "local_venue_boda",
+                  "label": "locales para boda",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para boda",
+                    "venue para boda"
+                  ],
+                  "mustHave": [
+                    "boda",
+                    "Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 88,
+                    "fitWarnings": [
+                      "No hay evidencia exacta de locales para boda en la ficha."
+                    ],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7620702939925513,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [
+              "boda elegante"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              153
+            ],
+            "recommended_providers": [
+              {
+                "id": 153,
+                "title": "BAPO",
+                "slug": "bapo",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                "serviceHighlights": [
+                  "Servicios de catering",
+                  "Preguntar por paquetes"
+                ],
+                "termsHighlights": [
+                  "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "No acumulable con otros descuentos y/o promociones"
+                ],
+                "eventTypes": [],
+                "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "preference_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.7293182614136181,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "catering_boda",
+                  "label": "catering para boda",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering para boda",
+                    "menú para boda"
+                  ],
+                  "mustHave": [
+                    "boda",
+                    "Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  153
+                ],
+                "selected_provider_ids": [
+                  153
+                ],
+                "candidates": [
+                  {
+                    "id": 153,
+                    "title": "BAPO",
+                    "slug": "bapo",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                    "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                    "serviceHighlights": [
+                      "Servicios de catering",
+                      "Preguntar por paquetes"
+                    ],
+                    "termsHighlights": [
+                      "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "No acumulable con otros descuentos y/o promociones"
+                    ],
+                    "eventTypes": [],
+                    "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "preference_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7293182614136181,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "música en vivo"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              123
+            ],
+            "recommended_providers": [
+              {
+                "id": 123,
+                "title": "Coro Ricardo Venegas",
+                "slug": "coro-ricardo-venegas",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Coro Ricardo Venegas encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+                "websiteUrl": "https://www.cororicardovenegas.net/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+                "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+                "serviceHighlights": [
+                  "Coro en vivo para bodas y ceremonias religiosas",
+                  "Musicalización para misas y eventos especiales",
+                  "Repertorio adaptado según el tipo de ceremonia",
+                  "Asesoría en selección musical"
+                ],
+                "termsHighlights": [
+                  "Válido para Lima y provincia",
+                  "No transferible ni acumulable",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "preference_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.8462985699615168,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "musica_en_vivo_boda",
+                  "label": "música en vivo para boda",
+                  "category": "Música",
+                  "queryStrings": [
+                    "música en vivo para boda",
+                    "banda en vivo para boda",
+                    "grupo musical para boda"
+                  ],
+                  "mustHave": [
+                    "boda",
+                    "música en vivo",
+                    "Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  123,
+                  163
+                ],
+                "selected_provider_ids": [
+                  123
+                ],
+                "candidates": [
+                  {
+                    "id": 123,
+                    "title": "Coro Ricardo Venegas",
+                    "slug": "coro-ricardo-venegas",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Coro Ricardo Venegas encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+                    "websiteUrl": "https://www.cororicardovenegas.net/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+                    "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+                    "serviceHighlights": [
+                      "Coro en vivo para bodas y ceremonias religiosas",
+                      "Musicalización para misas y eventos especiales",
+                      "Repertorio adaptado según el tipo de ceremonia",
+                      "Asesoría en selección musical"
+                    ],
+                    "termsHighlights": [
+                      "Válido para Lima y provincia",
+                      "No transferible ni acumulable",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "preference_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.8462985699615168,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 163,
+                    "title": "Marco de Gennaro",
+                    "slug": "marco-de-gennaro",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Marco de Gennaro encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "20% Off",
+                    "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+                    "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+                    "serviceHighlights": [
+                      "Presentación en vivo de violín para eventos",
+                      "Musicalización personalizada según el tipo de celebración",
+                      "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio válido para nuevos contratos",
+                      "Sujeto a disponibilidad",
+                      "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+                      "No transferible ni acumulable con otras promociones",
+                      "Aplica sobre tarifa de matrimonios",
+                      "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+                    ],
+                    "eventTypes": [],
+                    "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "preference_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7040734368832856,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 88,
+            "fitWarnings": [
+              "No hay evidencia exacta de locales para boda en la ficha."
+            ],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7620702939925513,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "la necesidad de música es 'música en vivo'"
+        ],
+        "conversation_summary": "Boda elegante en Lima para ~150 personas con presupuesto alto. Necesita local, catering y música en vivo.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:41:32.080Z"
+      },
+      "latencyMs": 14995,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con tu boda en Lima para 150 personas.\n\nLocales\nPara el local, encontré una opción que calza con una boda elegante y un grupo de este tamaño.\n1. Casa Club 147 - local para boda (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con bodas y con el rango de invitados, además de estar alineado con un presupuesto alto.\n Limitación: La ficha lo ubica en Cieneguilla, así que conviene validar si esa ubicación te funciona.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, la opción encontrada apunta a una propuesta de nivel alto y con enfoque distinto al menú tradicional.\n1. BAPO - catering para boda (Lima, Perú · $$$ · promo: 10% off)\n Es una alternativa de catering para eventos con señal de encaje para boda y presupuesto alto.\n Limitación: Su especialidad es comida asiática, así que conviene confirmar si ese estilo te gusta para la boda.\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\nMúsica\nPara música en vivo, encontré una propuesta pensada para boda y ceremonia.\n1. Coro Ricardo Venegas - música en vivo para boda (Perú · $$$ · promo: 10% Off)\n Encaja bien con celebraciones de boda y con una propuesta más formal o ceremonial.\n Limitación: Está más orientado a coro en vivo, así que conviene validar si buscas banda, grupo o formato coral.\n Ficha: https://sinenvolturas.com/proveedores/coro-ricardo-venegas\n\nPodemos empezar por revisar uno por uno para confirmar, cambiar o quitar opciones",
+        "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+        "plan_id": "01KWGRZ0MAT2EF1R3TD7T73RJ7",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGRZEXANKXTRXHDY8WG59BY",
+          "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+          "plan_id": "01KWGRZ0MAT2EF1R3TD7T73RJ7",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"locales para boda\",\n  \"queryStrings\": [\n    \"local para boda\",\n    \"venue para boda\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para boda\",\n  \"queryStrings\": [\n    \"catering para boda\",\n    \"menú para boda\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música en vivo para boda\",\n  \"queryStrings\": [\n    \"música en vivo para boda\",\n    \"banda en vivo para boda\",\n    \"grupo musical para boda\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"catering para boda\",\n  \"providers\": [\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7293182614136181\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"locales para boda\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.7620702939925513\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"música en vivo para boda\",\n  \"providers\": [\n    {\n      \"id\": 123,\n      \"title\": \"Coro Ricardo Venegas\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.8462985699615168\n    },\n    {\n      \"id\": 163,\n      \"title\": \"Marco de Gennaro\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.7040734368832856\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 88,
+              "fitWarnings": [
+                "No hay evidencia exacta de locales para boda en la ficha."
+              ],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7620702939925513,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "preference_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7293182614136181,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 123,
+              "title": "Coro Ricardo Venegas",
+              "slug": "coro-ricardo-venegas",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Coro Ricardo Venegas encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+              "websiteUrl": "https://www.cororicardovenegas.net/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+              "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+              "serviceHighlights": [
+                "Coro en vivo para bodas y ceremonias religiosas",
+                "Musicalización para misas y eventos especiales",
+                "Repertorio adaptado según el tipo de ceremonia",
+                "Asesoría en selección musical"
+              ],
+              "termsHighlights": [
+                "Válido para Lima y provincia",
+                "No transferible ni acumulable",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "preference_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.8462985699615168,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7620702939925513,
+              "fit_score": 88
+            },
+            {
+              "provider_id": 153,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7293182614136181,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 123,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8462985699615168,
+              "fit_score": 100
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 3,
+            "context_candidates": 3,
+            "context_candidate_ids": [
+              147,
+              153,
+              123
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 14631,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 7888,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 7024,
+            "provider_enrichment": 235,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3541,
+            "save_plan": 38
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11427,
+              "output_tokens": 882,
+              "total_tokens": 12309,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5760,
+              "output_tokens": 363,
+              "total_tokens": 6123,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17187,
+              "output_tokens": 1245,
+              "total_tokens": 18432,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGRZ0MAT2EF1R3TD7T73RJ7",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.wedding.03-5da4124a",
+          "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.9,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "alto",
+          "guest_range": "101-200",
+          "preferences": [
+            "boda elegante"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [
+                "boda elegante"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 88,
+                  "fitWarnings": [
+                    "No hay evidencia exacta de locales para boda en la ficha."
+                  ],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.7620702939925513,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "local_venue_boda",
+                    "label": "locales para boda",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para boda",
+                      "venue para boda"
+                    ],
+                    "mustHave": [
+                      "boda",
+                      "Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 88,
+                      "fitWarnings": [
+                        "No hay evidencia exacta de locales para boda en la ficha."
+                      ],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7620702939925513,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [
+                "boda elegante"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                153
+              ],
+              "recommended_providers": [
+                {
+                  "id": 153,
+                  "title": "BAPO",
+                  "slug": "bapo",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                  "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                  "serviceHighlights": [
+                    "Servicios de catering",
+                    "Preguntar por paquetes"
+                  ],
+                  "termsHighlights": [
+                    "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                    "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                    "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                    "No acumulable con otros descuentos y/o promociones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "preference_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.7293182614136181,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "catering_boda",
+                    "label": "catering para boda",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering para boda",
+                      "menú para boda"
+                    ],
+                    "mustHave": [
+                      "boda",
+                      "Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    153
+                  ],
+                  "selected_provider_ids": [
+                    153
+                  ],
+                  "candidates": [
+                    {
+                      "id": 153,
+                      "title": "BAPO",
+                      "slug": "bapo",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "BAPO encaja con catering para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                      "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                      "serviceHighlights": [
+                        "Servicios de catering",
+                        "Preguntar por paquetes"
+                      ],
+                      "termsHighlights": [
+                        "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "No acumulable con otros descuentos y/o promociones"
+                      ],
+                      "eventTypes": [],
+                      "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "preference_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7293182614136181,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "música en vivo"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                123
+              ],
+              "recommended_providers": [
+                {
+                  "id": 123,
+                  "title": "Coro Ricardo Venegas",
+                  "slug": "coro-ricardo-venegas",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Coro Ricardo Venegas encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+                  "websiteUrl": "https://www.cororicardovenegas.net/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+                  "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+                  "serviceHighlights": [
+                    "Coro en vivo para bodas y ceremonias religiosas",
+                    "Musicalización para misas y eventos especiales",
+                    "Repertorio adaptado según el tipo de ceremonia",
+                    "Asesoría en selección musical"
+                  ],
+                  "termsHighlights": [
+                    "Válido para Lima y provincia",
+                    "No transferible ni acumulable",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "preference_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.8462985699615168,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "musica_en_vivo_boda",
+                    "label": "música en vivo para boda",
+                    "category": "Música",
+                    "queryStrings": [
+                      "música en vivo para boda",
+                      "banda en vivo para boda",
+                      "grupo musical para boda"
+                    ],
+                    "mustHave": [
+                      "boda",
+                      "música en vivo",
+                      "Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    123,
+                    163
+                  ],
+                  "selected_provider_ids": [
+                    123
+                  ],
+                  "candidates": [
+                    {
+                      "id": 123,
+                      "title": "Coro Ricardo Venegas",
+                      "slug": "coro-ricardo-venegas",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Coro Ricardo Venegas encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+                      "websiteUrl": "https://www.cororicardovenegas.net/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+                      "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+                      "serviceHighlights": [
+                        "Coro en vivo para bodas y ceremonias religiosas",
+                        "Musicalización para misas y eventos especiales",
+                        "Repertorio adaptado según el tipo de ceremonia",
+                        "Asesoría en selección musical"
+                      ],
+                      "termsHighlights": [
+                        "Válido para Lima y provincia",
+                        "No transferible ni acumulable",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "preference_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.8462985699615168,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 163,
+                      "title": "Marco de Gennaro",
+                      "slug": "marco-de-gennaro",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Marco de Gennaro encaja con música en vivo para boda según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "20% Off",
+                      "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+                      "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+                      "serviceHighlights": [
+                        "Presentación en vivo de violín para eventos",
+                        "Musicalización personalizada según el tipo de celebración",
+                        "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio válido para nuevos contratos",
+                        "Sujeto a disponibilidad",
+                        "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+                        "No transferible ni acumulable con otras promociones",
+                        "Aplica sobre tarifa de matrimonios",
+                        "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+                      ],
+                      "eventTypes": [],
+                      "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "preference_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7040734368832856,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con locales para boda según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 88,
+              "fitWarnings": [
+                "No hay evidencia exacta de locales para boda en la ficha."
+              ],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7620702939925513,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "la necesidad de música es 'música en vivo'"
+          ],
+          "conversation_summary": "Boda elegante en Lima para ~150 personas con presupuesto alto. Necesita local, catering y música en vivo.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:41:32.080Z"
+        },
+        "perf": {
+          "trace_id": "01KWGRZEXANKXTRXHDY8WG59BY",
+          "conversation_id": "conv_6a46081c2bb0819483b426488215e0fc0e94405c95e5e9f7",
+          "runtime_latency_ms": 14631,
+          "extraction_latency_ms": 7888,
+          "compose_latency_ms": 3541,
+          "tools_called_count": 3,
+          "provider_results_count": 3,
+          "recommendation_context_candidates": 3,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18432,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.849013789492058,
+          "extraction_to_compose_ratio": 2.227619316577238,
+          "captured_at": "2026-07-02T06:41:35.658Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:41:35.906Z",
+  "completedAt": "2026-07-02T06:41:35.907Z"
+}

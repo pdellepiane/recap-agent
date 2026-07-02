@@ -1,0 +1,2303 @@
+{
+  "runId": "eval-2026-07-02T06-40-49-849Z-c671967f",
+  "caseId": "study.baby_shower.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.6363636363636364,
+  "totalLatencyMs": 16795,
+  "totalToolCalls": 4,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Hogar y deco:shortlisted, Fotografía y video:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/eval-2026-07-02T06-40-49-849Z-c671967f/artifacts/study-repetition-1/study.baby_shower.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 4 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-2",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.6363636363636364,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 11 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 16795,
+    "p95_latency_ms": 16795,
+    "tool_calls_total": 4,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.6666666666666666,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 19124,
+    "cache_hit_rate": 0.8281028318483628
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo un baby shower en Lima para 50 personas. Necesito local, catering y decoración sobria, presupuesto medio."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta que encaja con lo que pediste para tu baby shower en Lima\n\nLocales\nPara el local, la opción encontrada calza con un evento de 50 personas y presupuesto medio, aunque está en una franja de precio más alta.\n1. Casa Club 147 - Local para baby shower en Lima (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con el tipo de evento y la capacidad buscada; además es un espacio pensado para celebraciones.\n Limitación: La ficha muestra una señal de precio más alta que tu presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, encontré una opción alineada con el tamaño del evento y el estilo de celebración.\n1. FCatering - Catering para baby shower en Lima (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n Se ajusta al baby shower y al rango de 50 personas, con señal de precio media.\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\nHogar y deco\nPara decoración sobria, hay una propuesta que encaja con el estilo discreto que buscas.\n1. Nina Creativa - Decoración sobria para baby shower en Lima (Lima, Perú · $$ · promo: 10% off)\n Su propuesta se alinea con una ambientación sobria para baby shower y con el presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\nFotografía y video\nPara registrar el evento, encontré una opción que suma cobertura y experiencia para celebraciones.\n1. Filomena Studio - Fotografía para baby shower en Lima (Lima, Perú · $$$ · promo: 10% Off)\n Encaja con la cobertura de un baby shower y aporta un formato más interactivo para el evento.\n Limitación: La señal de precio es más alta que tu presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/filomena-studio\n\nPodemos revisar frente por frente para confirmar, cambiar o quitar opciones. Si quieres, empezamos por el local y después seguimos con catering y decoración",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGSGDDHPGQ0K9ABDA6TFTG5",
+        "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+        "plan_id": "01KWGSFX5G3GCPVK58DW1HG236",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"Local para baby shower en Lima\",\n  \"queryStrings\": [\n    \"local para baby shower en Lima\",\n    \"espacio para eventos baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"Catering para baby shower en Lima\",\n  \"queryStrings\": [\n    \"catering para baby shower en Lima\",\n    \"menu para evento 50 personas Lima catering\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"Decoración sobria para baby shower en Lima\",\n  \"queryStrings\": [\n    \"decoración sobria baby shower Lima\",\n    \"decoración elegante discreta baby shower 50 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"Fotografía para baby shower en Lima\",\n  \"queryStrings\": [\n    \"fotógrafo baby shower Lima\",\n    \"video baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Local para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6862724367815839\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Fotografía para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 13,\n      \"title\": \"Ojo de Uva\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.6902359082776681\n    },\n    {\n      \"id\": 142,\n      \"title\": \"Agalux Studio\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.6721842615473741\n    },\n    {\n      \"id\": 168,\n      \"title\": \"Filomena Studio\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.7173825666853886\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Catering para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8399003638936589\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Decoración sobria para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6302299477030582\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6862724367815839,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 137,
+            "title": "FCatering",
+            "slug": "fcatering",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "FCatering encaja con Catering para baby shower en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "Vale de 300 Dólares",
+            "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+            "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "serviceHighlights": [
+              "Catering para eventos",
+              "Propuestas gastronómicas personalizadas",
+              "Montaje y servicio de alimentos",
+              "Atención para eventos sociales y corporativos"
+            ],
+            "termsHighlights": [
+              "Válido solo para clientes de Sin Envolturas.",
+              "Válido únicamente en Lima.",
+              "Beneficio no transferible ni acumulable.",
+              "Válido de lunes a viernes en horario laboral.",
+              "Aplica solo para anfitriones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.8399003638936589,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con Decoración sobria para baby shower en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6302299477030582,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 168,
+            "title": "Filomena Studio",
+            "slug": "filomena-studio",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Filomena Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/filomena-studio",
+            "websiteUrl": "https://lookbook.filomena.studio/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio Gifbooth, Insta Printing y 360",
+            "descriptionSnippet": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea.",
+            "serviceHighlights": [
+              "Gifbooth",
+              "Insta Printing (impresión instantánea)",
+              "Servicio 360",
+              "Experiencias interactivas para eventos",
+              "Duración del servicio: 3 horas"
+            ],
+            "termsHighlights": [
+              "Incluye movilidad en algunos distritos de Lima Metropolitana (consultar cobertura)",
+              "Requiere punto de luz cercano para su funcionamiento",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea. Sus servicios añaden un elemento dinámico que invita a los invitados a participar y llevarse recuerdos únicos.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7173825666853886,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6862724367815839,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 137,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8399003638936589,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 179,
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6302299477030582,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 168,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7173825666853886,
+            "fit_score": 94
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            147,
+            137,
+            179,
+            168
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 16648,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 8995,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 10344,
+          "provider_enrichment": 275,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4339,
+          "save_plan": 30
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11428,
+            "output_tokens": 1058,
+            "total_tokens": 12486,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6193,
+            "output_tokens": 445,
+            "total_tokens": 6638,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17621,
+            "output_tokens": 1503,
+            "total_tokens": 19124,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGSGDDHPGQ0K9ABDA6TFTG5",
+        "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+        "runtime_latency_ms": 16648,
+        "extraction_latency_ms": 8995,
+        "compose_latency_ms": 4339,
+        "tools_called_count": 4,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 19124,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8281028318483628,
+        "extraction_to_compose_ratio": 2.073058308365983,
+        "captured_at": "2026-07-02T06:50:51.185Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGSFX5G3GCPVK58DW1HG236",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.03-29818fbc",
+        "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "medio",
+        "guest_range": "21-50",
+        "preferences": [
+          "decoración sobria"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [
+              "decoración sobria (espacio que lo permita)"
+            ],
+            "hard_constraints": [
+              "Lima",
+              "50 personas"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.6862724367815839,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "locales_baby_shower_lima",
+                  "label": "Local para baby shower en Lima",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para baby shower en Lima",
+                    "espacio para eventos baby shower Lima"
+                  ],
+                  "mustHave": [
+                    "capacidad para 50 personas",
+                    "apto para baby shower"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6862724367815839,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [
+              "línea sobria/estilo discreto"
+            ],
+            "hard_constraints": [
+              "Lima",
+              "50 personas"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              137
+            ],
+            "recommended_providers": [
+              {
+                "id": 137,
+                "title": "FCatering",
+                "slug": "fcatering",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "FCatering encaja con Catering para baby shower en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "Vale de 300 Dólares",
+                "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "serviceHighlights": [
+                  "Catering para eventos",
+                  "Propuestas gastronómicas personalizadas",
+                  "Montaje y servicio de alimentos",
+                  "Atención para eventos sociales y corporativos"
+                ],
+                "termsHighlights": [
+                  "Válido solo para clientes de Sin Envolturas.",
+                  "Válido únicamente en Lima.",
+                  "Beneficio no transferible ni acumulable.",
+                  "Válido de lunes a viernes en horario laboral.",
+                  "Aplica solo para anfitriones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.8399003638936589,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "catering_baby_shower_lima",
+                  "label": "Catering para baby shower en Lima",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering para baby shower en Lima",
+                    "menu para evento 50 personas Lima catering"
+                  ],
+                  "mustHave": [
+                    "servicio para 50 personas",
+                    "apto para baby shower"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  137
+                ],
+                "selected_provider_ids": [
+                  137
+                ],
+                "candidates": [
+                  {
+                    "id": 137,
+                    "title": "FCatering",
+                    "slug": "fcatering",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "FCatering encaja con Catering para baby shower en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Vale de 300 Dólares",
+                    "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                    "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Propuestas gastronómicas personalizadas",
+                      "Montaje y servicio de alimentos",
+                      "Atención para eventos sociales y corporativos"
+                    ],
+                    "termsHighlights": [
+                      "Válido solo para clientes de Sin Envolturas.",
+                      "Válido únicamente en Lima.",
+                      "Beneficio no transferible ni acumulable.",
+                      "Válido de lunes a viernes en horario laboral.",
+                      "Aplica solo para anfitriones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.8399003638936589,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [
+              "decoración sobria"
+            ],
+            "hard_constraints": [
+              "Lima",
+              "50 personas"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              179
+            ],
+            "recommended_providers": [
+              {
+                "id": 179,
+                "title": "Nina Creativa",
+                "slug": "nina-creativa",
+                "category": "Hogar y deco",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Nina Creativa encaja con Decoración sobria para baby shower en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                "serviceHighlights": [
+                  "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                  "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                  "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                ],
+                "termsHighlights": [
+                  "Válido para pedidos con entrega en todo el Perú.",
+                  "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                  "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                  "Sujeto a disponibilidad de stock y agenda de producción."
+                ],
+                "eventTypes": [],
+                "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.6302299477030582,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "decoracion_sobria_baby_shower_lima",
+                  "label": "Decoración sobria para baby shower en Lima",
+                  "category": "Hogar y deco",
+                  "queryStrings": [
+                    "decoración sobria baby shower Lima",
+                    "decoración elegante discreta baby shower 50 personas"
+                  ],
+                  "mustHave": [
+                    "decoración sobria",
+                    "montaje decorativo para baby shower"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  179
+                ],
+                "selected_provider_ids": [
+                  179
+                ],
+                "candidates": [
+                  {
+                    "id": 179,
+                    "title": "Nina Creativa",
+                    "slug": "nina-creativa",
+                    "category": "Hogar y deco",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Nina Creativa encaja con Decoración sobria para baby shower en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                    "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                    "serviceHighlights": [
+                      "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                      "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                      "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                    ],
+                    "termsHighlights": [
+                      "Válido para pedidos con entrega en todo el Perú.",
+                      "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                      "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                      "Sujeto a disponibilidad de stock y agenda de producción."
+                    ],
+                    "eventTypes": [],
+                    "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6302299477030582,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "Lima"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              168
+            ],
+            "recommended_providers": [
+              {
+                "id": 168,
+                "title": "Filomena Studio",
+                "slug": "filomena-studio",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Filomena Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/filomena-studio",
+                "websiteUrl": "https://lookbook.filomena.studio/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio Gifbooth, Insta Printing y 360",
+                "descriptionSnippet": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea.",
+                "serviceHighlights": [
+                  "Gifbooth",
+                  "Insta Printing (impresión instantánea)",
+                  "Servicio 360",
+                  "Experiencias interactivas para eventos",
+                  "Duración del servicio: 3 horas"
+                ],
+                "termsHighlights": [
+                  "Incluye movilidad en algunos distritos de Lima Metropolitana (consultar cobertura)",
+                  "Requiere punto de luz cercano para su funcionamiento",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea. Sus servicios añaden un elemento dinámico que invita a los invitados a participar y llevarse recuerdos únicos.",
+                "fitScore": 94,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.7173825666853886,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "foto_video_baby_shower_lima",
+                  "label": "Fotografía para baby shower en Lima",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotógrafo baby shower Lima",
+                    "video baby shower Lima"
+                  ],
+                  "mustHave": [
+                    "cobertura para baby shower"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  168,
+                  13,
+                  142
+                ],
+                "selected_provider_ids": [
+                  168
+                ],
+                "candidates": [
+                  {
+                    "id": 168,
+                    "title": "Filomena Studio",
+                    "slug": "filomena-studio",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Filomena Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/filomena-studio",
+                    "websiteUrl": "https://lookbook.filomena.studio/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en el servicio Gifbooth, Insta Printing y 360",
+                    "descriptionSnippet": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea.",
+                    "serviceHighlights": [
+                      "Gifbooth",
+                      "Insta Printing (impresión instantánea)",
+                      "Servicio 360",
+                      "Experiencias interactivas para eventos",
+                      "Duración del servicio: 3 horas"
+                    ],
+                    "termsHighlights": [
+                      "Incluye movilidad en algunos distritos de Lima Metropolitana (consultar cobertura)",
+                      "Requiere punto de luz cercano para su funcionamiento",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea. Sus servicios añaden un elemento dinámico que invita a los invitados a participar y llevarse recuerdos únicos.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7173825666853886,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 13,
+                    "title": "Ojo de Uva",
+                    "slug": "ojo-de-uva",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Ojo de Uva encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/ojo-de-uva",
+                    "websiteUrl": "https://ojodeuvape.wixsite.com/ojodeuva",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Gratis",
+                    "promoSummary": "Sesión pre boda de video GRATIS por la separación de una fecha con los paquetes Uva 1.5 y Uva 2.0",
+                    "descriptionSnippet": "Ojo de Uva ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar historias de manera auténtica y natural.",
+                    "serviceHighlights": [
+                      "Paquete Uva 1.5",
+                      "Paquete Uva 2.0",
+                      "Cobertura audiovisual para matrimonios",
+                      "Producción y edición de video"
+                    ],
+                    "termsHighlights": [
+                      "Válido únicamente de lunes a viernes",
+                      "Duración máxima de la sesión: 3 horas",
+                      "Aplica para locaciones dentro de un rango de hasta 1 hora de viaje por vía terrestre desde Lima",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Ojo de Uva ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar historias de manera auténtica y natural. Su estilo combina narrativa y emoción para crear recuerdos que acompañan cada etapa del matrimonio.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6902359082776681,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 142,
+                    "title": "Agalux Studio",
+                    "slug": "agalux-studio",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Agalux Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                    "websiteUrl": null,
+                    "minPrice": "6000.00",
+                    "maxPrice": null,
+                    "promoBadge": "100 S/. Dscto",
+                    "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                    "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                    "serviceHighlights": [
+                      "Cobertura audiovisual para matrimonios",
+                      "Fotografía y/o video de bodas",
+                      "Paquetes personalizados según el tipo de evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Descuentos y beneficios no acumulables",
+                      "Beneficio transferible",
+                      "Válido en todo el Perú",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                    "fitScore": 93,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6721842615473741,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.6862724367815839,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Baby shower en Lima para 50 personas. Necesita local, catering y decoración sobria. Presupuesto medio. Frente activo: Locales.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T06:50:46.816Z"
+      },
+      "latencyMs": 16795,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta que encaja con lo que pediste para tu baby shower en Lima\n\nLocales\nPara el local, la opción encontrada calza con un evento de 50 personas y presupuesto medio, aunque está en una franja de precio más alta.\n1. Casa Club 147 - Local para baby shower en Lima (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con el tipo de evento y la capacidad buscada; además es un espacio pensado para celebraciones.\n Limitación: La ficha muestra una señal de precio más alta que tu presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara catering, encontré una opción alineada con el tamaño del evento y el estilo de celebración.\n1. FCatering - Catering para baby shower en Lima (Lima, Perú · $$ · promo: Vale de 300 Dólares)\n Se ajusta al baby shower y al rango de 50 personas, con señal de precio media.\n Ficha: https://sinenvolturas.com/proveedores/fcatering\n\nHogar y deco\nPara decoración sobria, hay una propuesta que encaja con el estilo discreto que buscas.\n1. Nina Creativa - Decoración sobria para baby shower en Lima (Lima, Perú · $$ · promo: 10% off)\n Su propuesta se alinea con una ambientación sobria para baby shower y con el presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\nFotografía y video\nPara registrar el evento, encontré una opción que suma cobertura y experiencia para celebraciones.\n1. Filomena Studio - Fotografía para baby shower en Lima (Lima, Perú · $$$ · promo: 10% Off)\n Encaja con la cobertura de un baby shower y aporta un formato más interactivo para el evento.\n Limitación: La señal de precio es más alta que tu presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/filomena-studio\n\nPodemos revisar frente por frente para confirmar, cambiar o quitar opciones. Si quieres, empezamos por el local y después seguimos con catering y decoración",
+        "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+        "plan_id": "01KWGSFX5G3GCPVK58DW1HG236",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGSGDDHPGQ0K9ABDA6TFTG5",
+          "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+          "plan_id": "01KWGSFX5G3GCPVK58DW1HG236",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"Local para baby shower en Lima\",\n  \"queryStrings\": [\n    \"local para baby shower en Lima\",\n    \"espacio para eventos baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"Catering para baby shower en Lima\",\n  \"queryStrings\": [\n    \"catering para baby shower en Lima\",\n    \"menu para evento 50 personas Lima catering\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"Decoración sobria para baby shower en Lima\",\n  \"queryStrings\": [\n    \"decoración sobria baby shower Lima\",\n    \"decoración elegante discreta baby shower 50 personas\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"Fotografía para baby shower en Lima\",\n  \"queryStrings\": [\n    \"fotógrafo baby shower Lima\",\n    \"video baby shower Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Local para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6862724367815839\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Fotografía para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 13,\n      \"title\": \"Ojo de Uva\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.6902359082776681\n    },\n    {\n      \"id\": 142,\n      \"title\": \"Agalux Studio\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.6721842615473741\n    },\n    {\n      \"id\": 168,\n      \"title\": \"Filomena Studio\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.7173825666853886\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Catering para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8399003638936589\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Decoración sobria para baby shower en Lima\",\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6302299477030582\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6862724367815839,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 137,
+              "title": "FCatering",
+              "slug": "fcatering",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "FCatering encaja con Catering para baby shower en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "Vale de 300 Dólares",
+              "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+              "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "serviceHighlights": [
+                "Catering para eventos",
+                "Propuestas gastronómicas personalizadas",
+                "Montaje y servicio de alimentos",
+                "Atención para eventos sociales y corporativos"
+              ],
+              "termsHighlights": [
+                "Válido solo para clientes de Sin Envolturas.",
+                "Válido únicamente en Lima.",
+                "Beneficio no transferible ni acumulable.",
+                "Válido de lunes a viernes en horario laboral.",
+                "Aplica solo para anfitriones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.8399003638936589,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 179,
+              "title": "Nina Creativa",
+              "slug": "nina-creativa",
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Nina Creativa encaja con Decoración sobria para baby shower en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+              "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "serviceHighlights": [
+                "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+              ],
+              "termsHighlights": [
+                "Válido para pedidos con entrega en todo el Perú.",
+                "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Sujeto a disponibilidad de stock y agenda de producción."
+              ],
+              "eventTypes": [],
+              "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6302299477030582,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 168,
+              "title": "Filomena Studio",
+              "slug": "filomena-studio",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Filomena Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/filomena-studio",
+              "websiteUrl": "https://lookbook.filomena.studio/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio Gifbooth, Insta Printing y 360",
+              "descriptionSnippet": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea.",
+              "serviceHighlights": [
+                "Gifbooth",
+                "Insta Printing (impresión instantánea)",
+                "Servicio 360",
+                "Experiencias interactivas para eventos",
+                "Duración del servicio: 3 horas"
+              ],
+              "termsHighlights": [
+                "Incluye movilidad en algunos distritos de Lima Metropolitana (consultar cobertura)",
+                "Requiere punto de luz cercano para su funcionamiento",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea. Sus servicios añaden un elemento dinámico que invita a los invitados a participar y llevarse recuerdos únicos.",
+              "fitScore": 94,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7173825666853886,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6862724367815839,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 137,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8399003638936589,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 179,
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6302299477030582,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 168,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7173825666853886,
+              "fit_score": 94
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 4,
+            "context_candidates": 4,
+            "context_candidate_ids": [
+              147,
+              137,
+              179,
+              168
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 16648,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 8995,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 10344,
+            "provider_enrichment": 275,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4339,
+            "save_plan": 30
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11428,
+              "output_tokens": 1058,
+              "total_tokens": 12486,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6193,
+              "output_tokens": 445,
+              "total_tokens": 6638,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17621,
+              "output_tokens": 1503,
+              "total_tokens": 19124,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGSFX5G3GCPVK58DW1HG236",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.03-29818fbc",
+          "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "medio",
+          "guest_range": "21-50",
+          "preferences": [
+            "decoración sobria"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [
+                "decoración sobria (espacio que lo permita)"
+              ],
+              "hard_constraints": [
+                "Lima",
+                "50 personas"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.6862724367815839,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "locales_baby_shower_lima",
+                    "label": "Local para baby shower en Lima",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para baby shower en Lima",
+                      "espacio para eventos baby shower Lima"
+                    ],
+                    "mustHave": [
+                      "capacidad para 50 personas",
+                      "apto para baby shower"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6862724367815839,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [
+                "línea sobria/estilo discreto"
+              ],
+              "hard_constraints": [
+                "Lima",
+                "50 personas"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                137
+              ],
+              "recommended_providers": [
+                {
+                  "id": 137,
+                  "title": "FCatering",
+                  "slug": "fcatering",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "FCatering encaja con Catering para baby shower en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "Vale de 300 Dólares",
+                  "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                  "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "serviceHighlights": [
+                    "Catering para eventos",
+                    "Propuestas gastronómicas personalizadas",
+                    "Montaje y servicio de alimentos",
+                    "Atención para eventos sociales y corporativos"
+                  ],
+                  "termsHighlights": [
+                    "Válido solo para clientes de Sin Envolturas.",
+                    "Válido únicamente en Lima.",
+                    "Beneficio no transferible ni acumulable.",
+                    "Válido de lunes a viernes en horario laboral.",
+                    "Aplica solo para anfitriones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.8399003638936589,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "catering_baby_shower_lima",
+                    "label": "Catering para baby shower en Lima",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering para baby shower en Lima",
+                      "menu para evento 50 personas Lima catering"
+                    ],
+                    "mustHave": [
+                      "servicio para 50 personas",
+                      "apto para baby shower"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    137
+                  ],
+                  "selected_provider_ids": [
+                    137
+                  ],
+                  "candidates": [
+                    {
+                      "id": 137,
+                      "title": "FCatering",
+                      "slug": "fcatering",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "FCatering encaja con Catering para baby shower en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Vale de 300 Dólares",
+                      "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                      "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Propuestas gastronómicas personalizadas",
+                        "Montaje y servicio de alimentos",
+                        "Atención para eventos sociales y corporativos"
+                      ],
+                      "termsHighlights": [
+                        "Válido solo para clientes de Sin Envolturas.",
+                        "Válido únicamente en Lima.",
+                        "Beneficio no transferible ni acumulable.",
+                        "Válido de lunes a viernes en horario laboral.",
+                        "Aplica solo para anfitriones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.8399003638936589,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [
+                "decoración sobria"
+              ],
+              "hard_constraints": [
+                "Lima",
+                "50 personas"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                179
+              ],
+              "recommended_providers": [
+                {
+                  "id": 179,
+                  "title": "Nina Creativa",
+                  "slug": "nina-creativa",
+                  "category": "Hogar y deco",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Nina Creativa encaja con Decoración sobria para baby shower en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                  "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                  "serviceHighlights": [
+                    "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                    "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                    "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                  ],
+                  "termsHighlights": [
+                    "Válido para pedidos con entrega en todo el Perú.",
+                    "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                    "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                    "Sujeto a disponibilidad de stock y agenda de producción."
+                  ],
+                  "eventTypes": [],
+                  "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.6302299477030582,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "decoracion_sobria_baby_shower_lima",
+                    "label": "Decoración sobria para baby shower en Lima",
+                    "category": "Hogar y deco",
+                    "queryStrings": [
+                      "decoración sobria baby shower Lima",
+                      "decoración elegante discreta baby shower 50 personas"
+                    ],
+                    "mustHave": [
+                      "decoración sobria",
+                      "montaje decorativo para baby shower"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    179
+                  ],
+                  "selected_provider_ids": [
+                    179
+                  ],
+                  "candidates": [
+                    {
+                      "id": 179,
+                      "title": "Nina Creativa",
+                      "slug": "nina-creativa",
+                      "category": "Hogar y deco",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Nina Creativa encaja con Decoración sobria para baby shower en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                      "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                      "serviceHighlights": [
+                        "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                        "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                        "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                      ],
+                      "termsHighlights": [
+                        "Válido para pedidos con entrega en todo el Perú.",
+                        "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                        "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                        "Sujeto a disponibilidad de stock y agenda de producción."
+                      ],
+                      "eventTypes": [],
+                      "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6302299477030582,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "Lima"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                168
+              ],
+              "recommended_providers": [
+                {
+                  "id": 168,
+                  "title": "Filomena Studio",
+                  "slug": "filomena-studio",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Filomena Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/filomena-studio",
+                  "websiteUrl": "https://lookbook.filomena.studio/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en el servicio Gifbooth, Insta Printing y 360",
+                  "descriptionSnippet": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea.",
+                  "serviceHighlights": [
+                    "Gifbooth",
+                    "Insta Printing (impresión instantánea)",
+                    "Servicio 360",
+                    "Experiencias interactivas para eventos",
+                    "Duración del servicio: 3 horas"
+                  ],
+                  "termsHighlights": [
+                    "Incluye movilidad en algunos distritos de Lima Metropolitana (consultar cobertura)",
+                    "Requiere punto de luz cercano para su funcionamiento",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea. Sus servicios añaden un elemento dinámico que invita a los invitados a participar y llevarse recuerdos únicos.",
+                  "fitScore": 94,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.7173825666853886,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "foto_video_baby_shower_lima",
+                    "label": "Fotografía para baby shower en Lima",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotógrafo baby shower Lima",
+                      "video baby shower Lima"
+                    ],
+                    "mustHave": [
+                      "cobertura para baby shower"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    168,
+                    13,
+                    142
+                  ],
+                  "selected_provider_ids": [
+                    168
+                  ],
+                  "candidates": [
+                    {
+                      "id": 168,
+                      "title": "Filomena Studio",
+                      "slug": "filomena-studio",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Filomena Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/filomena-studio",
+                      "websiteUrl": "https://lookbook.filomena.studio/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en el servicio Gifbooth, Insta Printing y 360",
+                      "descriptionSnippet": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea.",
+                      "serviceHighlights": [
+                        "Gifbooth",
+                        "Insta Printing (impresión instantánea)",
+                        "Servicio 360",
+                        "Experiencias interactivas para eventos",
+                        "Duración del servicio: 3 horas"
+                      ],
+                      "termsHighlights": [
+                        "Incluye movilidad en algunos distritos de Lima Metropolitana (consultar cobertura)",
+                        "Requiere punto de luz cercano para su funcionamiento",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Filomena ofrece a los clientes de Sin Envolturas una experiencia interactiva para eventos, pensada para capturar momentos de forma divertida y espontánea. Sus servicios añaden un elemento dinámico que invita a los invitados a participar y llevarse recuerdos únicos.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7173825666853886,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 13,
+                      "title": "Ojo de Uva",
+                      "slug": "ojo-de-uva",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Ojo de Uva encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/ojo-de-uva",
+                      "websiteUrl": "https://ojodeuvape.wixsite.com/ojodeuva",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Gratis",
+                      "promoSummary": "Sesión pre boda de video GRATIS por la separación de una fecha con los paquetes Uva 1.5 y Uva 2.0",
+                      "descriptionSnippet": "Ojo de Uva ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar historias de manera auténtica y natural.",
+                      "serviceHighlights": [
+                        "Paquete Uva 1.5",
+                        "Paquete Uva 2.0",
+                        "Cobertura audiovisual para matrimonios",
+                        "Producción y edición de video"
+                      ],
+                      "termsHighlights": [
+                        "Válido únicamente de lunes a viernes",
+                        "Duración máxima de la sesión: 3 horas",
+                        "Aplica para locaciones dentro de un rango de hasta 1 hora de viaje por vía terrestre desde Lima",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Ojo de Uva ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar historias de manera auténtica y natural. Su estilo combina narrativa y emoción para crear recuerdos que acompañan cada etapa del matrimonio.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6902359082776681,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 142,
+                      "title": "Agalux Studio",
+                      "slug": "agalux-studio",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Agalux Studio encaja con Fotografía para baby shower en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/agalux-studio",
+                      "websiteUrl": null,
+                      "minPrice": "6000.00",
+                      "maxPrice": null,
+                      "promoBadge": "100 S/. Dscto",
+                      "promoSummary": "100 soles de descuento para bodas de +100 invitados.",
+                      "descriptionSnippet": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado.",
+                      "serviceHighlights": [
+                        "Cobertura audiovisual para matrimonios",
+                        "Fotografía y/o video de bodas",
+                        "Paquetes personalizados según el tipo de evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Descuentos y beneficios no acumulables",
+                        "Beneficio transferible",
+                        "Válido en todo el Perú",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Agalux Studio ofrece a los clientes de Sin Envolturas una propuesta audiovisual enfocada en capturar bodas con un estilo moderno y cuidado. Su enfoque busca resaltar los momentos más importantes del evento, creando recuerdos que perduran en el tiempo.",
+                      "fitScore": 93,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6721842615473741,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con Local para baby shower en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.6862724367815839,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Baby shower en Lima para 50 personas. Necesita local, catering y decoración sobria. Presupuesto medio. Frente activo: Locales.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T06:50:46.816Z"
+        },
+        "perf": {
+          "trace_id": "01KWGSGDDHPGQ0K9ABDA6TFTG5",
+          "conversation_id": "conv_6a460a46e3b48190a0f091df1633ca920576be46bbc3a831",
+          "runtime_latency_ms": 16648,
+          "extraction_latency_ms": 8995,
+          "compose_latency_ms": 4339,
+          "tools_called_count": 4,
+          "provider_results_count": 4,
+          "recommendation_context_candidates": 4,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 19124,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8281028318483628,
+          "extraction_to_compose_ratio": 2.073058308365983,
+          "captured_at": "2026-07-02T06:50:51.185Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T06:50:51.226Z",
+  "completedAt": "2026-07-02T06:50:51.226Z"
+}
