@@ -93,9 +93,16 @@ export class OpenAiProviderUploader {
     });
 
     for (const file of staleFiles) {
-      await this.client.vectorStores.files.delete(file.id, {
-        vector_store_id: vectorStoreId,
-      });
+      try {
+        await this.client.vectorStores.files.delete(file.id, {
+          vector_store_id: vectorStoreId,
+        });
+      } catch (error) {
+        if (!isNotFoundError(error)) {
+          throw error;
+        }
+        console.log(`Provider vector file ${file.id} was already absent during cleanup`);
+      }
     }
   }
 
@@ -178,4 +185,12 @@ export class OpenAiProviderUploader {
     await Promise.all(workers);
     return results;
   }
+}
+
+function isNotFoundError(error: unknown): boolean {
+  if (!error || typeof error !== 'object') {
+    return false;
+  }
+  const record = error as Record<string, unknown>;
+  return record.status === 404 || record.code === 'not_found';
 }

@@ -63,6 +63,7 @@ Resources:
       Role: !GetAtt ProviderSyncFunctionRole.Arn
       Timeout: 300
       MemorySize: 1024
+      ReservedConcurrentExecutions: 1
       Environment:
         Variables:
           OPENAI_SECRET_ID: !Ref OpenAiSecretArn

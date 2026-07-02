@@ -3515,3 +3515,19 @@ other potentially decisive provider sections were silently discarded.
 Index the complete public provider ficha while retaining service and terms as
 first-class structured fields. Absence of a fact remains unknown; the runtime
 must not infer capacity or service suitability from provider existence alone.
+
+## Serialize provider-index refreshes
+
+- Limited the provider-sync Lambda to one concurrent execution.
+- Made stale vector-file cleanup tolerate an already-deleted file.
+
+### Reason
+
+The deployment-triggered scheduled refresh overlapped a manual refresh. One
+execution deleted vector files still being polled by the other, producing a
+404 and leaving both refreshes without a trustworthy success result.
+
+### Decision
+
+Provider index replacement is a singleton operation. Serialize executions at
+the Lambda boundary and keep cleanup idempotent for stale-list races.
