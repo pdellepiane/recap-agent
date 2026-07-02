@@ -98,7 +98,7 @@ export class OpenAiProviderUploader {
       return attributes?.batch_id !== currentBatchId;
     });
 
-    await this.mapWithConcurrency(staleFiles, 8, async (file) => {
+    await this.mapWithConcurrency(staleFiles, 2, async (file) => {
         try {
           await this.client.vectorStores.files.delete(file.id, {
             vector_store_id: vectorStoreId,

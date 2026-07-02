@@ -3521,7 +3521,7 @@ must not infer capacity or service suitability from provider existence alone.
 - Limited the provider-sync Lambda to one concurrent execution.
 - Made stale vector-file cleanup tolerate an already-deleted file.
 - Paginated the complete vector-file inventory and delete stale files with
-  bounded concurrency.
+  two-way bounded concurrency that stays within the vector-file API limit.
 - Increased the sync timeout to cover indexing plus full-batch replacement.
 
 ### Reason
