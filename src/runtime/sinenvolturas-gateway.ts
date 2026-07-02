@@ -4,7 +4,10 @@ import {
   type ProviderDetail,
   type ProviderSummary,
 } from '../core/provider';
-import { locationCountryKey } from '../core/location';
+import {
+  classifyLocationCompatibility,
+  type LocationCompatibility,
+} from '../core/location';
 import { normalizeToPriceLevel } from '../core/price-level';
 import { normalizeToProviderCategory, resolveSearchCategories } from '../core/provider-category';
 import type { ProviderVectorSearchGateway, ProviderVectorSearchResult } from './provider-vector-search';
@@ -664,33 +667,33 @@ export class SinEnvolturasGateway implements ProviderGateway {
     location: string | null,
     activeCategory: string | null,
   ): ProviderSummary[] {
-    const locationCountry = locationCountryKey(location);
     const evaluated = providers
       .map((provider) => {
         const categoryScore = this.categoryMatchScore(provider, activeCategory);
-        const locationScore = this.locationMatchScore(provider, locationCountry);
+        const locationCompatibility = classifyLocationCompatibility(
+          location,
+          provider.location,
+        );
         return {
           provider,
           categoryScore,
-          locationScore,
+          locationCompatibility,
+          locationScore: this.locationMatchScore(locationCompatibility),
           hasLocation: Boolean(provider.location),
         };
       })
-      .filter((entry) => !activeCategory || entry.categoryScore > 0);
+      .filter((entry) =>
+        (!activeCategory || entry.categoryScore > 0) &&
+        entry.locationCompatibility !== 'mismatch',
+      );
 
-    const categoryScoped = evaluated.length > 0 ? evaluated : providers.map((provider) => ({
-      provider,
-      categoryScore: 0,
-      locationScore: this.locationMatchScore(provider, locationCountry),
-      hasLocation: Boolean(provider.location),
-    }));
-
-    const exactLocationMatches =
-      !locationCountry
-        ? categoryScoped
-        : categoryScoped.filter((entry) => entry.locationScore >= 3);
-
-    const rankedPool = exactLocationMatches.length > 0 ? exactLocationMatches : categoryScoped;
+    const compatibleLocationMatches = evaluated.filter(
+      (entry) =>
+        entry.locationCompatibility === 'exact' ||
+        entry.locationCompatibility === 'compatible',
+    );
+    const rankedPool =
+      compatibleLocationMatches.length > 0 ? compatibleLocationMatches : evaluated;
 
     return rankedPool
       .sort((left, right) => {
@@ -720,6 +723,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return 2;
     }
 
+    const requestedCategory = normalizeToProviderCategory(activeCategory);
+    const providerCategory = normalizeToProviderCategory(provider.category);
+    if (requestedCategory && providerCategory === requestedCategory) {
+      return 2;
+    }
+
     const haystack = this.normalizeText([
       provider.title,
       provider.category ?? '',
@@ -731,30 +740,28 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return 0;
   }
 
-  private locationMatchScore(
-    provider: ProviderSummary,
-    locationCountry: string | null,
-  ): number {
-    if (!provider.location) {
-      return 0;
+  private locationMatchScore(compatibility: LocationCompatibility): number {
+    switch (compatibility) {
+      case 'exact':
+        return 4;
+      case 'compatible':
+        return 3;
+      case 'unknown':
+        return 0;
+      case 'mismatch':
+        return -1;
     }
-
-    if (!locationCountry) {
-      return 1;
-    }
-
-    if (locationCountryKey(provider.location) === locationCountry) {
-      return 3;
-    }
-
-    return 1;
   }
 
   private hasExactLocationMatch(
     provider: ProviderSummary,
-    locationCountry: string | null,
+    requestedLocation: string | null,
   ): boolean {
-    return this.locationMatchScore(provider, locationCountry) >= 3;
+    const compatibility = classifyLocationCompatibility(
+      requestedLocation,
+      provider.location,
+    );
+    return compatibility === 'exact' || compatibility === 'compatible';
   }
 
   private reasonForProvider(
@@ -766,9 +773,8 @@ export class SinEnvolturasGateway implements ProviderGateway {
     if (activeCategory && provider.category) {
       reasons.push(`coincide con la categoría ${activeCategory}`);
     }
-    const locationCountry = locationCountryKey(plan.location);
     if (plan.location && provider.location) {
-      if (this.hasExactLocationMatch(provider, locationCountry)) {
+      if (this.hasExactLocationMatch(provider, plan.location)) {
         reasons.push(`opera en ${provider.location}`);
       } else {
         reasons.push(

@@ -31,3 +31,64 @@ export function locationCountryKey(location: string | null | undefined): string 
 export function normalizeLocationCountry(location: string | null | undefined): string | null {
   return locationCountryKey(location);
 }
+
+export type LocationCompatibility = 'exact' | 'compatible' | 'unknown' | 'mismatch';
+
+const regionAliases: Array<{ key: string; aliases: string[] }> = [
+  {
+    key: 'lima',
+    aliases: [
+      'lima',
+      'miraflores',
+      'surco',
+      'santiago de surco',
+      'san isidro',
+      'san borja',
+      'barranco',
+      'lurin',
+      'cieneguilla',
+      'la molina',
+      'chorrillos',
+    ],
+  },
+  { key: 'ica', aliases: ['ica', 'provincia de ica'] },
+  { key: 'tulum', aliases: ['tulum'] },
+  { key: 'queretaro', aliases: ['queretaro'] },
+];
+
+export function classifyLocationCompatibility(
+  requestedLocation: string | null | undefined,
+  providerLocation: string | null | undefined,
+): LocationCompatibility {
+  const requested = locationKey(requestedLocation);
+  const provided = locationKey(providerLocation);
+  if (!requested || !provided) {
+    return 'unknown';
+  }
+  if (requested === provided || requested.includes(provided) || provided.includes(requested)) {
+    return 'exact';
+  }
+
+  const requestedCountry = locationCountryKey(requested);
+  const providedCountry = locationCountryKey(provided);
+  if (requestedCountry && providedCountry && requestedCountry !== providedCountry) {
+    return 'mismatch';
+  }
+
+  const requestedRegion = locationRegionKey(requested);
+  const providedRegion = locationRegionKey(provided);
+  if (requestedRegion && providedRegion) {
+    return requestedRegion === providedRegion ? 'compatible' : 'mismatch';
+  }
+
+  return 'unknown';
+}
+
+function locationRegionKey(location: string): string | null {
+  for (const region of regionAliases) {
+    if (region.aliases.some((alias) => location.includes(alias))) {
+      return region.key;
+    }
+  }
+  return null;
+}

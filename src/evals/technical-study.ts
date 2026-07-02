@@ -2,6 +2,8 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { decisionNodes } from '../core/decision-nodes';
+import { classifyLocationCompatibility } from '../core/location';
+import { normalizeToProviderCategory } from '../core/provider-category';
 import {
   evalReportSchema,
   type EvalCase,
@@ -78,6 +80,13 @@ export type TechnicalStudyOptions = {
   pricingPath: string;
   dryRun?: boolean;
 };
+
+export async function loadTechnicalStudyCases(
+  manifestPath: string,
+): Promise<EvalCase[]> {
+  const manifest = await loadManifest(manifestPath);
+  return manifest.scenarios.map(toEvalCase);
+}
 
 type StudyOutcome =
   | 'completed'
@@ -404,6 +413,7 @@ async function writeStudyArtifacts(
       requiredTurns: rows.reduce((sum, row) => sum + row.groundingRequiredTurns, 0),
       groundedTurns: rows.reduce((sum, row) => sum + row.groundedTurns, 0),
     },
+    recommendationQuality: buildRecommendationQualitySummary(allResults),
     runtimeErrors: allResults
       .filter((result) => result.status === 'errored')
       .map((result) => ({
@@ -499,6 +509,118 @@ async function writeStudyArtifacts(
     path.join(studyDir, 'raw-artifact-index.json'),
     JSON.stringify(reports.map((report) => ({ runId: report.runId, cases: report.totalCases })), null, 2),
   );
+}
+
+function buildRecommendationQualitySummary(results: EvalResult[]) {
+  let displayedProviders = 0;
+  let locationApplicable = 0;
+  let locationSatisfied = 0;
+  let locationUnknown = 0;
+  let locationMismatch = 0;
+  let categoryApplicable = 0;
+  let categorySatisfied = 0;
+  let budgetApplicable = 0;
+  let budgetCompatible = 0;
+  let needsObserved = 0;
+  let needsWithRecommendations = 0;
+  const providerExposure = new Map<number, number>();
+  const shortlistSizes: number[] = [];
+
+  for (const result of results) {
+    const finalPlan = result.turns.at(-1)?.plan;
+    if (finalPlan) {
+      needsObserved += finalPlan.provider_needs.length;
+      needsWithRecommendations += finalPlan.provider_needs.filter(
+        (need) => need.recommended_provider_ids.length > 0,
+      ).length;
+    }
+    for (const turn of result.turns) {
+      const providers = turn.trace.provider_results;
+      if (providers.length > 0) {
+        shortlistSizes.push(providers.length);
+      }
+      for (const provider of providers) {
+        displayedProviders += 1;
+        providerExposure.set(provider.id, (providerExposure.get(provider.id) ?? 0) + 1);
+        if (turn.plan.location) {
+          locationApplicable += 1;
+          const compatibility = classifyLocationCompatibility(
+            turn.plan.location,
+            provider.location,
+          );
+          if (compatibility === 'exact' || compatibility === 'compatible') {
+            locationSatisfied += 1;
+          } else if (compatibility === 'unknown') {
+            locationUnknown += 1;
+          } else {
+            locationMismatch += 1;
+          }
+        }
+        const owningNeed = turn.plan.provider_needs.find((need) =>
+          need.recommended_provider_ids.includes(provider.id),
+        );
+        const expectedCategory = normalizeToProviderCategory(
+          owningNeed?.category ??
+            turn.plan.active_need_category ??
+            turn.plan.vendor_category,
+        );
+        if (expectedCategory) {
+          categoryApplicable += 1;
+          if (normalizeToProviderCategory(provider.category) === expectedCategory) {
+            categorySatisfied += 1;
+          }
+        }
+        if (turn.plan.budget_signal) {
+          budgetApplicable += 1;
+          if (!(provider.fitTags ?? []).includes('budget_risk')) {
+            budgetCompatible += 1;
+          }
+        }
+      }
+    }
+  }
+
+  const exposureCounts = [...providerExposure.values()];
+  const exposureTotal = exposureCounts.reduce((sum, count) => sum + count, 0);
+  const exposureHhi = exposureTotal === 0
+    ? 0
+    : exposureCounts.reduce((sum, count) => sum + (count / exposureTotal) ** 2, 0);
+  const topExposure = exposureCounts.length === 0 ? 0 : Math.max(...exposureCounts);
+
+  return {
+    displayedProviders,
+    uniqueProviders: providerExposure.size,
+    meanShortlistSize: mean(shortlistSizes),
+    locationConstraint: {
+      applicable: locationApplicable,
+      satisfied: locationSatisfied,
+      unknown: locationUnknown,
+      mismatched: locationMismatch,
+      strictSatisfactionRate:
+        locationApplicable === 0 ? 0 : locationSatisfied / locationApplicable,
+      mismatchRate: locationApplicable === 0 ? 0 : locationMismatch / locationApplicable,
+    },
+    categoryConstraint: {
+      applicable: categoryApplicable,
+      satisfied: categorySatisfied,
+      satisfactionRate:
+        categoryApplicable === 0 ? 0 : categorySatisfied / categoryApplicable,
+    },
+    budgetCompatibility: {
+      applicable: budgetApplicable,
+      compatible: budgetCompatible,
+      rate: budgetApplicable === 0 ? 0 : budgetCompatible / budgetApplicable,
+    },
+    needRecommendationCoverage: {
+      needsObserved,
+      needsWithRecommendations,
+      rate: needsObserved === 0 ? 0 : needsWithRecommendations / needsObserved,
+    },
+    exposure: {
+      hhi: exposureHhi,
+      topProviderShare: exposureTotal === 0 ? 0 : topExposure / exposureTotal,
+    },
+  };
 }
 
 function distribution(values: number[]) {

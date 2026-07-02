@@ -31,6 +31,14 @@ describe('provider fit normalization', () => {
     expect(parseBudgetAmount(null)).toBeNull();
   });
 
+  it('maps qualitative budget signals into ranking tiers', () => {
+    expect(parseBudgetAmount('presupuesto mínimo')).toBe(1000);
+    expect(parseBudgetAmount('presupuesto bajo')).toBe(3000);
+    expect(parseBudgetAmount('presupuesto medio')).toBe(7500);
+    expect(parseBudgetAmount('presupuesto medio-alto')).toBe(15000);
+    expect(parseBudgetAmount('presupuesto alto')).toBe(20000);
+  });
+
   it('normalizes budget tiers', () => {
     expect(normalizeBudgetTier(500)).toBe('very_low');
     expect(normalizeBudgetTier(1000)).toBe('very_low');

@@ -2928,6 +2928,39 @@ Files changed:
 - `docs/implementation-log.md`
 # 2026-07-01
 
+## Begin evidence-driven recommendation optimization
+
+- Preserved the original 150-conversation evaluation as git snapshot `5317d79`
+  on `codex/recommendation-metrics-optimization`.
+- Added hierarchical location compatibility that distinguishes Lima districts,
+  Lima, Ica, generic country-only locations, and cross-country mismatches.
+- Changed provider selection to reject contradictory regions/countries and to
+  stop falling back to unrelated marketplace categories when a requested
+  category has no valid candidate.
+- Added qualitative Spanish budget normalization so signals such as `mínimo`,
+  `bajo`, `medio`, and `alto` influence provider-fit scoring.
+- Expanded the study with location/category/budget constraint satisfaction,
+  provider-need coverage, shortlist size, catalog exposure, and concentration
+  metrics.
+- Documented the metric portfolio, research basis, and non-regression decision
+  rule in `analysis/technical-evaluation-study/metric-expansion.md`.
+
+### Reason
+
+The baseline manual audit showed that provider identity provenance was strong,
+but only 35% of the reviewed recommendations were both grounded and
+constraint-consistent. Code inspection confirmed that country-only location
+matching treated Ica as an exact match for Lima and that category selection
+could broaden to unrelated providers.
+
+### Decision
+
+Optimize user-relevant suitability rather than raw strict-completion counts.
+Treat contradictory locations and categories as hard exclusions, preserve
+unknown-granularity providers only when no verified local candidate exists, and
+retain reliability, cost, latency, shortlist availability, and catalog
+concentration as guardrails.
+
 ## Add reproducible technical evaluation study
 
 - Completed the previously declared benchmark metrics by calculating latency,

@@ -40,6 +40,10 @@ export function parseBudgetAmount(raw: string | null | undefined): number | null
   }
 
   const normalized = normalizeText(raw);
+  const qualitativeAmount = qualitativeBudgetAmount(normalized);
+  if (qualitativeAmount !== null) {
+    return qualitativeAmount;
+  }
   if (/^mil(?:\s+soles?)?$/.test(normalized)) {
     return 1000;
   }
@@ -61,6 +65,28 @@ export function parseBudgetAmount(raw: string | null | undefined): number | null
 
   const value = Number.parseInt(match[1], 10);
   return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+function qualitativeBudgetAmount(normalized: string): number | null {
+  if (hasAny(normalized, ['minimo', 'muy bajo', 'muy ajustado'])) {
+    return 1000;
+  }
+  if (hasAny(normalized, ['bajo', 'economico', 'ajustado'])) {
+    return 3000;
+  }
+  if (hasAny(normalized, ['medio alto', 'medio-alto'])) {
+    return 15000;
+  }
+  if (hasAny(normalized, ['medio', 'moderado'])) {
+    return 7500;
+  }
+  if (hasAny(normalized, ['muy alto', 'premium', 'lujo'])) {
+    return 30000;
+  }
+  if (hasAny(normalized, ['alto'])) {
+    return 20000;
+  }
+  return null;
 }
 
 export function normalizeBudgetTier(amount: number | null): BudgetTier {
