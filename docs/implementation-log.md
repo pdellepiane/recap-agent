@@ -3334,3 +3334,25 @@ comparable metric definitions, and a precommitted confirmatory boundary.
 Use historical raw traces only for unchanged metrics or separately labeled
 retrospective V2 regrading. Never overwrite historical summaries, and do not
 spend the confirmatory run until every targeted gate passes.
+
+## Materialize the pre-confirmatory V2 baseline
+
+- Re-evaluated immutable iteration-three final typed plans against canonical V2
+  expected needs without changing historical V1 reports or summaries.
+- Recorded expected-need extraction, conditional retrieval, end-to-end
+  coverage, unexpected-need, missing-location, auditorium, and cross-category
+  baselines in a separate JSON artifact.
+
+### Result
+
+- Expected-need extraction recall: 158/165 (95.76%).
+- Retrieval coverage given extraction: 144/158 (91.14%).
+- End-to-end expected-need coverage: 144/165 (87.27%).
+- Missing-location searches: 15/15; intended clarifications: 0/15.
+- Corporate auditorium mapped to `Locales`: 0/3.
+
+### Decision
+
+Use this artifact as the direct pre-intervention comparator for the untouched
+V2 confirmation. Keep the original V1 grading as historical evidence rather
+than silently replacing it.

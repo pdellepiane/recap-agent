@@ -30,6 +30,18 @@ component-level ablations using immutable artifacts and rollback commits.
   baseline.
 - Preserve original v1 grading. Any v2 regrading must be a separate derivative
   artifact and must never overwrite the historical summary.
+- Derived typed-state baseline:
+  `pre-confirmatory-baseline-v2.json`.
+
+The retrospective V2 baseline contains 165 expected need instances:
+
+- extraction recall: 158/165 (95.76%);
+- retrieval coverage given extraction: 144/158 (91.14%);
+- end-to-end expected-need coverage: 144/165 (87.27%);
+- unexpected extracted needs: 50;
+- missing-location requests that searched: 15/15;
+- missing-location requests that clarified: 0/15;
+- corporate-auditorium `Locales` extraction: 0/3.
 
 ### Confirmatory system
 
