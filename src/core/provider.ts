@@ -21,6 +21,7 @@ export const providerSummarySchema = z.object({
   descriptionSnippet: z.string().nullish(),
   serviceHighlights: z.array(z.string()).default([]),
   termsHighlights: z.array(z.string()).default([]),
+  providerNotes: z.array(z.string()).optional(),
   eventTypes: z.array(z.string()).optional(),
   description: z.string().nullish(),
   fitScore: z.number().min(0).max(100).nullish(),
@@ -39,14 +40,16 @@ export type ProviderDetail = ProviderSummary & {
 };
 
 export function normalizeProviderSummary(
-  provider: Omit<ProviderSummary, 'serviceHighlights' | 'termsHighlights'> & {
+  provider: Omit<ProviderSummary, 'serviceHighlights' | 'termsHighlights' | 'providerNotes'> & {
     serviceHighlights?: string[] | null;
     termsHighlights?: string[] | null;
+    providerNotes?: string[] | null;
   },
 ): ProviderSummary {
   return providerSummarySchema.parse({
     ...provider,
     serviceHighlights: provider.serviceHighlights ?? [],
     termsHighlights: provider.termsHighlights ?? [],
+    providerNotes: provider.providerNotes ?? [],
   });
 }

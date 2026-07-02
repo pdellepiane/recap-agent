@@ -132,6 +132,7 @@ export function providerHasEventServiceEvidence(provider: ProviderSummary): bool
     provider.description ?? '',
     provider.serviceHighlights.join(' '),
     provider.termsHighlights.join(' '),
+    (provider.providerNotes ?? []).join(' '),
   ].join(' '));
   return [
     'evento',
@@ -157,6 +158,7 @@ function scoreMustHaveEvidence(
     provider.description ?? '',
     provider.serviceHighlights.join(' '),
     provider.termsHighlights.join(' '),
+    (provider.providerNotes ?? []).join(' '),
     provider.promoBadge ?? '',
     provider.promoSummary ?? '',
   ].join(' '));

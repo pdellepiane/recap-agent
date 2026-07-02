@@ -6,5 +6,7 @@
 | Iteration-3 summary | `artifacts/technical-study-2026-07-02T06-40-49-761Z/summary.json` | JSON | 2026-07-02 | Aggregate metrics | Derivative of raw reports |
 | Conversations | `artifacts/technical-study-2026-07-02T06-40-49-761Z/conversations.csv` | CSV | 2026-07-02 | Conversation-level outcomes | Strict status inherits manifest defects |
 | Raw reports | `artifacts/technical-study-2026-07-02T06-40-49-761Z/runs/` | JSON/JSONL | 2026-07-02 | Authoritative traces and evidence | Large artifact set |
-| Manual audit | `artifacts/technical-study-2026-07-02T06-40-49-761Z/manual-grounding-audit.csv` | CSV | 2026-07-02 | Human grounding assessment | All judgments pending |
+| Manual audit | `artifacts/technical-study-2026-07-02T06-40-49-761Z/manual-grounding-audit.csv` | CSV | 2026-07-02 | Primary grounding assessment | Historical iteration-3 sample |
+| Independent audit | `/Users/leonardocandio/Downloads/independent-grounding-review-completed.csv` | CSV | 2026-07-02 | Blinded second grounding assessment | Reviewer identity ignored; notes and judgments retained |
+| Independent review summary | `artifacts/independent-review-summary.json` | JSON | 2026-07-02 | Agreement and independent pass counts | Historical iteration-3 sample, not the final confirmatory run |
 | Method | `methodology.md`, `metric-expansion.md` | Markdown | 2026-07-02 | Metric definitions and protocol | Technical study only |

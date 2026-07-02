@@ -25,6 +25,9 @@ describe('provider sync formatter', () => {
       description: 'DJ para bodas y eventos con música comercial, latina y electrónica.',
       serviceHighlights: ['Música para fiesta', 'Iluminación básica'],
       termsHighlights: ['Sujeto a disponibilidad'],
+      providerNotes: [
+        'Capacidad y montaje: Incluye cabina, luces y montaje para hasta 180 invitados.',
+      ],
       eventTypes: ['wedding', 'others'],
       raw: {},
     };
@@ -38,5 +41,7 @@ describe('provider sync formatter', () => {
     expect(formatted.markdown).toContain('## Descripción');
     expect(formatted.markdown).toContain('DJ para bodas y eventos');
     expect(formatted.markdown).toContain('- Música para fiesta');
+    expect(formatted.markdown).toContain('## Notas completas de la ficha');
+    expect(formatted.markdown).toContain('hasta 180 invitados');
   });
 });

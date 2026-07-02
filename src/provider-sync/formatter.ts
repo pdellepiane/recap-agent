@@ -90,6 +90,7 @@ export function formatProviderToMarkdown(
     ),
     ...section('Servicios destacados', bulletLines(provider.serviceHighlights)),
     ...section('Términos destacados', bulletLines(provider.termsHighlights)),
+    ...section('Notas completas de la ficha', bulletLines(provider.providerNotes ?? [])),
     ...section('Tipos de evento', bulletLines(provider.eventTypes ?? [])),
   ].filter((value): value is string => value !== null);
 

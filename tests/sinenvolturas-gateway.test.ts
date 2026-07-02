@@ -482,6 +482,11 @@ describe('SinEnvolturasGateway strict search mapping', () => {
                 description: 'Fotografía documental natural para bodas íntimas.',
                 language: { locale: 'es' },
               },
+              {
+                title: 'Cobertura y entrega',
+                description: '<p>Incluye video completo y sesión preboda.</p>',
+                language: { locale: 'es' },
+              },
             ],
           },
         },
@@ -555,6 +560,9 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result.providers[0]?.retrievalSource).toBe('api');
     expect(result.providers[1]?.retrievalSource).toBe('vector');
     expect(result.providers[1]?.descriptionSnippet).toContain('Fotografía documental');
+    expect(result.providers[1]?.providerNotes).toContain(
+      'Cobertura y entrega: Incluye video completo y sesión preboda.',
+    );
   });
 
   it('filters cross-country hybrid vector results when Peru providers are available', async () => {

@@ -14,10 +14,17 @@ The strict completion result is not a valid general task-success estimate:
 several expected-need labels are noncanonical and some paths are too narrow.
 Benchmark contamination is not a blanket explanation, because clarification,
 multi-need, pause/resume, no-results, and recovery had no strict completions.
-The iteration-3 primary grounding review is complete: provider existence
-20/20, attribute faithfulness 19/20, recommendation-rationale support 6/10
-applicable turns, and hard-constraint consistency 14/20. An independent second
-review remains outstanding.
+The iteration-3 primary and independent grounding reviews are complete.
+Provider-existence judgments agreed 20/20. Agreement was 16/20 for attribute
+faithfulness, 17/20 for rationale support, and 17/20 for hard-constraint
+consistency. The independent reviewer passed only 1/10 recommendation turns on
+all applicable dimensions. This is stronger evidence of historical rationale
+and constraint-grounding weakness than the primary review alone.
+
+Missing requested needs are evaluated separately as need-coverage failures.
+They do not automatically make the attributes of a displayed provider false.
+Conversely, missing catalog evidence for capacity, event suitability, or a
+service cannot support a positive recommendation rationale.
 
 ## Publication assessment
 
@@ -30,6 +37,6 @@ Before an empirical performance submission:
 1. Version a corrected manifest without modifying historical runs.
 2. Separate expected-need extraction recall from retrieval coverage.
 3. Fix genuine missing-location and route-family failures.
-4. Complete a blinded or dual-review manual grounding audit.
+4. Report both grounding reviewers and the adjudication policy.
 5. Run one untouched confirmatory 50×3 study.
 6. Add a baseline or ablation for any improvement/superiority claim.

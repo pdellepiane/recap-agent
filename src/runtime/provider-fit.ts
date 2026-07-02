@@ -342,6 +342,7 @@ function buildProviderText(provider: ProviderSummary): string {
     provider.description ?? '',
     provider.serviceHighlights.join(' '),
     provider.termsHighlights.join(' '),
+    (provider.providerNotes ?? []).join(' '),
     provider.promoBadge ?? '',
     provider.promoSummary ?? '',
   ].join(' '));

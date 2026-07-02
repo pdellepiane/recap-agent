@@ -834,6 +834,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       descriptionSnippet: null,
       serviceHighlights: [],
       termsHighlights: [],
+      providerNotes: [],
     });
   }
 
@@ -858,6 +859,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       ),
       serviceHighlights: infoSections.serviceHighlights,
       termsHighlights: infoSections.termsHighlights,
+      providerNotes: infoSections.providerNotes,
       raw: provider,
     };
   }
@@ -1386,12 +1388,14 @@ export class SinEnvolturasGateway implements ProviderGateway {
     description: string | null;
     serviceHighlights: string[];
     termsHighlights: string[];
+    providerNotes: string[];
   } {
     if (!translations || translations.length === 0) {
       return {
         description: null,
         serviceHighlights: [],
         termsHighlights: [],
+        providerNotes: [],
       };
     }
 
@@ -1405,14 +1409,19 @@ export class SinEnvolturasGateway implements ProviderGateway {
     let description: string | null = null;
     let serviceHighlights: string[] = [];
     let termsHighlights: string[] = [];
+    const providerNotes: string[] = [];
 
     for (const translation of source) {
-      const title = translation.title?.toLowerCase() ?? '';
+      const rawTitle = translation.title?.trim() ?? '';
+      const title = rawTitle.toLowerCase();
       const lines = this.htmlToLines(translation.description ?? null);
 
       if (lines.length === 0) {
         continue;
       }
+      providerNotes.push(
+        ...lines.map((line) => rawTitle ? `${rawTitle}: ${line}` : line),
+      );
 
       if (!description && (title.includes('acerca') || title.includes('about'))) {
         description = lines.join(' ');
@@ -1460,6 +1469,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       description,
       serviceHighlights,
       termsHighlights,
+      providerNotes: Array.from(new Set(providerNotes)),
     };
   }
 

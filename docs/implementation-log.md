@@ -3474,3 +3474,44 @@ its first turn intentionally creates both.
 Keep exercised V3 byte-for-byte intact. Represent the narrowly corrected
 contract as a versioned overlay so the provenance and exact semantic delta
 remain reviewable.
+
+## Add self-contained independent grounding reviewer
+
+- Added a TypeScript generator that resolves every blinded response reference
+  to its immutable case trace.
+- Generated a standalone HTML reviewer containing the request, response,
+  constraints, provider evidence, and raw tool evidence for all 20 sampled
+  cases.
+- Added browser-local autosave, completion validation, and one-click export to
+  the required independent-review CSV schema.
+
+### Reason
+
+The combined response reference was not directly searchable in raw JSON, which
+made independent review unnecessarily dependent on navigating large reports.
+
+### Decision
+
+Keep the primary judgments absent from the reviewer and embed only immutable
+evidence. Require all four rubric judgments and reviewer notes before allowing
+CSV export.
+
+## Preserve complete provider notes in semantic search
+
+- Added normalized `providerNotes` populated from every localized, titled
+  provider-information section.
+- Added the notes to provider vector documents and deterministic fit evidence.
+- Added tests proving nonstandard sections survive API parsing and appear in
+  the indexed Markdown.
+
+### Reason
+
+The independent grounding review exposed unsupported capacity, service, and
+event-fit rationales. Service and terms highlights were already indexed, but
+other potentially decisive provider sections were silently discarded.
+
+### Decision
+
+Index the complete public provider ficha while retaining service and terms as
+first-class structured fields. Absence of a fact remains unknown; the runtime
+must not infer capacity or service suitability from provider existence alone.
