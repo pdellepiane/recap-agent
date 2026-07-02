@@ -2,6 +2,7 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import {
+  type BenchmarkSummary,
   evalReportSchema,
   type EvalAggregateSummary,
   type EvalFlakyCandidate,
@@ -62,8 +63,33 @@ export function buildEvalReport(runId: string, results: EvalResult[]): EvalRepor
     configSummaries: summarizeBy(results, (result) => result.configLabel),
     targetSummaries: summarizeBy(results, (result) => result.target),
     flakyCandidates: collectFlakyCandidates(results),
+    benchmarkSummary: buildBenchmarkSummary(results),
     results,
   });
+}
+
+function buildBenchmarkSummary(results: EvalResult[]): BenchmarkSummary | undefined {
+  const metrics = results
+    .map((result) => result.benchmarkMetrics)
+    .filter((entry): entry is NonNullable<EvalResult['benchmarkMetrics']> => entry !== undefined);
+  if (metrics.length === 0) {
+    return undefined;
+  }
+  const average = (selector: (entry: (typeof metrics)[number]) => number) =>
+    metrics.reduce((sum, entry) => sum + selector(entry), 0) / metrics.length;
+  return {
+    avg_tool_precision: average((entry) => entry.tool_precision),
+    avg_tool_recall: average((entry) => entry.tool_recall),
+    avg_tool_f1: average((entry) => entry.tool_f1),
+    avg_branch_coverage: average((entry) => entry.branch_coverage),
+    avg_state_expectation_pass_rate: average((entry) => entry.state_expectation_pass_rate),
+    avg_trajectory_expectation_pass_rate: average(
+      (entry) => entry.trajectory_expectation_pass_rate,
+    ),
+    avg_plan_persistence_rate: average((entry) => entry.plan_persistence_rate),
+    avg_cache_hit_rate: average((entry) => entry.cache_hit_rate),
+    total_tokens: metrics.reduce((sum, entry) => sum + entry.total_tokens, 0),
+  };
 }
 
 export function renderMarkdownReport(report: EvalReport): string {

@@ -2926,3 +2926,62 @@ Files changed:
 - `docs/thesis/architecture-report/Images/utec-logo.pdf`
 - `docs/thesis/architecture-report/Images/sin-envolturas-logo.pdf`
 - `docs/implementation-log.md`
+# 2026-07-01
+
+## Add reproducible technical evaluation study
+
+- Completed the previously declared benchmark metrics by calculating latency,
+  tool-use, state, trajectory, persistence, token, cache, and node-coverage
+  measurements for every evaluation case.
+- Added per-case error isolation and a 95-second live-turn timeout so one Lambda
+  failure does not terminate a complete benchmark.
+- Added a frozen, balanced 50-scenario Spanish corpus with three repetitions,
+  stable event-group and route-family metadata, structured terminal criteria,
+  and validation enforcing ten scenarios per event group.
+- Added dated OpenAI and Lambda pricing, deterministic provider/FAQ grounding
+  checks, Wilson confidence intervals, study-level aggregation, CSV exports,
+  SVG charts, a stratified manual grounding-audit sample, and an English
+  reproducibility dossier under `analysis/technical-evaluation-study/`.
+- Added metric, pricing, manifest, reporting, and runner regression coverage.
+
+### Reason
+
+The thesis report described evaluation and telemetry capabilities but did not
+contain an executed, repeatable quantitative protocol. The new study produces
+traceable evidence for functionality, architecture, grounding, scenario
+behavior, and telemetry without making user-study or baseline-comparison claims.
+
+### Decision
+
+Keep research aggregation outside the channel-agnostic runtime. Grade
+conversational behavior from typed plans and traces rather than exact response
+strings, preserve raw study runs, and price only services with a documented
+public rate.
+
+## Execute the 150-conversation technical study
+
+- Deployed the development runtime and provider-sync stacks through
+  CloudFormation, then verified the active Node.js 24 Lambda configuration,
+  1 GB memory, 90-second timeout, hybrid search, and configured model aliases.
+- Executed all 50 frozen scenarios three times, producing 150 conversation
+  artifacts and 265 captured turns from 270 planned turns.
+- Generated CSV/JSON results, SVG charts, workflow coverage, dated cost
+  estimates, a 20-turn manual grounding audit, and a comprehensive findings
+  report.
+- Correlated the three HTTP 502 responses with CloudWatch and confirmed that
+  each request reached the Lambda's 90-second timeout.
+- Corrected study-level transition coverage to use adjacent nodes inside the
+  structured trace path. Raw run reports were not modified.
+
+### Result
+
+- The strict frozen protocol completed 43/150 conversations, but a post-run
+  audit found non-canonical need labels in several hard expectations; the
+  findings report preserves the raw number and explicitly rejects interpreting
+  it as a general agent-success rate.
+- More stable component results include 95.3% event-type persistence, 97.8%
+  required-shortlist production, 98.9% turn persistence, 82.4% weighted prompt
+  cache use, and USD 1.19 total priced cost.
+- Deterministic provider provenance passed for all grounding-required turns,
+  while the manual audit exposed location and category suitability as the
+  dominant remaining grounding risk.

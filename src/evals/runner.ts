@@ -16,6 +16,7 @@ import {
 } from './case-schema';
 import { EvalLoader } from './loader';
 import { writeEvalArtifacts } from './reporting';
+import { computeBenchmarkMetrics } from './metrics';
 import { runSemanticJudge } from './scorers/semantic-judge';
 import { runLiveLambdaCase } from './targets/live-lambda';
 import { runOfflineCase } from './targets/offline';
@@ -28,6 +29,8 @@ export type EvalRunnerOptions = {
   caseId?: string | null;
   matrixPath?: string | null;
   dryRun?: boolean;
+  caseOverrides?: EvalCase[];
+  configLabel?: string;
 };
 
 type RuntimeCaseResult = {
@@ -52,7 +55,8 @@ export async function runEvaluation(
   const loader = new EvalLoader(options.evalsDir);
   const catalog = await loader.loadCatalog();
   const runConfigs = await resolveRunConfigs(loader, options);
-  const selectedCases = selectCases(catalog.cases, catalog.suites, options);
+  const selectedCases = options.caseOverrides ??
+    selectCases(catalog.cases, catalog.suites, options);
   const runId = buildRunId();
   const results: EvalResult[] = [];
 
@@ -74,7 +78,16 @@ export async function runEvaluation(
         config.label,
       );
       await fs.mkdir(caseOutputDir, { recursive: true });
-      const runtimeResult = await executeCase(currentCase, config, caseOutputDir);
+      let runtimeResult: RuntimeCaseResult;
+      try {
+        runtimeResult = await executeCase(currentCase, config, caseOutputDir);
+      } catch (error) {
+        runtimeResult = {
+          turns: [],
+          status: 'errored',
+          errorMessage: error instanceof Error ? error.message : String(error),
+        };
+      }
       const finalized = await finalizeResult({
         runId,
         currentCase,
@@ -120,7 +133,7 @@ async function resolveRunConfigs(
 
   return [
     {
-      label: options.target ?? 'offline-default',
+      label: options.configLabel ?? options.target ?? 'offline-default',
       target: options.target ?? 'offline',
       liveLambda:
         options.target === 'live_lambda'
@@ -270,12 +283,18 @@ async function finalizeResult(args: {
     nodeTransitions: args.runtimeResult.turns.map(
       (turn) => `${turn.trace.previous_node}->${turn.trace.next_node}`,
     ),
-    planDiffSummary: summarizePlanDiff(args.runtimeResult.turns),
+    planDiffSummary: args.runtimeResult.errorMessage
+      ? [`Runtime error: ${args.runtimeResult.errorMessage}`]
+      : summarizePlanDiff(args.runtimeResult.turns),
     artifactPaths: {
       caseResult: artifactPath,
     },
     expectationResults,
     scorerResults,
+    benchmarkMetrics: computeBenchmarkMetrics(
+      args.runtimeResult.turns,
+      expectationResults,
+    ),
     turns: args.runtimeResult.turns,
     startedAt,
     completedAt: new Date().toISOString(),

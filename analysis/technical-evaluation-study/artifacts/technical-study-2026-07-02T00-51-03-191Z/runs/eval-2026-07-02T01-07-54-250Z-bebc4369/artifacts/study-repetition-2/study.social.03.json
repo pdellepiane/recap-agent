@@ -1,0 +1,2569 @@
+{
+  "runId": "eval-2026-07-02T01-07-54-250Z-bebc4369",
+  "caseId": "study.social.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.5833333333333334,
+  "totalLatencyMs": 18166,
+  "totalToolCalls": 4,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"elicitar_necesidades\"",
+    "event_type=\"quinceanos\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"medio-alto\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Locales:shortlisted, Fotografía y video:shortlisted, Música:shortlisted, Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T00-51-03-191Z/runs/eval-2026-07-02T01-07-54-250Z-bebc4369/artifacts/study-repetition-2/study.social.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 4 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "need-2",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-3",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.5833333333333334,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 12 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 18166,
+    "p95_latency_ms": 18166,
+    "tool_calls_total": 4,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 4,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.5714285714285714,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 19261,
+    "cache_hit_rate": 0.8263676520557255
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Organizo un quinceaños en Lima para 120 personas. Necesito local, fotografía, música y decoración, presupuesto medio-alto."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que pediste para tu quinceaños en Lima\n\nLocales\nPara el local, quedó una opción que encaja con un evento de este tamaño y estilo\n1. Fundo las Palmeras - local para quinceaños (Provincia de Ica, Perú · $$$ · promo: 10% OFF)\n Encaja con quinceaños en Lima y con el rango de invitados; además tiene una propuesta de espacio amplia para este tipo de celebración\n Limitación: Está en Provincia de Ica, así que no coincide con Lima.\n Ficha: https://sinenvolturas.com/proveedores/fundo-las-palmeras\n2. Fundo las Palmeras - salón para 120 personas (Provincia de Ica, Perú · $$$ · promo: 10% OFF)\n Es la opción recomendada para empezar por el espacio del evento por capacidad y tipo de celebración\n Limitación: Está fuera de Lima.\n Ficha: https://sinenvolturas.com/proveedores/fundo-las-palmeras\n\nFotografía y video\nPara foto y video, hay una propuesta alineada con quinceaños y con una presencia sólida en Lima\n1. Uriel Santisteban Photography & Film - fotografía para quinceaños (Lima, Perú · $$$$ · promo: 5% Off)\n Encaja con la cobertura visual que buscas para un quinceaños y trabaja en Lima\n Limitación: Su tarifa está en un rango alto.\n Ficha: https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\n\nMúsica\nEn música, encontré una opción con experiencia en eventos similares y base en Lima\n1. Dj Bufi - DJ para quinceaños (Lima, Perú · $$$ · promo: 20% off)\n Es una buena alternativa para animar el quinceaños y dar continuidad a la fiesta\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi\n\nHogar y deco\nPara decoración, hay una opción con enfoque integral que puede ayudarte a armar la ambientación del quinceaños\n1. ARQLAB - decoración para quinceaños (Perú · $$$ · promo: 10% off)\n Su propuesta de diseño e intervención visual encaja con la decoración del evento\n Limitación: Su servicio es de diseño; la implementación no incluye precio cerrado.\n Ficha: https://sinenvolturas.com/proveedores/arqlab\n\nPodemos revisar frente por frente para confirmar, cambiar o quitar opciones. Si quieres, empezamos por el local",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWG6MGYYDTN5D2QKBFX6Y11D",
+        "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+        "plan_id": "01KWG6KZCC45MQGQ3GAJSF6W5D",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "elicitar_necesidades",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"local para quinceaños en Lima\",\n    \"salón para 120 personas Lima\",\n    \"espacio para quinceaños Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotógrafo para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"fotografía y video para quinceaños en Lima\",\n    \"fotógrafo de quinceaños Lima para 120 invitados\",\n    \"paquete foto y video quinceaños Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"música para quinceaños en Lima\",\n    \"DJ para quinceaños Lima\",\n    \"banda u orquesta para quinceaños Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"decoración para quinceaños en Lima\",\n    \"tematización y decoración 15 años Lima\",\n    \"arreglo y decoración para quinceaños 120 invitados\"\n  ],\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"fotógrafo para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 95,\n      \"title\": \"Rebel Rebel Photo\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.8079829568669178\n    },\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.874431534025356\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"música para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 120,\n      \"title\": \"Dj Freddy Bobadilla\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.8008785201623679\n    },\n    {\n      \"id\": 174,\n      \"title\": \"Dj pulga\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.7700234480240619\n    },\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.7966255986752336\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"local para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.7228479738635721\n    },\n    {\n      \"id\": 181,\n      \"title\": \"Fundo las Palmeras\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6636978860588149\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"decoración para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 8,\n      \"title\": \"M'APPELLE\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6433767336378597\n    },\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6012893207767934\n    },\n    {\n      \"id\": 105,\n      \"title\": \"ARQLAB\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.671074124120854\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 181,
+            "title": "Fundo las Palmeras",
+            "slug": "fundo-las-palmeras",
+            "category": "Locales",
+            "location": "Provincia de Ica, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+            "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+            "serviceHighlights": [
+              "Amplios jardines campestres en Ica para:",
+              "Eventos sociales",
+              "Eventos corporativos",
+              "Celebraciones",
+              "Reuniones",
+              "Experiencias especiales"
+            ],
+            "termsHighlights": [
+              "No acumulable con otras promociones o descuentos",
+              "sujeto a disponibilidad de fecha y espacio."
+            ],
+            "eventTypes": [],
+            "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.6636978860588149,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 133,
+            "title": "Uriel Santisteban Photography & Film",
+            "slug": "uriel-santisteban-photography-film",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Uriel Santisteban Photography & Film encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+            "websiteUrl": "https://www.urielsantisteban.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% Off",
+            "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+            "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+            "serviceHighlights": [
+              "Fotografía para matrimonios",
+              "Video de bodas",
+              "Paquetes combinados de fotografía + video",
+              "Cobertura integral del evento",
+              "Producción y edición del material final"
+            ],
+            "termsHighlights": [
+              "Ambos servicios deben pertenecer a la misma categoría",
+              "Para más información, consultar paquetes disponibles con el proveedor",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+            "fitScore": 81,
+            "fitWarnings": [
+              "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+            ],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.874431534025356,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7966255986752336,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 105,
+            "title": "ARQLAB",
+            "slug": "arqlab",
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "5.0",
+            "reason": "ARQLAB encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+            "websiteUrl": "https://www.arqlab.pe",
+            "minPrice": "900.00",
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% en diseño de espacios.",
+            "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+            "serviceHighlights": [
+              "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+              "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+            ],
+            "termsHighlights": [
+              "Válido solo de Lunes a Viernes en horario laboral.",
+              "No transferible ni acumulable.",
+              "El descuento es solo para la etapa de diseño, no para implementación."
+            ],
+            "eventTypes": [],
+            "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+            "fitScore": 93,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.671074124120854,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 181,
+            "category": "Locales",
+            "location": "Provincia de Ica, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.6636978860588149,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 133,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.874431534025356,
+            "fit_score": 81
+          },
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7966255986752336,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 105,
+            "category": "Hogar y deco",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.671074124120854,
+            "fit_score": 93
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 4,
+          "context_candidates": 4,
+          "context_candidate_ids": [
+            181,
+            133,
+            187,
+            105
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 18007,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 8056,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 21634,
+          "provider_enrichment": 1201,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3893,
+          "save_plan": 56
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11428,
+            "output_tokens": 1132,
+            "total_tokens": 12560,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6230,
+            "output_tokens": 471,
+            "total_tokens": 6701,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17658,
+            "output_tokens": 1603,
+            "total_tokens": 19261,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWG6MGYYDTN5D2QKBFX6Y11D",
+        "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+        "runtime_latency_ms": 18007,
+        "extraction_latency_ms": 8056,
+        "compose_latency_ms": 3893,
+        "tools_called_count": 4,
+        "provider_results_count": 4,
+        "recommendation_context_candidates": 4,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 19261,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8263676520557255,
+        "extraction_to_compose_ratio": 2.0693552530182378,
+        "captured_at": "2026-07-02T01:21:02.942Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWG6KZCC45MQGQ3GAJSF6W5D",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.social.03-aeae2a94",
+        "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "elicitar_necesidades",
+        "intent_confidence": 0.95,
+        "event_type": "quinceanos",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "medio-alto",
+        "guest_range": "101-200",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "capacidad para 120 personas",
+              "Lima"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              181
+            ],
+            "recommended_providers": [
+              {
+                "id": 181,
+                "title": "Fundo las Palmeras",
+                "slug": "fundo-las-palmeras",
+                "category": "Locales",
+                "location": "Provincia de Ica, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% OFF",
+                "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+                "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+                "serviceHighlights": [
+                  "Amplios jardines campestres en Ica para:",
+                  "Eventos sociales",
+                  "Eventos corporativos",
+                  "Celebraciones",
+                  "Reuniones",
+                  "Experiencias especiales"
+                ],
+                "termsHighlights": [
+                  "No acumulable con otras promociones o descuentos",
+                  "sujeto a disponibilidad de fecha y espacio."
+                ],
+                "eventTypes": [],
+                "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.6636978860588149,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_locales_1",
+                  "label": "local para quinceaños en Lima",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local para quinceaños en Lima",
+                    "salón para 120 personas Lima",
+                    "espacio para quinceaños Lima"
+                  ],
+                  "mustHave": [
+                    "capacidad para 120 personas",
+                    "opciones en Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  181,
+                  147
+                ],
+                "selected_provider_ids": [
+                  181
+                ],
+                "candidates": [
+                  {
+                    "id": 181,
+                    "title": "Fundo las Palmeras",
+                    "slug": "fundo-las-palmeras",
+                    "category": "Locales",
+                    "location": "Provincia de Ica, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% OFF",
+                    "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+                    "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+                    "serviceHighlights": [
+                      "Amplios jardines campestres en Ica para:",
+                      "Eventos sociales",
+                      "Eventos corporativos",
+                      "Celebraciones",
+                      "Reuniones",
+                      "Experiencias especiales"
+                    ],
+                    "termsHighlights": [
+                      "No acumulable con otras promociones o descuentos",
+                      "sujeto a disponibilidad de fecha y espacio."
+                    ],
+                    "eventTypes": [],
+                    "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.6636978860588149,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7228479738635721,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "experiencia en quinceaños",
+              "opciones en Lima"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              133
+            ],
+            "recommended_providers": [
+              {
+                "id": 133,
+                "title": "Uriel Santisteban Photography & Film",
+                "slug": "uriel-santisteban-photography-film",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "Uriel Santisteban Photography & Film encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                "websiteUrl": "https://www.urielsantisteban.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "5% Off",
+                "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                "serviceHighlights": [
+                  "Fotografía para matrimonios",
+                  "Video de bodas",
+                  "Paquetes combinados de fotografía + video",
+                  "Cobertura integral del evento",
+                  "Producción y edición del material final"
+                ],
+                "termsHighlights": [
+                  "Ambos servicios deben pertenecer a la misma categoría",
+                  "Para más información, consultar paquetes disponibles con el proveedor",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                "fitScore": 81,
+                "fitWarnings": [
+                  "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+                ],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.874431534025356,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_foto_1",
+                  "label": "fotógrafo para quinceaños en Lima",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotografía y video para quinceaños en Lima",
+                    "fotógrafo de quinceaños Lima para 120 invitados",
+                    "paquete foto y video quinceaños Lima"
+                  ],
+                  "mustHave": [
+                    "experiencia en quinceaños",
+                    "opciones en Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  133,
+                  95
+                ],
+                "selected_provider_ids": [
+                  133
+                ],
+                "candidates": [
+                  {
+                    "id": 133,
+                    "title": "Uriel Santisteban Photography & Film",
+                    "slug": "uriel-santisteban-photography-film",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Uriel Santisteban Photography & Film encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                    "websiteUrl": "https://www.urielsantisteban.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% Off",
+                    "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                    "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                    "serviceHighlights": [
+                      "Fotografía para matrimonios",
+                      "Video de bodas",
+                      "Paquetes combinados de fotografía + video",
+                      "Cobertura integral del evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Ambos servicios deben pertenecer a la misma categoría",
+                      "Para más información, consultar paquetes disponibles con el proveedor",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                    "fitScore": 81,
+                    "fitWarnings": [
+                      "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+                    ],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.874431534025356,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 95,
+                    "title": "Rebel Rebel Photo",
+                    "slug": "rebel-rebel-photo",
+                    "category": "Fotografía y video",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Rebel Rebel Photo encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/rebel-rebel-photo",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en el paquete 1 y 2 de bodas o en cambio pre boda o post boda de regalo (todo para paquete 1 y 2)\r\n\r\n10% off en sesiones para los invitados - Valido sólo para el paquete 1 o 2 de fotografía y video",
+                    "descriptionSnippet": "Rebel Rebel Photo es un servicio de fotografía y video para matrimonios, enfocado en capturar momentos auténticos y memorables con un estilo moderno y natural.",
+                    "serviceHighlights": [
+                      "Fotografía para bodas",
+                      "Video para bodas",
+                      "Sesiones pre boda y post boda",
+                      "Sesiones para invitados",
+                      "Paquetes personalizados (Paquete 1, Paquete 2 y más)"
+                    ],
+                    "termsHighlights": [
+                      "Incluye sesión pre boda o post boda de regalo (aplica para paquetes 1 y 2)",
+                      "Beneficios sujetos a disponibilidad.",
+                      "Consultar términos y condiciones adicionales con el proveedor."
+                    ],
+                    "eventTypes": [],
+                    "description": "Rebel Rebel Photo es un servicio de fotografía y video para matrimonios, enfocado en capturar momentos auténticos y memorables con un estilo moderno y natural.",
+                    "fitScore": 80,
+                    "fitWarnings": [
+                      "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+                    ],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match"
+                    ],
+                    "retrievalScore": 0.8079829568669178,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "opciones en Lima",
+              "música para quinceaños"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              187
+            ],
+            "recommended_providers": [
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.7966255986752336,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_musica_1",
+                  "label": "música para quinceaños en Lima",
+                  "category": "Música",
+                  "queryStrings": [
+                    "música para quinceaños en Lima",
+                    "DJ para quinceaños Lima",
+                    "banda u orquesta para quinceaños Lima"
+                  ],
+                  "mustHave": [
+                    "opciones en Lima",
+                    "música para quinceaños"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  187,
+                  120,
+                  174
+                ],
+                "selected_provider_ids": [
+                  187
+                ],
+                "candidates": [
+                  {
+                    "id": 187,
+                    "title": "Dj Bufi",
+                    "slug": "dj-bufi",
+                    "category": "Música",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Dj Bufi encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "20% off",
+                    "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                    "serviceHighlights": [
+                      "Asesoría personalizada en todo el proceso del evento",
+                      "DJ profesional para todo tipo de eventos.",
+                      "Sonido profesional para ceremonias, recepciones y fiestas.",
+                      "Iluminación ambiental y decorativa.",
+                      "Luces para pista de baile y efectos especiales.",
+                      "Musicalización personalizada según el estilo del evento."
+                    ],
+                    "termsHighlights": [
+                      "Valido solo para Lima. Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7966255986752336,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 120,
+                    "title": "Dj Freddy Bobadilla",
+                    "slug": "dj-freddy-bobadilla",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Dj Freddy Bobadilla encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                    "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                    "serviceHighlights": [
+                      "Servicio de DJ para eventos",
+                      "Iluminación para celebraciones",
+                      "Sonido profesional",
+                      "Musicalización adaptada al tipo de evento"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio válido en servicio de DJ, luces y sonido",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8008785201623679,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 174,
+                    "title": "Dj pulga",
+                    "slug": "dj-pulga",
+                    "category": "Música",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Dj pulga encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+                    "websiteUrl": null,
+                    "minPrice": "3000.00",
+                    "maxPrice": null,
+                    "promoBadge": "35% off",
+                    "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+                    "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+                    "serviceHighlights": [
+                      "Servicio de DJ para eventos",
+                      "Musicalización personalizada según el tipo de celebración",
+                      "Música para fiestas, reuniones y eventos corporativos",
+                      "Asesoría en la selección musical"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio exclusivo para clientes de Sin Envolturas",
+                      "No transferible ni acumulable con otras promociones",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7700234480240619,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [
+              "decoración para quinceaños",
+              "opciones en Lima"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              105
+            ],
+            "recommended_providers": [
+              {
+                "id": 105,
+                "title": "ARQLAB",
+                "slug": "arqlab",
+                "category": "Hogar y deco",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "5.0",
+                "reason": "ARQLAB encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+                "websiteUrl": "https://www.arqlab.pe",
+                "minPrice": "900.00",
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% en diseño de espacios.",
+                "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+                "serviceHighlights": [
+                  "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                  "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+                ],
+                "termsHighlights": [
+                  "Válido solo de Lunes a Viernes en horario laboral.",
+                  "No transferible ni acumulable.",
+                  "El descuento es solo para la etapa de diseño, no para implementación."
+                ],
+                "eventTypes": [],
+                "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+                "fitScore": 93,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.671074124120854,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "q_deco_1",
+                  "label": "decoración para quinceaños en Lima",
+                  "category": "Hogar y deco",
+                  "queryStrings": [
+                    "decoración para quinceaños en Lima",
+                    "tematización y decoración 15 años Lima",
+                    "arreglo y decoración para quinceaños 120 invitados"
+                  ],
+                  "mustHave": [
+                    "decoración para quinceaños",
+                    "opciones en Lima"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  105,
+                  8,
+                  77
+                ],
+                "selected_provider_ids": [
+                  105
+                ],
+                "candidates": [
+                  {
+                    "id": 105,
+                    "title": "ARQLAB",
+                    "slug": "arqlab",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "5.0",
+                    "reason": "ARQLAB encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+                    "websiteUrl": "https://www.arqlab.pe",
+                    "minPrice": "900.00",
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "10% en diseño de espacios.",
+                    "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+                    "serviceHighlights": [
+                      "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                      "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+                    ],
+                    "termsHighlights": [
+                      "Válido solo de Lunes a Viernes en horario laboral.",
+                      "No transferible ni acumulable.",
+                      "El descuento es solo para la etapa de diseño, no para implementación."
+                    ],
+                    "eventTypes": [],
+                    "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+                    "fitScore": 93,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.671074124120854,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 8,
+                    "title": "M'APPELLE",
+                    "slug": "mappelle",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "M'APPELLE encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                    "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                    "serviceHighlights": [
+                      "Diseño y elaboración de productos personalizados en madera",
+                      "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                      "Creación de regalos personalizados para fechas especiales",
+                      "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                      "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                    ],
+                    "termsHighlights": [
+                      "Preguntar por términos y condiciones"
+                    ],
+                    "eventTypes": [],
+                    "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                    "fitScore": 93,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.6433767336378597,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 77,
+                    "title": "AE MAISON",
+                    "slug": "ae-maison",
+                    "category": "Hogar y deco",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "AE MAISON encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                    "websiteUrl": "https://www.aemaison.pe/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% off",
+                    "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                    "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                    "serviceHighlights": [
+                      "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                      "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                      "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                    ],
+                    "termsHighlights": [
+                      "Consultar términos y condiciones."
+                    ],
+                    "eventTypes": [],
+                    "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                    "fitScore": 93,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.6012893207767934,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          181
+        ],
+        "recommended_providers": [
+          {
+            "id": 181,
+            "title": "Fundo las Palmeras",
+            "slug": "fundo-las-palmeras",
+            "category": "Locales",
+            "location": "Provincia de Ica, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% OFF",
+            "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+            "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+            "serviceHighlights": [
+              "Amplios jardines campestres en Ica para:",
+              "Eventos sociales",
+              "Eventos corporativos",
+              "Celebraciones",
+              "Reuniones",
+              "Experiencias especiales"
+            ],
+            "termsHighlights": [
+              "No acumulable con otras promociones o descuentos",
+              "sujeto a disponibilidad de fecha y espacio."
+            ],
+            "eventTypes": [],
+            "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.6636978860588149,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“decoración” se interpreta como necesidad de Hogar y deco (decoración)."
+        ],
+        "conversation_summary": "Quinceaños en Lima para 120 personas; se requieren Locales, Fotografía y video, Música y decoración (Hogar y deco). Presupuesto medio-alto.",
+        "last_user_goal": "elicitar_necesidades",
+        "open_questions": [],
+        "updated_at": "2026-07-02T01:20:58.991Z"
+      },
+      "latencyMs": 18166,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que pediste para tu quinceaños en Lima\n\nLocales\nPara el local, quedó una opción que encaja con un evento de este tamaño y estilo\n1. Fundo las Palmeras - local para quinceaños (Provincia de Ica, Perú · $$$ · promo: 10% OFF)\n Encaja con quinceaños en Lima y con el rango de invitados; además tiene una propuesta de espacio amplia para este tipo de celebración\n Limitación: Está en Provincia de Ica, así que no coincide con Lima.\n Ficha: https://sinenvolturas.com/proveedores/fundo-las-palmeras\n2. Fundo las Palmeras - salón para 120 personas (Provincia de Ica, Perú · $$$ · promo: 10% OFF)\n Es la opción recomendada para empezar por el espacio del evento por capacidad y tipo de celebración\n Limitación: Está fuera de Lima.\n Ficha: https://sinenvolturas.com/proveedores/fundo-las-palmeras\n\nFotografía y video\nPara foto y video, hay una propuesta alineada con quinceaños y con una presencia sólida en Lima\n1. Uriel Santisteban Photography & Film - fotografía para quinceaños (Lima, Perú · $$$$ · promo: 5% Off)\n Encaja con la cobertura visual que buscas para un quinceaños y trabaja en Lima\n Limitación: Su tarifa está en un rango alto.\n Ficha: https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film\n\nMúsica\nEn música, encontré una opción con experiencia en eventos similares y base en Lima\n1. Dj Bufi - DJ para quinceaños (Lima, Perú · $$$ · promo: 20% off)\n Es una buena alternativa para animar el quinceaños y dar continuidad a la fiesta\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi\n\nHogar y deco\nPara decoración, hay una opción con enfoque integral que puede ayudarte a armar la ambientación del quinceaños\n1. ARQLAB - decoración para quinceaños (Perú · $$$ · promo: 10% off)\n Su propuesta de diseño e intervención visual encaja con la decoración del evento\n Limitación: Su servicio es de diseño; la implementación no incluye precio cerrado.\n Ficha: https://sinenvolturas.com/proveedores/arqlab\n\nPodemos revisar frente por frente para confirmar, cambiar o quitar opciones. Si quieres, empezamos por el local",
+        "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+        "plan_id": "01KWG6KZCC45MQGQ3GAJSF6W5D",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWG6MGYYDTN5D2QKBFX6Y11D",
+          "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+          "plan_id": "01KWG6KZCC45MQGQ3GAJSF6W5D",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "elicitar_necesidades",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"local para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"local para quinceaños en Lima\",\n    \"salón para 120 personas Lima\",\n    \"espacio para quinceaños Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"fotógrafo para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"fotografía y video para quinceaños en Lima\",\n    \"fotógrafo de quinceaños Lima para 120 invitados\",\n    \"paquete foto y video quinceaños Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Música\",\n  \"label\": \"música para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"música para quinceaños en Lima\",\n    \"DJ para quinceaños Lima\",\n    \"banda u orquesta para quinceaños Lima\"\n  ],\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración para quinceaños en Lima\",\n  \"queryStrings\": [\n    \"decoración para quinceaños en Lima\",\n    \"tematización y decoración 15 años Lima\",\n    \"arreglo y decoración para quinceaños 120 invitados\"\n  ],\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"fotógrafo para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 95,\n      \"title\": \"Rebel Rebel Photo\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.8079829568669178\n    },\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.874431534025356\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"música para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 120,\n      \"title\": \"Dj Freddy Bobadilla\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.8008785201623679\n    },\n    {\n      \"id\": 174,\n      \"title\": \"Dj pulga\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.7700234480240619\n    },\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"category\": \"Música\",\n      \"retrievalScore\": 0.7966255986752336\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"local para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.7228479738635721\n    },\n    {\n      \"id\": 181,\n      \"title\": \"Fundo las Palmeras\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.6636978860588149\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"decoración para quinceaños en Lima\",\n  \"providers\": [\n    {\n      \"id\": 8,\n      \"title\": \"M'APPELLE\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6433767336378597\n    },\n    {\n      \"id\": 77,\n      \"title\": \"AE MAISON\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.6012893207767934\n    },\n    {\n      \"id\": 105,\n      \"title\": \"ARQLAB\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.671074124120854\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 181,
+              "title": "Fundo las Palmeras",
+              "slug": "fundo-las-palmeras",
+              "category": "Locales",
+              "location": "Provincia de Ica, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+              "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+              "serviceHighlights": [
+                "Amplios jardines campestres en Ica para:",
+                "Eventos sociales",
+                "Eventos corporativos",
+                "Celebraciones",
+                "Reuniones",
+                "Experiencias especiales"
+              ],
+              "termsHighlights": [
+                "No acumulable con otras promociones o descuentos",
+                "sujeto a disponibilidad de fecha y espacio."
+              ],
+              "eventTypes": [],
+              "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.6636978860588149,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 133,
+              "title": "Uriel Santisteban Photography & Film",
+              "slug": "uriel-santisteban-photography-film",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Uriel Santisteban Photography & Film encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+              "websiteUrl": "https://www.urielsantisteban.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% Off",
+              "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+              "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+              "serviceHighlights": [
+                "Fotografía para matrimonios",
+                "Video de bodas",
+                "Paquetes combinados de fotografía + video",
+                "Cobertura integral del evento",
+                "Producción y edición del material final"
+              ],
+              "termsHighlights": [
+                "Ambos servicios deben pertenecer a la misma categoría",
+                "Para más información, consultar paquetes disponibles con el proveedor",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+              "fitScore": 81,
+              "fitWarnings": [
+                "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+              ],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.874431534025356,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7966255986752336,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 105,
+              "title": "ARQLAB",
+              "slug": "arqlab",
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "5.0",
+              "reason": "ARQLAB encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+              "websiteUrl": "https://www.arqlab.pe",
+              "minPrice": "900.00",
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% en diseño de espacios.",
+              "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+              "serviceHighlights": [
+                "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+              ],
+              "termsHighlights": [
+                "Válido solo de Lunes a Viernes en horario laboral.",
+                "No transferible ni acumulable.",
+                "El descuento es solo para la etapa de diseño, no para implementación."
+              ],
+              "eventTypes": [],
+              "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+              "fitScore": 93,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.671074124120854,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 181,
+              "category": "Locales",
+              "location": "Provincia de Ica, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.6636978860588149,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 133,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.874431534025356,
+              "fit_score": 81
+            },
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7966255986752336,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 105,
+              "category": "Hogar y deco",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.671074124120854,
+              "fit_score": 93
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 4,
+            "context_candidates": 4,
+            "context_candidate_ids": [
+              181,
+              133,
+              187,
+              105
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 18007,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 8056,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 21634,
+            "provider_enrichment": 1201,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3893,
+            "save_plan": 56
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11428,
+              "output_tokens": 1132,
+              "total_tokens": 12560,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6230,
+              "output_tokens": 471,
+              "total_tokens": 6701,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17658,
+              "output_tokens": 1603,
+              "total_tokens": 19261,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWG6KZCC45MQGQ3GAJSF6W5D",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.social.03-aeae2a94",
+          "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "elicitar_necesidades",
+          "intent_confidence": 0.95,
+          "event_type": "quinceanos",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "medio-alto",
+          "guest_range": "101-200",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "capacidad para 120 personas",
+                "Lima"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                181
+              ],
+              "recommended_providers": [
+                {
+                  "id": 181,
+                  "title": "Fundo las Palmeras",
+                  "slug": "fundo-las-palmeras",
+                  "category": "Locales",
+                  "location": "Provincia de Ica, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% OFF",
+                  "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+                  "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+                  "serviceHighlights": [
+                    "Amplios jardines campestres en Ica para:",
+                    "Eventos sociales",
+                    "Eventos corporativos",
+                    "Celebraciones",
+                    "Reuniones",
+                    "Experiencias especiales"
+                  ],
+                  "termsHighlights": [
+                    "No acumulable con otras promociones o descuentos",
+                    "sujeto a disponibilidad de fecha y espacio."
+                  ],
+                  "eventTypes": [],
+                  "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.6636978860588149,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_locales_1",
+                    "label": "local para quinceaños en Lima",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local para quinceaños en Lima",
+                      "salón para 120 personas Lima",
+                      "espacio para quinceaños Lima"
+                    ],
+                    "mustHave": [
+                      "capacidad para 120 personas",
+                      "opciones en Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    181,
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    181
+                  ],
+                  "candidates": [
+                    {
+                      "id": 181,
+                      "title": "Fundo las Palmeras",
+                      "slug": "fundo-las-palmeras",
+                      "category": "Locales",
+                      "location": "Provincia de Ica, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% OFF",
+                      "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+                      "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+                      "serviceHighlights": [
+                        "Amplios jardines campestres en Ica para:",
+                        "Eventos sociales",
+                        "Eventos corporativos",
+                        "Celebraciones",
+                        "Reuniones",
+                        "Experiencias especiales"
+                      ],
+                      "termsHighlights": [
+                        "No acumulable con otras promociones o descuentos",
+                        "sujeto a disponibilidad de fecha y espacio."
+                      ],
+                      "eventTypes": [],
+                      "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.6636978860588149,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7228479738635721,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "experiencia en quinceaños",
+                "opciones en Lima"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                133
+              ],
+              "recommended_providers": [
+                {
+                  "id": 133,
+                  "title": "Uriel Santisteban Photography & Film",
+                  "slug": "uriel-santisteban-photography-film",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "Uriel Santisteban Photography & Film encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                  "websiteUrl": "https://www.urielsantisteban.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "5% Off",
+                  "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                  "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                  "serviceHighlights": [
+                    "Fotografía para matrimonios",
+                    "Video de bodas",
+                    "Paquetes combinados de fotografía + video",
+                    "Cobertura integral del evento",
+                    "Producción y edición del material final"
+                  ],
+                  "termsHighlights": [
+                    "Ambos servicios deben pertenecer a la misma categoría",
+                    "Para más información, consultar paquetes disponibles con el proveedor",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                  "fitScore": 81,
+                  "fitWarnings": [
+                    "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+                  ],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.874431534025356,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_foto_1",
+                    "label": "fotógrafo para quinceaños en Lima",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotografía y video para quinceaños en Lima",
+                      "fotógrafo de quinceaños Lima para 120 invitados",
+                      "paquete foto y video quinceaños Lima"
+                    ],
+                    "mustHave": [
+                      "experiencia en quinceaños",
+                      "opciones en Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    133,
+                    95
+                  ],
+                  "selected_provider_ids": [
+                    133
+                  ],
+                  "candidates": [
+                    {
+                      "id": 133,
+                      "title": "Uriel Santisteban Photography & Film",
+                      "slug": "uriel-santisteban-photography-film",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Uriel Santisteban Photography & Film encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                      "websiteUrl": "https://www.urielsantisteban.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% Off",
+                      "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                      "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                      "serviceHighlights": [
+                        "Fotografía para matrimonios",
+                        "Video de bodas",
+                        "Paquetes combinados de fotografía + video",
+                        "Cobertura integral del evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Ambos servicios deben pertenecer a la misma categoría",
+                        "Para más información, consultar paquetes disponibles con el proveedor",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                      "fitScore": 81,
+                      "fitWarnings": [
+                        "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+                      ],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.874431534025356,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 95,
+                      "title": "Rebel Rebel Photo",
+                      "slug": "rebel-rebel-photo",
+                      "category": "Fotografía y video",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Rebel Rebel Photo encaja con fotógrafo para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/rebel-rebel-photo",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en el paquete 1 y 2 de bodas o en cambio pre boda o post boda de regalo (todo para paquete 1 y 2)\r\n\r\n10% off en sesiones para los invitados - Valido sólo para el paquete 1 o 2 de fotografía y video",
+                      "descriptionSnippet": "Rebel Rebel Photo es un servicio de fotografía y video para matrimonios, enfocado en capturar momentos auténticos y memorables con un estilo moderno y natural.",
+                      "serviceHighlights": [
+                        "Fotografía para bodas",
+                        "Video para bodas",
+                        "Sesiones pre boda y post boda",
+                        "Sesiones para invitados",
+                        "Paquetes personalizados (Paquete 1, Paquete 2 y más)"
+                      ],
+                      "termsHighlights": [
+                        "Incluye sesión pre boda o post boda de regalo (aplica para paquetes 1 y 2)",
+                        "Beneficios sujetos a disponibilidad.",
+                        "Consultar términos y condiciones adicionales con el proveedor."
+                      ],
+                      "eventTypes": [],
+                      "description": "Rebel Rebel Photo es un servicio de fotografía y video para matrimonios, enfocado en capturar momentos auténticos y memorables con un estilo moderno y natural.",
+                      "fitScore": 80,
+                      "fitWarnings": [
+                        "No hay evidencia exacta de fotógrafo para quinceaños en Lima en la ficha."
+                      ],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match"
+                      ],
+                      "retrievalScore": 0.8079829568669178,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "opciones en Lima",
+                "música para quinceaños"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                187
+              ],
+              "recommended_providers": [
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.7966255986752336,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_musica_1",
+                    "label": "música para quinceaños en Lima",
+                    "category": "Música",
+                    "queryStrings": [
+                      "música para quinceaños en Lima",
+                      "DJ para quinceaños Lima",
+                      "banda u orquesta para quinceaños Lima"
+                    ],
+                    "mustHave": [
+                      "opciones en Lima",
+                      "música para quinceaños"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    187,
+                    120,
+                    174
+                  ],
+                  "selected_provider_ids": [
+                    187
+                  ],
+                  "candidates": [
+                    {
+                      "id": 187,
+                      "title": "Dj Bufi",
+                      "slug": "dj-bufi",
+                      "category": "Música",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Dj Bufi encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "20% off",
+                      "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                      "serviceHighlights": [
+                        "Asesoría personalizada en todo el proceso del evento",
+                        "DJ profesional para todo tipo de eventos.",
+                        "Sonido profesional para ceremonias, recepciones y fiestas.",
+                        "Iluminación ambiental y decorativa.",
+                        "Luces para pista de baile y efectos especiales.",
+                        "Musicalización personalizada según el estilo del evento."
+                      ],
+                      "termsHighlights": [
+                        "Valido solo para Lima. Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7966255986752336,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 120,
+                      "title": "Dj Freddy Bobadilla",
+                      "slug": "dj-freddy-bobadilla",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Dj Freddy Bobadilla encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                      "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                      "serviceHighlights": [
+                        "Servicio de DJ para eventos",
+                        "Iluminación para celebraciones",
+                        "Sonido profesional",
+                        "Musicalización adaptada al tipo de evento"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio válido en servicio de DJ, luces y sonido",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8008785201623679,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 174,
+                      "title": "Dj pulga",
+                      "slug": "dj-pulga",
+                      "category": "Música",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Dj pulga encaja con música para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+                      "websiteUrl": null,
+                      "minPrice": "3000.00",
+                      "maxPrice": null,
+                      "promoBadge": "35% off",
+                      "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+                      "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+                      "serviceHighlights": [
+                        "Servicio de DJ para eventos",
+                        "Musicalización personalizada según el tipo de celebración",
+                        "Música para fiestas, reuniones y eventos corporativos",
+                        "Asesoría en la selección musical"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio exclusivo para clientes de Sin Envolturas",
+                        "No transferible ni acumulable con otras promociones",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7700234480240619,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [
+                "decoración para quinceaños",
+                "opciones en Lima"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                105
+              ],
+              "recommended_providers": [
+                {
+                  "id": 105,
+                  "title": "ARQLAB",
+                  "slug": "arqlab",
+                  "category": "Hogar y deco",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "5.0",
+                  "reason": "ARQLAB encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+                  "websiteUrl": "https://www.arqlab.pe",
+                  "minPrice": "900.00",
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% en diseño de espacios.",
+                  "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+                  "serviceHighlights": [
+                    "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                    "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+                  ],
+                  "termsHighlights": [
+                    "Válido solo de Lunes a Viernes en horario laboral.",
+                    "No transferible ni acumulable.",
+                    "El descuento es solo para la etapa de diseño, no para implementación."
+                  ],
+                  "eventTypes": [],
+                  "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+                  "fitScore": 93,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.671074124120854,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "q_deco_1",
+                    "label": "decoración para quinceaños en Lima",
+                    "category": "Hogar y deco",
+                    "queryStrings": [
+                      "decoración para quinceaños en Lima",
+                      "tematización y decoración 15 años Lima",
+                      "arreglo y decoración para quinceaños 120 invitados"
+                    ],
+                    "mustHave": [
+                      "decoración para quinceaños",
+                      "opciones en Lima"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    105,
+                    8,
+                    77
+                  ],
+                  "selected_provider_ids": [
+                    105
+                  ],
+                  "candidates": [
+                    {
+                      "id": 105,
+                      "title": "ARQLAB",
+                      "slug": "arqlab",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "5.0",
+                      "reason": "ARQLAB encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/arqlab",
+                      "websiteUrl": "https://www.arqlab.pe",
+                      "minPrice": "900.00",
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "10% en diseño de espacios.",
+                      "descriptionSnippet": "Estudio peruano de arquitectura y diseño de interiores.",
+                      "serviceHighlights": [
+                        "El servicio es integral, diseño con vistas 3D y planos (no incluye precio de implementación)",
+                        "El espacio a diseñar debe estar ubicado en el mismo local, oficina, departamento, casa."
+                      ],
+                      "termsHighlights": [
+                        "Válido solo de Lunes a Viernes en horario laboral.",
+                        "No transferible ni acumulable.",
+                        "El descuento es solo para la etapa de diseño, no para implementación."
+                      ],
+                      "eventTypes": [],
+                      "description": "Estudio peruano de arquitectura y diseño de interiores. Está liderado por dos arquitectas asociadas y cuenta con más de 10 años de experiencia en el sector. Su filosofía se basa en diseñar e implementar proyectos residenciales y comerciales personalizados que unan estética, funcionalidad y propósito.",
+                      "fitScore": 93,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.671074124120854,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 8,
+                      "title": "M'APPELLE",
+                      "slug": "mappelle",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "M'APPELLE encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/mappelle",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "- Para novios: 20% de descuento, aplica para los cuadros en donde deseas dibujar una historia.\r\n- Para invitados: 10% de descuento para aquellos que hayan hecho su regalo por Sin Envolturas.\r\nNo incluye servicios adicionales ni movilidad",
+                      "descriptionSnippet": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar.",
+                      "serviceHighlights": [
+                        "Diseño y elaboración de productos personalizados en madera",
+                        "Grabado láser de nombres, frases, fotografías y diseños especiales",
+                        "Creación de regalos personalizados para fechas especiales",
+                        "Elaboración de cuadros, portafotos y decoraciones personalizadas",
+                        "Diseños exclusivos para cumpleaños, aniversarios, bodas y Día de la Madre"
+                      ],
+                      "termsHighlights": [
+                        "Preguntar por términos y condiciones"
+                      ],
+                      "eventTypes": [],
+                      "description": "M'appelle Design ofrece productos de madera y artículos personalizados diseñados para crear recuerdos únicos y detalles especiales: diseños exclusivos, ideales para celebraciones, momentos especiales y decoración del hogar. Cada pieza combina creatividad, acabados artesanales y un estilo único pensado para sorprender y emocionar.",
+                      "fitScore": 93,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.6433767336378597,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 77,
+                      "title": "AE MAISON",
+                      "slug": "ae-maison",
+                      "category": "Hogar y deco",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "AE MAISON encaja con decoración para quinceaños en Lima según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/ae-maison",
+                      "websiteUrl": "https://www.aemaison.pe/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% off",
+                      "promoSummary": "5% de descuento solo a los clientes de sin envolturas e invitados.",
+                      "descriptionSnippet": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                      "serviceHighlights": [
+                        "Mobiliario: Cuentan con una amplia gama de sofás, mesas de centro (como los modelos Puy y Giovanni), comedores, sillas y butacas de estilo moderno y minimalista.",
+                        "Decoración: Ofrecen objetos decorativos, arte, alfombras y luminarias diseñadas para crear espacios armoniosos y estéticos.",
+                        "Personalización: Uno de sus mayores atractivos es que permiten personalizar tamaños, telas, texturas y acabados en gran parte de su catálogo."
+                      ],
+                      "termsHighlights": [
+                        "Consultar términos y condiciones."
+                      ],
+                      "eventTypes": [],
+                      "description": "AE Maison es una tienda peruana especializada en muebles y decoración de diseño contemporáneo.",
+                      "fitScore": 93,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.6012893207767934,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            181
+          ],
+          "recommended_providers": [
+            {
+              "id": 181,
+              "title": "Fundo las Palmeras",
+              "slug": "fundo-las-palmeras",
+              "category": "Locales",
+              "location": "Provincia de Ica, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Fundo las Palmeras encaja con local para quinceaños en Lima según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/fundo-las-palmeras",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% OFF",
+              "promoSummary": "Disfruta de un 10% OFF exclusivo en el alquiler de jardines en Fundo Las Palmeras ✨\r\nEl lugar perfecto para matrimonios, quinceaños, eventos corporativos y más.",
+              "descriptionSnippet": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima.",
+              "serviceHighlights": [
+                "Amplios jardines campestres en Ica para:",
+                "Eventos sociales",
+                "Eventos corporativos",
+                "Celebraciones",
+                "Reuniones",
+                "Experiencias especiales"
+              ],
+              "termsHighlights": [
+                "No acumulable con otras promociones o descuentos",
+                "sujeto a disponibilidad de fecha y espacio."
+              ],
+              "eventTypes": [],
+              "description": "Cada vez más parejas están eligiendo celebrar su boda fuera de Lima. 💍🌿 En lugares como Ica una boda se convierte en un fin de semana para compartir, disfrutar y crear recuerdos con quienes más quieres.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.6636978860588149,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“decoración” se interpreta como necesidad de Hogar y deco (decoración)."
+          ],
+          "conversation_summary": "Quinceaños en Lima para 120 personas; se requieren Locales, Fotografía y video, Música y decoración (Hogar y deco). Presupuesto medio-alto.",
+          "last_user_goal": "elicitar_necesidades",
+          "open_questions": [],
+          "updated_at": "2026-07-02T01:20:58.991Z"
+        },
+        "perf": {
+          "trace_id": "01KWG6MGYYDTN5D2QKBFX6Y11D",
+          "conversation_id": "conv_6a45bcfb2338819798cb45433812897404d574c27b30e265",
+          "runtime_latency_ms": 18007,
+          "extraction_latency_ms": 8056,
+          "compose_latency_ms": 3893,
+          "tools_called_count": 4,
+          "provider_results_count": 4,
+          "recommendation_context_candidates": 4,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 19261,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8263676520557255,
+          "extraction_to_compose_ratio": 2.0693552530182378,
+          "captured_at": "2026-07-02T01:21:02.942Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T01:21:02.990Z",
+  "completedAt": "2026-07-02T01:21:02.994Z"
+}

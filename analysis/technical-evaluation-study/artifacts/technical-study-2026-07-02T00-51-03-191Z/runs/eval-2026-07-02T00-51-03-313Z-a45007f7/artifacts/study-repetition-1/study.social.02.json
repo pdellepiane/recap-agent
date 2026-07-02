@@ -1,0 +1,2757 @@
+{
+  "runId": "eval-2026-07-02T00-51-03-313Z-a45007f7",
+  "caseId": "study.social.02",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.75,
+  "totalLatencyMs": 12190,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"graduacion\"",
+    "vendor_category=\"Música\"",
+    "active_need_category=\"Música\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Música:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T00-51-03-191Z/runs/eval-2026-07-02T00-51-03-313Z-a45007f7/artifacts/study-repetition-1/study.social.02.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: aclarar_pedir_faltante."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->recomendar. Allowed=*->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.75,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 12190,
+    "p95_latency_ms": 12190,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 17004,
+    "cache_hit_rate": 0.8690285149981484
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito música para una graduación de 150 personas."
+      },
+      "outputText": "Encontré opciones de música para una graduación de 150 personas. La mayoría son DJs para eventos, y también hay una opción de coro en vivo\n\n1. Dj Naoki\n Propone una experiencia completa con música, iluminación y sonido, útil para un evento de este tamaño\n Ubicación: Perú.\n Precio: $$$.\n Promo: 15% Off.\n Nota: Su propuesta está más enfocada en bodas, así que conviene confirmar que se adapte al estilo de tu graduación.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-naoki\n\n2. Dj Siles\n Ofrece un servicio integral para eventos y se adapta a distintas celebraciones, lo que lo hace versátil para una graduación\n Ubicación: Perú.\n Precio: $$.\n Promo: 15% Off.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-siles\n\n3. Coro Ricardo Venegas\n Es la opción más distinta si buscas música en vivo con un formato más solemne o especial\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Está orientado sobre todo a ceremonias, bodas y misas.\n\n Ficha: https://sinenvolturas.com/proveedores/coro-ricardo-venegas\n\n4. Dj Luis Mora\n Tiene enfoque en matrimonios y puede acompañar cada momento con música cuidada\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Por su especialidad, conviene validar si encaja con una graduación.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-luis-mora\n\n5. Dj Bufi\n Trae asesoría personalizada y experiencia en eventos privados y corporativos, útil si quieres acompañamiento más cercano\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: Su perfil está más marcado hacia bodas y eventos privados.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi\n\n6. Dj Freddy Bobadilla\n Ofrece una experiencia completa con música, iluminación y sonido para un ambiente dinámico\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWG5QHR5VRP1C43DVFTGCWFV",
+        "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+        "plan_id": "01KWG5Q605RVYNGGXDYDFWY08N",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": null\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 115,\n      \"title\": \"Dj Naoki\",\n      \"slug\": \"dj-naoki\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-naoki\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"15% Off\",\n      \"promoSummary\": \"15% de descuento en servicio de Dj, luces y sonido para bodas.\",\n      \"descriptionSnippet\": \"DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.\",\n      \"serviceHighlights\": [\n        \"Servicio de DJ para bodas\",\n        \"Iluminación para eventos\",\n        \"Sonido profesional para celebraciones\",\n        \"Asesoría y personalización según el estilo del evento\"\n      ],\n      \"termsHighlights\": [\n        \"Válido únicamente para Lima\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7232333877230152,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 119,\n      \"title\": \"Dj Siles\",\n      \"slug\": \"dj-siles\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-siles\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"15% Off\",\n      \"promoSummary\": \"15% de descuento en el servicio de:\\r\\n-  DJ\\r\\n- Alquiler de equipo de sonido e iluminación\",\n      \"descriptionSnippet\": \"DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.\",\n      \"serviceHighlights\": [\n        \"Servicio de DJ para eventos\",\n        \"Alquiler de equipos de sonido\",\n        \"Iluminación para eventos\",\n        \"Musicalización personalizada según el tipo de celebración\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio válido para servicios de DJ, sonido e iluminación\",\n        \"Para más información, consultar términos y condiciones con el proveedor\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7231396213778613,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 120,\n      \"title\": \"Dj Freddy Bobadilla\",\n      \"slug\": \"dj-freddy-bobadilla\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-freddy-bobadilla\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 123,\n      \"title\": \"Coro Ricardo Venegas\",\n      \"slug\": \"coro-ricardo-venegas\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/coro-ricardo-venegas\",\n      \"websiteUrl\": \"https://www.cororicardovenegas.net/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off\",\n      \"promoSummary\": \"10% de descuento en todos los paquetes de coros para bodas y misas\",\n      \"descriptionSnippet\": \"Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.\",\n      \"serviceHighlights\": [\n        \"Coro en vivo para bodas y ceremonias religiosas\",\n        \"Musicalización para misas y eventos especiales\",\n        \"Repertorio adaptado según el tipo de ceremonia\",\n        \"Asesoría en selección musical\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para Lima y provincia\",\n        \"No transferible ni acumulable\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.730800869909515,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 124,\n      \"title\": \"Dj Luis Mora\",\n      \"slug\": \"dj-luis-mora\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-luis-mora\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off\",\n      \"promoSummary\": \"10% de descuento en el servicio de Dj para matrimonios\",\n      \"descriptionSnippet\": \"DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.\",\n      \"serviceHighlights\": [\n        \"Servicio de DJ para matrimonios\",\n        \"Musicalización personalizada según el estilo del evento\",\n        \"Asesoría en la selección musical\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio válido para novios referidos por Sin Envolturas\",\n        \"Aplica únicamente para servicio de DJ en matrimonios\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7222309054160454,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 125,\n      \"title\": \"Dj chaval\",\n      \"slug\": \"dj-chaval\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-chaval\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 163,\n      \"title\": \"Marco de Gennaro\",\n      \"slug\": \"marco-de-gennaro\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/marco-de-gennaro\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 174,\n      \"title\": \"Dj pulga\",\n      \"slug\": \"dj-pulga\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-pulga\",\n      \"websiteUrl\": null,\n      \"minPrice\": \"3000.00\",\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% off\",\n      \"promoSummary\": \"20% de descuento, exclusivo para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.\",\n      \"serviceHighlights\": [\n        \"Asesoría personalizada en todo el proceso del evento\",\n        \"DJ profesional para todo tipo de eventos.\",\n        \"Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Iluminación ambiental y decorativa.\",\n        \"Luces para pista de baile y efectos especiales.\",\n        \"Musicalización personalizada según el estilo del evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"description\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7367559719203777,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 115,
+            "title": "Dj Naoki",
+            "slug": "dj-naoki",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Naoki encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-naoki",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% Off",
+            "promoSummary": "15% de descuento en servicio de Dj, luces y sonido para bodas.",
+            "descriptionSnippet": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.",
+            "serviceHighlights": [
+              "Servicio de DJ para bodas",
+              "Iluminación para eventos",
+              "Sonido profesional para celebraciones",
+              "Asesoría y personalización según el estilo del evento"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para Lima",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7232333877230152,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 119,
+            "title": "Dj Siles",
+            "slug": "dj-siles",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Dj Siles encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% Off",
+            "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+            "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Alquiler de equipos de sonido",
+              "Iluminación para eventos",
+              "Musicalización personalizada según el tipo de celebración"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para servicios de DJ, sonido e iluminación",
+              "Para más información, consultar términos y condiciones con el proveedor",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7231396213778613,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 123,
+            "title": "Coro Ricardo Venegas",
+            "slug": "coro-ricardo-venegas",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Coro Ricardo Venegas encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+            "websiteUrl": "https://www.cororicardovenegas.net/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+            "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+            "serviceHighlights": [
+              "Coro en vivo para bodas y ceremonias religiosas",
+              "Musicalización para misas y eventos especiales",
+              "Repertorio adaptado según el tipo de ceremonia",
+              "Asesoría en selección musical"
+            ],
+            "termsHighlights": [
+              "Válido para Lima y provincia",
+              "No transferible ni acumulable",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.730800869909515,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 124,
+            "title": "Dj Luis Mora",
+            "slug": "dj-luis-mora",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Luis Mora encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-luis-mora",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de Dj para matrimonios",
+            "descriptionSnippet": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+            "serviceHighlights": [
+              "Servicio de DJ para matrimonios",
+              "Musicalización personalizada según el estilo del evento",
+              "Asesoría en la selección musical"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para novios referidos por Sin Envolturas",
+              "Aplica únicamente para servicio de DJ en matrimonios",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7222309054160454,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7367559719203777,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 120,
+            "title": "Dj Freddy Bobadilla",
+            "slug": "dj-freddy-bobadilla",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Freddy Bobadilla encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+            "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Iluminación para celebraciones",
+              "Sonido profesional",
+              "Musicalización adaptada al tipo de evento"
+            ],
+            "termsHighlights": [
+              "Beneficio válido en servicio de DJ, luces y sonido",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 125,
+            "title": "Dj chaval",
+            "slug": "dj-chaval",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj chaval encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-chaval",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% Off",
+            "promoSummary": "15% de descuento en servicio de DJ para matri",
+            "descriptionSnippet": "DJ Chaval crea el ambiente perfecto para cada momento.",
+            "serviceHighlights": [
+              "DJ set personalizado según el tipo de evento",
+              "Musicalización para cumpleaños, reuniones y celebraciones",
+              "Música para eventos corporativos y activaciones de marca"
+            ],
+            "termsHighlights": [
+              "No transferible ni acumulable",
+              "Válido solo para servicio de dj (no incluye sonido ni iluminación),",
+              "Válido para cualquier destino (no incluye pasaje, estadía ni viáticos de ser necesario)",
+              "Válido solo para anfitriones, valido para cualquier tipo de evento."
+            ],
+            "eventTypes": [],
+            "description": "DJ Chaval crea el ambiente perfecto para cada momento. Con una selección musical versátil y una lectura precisa del público, logra que cada evento fluya de forma natural, conectando a las personas y elevando la experiencia. Ya sea una celebración íntima o una reunión más grande, su propuesta combina buena música, energía y sensibilidad para adaptarse a cada tipo de ocasión.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 163,
+            "title": "Marco de Gennaro",
+            "slug": "marco-de-gennaro",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Marco de Gennaro encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+            "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+            "serviceHighlights": [
+              "Presentación en vivo de violín para eventos",
+              "Musicalización personalizada según el tipo de celebración",
+              "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para nuevos contratos",
+              "Sujeto a disponibilidad",
+              "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+              "No transferible ni acumulable con otras promociones",
+              "Aplica sobre tarifa de matrimonios",
+              "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+            ],
+            "eventTypes": [],
+            "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 174,
+            "title": "Dj pulga",
+            "slug": "dj-pulga",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Dj pulga encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+            "websiteUrl": null,
+            "minPrice": "3000.00",
+            "maxPrice": null,
+            "promoBadge": "35% off",
+            "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+            "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Musicalización personalizada según el tipo de celebración",
+              "Música para fiestas, reuniones y eventos corporativos",
+              "Asesoría en la selección musical"
+            ],
+            "termsHighlights": [
+              "Beneficio exclusivo para clientes de Sin Envolturas",
+              "No transferible ni acumulable con otras promociones",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 115,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7232333877230152,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 119,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7231396213778613,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 123,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.730800869909515,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 124,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7222309054160454,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7367559719203777,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 120,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 125,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 163,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          },
+          {
+            "provider_id": 174,
+            "category": "Música",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 9,
+          "context_candidates": 6,
+          "context_candidate_ids": [
+            115,
+            119,
+            123,
+            124,
+            187,
+            120
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 12041,
+          "load_plan": 9,
+          "prepare_working_plan": 0,
+          "extraction": 4477,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 3331,
+          "provider_enrichment": 153,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4014,
+          "save_plan": 39
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11412,
+            "output_tokens": 439,
+            "total_tokens": 11851,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4790,
+            "output_tokens": 363,
+            "total_tokens": 5153,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 16202,
+            "output_tokens": 802,
+            "total_tokens": 17004,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWG5QHR5VRP1C43DVFTGCWFV",
+        "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+        "runtime_latency_ms": 12041,
+        "extraction_latency_ms": 4477,
+        "compose_latency_ms": 4014,
+        "tools_called_count": 1,
+        "provider_results_count": 9,
+        "recommendation_context_candidates": 6,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17004,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8690285149981484,
+        "extraction_to_compose_ratio": 1.115346287992028,
+        "captured_at": "2026-07-02T01:05:13.478Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWG5Q605RVYNGGXDYDFWY08N",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.social.02-e81d0559",
+        "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "graduacion",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": "101-200",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "location"
+        ],
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              115,
+              119,
+              123,
+              124,
+              187,
+              120,
+              125,
+              163,
+              174
+            ],
+            "recommended_providers": [
+              {
+                "id": 115,
+                "title": "Dj Naoki",
+                "slug": "dj-naoki",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Naoki encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-naoki",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "15% Off",
+                "promoSummary": "15% de descuento en servicio de Dj, luces y sonido para bodas.",
+                "descriptionSnippet": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.",
+                "serviceHighlights": [
+                  "Servicio de DJ para bodas",
+                  "Iluminación para eventos",
+                  "Sonido profesional para celebraciones",
+                  "Asesoría y personalización según el estilo del evento"
+                ],
+                "termsHighlights": [
+                  "Válido únicamente para Lima",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7232333877230152,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 119,
+                "title": "Dj Siles",
+                "slug": "dj-siles",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Dj Siles encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "15% Off",
+                "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+                "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                "serviceHighlights": [
+                  "Servicio de DJ para eventos",
+                  "Alquiler de equipos de sonido",
+                  "Iluminación para eventos",
+                  "Musicalización personalizada según el tipo de celebración"
+                ],
+                "termsHighlights": [
+                  "Beneficio válido para servicios de DJ, sonido e iluminación",
+                  "Para más información, consultar términos y condiciones con el proveedor",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7231396213778613,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 123,
+                "title": "Coro Ricardo Venegas",
+                "slug": "coro-ricardo-venegas",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Coro Ricardo Venegas encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+                "websiteUrl": "https://www.cororicardovenegas.net/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+                "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+                "serviceHighlights": [
+                  "Coro en vivo para bodas y ceremonias religiosas",
+                  "Musicalización para misas y eventos especiales",
+                  "Repertorio adaptado según el tipo de ceremonia",
+                  "Asesoría en selección musical"
+                ],
+                "termsHighlights": [
+                  "Válido para Lima y provincia",
+                  "No transferible ni acumulable",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.730800869909515,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 124,
+                "title": "Dj Luis Mora",
+                "slug": "dj-luis-mora",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Luis Mora encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-luis-mora",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en el servicio de Dj para matrimonios",
+                "descriptionSnippet": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+                "serviceHighlights": [
+                  "Servicio de DJ para matrimonios",
+                  "Musicalización personalizada según el estilo del evento",
+                  "Asesoría en la selección musical"
+                ],
+                "termsHighlights": [
+                  "Beneficio válido para novios referidos por Sin Envolturas",
+                  "Aplica únicamente para servicio de DJ en matrimonios",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7222309054160454,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7367559719203777,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 120,
+                "title": "Dj Freddy Bobadilla",
+                "slug": "dj-freddy-bobadilla",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Freddy Bobadilla encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off",
+                "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                "serviceHighlights": [
+                  "Servicio de DJ para eventos",
+                  "Iluminación para celebraciones",
+                  "Sonido profesional",
+                  "Musicalización adaptada al tipo de evento"
+                ],
+                "termsHighlights": [
+                  "Beneficio válido en servicio de DJ, luces y sonido",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 125,
+                "title": "Dj chaval",
+                "slug": "dj-chaval",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj chaval encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-chaval",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "15% Off",
+                "promoSummary": "15% de descuento en servicio de DJ para matri",
+                "descriptionSnippet": "DJ Chaval crea el ambiente perfecto para cada momento.",
+                "serviceHighlights": [
+                  "DJ set personalizado según el tipo de evento",
+                  "Musicalización para cumpleaños, reuniones y celebraciones",
+                  "Música para eventos corporativos y activaciones de marca"
+                ],
+                "termsHighlights": [
+                  "No transferible ni acumulable",
+                  "Válido solo para servicio de dj (no incluye sonido ni iluminación),",
+                  "Válido para cualquier destino (no incluye pasaje, estadía ni viáticos de ser necesario)",
+                  "Válido solo para anfitriones, valido para cualquier tipo de evento."
+                ],
+                "eventTypes": [],
+                "description": "DJ Chaval crea el ambiente perfecto para cada momento. Con una selección musical versátil y una lectura precisa del público, logra que cada evento fluya de forma natural, conectando a las personas y elevando la experiencia. Ya sea una celebración íntima o una reunión más grande, su propuesta combina buena música, energía y sensibilidad para adaptarse a cada tipo de ocasión.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 163,
+                "title": "Marco de Gennaro",
+                "slug": "marco-de-gennaro",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "Marco de Gennaro encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+                "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+                "serviceHighlights": [
+                  "Presentación en vivo de violín para eventos",
+                  "Musicalización personalizada según el tipo de celebración",
+                  "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+                ],
+                "termsHighlights": [
+                  "Beneficio válido para nuevos contratos",
+                  "Sujeto a disponibilidad",
+                  "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+                  "No transferible ni acumulable con otras promociones",
+                  "Aplica sobre tarifa de matrimonios",
+                  "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+                ],
+                "eventTypes": [],
+                "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              },
+              {
+                "id": 174,
+                "title": "Dj pulga",
+                "slug": "dj-pulga",
+                "category": "Música",
+                "location": "Perú",
+                "priceLevel": "very_high",
+                "rating": "0.0",
+                "reason": "Dj pulga encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+                "websiteUrl": null,
+                "minPrice": "3000.00",
+                "maxPrice": null,
+                "promoBadge": "35% off",
+                "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+                "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+                "serviceHighlights": [
+                  "Servicio de DJ para eventos",
+                  "Musicalización personalizada según el tipo de celebración",
+                  "Música para fiestas, reuniones y eventos corporativos",
+                  "Asesoría en la selección musical"
+                ],
+                "termsHighlights": [
+                  "Beneficio exclusivo para clientes de Sin Envolturas",
+                  "No transferible ni acumulable con otras promociones",
+                  "Sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          115,
+          119,
+          123,
+          124,
+          187,
+          120,
+          125,
+          163,
+          174
+        ],
+        "recommended_providers": [
+          {
+            "id": 115,
+            "title": "Dj Naoki",
+            "slug": "dj-naoki",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Naoki encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-naoki",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% Off",
+            "promoSummary": "15% de descuento en servicio de Dj, luces y sonido para bodas.",
+            "descriptionSnippet": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.",
+            "serviceHighlights": [
+              "Servicio de DJ para bodas",
+              "Iluminación para eventos",
+              "Sonido profesional para celebraciones",
+              "Asesoría y personalización según el estilo del evento"
+            ],
+            "termsHighlights": [
+              "Válido únicamente para Lima",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7232333877230152,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 119,
+            "title": "Dj Siles",
+            "slug": "dj-siles",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Dj Siles encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% Off",
+            "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+            "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Alquiler de equipos de sonido",
+              "Iluminación para eventos",
+              "Musicalización personalizada según el tipo de celebración"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para servicios de DJ, sonido e iluminación",
+              "Para más información, consultar términos y condiciones con el proveedor",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7231396213778613,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 123,
+            "title": "Coro Ricardo Venegas",
+            "slug": "coro-ricardo-venegas",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Coro Ricardo Venegas encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+            "websiteUrl": "https://www.cororicardovenegas.net/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+            "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+            "serviceHighlights": [
+              "Coro en vivo para bodas y ceremonias religiosas",
+              "Musicalización para misas y eventos especiales",
+              "Repertorio adaptado según el tipo de ceremonia",
+              "Asesoría en selección musical"
+            ],
+            "termsHighlights": [
+              "Válido para Lima y provincia",
+              "No transferible ni acumulable",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.730800869909515,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 124,
+            "title": "Dj Luis Mora",
+            "slug": "dj-luis-mora",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Luis Mora encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-luis-mora",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en el servicio de Dj para matrimonios",
+            "descriptionSnippet": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+            "serviceHighlights": [
+              "Servicio de DJ para matrimonios",
+              "Musicalización personalizada según el estilo del evento",
+              "Asesoría en la selección musical"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para novios referidos por Sin Envolturas",
+              "Aplica únicamente para servicio de DJ en matrimonios",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7222309054160454,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7367559719203777,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 120,
+            "title": "Dj Freddy Bobadilla",
+            "slug": "dj-freddy-bobadilla",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Freddy Bobadilla encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off",
+            "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+            "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Iluminación para celebraciones",
+              "Sonido profesional",
+              "Musicalización adaptada al tipo de evento"
+            ],
+            "termsHighlights": [
+              "Beneficio válido en servicio de DJ, luces y sonido",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 125,
+            "title": "Dj chaval",
+            "slug": "dj-chaval",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj chaval encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-chaval",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "15% Off",
+            "promoSummary": "15% de descuento en servicio de DJ para matri",
+            "descriptionSnippet": "DJ Chaval crea el ambiente perfecto para cada momento.",
+            "serviceHighlights": [
+              "DJ set personalizado según el tipo de evento",
+              "Musicalización para cumpleaños, reuniones y celebraciones",
+              "Música para eventos corporativos y activaciones de marca"
+            ],
+            "termsHighlights": [
+              "No transferible ni acumulable",
+              "Válido solo para servicio de dj (no incluye sonido ni iluminación),",
+              "Válido para cualquier destino (no incluye pasaje, estadía ni viáticos de ser necesario)",
+              "Válido solo para anfitriones, valido para cualquier tipo de evento."
+            ],
+            "eventTypes": [],
+            "description": "DJ Chaval crea el ambiente perfecto para cada momento. Con una selección musical versátil y una lectura precisa del público, logra que cada evento fluya de forma natural, conectando a las personas y elevando la experiencia. Ya sea una celebración íntima o una reunión más grande, su propuesta combina buena música, energía y sensibilidad para adaptarse a cada tipo de ocasión.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 163,
+            "title": "Marco de Gennaro",
+            "slug": "marco-de-gennaro",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Marco de Gennaro encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+            "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+            "serviceHighlights": [
+              "Presentación en vivo de violín para eventos",
+              "Musicalización personalizada según el tipo de celebración",
+              "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+            ],
+            "termsHighlights": [
+              "Beneficio válido para nuevos contratos",
+              "Sujeto a disponibilidad",
+              "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+              "No transferible ni acumulable con otras promociones",
+              "Aplica sobre tarifa de matrimonios",
+              "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+            ],
+            "eventTypes": [],
+            "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          },
+          {
+            "id": 174,
+            "title": "Dj pulga",
+            "slug": "dj-pulga",
+            "category": "Música",
+            "location": "Perú",
+            "priceLevel": "very_high",
+            "rating": "0.0",
+            "reason": "Dj pulga encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+            "websiteUrl": null,
+            "minPrice": "3000.00",
+            "maxPrice": null,
+            "promoBadge": "35% off",
+            "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+            "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+            "serviceHighlights": [
+              "Servicio de DJ para eventos",
+              "Musicalización personalizada según el tipo de celebración",
+              "Música para fiestas, reuniones y eventos corporativos",
+              "Asesoría en la selección musical"
+            ],
+            "termsHighlights": [
+              "Beneficio exclusivo para clientes de Sin Envolturas",
+              "No transferible ni acumulable con otras promociones",
+              "Sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario busca proveedor(es) de música para el evento."
+        ],
+        "conversation_summary": "Graduación para 150 personas; frente activo: Música.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T01:05:09.416Z"
+      },
+      "latencyMs": 12190,
+      "rawTargetResponse": {
+        "message": "Encontré opciones de música para una graduación de 150 personas. La mayoría son DJs para eventos, y también hay una opción de coro en vivo\n\n1. Dj Naoki\n Propone una experiencia completa con música, iluminación y sonido, útil para un evento de este tamaño\n Ubicación: Perú.\n Precio: $$$.\n Promo: 15% Off.\n Nota: Su propuesta está más enfocada en bodas, así que conviene confirmar que se adapte al estilo de tu graduación.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-naoki\n\n2. Dj Siles\n Ofrece un servicio integral para eventos y se adapta a distintas celebraciones, lo que lo hace versátil para una graduación\n Ubicación: Perú.\n Precio: $$.\n Promo: 15% Off.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-siles\n\n3. Coro Ricardo Venegas\n Es la opción más distinta si buscas música en vivo con un formato más solemne o especial\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Está orientado sobre todo a ceremonias, bodas y misas.\n\n Ficha: https://sinenvolturas.com/proveedores/coro-ricardo-venegas\n\n4. Dj Luis Mora\n Tiene enfoque en matrimonios y puede acompañar cada momento con música cuidada\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off.\n Nota: Por su especialidad, conviene validar si encaja con una graduación.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-luis-mora\n\n5. Dj Bufi\n Trae asesoría personalizada y experiencia en eventos privados y corporativos, útil si quieres acompañamiento más cercano\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: Su perfil está más marcado hacia bodas y eventos privados.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi\n\n6. Dj Freddy Bobadilla\n Ofrece una experiencia completa con música, iluminación y sonido para un ambiente dinámico\n Ubicación: Perú.\n Precio: $$$.\n Promo: 10% Off.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+        "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+        "plan_id": "01KWG5Q605RVYNGGXDYDFWY08N",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWG5QHR5VRP1C43DVFTGCWFV",
+          "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+          "plan_id": "01KWG5Q605RVYNGGXDYDFWY08N",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "location"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": null\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 115,\n      \"title\": \"Dj Naoki\",\n      \"slug\": \"dj-naoki\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-naoki\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"15% Off\",\n      \"promoSummary\": \"15% de descuento en servicio de Dj, luces y sonido para bodas.\",\n      \"descriptionSnippet\": \"DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.\",\n      \"serviceHighlights\": [\n        \"Servicio de DJ para bodas\",\n        \"Iluminación para eventos\",\n        \"Sonido profesional para celebraciones\",\n        \"Asesoría y personalización según el estilo del evento\"\n      ],\n      \"termsHighlights\": [\n        \"Válido únicamente para Lima\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7232333877230152,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 119,\n      \"title\": \"Dj Siles\",\n      \"slug\": \"dj-siles\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-siles\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"15% Off\",\n      \"promoSummary\": \"15% de descuento en el servicio de:\\r\\n-  DJ\\r\\n- Alquiler de equipo de sonido e iluminación\",\n      \"descriptionSnippet\": \"DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.\",\n      \"serviceHighlights\": [\n        \"Servicio de DJ para eventos\",\n        \"Alquiler de equipos de sonido\",\n        \"Iluminación para eventos\",\n        \"Musicalización personalizada según el tipo de celebración\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio válido para servicios de DJ, sonido e iluminación\",\n        \"Para más información, consultar términos y condiciones con el proveedor\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7231396213778613,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 120,\n      \"title\": \"Dj Freddy Bobadilla\",\n      \"slug\": \"dj-freddy-bobadilla\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-freddy-bobadilla\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 123,\n      \"title\": \"Coro Ricardo Venegas\",\n      \"slug\": \"coro-ricardo-venegas\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/coro-ricardo-venegas\",\n      \"websiteUrl\": \"https://www.cororicardovenegas.net/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off\",\n      \"promoSummary\": \"10% de descuento en todos los paquetes de coros para bodas y misas\",\n      \"descriptionSnippet\": \"Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.\",\n      \"serviceHighlights\": [\n        \"Coro en vivo para bodas y ceremonias religiosas\",\n        \"Musicalización para misas y eventos especiales\",\n        \"Repertorio adaptado según el tipo de ceremonia\",\n        \"Asesoría en selección musical\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para Lima y provincia\",\n        \"No transferible ni acumulable\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.730800869909515,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 124,\n      \"title\": \"Dj Luis Mora\",\n      \"slug\": \"dj-luis-mora\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-luis-mora\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off\",\n      \"promoSummary\": \"10% de descuento en el servicio de Dj para matrimonios\",\n      \"descriptionSnippet\": \"DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.\",\n      \"serviceHighlights\": [\n        \"Servicio de DJ para matrimonios\",\n        \"Musicalización personalizada según el estilo del evento\",\n        \"Asesoría en la selección musical\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio válido para novios referidos por Sin Envolturas\",\n        \"Aplica únicamente para servicio de DJ en matrimonios\",\n        \"Sujeto a disponibilidad\"\n      ],\n      \"description\": \"DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7222309054160454,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    },\n    {\n      \"id\": 125,\n      \"title\": \"Dj chaval\",\n      \"slug\": \"dj-chaval\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-chaval\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 163,\n      \"title\": \"Marco de Gennaro\",\n      \"slug\": \"marco-de-gennaro\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/marco-de-gennaro\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 174,\n      \"title\": \"Dj pulga\",\n      \"slug\": \"dj-pulga\",\n      \"category\": \"Música\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"very_high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-pulga\",\n      \"websiteUrl\": null,\n      \"minPrice\": \"3000.00\",\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% off\",\n      \"promoSummary\": \"20% de descuento, exclusivo para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.\",\n      \"serviceHighlights\": [\n        \"Asesoría personalizada en todo el proceso del evento\",\n        \"DJ profesional para todo tipo de eventos.\",\n        \"Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Iluminación ambiental y decorativa.\",\n        \"Luces para pista de baile y efectos especiales.\",\n        \"Musicalización personalizada según el estilo del evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"description\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7367559719203777,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 115,
+              "title": "Dj Naoki",
+              "slug": "dj-naoki",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Naoki encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-naoki",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% Off",
+              "promoSummary": "15% de descuento en servicio de Dj, luces y sonido para bodas.",
+              "descriptionSnippet": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.",
+              "serviceHighlights": [
+                "Servicio de DJ para bodas",
+                "Iluminación para eventos",
+                "Sonido profesional para celebraciones",
+                "Asesoría y personalización según el estilo del evento"
+              ],
+              "termsHighlights": [
+                "Válido únicamente para Lima",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7232333877230152,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 119,
+              "title": "Dj Siles",
+              "slug": "dj-siles",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Dj Siles encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% Off",
+              "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+              "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Alquiler de equipos de sonido",
+                "Iluminación para eventos",
+                "Musicalización personalizada según el tipo de celebración"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para servicios de DJ, sonido e iluminación",
+                "Para más información, consultar términos y condiciones con el proveedor",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7231396213778613,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 123,
+              "title": "Coro Ricardo Venegas",
+              "slug": "coro-ricardo-venegas",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Coro Ricardo Venegas encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+              "websiteUrl": "https://www.cororicardovenegas.net/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+              "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+              "serviceHighlights": [
+                "Coro en vivo para bodas y ceremonias religiosas",
+                "Musicalización para misas y eventos especiales",
+                "Repertorio adaptado según el tipo de ceremonia",
+                "Asesoría en selección musical"
+              ],
+              "termsHighlights": [
+                "Válido para Lima y provincia",
+                "No transferible ni acumulable",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.730800869909515,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 124,
+              "title": "Dj Luis Mora",
+              "slug": "dj-luis-mora",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Luis Mora encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-luis-mora",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de Dj para matrimonios",
+              "descriptionSnippet": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+              "serviceHighlights": [
+                "Servicio de DJ para matrimonios",
+                "Musicalización personalizada según el estilo del evento",
+                "Asesoría en la selección musical"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para novios referidos por Sin Envolturas",
+                "Aplica únicamente para servicio de DJ en matrimonios",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7222309054160454,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7367559719203777,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 120,
+              "title": "Dj Freddy Bobadilla",
+              "slug": "dj-freddy-bobadilla",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Freddy Bobadilla encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+              "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Iluminación para celebraciones",
+                "Sonido profesional",
+                "Musicalización adaptada al tipo de evento"
+              ],
+              "termsHighlights": [
+                "Beneficio válido en servicio de DJ, luces y sonido",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 125,
+              "title": "Dj chaval",
+              "slug": "dj-chaval",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj chaval encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-chaval",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% Off",
+              "promoSummary": "15% de descuento en servicio de DJ para matri",
+              "descriptionSnippet": "DJ Chaval crea el ambiente perfecto para cada momento.",
+              "serviceHighlights": [
+                "DJ set personalizado según el tipo de evento",
+                "Musicalización para cumpleaños, reuniones y celebraciones",
+                "Música para eventos corporativos y activaciones de marca"
+              ],
+              "termsHighlights": [
+                "No transferible ni acumulable",
+                "Válido solo para servicio de dj (no incluye sonido ni iluminación),",
+                "Válido para cualquier destino (no incluye pasaje, estadía ni viáticos de ser necesario)",
+                "Válido solo para anfitriones, valido para cualquier tipo de evento."
+              ],
+              "eventTypes": [],
+              "description": "DJ Chaval crea el ambiente perfecto para cada momento. Con una selección musical versátil y una lectura precisa del público, logra que cada evento fluya de forma natural, conectando a las personas y elevando la experiencia. Ya sea una celebración íntima o una reunión más grande, su propuesta combina buena música, energía y sensibilidad para adaptarse a cada tipo de ocasión.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 163,
+              "title": "Marco de Gennaro",
+              "slug": "marco-de-gennaro",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Marco de Gennaro encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+              "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+              "serviceHighlights": [
+                "Presentación en vivo de violín para eventos",
+                "Musicalización personalizada según el tipo de celebración",
+                "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para nuevos contratos",
+                "Sujeto a disponibilidad",
+                "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+                "No transferible ni acumulable con otras promociones",
+                "Aplica sobre tarifa de matrimonios",
+                "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+              ],
+              "eventTypes": [],
+              "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 174,
+              "title": "Dj pulga",
+              "slug": "dj-pulga",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Dj pulga encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+              "websiteUrl": null,
+              "minPrice": "3000.00",
+              "maxPrice": null,
+              "promoBadge": "35% off",
+              "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+              "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Musicalización personalizada según el tipo de celebración",
+                "Música para fiestas, reuniones y eventos corporativos",
+                "Asesoría en la selección musical"
+              ],
+              "termsHighlights": [
+                "Beneficio exclusivo para clientes de Sin Envolturas",
+                "No transferible ni acumulable con otras promociones",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 115,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7232333877230152,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 119,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7231396213778613,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 123,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.730800869909515,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 124,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7222309054160454,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7367559719203777,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 120,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 125,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 163,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            },
+            {
+              "provider_id": 174,
+              "category": "Música",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 9,
+            "context_candidates": 6,
+            "context_candidate_ids": [
+              115,
+              119,
+              123,
+              124,
+              187,
+              120
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 12041,
+            "load_plan": 9,
+            "prepare_working_plan": 0,
+            "extraction": 4477,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 3331,
+            "provider_enrichment": 153,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4014,
+            "save_plan": 39
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11412,
+              "output_tokens": 439,
+              "total_tokens": 11851,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4790,
+              "output_tokens": 363,
+              "total_tokens": 5153,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 16202,
+              "output_tokens": 802,
+              "total_tokens": 17004,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWG5Q605RVYNGGXDYDFWY08N",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.social.02-e81d0559",
+          "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "graduacion",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "101-200",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "location"
+          ],
+          "provider_needs": [
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                115,
+                119,
+                123,
+                124,
+                187,
+                120,
+                125,
+                163,
+                174
+              ],
+              "recommended_providers": [
+                {
+                  "id": 115,
+                  "title": "Dj Naoki",
+                  "slug": "dj-naoki",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Naoki encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-naoki",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "15% Off",
+                  "promoSummary": "15% de descuento en servicio de Dj, luces y sonido para bodas.",
+                  "descriptionSnippet": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.",
+                  "serviceHighlights": [
+                    "Servicio de DJ para bodas",
+                    "Iluminación para eventos",
+                    "Sonido profesional para celebraciones",
+                    "Asesoría y personalización según el estilo del evento"
+                  ],
+                  "termsHighlights": [
+                    "Válido únicamente para Lima",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7232333877230152,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 119,
+                  "title": "Dj Siles",
+                  "slug": "dj-siles",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Dj Siles encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "15% Off",
+                  "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+                  "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                  "serviceHighlights": [
+                    "Servicio de DJ para eventos",
+                    "Alquiler de equipos de sonido",
+                    "Iluminación para eventos",
+                    "Musicalización personalizada según el tipo de celebración"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio válido para servicios de DJ, sonido e iluminación",
+                    "Para más información, consultar términos y condiciones con el proveedor",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7231396213778613,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 123,
+                  "title": "Coro Ricardo Venegas",
+                  "slug": "coro-ricardo-venegas",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Coro Ricardo Venegas encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+                  "websiteUrl": "https://www.cororicardovenegas.net/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+                  "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+                  "serviceHighlights": [
+                    "Coro en vivo para bodas y ceremonias religiosas",
+                    "Musicalización para misas y eventos especiales",
+                    "Repertorio adaptado según el tipo de ceremonia",
+                    "Asesoría en selección musical"
+                  ],
+                  "termsHighlights": [
+                    "Válido para Lima y provincia",
+                    "No transferible ni acumulable",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.730800869909515,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 124,
+                  "title": "Dj Luis Mora",
+                  "slug": "dj-luis-mora",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Luis Mora encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-luis-mora",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en el servicio de Dj para matrimonios",
+                  "descriptionSnippet": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+                  "serviceHighlights": [
+                    "Servicio de DJ para matrimonios",
+                    "Musicalización personalizada según el estilo del evento",
+                    "Asesoría en la selección musical"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio válido para novios referidos por Sin Envolturas",
+                    "Aplica únicamente para servicio de DJ en matrimonios",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7222309054160454,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7367559719203777,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 120,
+                  "title": "Dj Freddy Bobadilla",
+                  "slug": "dj-freddy-bobadilla",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Freddy Bobadilla encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off",
+                  "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+                  "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                  "serviceHighlights": [
+                    "Servicio de DJ para eventos",
+                    "Iluminación para celebraciones",
+                    "Sonido profesional",
+                    "Musicalización adaptada al tipo de evento"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio válido en servicio de DJ, luces y sonido",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 125,
+                  "title": "Dj chaval",
+                  "slug": "dj-chaval",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj chaval encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-chaval",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "15% Off",
+                  "promoSummary": "15% de descuento en servicio de DJ para matri",
+                  "descriptionSnippet": "DJ Chaval crea el ambiente perfecto para cada momento.",
+                  "serviceHighlights": [
+                    "DJ set personalizado según el tipo de evento",
+                    "Musicalización para cumpleaños, reuniones y celebraciones",
+                    "Música para eventos corporativos y activaciones de marca"
+                  ],
+                  "termsHighlights": [
+                    "No transferible ni acumulable",
+                    "Válido solo para servicio de dj (no incluye sonido ni iluminación),",
+                    "Válido para cualquier destino (no incluye pasaje, estadía ni viáticos de ser necesario)",
+                    "Válido solo para anfitriones, valido para cualquier tipo de evento."
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Chaval crea el ambiente perfecto para cada momento. Con una selección musical versátil y una lectura precisa del público, logra que cada evento fluya de forma natural, conectando a las personas y elevando la experiencia. Ya sea una celebración íntima o una reunión más grande, su propuesta combina buena música, energía y sensibilidad para adaptarse a cada tipo de ocasión.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 163,
+                  "title": "Marco de Gennaro",
+                  "slug": "marco-de-gennaro",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "Marco de Gennaro encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+                  "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+                  "serviceHighlights": [
+                    "Presentación en vivo de violín para eventos",
+                    "Musicalización personalizada según el tipo de celebración",
+                    "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio válido para nuevos contratos",
+                    "Sujeto a disponibilidad",
+                    "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+                    "No transferible ni acumulable con otras promociones",
+                    "Aplica sobre tarifa de matrimonios",
+                    "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+                  ],
+                  "eventTypes": [],
+                  "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                },
+                {
+                  "id": 174,
+                  "title": "Dj pulga",
+                  "slug": "dj-pulga",
+                  "category": "Música",
+                  "location": "Perú",
+                  "priceLevel": "very_high",
+                  "rating": "0.0",
+                  "reason": "Dj pulga encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+                  "websiteUrl": null,
+                  "minPrice": "3000.00",
+                  "maxPrice": null,
+                  "promoBadge": "35% off",
+                  "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+                  "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+                  "serviceHighlights": [
+                    "Servicio de DJ para eventos",
+                    "Musicalización personalizada según el tipo de celebración",
+                    "Música para fiestas, reuniones y eventos corporativos",
+                    "Asesoría en la selección musical"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio exclusivo para clientes de Sin Envolturas",
+                    "No transferible ni acumulable con otras promociones",
+                    "Sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            115,
+            119,
+            123,
+            124,
+            187,
+            120,
+            125,
+            163,
+            174
+          ],
+          "recommended_providers": [
+            {
+              "id": 115,
+              "title": "Dj Naoki",
+              "slug": "dj-naoki",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Naoki encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-naoki",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% Off",
+              "promoSummary": "15% de descuento en servicio de Dj, luces y sonido para bodas.",
+              "descriptionSnippet": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa.",
+              "serviceHighlights": [
+                "Servicio de DJ para bodas",
+                "Iluminación para eventos",
+                "Sonido profesional para celebraciones",
+                "Asesoría y personalización según el estilo del evento"
+              ],
+              "termsHighlights": [
+                "Válido únicamente para Lima",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Naoki ofrece a los clientes de Sin Envolturas una propuesta especializada en bodas, combinando música, iluminación y sonido para crear una experiencia completa. Su enfoque busca acompañar cada momento del evento con una ambientación.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7232333877230152,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 119,
+              "title": "Dj Siles",
+              "slug": "dj-siles",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Dj Siles encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-siles",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% Off",
+              "promoSummary": "15% de descuento en el servicio de:\r\n-  DJ\r\n- Alquiler de equipo de sonido e iluminación",
+              "descriptionSnippet": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Alquiler de equipos de sonido",
+                "Iluminación para eventos",
+                "Musicalización personalizada según el tipo de celebración"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para servicios de DJ, sonido e iluminación",
+                "Para más información, consultar términos y condiciones con el proveedor",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Siles ofrece a los clientes de Sin Envolturas una propuesta integral para eventos, combinando música, sonido e iluminación para crear una experiencia completa y adaptable a distintos tipos de celebraciones.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7231396213778613,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 123,
+              "title": "Coro Ricardo Venegas",
+              "slug": "coro-ricardo-venegas",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Coro Ricardo Venegas encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/coro-ricardo-venegas",
+              "websiteUrl": "https://www.cororicardovenegas.net/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en todos los paquetes de coros para bodas y misas",
+              "descriptionSnippet": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas.",
+              "serviceHighlights": [
+                "Coro en vivo para bodas y ceremonias religiosas",
+                "Musicalización para misas y eventos especiales",
+                "Repertorio adaptado según el tipo de ceremonia",
+                "Asesoría en selección musical"
+              ],
+              "termsHighlights": [
+                "Válido para Lima y provincia",
+                "No transferible ni acumulable",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "Coro Ricardo Venegas ofrece a los clientes de Sin Envolturas una propuesta musical en vivo ideal para ceremonias, bodas y misas. Su interpretación aporta un ambiente solemne y emotivo, acompañando cada momento con armonía y sensibilidad.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.730800869909515,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 124,
+              "title": "Dj Luis Mora",
+              "slug": "dj-luis-mora",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Luis Mora encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-luis-mora",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en el servicio de Dj para matrimonios",
+              "descriptionSnippet": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+              "serviceHighlights": [
+                "Servicio de DJ para matrimonios",
+                "Musicalización personalizada según el estilo del evento",
+                "Asesoría en la selección musical"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para novios referidos por Sin Envolturas",
+                "Aplica únicamente para servicio de DJ en matrimonios",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Luis Mora ofrece a los clientes de Sin Envolturas una propuesta musical enfocada en matrimonios, acompañando cada momento del evento con una selección cuidada y adaptada al estilo de los novios.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7222309054160454,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7367559719203777,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 120,
+              "title": "Dj Freddy Bobadilla",
+              "slug": "dj-freddy-bobadilla",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Freddy Bobadilla encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-freddy-bobadilla",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off",
+              "promoSummary": "10% de descuento en servicio de Dj, luces y sonido.",
+              "descriptionSnippet": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Iluminación para celebraciones",
+                "Sonido profesional",
+                "Musicalización adaptada al tipo de evento"
+              ],
+              "termsHighlights": [
+                "Beneficio válido en servicio de DJ, luces y sonido",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Freddy Bobadilla ofrece a los clientes de Sin Envolturas una experiencia completa para eventos, integrando música, iluminación y sonido para crear un ambiente dinámico y bien ejecutado.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 125,
+              "title": "Dj chaval",
+              "slug": "dj-chaval",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj chaval encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-chaval",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "15% Off",
+              "promoSummary": "15% de descuento en servicio de DJ para matri",
+              "descriptionSnippet": "DJ Chaval crea el ambiente perfecto para cada momento.",
+              "serviceHighlights": [
+                "DJ set personalizado según el tipo de evento",
+                "Musicalización para cumpleaños, reuniones y celebraciones",
+                "Música para eventos corporativos y activaciones de marca"
+              ],
+              "termsHighlights": [
+                "No transferible ni acumulable",
+                "Válido solo para servicio de dj (no incluye sonido ni iluminación),",
+                "Válido para cualquier destino (no incluye pasaje, estadía ni viáticos de ser necesario)",
+                "Válido solo para anfitriones, valido para cualquier tipo de evento."
+              ],
+              "eventTypes": [],
+              "description": "DJ Chaval crea el ambiente perfecto para cada momento. Con una selección musical versátil y una lectura precisa del público, logra que cada evento fluya de forma natural, conectando a las personas y elevando la experiencia. Ya sea una celebración íntima o una reunión más grande, su propuesta combina buena música, energía y sensibilidad para adaptarse a cada tipo de ocasión.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 163,
+              "title": "Marco de Gennaro",
+              "slug": "marco-de-gennaro",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Marco de Gennaro encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/marco-de-gennaro",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento en el servicio en vivo de vilolín",
+              "descriptionSnippet": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva.",
+              "serviceHighlights": [
+                "Presentación en vivo de violín para eventos",
+                "Musicalización personalizada según el tipo de celebración",
+                "Acompañamiento musical para ceremonias, recepciones o momentos especiales"
+              ],
+              "termsHighlights": [
+                "Beneficio válido para nuevos contratos",
+                "Sujeto a disponibilidad",
+                "Promoción válida hasta 18 meses después de la fecha de reserva con Sin Envolturas",
+                "No transferible ni acumulable con otras promociones",
+                "Aplica sobre tarifa de matrimonios",
+                "En caso de eventos fuera de Lima, no incluye viáticos adicionales"
+              ],
+              "eventTypes": [],
+              "description": "Marco de Gennaro ofrece a los clientes de Sin Envolturas una propuesta musical en vivo con violín, ideal para acompañar momentos especiales con una atmósfera elegante y emotiva. Su estilo combina técnica y sensibilidad para realzar cada instante del evento.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            },
+            {
+              "id": 174,
+              "title": "Dj pulga",
+              "slug": "dj-pulga",
+              "category": "Música",
+              "location": "Perú",
+              "priceLevel": "very_high",
+              "rating": "0.0",
+              "reason": "Dj pulga encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-pulga",
+              "websiteUrl": null,
+              "minPrice": "3000.00",
+              "maxPrice": null,
+              "promoBadge": "35% off",
+              "promoSummary": "35% de descuento en el servicio de Dj para matrimonios",
+              "descriptionSnippet": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal.",
+              "serviceHighlights": [
+                "Servicio de DJ para eventos",
+                "Musicalización personalizada según el tipo de celebración",
+                "Música para fiestas, reuniones y eventos corporativos",
+                "Asesoría en la selección musical"
+              ],
+              "termsHighlights": [
+                "Beneficio exclusivo para clientes de Sin Envolturas",
+                "No transferible ni acumulable con otras promociones",
+                "Sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "DJ Pulga ofrece a los clientes de Sin Envolturas una propuesta musical dinámica y versátil, adaptándose a cada tipo de evento para crear el ambiente ideal. Su estilo combina buena energía y una lectura precisa del público, asegurando que cada momento fluya de forma natural.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario busca proveedor(es) de música para el evento."
+          ],
+          "conversation_summary": "Graduación para 150 personas; frente activo: Música.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T01:05:09.416Z"
+        },
+        "perf": {
+          "trace_id": "01KWG5QHR5VRP1C43DVFTGCWFV",
+          "conversation_id": "conv_6a45b94589e88195bbeb2edd781ee4a9020e0a995762c894",
+          "runtime_latency_ms": 12041,
+          "extraction_latency_ms": 4477,
+          "compose_latency_ms": 4014,
+          "tools_called_count": 1,
+          "provider_results_count": 9,
+          "recommendation_context_candidates": 6,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17004,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8690285149981484,
+          "extraction_to_compose_ratio": 1.115346287992028,
+          "captured_at": "2026-07-02T01:05:13.478Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T01:05:13.530Z",
+  "completedAt": "2026-07-02T01:05:13.536Z"
+}

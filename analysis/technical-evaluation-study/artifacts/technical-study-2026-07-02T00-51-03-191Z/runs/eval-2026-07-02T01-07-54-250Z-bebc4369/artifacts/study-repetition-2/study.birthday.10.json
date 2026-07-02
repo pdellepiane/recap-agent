@@ -1,0 +1,2592 @@
+{
+  "runId": "eval-2026-07-02T01-07-54-250Z-bebc4369",
+  "caseId": "study.birthday.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.875,
+  "totalLatencyMs": 21700,
+  "totalToolCalls": 5,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Baile\"",
+    "active_need_category=\"Baile\"",
+    "location=\"Lima\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Baile:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-02T00-51-03-191Z/runs/eval-2026-07-02T01-07-54-250Z-bebc4369/artifacts/study-repetition-2/study.birthday.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition recomendar->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.875,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 10850,
+    "p95_latency_ms": 11999,
+    "tool_calls_total": 5,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 2.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.34615384615384615,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 41727,
+    "cache_hit_rate": 0.8659834842304248
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco animación temática medieval para cumpleaños en Lurín, 20 personas."
+      },
+      "outputText": "Encontré estas opciones de Baile para tu cumpleaños en Lurín; las tres están orientadas a clases de baile para novios, así que encajan mejor si quieres una dinámica coreografiada o una animación con baile\n\n1. Dance & Grace\n Tiene coreografías personalizadas y una propuesta enfocada en que la pareja o invitados luzcan bien en la presentación\n Ubicación: Perú.\n Precio: $$$.\n Promo: 20% Off.\n Nota: Está más orientado a primer baile de pareja que a animación temática medieval como tal.\n\n Ficha: https://sinenvolturas.com/proveedores/dance-grace\n\n2. Arthur Murray\n Ofrece un enfoque fácil y divertido, con buen balance entre aprendizaje y puesta en escena\n Ubicación: Perú.\n Precio: $$.\n Promo: 20% Off.\n Nota: También está pensado para novios, no para un show medieval específico.\n\n Ficha: https://sinenvolturas.com/proveedores/arthur-murray\n\n3. Bodanza\n Incluye descuentos más altos y varias líneas de clase, lo que puede dar más margen para adaptar la dinámica\n Ubicación: Perú.\n Precio: $$$.\n Promo: 25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit.\n Nota: La especialidad principal sigue siendo baile para novios, no ambientación medieval.\n\n Ficha: https://sinenvolturas.com/proveedores/bodanza",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWG67V9AZMMV3EZJA2BVMGYK",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Baile\",\n  \"location\": \"Lurín\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 86,\n      \"title\": \"Bodanza\",\n      \"slug\": \"bodanza\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Baile, reporta cobertura en Perú (confirma atención exacta en Lurín)\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 121,\n      \"title\": \"Dance & Grace\",\n      \"slug\": \"dance-grace\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \\r\\n\\r\\nRegalo adicional: Sesión de vals para familiares en el ensayo general.\",\n      \"descriptionSnippet\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Coreografías personalizadas\",\n        \"Ensayos y preparación para el primer baile\",\n        \"Clases presenciales y virtuales\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clases presenciales en Lima y virtuales a nivel mundial.\",\n        \"Paquete mínimo de 5 clases para coreografías de novios.\",\n        \"El paquete completo puede ser transferible.\",\n        \"No acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7902366744971884,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, reporta cobertura en Perú (confirma atención exacta en Lurín)\"\n    },\n    {\n      \"id\": 127,\n      \"title\": \"Arthur Murray\",\n      \"slug\": \"arthur-murray\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n      \"websiteUrl\": \"http://www.arthurmurrayperu.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Programas de baile personalizados\",\n        \"Preparación para el primer baile\",\n        \"Clases de prueba\"\n      ],\n      \"termsHighlights\": [\n        \"Aplica en cualquiera de los programas de baile disponibles.\",\n        \"Incluye una primera clase de prueba totalmente gratuita.\",\n        \"Beneficio sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7743038044730288,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, reporta cobertura en Perú (confirma atención exacta en Lurín)\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 121,
+            "title": "Dance & Grace",
+            "slug": "dance-grace",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dance & Grace encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+            "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Ensayos y preparación para el primer baile",
+              "Clases presenciales y virtuales"
+            ],
+            "termsHighlights": [
+              "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Paquete mínimo de 5 clases para coreografías de novios.",
+              "El paquete completo puede ser transferible.",
+              "No acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7902366744971884,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 127,
+            "title": "Arthur Murray",
+            "slug": "arthur-murray",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Arthur Murray encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+            "websiteUrl": "http://www.arthurmurrayperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Programas de baile personalizados",
+              "Preparación para el primer baile",
+              "Clases de prueba"
+            ],
+            "termsHighlights": [
+              "Aplica en cualquiera de los programas de baile disponibles.",
+              "Incluye una primera clase de prueba totalmente gratuita.",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7743038044730288,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 86,
+            "title": "Bodanza",
+            "slug": "bodanza",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Bodanza encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+            "websiteUrl": "https://bodanza.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": null,
+            "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+            "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Clases en Bodanza Latin Studio",
+              "Clases de baile fitness en Bodanza Latin Fit"
+            ],
+            "termsHighlights": [
+              "Aplica en:",
+              "Bodanza escuela de baile para novios",
+              "Bodanza Latin Studio",
+              "Bodanza Latin Fit",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 121,
+            "category": "Baile",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7902366744971884,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 127,
+            "category": "Baile",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7743038044730288,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 86,
+            "category": "Baile",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 3,
+          "context_candidates": 3,
+          "context_candidate_ids": [
+            121,
+            127,
+            86
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 9550,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 3586,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2499,
+          "provider_enrichment": 86,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3346,
+          "save_plan": 18
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11417,
+            "output_tokens": 459,
+            "total_tokens": 11876,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4608,
+            "output_tokens": 249,
+            "total_tokens": 4857,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 16025,
+            "output_tokens": 708,
+            "total_tokens": 16733,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWG67V9AZMMV3EZJA2BVMGYK",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "runtime_latency_ms": 9550,
+        "extraction_latency_ms": 3586,
+        "compose_latency_ms": 3346,
+        "tools_called_count": 1,
+        "provider_results_count": 3,
+        "recommendation_context_candidates": 3,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16733,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8786271450858034,
+        "extraction_to_compose_ratio": 1.0717274357441722,
+        "captured_at": "2026-07-02T01:14:07.530Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-de97fa95",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.82,
+        "event_type": "cumpleanos",
+        "vendor_category": "Baile",
+        "active_need_category": "Baile",
+        "location": "Lurín",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "preferences": [
+          "animación temática medieval"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Baile",
+            "status": "shortlisted",
+            "preferences": [
+              "animación temática medieval"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              121,
+              127,
+              86
+            ],
+            "recommended_providers": [
+              {
+                "id": 121,
+                "title": "Dance & Grace",
+                "slug": "dance-grace",
+                "category": "Baile",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dance & Grace encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+                "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                "serviceHighlights": [
+                  "Clases de baile para novios",
+                  "Coreografías personalizadas",
+                  "Ensayos y preparación para el primer baile",
+                  "Clases presenciales y virtuales"
+                ],
+                "termsHighlights": [
+                  "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                  "Paquete mínimo de 5 clases para coreografías de novios.",
+                  "El paquete completo puede ser transferible.",
+                  "No acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7902366744971884,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 127,
+                "title": "Arthur Murray",
+                "slug": "arthur-murray",
+                "category": "Baile",
+                "location": "Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Arthur Murray encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+                "websiteUrl": "http://www.arthurmurrayperu.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                "serviceHighlights": [
+                  "Clases de baile para novios",
+                  "Programas de baile personalizados",
+                  "Preparación para el primer baile",
+                  "Clases de prueba"
+                ],
+                "termsHighlights": [
+                  "Aplica en cualquiera de los programas de baile disponibles.",
+                  "Incluye una primera clase de prueba totalmente gratuita.",
+                  "Beneficio sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7743038044730288,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 86,
+                "title": "Bodanza",
+                "slug": "bodanza",
+                "category": "Baile",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Bodanza encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+                "websiteUrl": "https://bodanza.com.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": null,
+                "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+                "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                "serviceHighlights": [
+                  "Clases de baile para novios",
+                  "Coreografías personalizadas",
+                  "Clases en Bodanza Latin Studio",
+                  "Clases de baile fitness en Bodanza Latin Fit"
+                ],
+                "termsHighlights": [
+                  "Aplica en:",
+                  "Bodanza escuela de baile para novios",
+                  "Bodanza Latin Studio",
+                  "Bodanza Latin Fit",
+                  "Beneficio sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          121,
+          127,
+          86
+        ],
+        "recommended_providers": [
+          {
+            "id": 121,
+            "title": "Dance & Grace",
+            "slug": "dance-grace",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dance & Grace encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+            "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Ensayos y preparación para el primer baile",
+              "Clases presenciales y virtuales"
+            ],
+            "termsHighlights": [
+              "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Paquete mínimo de 5 clases para coreografías de novios.",
+              "El paquete completo puede ser transferible.",
+              "No acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7902366744971884,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 127,
+            "title": "Arthur Murray",
+            "slug": "arthur-murray",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Arthur Murray encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+            "websiteUrl": "http://www.arthurmurrayperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Programas de baile personalizados",
+              "Preparación para el primer baile",
+              "Clases de prueba"
+            ],
+            "termsHighlights": [
+              "Aplica en cualquiera de los programas de baile disponibles.",
+              "Incluye una primera clase de prueba totalmente gratuita.",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7743038044730288,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 86,
+            "title": "Bodanza",
+            "slug": "bodanza",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Bodanza encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+            "websiteUrl": "https://bodanza.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": null,
+            "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+            "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Clases en Bodanza Latin Studio",
+              "Clases de baile fitness en Bodanza Latin Fit"
+            ],
+            "termsHighlights": [
+              "Aplica en:",
+              "Bodanza escuela de baile para novios",
+              "Bodanza Latin Studio",
+              "Bodanza Latin Fit",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Usuario busca animación temática medieval para un cumpleaños en Lurín, para 20 personas. Frente activo: animación/animadores (categoría Baile).",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T01:14:04.165Z"
+      },
+      "latencyMs": 9701,
+      "rawTargetResponse": {
+        "message": "Encontré estas opciones de Baile para tu cumpleaños en Lurín; las tres están orientadas a clases de baile para novios, así que encajan mejor si quieres una dinámica coreografiada o una animación con baile\n\n1. Dance & Grace\n Tiene coreografías personalizadas y una propuesta enfocada en que la pareja o invitados luzcan bien en la presentación\n Ubicación: Perú.\n Precio: $$$.\n Promo: 20% Off.\n Nota: Está más orientado a primer baile de pareja que a animación temática medieval como tal.\n\n Ficha: https://sinenvolturas.com/proveedores/dance-grace\n\n2. Arthur Murray\n Ofrece un enfoque fácil y divertido, con buen balance entre aprendizaje y puesta en escena\n Ubicación: Perú.\n Precio: $$.\n Promo: 20% Off.\n Nota: También está pensado para novios, no para un show medieval específico.\n\n Ficha: https://sinenvolturas.com/proveedores/arthur-murray\n\n3. Bodanza\n Incluye descuentos más altos y varias líneas de clase, lo que puede dar más margen para adaptar la dinámica\n Ubicación: Perú.\n Precio: $$$.\n Promo: 25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit.\n Nota: La especialidad principal sigue siendo baile para novios, no ambientación medieval.\n\n Ficha: https://sinenvolturas.com/proveedores/bodanza",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWG67V9AZMMV3EZJA2BVMGYK",
+          "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+          "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Baile\",\n  \"location\": \"Lurín\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 86,\n      \"title\": \"Bodanza\",\n      \"slug\": \"bodanza\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Baile, reporta cobertura en Perú (confirma atención exacta en Lurín)\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 121,\n      \"title\": \"Dance & Grace\",\n      \"slug\": \"dance-grace\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \\r\\n\\r\\nRegalo adicional: Sesión de vals para familiares en el ensayo general.\",\n      \"descriptionSnippet\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Coreografías personalizadas\",\n        \"Ensayos y preparación para el primer baile\",\n        \"Clases presenciales y virtuales\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clases presenciales en Lima y virtuales a nivel mundial.\",\n        \"Paquete mínimo de 5 clases para coreografías de novios.\",\n        \"El paquete completo puede ser transferible.\",\n        \"No acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7902366744971884,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, reporta cobertura en Perú (confirma atención exacta en Lurín)\"\n    },\n    {\n      \"id\": 127,\n      \"title\": \"Arthur Murray\",\n      \"slug\": \"arthur-murray\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n      \"websiteUrl\": \"http://www.arthurmurrayperu.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Programas de baile personalizados\",\n        \"Preparación para el primer baile\",\n        \"Clases de prueba\"\n      ],\n      \"termsHighlights\": [\n        \"Aplica en cualquiera de los programas de baile disponibles.\",\n        \"Incluye una primera clase de prueba totalmente gratuita.\",\n        \"Beneficio sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7743038044730288,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, reporta cobertura en Perú (confirma atención exacta en Lurín)\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 121,
+              "title": "Dance & Grace",
+              "slug": "dance-grace",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dance & Grace encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+              "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Ensayos y preparación para el primer baile",
+                "Clases presenciales y virtuales"
+              ],
+              "termsHighlights": [
+                "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                "Paquete mínimo de 5 clases para coreografías de novios.",
+                "El paquete completo puede ser transferible.",
+                "No acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7902366744971884,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 127,
+              "title": "Arthur Murray",
+              "slug": "arthur-murray",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Arthur Murray encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+              "websiteUrl": "http://www.arthurmurrayperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Programas de baile personalizados",
+                "Preparación para el primer baile",
+                "Clases de prueba"
+              ],
+              "termsHighlights": [
+                "Aplica en cualquiera de los programas de baile disponibles.",
+                "Incluye una primera clase de prueba totalmente gratuita.",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7743038044730288,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 86,
+              "title": "Bodanza",
+              "slug": "bodanza",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Bodanza encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+              "websiteUrl": "https://bodanza.com.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": null,
+              "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+              "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Clases en Bodanza Latin Studio",
+                "Clases de baile fitness en Bodanza Latin Fit"
+              ],
+              "termsHighlights": [
+                "Aplica en:",
+                "Bodanza escuela de baile para novios",
+                "Bodanza Latin Studio",
+                "Bodanza Latin Fit",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 121,
+              "category": "Baile",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7902366744971884,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 127,
+              "category": "Baile",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7743038044730288,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 86,
+              "category": "Baile",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 3,
+            "context_candidates": 3,
+            "context_candidate_ids": [
+              121,
+              127,
+              86
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 9550,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 3586,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2499,
+            "provider_enrichment": 86,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3346,
+            "save_plan": 18
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11417,
+              "output_tokens": 459,
+              "total_tokens": 11876,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4608,
+              "output_tokens": 249,
+              "total_tokens": 4857,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 16025,
+              "output_tokens": 708,
+              "total_tokens": 16733,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-de97fa95",
+          "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.82,
+          "event_type": "cumpleanos",
+          "vendor_category": "Baile",
+          "active_need_category": "Baile",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "preferences": [
+            "animación temática medieval"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Baile",
+              "status": "shortlisted",
+              "preferences": [
+                "animación temática medieval"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                121,
+                127,
+                86
+              ],
+              "recommended_providers": [
+                {
+                  "id": 121,
+                  "title": "Dance & Grace",
+                  "slug": "dance-grace",
+                  "category": "Baile",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dance & Grace encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+                  "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                  "serviceHighlights": [
+                    "Clases de baile para novios",
+                    "Coreografías personalizadas",
+                    "Ensayos y preparación para el primer baile",
+                    "Clases presenciales y virtuales"
+                  ],
+                  "termsHighlights": [
+                    "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                    "Paquete mínimo de 5 clases para coreografías de novios.",
+                    "El paquete completo puede ser transferible.",
+                    "No acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7902366744971884,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 127,
+                  "title": "Arthur Murray",
+                  "slug": "arthur-murray",
+                  "category": "Baile",
+                  "location": "Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Arthur Murray encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+                  "websiteUrl": "http://www.arthurmurrayperu.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                  "serviceHighlights": [
+                    "Clases de baile para novios",
+                    "Programas de baile personalizados",
+                    "Preparación para el primer baile",
+                    "Clases de prueba"
+                  ],
+                  "termsHighlights": [
+                    "Aplica en cualquiera de los programas de baile disponibles.",
+                    "Incluye una primera clase de prueba totalmente gratuita.",
+                    "Beneficio sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7743038044730288,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 86,
+                  "title": "Bodanza",
+                  "slug": "bodanza",
+                  "category": "Baile",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Bodanza encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+                  "websiteUrl": "https://bodanza.com.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": null,
+                  "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+                  "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                  "serviceHighlights": [
+                    "Clases de baile para novios",
+                    "Coreografías personalizadas",
+                    "Clases en Bodanza Latin Studio",
+                    "Clases de baile fitness en Bodanza Latin Fit"
+                  ],
+                  "termsHighlights": [
+                    "Aplica en:",
+                    "Bodanza escuela de baile para novios",
+                    "Bodanza Latin Studio",
+                    "Bodanza Latin Fit",
+                    "Beneficio sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            121,
+            127,
+            86
+          ],
+          "recommended_providers": [
+            {
+              "id": 121,
+              "title": "Dance & Grace",
+              "slug": "dance-grace",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dance & Grace encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+              "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Ensayos y preparación para el primer baile",
+                "Clases presenciales y virtuales"
+              ],
+              "termsHighlights": [
+                "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                "Paquete mínimo de 5 clases para coreografías de novios.",
+                "El paquete completo puede ser transferible.",
+                "No acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7902366744971884,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 127,
+              "title": "Arthur Murray",
+              "slug": "arthur-murray",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Arthur Murray encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+              "websiteUrl": "http://www.arthurmurrayperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Programas de baile personalizados",
+                "Preparación para el primer baile",
+                "Clases de prueba"
+              ],
+              "termsHighlights": [
+                "Aplica en cualquiera de los programas de baile disponibles.",
+                "Incluye una primera clase de prueba totalmente gratuita.",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7743038044730288,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 86,
+              "title": "Bodanza",
+              "slug": "bodanza",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Bodanza encaja con animación/baile (temática medieval) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+              "websiteUrl": "https://bodanza.com.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": null,
+              "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+              "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Clases en Bodanza Latin Studio",
+                "Clases de baile fitness en Bodanza Latin Fit"
+              ],
+              "termsHighlights": [
+                "Aplica en:",
+                "Bodanza escuela de baile para novios",
+                "Bodanza Latin Studio",
+                "Bodanza Latin Fit",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Usuario busca animación temática medieval para un cumpleaños en Lurín, para 20 personas. Frente activo: animación/animadores (categoría Baile).",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T01:14:04.165Z"
+        },
+        "perf": {
+          "trace_id": "01KWG67V9AZMMV3EZJA2BVMGYK",
+          "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+          "runtime_latency_ms": 9550,
+          "extraction_latency_ms": 3586,
+          "compose_latency_ms": 3346,
+          "tools_called_count": 1,
+          "provider_results_count": 3,
+          "recommendation_context_candidates": 3,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16733,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8786271450858034,
+          "extraction_to_compose_ratio": 1.0717274357441722,
+          "captured_at": "2026-07-02T01:14:07.530Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay, amplía la búsqueda a entretenimiento para cumpleaños en Lima."
+      },
+      "outputText": "Amplié la búsqueda y, por ahora, siguen apareciendo estas opciones de Baile en Lima; no salió entretenimiento general para cumpleaños distinto a clases de baile para novios\n\n1. Dance & Grace\n Destaca por coreografías personalizadas y una propuesta clara para dar un show cuidado\n Ubicación: Perú.\n Precio: $$$.\n Promo: 20% Off.\n Nota: Sigue siendo una escuela de baile para novios, no una animación medieval o infantil general.\n\n Ficha: https://sinenvolturas.com/proveedores/dance-grace\n\n2. Arthur Murray\n Tiene un enfoque sencillo y fácil de seguir, útil si buscas una dinámica de baile sin complicarte\n Ubicación: Perú.\n Precio: $$.\n Promo: 20% Off.\n Nota: No se presenta como entretenimiento general para cumpleaños.\n\n Ficha: https://sinenvolturas.com/proveedores/arthur-murray\n\n3. Bodanza\n Incluye descuentos más altos y alternativas de clases, lo que puede ayudar si quieres ajustar el formato\n Ubicación: Perú.\n Precio: $$$.\n Promo: 25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit.\n Nota: La oferta principal sigue centrada en baile para novios.\n\n Ficha: https://sinenvolturas.com/proveedores/bodanza",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWG686WGNT149MF040RY8ZZ9",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "get_related_providers",
+          "get_related_providers",
+          "get_related_providers"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Baile\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\n  \"provider_id\": 121\n}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\n  \"provider_id\": 127\n}"
+          },
+          {
+            "tool": "get_related_providers",
+            "input": "{\n  \"provider_id\": 86\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 86,\n      \"title\": \"Bodanza\",\n      \"slug\": \"bodanza\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Baile, opera en Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 121,\n      \"title\": \"Dance & Grace\",\n      \"slug\": \"dance-grace\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \\r\\n\\r\\nRegalo adicional: Sesión de vals para familiares en el ensayo general.\",\n      \"descriptionSnippet\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Coreografías personalizadas\",\n        \"Ensayos y preparación para el primer baile\",\n        \"Clases presenciales y virtuales\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clases presenciales en Lima y virtuales a nivel mundial.\",\n        \"Paquete mínimo de 5 clases para coreografías de novios.\",\n        \"El paquete completo puede ser transferible.\",\n        \"No acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.798584665449499,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, opera en Perú\"\n    },\n    {\n      \"id\": 127,\n      \"title\": \"Arthur Murray\",\n      \"slug\": \"arthur-murray\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n      \"websiteUrl\": \"http://www.arthurmurrayperu.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Programas de baile personalizados\",\n        \"Preparación para el primer baile\",\n        \"Clases de prueba\"\n      ],\n      \"termsHighlights\": [\n        \"Aplica en cualquiera de los programas de baile disponibles.\",\n        \"Incluye una primera clase de prueba totalmente gratuita.\",\n        \"Beneficio sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7810583393791292,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, opera en Perú\"\n    }\n  ]\n}"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[\n  {\n    \"id\": 127,\n    \"title\": \"Arthur Murray\",\n    \"slug\": \"arthur-murray\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 121,\n    \"title\": \"Dance & Grace\",\n    \"slug\": \"dance-grace\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[\n  {\n    \"id\": 127,\n    \"title\": \"Arthur Murray\",\n    \"slug\": \"arthur-murray\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 86,\n    \"title\": \"Bodanza\",\n    \"slug\": \"bodanza\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+          },
+          {
+            "tool": "get_related_providers",
+            "output": "[\n  {\n    \"id\": 121,\n    \"title\": \"Dance & Grace\",\n    \"slug\": \"dance-grace\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 86,\n    \"title\": \"Bodanza\",\n    \"slug\": \"bodanza\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 121,
+            "title": "Dance & Grace",
+            "slug": "dance-grace",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dance & Grace encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+            "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Ensayos y preparación para el primer baile",
+              "Clases presenciales y virtuales"
+            ],
+            "termsHighlights": [
+              "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Paquete mínimo de 5 clases para coreografías de novios.",
+              "El paquete completo puede ser transferible.",
+              "No acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.798584665449499,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 127,
+            "title": "Arthur Murray",
+            "slug": "arthur-murray",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Arthur Murray encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+            "websiteUrl": "http://www.arthurmurrayperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Programas de baile personalizados",
+              "Preparación para el primer baile",
+              "Clases de prueba"
+            ],
+            "termsHighlights": [
+              "Aplica en cualquiera de los programas de baile disponibles.",
+              "Incluye una primera clase de prueba totalmente gratuita.",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7810583393791292,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 86,
+            "title": "Bodanza",
+            "slug": "bodanza",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Bodanza encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+            "websiteUrl": "https://bodanza.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": null,
+            "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+            "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Clases en Bodanza Latin Studio",
+              "Clases de baile fitness en Bodanza Latin Fit"
+            ],
+            "termsHighlights": [
+              "Aplica en:",
+              "Bodanza escuela de baile para novios",
+              "Bodanza Latin Studio",
+              "Bodanza Latin Fit",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 121,
+            "category": "Baile",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.798584665449499,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 127,
+            "category": "Baile",
+            "location": "Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.7810583393791292,
+            "fit_score": 80
+          },
+          {
+            "provider_id": 86,
+            "category": "Baile",
+            "location": "Perú",
+            "retrieval_source": "api",
+            "retrieval_score": null,
+            "fit_score": 74
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 3,
+          "context_candidates": 3,
+          "context_candidate_ids": [
+            121,
+            127,
+            86
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 11402,
+          "load_plan": 8,
+          "prepare_working_plan": 1,
+          "extraction": 3717,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 2916,
+          "provider_enrichment": 83,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4643,
+          "save_plan": 25
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11547,
+            "output_tokens": 523,
+            "total_tokens": 12070,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 12632,
+            "output_tokens": 292,
+            "total_tokens": 12924,
+            "cached_input_tokens": 9728
+          },
+          "total": {
+            "input_tokens": 24179,
+            "output_tokens": 815,
+            "total_tokens": 24994,
+            "cached_input_tokens": 20736
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWG686WGNT149MF040RY8ZZ9",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "runtime_latency_ms": 11402,
+        "extraction_latency_ms": 3717,
+        "compose_latency_ms": 4643,
+        "tools_called_count": 4,
+        "provider_results_count": 3,
+        "recommendation_context_candidates": 3,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 24994,
+        "cached_input_tokens": 20736,
+        "cache_hit_rate": 0.8576037056950246,
+        "extraction_to_compose_ratio": 0.8005599827697609,
+        "captured_at": "2026-07-02T01:14:19.408Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-de97fa95",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.9,
+        "event_type": "cumpleanos",
+        "vendor_category": "Baile",
+        "active_need_category": "Baile",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "preferences": [
+          "animación temática medieval",
+          "entretenimiento"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Baile",
+            "status": "shortlisted",
+            "preferences": [
+              "animación temática medieval",
+              "entretenimiento"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              121,
+              127,
+              86
+            ],
+            "recommended_providers": [
+              {
+                "id": 121,
+                "title": "Dance & Grace",
+                "slug": "dance-grace",
+                "category": "Baile",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dance & Grace encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+                "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                "serviceHighlights": [
+                  "Clases de baile para novios",
+                  "Coreografías personalizadas",
+                  "Ensayos y preparación para el primer baile",
+                  "Clases presenciales y virtuales"
+                ],
+                "termsHighlights": [
+                  "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                  "Paquete mínimo de 5 clases para coreografías de novios.",
+                  "El paquete completo puede ser transferible.",
+                  "No acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.798584665449499,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 127,
+                "title": "Arthur Murray",
+                "slug": "arthur-murray",
+                "category": "Baile",
+                "location": "Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Arthur Murray encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+                "websiteUrl": "http://www.arthurmurrayperu.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                "serviceHighlights": [
+                  "Clases de baile para novios",
+                  "Programas de baile personalizados",
+                  "Preparación para el primer baile",
+                  "Clases de prueba"
+                ],
+                "termsHighlights": [
+                  "Aplica en cualquiera de los programas de baile disponibles.",
+                  "Incluye una primera clase de prueba totalmente gratuita.",
+                  "Beneficio sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.7810583393791292,
+                "retrievalSource": "hybrid"
+              },
+              {
+                "id": 86,
+                "title": "Bodanza",
+                "slug": "bodanza",
+                "category": "Baile",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Bodanza encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+                "websiteUrl": "https://bodanza.com.pe/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": null,
+                "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+                "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                "serviceHighlights": [
+                  "Clases de baile para novios",
+                  "Coreografías personalizadas",
+                  "Clases en Bodanza Latin Studio",
+                  "Clases de baile fitness en Bodanza Latin Fit"
+                ],
+                "termsHighlights": [
+                  "Aplica en:",
+                  "Bodanza escuela de baile para novios",
+                  "Bodanza Latin Studio",
+                  "Bodanza Latin Fit",
+                  "Beneficio sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                "fitScore": 74,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match"
+                ],
+                "retrievalSource": "api"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          121,
+          127,
+          86
+        ],
+        "recommended_providers": [
+          {
+            "id": 121,
+            "title": "Dance & Grace",
+            "slug": "dance-grace",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dance & Grace encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+            "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Ensayos y preparación para el primer baile",
+              "Clases presenciales y virtuales"
+            ],
+            "termsHighlights": [
+              "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+              "Paquete mínimo de 5 clases para coreografías de novios.",
+              "El paquete completo puede ser transferible.",
+              "No acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.798584665449499,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 127,
+            "title": "Arthur Murray",
+            "slug": "arthur-murray",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Arthur Murray encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+            "websiteUrl": "http://www.arthurmurrayperu.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Programas de baile personalizados",
+              "Preparación para el primer baile",
+              "Clases de prueba"
+            ],
+            "termsHighlights": [
+              "Aplica en cualquiera de los programas de baile disponibles.",
+              "Incluye una primera clase de prueba totalmente gratuita.",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.7810583393791292,
+            "retrievalSource": "hybrid"
+          },
+          {
+            "id": 86,
+            "title": "Bodanza",
+            "slug": "bodanza",
+            "category": "Baile",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Bodanza encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+            "websiteUrl": "https://bodanza.com.pe/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": null,
+            "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+            "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "serviceHighlights": [
+              "Clases de baile para novios",
+              "Coreografías personalizadas",
+              "Clases en Bodanza Latin Studio",
+              "Clases de baile fitness en Bodanza Latin Fit"
+            ],
+            "termsHighlights": [
+              "Aplica en:",
+              "Bodanza escuela de baile para novios",
+              "Bodanza Latin Studio",
+              "Bodanza Latin Fit",
+              "Beneficio sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+            "fitScore": 74,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match"
+            ],
+            "retrievalSource": "api"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario quiere ampliar 'Baile' a opciones de entretenimiento para cumpleaños, incluyendo animación/animadores."
+        ],
+        "conversation_summary": "Cumpleaños en Lurín (20 aprox.). Frente activo: animación/animadores (Baile). El usuario pide ampliar la búsqueda a entretenimiento en Lima si no hay opciones.",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T01:14:14.747Z"
+      },
+      "latencyMs": 11999,
+      "rawTargetResponse": {
+        "message": "Amplié la búsqueda y, por ahora, siguen apareciendo estas opciones de Baile en Lima; no salió entretenimiento general para cumpleaños distinto a clases de baile para novios\n\n1. Dance & Grace\n Destaca por coreografías personalizadas y una propuesta clara para dar un show cuidado\n Ubicación: Perú.\n Precio: $$$.\n Promo: 20% Off.\n Nota: Sigue siendo una escuela de baile para novios, no una animación medieval o infantil general.\n\n Ficha: https://sinenvolturas.com/proveedores/dance-grace\n\n2. Arthur Murray\n Tiene un enfoque sencillo y fácil de seguir, útil si buscas una dinámica de baile sin complicarte\n Ubicación: Perú.\n Precio: $$.\n Promo: 20% Off.\n Nota: No se presenta como entretenimiento general para cumpleaños.\n\n Ficha: https://sinenvolturas.com/proveedores/arthur-murray\n\n3. Bodanza\n Incluye descuentos más altos y alternativas de clases, lo que puede ayudar si quieres ajustar el formato\n Ubicación: Perú.\n Precio: $$$.\n Promo: 25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit.\n Nota: La oferta principal sigue centrada en baile para novios.\n\n Ficha: https://sinenvolturas.com/proveedores/bodanza",
+        "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+        "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWG686WGNT149MF040RY8ZZ9",
+          "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+          "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+          "previous_node": "recomendar",
+          "next_node": "recomendar",
+          "node_path": [
+            "recomendar",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "get_related_providers",
+            "get_related_providers",
+            "get_related_providers"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Baile\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "get_related_providers",
+              "input": "{\n  \"provider_id\": 121\n}"
+            },
+            {
+              "tool": "get_related_providers",
+              "input": "{\n  \"provider_id\": 127\n}"
+            },
+            {
+              "tool": "get_related_providers",
+              "input": "{\n  \"provider_id\": 86\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 86,\n      \"title\": \"Bodanza\",\n      \"slug\": \"bodanza\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Baile, opera en Perú\",\n      \"retrievalSource\": \"api\"\n    },\n    {\n      \"id\": 121,\n      \"title\": \"Dance & Grace\",\n      \"slug\": \"dance-grace\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \\r\\n\\r\\nRegalo adicional: Sesión de vals para familiares en el ensayo general.\",\n      \"descriptionSnippet\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Coreografías personalizadas\",\n        \"Ensayos y preparación para el primer baile\",\n        \"Clases presenciales y virtuales\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para clases presenciales en Lima y virtuales a nivel mundial.\",\n        \"Paquete mínimo de 5 clases para coreografías de novios.\",\n        \"El paquete completo puede ser transferible.\",\n        \"No acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.798584665449499,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, opera en Perú\"\n    },\n    {\n      \"id\": 127,\n      \"title\": \"Arthur Murray\",\n      \"slug\": \"arthur-murray\",\n      \"category\": \"Baile\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n      \"websiteUrl\": \"http://www.arthurmurrayperu.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% Off\",\n      \"promoSummary\": \"20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"serviceHighlights\": [\n        \"Clases de baile para novios\",\n        \"Programas de baile personalizados\",\n        \"Preparación para el primer baile\",\n        \"Clases de prueba\"\n      ],\n      \"termsHighlights\": [\n        \"Aplica en cualquiera de los programas de baile disponibles.\",\n        \"Incluye una primera clase de prueba totalmente gratuita.\",\n        \"Beneficio sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.7810583393791292,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Baile, opera en Perú\"\n    }\n  ]\n}"
+            },
+            {
+              "tool": "get_related_providers",
+              "output": "[\n  {\n    \"id\": 127,\n    \"title\": \"Arthur Murray\",\n    \"slug\": \"arthur-murray\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 121,\n    \"title\": \"Dance & Grace\",\n    \"slug\": \"dance-grace\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+            },
+            {
+              "tool": "get_related_providers",
+              "output": "[\n  {\n    \"id\": 127,\n    \"title\": \"Arthur Murray\",\n    \"slug\": \"arthur-murray\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/arthur-murray\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 86,\n    \"title\": \"Bodanza\",\n    \"slug\": \"bodanza\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+            },
+            {
+              "tool": "get_related_providers",
+              "output": "[\n  {\n    \"id\": 121,\n    \"title\": \"Dance & Grace\",\n    \"slug\": \"dance-grace\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/dance-grace\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  },\n  {\n    \"id\": 86,\n    \"title\": \"Bodanza\",\n    \"slug\": \"bodanza\",\n    \"category\": \"Baile\",\n    \"location\": \"Perú\",\n    \"priceLevel\": null,\n    \"rating\": \"0.0\",\n    \"detailUrl\": \"https://sinenvolturas.com/proveedores/bodanza\",\n    \"websiteUrl\": null,\n    \"minPrice\": null,\n    \"maxPrice\": null,\n    \"promoBadge\": null,\n    \"promoSummary\": null,\n    \"descriptionSnippet\": null,\n    \"serviceHighlights\": [],\n    \"termsHighlights\": []\n  }\n]"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 121,
+              "title": "Dance & Grace",
+              "slug": "dance-grace",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dance & Grace encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+              "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Ensayos y preparación para el primer baile",
+                "Clases presenciales y virtuales"
+              ],
+              "termsHighlights": [
+                "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                "Paquete mínimo de 5 clases para coreografías de novios.",
+                "El paquete completo puede ser transferible.",
+                "No acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.798584665449499,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 127,
+              "title": "Arthur Murray",
+              "slug": "arthur-murray",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Arthur Murray encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+              "websiteUrl": "http://www.arthurmurrayperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Programas de baile personalizados",
+                "Preparación para el primer baile",
+                "Clases de prueba"
+              ],
+              "termsHighlights": [
+                "Aplica en cualquiera de los programas de baile disponibles.",
+                "Incluye una primera clase de prueba totalmente gratuita.",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7810583393791292,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 86,
+              "title": "Bodanza",
+              "slug": "bodanza",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Bodanza encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+              "websiteUrl": "https://bodanza.com.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": null,
+              "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+              "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Clases en Bodanza Latin Studio",
+                "Clases de baile fitness en Bodanza Latin Fit"
+              ],
+              "termsHighlights": [
+                "Aplica en:",
+                "Bodanza escuela de baile para novios",
+                "Bodanza Latin Studio",
+                "Bodanza Latin Fit",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 121,
+              "category": "Baile",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.798584665449499,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 127,
+              "category": "Baile",
+              "location": "Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.7810583393791292,
+              "fit_score": 80
+            },
+            {
+              "provider_id": 86,
+              "category": "Baile",
+              "location": "Perú",
+              "retrieval_source": "api",
+              "retrieval_score": null,
+              "fit_score": 74
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 3,
+            "context_candidates": 3,
+            "context_candidate_ids": [
+              121,
+              127,
+              86
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 11402,
+            "load_plan": 8,
+            "prepare_working_plan": 1,
+            "extraction": 3717,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 2916,
+            "provider_enrichment": 83,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4643,
+            "save_plan": 25
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11547,
+              "output_tokens": 523,
+              "total_tokens": 12070,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 12632,
+              "output_tokens": 292,
+              "total_tokens": 12924,
+              "cached_input_tokens": 9728
+            },
+            "total": {
+              "input_tokens": 24179,
+              "output_tokens": 815,
+              "total_tokens": 24994,
+              "cached_input_tokens": 20736
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWG67HZ2T2797Q12YF8DGF0Z",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-de97fa95",
+          "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.9,
+          "event_type": "cumpleanos",
+          "vendor_category": "Baile",
+          "active_need_category": "Baile",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "preferences": [
+            "animación temática medieval",
+            "entretenimiento"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Baile",
+              "status": "shortlisted",
+              "preferences": [
+                "animación temática medieval",
+                "entretenimiento"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                121,
+                127,
+                86
+              ],
+              "recommended_providers": [
+                {
+                  "id": 121,
+                  "title": "Dance & Grace",
+                  "slug": "dance-grace",
+                  "category": "Baile",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dance & Grace encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+                  "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                  "serviceHighlights": [
+                    "Clases de baile para novios",
+                    "Coreografías personalizadas",
+                    "Ensayos y preparación para el primer baile",
+                    "Clases presenciales y virtuales"
+                  ],
+                  "termsHighlights": [
+                    "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                    "Paquete mínimo de 5 clases para coreografías de novios.",
+                    "El paquete completo puede ser transferible.",
+                    "No acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.798584665449499,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 127,
+                  "title": "Arthur Murray",
+                  "slug": "arthur-murray",
+                  "category": "Baile",
+                  "location": "Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Arthur Murray encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+                  "websiteUrl": "http://www.arthurmurrayperu.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                  "serviceHighlights": [
+                    "Clases de baile para novios",
+                    "Programas de baile personalizados",
+                    "Preparación para el primer baile",
+                    "Clases de prueba"
+                  ],
+                  "termsHighlights": [
+                    "Aplica en cualquiera de los programas de baile disponibles.",
+                    "Incluye una primera clase de prueba totalmente gratuita.",
+                    "Beneficio sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.7810583393791292,
+                  "retrievalSource": "hybrid"
+                },
+                {
+                  "id": 86,
+                  "title": "Bodanza",
+                  "slug": "bodanza",
+                  "category": "Baile",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Bodanza encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+                  "websiteUrl": "https://bodanza.com.pe/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": null,
+                  "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+                  "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                  "serviceHighlights": [
+                    "Clases de baile para novios",
+                    "Coreografías personalizadas",
+                    "Clases en Bodanza Latin Studio",
+                    "Clases de baile fitness en Bodanza Latin Fit"
+                  ],
+                  "termsHighlights": [
+                    "Aplica en:",
+                    "Bodanza escuela de baile para novios",
+                    "Bodanza Latin Studio",
+                    "Bodanza Latin Fit",
+                    "Beneficio sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+                  "fitScore": 74,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match"
+                  ],
+                  "retrievalSource": "api"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            121,
+            127,
+            86
+          ],
+          "recommended_providers": [
+            {
+              "id": 121,
+              "title": "Dance & Grace",
+              "slug": "dance-grace",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dance & Grace encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dance-grace",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento sobre el precio de lista de paquetes de clases de baile para novios de Sin Envolturas. \r\n\r\nRegalo adicional: Sesión de vals para familiares en el ensayo general.",
+              "descriptionSnippet": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Ensayos y preparación para el primer baile",
+                "Clases presenciales y virtuales"
+              ],
+              "termsHighlights": [
+                "Válido para clases presenciales en Lima y virtuales a nivel mundial.",
+                "Paquete mínimo de 5 clases para coreografías de novios.",
+                "El paquete completo puede ser transferible.",
+                "No acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Dance & Grace es una escuela de baile especializada en novios, enfocada en crear coreografías personalizadas para que cada pareja disfrute y destaque en su primer baile.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.798584665449499,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 127,
+              "title": "Arthur Murray",
+              "slug": "arthur-murray",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Arthur Murray encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/arthur-murray",
+              "websiteUrl": "http://www.arthurmurrayperu.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de descuento en cualquiera de nuestros programas de baile y primera clase de prueba totalmente gratuita para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Programas de baile personalizados",
+                "Preparación para el primer baile",
+                "Clases de prueba"
+              ],
+              "termsHighlights": [
+                "Aplica en cualquiera de los programas de baile disponibles.",
+                "Incluye una primera clase de prueba totalmente gratuita.",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Arthur Murray Novios es una escuela de baile especializada en preparar a parejas para su primer baile, con programas diseñados para aprender de manera fácil y divertida.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.7810583393791292,
+              "retrievalSource": "hybrid"
+            },
+            {
+              "id": 86,
+              "title": "Bodanza",
+              "slug": "bodanza",
+              "category": "Baile",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Bodanza encaja con entretenimiento/animación (baile) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bodanza",
+              "websiteUrl": "https://bodanza.com.pe/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": null,
+              "promoSummary": "25% de descuento en Bodanza escuela de baile para novios \r\n25 % de descuento en Bodanza Latin Estudio \r\n25 % de descuento en Bodanza Latin Fit",
+              "descriptionSnippet": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "serviceHighlights": [
+                "Clases de baile para novios",
+                "Coreografías personalizadas",
+                "Clases en Bodanza Latin Studio",
+                "Clases de baile fitness en Bodanza Latin Fit"
+              ],
+              "termsHighlights": [
+                "Aplica en:",
+                "Bodanza escuela de baile para novios",
+                "Bodanza Latin Studio",
+                "Bodanza Latin Fit",
+                "Beneficio sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Bodanza es una escuela de baile especializada en novios y bienestar, ofreciendo clases diseñadas para que cada pareja disfrute y brille en su primer baile.",
+              "fitScore": 74,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match"
+              ],
+              "retrievalSource": "api"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario quiere ampliar 'Baile' a opciones de entretenimiento para cumpleaños, incluyendo animación/animadores."
+          ],
+          "conversation_summary": "Cumpleaños en Lurín (20 aprox.). Frente activo: animación/animadores (Baile). El usuario pide ampliar la búsqueda a entretenimiento en Lima si no hay opciones.",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T01:14:14.747Z"
+        },
+        "perf": {
+          "trace_id": "01KWG686WGNT149MF040RY8ZZ9",
+          "conversation_id": "conv_6a45bb5c42348197838e03271863163f0c091b5a5c2e2ba9",
+          "runtime_latency_ms": 11402,
+          "extraction_latency_ms": 3717,
+          "compose_latency_ms": 4643,
+          "tools_called_count": 4,
+          "provider_results_count": 3,
+          "recommendation_context_candidates": 3,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 24994,
+          "cached_input_tokens": 20736,
+          "cache_hit_rate": 0.8576037056950246,
+          "extraction_to_compose_ratio": 0.8005599827697609,
+          "captured_at": "2026-07-02T01:14:19.408Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T01:14:19.579Z",
+  "completedAt": "2026-07-02T01:14:19.581Z"
+}

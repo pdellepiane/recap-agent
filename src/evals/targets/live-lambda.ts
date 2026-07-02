@@ -83,6 +83,7 @@ export async function runLiveLambdaCase(args: {
         session_id: input.sessionId ?? args.currentCase.id,
         client_mode: 'cli',
       }),
+      signal: AbortSignal.timeout(95_000),
     });
 
     if (!response.ok) {

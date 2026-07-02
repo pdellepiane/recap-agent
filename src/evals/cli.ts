@@ -8,6 +8,7 @@ import { Command } from 'commander';
 import { evalReportSchema } from './case-schema';
 import { listEvaluationAssets, runEvaluation } from './runner';
 import { renderMarkdownReport } from './reporting';
+import { runTechnicalStudy } from './technical-study';
 
 type RunCommandOptions = {
   suite?: string;
@@ -102,6 +103,20 @@ program
     }
 
     process.stdout.write(renderMarkdownReport(report));
+  });
+
+program
+  .command('study')
+  .option('--dry-run', 'Validate and enumerate the study without invoking the Lambda')
+  .action(async (options: { dryRun?: boolean }) => {
+    const studyDir = await runTechnicalStudy({
+      evalsDir: path.resolve(process.cwd(), 'evals'),
+      outputDir: path.resolve(process.cwd(), 'analysis/technical-evaluation-study/artifacts'),
+      manifestPath: path.resolve(process.cwd(), 'evals/studies/technical-evaluation-50-v1.json'),
+      pricingPath: path.resolve(process.cwd(), 'evals/studies/pricing-2026-07-01.json'),
+      dryRun: Boolean(options.dryRun),
+    });
+    process.stdout.write(`${JSON.stringify({ studyDir }, null, 2)}\n`);
   });
 
 void program.parseAsync(process.argv);
