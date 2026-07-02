@@ -1754,11 +1754,18 @@ export class AgentService {
     sufficiencyByNeed: NeedSufficiency[],
     sessionFocus: SessionFocus | null,
   ): ProviderCategory[] {
+    const readyByPlan = new Set(
+      sufficiencyByNeed
+        .filter((need) => need.searchReady)
+        .map((need) => need.category),
+    );
     const readyFromQueryIntents = (extraction.providerQueryIntents ?? [])
       .filter((queryIntent) => this.isStructuredQueryIntentRetrievalReady(queryIntent, extraction))
       .map((queryIntent) => queryIntent.category);
     if (readyFromQueryIntents.length > 0) {
-      return Array.from(new Set(readyFromQueryIntents));
+      return Array.from(
+        new Set(readyFromQueryIntents.filter((category) => readyByPlan.has(category))),
+      );
     }
 
     const focusedCategory = extraction.activeNeedCategory ?? extraction.vendorCategory;
@@ -1788,11 +1795,6 @@ export class AgentService {
         : [];
     }
 
-    const readyByPlan = new Set(
-      sufficiencyByNeed
-        .filter((need) => need.searchReady)
-        .map((need) => need.category),
-    );
     return plan.provider_needs
       .filter((need) => readyByPlan.has(need.category))
       .map((need) => need.category);

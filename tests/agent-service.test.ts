@@ -4092,6 +4092,91 @@ describe('AgentService', () => {
     expect(response.plan.provider_needs.find((need) => need.category === 'Música')?.recommended_provider_ids).toEqual([401]);
   });
 
+  it('does not search structured query intents until global location is known', async () => {
+    class MissingLocationRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.96,
+          eventType: 'cumpleanos',
+          vendorCategory: 'Música',
+          vendorCategories: ['Música'],
+          activeNeedCategory: 'Música',
+          location: null,
+          budgetSignal: null,
+          guestRange: '21-50',
+          preferences: ['DJ'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Cumpleaños de 30 personas con DJ; falta ubicación.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            eventType: 'cumpleanos',
+            needCategory: 'Música',
+            location: null,
+          },
+          providerQueryIntents: [
+            {
+              category: 'Música',
+              label: 'DJ para cumpleaños',
+              priority: 1,
+              queries: [
+                providerNeedQuery(
+                  'Música',
+                  'DJ para cumpleaños',
+                  ['DJ para cumpleaños de 30 personas'],
+                  ['DJ'],
+                ),
+              ],
+              preferences: ['DJ'],
+              hardConstraints: [],
+              missingFields: ['location'],
+              retrievalReady: true,
+              fitCriteria: {
+                ...testProviderFitCriteria,
+                eventType: 'cumpleanos',
+                needCategory: 'Música',
+                location: null,
+              },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new MissingLocationRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-missing-location-query-intent',
+      text: 'Quiero DJ para un cumpleaños de 30 personas.',
+      messageId: 'msg-missing-location-query-intent',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(response.plan.location).toBeNull();
+    expect(response.trace.search_ready).toBe(false);
+    expect(response.trace.missing_fields).toContain('location');
+    expect(response.trace.tools_called).not.toContain('search_providers_by_query_intent');
+    expect(gateway.searchCalls).toBe(0);
+  });
+
   it('does not let stale active need downgrade a current multi-need provider request', async () => {
     class MultiFrontRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {

@@ -13,6 +13,13 @@ Ejemplos breves:
 - eventType: boda
 - vendorCategory: null
 - vendorCategories: [Locales, Catering, Fotografía y video]
+
+2. Usuario: "Necesito un auditorio para un evento corporativo en Lima."
+- intent: buscar_proveedores
+- eventType: corporativo
+- vendorCategory: Locales
+- activeNeedCategory: Locales
+- vendorCategories: [Locales]
 - activeNeedCategory: null
 - location: Lima
 - budgetSignal: null

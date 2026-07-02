@@ -3188,3 +3188,69 @@ Do not present the current study as evidence of general recommender efficacy.
 It can support a transparent engineering and evaluation case study. Require a
 corrected versioned benchmark, genuine behavior fixes, completed manual audit,
 and untouched confirmatory run before making performance claims.
+
+## Enforce global search sufficiency for structured query intents
+
+- Intersected extractor-provided retrieval-ready query intents with the
+  deterministic per-need sufficiency result before selecting search routes.
+- Added a regression test proving that a structured DJ query with guest count
+  but no location routes to `aclarar_pedir_faltante` and performs no provider
+  search.
+
+### Reason
+
+All five frozen missing-location scenarios searched immediately even though the
+plan correctly recorded `location` as missing. Structured query intents could
+bypass the same deterministic sufficiency gate applied to plan-based search.
+
+### Decision
+
+Treat structured LLM query intent as search evidence, not authority to waive
+required global plan fields. Category, location, and either budget or guest
+range remain mandatory before every provider-search mode.
+
+## Normalize corporate auditoriums in structured extraction
+
+- Added explicit Spanish extractor-domain guidance mapping auditoriums,
+  convention centers, venues, and event halls to canonical `Locales`.
+- Added explicit corporate-event normalization and a structured auditorium
+  extraction example.
+
+### Reason
+
+The corporate no-results scenario repeatedly recognized the airport and guest
+constraints but left the provider category unset, despite describing an
+auditorium. This caused an unnecessary category clarification instead of an
+honest constrained search and refinement outcome.
+
+### Decision
+
+Keep this knowledge in the structured extractor prompt rather than adding
+runtime keyword routing. The LLM establishes event type and provider need;
+deterministic code only validates the resulting typed plan.
+
+## Version the corrected technical-study benchmark
+
+- Preserved the historical v1 manifest and added
+  `technical-evaluation-50-v2`.
+- Replaced free-form expected provider categories with canonical typed
+  marketplace categories in v2.
+- Aligned terminal expectations with declared state-machine semantics for
+  multi-need presentation, pause/resume, closure, no-results, refinement, and
+  recovery routes.
+- Switched future technical-study runs to v2 while keeping artifact
+  regeneration compatible with v1.
+- Split expected-need quality into extraction recall, retrieval coverage given
+  extraction, end-to-end coverage, and unexpected extracted needs.
+
+### Reason
+
+The v1 completion rate mixed runtime failures with noncanonical labels and
+overly narrow valid-route expectations. Its final-plan need coverage also mixed
+extraction breadth with retrieval success.
+
+### Decision
+
+Never rewrite v1 or reinterpret its raw outcomes. Use v2 only for future
+confirmatory evidence, validate its categories at load time, and report the
+separate expected-need denominators instead of a single ambiguous rate.

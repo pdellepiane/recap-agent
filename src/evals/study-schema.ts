@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { decisionNodeSchema } from '../core/decision-nodes';
+import { providerCategorySchema } from '../core/provider-category';
 
 export const eventGroupSchema = z.enum([
   'wedding',
@@ -23,7 +24,7 @@ export const routeFamilySchema = z.enum([
   'error_recovery',
 ]);
 
-const studyScenarioSchema = z.object({
+const studyScenarioBaseSchema = z.object({
   id: z.string().regex(/^study\.[a-z0-9_]+\.[0-9]{2}$/u),
   eventGroup: eventGroupSchema,
   routeFamily: routeFamilySchema,
@@ -40,13 +41,30 @@ const studyScenarioSchema = z.object({
   maxTurns: z.number().int().positive(),
 });
 
-export const technicalStudyManifestSchema = z.object({
+const studyScenarioV2Schema = studyScenarioBaseSchema.extend({
+  expectedNeedCategories: z.array(providerCategorySchema).default([]),
+});
+
+const technicalStudyManifestV1Schema = z.object({
   id: z.literal('technical-evaluation-50-v1'),
   version: z.literal(1),
   frozenAt: z.string(),
   repetitions: z.literal(3),
-  scenarios: z.array(studyScenarioSchema).length(50),
-}).superRefine((manifest, context) => {
+  scenarios: z.array(studyScenarioBaseSchema).length(50),
+});
+
+const technicalStudyManifestV2Schema = z.object({
+  id: z.literal('technical-evaluation-50-v2'),
+  version: z.literal(2),
+  frozenAt: z.string(),
+  repetitions: z.literal(3),
+  scenarios: z.array(studyScenarioV2Schema).length(50),
+});
+
+export const technicalStudyManifestSchema = z.discriminatedUnion('version', [
+  technicalStudyManifestV1Schema,
+  technicalStudyManifestV2Schema,
+]).superRefine((manifest, context) => {
   const ids = new Set(manifest.scenarios.map((scenario) => scenario.id));
   if (ids.size !== manifest.scenarios.length) {
     context.addIssue({ code: 'custom', message: 'Scenario identifiers must be unique.' });
@@ -62,5 +80,5 @@ export const technicalStudyManifestSchema = z.object({
   }
 });
 
-export type StudyScenario = z.infer<typeof studyScenarioSchema>;
+export type StudyScenario = z.infer<typeof studyScenarioBaseSchema>;
 export type TechnicalStudyManifest = z.infer<typeof technicalStudyManifestSchema>;

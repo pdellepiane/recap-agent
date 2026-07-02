@@ -3,7 +3,10 @@ import path from 'node:path';
 
 import { decisionNodes } from '../core/decision-nodes';
 import { classifyLocationCompatibility } from '../core/location';
-import { normalizeToProviderCategory } from '../core/provider-category';
+import {
+  normalizeToProviderCategory,
+  type ProviderCategory,
+} from '../core/provider-category';
 import { providerHasEventServiceEvidence } from '../runtime/provider-sub-query-selection';
 import {
   evalReportSchema,
@@ -414,7 +417,10 @@ async function writeStudyArtifacts(
       requiredTurns: rows.reduce((sum, row) => sum + row.groundingRequiredTurns, 0),
       groundedTurns: rows.reduce((sum, row) => sum + row.groundedTurns, 0),
     },
-    recommendationQuality: buildRecommendationQualitySummary(allResults),
+    recommendationQuality: buildRecommendationQualitySummary(
+      allResults,
+      manifest.scenarios,
+    ),
     runtimeErrors: allResults
       .filter((result) => result.status === 'errored')
       .map((result) => ({
@@ -512,7 +518,10 @@ async function writeStudyArtifacts(
   );
 }
 
-function buildRecommendationQualitySummary(results: EvalResult[]) {
+function buildRecommendationQualitySummary(
+  results: EvalResult[],
+  scenarios: StudyScenario[],
+) {
   let displayedProviders = 0;
   let locationApplicable = 0;
   let locationSatisfied = 0;
@@ -526,16 +535,30 @@ function buildRecommendationQualitySummary(results: EvalResult[]) {
   let eventServiceSupported = 0;
   let needsObserved = 0;
   let needsWithRecommendations = 0;
+  const expectedNeedEntries: ExpectedNeedEvaluationEntry[] = [];
   const providerExposure = new Map<number, number>();
   const shortlistSizes: number[] = [];
 
   for (const result of results) {
     const finalPlan = result.turns.at(-1)?.plan;
+    const scenario = scenarios.find((candidate) => candidate.id === result.caseId);
     if (finalPlan) {
       needsObserved += finalPlan.provider_needs.length;
       needsWithRecommendations += finalPlan.provider_needs.filter(
         (need) => need.recommended_provider_ids.length > 0,
       ).length;
+      const expectedCategories = new Set(
+        (scenario?.expectedNeedCategories ?? [])
+          .map((category) => normalizeToProviderCategory(category))
+          .filter((category): category is ProviderCategory => category !== null),
+      );
+      expectedNeedEntries.push({
+        expectedCategories: [...expectedCategories],
+        extractedNeeds: finalPlan.provider_needs.map((need) => ({
+          category: need.category,
+          hasRecommendations: need.recommended_provider_ids.length > 0,
+        })),
+      });
     }
     for (const turn of result.turns) {
       const providers = turn.trace.provider_results;
@@ -633,10 +656,58 @@ function buildRecommendationQualitySummary(results: EvalResult[]) {
       needsWithRecommendations,
       rate: needsObserved === 0 ? 0 : needsWithRecommendations / needsObserved,
     },
+    expectedNeedEvaluation: summarizeExpectedNeedEvaluation(expectedNeedEntries),
     exposure: {
       hhi: exposureHhi,
       topProviderShare: exposureTotal === 0 ? 0 : topExposure / exposureTotal,
     },
+  };
+}
+
+type ExpectedNeedEvaluationEntry = {
+  expectedCategories: ProviderCategory[];
+  extractedNeeds: Array<{
+    category: string;
+    hasRecommendations: boolean;
+  }>;
+};
+
+export function summarizeExpectedNeedEvaluation(
+  entries: ExpectedNeedEvaluationEntry[],
+) {
+  let expected = 0;
+  let extracted = 0;
+  let extractedAndRecommended = 0;
+  let unexpectedExtractedNeeds = 0;
+
+  for (const entry of entries) {
+    const expectedCategories = new Set(entry.expectedCategories);
+    expected += expectedCategories.size;
+    for (const category of expectedCategories) {
+      const extractedNeed = entry.extractedNeeds.find(
+        (need) => normalizeToProviderCategory(need.category) === category,
+      );
+      if (extractedNeed) {
+        extracted += 1;
+        extractedAndRecommended += extractedNeed.hasRecommendations ? 1 : 0;
+      }
+    }
+    unexpectedExtractedNeeds += entry.extractedNeeds.filter((need) => {
+      const category = normalizeToProviderCategory(need.category);
+      return category !== null && !expectedCategories.has(category);
+    }).length;
+  }
+
+  return {
+    expected,
+    extracted,
+    extractionRecall: expected === 0 ? 0 : extracted / expected,
+    extractedAndRecommended,
+    retrievalCoverageGivenExtraction:
+      extracted === 0 ? 0 : extractedAndRecommended / extracted,
+    endToEndCoverage:
+      expected === 0 ? 0 : extractedAndRecommended / expected,
+    unexpectedExtractedNeeds,
   };
 }
 
