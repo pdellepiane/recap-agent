@@ -1732,6 +1732,106 @@ describe('AgentService', () => {
     expect(response.plan.budget_signal).toBe('medio');
   });
 
+  it('asks for missing search context after refining a need without an existing shortlist', async () => {
+    const updateOperation: ProviderPlanOperation = {
+      type: 'update_need',
+      category: 'Hogar y deco',
+      preferences: ['decoración moderna'],
+      hardConstraints: [],
+      queryIntent: null,
+      rerunSearch: false,
+      provider: null,
+      removeProvider: null,
+      addProvider: null,
+    };
+
+    class IncompleteRefinementRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'refinar_busqueda',
+          intentConfidence: 0.9,
+          eventType: 'quinceanos',
+          vendorCategory: 'Hogar y deco',
+          vendorCategories: ['Hogar y deco'],
+          activeNeedCategory: 'Hogar y deco',
+          location: 'Lima',
+          budgetSignal: null,
+          guestRange: null,
+          preferences: ['decoración moderna'],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'El usuario amplió el estilo de decoración.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            eventType: 'quinceanos',
+            needCategory: 'Hogar y deco',
+          },
+          providerPlanOperations: [updateOperation],
+        };
+      }
+    }
+
+    const runtime = new IncompleteRefinementRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-incomplete-refinement',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-incomplete-refinement',
+        }),
+        {
+          current_node: 'aclarar_pedir_faltante',
+          event_type: 'quinceanos',
+          location: 'Lima',
+          active_need_category: 'Hogar y deco',
+          vendor_category: 'Hogar y deco',
+          provider_needs: [
+            {
+              category: 'Hogar y deco',
+              status: 'identified',
+              preferences: ['decoración futurista'],
+              hard_constraints: [],
+              missing_fields: ['budget_or_guest_range'],
+              recommended_provider_ids: [],
+              recommended_providers: [],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+      reason: 'seed-incomplete-refinement',
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-incomplete-refinement',
+      text: 'Amplía a decoración moderna.',
+      messageId: 'msg-incomplete-refinement',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(response.trace.route_kind).toBe('clarify_missing_fields');
+    expect(response.trace.search_ready).toBe(false);
+    expect(gateway.searchCalls).toBe(0);
+  });
+
   it('broadens the active shortlist when the user asks for more options', async () => {
     class BroadenRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {

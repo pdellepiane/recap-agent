@@ -3434,3 +3434,43 @@ reply context, but the legacy implicit-venue guard removed the category because
 Resume from persisted typed state and avoid a needless external call. Preserve
 venue needs using structured LLM evidence rather than extending keyword-based
 flow routing.
+
+## Clarify incomplete refinements without a shortlist
+
+- Routed typed provider-plan updates back to `aclarar_pedir_faltante` when
+  required event context remains missing and no shortlist exists.
+- Added a regression test for a decoration refinement that preserves location
+  but still lacks both budget and guest count.
+
+### Reason
+
+The post-deployment V3 gate showed the refinement operation was applied
+correctly, but the generic modification branch bypassed sufficiency and ended
+at `seguir_refinando_guardar_plan`.
+
+### Decision
+
+An applied refinement does not make a provider need searchable. When it has no
+existing shortlist, the same typed sufficiency evidence used by initial search
+must determine whether the next action is clarification.
+
+## Freeze V4 as an auditable overlay
+
+- Added a V4 manifest overlay that inherits all 50 frozen V3 scenarios and
+  changes only the pause/resume expectation.
+- Updated the study CLI and confirmatory gate to materialize V4.
+- Added validation for overlay identifiers and a regression test for the
+  materialized terminal transition.
+
+### Reason
+
+The V3 gate proved that resuming a saved shortlist should present those
+recommendations at `recomendar`, not discard them by returning to a generic
+refinement node. V3 had also marked search and shortlist as absent even though
+its first turn intentionally creates both.
+
+### Decision
+
+Keep exercised V3 byte-for-byte intact. Represent the narrowly corrected
+contract as a versioned overlay so the provenance and exact semantic delta
+remain reviewable.

@@ -1610,6 +1610,22 @@ export class AgentService {
         persistReason: 'seguir_refinando_guardar_plan',
       };
     } else if (
+      evidence.extractionProviderPlanOperationCount > 0 &&
+      evidence.globalMissingFields.length > 0 &&
+      !evidence.hasExistingShortlist
+    ) {
+      decision = {
+        nextNode: 'aclarar_pedir_faltante',
+        routeKind: 'clarify_missing_fields',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: evidence.globalMissingFields.join(', '),
+        persistReason: 'aclarar_pedir_faltante',
+      };
+    } else if (
       evidence.extractionProviderPlanOperationCount > 0 ||
       evidence.extractionIntent === 'explicar_recomendacion'
     ) {

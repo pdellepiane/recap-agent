@@ -19,6 +19,7 @@ import { mean, median, percentile, wilsonInterval } from './metrics';
 import { estimateTurnCost, pricingConfigSchema } from './pricing';
 import { runEvaluation } from './runner';
 import {
+  technicalStudyManifestOverlaySchema,
   technicalStudyManifestSchema,
   type StudyScenario,
   type TechnicalStudyManifest,
@@ -186,9 +187,38 @@ export async function regenerateTechnicalStudyArtifacts(args: {
 }
 
 async function loadManifest(filePath: string): Promise<TechnicalStudyManifest> {
-  return technicalStudyManifestSchema.parse(
-    JSON.parse(await fs.readFile(filePath, 'utf8')) as unknown,
+  const source = JSON.parse(await fs.readFile(filePath, 'utf8')) as unknown;
+  const direct = technicalStudyManifestSchema.safeParse(source);
+  if (direct.success) {
+    return direct.data;
+  }
+
+  const overlay = technicalStudyManifestOverlaySchema.parse(source);
+  const basePath = path.resolve(path.dirname(filePath), overlay.baseManifest);
+  const base = await loadManifest(basePath);
+  if (base.version !== 3) {
+    throw new Error(`V4 overlay requires a V3 base manifest; found V${base.version}.`);
+  }
+  const overrides = new Map(
+    overlay.scenarioOverrides.map((scenario) => [scenario.id, scenario]),
   );
+  const unknownIds = [...overrides.keys()].filter(
+    (id) => !base.scenarios.some((scenario) => scenario.id === id),
+  );
+  if (unknownIds.length > 0) {
+    throw new Error(`V4 overlay contains unknown scenario IDs: ${unknownIds.join(', ')}.`);
+  }
+
+  return technicalStudyManifestSchema.parse({
+    id: overlay.id,
+    version: overlay.version,
+    frozenAt: overlay.frozenAt,
+    repetitions: overlay.repetitions,
+    scenarios: base.scenarios.map((scenario) => ({
+      ...scenario,
+      ...overrides.get(scenario.id),
+    })),
+  });
 }
 
 async function findFilesNamed(directory: string, fileName: string): Promise<string[]> {
