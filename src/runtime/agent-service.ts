@@ -1625,6 +1625,24 @@ export class AgentService {
         persistReason: 'seguir_refinando_guardar_plan',
       };
     } else if (
+      evidence.extractionIntent === 'retomar_plan' &&
+      evidence.hasExistingShortlist
+    ) {
+      const needsToPresent = evidence.sufficiencyByNeed
+        .filter((need) => need.hasShortlist)
+        .map((need) => need.category);
+      decision = {
+        nextNode: needsToPresent.length > 1 ? 'elicitacion_necesidades' : 'recomendar',
+        routeKind: 'present_existing_shortlist',
+        providerSearchMode: 'existing_shortlist',
+        presentationScope: needsToPresent.length > 1 ? 'multi_need' : 'single_need',
+        focusNeedCategory: evidence.focusedNeedCategory ?? needsToPresent[0] ?? null,
+        needsToSearch: [],
+        needsToPresent,
+        stopReason: null,
+        persistReason: needsToPresent.length > 1 ? 'elicitacion_necesidades' : 'recomendar',
+      };
+    } else if (
       evidence.readyNeedCategories.length > 1 &&
       (
         evidence.extractionIntent === 'elicitar_necesidades' ||
@@ -2243,7 +2261,7 @@ export class AgentService {
     userMessage: string,
     channelPhone: string | null | undefined,
   ): { plan: PlanSnapshot; validationError: string | null } {
-    const guardedExtraction = this.guardImplicitVenueNeed(plan, extraction, userMessage);
+    const guardedExtraction = this.guardImplicitVenueNeed(plan, extraction);
     const extractedGuestRange =
       guardedExtraction.guestRange === 'unknown' ? null : guardedExtraction.guestRange;
     const normalizedGuestRange =
@@ -2320,9 +2338,16 @@ export class AgentService {
   private guardImplicitVenueNeed(
     plan: PlanSnapshot,
     extraction: ExtractionResult,
-    userMessage: string,
   ): ExtractionResult {
-    if (getActiveNeed(plan)?.category || this.messageHasVenueCue(userMessage)) {
+    const hasStructuredVenueEvidence =
+      normalizeToProviderCategory(extraction.providerFitCriteria?.needCategory) === 'Locales' ||
+      (extraction.providerQueryIntents ?? []).some(
+        (queryIntent) => queryIntent.category === 'Locales',
+      );
+    if (
+      getActiveNeed(plan)?.category ||
+      hasStructuredVenueEvidence
+    ) {
       return extraction;
     }
 
@@ -4045,23 +4070,6 @@ export class AgentService {
     extraction: ExtractionResult,
   ): string[] {
     return extraction.selectedProviderHints;
-  }
-
-  private messageHasVenueCue(value: string): boolean {
-    const normalized = this.normalizeSelectionText(value);
-    return [
-      'local',
-      'locales',
-      'salon',
-      'salones',
-      'venue',
-      'venues',
-      'espacio',
-      'espacios',
-      'solo el espacio',
-      'lugar para',
-      'lugares para',
-    ].some((keyword) => normalized.includes(keyword));
   }
 
   private renderOutbound(

@@ -1266,6 +1266,76 @@ describe('AgentService', () => {
     expect(response.trace.plan_persist_reason).toBe('guardar_cerrar_temporalmente');
   });
 
+  it('resumes an existing shortlist without searching again', async () => {
+    class ResumeRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        if (request.userMessage.includes('continuar')) {
+          return {
+            intent: 'retomar_plan',
+            intentConfidence: 0.97,
+            eventType: null,
+            vendorCategory: null,
+            vendorCategories: [],
+            activeNeedCategory: null,
+            location: null,
+            budgetSignal: null,
+            guestRange: null,
+            preferences: [],
+            hardConstraints: [],
+            assumptions: [],
+            conversationSummary: 'El usuario quiere retomar su plan.',
+            selectedProviderHints: [],
+            pauseRequested: false,
+            contactName: null,
+            contactEmail: null,
+            contactPhone: null,
+            providerFitCriteria: testProviderFitCriteria,
+          };
+        }
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new ResumeRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-resume-shortlist',
+      text: 'Busco fotógrafo para mi boda en Lima con presupuesto medio',
+      messageId: 'msg-resume-search',
+      receivedAt: new Date().toISOString(),
+    });
+    await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-resume-shortlist',
+      text: 'stop por ahora',
+      messageId: 'msg-resume-pause',
+      receivedAt: new Date().toISOString(),
+    });
+    const searchCallsBeforeResume = gateway.searchCalls;
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-resume-shortlist',
+      text: 'quiero continuar',
+      messageId: 'msg-resume-continue',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(response.trace.search_strategy).toBe('existing_plan_shortlist');
+    expect(gateway.searchCalls).toBe(searchCallsBeforeResume);
+  });
+
   it('keeps a selected provider and skips search when the user confirms by name', async () => {
     class SelectionRuntime extends FakeRuntime {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
@@ -3043,6 +3113,58 @@ describe('AgentService', () => {
     expect(response.plan.active_need_category).toBeNull();
     expect(response.plan.provider_needs).toHaveLength(0);
     expect(gateway.searchCalls).toBe(0);
+  });
+
+  it('preserves an explicit structured auditorium need without keyword routing', async () => {
+    class ExplicitAuditoriumRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          intent: 'buscar_proveedores',
+          intentConfidence: 0.95,
+          eventType: 'corporativo',
+          vendorCategory: 'Locales',
+          vendorCategories: ['Locales'],
+          activeNeedCategory: 'Locales',
+          location: 'Aeropuerto de Lima',
+          budgetSignal: 'mínimo',
+          guestRange: '201+',
+          preferences: ['auditorio dentro del aeropuerto'],
+          hardConstraints: ['mañana'],
+          assumptions: [],
+          conversationSummary: 'Evento corporativo para 900 personas en un auditorio.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            eventType: 'corporativo',
+            needCategory: 'Locales',
+            location: 'Aeropuerto de Lima',
+            budgetAmount: 1000,
+            mustHave: ['auditorio dentro del aeropuerto'],
+          },
+        };
+      }
+    }
+
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new ExplicitAuditoriumRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-explicit-auditorium',
+      text: 'Necesito un auditorio para un evento corporativo.',
+      messageId: 'msg-explicit-auditorium',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.provider_needs.some((need) => need.category === 'Locales')).toBe(true);
+    expect(response.plan.active_need_category).toBe('Locales');
   });
 
   it('maps an explicit guest count of 100 into the 51-100 range', async () => {

@@ -3412,3 +3412,25 @@ an already exercised frozen manifest would erase that evidence.
 
 Treat every exercised manifest as immutable. Correct semantics only in a new
 version, and reserve V3 as the final precommitted confirmatory manifest.
+
+## Preserve shortlist on resume and structured auditorium evidence
+
+- Added an explicit `retomar_plan` decision that presents persisted shortlists
+  without repeating provider retrieval.
+- Added structured venue evidence from typed fit criteria or provider query
+  intents to the implicit-venue guard.
+- Added regression tests for zero-search shortlist resume and explicit
+  corporate-auditorium preservation.
+
+### Reason
+
+The V3 gate showed pause/resume re-ran marketplace search instead of presenting
+the stored shortlist. It also showed the extractor understood `Locales` in its
+reply context, but the legacy implicit-venue guard removed the category because
+`auditorio` was absent from its lexical cue list.
+
+### Decision
+
+Resume from persisted typed state and avoid a needless external call. Preserve
+venue needs using structured LLM evidence rather than extending keyword-based
+flow routing.
