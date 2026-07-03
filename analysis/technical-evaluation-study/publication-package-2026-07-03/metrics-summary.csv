@@ -1,0 +1,48 @@
+category,metric,numerator,denominator,value,unit,scope,interpretation
+functional,executed_conversations,150,150,150,count,final_v4,All planned live conversations executed
+functional,completion,133,150,88.6667,percent,final_v4,All hard expectations and terminal criterion passed
+functional,completion_wilson95_lower,,,82.5997,percent,final_v4,Lower Wilson confidence bound
+functional,completion_wilson95_upper,,,92.8026,percent,final_v4,Upper Wilson confidence bound
+functional,failed_assertions,17,150,11.3333,percent,final_v4,Executed conversations failing at least one hard assertion
+reliability,runtime_errors,0,150,0,percent,final_v4,Unhandled or target runtime failures
+reliability,timeouts,0,150,0,percent,final_v4,Timed-out conversations
+reliability,persistence_assertion,149,150,99.3333,percent,final_v4,Expected persistence telemetry passed
+reliability,flaky_scenarios,4,50,8,percent,final_v4,Outcome varied across three repetitions
+recommendation,expected_need_extraction,159,162,98.1481,percent,final_v4,Expected canonical need appeared in typed state
+recommendation,retrieval_given_extraction,111,159,69.8113,percent,final_v4,Extracted expected need received recommendations
+recommendation,end_to_end_expected_need_coverage,111,162,68.5185,percent,final_v4,Expected need was extracted and recommended
+recommendation,observed_need_coverage,130,201,64.6766,percent,final_v4,Any observed need received recommendations
+recommendation,unexpected_extracted_needs,42,,42,count,final_v4,Extracted canonical needs absent from scenario expectations
+quality,displayed_provider_appearances,704,,704,count,final_v4,Provider cards or rows shown
+quality,unique_displayed_providers,21,,21,count,final_v4,Unique displayed provider IDs
+quality,mean_shortlist_size,,,4.1905,providers,final_v4,Mean providers per recommendation list
+quality,category_consistency,704,704,100,percent,final_v4,Canonical provider category matched active need
+quality,known_location_satisfaction,632,704,89.7727,percent,final_v4,Known provider location compatible with request
+quality,unknown_location,72,704,10.2273,percent,final_v4,Location evidence insufficient for exact compatibility
+quality,known_location_mismatch,0,704,0,percent,final_v4,Known location contradicted requested location
+quality,budget_compatibility,124,124,100,percent,final_v4,Applicable structured price tiers passed budget rules
+quality,event_service_evidence,10,10,100,percent,final_v4,Applicable services had event-oriented catalog evidence
+grounding,provenance_capture,180,180,100,percent,final_v4,Grounding-required turns captured external evidence
+manual_historical,provider_existence,20,20,100,percent,iteration_3_independent_audit,Named providers existed in captured evidence
+manual_historical,attribute_faithfulness,15,20,75,percent,iteration_3_independent_audit,Displayed attributes agreed with evidence
+manual_historical,rationale_support,1,10,10,percent,iteration_3_independent_audit,Every recommendation reason had support
+manual_historical,hard_constraint_consistency,11,20,55,percent,iteration_3_independent_audit,No explicit constraint contradiction
+manual_historical,fully_grounded_recommendation_turns,1,10,10,percent,iteration_3_independent_audit,All applicable audit dimensions passed
+workflow,node_coverage,18,26,69.2308,percent,final_v4,Unique observed decision nodes
+workflow,transition_coverage,32,49,65.3061,percent,final_v4,Observed versioned reachable transitions
+workflow,unique_routes,,,17,count,final_v4,Distinct complete transition sequences
+performance,latency_mean,,,16.6138,seconds_per_conversation,final_v4,Mean end-to-end conversation latency
+performance,latency_median,,,16.547,seconds_per_conversation,final_v4,Median end-to-end conversation latency
+performance,latency_p95,,,26.294,seconds_per_conversation,final_v4,95th percentile conversation latency
+performance,latency_min,,,5.038,seconds_per_conversation,final_v4,Minimum conversation latency
+performance,latency_max,,,35.37,seconds_per_conversation,final_v4,Maximum conversation latency
+performance,tokens_mean,,,34268.6333,tokens_per_conversation,final_v4,Mean extraction and reply token usage
+performance,tokens_median,,,33953,tokens_per_conversation,final_v4,Median extraction and reply token usage
+performance,tokens_p95,,,64037,tokens_per_conversation,final_v4,95th percentile token usage
+performance,tool_calls_mean,,,1.6067,calls_per_conversation,final_v4,Mean instrumented tool calls
+performance,tool_calls_median,,,1,calls_per_conversation,final_v4,Median instrumented tool calls
+performance,tool_calls_p95,,,5,calls_per_conversation,final_v4,95th percentile tool calls
+cost,priced_cost_mean,,,0.00702762,usd_per_conversation,final_v4,Estimated OpenAI plus Lambda cost
+cost,priced_cost_median,,,0.00605648,usd_per_conversation,final_v4,Median estimated cost
+cost,priced_cost_p95,,,0.01371571,usd_per_conversation,final_v4,95th percentile estimated cost
+cost,total_priced_cost,,,1.05414326,usd,final_v4,Estimated total study cost
