@@ -1,0 +1,911 @@
+{
+  "runId": "eval-2026-07-03T01-06-00-092Z-dc1749cc",
+  "caseId": "study.corporate.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 13104,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista",
+    "entrevista->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"corporativo\"",
+    "vendor_category=\"Fotografía y video\"",
+    "active_need_category=\"Fotografía y video\"",
+    "location=\"Lima\"",
+    "provider_needs=Fotografía y video:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T01-06-00-092Z-dc1749cc/artifacts/study-repetition-3/study.corporate.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition entrevista->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 6552,
+    "p95_latency_ms": 6732,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 33683,
+    "cache_hit_rate": 0.8781354322991639
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco hologramas para evento corporativo en Lima."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara avanzar, necesito que me digas qué tipo de proveedor o servicio buscas primero y, si puedes, una referencia de presupuesto o cantidad aproximada de invitados\n\nSi quieres, puedo empezar por aterrizar esa necesidad de hologramas para tu evento corporativo en Lima",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWJRTGV0C9XDGT90Z2XT35YA",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 6230,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 4399,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1807,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11572,
+            "output_tokens": 437,
+            "total_tokens": 12009,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4452,
+            "output_tokens": 79,
+            "total_tokens": 4531,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 16024,
+            "output_tokens": 516,
+            "total_tokens": 16540,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJRTGV0C9XDGT90Z2XT35YA",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "runtime_latency_ms": 6230,
+        "extraction_latency_ms": 4399,
+        "compose_latency_ms": 1807,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16540,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.91063404892661,
+        "extraction_to_compose_ratio": 2.434421693414499,
+        "captured_at": "2026-07-03T01:17:22.656Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.corporate.10-4400fa56",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.8,
+        "event_type": "corporativo",
+        "vendor_category": null,
+        "active_need_category": null,
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [
+          "hologramas"
+        ],
+        "missing_fields": [
+          "vendor_category",
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "Se refiere a hologramas como parte de la producción/entretenimiento del evento corporativo."
+        ],
+        "conversation_summary": "",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T01:17:20.837Z"
+      },
+      "latencyMs": 6372,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara avanzar, necesito que me digas qué tipo de proveedor o servicio buscas primero y, si puedes, una referencia de presupuesto o cantidad aproximada de invitados\n\nSi quieres, puedo empezar por aterrizar esa necesidad de hologramas para tu evento corporativo en Lima",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWJRTGV0C9XDGT90Z2XT35YA",
+          "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+          "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+          "previous_node": "contacto_inicial",
+          "next_node": "entrevista",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "entrevista"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 6230,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 4399,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1807,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11572,
+              "output_tokens": 437,
+              "total_tokens": 12009,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4452,
+              "output_tokens": 79,
+              "total_tokens": 4531,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 16024,
+              "output_tokens": 516,
+              "total_tokens": 16540,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.corporate.10-4400fa56",
+          "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.8,
+          "event_type": "corporativo",
+          "vendor_category": null,
+          "active_need_category": null,
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [
+            "hologramas"
+          ],
+          "missing_fields": [
+            "vendor_category",
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "Se refiere a hologramas como parte de la producción/entretenimiento del evento corporativo."
+          ],
+          "conversation_summary": "",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T01:17:20.837Z"
+        },
+        "perf": {
+          "trace_id": "01KWJRTGV0C9XDGT90Z2XT35YA",
+          "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+          "runtime_latency_ms": 6230,
+          "extraction_latency_ms": 4399,
+          "compose_latency_ms": 1807,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16540,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.91063404892661,
+          "extraction_to_compose_ratio": 2.434421693414499,
+          "captured_at": "2026-07-03T01:17:22.656Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no existen, amplía a producción audiovisual profesional."
+      },
+      "outputText": "Perfecto, lo amplio a producción audiovisual profesional para tu evento corporativo en Lima\n\nSolo me falta una referencia de presupuesto o una cantidad aproximada de invitados para afinar la búsqueda y proponerte opciones que encajen mejor\n\nSi quieres, me das uno de esos dos datos y sigo",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJRTQC47NZPV6ZV2T3PE6AZ",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+        "previous_node": "entrevista",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "entrevista",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 6351,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 4457,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1870,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11592,
+            "output_tokens": 441,
+            "total_tokens": 12033,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5035,
+            "output_tokens": 75,
+            "total_tokens": 5110,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 16627,
+            "output_tokens": 516,
+            "total_tokens": 17143,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJRTQC47NZPV6ZV2T3PE6AZ",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "runtime_latency_ms": 6351,
+        "extraction_latency_ms": 4457,
+        "compose_latency_ms": 1870,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17143,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.846815420701269,
+        "extraction_to_compose_ratio": 2.383422459893048,
+        "captured_at": "2026-07-03T01:17:29.349Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.corporate.10-4400fa56",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.7,
+        "event_type": "corporativo",
+        "vendor_category": "Fotografía y video",
+        "active_need_category": "Fotografía y video",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [],
+        "hard_constraints": [
+          "hologramas"
+        ],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Fotografía y video",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "Se refiere a hologramas como parte de la producción/entretenimiento del evento corporativo.",
+          "El usuario quiere ampliar la categoría relacionada con audiovisual profesional, incluido producción audiovisual."
+        ],
+        "conversation_summary": "",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-03T01:17:27.467Z"
+      },
+      "latencyMs": 6732,
+      "rawTargetResponse": {
+        "message": "Perfecto, lo amplio a producción audiovisual profesional para tu evento corporativo en Lima\n\nSolo me falta una referencia de presupuesto o una cantidad aproximada de invitados para afinar la búsqueda y proponerte opciones que encajen mejor\n\nSi quieres, me das uno de esos dos datos y sigo",
+        "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+        "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJRTQC47NZPV6ZV2T3PE6AZ",
+          "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+          "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+          "previous_node": "entrevista",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "entrevista",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 6351,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 4457,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1870,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11592,
+              "output_tokens": 441,
+              "total_tokens": 12033,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5035,
+              "output_tokens": 75,
+              "total_tokens": 5110,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 16627,
+              "output_tokens": 516,
+              "total_tokens": 17143,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJRTARF765HZ141TK9EXAHG",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.corporate.10-4400fa56",
+          "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.7,
+          "event_type": "corporativo",
+          "vendor_category": "Fotografía y video",
+          "active_need_category": "Fotografía y video",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [],
+          "hard_constraints": [
+            "hologramas"
+          ],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Fotografía y video",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "Se refiere a hologramas como parte de la producción/entretenimiento del evento corporativo.",
+            "El usuario quiere ampliar la categoría relacionada con audiovisual profesional, incluido producción audiovisual."
+          ],
+          "conversation_summary": "",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-03T01:17:27.467Z"
+        },
+        "perf": {
+          "trace_id": "01KWJRTQC47NZPV6ZV2T3PE6AZ",
+          "conversation_id": "conv_6a470da0e7488195a4b5ddc3f6b929bf0e5a34a36ebafdad",
+          "runtime_latency_ms": 6351,
+          "extraction_latency_ms": 4457,
+          "compose_latency_ms": 1870,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17143,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.846815420701269,
+          "extraction_to_compose_ratio": 2.383422459893048,
+          "captured_at": "2026-07-03T01:17:29.349Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T01:17:29.443Z",
+  "completedAt": "2026-07-03T01:17:29.443Z"
+}

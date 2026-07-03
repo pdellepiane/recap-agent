@@ -1,0 +1,1331 @@
+{
+  "runId": "eval-2026-07-03T00-51-31-932Z-19a448ef",
+  "caseId": "study.baby_shower.06",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.75,
+  "totalLatencyMs": 18663,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante",
+    "aclarar_pedir_faltante->guardar_cerrar_temporalmente",
+    "guardar_cerrar_temporalmente->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"retomar_plan\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Hogar y deco\"",
+    "active_need_category=\"Hogar y deco\"",
+    "location=\"Lima\"",
+    "provider_needs=Hogar y deco:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-51-31-932Z-19a448ef/artifacts/study-repetition-2/study.baby_shower.06.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed guardar_cerrar_temporalmente->aclarar_pedir_faltante. Allowed=*->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.75,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 6221,
+    "p95_latency_ms": 8242,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.23076923076923078,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 50795,
+    "cache_hit_rate": 0.8585223943918059
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un baby shower en Lima y necesito decoración."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara buscar opciones de decoración para tu baby shower en Lima, solo me falta una señal de presupuesto o la cantidad aproximada de invitados\n\nCon ese dato puedo ajustar mejor las opciones para ti",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJQS7TPQ5SKP3HXYK58NZM0",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 5469,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 3869,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1575,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11571,
+            "output_tokens": 443,
+            "total_tokens": 12014,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4140,
+            "output_tokens": 63,
+            "total_tokens": 4203,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15711,
+            "output_tokens": 506,
+            "total_tokens": 16217,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQS7TPQ5SKP3HXYK58NZM0",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "runtime_latency_ms": 5469,
+        "extraction_latency_ms": 3869,
+        "compose_latency_ms": 1575,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16217,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8961873846349692,
+        "extraction_to_compose_ratio": 2.4565079365079363,
+        "captured_at": "2026-07-03T00:59:12.086Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-158af256",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Planea un baby shower en Lima y busca proveedores para decoración (Hogar y deco).",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:59:10.499Z"
+      },
+      "latencyMs": 5888,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara buscar opciones de decoración para tu baby shower en Lima, solo me falta una señal de presupuesto o la cantidad aproximada de invitados\n\nCon ese dato puedo ajustar mejor las opciones para ti",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJQS7TPQ5SKP3HXYK58NZM0",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+          "previous_node": "contacto_inicial",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 5469,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 3869,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1575,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11571,
+              "output_tokens": 443,
+              "total_tokens": 12014,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4140,
+              "output_tokens": 63,
+              "total_tokens": 4203,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15711,
+              "output_tokens": 506,
+              "total_tokens": 16217,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-158af256",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Planea un baby shower en Lima y busca proveedores para decoración (Hogar y deco).",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:59:10.499Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQS7TPQ5SKP3HXYK58NZM0",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "runtime_latency_ms": 5469,
+          "extraction_latency_ms": 3869,
+          "compose_latency_ms": 1575,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16217,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8961873846349692,
+          "extraction_to_compose_ratio": 2.4565079365079363,
+          "captured_at": "2026-07-03T00:59:12.086Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Pausa el plan."
+      },
+      "outputText": "Claro, lo dejamos en pausa y el plan quedó guardado\n\nCuando quieras retomar, seguimos desde aquí sin empezar de cero",
+      "currentNode": "guardar_cerrar_temporalmente",
+      "trace": {
+        "trace_id": "01KWJQSCATVEGQMBDAASVAA3NS",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "previous_node": "aclarar_pedir_faltante",
+        "next_node": "guardar_cerrar_temporalmente",
+        "node_path": [
+          "aclarar_pedir_faltante",
+          "existe_plan_guardado",
+          "aclarar_pedir_faltante",
+          "guardar_cerrar_temporalmente"
+        ],
+        "intent": "pausar",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "7a5e9a75d285",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/guardar_cerrar_temporalmente/system.txt",
+          "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+          "nodes/guardar_cerrar_temporalmente/tool_policy.txt"
+        ],
+        "tools_considered": [],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "guardar_cerrar_temporalmente",
+        "timing_ms": {
+          "total": 4179,
+          "load_plan": 60,
+          "prepare_working_plan": 0,
+          "extraction": 2492,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1616,
+          "save_plan": 10
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11664,
+            "output_tokens": 225,
+            "total_tokens": 11889,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4629,
+            "output_tokens": 43,
+            "total_tokens": 4672,
+            "cached_input_tokens": 2816
+          },
+          "total": {
+            "input_tokens": 16293,
+            "output_tokens": 268,
+            "total_tokens": 16561,
+            "cached_input_tokens": 13824
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQSCATVEGQMBDAASVAA3NS",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "runtime_latency_ms": 4179,
+        "extraction_latency_ms": 2492,
+        "compose_latency_ms": 1616,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16561,
+        "cached_input_tokens": 13824,
+        "cache_hit_rate": 0.8484625299208249,
+        "extraction_to_compose_ratio": 1.5420792079207921,
+        "captured_at": "2026-07-03T00:59:16.698Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-158af256",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "guardar_cerrar_temporalmente",
+        "intent": "pausar",
+        "intent_confidence": 0.95,
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Planea un baby shower en Lima. Necesidad vigente: decoración/elementos para el baby shower (Hogar y deco).",
+        "last_user_goal": "pausar",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:59:15.072Z"
+      },
+      "latencyMs": 4533,
+      "rawTargetResponse": {
+        "message": "Claro, lo dejamos en pausa y el plan quedó guardado\n\nCuando quieras retomar, seguimos desde aquí sin empezar de cero",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "current_node": "guardar_cerrar_temporalmente",
+        "trace": {
+          "trace_id": "01KWJQSCATVEGQMBDAASVAA3NS",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+          "previous_node": "aclarar_pedir_faltante",
+          "next_node": "guardar_cerrar_temporalmente",
+          "node_path": [
+            "aclarar_pedir_faltante",
+            "existe_plan_guardado",
+            "aclarar_pedir_faltante",
+            "guardar_cerrar_temporalmente"
+          ],
+          "intent": "pausar",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "7a5e9a75d285",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/guardar_cerrar_temporalmente/system.txt",
+            "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+            "nodes/guardar_cerrar_temporalmente/tool_policy.txt"
+          ],
+          "tools_considered": [],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "guardar_cerrar_temporalmente",
+          "timing_ms": {
+            "total": 4179,
+            "load_plan": 60,
+            "prepare_working_plan": 0,
+            "extraction": 2492,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 0,
+            "compose_reply": 1616,
+            "save_plan": 10
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11664,
+              "output_tokens": 225,
+              "total_tokens": 11889,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4629,
+              "output_tokens": 43,
+              "total_tokens": 4672,
+              "cached_input_tokens": 2816
+            },
+            "total": {
+              "input_tokens": 16293,
+              "output_tokens": 268,
+              "total_tokens": 16561,
+              "cached_input_tokens": 13824
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-158af256",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "guardar_cerrar_temporalmente",
+          "intent": "pausar",
+          "intent_confidence": 0.95,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Planea un baby shower en Lima. Necesidad vigente: decoración/elementos para el baby shower (Hogar y deco).",
+          "last_user_goal": "pausar",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:59:15.072Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQSCATVEGQMBDAASVAA3NS",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "runtime_latency_ms": 4179,
+          "extraction_latency_ms": 2492,
+          "compose_latency_ms": 1616,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16561,
+          "cached_input_tokens": 13824,
+          "cache_hit_rate": 0.8484625299208249,
+          "extraction_to_compose_ratio": 1.5420792079207921,
+          "captured_at": "2026-07-03T00:59:16.698Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Continuemos con el baby shower."
+      },
+      "outputText": "Claro, seguimos con tu baby shower\n\nPara avanzar con la decoración, solo me falta una señal de presupuesto o la cantidad aproximada de invitados\n\nCon eso te puedo ajustar mejor las opciones",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJQSMCA1XMMT20QWGX1RSA6",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "previous_node": "guardar_cerrar_temporalmente",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "guardar_cerrar_temporalmente",
+          "existe_plan_guardado",
+          "aclarar_pedir_faltante",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "retomar_plan",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "aclarar_pedir_faltante",
+        "timing_ms": {
+          "total": 7899,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 4301,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 4,
+          "compose_reply": 3572,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11664,
+            "output_tokens": 467,
+            "total_tokens": 12131,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5831,
+            "output_tokens": 55,
+            "total_tokens": 5886,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17495,
+            "output_tokens": 522,
+            "total_tokens": 18017,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQSMCA1XMMT20QWGX1RSA6",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "runtime_latency_ms": 7899,
+        "extraction_latency_ms": 4301,
+        "compose_latency_ms": 3572,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18017,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8340668762503572,
+        "extraction_to_compose_ratio": 1.204087346024636,
+        "captured_at": "2026-07-03T00:59:24.938Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-158af256",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "retomar_plan",
+        "intent_confidence": 0.8,
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Planea un baby shower en Lima. Frente activo: decoración/elementos para baby shower (Hogar y deco).",
+        "last_user_goal": "retomar_plan",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:59:21.351Z"
+      },
+      "latencyMs": 8242,
+      "rawTargetResponse": {
+        "message": "Claro, seguimos con tu baby shower\n\nPara avanzar con la decoración, solo me falta una señal de presupuesto o la cantidad aproximada de invitados\n\nCon eso te puedo ajustar mejor las opciones",
+        "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+        "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJQSMCA1XMMT20QWGX1RSA6",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+          "previous_node": "guardar_cerrar_temporalmente",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "guardar_cerrar_temporalmente",
+            "existe_plan_guardado",
+            "aclarar_pedir_faltante",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "retomar_plan",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "aclarar_pedir_faltante",
+          "timing_ms": {
+            "total": 7899,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 4301,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 4,
+            "compose_reply": 3572,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11664,
+              "output_tokens": 467,
+              "total_tokens": 12131,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5831,
+              "output_tokens": 55,
+              "total_tokens": 5886,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17495,
+              "output_tokens": 522,
+              "total_tokens": 18017,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQS2FYZ7SG8QKDV2N5MFZC",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.baby_shower.06-158af256",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "retomar_plan",
+          "intent_confidence": 0.8,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Planea un baby shower en Lima. Frente activo: decoración/elementos para baby shower (Hogar y deco).",
+          "last_user_goal": "retomar_plan",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:59:21.351Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQSMCA1XMMT20QWGX1RSA6",
+          "conversation_id": "conv_6a47095e90dc8193aa604d82659aeae10441e4573d0e4b5e",
+          "runtime_latency_ms": 7899,
+          "extraction_latency_ms": 4301,
+          "compose_latency_ms": 3572,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18017,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8340668762503572,
+          "extraction_to_compose_ratio": 1.204087346024636,
+          "captured_at": "2026-07-03T00:59:24.938Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:59:24.997Z",
+  "completedAt": "2026-07-03T00:59:24.998Z"
+}

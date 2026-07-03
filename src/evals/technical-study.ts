@@ -1054,9 +1054,11 @@ function renderHistogram(values: number[], title: string): string {
 }
 
 function renderFindings(summary: Record<string, unknown>): string {
+  const manifestId =
+    typeof summary.manifestId === 'string' ? summary.manifestId : 'unknown';
   return `# Technical Evaluation Findings\n\n` +
     `Generated from immutable evaluation artifacts. This dossier reports technical behavior only; it does not include user testing or baseline comparison.\n\n` +
-    `## Reproducibility\n\n- Manifest: technical-evaluation-50-v1\n- Transition registry: ${REACHABLE_TRANSITIONS_VERSION}\n- Raw summary: [summary.json](summary.json)\n- Conversation table: [conversations.csv](conversations.csv)\n- Grounding audit population: [grounding.csv](grounding.csv)\n\n` +
+    `## Reproducibility\n\n- Manifest: ${manifestId}\n- Transition registry: ${REACHABLE_TRANSITIONS_VERSION}\n- Raw summary: [summary.json](summary.json)\n- Conversation table: [conversations.csv](conversations.csv)\n- Grounding audit population: [grounding.csv](grounding.csv)\n\n` +
     `## Findings\n\n\`\`\`json\n${JSON.stringify(summary, null, 2)}\n\`\`\`\n\n` +
     `## Limitations\n\n- Results describe the development deployment and marketplace snapshot at execution time.\n- Internal marketplace API calls are counted but not assigned an invented monetary price.\n- Deterministic grounding verifies structured provenance and attributes; free-text recommendation rationales still require the separate manual audit rubric.\n- No claims about user satisfaction, adoption, or superiority over a baseline are supported by this study.\n`;
 }

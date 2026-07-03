@@ -1,0 +1,549 @@
+{
+  "runId": "eval-2026-07-03T00-51-31-932Z-19a448ef",
+  "caseId": "study.corporate.02",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 9775,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"corporativo\"",
+    "vendor_category=\"Fotografía y video\"",
+    "active_need_category=\"Fotografía y video\"",
+    "guest_range=\"101-200\"",
+    "provider_needs=Fotografía y video:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-51-31-932Z-19a448ef/artifacts/study-repetition-2/study.corporate.02.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 9775,
+    "p95_latency_ms": 9775,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.15384615384615385,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 20942,
+    "cache_hit_rate": 0.8645685477950174
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito producción audiovisual para un evento corporativo de 200 asistentes."
+      },
+      "outputText": "Claro, te ayudo con eso.\n\nPara avanzar con producción audiovisual, me falta la ubicación del evento. Si quieres, puedes decirme ciudad o país; por ejemplo, Lima o Perú\n\nCon eso ya puedo seguir",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJQWCHEQQ8Z7X1XW8Z7QTSK",
+        "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+        "plan_id": "01KWJQW3761ZK52JRHZMAS9E57",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "list_locations"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "list_locations",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "list_locations",
+            "output": "[\n  {\n    \"cityId\": null,\n    \"countryId\": 173,\n    \"city\": null,\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": null,\n      \"country_id\": 173,\n      \"city\": null,\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 68127,\n    \"countryId\": 142,\n    \"city\": \"Aguascalientes\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 68127,\n      \"country_id\": 142,\n      \"city\": \"Aguascalientes\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69103,\n    \"countryId\": 142,\n    \"city\": \"Cholula\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69103,\n      \"country_id\": 142,\n      \"city\": \"Cholula\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 72102,\n    \"countryId\": 142,\n    \"city\": \"Ciudad de México\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 72102,\n      \"country_id\": 142,\n      \"city\": \"Ciudad de México\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69615,\n    \"countryId\": 142,\n    \"city\": \"Cuernavaca\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69615,\n      \"country_id\": 142,\n      \"city\": \"Cuernavaca\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 142544,\n    \"countryId\": 142,\n    \"city\": \"Guadalajara\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 142544,\n      \"country_id\": 142,\n      \"city\": \"Guadalajara\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 71666,\n    \"countryId\": 142,\n    \"city\": \"León\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 71666,\n      \"country_id\": 142,\n      \"city\": \"León\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74228,\n    \"countryId\": 142,\n    \"city\": \"San Miguel de Allende\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74228,\n      \"country_id\": 142,\n      \"city\": \"San Miguel de Allende\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74985,\n    \"countryId\": 142,\n    \"city\": \"Santiago de Querétaro\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74985,\n      \"country_id\": 142,\n      \"city\": \"Santiago de Querétaro\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 75804,\n    \"countryId\": 142,\n    \"city\": \"Tulum\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 75804,\n      \"country_id\": 142,\n      \"city\": \"Tulum\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 80701,\n    \"countryId\": 173,\n    \"city\": \"Lima\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80701,\n      \"country_id\": 173,\n      \"city\": \"Lima\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80777,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Arequipa\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80777,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Arequipa\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80843,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Ica\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80843,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Ica\",\n      \"country\": \"Perú\"\n    }\n  }\n]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 9549,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 4129,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 5397,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11575,
+            "output_tokens": 436,
+            "total_tokens": 12011,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 8856,
+            "output_tokens": 75,
+            "total_tokens": 8931,
+            "cached_input_tokens": 6656
+          },
+          "total": {
+            "input_tokens": 20431,
+            "output_tokens": 511,
+            "total_tokens": 20942,
+            "cached_input_tokens": 17664
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQWCHEQQ8Z7X1XW8Z7QTSK",
+        "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+        "runtime_latency_ms": 9549,
+        "extraction_latency_ms": 4129,
+        "compose_latency_ms": 5397,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 20942,
+        "cached_input_tokens": 17664,
+        "cache_hit_rate": 0.8645685477950174,
+        "extraction_to_compose_ratio": 0.7650546599962942,
+        "captured_at": "2026-07-03T01:00:55.214Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQW3761ZK52JRHZMAS9E57",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.corporate.02-1ca88e27",
+        "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "corporativo",
+        "vendor_category": "Fotografía y video",
+        "active_need_category": "Fotografía y video",
+        "location": null,
+        "budget_signal": null,
+        "guest_range": "101-200",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "location"
+        ],
+        "provider_needs": [
+          {
+            "category": "Fotografía y video",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "location"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“producción audiovisual” se refiere a servicios de fotografía/video (producción audiovisual/registro del evento)."
+        ],
+        "conversation_summary": "",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T01:00:49.806Z"
+      },
+      "latencyMs": 9775,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso.\n\nPara avanzar con producción audiovisual, me falta la ubicación del evento. Si quieres, puedes decirme ciudad o país; por ejemplo, Lima o Perú\n\nCon eso ya puedo seguir",
+        "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+        "plan_id": "01KWJQW3761ZK52JRHZMAS9E57",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJQWCHEQQ8Z7X1XW8Z7QTSK",
+          "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+          "plan_id": "01KWJQW3761ZK52JRHZMAS9E57",
+          "previous_node": "contacto_inicial",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "location"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "list_locations"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "list_locations",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "list_locations",
+              "output": "[\n  {\n    \"cityId\": null,\n    \"countryId\": 173,\n    \"city\": null,\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": null,\n      \"country_id\": 173,\n      \"city\": null,\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 68127,\n    \"countryId\": 142,\n    \"city\": \"Aguascalientes\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 68127,\n      \"country_id\": 142,\n      \"city\": \"Aguascalientes\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69103,\n    \"countryId\": 142,\n    \"city\": \"Cholula\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69103,\n      \"country_id\": 142,\n      \"city\": \"Cholula\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 72102,\n    \"countryId\": 142,\n    \"city\": \"Ciudad de México\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 72102,\n      \"country_id\": 142,\n      \"city\": \"Ciudad de México\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69615,\n    \"countryId\": 142,\n    \"city\": \"Cuernavaca\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69615,\n      \"country_id\": 142,\n      \"city\": \"Cuernavaca\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 142544,\n    \"countryId\": 142,\n    \"city\": \"Guadalajara\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 142544,\n      \"country_id\": 142,\n      \"city\": \"Guadalajara\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 71666,\n    \"countryId\": 142,\n    \"city\": \"León\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 71666,\n      \"country_id\": 142,\n      \"city\": \"León\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74228,\n    \"countryId\": 142,\n    \"city\": \"San Miguel de Allende\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74228,\n      \"country_id\": 142,\n      \"city\": \"San Miguel de Allende\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74985,\n    \"countryId\": 142,\n    \"city\": \"Santiago de Querétaro\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74985,\n      \"country_id\": 142,\n      \"city\": \"Santiago de Querétaro\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 75804,\n    \"countryId\": 142,\n    \"city\": \"Tulum\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 75804,\n      \"country_id\": 142,\n      \"city\": \"Tulum\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 80701,\n    \"countryId\": 173,\n    \"city\": \"Lima\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80701,\n      \"country_id\": 173,\n      \"city\": \"Lima\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80777,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Arequipa\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80777,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Arequipa\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80843,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Ica\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80843,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Ica\",\n      \"country\": \"Perú\"\n    }\n  }\n]"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 9549,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 4129,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 0,
+            "compose_reply": 5397,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11575,
+              "output_tokens": 436,
+              "total_tokens": 12011,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 8856,
+              "output_tokens": 75,
+              "total_tokens": 8931,
+              "cached_input_tokens": 6656
+            },
+            "total": {
+              "input_tokens": 20431,
+              "output_tokens": 511,
+              "total_tokens": 20942,
+              "cached_input_tokens": 17664
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQW3761ZK52JRHZMAS9E57",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.corporate.02-1ca88e27",
+          "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "corporativo",
+          "vendor_category": "Fotografía y video",
+          "active_need_category": "Fotografía y video",
+          "location": null,
+          "budget_signal": null,
+          "guest_range": "101-200",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "location"
+          ],
+          "provider_needs": [
+            {
+              "category": "Fotografía y video",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "location"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“producción audiovisual” se refiere a servicios de fotografía/video (producción audiovisual/registro del evento)."
+          ],
+          "conversation_summary": "",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T01:00:49.806Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQWCHEQQ8Z7X1XW8Z7QTSK",
+          "conversation_id": "conv_6a4709c1debc8197896ac89a1f607789081275e8dbad02ae",
+          "runtime_latency_ms": 9549,
+          "extraction_latency_ms": 4129,
+          "compose_latency_ms": 5397,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 20942,
+          "cached_input_tokens": 17664,
+          "cache_hit_rate": 0.8645685477950174,
+          "extraction_to_compose_ratio": 0.7650546599962942,
+          "captured_at": "2026-07-03T01:00:55.214Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T01:00:55.353Z",
+  "completedAt": "2026-07-03T01:00:55.353Z"
+}

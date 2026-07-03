@@ -1,0 +1,945 @@
+{
+  "runId": "eval-2026-07-03T00-36-35-980Z-bcb34420",
+  "caseId": "study.baby_shower.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 12253,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante",
+    "aclarar_pedir_faltante->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Hogar y deco\"",
+    "active_need_category=\"Hogar y deco\"",
+    "location=\"Lima\"",
+    "provider_needs=Hogar y deco:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-36-35-980Z-bcb34420/artifacts/study-repetition-1/study.baby_shower.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition aclarar_pedir_faltante->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 6126.5,
+    "p95_latency_ms": 6135,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.19230769230769232,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 33575,
+    "cache_hit_rate": 0.881781276909829
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito decoración japonesa tradicional para baby shower en Lurín."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara buscar opciones que encajen mejor, me falta saber tu presupuesto o una cantidad aproximada de invitados\n\nCon ese dato puedo ajustar la búsqueda de decoración japonesa tradicional para tu baby shower en Lurín",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJQ0GKTNM8VXQJBCAZ7JWPP",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 5907,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 4271,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1613,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11575,
+            "output_tokens": 447,
+            "total_tokens": 12022,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4144,
+            "output_tokens": 66,
+            "total_tokens": 4210,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15719,
+            "output_tokens": 513,
+            "total_tokens": 16232,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQ0GKTNM8VXQJBCAZ7JWPP",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "runtime_latency_ms": 5907,
+        "extraction_latency_ms": 4271,
+        "compose_latency_ms": 1613,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16232,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8957312806158153,
+        "extraction_to_compose_ratio": 2.6478611283323,
+        "captured_at": "2026-07-03T00:45:41.882Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.10-8d02807a",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.86,
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lurín",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración japonesa tradicional"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración japonesa tradicional"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:45:40.258Z"
+      },
+      "latencyMs": 6135,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara buscar opciones que encajen mejor, me falta saber tu presupuesto o una cantidad aproximada de invitados\n\nCon ese dato puedo ajustar la búsqueda de decoración japonesa tradicional para tu baby shower en Lurín",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJQ0GKTNM8VXQJBCAZ7JWPP",
+          "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+          "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+          "previous_node": "contacto_inicial",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 5907,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 4271,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 0,
+            "compose_reply": 1613,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11575,
+              "output_tokens": 447,
+              "total_tokens": 12022,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4144,
+              "output_tokens": 66,
+              "total_tokens": 4210,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15719,
+              "output_tokens": 513,
+              "total_tokens": 16232,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.10-8d02807a",
+          "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.86,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración japonesa tradicional"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración japonesa tradicional"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:45:40.258Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQ0GKTNM8VXQJBCAZ7JWPP",
+          "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+          "runtime_latency_ms": 5907,
+          "extraction_latency_ms": 4271,
+          "compose_latency_ms": 1613,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16232,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8957312806158153,
+          "extraction_to_compose_ratio": 2.6478611283323,
+          "captured_at": "2026-07-03T00:45:41.882Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay coincidencia exacta, busca decoración minimalista en Lima."
+      },
+      "outputText": "Claro, puedo buscar decoración minimalista en Lima si no hay una coincidencia exacta\n\nSolo me falta tu presupuesto o una cantidad aproximada de invitados para ajustar mejor las opciones\n\nSi quieres, me pasas ese dato y avanzo con la búsqueda",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJQ0PKZY1VSGBM9EBA4NA0K",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+        "previous_node": "aclarar_pedir_faltante",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "aclarar_pedir_faltante",
+          "existe_plan_guardado",
+          "aclarar_pedir_faltante",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "aclarar_pedir_faltante",
+        "timing_ms": {
+          "total": 5728,
+          "load_plan": 5,
+          "prepare_working_plan": 0,
+          "extraction": 4056,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 2,
+          "compose_reply": 1648,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11658,
+            "output_tokens": 478,
+            "total_tokens": 12136,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5139,
+            "output_tokens": 68,
+            "total_tokens": 5207,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 16797,
+            "output_tokens": 546,
+            "total_tokens": 17343,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQ0PKZY1VSGBM9EBA4NA0K",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "runtime_latency_ms": 5728,
+        "extraction_latency_ms": 4056,
+        "compose_latency_ms": 1648,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17343,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8687265583139846,
+        "extraction_to_compose_ratio": 2.4611650485436893,
+        "captured_at": "2026-07-03T00:45:48.031Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.10-8d02807a",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.8,
+        "event_type": "baby_shower",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración japonesa tradicional",
+          "decoración minimalista"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración japonesa tradicional",
+              "decoración minimalista"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "La búsqueda solicitada es para decoración (Hogar y deco) del baby shower."
+        ],
+        "conversation_summary": "Baby shower con frente activo en Hogar y deco. El usuario pide buscar decoración minimalista en Lima (ajustando ubicación desde Lurín a Lima).",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:45:46.370Z"
+      },
+      "latencyMs": 6118,
+      "rawTargetResponse": {
+        "message": "Claro, puedo buscar decoración minimalista en Lima si no hay una coincidencia exacta\n\nSolo me falta tu presupuesto o una cantidad aproximada de invitados para ajustar mejor las opciones\n\nSi quieres, me pasas ese dato y avanzo con la búsqueda",
+        "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+        "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJQ0PKZY1VSGBM9EBA4NA0K",
+          "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+          "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+          "previous_node": "aclarar_pedir_faltante",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "aclarar_pedir_faltante",
+            "existe_plan_guardado",
+            "aclarar_pedir_faltante",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "aclarar_pedir_faltante",
+          "timing_ms": {
+            "total": 5728,
+            "load_plan": 5,
+            "prepare_working_plan": 0,
+            "extraction": 4056,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 2,
+            "compose_reply": 1648,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11658,
+              "output_tokens": 478,
+              "total_tokens": 12136,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5139,
+              "output_tokens": 68,
+              "total_tokens": 5207,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 16797,
+              "output_tokens": 546,
+              "total_tokens": 17343,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQ0AVCR7Z1Z9FTJGTR35MM",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.baby_shower.10-8d02807a",
+          "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.8,
+          "event_type": "baby_shower",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración japonesa tradicional",
+            "decoración minimalista"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración japonesa tradicional",
+                "decoración minimalista"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "La búsqueda solicitada es para decoración (Hogar y deco) del baby shower."
+          ],
+          "conversation_summary": "Baby shower con frente activo en Hogar y deco. El usuario pide buscar decoración minimalista en Lima (ajustando ubicación desde Lurín a Lima).",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:45:46.370Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQ0PKZY1VSGBM9EBA4NA0K",
+          "conversation_id": "conv_6a47063455348190adaa3ea8dc8ea0cf01e30329748fc612",
+          "runtime_latency_ms": 5728,
+          "extraction_latency_ms": 4056,
+          "compose_latency_ms": 1648,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17343,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8687265583139846,
+          "extraction_to_compose_ratio": 2.4611650485436893,
+          "captured_at": "2026-07-03T00:45:48.031Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:45:48.155Z",
+  "completedAt": "2026-07-03T00:45:48.156Z"
+}

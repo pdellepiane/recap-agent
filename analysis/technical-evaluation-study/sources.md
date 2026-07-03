@@ -11,4 +11,5 @@
 | Independent review summary | `artifacts/independent-review-summary.json` | JSON | 2026-07-02 | Agreement and independent pass counts | Historical iteration-3 sample, not the final confirmatory run |
 | Clean provider index | OpenAI vector store `vs_6a46f023fcec8191ac12fe2c44b1612b` | Vector store | 2026-07-02 | One 182-provider evidence snapshot used by deployed runtime | Live catalog snapshot can change on a later sync |
 | Clean-index gate | `.eval-confirmatory-gates/eval-2026-07-02T23-17-44-525Z-2b735984/report.json` | JSON | 2026-07-02 | Final targeted behavior check | 12/13 harness passes; all explicit safety gates passed |
+| Final V4 study | `artifacts/technical-study-2026-07-03T00-36-35-880Z/` | JSON/CSV/SVG | 2026-07-02 | Untouched 50×3 confirmatory evidence | Development deployment; no user study or randomized baseline |
 | Method | `methodology.md`, `metric-expansion.md` | Markdown | 2026-07-02 | Metric definitions and protocol | Technical study only |

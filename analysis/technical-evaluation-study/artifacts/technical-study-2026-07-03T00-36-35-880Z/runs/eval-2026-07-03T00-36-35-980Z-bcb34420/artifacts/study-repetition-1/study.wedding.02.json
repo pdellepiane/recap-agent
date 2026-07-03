@@ -1,0 +1,526 @@
+{
+  "runId": "eval-2026-07-03T00-36-35-980Z-bcb34420",
+  "caseId": "study.wedding.02",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 11377,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Catering:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-36-35-980Z-bcb34420/artifacts/study-repetition-1/study.wedding.02.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 11377,
+    "p95_latency_ms": 11377,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.15384615384615385,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 16214,
+    "cache_hit_rate": 0.7012804994584952
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito catering para una boda de 80 personas con presupuesto medio."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara avanzar con el catering de la boda, me falta la ubicación del evento; con ese dato puedo buscar opciones que sí te sirvan en tu zona\n\n¿Me dices la ciudad o distrito?",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJPGS8WDJK9G88K20JEBDC6",
+        "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+        "plan_id": "01KWJPGEBD8Q2JPFFNM6X3M109",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 11192,
+          "load_plan": 9,
+          "prepare_working_plan": 0,
+          "extraction": 8663,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2490,
+          "save_plan": 22
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11574,
+            "output_tokens": 452,
+            "total_tokens": 12026,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4123,
+            "output_tokens": 65,
+            "total_tokens": 4188,
+            "cached_input_tokens": 0
+          },
+          "total": {
+            "input_tokens": 15697,
+            "output_tokens": 517,
+            "total_tokens": 16214,
+            "cached_input_tokens": 11008
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJPGS8WDJK9G88K20JEBDC6",
+        "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+        "runtime_latency_ms": 11192,
+        "extraction_latency_ms": 8663,
+        "compose_latency_ms": 2490,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16214,
+        "cached_input_tokens": 11008,
+        "cache_hit_rate": 0.7012804994584952,
+        "extraction_to_compose_ratio": 3.479116465863454,
+        "captured_at": "2026-07-03T00:37:06.460Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJPGEBD8Q2JPFFNM6X3M109",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.wedding.02-23c0405d",
+        "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": null,
+        "budget_signal": "medio",
+        "guest_range": "51-100",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "location"
+        ],
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "location"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "La boda es para 80 personas (asignado a 51-100)."
+        ],
+        "conversation_summary": "Boda con 80 personas y presupuesto medio; se inicia búsqueda por catering.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:37:03.957Z"
+      },
+      "latencyMs": 11377,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara avanzar con el catering de la boda, me falta la ubicación del evento; con ese dato puedo buscar opciones que sí te sirvan en tu zona\n\n¿Me dices la ciudad o distrito?",
+        "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+        "plan_id": "01KWJPGEBD8Q2JPFFNM6X3M109",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJPGS8WDJK9G88K20JEBDC6",
+          "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+          "plan_id": "01KWJPGEBD8Q2JPFFNM6X3M109",
+          "previous_node": "contacto_inicial",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "location"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 11192,
+            "load_plan": 9,
+            "prepare_working_plan": 0,
+            "extraction": 8663,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2490,
+            "save_plan": 22
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11574,
+              "output_tokens": 452,
+              "total_tokens": 12026,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4123,
+              "output_tokens": 65,
+              "total_tokens": 4188,
+              "cached_input_tokens": 0
+            },
+            "total": {
+              "input_tokens": 15697,
+              "output_tokens": 517,
+              "total_tokens": 16214,
+              "cached_input_tokens": 11008
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJPGEBD8Q2JPFFNM6X3M109",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.wedding.02-23c0405d",
+          "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": null,
+          "budget_signal": "medio",
+          "guest_range": "51-100",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "location"
+          ],
+          "provider_needs": [
+            {
+              "category": "Catering",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "location"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "La boda es para 80 personas (asignado a 51-100)."
+          ],
+          "conversation_summary": "Boda con 80 personas y presupuesto medio; se inicia búsqueda por catering.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:37:03.957Z"
+        },
+        "perf": {
+          "trace_id": "01KWJPGS8WDJK9G88K20JEBDC6",
+          "conversation_id": "conv_6a4704300ca08194b01675ceda4e54da0b40a1ffc124f0da",
+          "runtime_latency_ms": 11192,
+          "extraction_latency_ms": 8663,
+          "compose_latency_ms": 2490,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16214,
+          "cached_input_tokens": 11008,
+          "cache_hit_rate": 0.7012804994584952,
+          "extraction_to_compose_ratio": 3.479116465863454,
+          "captured_at": "2026-07-03T00:37:06.460Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:37:06.542Z",
+  "completedAt": "2026-07-03T00:37:06.543Z"
+}

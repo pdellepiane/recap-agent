@@ -1,0 +1,581 @@
+{
+  "runId": "eval-2026-07-03T00-51-31-932Z-19a448ef",
+  "caseId": "study.wedding.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 10817,
+  "totalToolCalls": 2,
+  "nodeTransitions": [
+    "contacto_inicial->refinar_criterios"
+  ],
+  "planDiffSummary": [
+    "current_node=\"refinar_criterios\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"muy bajo\"",
+    "guest_range=\"201+\"",
+    "provider_needs=Locales:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-51-31-932Z-19a448ef/artifacts/study-repetition-2/study.wedding.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->refinar_criterios."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 10817,
+    "p95_latency_ms": 10817,
+    "tool_calls_total": 2,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 2,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 20956,
+    "cache_hit_rate": 0.8952812530785145
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco un local submarino para boda en Lima, 500 invitados, presupuesto muy bajo y disponible mañana."
+      },
+      "outputText": "No encontré coincidencias con los criterios actuales para Locales. Con lo que buscas, el punto que más limita es el tipo de local: un espacio submarino para boda en Lima, con 500 invitados y para mañana es demasiado específico\n\n¿Quieres que lo ajustemos a un local para boda en Lima, manteniendo la capacidad y la urgencia, aunque no sea temático submarino?",
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "trace_id": "01KWJQGMD9PMCYN1DJ5NYFXWMZ",
+        "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+        "plan_id": "01KWJQGA68E6XB0AZR37GBHPWZ",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "5c0b228e4e84",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/refinar_criterios/system.txt",
+          "nodes/refinar_criterios/response_contract.txt",
+          "nodes/refinar_criterios/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "list_categories",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"providerNotes\": [\n        \"Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n        \"Servicios que ofrece: Alquiler de local para eventos\",\n        \"Servicios que ofrece: Espacios para matrimonios\",\n        \"Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Servicios que ofrece: Eventos institucionales\",\n        \"Servicios que ofrece: Alojamiento para hasta 32 personas\",\n        \"Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Términos  y condiciones: Sujeto a disponibilidad.\",\n        \"Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Términos y condiciones: Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8288934742719155,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima), parece alineado al rango muy bajo\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 10484,
+          "load_plan": 19,
+          "prepare_working_plan": 1,
+          "extraction": 4915,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2231,
+          "provider_enrichment": 70,
+          "prompt_bundle_load": 2,
+          "compose_reply": 3223,
+          "save_plan": 17
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11581,
+            "output_tokens": 542,
+            "total_tokens": 12123,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 8721,
+            "output_tokens": 112,
+            "total_tokens": 8833,
+            "cached_input_tokens": 7168
+          },
+          "total": {
+            "input_tokens": 20302,
+            "output_tokens": 654,
+            "total_tokens": 20956,
+            "cached_input_tokens": 18176
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQGMD9PMCYN1DJ5NYFXWMZ",
+        "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+        "runtime_latency_ms": 10484,
+        "extraction_latency_ms": 4915,
+        "compose_latency_ms": 3223,
+        "tools_called_count": 2,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 20956,
+        "cached_input_tokens": 18176,
+        "cache_hit_rate": 0.8952812530785145,
+        "extraction_to_compose_ratio": 1.5249767297548869,
+        "captured_at": "2026-07-03T00:54:30.057Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQGA68E6XB0AZR37GBHPWZ",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.wedding.09-ee1d1358",
+        "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "refinar_criterios",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.8,
+        "event_type": "boda",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "muy bajo",
+        "guest_range": "201+",
+        "preferences": [
+          "local submarino"
+        ],
+        "hard_constraints": [
+          "disponible mañana",
+          "local submarino",
+          "500 invitados",
+          "presupuesto muy bajo"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "no_providers_available",
+            "preferences": [
+              "local submarino"
+            ],
+            "hard_constraints": [
+              "disponible mañana",
+              "local submarino",
+              "500 invitados",
+              "presupuesto muy bajo"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Boda en Lima con 500 invitados. Se busca un local estilo submarino, con presupuesto muy bajo y disponibilidad mañana. Frente activo: Locales.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:54:26.817Z"
+      },
+      "latencyMs": 10817,
+      "rawTargetResponse": {
+        "message": "No encontré coincidencias con los criterios actuales para Locales. Con lo que buscas, el punto que más limita es el tipo de local: un espacio submarino para boda en Lima, con 500 invitados y para mañana es demasiado específico\n\n¿Quieres que lo ajustemos a un local para boda en Lima, manteniendo la capacidad y la urgencia, aunque no sea temático submarino?",
+        "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+        "plan_id": "01KWJQGA68E6XB0AZR37GBHPWZ",
+        "current_node": "refinar_criterios",
+        "trace": {
+          "trace_id": "01KWJQGMD9PMCYN1DJ5NYFXWMZ",
+          "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+          "plan_id": "01KWJQGA68E6XB0AZR37GBHPWZ",
+          "previous_node": "contacto_inicial",
+          "next_node": "refinar_criterios",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "refinar_criterios"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "5c0b228e4e84",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/refinar_criterios/system.txt",
+            "nodes/refinar_criterios/response_contract.txt",
+            "nodes/refinar_criterios/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "list_categories"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "list_categories",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"providerNotes\": [\n        \"Acerca del proveedor: Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n        \"Servicios que ofrece: Alquiler de local para eventos\",\n        \"Servicios que ofrece: Espacios para matrimonios\",\n        \"Servicios que ofrece: Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Servicios que ofrece: Eventos institucionales\",\n        \"Servicios que ofrece: Alojamiento para hasta 32 personas\",\n        \"Términos  y condiciones: Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Términos  y condiciones: Sujeto a disponibilidad.\",\n        \"Términos y condiciones: Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Términos y condiciones: Sujeto a disponibilidad\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8288934742719155,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima), parece alineado al rango muy bajo\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 10484,
+            "load_plan": 19,
+            "prepare_working_plan": 1,
+            "extraction": 4915,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2231,
+            "provider_enrichment": 70,
+            "prompt_bundle_load": 2,
+            "compose_reply": 3223,
+            "save_plan": 17
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11581,
+              "output_tokens": 542,
+              "total_tokens": 12123,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 8721,
+              "output_tokens": 112,
+              "total_tokens": 8833,
+              "cached_input_tokens": 7168
+            },
+            "total": {
+              "input_tokens": 20302,
+              "output_tokens": 654,
+              "total_tokens": 20956,
+              "cached_input_tokens": 18176
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQGA68E6XB0AZR37GBHPWZ",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.wedding.09-ee1d1358",
+          "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "refinar_criterios",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.8,
+          "event_type": "boda",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "muy bajo",
+          "guest_range": "201+",
+          "preferences": [
+            "local submarino"
+          ],
+          "hard_constraints": [
+            "disponible mañana",
+            "local submarino",
+            "500 invitados",
+            "presupuesto muy bajo"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "no_providers_available",
+              "preferences": [
+                "local submarino"
+              ],
+              "hard_constraints": [
+                "disponible mañana",
+                "local submarino",
+                "500 invitados",
+                "presupuesto muy bajo"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Boda en Lima con 500 invitados. Se busca un local estilo submarino, con presupuesto muy bajo y disponibilidad mañana. Frente activo: Locales.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:54:26.817Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQGMD9PMCYN1DJ5NYFXWMZ",
+          "conversation_id": "conv_6a470842eab08195a9908a90a4b82f9a06c1ccea9831672a",
+          "runtime_latency_ms": 10484,
+          "extraction_latency_ms": 4915,
+          "compose_latency_ms": 3223,
+          "tools_called_count": 2,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 20956,
+          "cached_input_tokens": 18176,
+          "cache_hit_rate": 0.8952812530785145,
+          "extraction_to_compose_ratio": 1.5249767297548869,
+          "captured_at": "2026-07-03T00:54:30.057Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:54:30.116Z",
+  "completedAt": "2026-07-03T00:54:30.121Z"
+}

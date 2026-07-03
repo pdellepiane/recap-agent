@@ -1,0 +1,970 @@
+{
+  "runId": "eval-2026-07-03T00-51-31-932Z-19a448ef",
+  "caseId": "study.birthday.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.625,
+  "totalLatencyMs": 17744,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->entrevista",
+    "entrevista->entrevista"
+  ],
+  "planDiffSummary": [
+    "current_node=\"entrevista\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Música\"",
+    "active_need_category=\"Música\"",
+    "location=\"Lima\"",
+    "guest_range=\"1-20\"",
+    "provider_needs=Hogar y deco:identified, Música:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-51-31-932Z-19a448ef/artifacts/study-repetition-2/study.birthday.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed entrevista->entrevista. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.625,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 8872,
+    "p95_latency_ms": 9492,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 0.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.19230769230769232,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 39835,
+    "cache_hit_rate": 0.8943581186776515
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco animación temática medieval para cumpleaños en Lurín, 20 personas."
+      },
+      "outputText": "Claro, te ayudo con eso. Para este cumpleaños en Lurín, la parte de ambientación medieval la tomamos como el frente principal.\n\nSi quieres, en el siguiente paso puedo buscar opciones de animación o de decoración temática para ese estilo, y también te ayudo a sumar el resto del evento si lo necesitas",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWJQPMAC75GB922Y5TCZ58W4",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+        "previous_node": "contacto_inicial",
+        "next_node": "entrevista",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "entrevista"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "list_categories",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 9346,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 5529,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3793,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11575,
+            "output_tokens": 672,
+            "total_tokens": 12247,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 9315,
+            "output_tokens": 97,
+            "total_tokens": 9412,
+            "cached_input_tokens": 7680
+          },
+          "total": {
+            "input_tokens": 20890,
+            "output_tokens": 769,
+            "total_tokens": 21659,
+            "cached_input_tokens": 18688
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQPMAC75GB922Y5TCZ58W4",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "runtime_latency_ms": 9346,
+        "extraction_latency_ms": 5529,
+        "compose_latency_ms": 3793,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 21659,
+        "cached_input_tokens": 18688,
+        "cache_hit_rate": 0.894590713259933,
+        "extraction_to_compose_ratio": 1.4576852095966253,
+        "captured_at": "2026-07-03T00:57:46.572Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-11517baa",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "cumpleanos",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lurín",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "preferences": [
+          "animación temática medieval"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "preferences": [
+              "animación temática medieval"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“animación” se interpreta como un servicio de entretenimiento/actividad para la celebración, categorizable como “Otros” o “Hogar y deco” según el proveedor."
+        ],
+        "conversation_summary": "",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:57:42.767Z"
+      },
+      "latencyMs": 9492,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso. Para este cumpleaños en Lurín, la parte de ambientación medieval la tomamos como el frente principal.\n\nSi quieres, en el siguiente paso puedo buscar opciones de animación o de decoración temática para ese estilo, y también te ayudo a sumar el resto del evento si lo necesitas",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWJQPMAC75GB922Y5TCZ58W4",
+          "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+          "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+          "previous_node": "contacto_inicial",
+          "next_node": "entrevista",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "entrevista"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "list_categories"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "list_categories",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 9346,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 5529,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3793,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11575,
+              "output_tokens": 672,
+              "total_tokens": 12247,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 9315,
+              "output_tokens": 97,
+              "total_tokens": 9412,
+              "cached_input_tokens": 7680
+            },
+            "total": {
+              "input_tokens": 20890,
+              "output_tokens": 769,
+              "total_tokens": 21659,
+              "cached_input_tokens": 18688
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-11517baa",
+          "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "cumpleanos",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lurín",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "preferences": [
+            "animación temática medieval"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "preferences": [
+                "animación temática medieval"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“animación” se interpreta como un servicio de entretenimiento/actividad para la celebración, categorizable como “Otros” o “Hogar y deco” según el proveedor."
+          ],
+          "conversation_summary": "",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:57:42.767Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQPMAC75GB922Y5TCZ58W4",
+          "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+          "runtime_latency_ms": 9346,
+          "extraction_latency_ms": 5529,
+          "compose_latency_ms": 3793,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 21659,
+          "cached_input_tokens": 18688,
+          "cache_hit_rate": 0.894590713259933,
+          "extraction_to_compose_ratio": 1.4576852095966253,
+          "captured_at": "2026-07-03T00:57:46.572Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay, amplía la búsqueda a entretenimiento para cumpleaños en Lima."
+      },
+      "outputText": "Claro, lo amplío a entretenimiento para cumpleaños en Lima.\n\nCon eso ya puedo enfocar la búsqueda en música, DJ o show para tu celebración. Si quieres, también dejamos en paralelo la ambientación medieval para retomarla después",
+      "currentNode": "entrevista",
+      "trace": {
+        "trace_id": "01KWJQPWBC40EXBGWAWNWV11P5",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+        "previous_node": "entrevista",
+        "next_node": "entrevista",
+        "node_path": [
+          "entrevista",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "entrevista"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "ade75488eb54",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/entrevista/system.txt",
+          "nodes/entrevista/response_contract.txt",
+          "nodes/entrevista/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 7888,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 5630,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2234,
+          "save_plan": 12
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11633,
+            "output_tokens": 647,
+            "total_tokens": 12280,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5833,
+            "output_tokens": 63,
+            "total_tokens": 5896,
+            "cached_input_tokens": 4608
+          },
+          "total": {
+            "input_tokens": 17466,
+            "output_tokens": 710,
+            "total_tokens": 18176,
+            "cached_input_tokens": 15616
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQPWBC40EXBGWAWNWV11P5",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "runtime_latency_ms": 7888,
+        "extraction_latency_ms": 5630,
+        "compose_latency_ms": 2234,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18176,
+        "cached_input_tokens": 15616,
+        "cache_hit_rate": 0.8940799267147601,
+        "extraction_to_compose_ratio": 2.520143240823635,
+        "captured_at": "2026-07-03T00:57:54.796Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-11517baa",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "entrevista",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.75,
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "1-20",
+        "preferences": [
+          "animación temática medieval"
+        ],
+        "hard_constraints": [
+          "Entretenimiento para cumpleaños"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "identified",
+            "preferences": [
+              "animación temática medieval"
+            ],
+            "hard_constraints": [
+              "Entretenimiento para cumpleaños"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Música",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [
+              "Entretenimiento para cumpleaños"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "“animación” se interpreta como un servicio de entretenimiento/actividad para la celebración, categorizable como “Otros” o “Hogar y deco” según el proveedor.",
+          "“entretenimiento” se refiere a música/entretenimiento para el evento."
+        ],
+        "conversation_summary": "",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:57:52.550Z"
+      },
+      "latencyMs": 8252,
+      "rawTargetResponse": {
+        "message": "Claro, lo amplío a entretenimiento para cumpleaños en Lima.\n\nCon eso ya puedo enfocar la búsqueda en música, DJ o show para tu celebración. Si quieres, también dejamos en paralelo la ambientación medieval para retomarla después",
+        "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+        "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+        "current_node": "entrevista",
+        "trace": {
+          "trace_id": "01KWJQPWBC40EXBGWAWNWV11P5",
+          "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+          "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+          "previous_node": "entrevista",
+          "next_node": "entrevista",
+          "node_path": [
+            "entrevista",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "entrevista"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "ade75488eb54",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/entrevista/system.txt",
+            "nodes/entrevista/response_contract.txt",
+            "nodes/entrevista/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 7888,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 5630,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2234,
+            "save_plan": 12
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11633,
+              "output_tokens": 647,
+              "total_tokens": 12280,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5833,
+              "output_tokens": 63,
+              "total_tokens": 5896,
+              "cached_input_tokens": 4608
+            },
+            "total": {
+              "input_tokens": 17466,
+              "output_tokens": 710,
+              "total_tokens": 18176,
+              "cached_input_tokens": 15616
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQPB6G87T9G9NFE8ZZ4ZSH",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.10-11517baa",
+          "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "entrevista",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.75,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "1-20",
+          "preferences": [
+            "animación temática medieval"
+          ],
+          "hard_constraints": [
+            "Entretenimiento para cumpleaños"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "identified",
+              "preferences": [
+                "animación temática medieval"
+              ],
+              "hard_constraints": [
+                "Entretenimiento para cumpleaños"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Música",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [
+                "Entretenimiento para cumpleaños"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "“animación” se interpreta como un servicio de entretenimiento/actividad para la celebración, categorizable como “Otros” o “Hogar y deco” según el proveedor.",
+            "“entretenimiento” se refiere a música/entretenimiento para el evento."
+          ],
+          "conversation_summary": "",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:57:52.550Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQPWBC40EXBGWAWNWV11P5",
+          "conversation_id": "conv_6a470906e0548194802b9d969bdeb3c2044f12e7d18e6122",
+          "runtime_latency_ms": 7888,
+          "extraction_latency_ms": 5630,
+          "compose_latency_ms": 2234,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18176,
+          "cached_input_tokens": 15616,
+          "cache_hit_rate": 0.8940799267147601,
+          "extraction_to_compose_ratio": 2.520143240823635,
+          "captured_at": "2026-07-03T00:57:54.796Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:57:54.877Z",
+  "completedAt": "2026-07-03T00:57:54.878Z"
+}

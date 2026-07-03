@@ -1,0 +1,2357 @@
+{
+  "runId": "eval-2026-07-03T01-06-00-092Z-dc1749cc",
+  "caseId": "study.birthday.06",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-3",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 0.875,
+  "totalLatencyMs": 19753,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->guardar_cerrar_temporalmente",
+    "guardar_cerrar_temporalmente->seguir_refinando_guardar_plan"
+  ],
+  "planDiffSummary": [
+    "current_node=\"seguir_refinando_guardar_plan\"",
+    "intent=\"retomar_plan\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Música\"",
+    "active_need_category=\"Música\"",
+    "location=\"Lima\"",
+    "guest_range=\"21-50\"",
+    "selected_provider_ids=[187]",
+    "provider_needs=Música:selected"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T01-06-00-092Z-dc1749cc/artifacts/study-repetition-3/study.birthday.06.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition guardar_cerrar_temporalmente->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was true instead of false."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.875,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 3,
+    "avg_latency_ms": 6584.333333333333,
+    "p95_latency_ms": 9618,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 0.3333333333333333,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.5,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 51121,
+    "cache_hit_rate": 0.8398815715771786
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Planeo un cumpleaños en Lima para 25 personas y necesito música."
+      },
+      "outputText": "Para tu cumpleaños en Lima, encontré una opción de música que encaja bien con un grupo de 25 personas\n\n1. Dj Bufi\n Dj Bufi destaca por su asesoría personalizada y experiencia como DJ desde 2015 en eventos privados, además tiene 20% off\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: No se confirma disponibilidad real desde aquí.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWJREBZKZ57A4V164TWGSX2K",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% off\",\n      \"promoSummary\": \"20% de descuento, exclusivo para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.\",\n      \"serviceHighlights\": [\n        \"Asesoría personalizada en todo el proceso del evento\",\n        \"DJ profesional para todo tipo de eventos.\",\n        \"Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Iluminación ambiental y decorativa.\",\n        \"Luces para pista de baile y efectos especiales.\",\n        \"Musicalización personalizada según el estilo del evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"providerNotes\": [\n        \"Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n        \"Servicios que ofrece: Asesoría personalizada en todo el proceso del evento\",\n        \"Servicios que ofrece: DJ profesional para todo tipo de eventos.\",\n        \"Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Servicios que ofrece: Iluminación ambiental y decorativa.\",\n        \"Servicios que ofrece: Luces para pista de baile y efectos especiales.\",\n        \"Servicios que ofrece: Musicalización personalizada según el estilo del evento.\",\n        \"Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.\",\n        \"Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"description\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8268277745471194,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música, opera en Lima, Perú\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8268277745471194,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8268277745471194,
+            "fit_score": 89
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            187
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 9129,
+          "load_plan": 124,
+          "prepare_working_plan": 0,
+          "extraction": 3661,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 3099,
+          "provider_enrichment": 74,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2122,
+          "save_plan": 27
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11575,
+            "output_tokens": 437,
+            "total_tokens": 12012,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4413,
+            "output_tokens": 101,
+            "total_tokens": 4514,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15988,
+            "output_tokens": 538,
+            "total_tokens": 16526,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJREBZKZ57A4V164TWGSX2K",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "runtime_latency_ms": 9129,
+        "extraction_latency_ms": 3661,
+        "compose_latency_ms": 2122,
+        "tools_called_count": 1,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16526,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8806604953715287,
+        "extraction_to_compose_ratio": 1.7252591894439209,
+        "captured_at": "2026-07-03T01:10:44.467Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.06-c2b04d1f",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              187
+            ],
+            "recommended_providers": [
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                  "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                  "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                  "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                  "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                  "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                  "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 89,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8268277745471194,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          187
+        ],
+        "recommended_providers": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8268277745471194,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario desea música para su cumpleaños (posible DJ/banda/show musical)."
+        ],
+        "conversation_summary": "Cumpleaños en Lima para 25 personas; frente activo: Música.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T01:10:42.302Z"
+      },
+      "latencyMs": 9618,
+      "rawTargetResponse": {
+        "message": "Para tu cumpleaños en Lima, encontré una opción de música que encaja bien con un grupo de 25 personas\n\n1. Dj Bufi\n Dj Bufi destaca por su asesoría personalizada y experiencia como DJ desde 2015 en eventos privados, además tiene 20% off\n Ubicación: Lima, Perú.\n Precio: $$$.\n Promo: 20% off.\n Nota: No se confirma disponibilidad real desde aquí.\n\n Ficha: https://sinenvolturas.com/proveedores/dj-bufi",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWJREBZKZ57A4V164TWGSX2K",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% off\",\n      \"promoSummary\": \"20% de descuento, exclusivo para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.\",\n      \"serviceHighlights\": [\n        \"Asesoría personalizada en todo el proceso del evento\",\n        \"DJ profesional para todo tipo de eventos.\",\n        \"Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Iluminación ambiental y decorativa.\",\n        \"Luces para pista de baile y efectos especiales.\",\n        \"Musicalización personalizada según el estilo del evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"providerNotes\": [\n        \"Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n        \"Servicios que ofrece: Asesoría personalizada en todo el proceso del evento\",\n        \"Servicios que ofrece: DJ profesional para todo tipo de eventos.\",\n        \"Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Servicios que ofrece: Iluminación ambiental y decorativa.\",\n        \"Servicios que ofrece: Luces para pista de baile y efectos especiales.\",\n        \"Servicios que ofrece: Musicalización personalizada según el estilo del evento.\",\n        \"Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.\",\n        \"Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"description\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8268277745471194,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música, opera en Lima, Perú\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8268277745471194,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8268277745471194,
+              "fit_score": 89
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              187
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 9129,
+            "load_plan": 124,
+            "prepare_working_plan": 0,
+            "extraction": 3661,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 3099,
+            "provider_enrichment": 74,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2122,
+            "save_plan": 27
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11575,
+              "output_tokens": 437,
+              "total_tokens": 12012,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4413,
+              "output_tokens": 101,
+              "total_tokens": 4514,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15988,
+              "output_tokens": 538,
+              "total_tokens": 16526,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.06-c2b04d1f",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                187
+              ],
+              "recommended_providers": [
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "providerNotes": [
+                    "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                    "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                    "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                    "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                    "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                    "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                    "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                    "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 89,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8268277745471194,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            187
+          ],
+          "recommended_providers": [
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8268277745471194,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario desea música para su cumpleaños (posible DJ/banda/show musical)."
+          ],
+          "conversation_summary": "Cumpleaños en Lima para 25 personas; frente activo: Música.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T01:10:42.302Z"
+        },
+        "perf": {
+          "trace_id": "01KWJREBZKZ57A4V164TWGSX2K",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "runtime_latency_ms": 9129,
+          "extraction_latency_ms": 3661,
+          "compose_latency_ms": 2122,
+          "tools_called_count": 1,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16526,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8806604953715287,
+          "extraction_to_compose_ratio": 1.7252591894439209,
+          "captured_at": "2026-07-03T01:10:44.467Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Guardemos esto y continúo después."
+      },
+      "outputText": "Listo, quedó guardado para retomarlo después sin empezar de cero\n\nCuando vuelvas, seguimos desde tu cumpleaños en Lima y la música",
+      "currentNode": "guardar_cerrar_temporalmente",
+      "trace": {
+        "trace_id": "01KWJREGERS6MRCGZQ7BBSA7J0",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "previous_node": "recomendar",
+        "next_node": "guardar_cerrar_temporalmente",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "entrevista",
+          "guardar_cerrar_temporalmente"
+        ],
+        "intent": "pausar",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "7a5e9a75d285",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/guardar_cerrar_temporalmente/system.txt",
+          "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+          "nodes/guardar_cerrar_temporalmente/tool_policy.txt"
+        ],
+        "tools_considered": [],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8268277745471194,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8268277745471194,
+            "fit_score": 89
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            187
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "guardar_cerrar_temporalmente",
+        "timing_ms": {
+          "total": 4111,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 2373,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 0,
+          "compose_reply": 1719,
+          "save_plan": 11
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11655,
+            "output_tokens": 219,
+            "total_tokens": 11874,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4711,
+            "output_tokens": 46,
+            "total_tokens": 4757,
+            "cached_input_tokens": 2816
+          },
+          "total": {
+            "input_tokens": 16366,
+            "output_tokens": 265,
+            "total_tokens": 16631,
+            "cached_input_tokens": 13824
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJREGERS6MRCGZQ7BBSA7J0",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "runtime_latency_ms": 4111,
+        "extraction_latency_ms": 2373,
+        "compose_latency_ms": 1719,
+        "tools_called_count": 0,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16631,
+        "cached_input_tokens": 13824,
+        "cache_hit_rate": 0.8446779909568618,
+        "extraction_to_compose_ratio": 1.3804537521815008,
+        "captured_at": "2026-07-03T01:10:49.048Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.06-c2b04d1f",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "guardar_cerrar_temporalmente",
+        "intent": "pausar",
+        "intent_confidence": 0.9,
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              187
+            ],
+            "recommended_providers": [
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                  "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                  "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                  "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                  "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                  "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                  "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 89,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8268277745471194,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          187
+        ],
+        "recommended_providers": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8268277745471194,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario desea música para su cumpleaños (posible DJ/banda/show musical)."
+        ],
+        "conversation_summary": "Cumpleaños en Lima para 25 personas; frente activo: Música.",
+        "last_user_goal": "pausar",
+        "open_questions": [],
+        "updated_at": "2026-07-03T01:10:47.318Z"
+      },
+      "latencyMs": 4549,
+      "rawTargetResponse": {
+        "message": "Listo, quedó guardado para retomarlo después sin empezar de cero\n\nCuando vuelvas, seguimos desde tu cumpleaños en Lima y la música",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "current_node": "guardar_cerrar_temporalmente",
+        "trace": {
+          "trace_id": "01KWJREGERS6MRCGZQ7BBSA7J0",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+          "previous_node": "recomendar",
+          "next_node": "guardar_cerrar_temporalmente",
+          "node_path": [
+            "recomendar",
+            "existe_plan_guardado",
+            "entrevista",
+            "guardar_cerrar_temporalmente"
+          ],
+          "intent": "pausar",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "7a5e9a75d285",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/guardar_cerrar_temporalmente/system.txt",
+            "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+            "nodes/guardar_cerrar_temporalmente/tool_policy.txt"
+          ],
+          "tools_considered": [],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8268277745471194,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8268277745471194,
+              "fit_score": 89
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              187
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "guardar_cerrar_temporalmente",
+          "timing_ms": {
+            "total": 4111,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 2373,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 0,
+            "compose_reply": 1719,
+            "save_plan": 11
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11655,
+              "output_tokens": 219,
+              "total_tokens": 11874,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4711,
+              "output_tokens": 46,
+              "total_tokens": 4757,
+              "cached_input_tokens": 2816
+            },
+            "total": {
+              "input_tokens": 16366,
+              "output_tokens": 265,
+              "total_tokens": 16631,
+              "cached_input_tokens": 13824
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.06-c2b04d1f",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "guardar_cerrar_temporalmente",
+          "intent": "pausar",
+          "intent_confidence": 0.9,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Música",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                187
+              ],
+              "recommended_providers": [
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "providerNotes": [
+                    "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                    "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                    "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                    "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                    "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                    "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                    "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                    "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 89,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8268277745471194,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            187
+          ],
+          "recommended_providers": [
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8268277745471194,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario desea música para su cumpleaños (posible DJ/banda/show musical)."
+          ],
+          "conversation_summary": "Cumpleaños en Lima para 25 personas; frente activo: Música.",
+          "last_user_goal": "pausar",
+          "open_questions": [],
+          "updated_at": "2026-07-03T01:10:47.318Z"
+        },
+        "perf": {
+          "trace_id": "01KWJREGERS6MRCGZQ7BBSA7J0",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "runtime_latency_ms": 4111,
+          "extraction_latency_ms": 2373,
+          "compose_latency_ms": 1719,
+          "tools_called_count": 0,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16631,
+          "cached_input_tokens": 13824,
+          "cache_hit_rate": 0.8446779909568618,
+          "extraction_to_compose_ratio": 1.3804537521815008,
+          "captured_at": "2026-07-03T01:10:49.048Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 2,
+      "input": {
+        "text": "Retomemos el plan del cumpleaños."
+      },
+      "outputText": "Perfecto, ya retomé el plan y quedó guardado con Dj Bufi en música\n\nSi quieres, seguimos con esta necesidad, pasamos a otra parte del evento o lo dejamos así por ahora",
+      "currentNode": "seguir_refinando_guardar_plan",
+      "trace": {
+        "trace_id": "01KWJRENWFNBN09W6TB0VDTF3A",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "previous_node": "guardar_cerrar_temporalmente",
+        "next_node": "seguir_refinando_guardar_plan",
+        "node_path": [
+          "guardar_cerrar_temporalmente",
+          "existe_plan_guardado",
+          "entrevista",
+          "usuario_elige_proveedor",
+          "anadir_a_proveedores_recomendados",
+          "seguir_refinando_guardar_plan"
+        ],
+        "intent": "retomar_plan",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b538d54f3607",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/seguir_refinando_guardar_plan/system.txt",
+          "nodes/seguir_refinando_guardar_plan/response_contract.txt",
+          "nodes/seguir_refinando_guardar_plan/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "get_provider_detail"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8268277745471194,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "has_title": true,
+              "has_hint": false
+            }
+          ],
+          "selected_provider_hints_count": 1,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 187,
+            "category": "Música",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8268277745471194,
+            "fit_score": 89
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            187
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "seguir_refinando_guardar_plan",
+        "timing_ms": {
+          "total": 5130,
+          "load_plan": 6,
+          "prepare_working_plan": 1,
+          "extraction": 2833,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2266,
+          "save_plan": 16
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11652,
+            "output_tokens": 272,
+            "total_tokens": 11924,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5982,
+            "output_tokens": 58,
+            "total_tokens": 6040,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 17634,
+            "output_tokens": 330,
+            "total_tokens": 17964,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJRENWFNBN09W6TB0VDTF3A",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "runtime_latency_ms": 5130,
+        "extraction_latency_ms": 2833,
+        "compose_latency_ms": 2266,
+        "tools_called_count": 0,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17964,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.7984575252353409,
+        "extraction_to_compose_ratio": 1.2502206531332745,
+        "captured_at": "2026-07-03T01:10:54.607Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.06-c2b04d1f",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "seguir_refinando_guardar_plan",
+        "intent": "retomar_plan",
+        "intent_confidence": 0.9,
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": "21-50",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "selected",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              187
+            ],
+            "recommended_providers": [
+              {
+                "id": 187,
+                "title": "Dj Bufi",
+                "slug": "dj-bufi",
+                "category": "Música",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% off",
+                "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                "serviceHighlights": [
+                  "Asesoría personalizada en todo el proceso del evento",
+                  "DJ profesional para todo tipo de eventos.",
+                  "Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Iluminación ambiental y decorativa.",
+                  "Luces para pista de baile y efectos especiales.",
+                  "Musicalización personalizada según el estilo del evento."
+                ],
+                "termsHighlights": [
+                  "Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                  "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                  "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                  "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                  "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                  "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                  "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                  "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+                ],
+                "eventTypes": [],
+                "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "fitScore": 89,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8268277745471194,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [
+              187
+            ],
+            "selected_provider_hints": [
+              "Dj Bufi"
+            ]
+          }
+        ],
+        "recommended_provider_ids": [
+          187
+        ],
+        "recommended_providers": [
+          {
+            "id": 187,
+            "title": "Dj Bufi",
+            "slug": "dj-bufi",
+            "category": "Música",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% off",
+            "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+            "serviceHighlights": [
+              "Asesoría personalizada en todo el proceso del evento",
+              "DJ profesional para todo tipo de eventos.",
+              "Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Iluminación ambiental y decorativa.",
+              "Luces para pista de baile y efectos especiales.",
+              "Musicalización personalizada según el estilo del evento."
+            ],
+            "termsHighlights": [
+              "Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+              "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+              "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+              "Servicios que ofrece: Iluminación ambiental y decorativa.",
+              "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+              "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+              "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+              "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+            ],
+            "eventTypes": [],
+            "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+            "fitScore": 89,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8268277745471194,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [
+          187
+        ],
+        "selected_provider_hints": [
+          "Dj Bufi"
+        ],
+        "assumptions": [
+          "El usuario desea música para su cumpleaños (posible DJ/banda/show musical)."
+        ],
+        "conversation_summary": "Cumpleaños en Lima para 21-50 personas; frente activo: Música. La shortlist vigente para Música incluye: 1) Dj Bufi.",
+        "last_user_goal": "retomar_plan",
+        "open_questions": [],
+        "updated_at": "2026-07-03T01:10:52.324Z"
+      },
+      "latencyMs": 5586,
+      "rawTargetResponse": {
+        "message": "Perfecto, ya retomé el plan y quedó guardado con Dj Bufi en música\n\nSi quieres, seguimos con esta necesidad, pasamos a otra parte del evento o lo dejamos así por ahora",
+        "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+        "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+        "current_node": "seguir_refinando_guardar_plan",
+        "trace": {
+          "trace_id": "01KWJRENWFNBN09W6TB0VDTF3A",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+          "previous_node": "guardar_cerrar_temporalmente",
+          "next_node": "seguir_refinando_guardar_plan",
+          "node_path": [
+            "guardar_cerrar_temporalmente",
+            "existe_plan_guardado",
+            "entrevista",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan"
+          ],
+          "intent": "retomar_plan",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b538d54f3607",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/seguir_refinando_guardar_plan/system.txt",
+            "nodes/seguir_refinando_guardar_plan/response_contract.txt",
+            "nodes/seguir_refinando_guardar_plan/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "get_provider_detail"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8268277745471194,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [
+              {
+                "provider_id": 187,
+                "category": "Música",
+                "has_title": true,
+                "has_hint": false
+              }
+            ],
+            "selected_provider_hints_count": 1,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 187,
+              "category": "Música",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8268277745471194,
+              "fit_score": 89
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              187
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "seguir_refinando_guardar_plan",
+          "timing_ms": {
+            "total": 5130,
+            "load_plan": 6,
+            "prepare_working_plan": 1,
+            "extraction": 2833,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2266,
+            "save_plan": 16
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11652,
+              "output_tokens": 272,
+              "total_tokens": 11924,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5982,
+              "output_tokens": 58,
+              "total_tokens": 6040,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 17634,
+              "output_tokens": 330,
+              "total_tokens": 17964,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJRE366N13887ETJBWRWV4M",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-3-study.birthday.06-c2b04d1f",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "seguir_refinando_guardar_plan",
+          "intent": "retomar_plan",
+          "intent_confidence": 0.9,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": "21-50",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Música",
+              "status": "selected",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                187
+              ],
+              "recommended_providers": [
+                {
+                  "id": 187,
+                  "title": "Dj Bufi",
+                  "slug": "dj-bufi",
+                  "category": "Música",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% off",
+                  "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+                  "serviceHighlights": [
+                    "Asesoría personalizada en todo el proceso del evento",
+                    "DJ profesional para todo tipo de eventos.",
+                    "Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Iluminación ambiental y decorativa.",
+                    "Luces para pista de baile y efectos especiales.",
+                    "Musicalización personalizada según el estilo del evento."
+                  ],
+                  "termsHighlights": [
+                    "Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "providerNotes": [
+                    "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                    "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                    "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                    "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                    "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                    "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                    "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                    "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                    "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+                  ],
+                  "eventTypes": [],
+                  "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                  "fitScore": 89,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8268277745471194,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [
+                187
+              ],
+              "selected_provider_hints": [
+                "Dj Bufi"
+              ]
+            }
+          ],
+          "recommended_provider_ids": [
+            187
+          ],
+          "recommended_providers": [
+            {
+              "id": 187,
+              "title": "Dj Bufi",
+              "slug": "dj-bufi",
+              "category": "Música",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Dj Bufi encaja con música según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/dj-bufi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% off",
+              "promoSummary": "20% de descuento, exclusivo para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.",
+              "serviceHighlights": [
+                "Asesoría personalizada en todo el proceso del evento",
+                "DJ profesional para todo tipo de eventos.",
+                "Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Iluminación ambiental y decorativa.",
+                "Luces para pista de baile y efectos especiales.",
+                "Musicalización personalizada según el estilo del evento."
+              ],
+              "termsHighlights": [
+                "Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+                "Servicios que ofrece: Asesoría personalizada en todo el proceso del evento",
+                "Servicios que ofrece: DJ profesional para todo tipo de eventos.",
+                "Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.",
+                "Servicios que ofrece: Iluminación ambiental y decorativa.",
+                "Servicios que ofrece: Luces para pista de baile y efectos especiales.",
+                "Servicios que ofrece: Musicalización personalizada según el estilo del evento.",
+                "Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.",
+                "Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones."
+              ],
+              "eventTypes": [],
+              "description": "Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.",
+              "fitScore": 89,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8268277745471194,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [
+            187
+          ],
+          "selected_provider_hints": [
+            "Dj Bufi"
+          ],
+          "assumptions": [
+            "El usuario desea música para su cumpleaños (posible DJ/banda/show musical)."
+          ],
+          "conversation_summary": "Cumpleaños en Lima para 21-50 personas; frente activo: Música. La shortlist vigente para Música incluye: 1) Dj Bufi.",
+          "last_user_goal": "retomar_plan",
+          "open_questions": [],
+          "updated_at": "2026-07-03T01:10:52.324Z"
+        },
+        "perf": {
+          "trace_id": "01KWJRENWFNBN09W6TB0VDTF3A",
+          "conversation_id": "conv_6a470c1260588194ba22c3f3db6a97d1096300a7b8b0de1d",
+          "runtime_latency_ms": 5130,
+          "extraction_latency_ms": 2833,
+          "compose_latency_ms": 2266,
+          "tools_called_count": 0,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17964,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.7984575252353409,
+          "extraction_to_compose_ratio": 1.2502206531332745,
+          "captured_at": "2026-07-03T01:10:54.607Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T01:10:54.780Z",
+  "completedAt": "2026-07-03T01:10:54.781Z"
+}

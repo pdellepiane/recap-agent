@@ -1,0 +1,2027 @@
+{
+  "runId": "eval-2026-07-03T00-36-35-980Z-bcb34420",
+  "caseId": "study.birthday.03",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-1",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 14243,
+  "totalToolCalls": 2,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "location=\"San Borja\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Catering:shortlisted, Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-36-35-980Z-bcb34420/artifacts/study-repetition-1/study.birthday.03.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->elicitacion_necesidades."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 2 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "need-1",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 10 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 14243,
+    "p95_latency_ms": 14243,
+    "tool_calls_total": 2,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 2,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 18068,
+    "cache_hit_rate": 0.8546828325426111
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Haré un cumpleaños infantil en San Borja para 35 personas. Necesito catering y decoración colorida, presupuesto medio."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que pediste para el cumpleaños\n\nCatering\nPara el catering del cumpleaños infantil encontré una opción que calza con el tamaño del evento y el tipo de celebración\n1. BAPO - catering para cumpleaños infantil (Lima, Perú · $$$ · promo: 10% off)\n Encaja con cumpleaños infantil para 35 personas en San Borja y su ficha apunta a catering, con señal de precio alta frente a presupuesto medio\n Limitación: El encaje es bueno, pero el precio parece más alto que tu presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\nHogar y deco\nPara la decoración colorida encontré una opción que puede ayudarte a dar forma al ambiente infantil del evento\n1. Nina Creativa - decoración colorida para cumpleaños infantil (Lima, Perú · $$ · promo: 10% off)\n Su ficha encaja con decoración para cumpleaños infantil y tiene una señal de precio media, alineada con tu presupuesto\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\nPodemos revisar primero catering o decoración, y desde ahí confirmar, cambiar o quitar opciones",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWJPQH3EE60YQFGNPPMEGGVM",
+        "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+        "plan_id": "01KWJPQ3GN20SM37697SXCVKBZ",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para cumpleaños infantil\",\n  \"queryStrings\": [\n    \"catering cumpleaños infantil San Borja\",\n    \"menú infantil para 35 personas San Borja\",\n    \"catering para cumpleaños infantil presupuesto medio San Borja\"\n  ],\n  \"location\": \"San Borja\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración colorida para cumpleaños infantil\",\n  \"queryStrings\": [\n    \"decoración colorida cumpleaños infantil San Borja\",\n    \"kit de decoración temática infantil San Borja\",\n    \"decoración globos y mesa dulce cumpleaños infantil San Borja\"\n  ],\n  \"location\": \"San Borja\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"catering para cumpleaños infantil\",\n  \"providers\": [\n    {\n      \"id\": 109,\n      \"title\": \"Edo Sushi Bar\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.6968399792054477\n    },\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7173710582951078\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7150618196670923\n    },\n    {\n      \"id\": 138,\n      \"title\": \"Galería Gourmand\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.6875413532185987\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7217458236418498\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"decoración colorida para cumpleaños infantil\",\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5530232710368662\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "Servicios que ofrece: Servicios de catering",
+              "Servicios que ofrece: Preguntar por paquetes",
+              "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+              "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7217458236418498,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+              "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+              "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+              "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+              "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.5530232710368662,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 153,
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7217458236418498,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 179,
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.5530232710368662,
+            "fit_score": 100
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 2,
+          "context_candidates": 2,
+          "context_candidate_ids": [
+            153,
+            179
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 13993,
+          "load_plan": 81,
+          "prepare_working_plan": 0,
+          "extraction": 6438,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 6246,
+          "provider_enrichment": 191,
+          "prompt_bundle_load": 1,
+          "compose_reply": 4217,
+          "save_plan": 27
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11586,
+            "output_tokens": 726,
+            "total_tokens": 12312,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5487,
+            "output_tokens": 269,
+            "total_tokens": 5756,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17073,
+            "output_tokens": 995,
+            "total_tokens": 18068,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJPQH3EE60YQFGNPPMEGGVM",
+        "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+        "runtime_latency_ms": 13993,
+        "extraction_latency_ms": 6438,
+        "compose_latency_ms": 4217,
+        "tools_called_count": 2,
+        "provider_results_count": 2,
+        "recommendation_context_candidates": 2,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18068,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8546828325426111,
+        "extraction_to_compose_ratio": 1.5266777329855348,
+        "captured_at": "2026-07-03T00:40:47.470Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJPQ3GN20SM37697SXCVKBZ",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.birthday.03-a8a3cc3b",
+        "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "cumpleanos",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": "San Borja",
+        "budget_signal": "medio",
+        "guest_range": "21-50",
+        "preferences": [
+          "decoración colorida"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [
+              "opciones acordes a cumpleaños infantil"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              153
+            ],
+            "recommended_providers": [
+              {
+                "id": 153,
+                "title": "BAPO",
+                "slug": "bapo",
+                "category": "Catering",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                "serviceHighlights": [
+                  "Servicios de catering",
+                  "Preguntar por paquetes"
+                ],
+                "termsHighlights": [
+                  "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "No acumulable con otros descuentos y/o promociones"
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "Servicios que ofrece: Servicios de catering",
+                  "Servicios que ofrece: Preguntar por paquetes",
+                  "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                  "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                  "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                  "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                  "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+                ],
+                "eventTypes": [],
+                "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.7217458236418498,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "catering_1",
+                  "label": "catering para cumpleaños infantil",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering cumpleaños infantil San Borja",
+                    "menú infantil para 35 personas San Borja",
+                    "catering para cumpleaños infantil presupuesto medio San Borja"
+                  ],
+                  "mustHave": [
+                    "catering para cumpleaños infantil",
+                    "para 21-50 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  153,
+                  136,
+                  137,
+                  109,
+                  138
+                ],
+                "selected_provider_ids": [
+                  153
+                ],
+                "candidates": [
+                  {
+                    "id": 153,
+                    "title": "BAPO",
+                    "slug": "bapo",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                    "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                    "serviceHighlights": [
+                      "Servicios de catering",
+                      "Preguntar por paquetes"
+                    ],
+                    "termsHighlights": [
+                      "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "No acumulable con otros descuentos y/o promociones"
+                    ],
+                    "providerNotes": [
+                      "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                      "Servicios que ofrece: Servicios de catering",
+                      "Servicios que ofrece: Preguntar por paquetes",
+                      "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                      "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                      "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                      "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                      "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+                    ],
+                    "eventTypes": [],
+                    "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7217458236418498,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 136,
+                    "title": "4Foodies",
+                    "slug": "4foodies",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "4Foodies encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                    "websiteUrl": "https://www.4foodies.pe",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                    "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Tablas de quesos",
+                      "Mesas gastronómicas",
+                      "Implementación y montaje de servicio",
+                      "Propuestas personalizadas según el evento"
+                    ],
+                    "termsHighlights": [
+                      "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                      "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                      "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                      "Válido para Lima (previa validación de zona de cobertura)."
+                    ],
+                    "providerNotes": [
+                      "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "Servicios que ofrece: Catering para eventos",
+                      "Servicios que ofrece: Tablas de quesos",
+                      "Servicios que ofrece: Mesas gastronómicas",
+                      "Servicios que ofrece: Implementación y montaje de servicio",
+                      "Servicios que ofrece: Propuestas personalizadas según el evento",
+                      "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                      "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                      "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                      "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+                      "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                      "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                      "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                      "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+                    ],
+                    "eventTypes": [],
+                    "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7173710582951078,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 137,
+                    "title": "FCatering",
+                    "slug": "fcatering",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "FCatering encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Vale de 300 Dólares",
+                    "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                    "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "serviceHighlights": [
+                      "Catering para eventos",
+                      "Propuestas gastronómicas personalizadas",
+                      "Montaje y servicio de alimentos",
+                      "Atención para eventos sociales y corporativos"
+                    ],
+                    "termsHighlights": [
+                      "Válido solo para clientes de Sin Envolturas.",
+                      "Válido únicamente en Lima.",
+                      "Beneficio no transferible ni acumulable.",
+                      "Válido de lunes a viernes en horario laboral.",
+                      "Aplica solo para anfitriones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "providerNotes": [
+                      "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "Servicios que ofrece: Catering para eventos",
+                      "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                      "Servicios que ofrece: Montaje y servicio de alimentos",
+                      "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                      "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                      "Términos  y condiciones: Válido únicamente en Lima.",
+                      "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                      "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                      "Términos  y condiciones: Aplica solo para anfitriones.",
+                      "Términos  y condiciones: Sujeto a disponibilidad.",
+                      "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                      "Términos y condiciones: Válido únicamente en Lima.",
+                      "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                      "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                      "Términos y condiciones: Aplica solo para anfitriones.",
+                      "Términos y condiciones: Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.7150618196670923,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 109,
+                    "title": "Edo Sushi Bar",
+                    "slug": "edo-sushi-bar",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "5.0",
+                    "reason": "Edo Sushi Bar encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/edo-sushi-bar",
+                    "websiteUrl": "https://www.edosushibar.com/catering",
+                    "minPrice": "1200.00",
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de descuento en servicio de catering para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                    "serviceHighlights": [
+                      "Catering de sushi para eventos",
+                      "Propuestas gastronómicas japonesas",
+                      "Paquetes de catering personalizados",
+                      "Atención para eventos sociales y corporativos"
+                    ],
+                    "termsHighlights": [
+                      "Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                      "Válido para pedidos desde 300 piezas a más.",
+                      "Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                      "No acumulable con otros descuentos o promociones.",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "providerNotes": [
+                      "Acerca del proveedor: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                      "Servicios que ofrece: Catering de sushi para eventos",
+                      "Servicios que ofrece: Propuestas gastronómicas japonesas",
+                      "Servicios que ofrece: Paquetes de catering personalizados",
+                      "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                      "Términos  y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                      "Términos  y condiciones: Válido para pedidos desde 300 piezas a más.",
+                      "Términos  y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                      "Términos  y condiciones: No acumulable con otros descuentos o promociones.",
+                      "Términos  y condiciones: Sujeto a disponibilidad",
+                      "EDO SUSHI BAR | 10% DE DSCTO EN CATERING: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                      "Términos y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                      "Términos y condiciones: Válido para pedidos desde 300 piezas a más.",
+                      "Términos y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                      "Términos y condiciones: No acumulable con otros descuentos o promociones.",
+                      "Términos y condiciones: Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6968399792054477,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 138,
+                    "title": "Galería Gourmand",
+                    "slug": "galeria-gourmand",
+                    "category": "Catering",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Galería Gourmand encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                    "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off",
+                    "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                    "serviceHighlights": [
+                      "Catering gourmet para matrimonios civiles y eventos",
+                      "Alquiler de menaje",
+                      "Propuestas gastronómicas personalizadas",
+                      "Servicio para eventos sociales"
+                    ],
+                    "termsHighlights": [
+                      "Aplica para matrimonios civiles y alquiler de menaje.",
+                      "Válido solo para clientes de Sin Envolturas.",
+                      "Válido únicamente en Lima.",
+                      "Beneficio no transferible ni acumulable.",
+                      "Válido de lunes a viernes en horario laboral.",
+                      "Aplica solo para anfitriones.",
+                      "Los pedidos deben realizarse con 48 horas de anticipación."
+                    ],
+                    "providerNotes": [
+                      "Acerca del proveedor: Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                      "Servicios que ofrece: Catering gourmet para matrimonios civiles y eventos",
+                      "Servicios que ofrece: Alquiler de menaje",
+                      "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                      "Servicios que ofrece: Servicio para eventos sociales",
+                      "Términos  y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                      "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                      "Términos  y condiciones: Válido únicamente en Lima.",
+                      "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                      "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                      "Términos  y condiciones: Aplica solo para anfitriones.",
+                      "Términos  y condiciones: Los pedidos deben realizarse con 48 horas de anticipación.",
+                      "Términos y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                      "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                      "Términos y condiciones: Válido únicamente en Lima.",
+                      "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                      "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                      "Términos y condiciones: Aplica solo para anfitriones.",
+                      "Términos y condiciones: Los pedidos deben realizarse con 48 horas de anticipación."
+                    ],
+                    "eventTypes": [],
+                    "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.6875413532185987,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [
+              "estilo colorido",
+              "temática infantil"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              179
+            ],
+            "recommended_providers": [
+              {
+                "id": 179,
+                "title": "Nina Creativa",
+                "slug": "nina-creativa",
+                "category": "Hogar y deco",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Nina Creativa encaja con decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                "serviceHighlights": [
+                  "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                  "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                  "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                ],
+                "termsHighlights": [
+                  "Válido para pedidos con entrega en todo el Perú.",
+                  "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                  "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                  "Sujeto a disponibilidad de stock y agenda de producción."
+                ],
+                "providerNotes": [
+                  "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                  "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+                  "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                  "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                  "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                  "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+                  "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+                  "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+                  "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                  "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+                  "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+                ],
+                "eventTypes": [],
+                "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence",
+                  "event_service_evidence"
+                ],
+                "retrievalScore": 0.5530232710368662,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "deco_1",
+                  "label": "decoración colorida para cumpleaños infantil",
+                  "category": "Hogar y deco",
+                  "queryStrings": [
+                    "decoración colorida cumpleaños infantil San Borja",
+                    "kit de decoración temática infantil San Borja",
+                    "decoración globos y mesa dulce cumpleaños infantil San Borja"
+                  ],
+                  "mustHave": [
+                    "decoración colorida",
+                    "para cumpleaños infantil"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  179
+                ],
+                "selected_provider_ids": [
+                  179
+                ],
+                "candidates": [
+                  {
+                    "id": 179,
+                    "title": "Nina Creativa",
+                    "slug": "nina-creativa",
+                    "category": "Hogar y deco",
+                    "location": "Lima, Perú",
+                    "priceLevel": "mid",
+                    "rating": "0.0",
+                    "reason": "Nina Creativa encaja con decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% off",
+                    "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                    "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                    "serviceHighlights": [
+                      "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                      "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                      "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                    ],
+                    "termsHighlights": [
+                      "Válido para pedidos con entrega en todo el Perú.",
+                      "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                      "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                      "Sujeto a disponibilidad de stock y agenda de producción."
+                    ],
+                    "providerNotes": [
+                      "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                      "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+                      "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                      "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                      "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                      "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+                      "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+                      "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+                      "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                      "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+                      "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+                    ],
+                    "eventTypes": [],
+                    "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence",
+                      "event_service_evidence"
+                    ],
+                    "retrievalScore": 0.5530232710368662,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          153
+        ],
+        "recommended_providers": [
+          {
+            "id": 153,
+            "title": "BAPO",
+            "slug": "bapo",
+            "category": "Catering",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+            "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+            "serviceHighlights": [
+              "Servicios de catering",
+              "Preguntar por paquetes"
+            ],
+            "termsHighlights": [
+              "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "No acumulable con otros descuentos y/o promociones"
+            ],
+            "providerNotes": [
+              "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "Servicios que ofrece: Servicios de catering",
+              "Servicios que ofrece: Preguntar por paquetes",
+              "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+              "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+              "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+              "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+              "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+            ],
+            "eventTypes": [],
+            "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence",
+              "event_service_evidence"
+            ],
+            "retrievalScore": 0.7217458236418498,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El usuario busca decoración para un cumpleaños infantil (hogar y deco)."
+        ],
+        "conversation_summary": "Cumpleaños infantil en San Borja para 35 personas. Frente activo: Catering con presupuesto medio. También requiere decoración colorida.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:40:43.226Z"
+      },
+      "latencyMs": 14243,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta con opciones que encajan con lo que pediste para el cumpleaños\n\nCatering\nPara el catering del cumpleaños infantil encontré una opción que calza con el tamaño del evento y el tipo de celebración\n1. BAPO - catering para cumpleaños infantil (Lima, Perú · $$$ · promo: 10% off)\n Encaja con cumpleaños infantil para 35 personas en San Borja y su ficha apunta a catering, con señal de precio alta frente a presupuesto medio\n Limitación: El encaje es bueno, pero el precio parece más alto que tu presupuesto medio.\n Ficha: https://sinenvolturas.com/proveedores/bapo\n\nHogar y deco\nPara la decoración colorida encontré una opción que puede ayudarte a dar forma al ambiente infantil del evento\n1. Nina Creativa - decoración colorida para cumpleaños infantil (Lima, Perú · $$ · promo: 10% off)\n Su ficha encaja con decoración para cumpleaños infantil y tiene una señal de precio media, alineada con tu presupuesto\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\nPodemos revisar primero catering o decoración, y desde ahí confirmar, cambiar o quitar opciones",
+        "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+        "plan_id": "01KWJPQ3GN20SM37697SXCVKBZ",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWJPQH3EE60YQFGNPPMEGGVM",
+          "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+          "plan_id": "01KWJPQ3GN20SM37697SXCVKBZ",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"catering para cumpleaños infantil\",\n  \"queryStrings\": [\n    \"catering cumpleaños infantil San Borja\",\n    \"menú infantil para 35 personas San Borja\",\n    \"catering para cumpleaños infantil presupuesto medio San Borja\"\n  ],\n  \"location\": \"San Borja\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Hogar y deco\",\n  \"label\": \"decoración colorida para cumpleaños infantil\",\n  \"queryStrings\": [\n    \"decoración colorida cumpleaños infantil San Borja\",\n    \"kit de decoración temática infantil San Borja\",\n    \"decoración globos y mesa dulce cumpleaños infantil San Borja\"\n  ],\n  \"location\": \"San Borja\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"catering para cumpleaños infantil\",\n  \"providers\": [\n    {\n      \"id\": 109,\n      \"title\": \"Edo Sushi Bar\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.6968399792054477\n    },\n    {\n      \"id\": 136,\n      \"title\": \"4Foodies\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7173710582951078\n    },\n    {\n      \"id\": 137,\n      \"title\": \"FCatering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7150618196670923\n    },\n    {\n      \"id\": 138,\n      \"title\": \"Galería Gourmand\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.6875413532185987\n    },\n    {\n      \"id\": 153,\n      \"title\": \"BAPO\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.7217458236418498\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"decoración colorida para cumpleaños infantil\",\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"category\": \"Hogar y deco\",\n      \"retrievalScore\": 0.5530232710368662\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "Servicios que ofrece: Servicios de catering",
+                "Servicios que ofrece: Preguntar por paquetes",
+                "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7217458236418498,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 179,
+              "title": "Nina Creativa",
+              "slug": "nina-creativa",
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Nina Creativa encaja con decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+              "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "serviceHighlights": [
+                "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+              ],
+              "termsHighlights": [
+                "Válido para pedidos con entrega en todo el Perú.",
+                "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Sujeto a disponibilidad de stock y agenda de producción."
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+                "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+                "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+                "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+                "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+              ],
+              "eventTypes": [],
+              "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.5530232710368662,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 153,
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7217458236418498,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 179,
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.5530232710368662,
+              "fit_score": 100
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 2,
+            "context_candidates": 2,
+            "context_candidate_ids": [
+              153,
+              179
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 13993,
+            "load_plan": 81,
+            "prepare_working_plan": 0,
+            "extraction": 6438,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 6246,
+            "provider_enrichment": 191,
+            "prompt_bundle_load": 1,
+            "compose_reply": 4217,
+            "save_plan": 27
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11586,
+              "output_tokens": 726,
+              "total_tokens": 12312,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5487,
+              "output_tokens": 269,
+              "total_tokens": 5756,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17073,
+              "output_tokens": 995,
+              "total_tokens": 18068,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJPQ3GN20SM37697SXCVKBZ",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-1-study.birthday.03-a8a3cc3b",
+          "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "cumpleanos",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": "San Borja",
+          "budget_signal": "medio",
+          "guest_range": "21-50",
+          "preferences": [
+            "decoración colorida"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [
+                "opciones acordes a cumpleaños infantil"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                153
+              ],
+              "recommended_providers": [
+                {
+                  "id": 153,
+                  "title": "BAPO",
+                  "slug": "bapo",
+                  "category": "Catering",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                  "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                  "serviceHighlights": [
+                    "Servicios de catering",
+                    "Preguntar por paquetes"
+                  ],
+                  "termsHighlights": [
+                    "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                    "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                    "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                    "No acumulable con otros descuentos y/o promociones"
+                  ],
+                  "providerNotes": [
+                    "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                    "Servicios que ofrece: Servicios de catering",
+                    "Servicios que ofrece: Preguntar por paquetes",
+                    "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                    "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                    "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                    "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                    "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                    "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                    "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                    "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+                  ],
+                  "eventTypes": [],
+                  "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.7217458236418498,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "catering_1",
+                    "label": "catering para cumpleaños infantil",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering cumpleaños infantil San Borja",
+                      "menú infantil para 35 personas San Borja",
+                      "catering para cumpleaños infantil presupuesto medio San Borja"
+                    ],
+                    "mustHave": [
+                      "catering para cumpleaños infantil",
+                      "para 21-50 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    153,
+                    136,
+                    137,
+                    109,
+                    138
+                  ],
+                  "selected_provider_ids": [
+                    153
+                  ],
+                  "candidates": [
+                    {
+                      "id": 153,
+                      "title": "BAPO",
+                      "slug": "bapo",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+                      "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+                      "serviceHighlights": [
+                        "Servicios de catering",
+                        "Preguntar por paquetes"
+                      ],
+                      "termsHighlights": [
+                        "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "No acumulable con otros descuentos y/o promociones"
+                      ],
+                      "providerNotes": [
+                        "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                        "Servicios que ofrece: Servicios de catering",
+                        "Servicios que ofrece: Preguntar por paquetes",
+                        "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                        "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                        "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                        "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                        "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+                      ],
+                      "eventTypes": [],
+                      "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7217458236418498,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 136,
+                      "title": "4Foodies",
+                      "slug": "4foodies",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "4Foodies encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/4foodies",
+                      "websiteUrl": "https://www.4foodies.pe",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en el servicio de catering para los clientes de Sin Envolturas",
+                      "descriptionSnippet": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Tablas de quesos",
+                        "Mesas gastronómicas",
+                        "Implementación y montaje de servicio",
+                        "Propuestas personalizadas según el evento"
+                      ],
+                      "termsHighlights": [
+                        "El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                        "El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                        "En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                        "Válido para Lima (previa validación de zona de cobertura)."
+                      ],
+                      "providerNotes": [
+                        "Acerca del proveedor: 4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                        "Servicios que ofrece: Catering para eventos",
+                        "Servicios que ofrece: Tablas de quesos",
+                        "Servicios que ofrece: Mesas gastronómicas",
+                        "Servicios que ofrece: Implementación y montaje de servicio",
+                        "Servicios que ofrece: Propuestas personalizadas según el evento",
+                        "Términos  y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                        "Términos  y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                        "Términos  y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                        "Términos  y condiciones: Válido para Lima (previa validación de zona de cobertura).",
+                        "Términos y condiciones: El pedido debe realizarse con al menos 2 meses de anticipación, sujeto a disponibilidad.",
+                        "Términos y condiciones: El descuento aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                        "Términos y condiciones: En caso de daño o pérdida del menaje entregado, se descontará del depósito de garantía.",
+                        "Términos y condiciones: Válido para Lima (previa validación de zona de cobertura)."
+                      ],
+                      "eventTypes": [],
+                      "description": "4Foodies es un servicio de catering enfocado en ofrecer propuestas gastronómicas para eventos, cuidando cada detalle para crear experiencias memorables.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7173710582951078,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 137,
+                      "title": "FCatering",
+                      "slug": "fcatering",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "FCatering encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/fcatering",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Vale de 300 Dólares",
+                      "promoSummary": "Vale de 300 dólares sobre el presupuesto total solo para clientes de Sin Envolturas",
+                      "descriptionSnippet": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "serviceHighlights": [
+                        "Catering para eventos",
+                        "Propuestas gastronómicas personalizadas",
+                        "Montaje y servicio de alimentos",
+                        "Atención para eventos sociales y corporativos"
+                      ],
+                      "termsHighlights": [
+                        "Válido solo para clientes de Sin Envolturas.",
+                        "Válido únicamente en Lima.",
+                        "Beneficio no transferible ni acumulable.",
+                        "Válido de lunes a viernes en horario laboral.",
+                        "Aplica solo para anfitriones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "providerNotes": [
+                        "Acerca del proveedor: FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                        "Servicios que ofrece: Catering para eventos",
+                        "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                        "Servicios que ofrece: Montaje y servicio de alimentos",
+                        "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                        "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                        "Términos  y condiciones: Válido únicamente en Lima.",
+                        "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                        "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                        "Términos  y condiciones: Aplica solo para anfitriones.",
+                        "Términos  y condiciones: Sujeto a disponibilidad.",
+                        "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                        "Términos y condiciones: Válido únicamente en Lima.",
+                        "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                        "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                        "Términos y condiciones: Aplica solo para anfitriones.",
+                        "Términos y condiciones: Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "FCatering es un servicio de catering enfocado en ofrecer experiencias gastronómicas para eventos, combinando calidad, presentación y atención a cada detalle.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.7150618196670923,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 109,
+                      "title": "Edo Sushi Bar",
+                      "slug": "edo-sushi-bar",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "5.0",
+                      "reason": "Edo Sushi Bar encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/edo-sushi-bar",
+                      "websiteUrl": "https://www.edosushibar.com/catering",
+                      "minPrice": "1200.00",
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de descuento en servicio de catering para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                      "serviceHighlights": [
+                        "Catering de sushi para eventos",
+                        "Propuestas gastronómicas japonesas",
+                        "Paquetes de catering personalizados",
+                        "Atención para eventos sociales y corporativos"
+                      ],
+                      "termsHighlights": [
+                        "Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                        "Válido para pedidos desde 300 piezas a más.",
+                        "Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                        "No acumulable con otros descuentos o promociones.",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "providerNotes": [
+                        "Acerca del proveedor: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                        "Servicios que ofrece: Catering de sushi para eventos",
+                        "Servicios que ofrece: Propuestas gastronómicas japonesas",
+                        "Servicios que ofrece: Paquetes de catering personalizados",
+                        "Servicios que ofrece: Atención para eventos sociales y corporativos",
+                        "Términos  y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                        "Términos  y condiciones: Válido para pedidos desde 300 piezas a más.",
+                        "Términos  y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                        "Términos  y condiciones: No acumulable con otros descuentos o promociones.",
+                        "Términos  y condiciones: Sujeto a disponibilidad",
+                        "EDO SUSHI BAR | 10% DE DSCTO EN CATERING: Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                        "Términos y condiciones: Para acceder al beneficio, se debe indicar al momento de solicitar la cotización.",
+                        "Términos y condiciones: Válido para pedidos desde 300 piezas a más.",
+                        "Términos y condiciones: Aplica únicamente para servicio de catering (no incluye consumo en locales ni delivery).",
+                        "Términos y condiciones: No acumulable con otros descuentos o promociones.",
+                        "Términos y condiciones: Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Edo Sushi Bar es un servicio de catering especializado en comida japonesa, ofreciendo propuestas gastronómicas de alta calidad para eventos y celebraciones.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6968399792054477,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 138,
+                      "title": "Galería Gourmand",
+                      "slug": "galeria-gourmand",
+                      "category": "Catering",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Galería Gourmand encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/galeria-gourmand",
+                      "websiteUrl": "https://www.galeriagourmand.com/tienda-online/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off",
+                      "promoSummary": "10% de Descuento en comida gourmet para matrimonios civiles y alquiler de menaje, solo para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                      "serviceHighlights": [
+                        "Catering gourmet para matrimonios civiles y eventos",
+                        "Alquiler de menaje",
+                        "Propuestas gastronómicas personalizadas",
+                        "Servicio para eventos sociales"
+                      ],
+                      "termsHighlights": [
+                        "Aplica para matrimonios civiles y alquiler de menaje.",
+                        "Válido solo para clientes de Sin Envolturas.",
+                        "Válido únicamente en Lima.",
+                        "Beneficio no transferible ni acumulable.",
+                        "Válido de lunes a viernes en horario laboral.",
+                        "Aplica solo para anfitriones.",
+                        "Los pedidos deben realizarse con 48 horas de anticipación."
+                      ],
+                      "providerNotes": [
+                        "Acerca del proveedor: Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                        "Servicios que ofrece: Catering gourmet para matrimonios civiles y eventos",
+                        "Servicios que ofrece: Alquiler de menaje",
+                        "Servicios que ofrece: Propuestas gastronómicas personalizadas",
+                        "Servicios que ofrece: Servicio para eventos sociales",
+                        "Términos  y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                        "Términos  y condiciones: Válido solo para clientes de Sin Envolturas.",
+                        "Términos  y condiciones: Válido únicamente en Lima.",
+                        "Términos  y condiciones: Beneficio no transferible ni acumulable.",
+                        "Términos  y condiciones: Válido de lunes a viernes en horario laboral.",
+                        "Términos  y condiciones: Aplica solo para anfitriones.",
+                        "Términos  y condiciones: Los pedidos deben realizarse con 48 horas de anticipación.",
+                        "Términos y condiciones: Aplica para matrimonios civiles y alquiler de menaje.",
+                        "Términos y condiciones: Válido solo para clientes de Sin Envolturas.",
+                        "Términos y condiciones: Válido únicamente en Lima.",
+                        "Términos y condiciones: Beneficio no transferible ni acumulable.",
+                        "Términos y condiciones: Válido de lunes a viernes en horario laboral.",
+                        "Términos y condiciones: Aplica solo para anfitriones.",
+                        "Términos y condiciones: Los pedidos deben realizarse con 48 horas de anticipación."
+                      ],
+                      "eventTypes": [],
+                      "description": "Galería Gourmand ofrece propuestas de comida gourmet para matrimonios y eventos, combinando calidad, presentación y una experiencia gastronómica cuidada en cada detalle.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.6875413532185987,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [
+                "estilo colorido",
+                "temática infantil"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                179
+              ],
+              "recommended_providers": [
+                {
+                  "id": 179,
+                  "title": "Nina Creativa",
+                  "slug": "nina-creativa",
+                  "category": "Hogar y deco",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Nina Creativa encaja con decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                  "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                  "serviceHighlights": [
+                    "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                    "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                    "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                  ],
+                  "termsHighlights": [
+                    "Válido para pedidos con entrega en todo el Perú.",
+                    "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                    "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                    "Sujeto a disponibilidad de stock y agenda de producción."
+                  ],
+                  "providerNotes": [
+                    "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                    "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+                    "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                    "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                    "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                    "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+                    "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+                    "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+                    "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                    "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+                    "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+                  ],
+                  "eventTypes": [],
+                  "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence",
+                    "event_service_evidence"
+                  ],
+                  "retrievalScore": 0.5530232710368662,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "deco_1",
+                    "label": "decoración colorida para cumpleaños infantil",
+                    "category": "Hogar y deco",
+                    "queryStrings": [
+                      "decoración colorida cumpleaños infantil San Borja",
+                      "kit de decoración temática infantil San Borja",
+                      "decoración globos y mesa dulce cumpleaños infantil San Borja"
+                    ],
+                    "mustHave": [
+                      "decoración colorida",
+                      "para cumpleaños infantil"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    179
+                  ],
+                  "selected_provider_ids": [
+                    179
+                  ],
+                  "candidates": [
+                    {
+                      "id": 179,
+                      "title": "Nina Creativa",
+                      "slug": "nina-creativa",
+                      "category": "Hogar y deco",
+                      "location": "Lima, Perú",
+                      "priceLevel": "mid",
+                      "rating": "0.0",
+                      "reason": "Nina Creativa encaja con decoración colorida para cumpleaños infantil según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% off",
+                      "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                      "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                      "serviceHighlights": [
+                        "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                        "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                        "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                      ],
+                      "termsHighlights": [
+                        "Válido para pedidos con entrega en todo el Perú.",
+                        "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                        "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                        "Sujeto a disponibilidad de stock y agenda de producción."
+                      ],
+                      "providerNotes": [
+                        "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                        "Acerca del proveedor: Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar.",
+                        "Acerca del proveedor: Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                        "Servicios que ofrece: Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                        "Servicios que ofrece: Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                        "Servicios que ofrece: Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.",
+                        "Términos y condiciones: Válido para pedidos con entrega en todo el Perú.",
+                        "Términos y condiciones: No acumulable con otras promociones, cupones o descuentos vigentes.",
+                        "Términos y condiciones: Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                        "Términos y condiciones: Sujeto a disponibilidad de stock y agenda de producción.",
+                        "Acerca del proveedor: Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes."
+                      ],
+                      "eventTypes": [],
+                      "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence",
+                        "event_service_evidence"
+                      ],
+                      "retrievalScore": 0.5530232710368662,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            153
+          ],
+          "recommended_providers": [
+            {
+              "id": 153,
+              "title": "BAPO",
+              "slug": "bapo",
+              "category": "Catering",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "BAPO encaja con catering para cumpleaños infantil según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/bapo",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "Disfruta 10% de descuento en catering de bocaditos asiáticos con Bapo, ideal para darle un toque diferente y lleno de sabor a tu evento.",
+              "descriptionSnippet": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas.",
+              "serviceHighlights": [
+                "Servicios de catering",
+                "Preguntar por paquetes"
+              ],
+              "termsHighlights": [
+                "Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "No acumulable con otros descuentos y/o promociones"
+              ],
+              "providerNotes": [
+                "Acerca del proveedor: Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+                "Servicios que ofrece: Servicios de catering",
+                "Servicios que ofrece: Preguntar por paquetes",
+                "Términos  y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Términos  y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Términos  y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "Términos  y condiciones: No acumulable con otros descuentos y/o promociones",
+                "Términos y condiciones: Válido para clientes Sin Envolturas, indicarlo al momento de solicitar una cotización.",
+                "Términos y condiciones: Válido solo para Lima Metropolitana o consultando disponibilidad",
+                "Términos y condiciones: Descuento válido solo para servicio de catering, no incluye consumo en locales y/o delivery",
+                "Términos y condiciones: No acumulable con otros descuentos y/o promociones"
+              ],
+              "eventTypes": [],
+              "description": "Bapo es una empresa de catering especializada en comida asiática, que combina sabores auténticos con presentaciones modernas. Ideal para quienes buscan una experiencia diferente, práctica y llena de sabor en sus eventos.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence",
+                "event_service_evidence"
+              ],
+              "retrievalScore": 0.7217458236418498,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El usuario busca decoración para un cumpleaños infantil (hogar y deco)."
+          ],
+          "conversation_summary": "Cumpleaños infantil en San Borja para 35 personas. Frente activo: Catering con presupuesto medio. También requiere decoración colorida.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:40:43.226Z"
+        },
+        "perf": {
+          "trace_id": "01KWJPQH3EE60YQFGNPPMEGGVM",
+          "conversation_id": "conv_6a47050b50948193b81c78d45846da410609afdb70d56b52",
+          "runtime_latency_ms": 13993,
+          "extraction_latency_ms": 6438,
+          "compose_latency_ms": 4217,
+          "tools_called_count": 2,
+          "provider_results_count": 2,
+          "recommendation_context_candidates": 2,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18068,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8546828325426111,
+          "extraction_to_compose_ratio": 1.5266777329855348,
+          "captured_at": "2026-07-03T00:40:47.470Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:40:47.629Z",
+  "completedAt": "2026-07-03T00:40:47.630Z"
+}

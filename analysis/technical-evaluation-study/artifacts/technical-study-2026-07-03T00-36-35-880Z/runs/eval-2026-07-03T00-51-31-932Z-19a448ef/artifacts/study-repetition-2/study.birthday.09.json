@@ -1,0 +1,560 @@
+{
+  "runId": "eval-2026-07-03T00-51-31-932Z-19a448ef",
+  "caseId": "study.birthday.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "study-repetition-2",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 11617,
+  "totalToolCalls": 2,
+  "nodeTransitions": [
+    "contacto_inicial->refinar_criterios"
+  ],
+  "planDiffSummary": [
+    "current_node=\"refinar_criterios\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Música\"",
+    "active_need_category=\"Música\"",
+    "location=\"Lima\"",
+    "budget_signal=\"mínimo\"",
+    "provider_needs=Música:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/analysis/technical-evaluation-study/artifacts/technical-study-2026-07-03T00-36-35-880Z/runs/eval-2026-07-03T00-51-31-932Z-19a448ef/artifacts/study-repetition-2/study.birthday.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->refinar_criterios."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 11617,
+    "p95_latency_ms": 11617,
+    "tool_calls_total": 2,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 2,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 20703,
+    "cache_hit_rate": 0.9009616337860613
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito una banda de astronautas reales para un cumpleaños en Lima mañana, presupuesto mínimo."
+      },
+      "outputText": "No encontré opciones para esa banda temática con los criterios actuales.\n\nPodemos ajustar una sola cosa para destrabar la búsqueda: ¿te sirve ampliar a una presentación musical temática en lugar de astronautas reales?",
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "trace_id": "01KWJQPA599YKNA1Q3Z2M4DHJA",
+        "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+        "plan_id": "01KWJQNZ4NB0KTK55W7CH36NCN",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "5c0b228e4e84",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/refinar_criterios/system.txt",
+          "nodes/refinar_criterios/response_contract.txt",
+          "nodes/refinar_criterios/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "list_categories"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "list_categories",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% off\",\n      \"promoSummary\": \"20% de descuento, exclusivo para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.\",\n      \"serviceHighlights\": [\n        \"Asesoría personalizada en todo el proceso del evento\",\n        \"DJ profesional para todo tipo de eventos.\",\n        \"Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Iluminación ambiental y decorativa.\",\n        \"Luces para pista de baile y efectos especiales.\",\n        \"Musicalización personalizada según el estilo del evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"providerNotes\": [\n        \"Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n        \"Servicios que ofrece: Asesoría personalizada en todo el proceso del evento\",\n        \"Servicios que ofrece: DJ profesional para todo tipo de eventos.\",\n        \"Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Servicios que ofrece: Iluminación ambiental y decorativa.\",\n        \"Servicios que ofrece: Luces para pista de baile y efectos especiales.\",\n        \"Servicios que ofrece: Musicalización personalizada según el estilo del evento.\",\n        \"Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.\",\n        \"Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"description\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8250648637787806,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música, opera en Lima, Perú, parece alineado al rango mínimo\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 11290,
+          "load_plan": 6,
+          "prepare_working_plan": 0,
+          "extraction": 5003,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 3601,
+          "provider_enrichment": 61,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2593,
+          "save_plan": 20
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11577,
+            "output_tokens": 456,
+            "total_tokens": 12033,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 8597,
+            "output_tokens": 73,
+            "total_tokens": 8670,
+            "cached_input_tokens": 7168
+          },
+          "total": {
+            "input_tokens": 20174,
+            "output_tokens": 529,
+            "total_tokens": 20703,
+            "cached_input_tokens": 18176
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJQPA599YKNA1Q3Z2M4DHJA",
+        "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+        "runtime_latency_ms": 11290,
+        "extraction_latency_ms": 5003,
+        "compose_latency_ms": 2593,
+        "tools_called_count": 2,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 20703,
+        "cached_input_tokens": 18176,
+        "cache_hit_rate": 0.9009616337860613,
+        "extraction_to_compose_ratio": 1.929425376012341,
+        "captured_at": "2026-07-03T00:57:36.169Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJQNZ4NB0KTK55W7CH36NCN",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.09-68e066be",
+        "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "refinar_criterios",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": "mínimo",
+        "guest_range": null,
+        "preferences": [
+          "banda de astronautas reales"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "no_providers_available",
+            "preferences": [
+              "banda de astronautas reales"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-03T00:57:33.556Z"
+      },
+      "latencyMs": 11617,
+      "rawTargetResponse": {
+        "message": "No encontré opciones para esa banda temática con los criterios actuales.\n\nPodemos ajustar una sola cosa para destrabar la búsqueda: ¿te sirve ampliar a una presentación musical temática en lugar de astronautas reales?",
+        "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+        "plan_id": "01KWJQNZ4NB0KTK55W7CH36NCN",
+        "current_node": "refinar_criterios",
+        "trace": {
+          "trace_id": "01KWJQPA599YKNA1Q3Z2M4DHJA",
+          "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+          "plan_id": "01KWJQNZ4NB0KTK55W7CH36NCN",
+          "previous_node": "contacto_inicial",
+          "next_node": "refinar_criterios",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "refinar_criterios"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "5c0b228e4e84",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/refinar_criterios/system.txt",
+            "nodes/refinar_criterios/response_contract.txt",
+            "nodes/refinar_criterios/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "list_categories"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "list_categories",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"20% off\",\n      \"promoSummary\": \"20% de descuento, exclusivo para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos.\",\n      \"serviceHighlights\": [\n        \"Asesoría personalizada en todo el proceso del evento\",\n        \"DJ profesional para todo tipo de eventos.\",\n        \"Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Iluminación ambiental y decorativa.\",\n        \"Luces para pista de baile y efectos especiales.\",\n        \"Musicalización personalizada según el estilo del evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"providerNotes\": [\n        \"Acerca del proveedor: Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n        \"Servicios que ofrece: Asesoría personalizada en todo el proceso del evento\",\n        \"Servicios que ofrece: DJ profesional para todo tipo de eventos.\",\n        \"Servicios que ofrece: Sonido profesional para ceremonias, recepciones y fiestas.\",\n        \"Servicios que ofrece: Iluminación ambiental y decorativa.\",\n        \"Servicios que ofrece: Luces para pista de baile y efectos especiales.\",\n        \"Servicios que ofrece: Musicalización personalizada según el estilo del evento.\",\n        \"Términos  y condiciones: Valido solo para Lima. Consultar términos y condiciones.\",\n        \"Términos y condiciones: Valido solo para Lima. Consultar términos y condiciones.\"\n      ],\n      \"description\": \"Dj Bufi - Ricardo Collantes, Dj desde el 2015 especializado en bodas, eventos privados y corporativos. Su enfoque va mas allá de poner música, le gusta crear experiencias y entender al publico lo que necesita en el momento. Su versatilidad y experiencia le permite adaptarse a distintos públicos y momentos.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8250648637787806,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Música, opera en Lima, Perú, parece alineado al rango mínimo\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 11290,
+            "load_plan": 6,
+            "prepare_working_plan": 0,
+            "extraction": 5003,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 3601,
+            "provider_enrichment": 61,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2593,
+            "save_plan": 20
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11577,
+              "output_tokens": 456,
+              "total_tokens": 12033,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 8597,
+              "output_tokens": 73,
+              "total_tokens": 8670,
+              "cached_input_tokens": 7168
+            },
+            "total": {
+              "input_tokens": 20174,
+              "output_tokens": 529,
+              "total_tokens": 20703,
+              "cached_input_tokens": 18176
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJQNZ4NB0KTK55W7CH36NCN",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-study-repetition-2-study.birthday.09-68e066be",
+          "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "refinar_criterios",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": "mínimo",
+          "guest_range": null,
+          "preferences": [
+            "banda de astronautas reales"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Música",
+              "status": "no_providers_available",
+              "preferences": [
+                "banda de astronautas reales"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-03T00:57:33.556Z"
+        },
+        "perf": {
+          "trace_id": "01KWJQPA599YKNA1Q3Z2M4DHJA",
+          "conversation_id": "conv_6a4708fda13481948a9005c3637fc9bc0f2852dfea37110a",
+          "runtime_latency_ms": 11290,
+          "extraction_latency_ms": 5003,
+          "compose_latency_ms": 2593,
+          "tools_called_count": 2,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 20703,
+          "cached_input_tokens": 18176,
+          "cache_hit_rate": 0.9009616337860613,
+          "extraction_to_compose_ratio": 1.929425376012341,
+          "captured_at": "2026-07-03T00:57:36.169Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-03T00:57:36.227Z",
+  "completedAt": "2026-07-03T00:57:36.228Z"
+}

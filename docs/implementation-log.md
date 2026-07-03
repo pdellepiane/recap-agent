@@ -3553,3 +3553,18 @@ poll. Failing immediately abandoned an otherwise recoverable batch.
 
 Creation followed by retrieval is eventually consistent. Keep the association
 pending on 404; still fail on explicit `failed`/`cancelled` status or timeout.
+
+## Render the executed manifest in study findings
+
+- Replaced the hardcoded V1 manifest label in generated findings with the
+  manifest identifier from the immutable study summary.
+
+### Reason
+
+The final V4 study summary was correct, but its Markdown reproducibility header
+still displayed the historical V1 label.
+
+### Decision
+
+Presentation artifacts must derive version labels from study metadata. Raw run
+reports remain unchanged; regenerate only derivative tables, charts, and text.
