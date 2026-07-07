@@ -1,0 +1,1973 @@
+{
+  "runId": "eval-2026-07-02T04-29-47-961Z-3a21a960",
+  "caseId": "study.baby_shower.01",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "iteration-1-targeted",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.6666666666666666,
+  "totalLatencyMs": 14058,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->elicitacion_necesidades"
+  ],
+  "planDiffSummary": [
+    "current_node=\"elicitacion_necesidades\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"baby_shower\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Miraflores\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"21-50\"",
+    "provider_needs=Locales:shortlisted, Catering:shortlisted, Fotografía y video:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-targeted-iteration1/eval-2026-07-02T04-29-47-961Z-3a21a960/artifacts/iteration-1-targeted/study.baby_shower.01.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed contacto_inicial->elicitacion_necesidades. Allowed=*->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "shortlist",
+      "type": "provider_result_count",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Provider result count 3 matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.6666666666666666,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 9 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 14058,
+    "p95_latency_ms": 14058,
+    "tool_calls_total": 3,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 3,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.11538461538461539,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 18648,
+    "cache_hit_rate": 0.8418137763932156
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Busco un local delicado para baby shower en Miraflores, 40 personas, presupuesto medio."
+      },
+      "outputText": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta que encaja con tu baby shower en Miraflores\n\nLocales\nPara el local, encontré una opción que puede funcionar para un baby shower de unas 40 personas con estilo delicado\n1. Casa Club 147 - local para baby shower (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con el tipo de evento, el tamaño aproximado y la búsqueda de un espacio delicado\n Limitación: La ficha muestra ubicación en Perú y no confirma Miraflores de forma explícita.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara el catering, encontré una propuesta alineada con un evento elegante y de escala media\n1. Kisu - catering para baby shower (Perú · $$$ · promo: 5% Off)\n Se ajusta a la idea de un servicio para baby shower y a un grupo de unas 40 personas\n Limitación: La ficha no confirma una cobertura específica en Miraflores.\n Ficha: https://sinenvolturas.com/proveedores/kisu\n\nFotografía y video\nPara fotos y video, hay una opción que puede acompañar bien este tipo de celebración familiar\n1. Maria Bashi - fotografía para baby shower (Lima, Perú · $$$ · promo: 20% Off)\n Su estilo familiar y cercano encaja con una celebración como baby shower\n Limitación: La ficha muestra base en Lima, pero no detalla cobertura puntual en Miraflores.\n Ficha: https://sinenvolturas.com/proveedores/maria-bashi\n\nPodemos empezar por revisar primero el local y, si quieres, después ajustamos catering y fotografía",
+      "currentNode": "elicitacion_necesidades",
+      "trace": {
+        "trace_id": "01KWGHFGMG1M8ZAVZC2GKTZJDS",
+        "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+        "plan_id": "01KWGHF32BWWR5QW5A3SKRB1YE",
+        "previous_node": "contacto_inicial",
+        "next_node": "elicitacion_necesidades",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "elicitacion_necesidades"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "b3daef6970dd",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/elicitacion_necesidades/system.txt",
+          "nodes/elicitacion_necesidades/response_contract.txt",
+          "nodes/elicitacion_necesidades/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "get_provider_detail",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent",
+          "search_providers_by_query_intent"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"Locales en Miraflores para baby shower\",\n  \"queryStrings\": [\n    \"local delicado Miraflores baby shower\",\n    \"salón para baby shower Miraflores 40 personas\",\n    \"espacio elegante para baby shower Miraflores\"\n  ],\n  \"location\": \"Miraflores\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"Catering en Miraflores para baby shower\",\n  \"queryStrings\": [\n    \"catering baby shower Miraflores\",\n    \"servicio de comida baby shower para 40 personas Miraflores\",\n    \"menú baby shower elegante Miraflores\"\n  ],\n  \"location\": \"Miraflores\"\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"Fotografía y video en Miraflores para baby shower\",\n  \"queryStrings\": [\n    \"fotógrafo baby shower Miraflores\",\n    \"video baby shower Miraflores\",\n    \"paquete fotografía baby shower\"\n  ],\n  \"location\": \"Miraflores\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Locales en Miraflores para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.4694756449442559\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Fotografía y video en Miraflores para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 60,\n      \"title\": \"Maria Bashi\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.7246706068966867\n    },\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.7083923107334159\n    }\n  ]\n}"
+          },
+          {
+            "tool": "search_providers_by_query_intent",
+            "output": "{\n  \"label\": \"Catering en Miraflores para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 117,\n      \"title\": \"Kisu\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8300344091485853\n    },\n    {\n      \"id\": 135,\n      \"title\": \"Paola Puerta Catering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8071725808147187\n    },\n    {\n      \"id\": 155,\n      \"title\": \"Brianna's Catering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8117671771888775\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.4694756449442559,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 117,
+            "title": "Kisu",
+            "slug": "kisu",
+            "category": "Catering",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Kisu encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/kisu",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "5% Off",
+            "promoSummary": "5% de descuento en todos nuestros catálogos: packs, box y servicio de catering de quesos y charcuteria",
+            "descriptionSnippet": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+            "serviceHighlights": [
+              "Catering de quesos y charcutería",
+              "Mesas para eventos (15 a 1000 personas)",
+              "Boxes y packs gastronómicos",
+              "Propuestas personalizadas con productos importados, mixtos y nacionales"
+            ],
+            "termsHighlights": [
+              "Aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+              "Las mesas requieren programación con al menos 1 semana de anticipación, sujeto a disponibilidad.",
+              "Las cotizaciones no incluyen arreglo floral, mantel ni decoración de la mesa.",
+              "El descuento es válido solo para pagos en efectivo, transferencia, Yape o Plin.",
+              "Pagos con tarjeta no aplican descuento.",
+              "Válido únicamente en Lima (validar zona de cobertura).",
+              "Beneficio no transferible ni acumulable."
+            ],
+            "eventTypes": [],
+            "description": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.8300344091485853,
+            "retrievalSource": "vector"
+          },
+          {
+            "id": 60,
+            "title": "Maria Bashi",
+            "slug": "maria-bashi",
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Maria Bashi encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "20% Off",
+            "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+            "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+            "serviceHighlights": [
+              "Sesiones de recién nacidos",
+              "Sesiones de bebés",
+              "Sesiones familiares",
+              "Sesiones de embarazo",
+              "Sesiones en casa, estudio o exteriores"
+            ],
+            "termsHighlights": [
+              "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+              "La sesión de embarazo incluye a la pareja.",
+              "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+              "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+              "Beneficio sujeto a disponibilidad"
+            ],
+            "eventTypes": [],
+            "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+            "fitScore": 94,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.7246706068966867,
+            "retrievalSource": "vector"
+          }
+        ],
+        "search_strategy": "multi_need_query_intents",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 147,
+            "category": "Locales",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.4694756449442559,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 117,
+            "category": "Catering",
+            "location": "Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.8300344091485853,
+            "fit_score": 100
+          },
+          {
+            "provider_id": 60,
+            "category": "Fotografía y video",
+            "location": "Lima, Perú",
+            "retrieval_source": "vector",
+            "retrieval_score": 0.7246706068966867,
+            "fit_score": 94
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 3,
+          "context_candidates": 3,
+          "context_candidate_ids": [
+            147,
+            117,
+            60
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "elicitacion_necesidades",
+        "timing_ms": {
+          "total": 13900,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 6933,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 8321,
+          "provider_enrichment": 288,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3759,
+          "save_plan": 31
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11427,
+            "output_tokens": 958,
+            "total_tokens": 12385,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5907,
+            "output_tokens": 356,
+            "total_tokens": 6263,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 17334,
+            "output_tokens": 1314,
+            "total_tokens": 18648,
+            "cached_input_tokens": 14592
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGHFGMG1M8ZAVZC2GKTZJDS",
+        "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+        "runtime_latency_ms": 13900,
+        "extraction_latency_ms": 6933,
+        "compose_latency_ms": 3759,
+        "tools_called_count": 3,
+        "provider_results_count": 3,
+        "recommendation_context_candidates": 3,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18648,
+        "cached_input_tokens": 14592,
+        "cache_hit_rate": 0.8418137763932156,
+        "extraction_to_compose_ratio": 1.8443735035913806,
+        "captured_at": "2026-07-02T04:30:33.105Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGHF32BWWR5QW5A3SKRB1YE",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-iteration-1-targeted-study.baby_shower.01-b6c80c16",
+        "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "elicitacion_necesidades",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "baby_shower",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Miraflores",
+        "budget_signal": "medio",
+        "guest_range": "21-50",
+        "preferences": [
+          "local delicado"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "shortlisted",
+            "preferences": [
+              "estilo delicado"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              147
+            ],
+            "recommended_providers": [
+              {
+                "id": 147,
+                "title": "Casa Club 147",
+                "slug": "casa-club-147",
+                "category": "Locales",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                "websiteUrl": "https://casaclub147.com/",
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% Off Alquiler local",
+                "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "serviceHighlights": [
+                  "Alquiler de local para eventos",
+                  "Espacios para matrimonios",
+                  "Eventos sociales (cumpleaños, aniversarios, showers)",
+                  "Eventos institucionales",
+                  "Alojamiento para hasta 32 personas"
+                ],
+                "termsHighlights": [
+                  "Beneficio no transferible ni acumulable con otras promociones.",
+                  "Sujeto a disponibilidad."
+                ],
+                "eventTypes": [],
+                "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "event_match",
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.4694756449442559,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "locales_baby_shower_miraflores",
+                  "label": "Locales en Miraflores para baby shower",
+                  "category": "Locales",
+                  "queryStrings": [
+                    "local delicado Miraflores baby shower",
+                    "salón para baby shower Miraflores 40 personas",
+                    "espacio elegante para baby shower Miraflores"
+                  ],
+                  "mustHave": [
+                    "local para baby shower",
+                    "capacidad para ~40 personas",
+                    "estilo delicado"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  147
+                ],
+                "selected_provider_ids": [
+                  147
+                ],
+                "candidates": [
+                  {
+                    "id": 147,
+                    "title": "Casa Club 147",
+                    "slug": "casa-club-147",
+                    "category": "Locales",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                    "websiteUrl": "https://casaclub147.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "10% Off Alquiler local",
+                    "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "serviceHighlights": [
+                      "Alquiler de local para eventos",
+                      "Espacios para matrimonios",
+                      "Eventos sociales (cumpleaños, aniversarios, showers)",
+                      "Eventos institucionales",
+                      "Alojamiento para hasta 32 personas"
+                    ],
+                    "termsHighlights": [
+                      "Beneficio no transferible ni acumulable con otras promociones.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "event_match",
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.4694756449442559,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Catering",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              117
+            ],
+            "recommended_providers": [
+              {
+                "id": 117,
+                "title": "Kisu",
+                "slug": "kisu",
+                "category": "Catering",
+                "location": "Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Kisu encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/kisu",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "5% Off",
+                "promoSummary": "5% de descuento en todos nuestros catálogos: packs, box y servicio de catering de quesos y charcuteria",
+                "descriptionSnippet": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                "serviceHighlights": [
+                  "Catering de quesos y charcutería",
+                  "Mesas para eventos (15 a 1000 personas)",
+                  "Boxes y packs gastronómicos",
+                  "Propuestas personalizadas con productos importados, mixtos y nacionales"
+                ],
+                "termsHighlights": [
+                  "Aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                  "Las mesas requieren programación con al menos 1 semana de anticipación, sujeto a disponibilidad.",
+                  "Las cotizaciones no incluyen arreglo floral, mantel ni decoración de la mesa.",
+                  "El descuento es válido solo para pagos en efectivo, transferencia, Yape o Plin.",
+                  "Pagos con tarjeta no aplican descuento.",
+                  "Válido únicamente en Lima (validar zona de cobertura).",
+                  "Beneficio no transferible ni acumulable."
+                ],
+                "eventTypes": [],
+                "description": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                "fitScore": 100,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.8300344091485853,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "catering_baby_shower_miraflores",
+                  "label": "Catering en Miraflores para baby shower",
+                  "category": "Catering",
+                  "queryStrings": [
+                    "catering baby shower Miraflores",
+                    "servicio de comida baby shower para 40 personas Miraflores",
+                    "menú baby shower elegante Miraflores"
+                  ],
+                  "mustHave": [
+                    "catering para baby shower",
+                    "capacidad/servicio para ~40 personas"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  117,
+                  155,
+                  135
+                ],
+                "selected_provider_ids": [
+                  117
+                ],
+                "candidates": [
+                  {
+                    "id": 117,
+                    "title": "Kisu",
+                    "slug": "kisu",
+                    "category": "Catering",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Kisu encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/kisu",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% Off",
+                    "promoSummary": "5% de descuento en todos nuestros catálogos: packs, box y servicio de catering de quesos y charcuteria",
+                    "descriptionSnippet": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                    "serviceHighlights": [
+                      "Catering de quesos y charcutería",
+                      "Mesas para eventos (15 a 1000 personas)",
+                      "Boxes y packs gastronómicos",
+                      "Propuestas personalizadas con productos importados, mixtos y nacionales"
+                    ],
+                    "termsHighlights": [
+                      "Aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                      "Las mesas requieren programación con al menos 1 semana de anticipación, sujeto a disponibilidad.",
+                      "Las cotizaciones no incluyen arreglo floral, mantel ni decoración de la mesa.",
+                      "El descuento es válido solo para pagos en efectivo, transferencia, Yape o Plin.",
+                      "Pagos con tarjeta no aplican descuento.",
+                      "Válido únicamente en Lima (validar zona de cobertura).",
+                      "Beneficio no transferible ni acumulable."
+                    ],
+                    "eventTypes": [],
+                    "description": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8300344091485853,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 155,
+                    "title": "Brianna's Catering",
+                    "slug": "briannas-catering",
+                    "category": "Catering",
+                    "location": "Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Brianna's Catering encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/briannas-catering",
+                    "websiteUrl": "www.briannascatering.com",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "S/. 1,500 de descuento",
+                    "promoSummary": "Vale de Obsequio de S/1,500.00 para utilizarlo en algún adicional del presupuesto de los novios",
+                    "descriptionSnippet": "Brianna’s Catering ofrece a los clientes de Sin Envolturas una propuesta gastronómica pensada para celebraciones especiales, combinando sabor, presentación y una experiencia cuidada en cada detalle.",
+                    "serviceHighlights": [
+                      "Catering para matrimonios",
+                      "Propuestas gastronómicas personalizadas",
+                      "Servicio para eventos sociales y celebraciones",
+                      "Asesoría en selección de menú"
+                    ],
+                    "termsHighlights": [
+                      "Válido únicamente en Lima",
+                      "No transferible ni acumulable con otras promociones",
+                      "Beneficio válido para novios nuevos de los años 2025 y 2026",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Brianna’s Catering ofrece a los clientes de Sin Envolturas una propuesta gastronómica pensada para celebraciones especiales, combinando sabor, presentación y una experiencia cuidada en cada detalle. Su enfoque busca elevar cada evento a través de una propuesta culinaria memorable.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8117671771888775,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 135,
+                    "title": "Paola Puerta Catering",
+                    "slug": "paola-puerta-catering",
+                    "category": "Catering",
+                    "location": "Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Paola Puerta Catering encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/paola-puerta-catering",
+                    "websiteUrl": "https://acortar.link/wJ5aTZ",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "Grupo electrógeno gratis y más",
+                    "promoSummary": "Grupo electrógeno gratis, 50 velas colgantes y estacas de velas solo para clientes de Sin Envolturas.",
+                    "descriptionSnippet": "Paola Puerta Catering es un servicio especializado en la creación de experiencias gastronómicas para matrimonios y eventos, cuidando cada detalle para lograr celebraciones memorables.",
+                    "serviceHighlights": [
+                      "Catering para matrimonios y eventos",
+                      "Diseño de propuestas gastronómicas personalizadas",
+                      "Montaje y servicio de alimentos",
+                      "Asesoría en la experiencia integral del evento"
+                    ],
+                    "termsHighlights": [
+                      "Beneficios sujetos a contratación del servicio de catering.",
+                      "Aplican solo para nuevos contratos.",
+                      "Sujeto a disponibilidad."
+                    ],
+                    "eventTypes": [],
+                    "description": "Paola Puerta Catering es un servicio especializado en la creación de experiencias gastronómicas para matrimonios y eventos, cuidando cada detalle para lograr celebraciones memorables.",
+                    "fitScore": 100,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.8071725808147187,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          },
+          {
+            "category": "Fotografía y video",
+            "status": "shortlisted",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              60
+            ],
+            "recommended_providers": [
+              {
+                "id": 60,
+                "title": "Maria Bashi",
+                "slug": "maria-bashi",
+                "category": "Fotografía y video",
+                "location": "Lima, Perú",
+                "priceLevel": "high",
+                "rating": "0.0",
+                "reason": "Maria Bashi encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "20% Off",
+                "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+                "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                "serviceHighlights": [
+                  "Sesiones de recién nacidos",
+                  "Sesiones de bebés",
+                  "Sesiones familiares",
+                  "Sesiones de embarazo",
+                  "Sesiones en casa, estudio o exteriores"
+                ],
+                "termsHighlights": [
+                  "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                  "La sesión de embarazo incluye a la pareja.",
+                  "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                  "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                  "Beneficio sujeto a disponibilidad"
+                ],
+                "eventTypes": [],
+                "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                "fitScore": 94,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match",
+                  "must_have_evidence"
+                ],
+                "retrievalScore": 0.7246706068966867,
+                "retrievalSource": "vector"
+              }
+            ],
+            "sub_query_results": [
+              {
+                "subQuery": {
+                  "id": "foto_video_baby_shower_miraflores",
+                  "label": "Fotografía y video en Miraflores para baby shower",
+                  "category": "Fotografía y video",
+                  "queryStrings": [
+                    "fotógrafo baby shower Miraflores",
+                    "video baby shower Miraflores",
+                    "paquete fotografía baby shower"
+                  ],
+                  "mustHave": [
+                    "servicio de fotografía/video para baby shower"
+                  ],
+                  "shouldAvoid": [],
+                  "maxSelections": 1,
+                  "allowCrossCategory": false
+                },
+                "candidate_provider_ids": [
+                  60,
+                  133
+                ],
+                "selected_provider_ids": [
+                  60
+                ],
+                "candidates": [
+                  {
+                    "id": 60,
+                    "title": "Maria Bashi",
+                    "slug": "maria-bashi",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "high",
+                    "rating": "0.0",
+                    "reason": "Maria Bashi encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+                    "websiteUrl": null,
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "20% Off",
+                    "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+                    "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                    "serviceHighlights": [
+                      "Sesiones de recién nacidos",
+                      "Sesiones de bebés",
+                      "Sesiones familiares",
+                      "Sesiones de embarazo",
+                      "Sesiones en casa, estudio o exteriores"
+                    ],
+                    "termsHighlights": [
+                      "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                      "La sesión de embarazo incluye a la pareja.",
+                      "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                      "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                      "Beneficio sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7246706068966867,
+                    "retrievalSource": "vector"
+                  },
+                  {
+                    "id": 133,
+                    "title": "Uriel Santisteban Photography & Film",
+                    "slug": "uriel-santisteban-photography-film",
+                    "category": "Fotografía y video",
+                    "location": "Lima, Perú",
+                    "priceLevel": "very_high",
+                    "rating": "0.0",
+                    "reason": "Uriel Santisteban Photography & Film encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                    "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                    "websiteUrl": "https://www.urielsantisteban.com/",
+                    "minPrice": null,
+                    "maxPrice": null,
+                    "promoBadge": "5% Off",
+                    "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                    "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                    "serviceHighlights": [
+                      "Fotografía para matrimonios",
+                      "Video de bodas",
+                      "Paquetes combinados de fotografía + video",
+                      "Cobertura integral del evento",
+                      "Producción y edición del material final"
+                    ],
+                    "termsHighlights": [
+                      "Ambos servicios deben pertenecer a la misma categoría",
+                      "Para más información, consultar paquetes disponibles con el proveedor",
+                      "Sujeto a disponibilidad"
+                    ],
+                    "eventTypes": [],
+                    "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                    "fitScore": 94,
+                    "fitWarnings": [],
+                    "fitTags": [
+                      "need_match",
+                      "semantic_match",
+                      "must_have_evidence"
+                    ],
+                    "retrievalScore": 0.7083923107334159,
+                    "retrievalSource": "vector"
+                  }
+                ],
+                "no_match_reason": null
+              }
+            ],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          147
+        ],
+        "recommended_providers": [
+          {
+            "id": 147,
+            "title": "Casa Club 147",
+            "slug": "casa-club-147",
+            "category": "Locales",
+            "location": "Perú",
+            "priceLevel": "high",
+            "rating": "0.0",
+            "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+            "websiteUrl": "https://casaclub147.com/",
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% Off Alquiler local",
+            "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+            "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "serviceHighlights": [
+              "Alquiler de local para eventos",
+              "Espacios para matrimonios",
+              "Eventos sociales (cumpleaños, aniversarios, showers)",
+              "Eventos institucionales",
+              "Alojamiento para hasta 32 personas"
+            ],
+            "termsHighlights": [
+              "Beneficio no transferible ni acumulable con otras promociones.",
+              "Sujeto a disponibilidad."
+            ],
+            "eventTypes": [],
+            "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+            "fitScore": 100,
+            "fitWarnings": [],
+            "fitTags": [
+              "event_match",
+              "need_match",
+              "semantic_match",
+              "must_have_evidence"
+            ],
+            "retrievalScore": 0.4694756449442559,
+            "retrievalSource": "vector"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El rango de invitados (40) corresponde a un entorno no íntimo (21-50)."
+        ],
+        "conversation_summary": "Baby shower en Miraflores para ~40 personas; se busca un local delicado con presupuesto medio. Frente activo: Locales.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T04:30:29.315Z"
+      },
+      "latencyMs": 14058,
+      "rawTargetResponse": {
+        "message": "Busqué proveedores de Sin Envolturas y armé una primera selección compacta que encaja con tu baby shower en Miraflores\n\nLocales\nPara el local, encontré una opción que puede funcionar para un baby shower de unas 40 personas con estilo delicado\n1. Casa Club 147 - local para baby shower (Perú · $$$ · promo: 10% Off Alquiler local)\n Encaja con el tipo de evento, el tamaño aproximado y la búsqueda de un espacio delicado\n Limitación: La ficha muestra ubicación en Perú y no confirma Miraflores de forma explícita.\n Ficha: https://sinenvolturas.com/proveedores/casa-club-147\n\nCatering\nPara el catering, encontré una propuesta alineada con un evento elegante y de escala media\n1. Kisu - catering para baby shower (Perú · $$$ · promo: 5% Off)\n Se ajusta a la idea de un servicio para baby shower y a un grupo de unas 40 personas\n Limitación: La ficha no confirma una cobertura específica en Miraflores.\n Ficha: https://sinenvolturas.com/proveedores/kisu\n\nFotografía y video\nPara fotos y video, hay una opción que puede acompañar bien este tipo de celebración familiar\n1. Maria Bashi - fotografía para baby shower (Lima, Perú · $$$ · promo: 20% Off)\n Su estilo familiar y cercano encaja con una celebración como baby shower\n Limitación: La ficha muestra base en Lima, pero no detalla cobertura puntual en Miraflores.\n Ficha: https://sinenvolturas.com/proveedores/maria-bashi\n\nPodemos empezar por revisar primero el local y, si quieres, después ajustamos catering y fotografía",
+        "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+        "plan_id": "01KWGHF32BWWR5QW5A3SKRB1YE",
+        "current_node": "elicitacion_necesidades",
+        "trace": {
+          "trace_id": "01KWGHFGMG1M8ZAVZC2GKTZJDS",
+          "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+          "plan_id": "01KWGHF32BWWR5QW5A3SKRB1YE",
+          "previous_node": "contacto_inicial",
+          "next_node": "elicitacion_necesidades",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "elicitacion_necesidades"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "b3daef6970dd",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/elicitacion_necesidades/system.txt",
+            "nodes/elicitacion_necesidades/response_contract.txt",
+            "nodes/elicitacion_necesidades/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "get_provider_detail",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent",
+            "search_providers_by_query_intent"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Locales\",\n  \"label\": \"Locales en Miraflores para baby shower\",\n  \"queryStrings\": [\n    \"local delicado Miraflores baby shower\",\n    \"salón para baby shower Miraflores 40 personas\",\n    \"espacio elegante para baby shower Miraflores\"\n  ],\n  \"location\": \"Miraflores\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Catering\",\n  \"label\": \"Catering en Miraflores para baby shower\",\n  \"queryStrings\": [\n    \"catering baby shower Miraflores\",\n    \"servicio de comida baby shower para 40 personas Miraflores\",\n    \"menú baby shower elegante Miraflores\"\n  ],\n  \"location\": \"Miraflores\"\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "input": "{\n  \"category\": \"Fotografía y video\",\n  \"label\": \"Fotografía y video en Miraflores para baby shower\",\n  \"queryStrings\": [\n    \"fotógrafo baby shower Miraflores\",\n    \"video baby shower Miraflores\",\n    \"paquete fotografía baby shower\"\n  ],\n  \"location\": \"Miraflores\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Locales en Miraflores para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"category\": \"Locales\",\n      \"retrievalScore\": 0.4694756449442559\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Fotografía y video en Miraflores para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 60,\n      \"title\": \"Maria Bashi\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.7246706068966867\n    },\n    {\n      \"id\": 133,\n      \"title\": \"Uriel Santisteban Photography & Film\",\n      \"category\": \"Fotografía y video\",\n      \"retrievalScore\": 0.7083923107334159\n    }\n  ]\n}"
+            },
+            {
+              "tool": "search_providers_by_query_intent",
+              "output": "{\n  \"label\": \"Catering en Miraflores para baby shower\",\n  \"providers\": [\n    {\n      \"id\": 117,\n      \"title\": \"Kisu\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8300344091485853\n    },\n    {\n      \"id\": 135,\n      \"title\": \"Paola Puerta Catering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8071725808147187\n    },\n    {\n      \"id\": 155,\n      \"title\": \"Brianna's Catering\",\n      \"category\": \"Catering\",\n      \"retrievalScore\": 0.8117671771888775\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.4694756449442559,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 117,
+              "title": "Kisu",
+              "slug": "kisu",
+              "category": "Catering",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Kisu encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/kisu",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "5% Off",
+              "promoSummary": "5% de descuento en todos nuestros catálogos: packs, box y servicio de catering de quesos y charcuteria",
+              "descriptionSnippet": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+              "serviceHighlights": [
+                "Catering de quesos y charcutería",
+                "Mesas para eventos (15 a 1000 personas)",
+                "Boxes y packs gastronómicos",
+                "Propuestas personalizadas con productos importados, mixtos y nacionales"
+              ],
+              "termsHighlights": [
+                "Aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                "Las mesas requieren programación con al menos 1 semana de anticipación, sujeto a disponibilidad.",
+                "Las cotizaciones no incluyen arreglo floral, mantel ni decoración de la mesa.",
+                "El descuento es válido solo para pagos en efectivo, transferencia, Yape o Plin.",
+                "Pagos con tarjeta no aplican descuento.",
+                "Válido únicamente en Lima (validar zona de cobertura).",
+                "Beneficio no transferible ni acumulable."
+              ],
+              "eventTypes": [],
+              "description": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.8300344091485853,
+              "retrievalSource": "vector"
+            },
+            {
+              "id": 60,
+              "title": "Maria Bashi",
+              "slug": "maria-bashi",
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Maria Bashi encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "20% Off",
+              "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+              "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+              "serviceHighlights": [
+                "Sesiones de recién nacidos",
+                "Sesiones de bebés",
+                "Sesiones familiares",
+                "Sesiones de embarazo",
+                "Sesiones en casa, estudio o exteriores"
+              ],
+              "termsHighlights": [
+                "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                "La sesión de embarazo incluye a la pareja.",
+                "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                "Beneficio sujeto a disponibilidad"
+              ],
+              "eventTypes": [],
+              "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+              "fitScore": 94,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.7246706068966867,
+              "retrievalSource": "vector"
+            }
+          ],
+          "search_strategy": "multi_need_query_intents",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 147,
+              "category": "Locales",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.4694756449442559,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 117,
+              "category": "Catering",
+              "location": "Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.8300344091485853,
+              "fit_score": 100
+            },
+            {
+              "provider_id": 60,
+              "category": "Fotografía y video",
+              "location": "Lima, Perú",
+              "retrieval_source": "vector",
+              "retrieval_score": 0.7246706068966867,
+              "fit_score": 94
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 3,
+            "context_candidates": 3,
+            "context_candidate_ids": [
+              147,
+              117,
+              60
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "elicitacion_necesidades",
+          "timing_ms": {
+            "total": 13900,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 6933,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 8321,
+            "provider_enrichment": 288,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3759,
+            "save_plan": 31
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11427,
+              "output_tokens": 958,
+              "total_tokens": 12385,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5907,
+              "output_tokens": 356,
+              "total_tokens": 6263,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 17334,
+              "output_tokens": 1314,
+              "total_tokens": 18648,
+              "cached_input_tokens": 14592
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGHF32BWWR5QW5A3SKRB1YE",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-iteration-1-targeted-study.baby_shower.01-b6c80c16",
+          "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "elicitacion_necesidades",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "baby_shower",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Miraflores",
+          "budget_signal": "medio",
+          "guest_range": "21-50",
+          "preferences": [
+            "local delicado"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "shortlisted",
+              "preferences": [
+                "estilo delicado"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                147
+              ],
+              "recommended_providers": [
+                {
+                  "id": 147,
+                  "title": "Casa Club 147",
+                  "slug": "casa-club-147",
+                  "category": "Locales",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                  "websiteUrl": "https://casaclub147.com/",
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% Off Alquiler local",
+                  "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                  "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "serviceHighlights": [
+                    "Alquiler de local para eventos",
+                    "Espacios para matrimonios",
+                    "Eventos sociales (cumpleaños, aniversarios, showers)",
+                    "Eventos institucionales",
+                    "Alojamiento para hasta 32 personas"
+                  ],
+                  "termsHighlights": [
+                    "Beneficio no transferible ni acumulable con otras promociones.",
+                    "Sujeto a disponibilidad."
+                  ],
+                  "eventTypes": [],
+                  "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "event_match",
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.4694756449442559,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "locales_baby_shower_miraflores",
+                    "label": "Locales en Miraflores para baby shower",
+                    "category": "Locales",
+                    "queryStrings": [
+                      "local delicado Miraflores baby shower",
+                      "salón para baby shower Miraflores 40 personas",
+                      "espacio elegante para baby shower Miraflores"
+                    ],
+                    "mustHave": [
+                      "local para baby shower",
+                      "capacidad para ~40 personas",
+                      "estilo delicado"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    147
+                  ],
+                  "selected_provider_ids": [
+                    147
+                  ],
+                  "candidates": [
+                    {
+                      "id": 147,
+                      "title": "Casa Club 147",
+                      "slug": "casa-club-147",
+                      "category": "Locales",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+                      "websiteUrl": "https://casaclub147.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "10% Off Alquiler local",
+                      "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "serviceHighlights": [
+                        "Alquiler de local para eventos",
+                        "Espacios para matrimonios",
+                        "Eventos sociales (cumpleaños, aniversarios, showers)",
+                        "Eventos institucionales",
+                        "Alojamiento para hasta 32 personas"
+                      ],
+                      "termsHighlights": [
+                        "Beneficio no transferible ni acumulable con otras promociones.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "event_match",
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.4694756449442559,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Catering",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                117
+              ],
+              "recommended_providers": [
+                {
+                  "id": 117,
+                  "title": "Kisu",
+                  "slug": "kisu",
+                  "category": "Catering",
+                  "location": "Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Kisu encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/kisu",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "5% Off",
+                  "promoSummary": "5% de descuento en todos nuestros catálogos: packs, box y servicio de catering de quesos y charcuteria",
+                  "descriptionSnippet": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                  "serviceHighlights": [
+                    "Catering de quesos y charcutería",
+                    "Mesas para eventos (15 a 1000 personas)",
+                    "Boxes y packs gastronómicos",
+                    "Propuestas personalizadas con productos importados, mixtos y nacionales"
+                  ],
+                  "termsHighlights": [
+                    "Aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                    "Las mesas requieren programación con al menos 1 semana de anticipación, sujeto a disponibilidad.",
+                    "Las cotizaciones no incluyen arreglo floral, mantel ni decoración de la mesa.",
+                    "El descuento es válido solo para pagos en efectivo, transferencia, Yape o Plin.",
+                    "Pagos con tarjeta no aplican descuento.",
+                    "Válido únicamente en Lima (validar zona de cobertura).",
+                    "Beneficio no transferible ni acumulable."
+                  ],
+                  "eventTypes": [],
+                  "description": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                  "fitScore": 100,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.8300344091485853,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "catering_baby_shower_miraflores",
+                    "label": "Catering en Miraflores para baby shower",
+                    "category": "Catering",
+                    "queryStrings": [
+                      "catering baby shower Miraflores",
+                      "servicio de comida baby shower para 40 personas Miraflores",
+                      "menú baby shower elegante Miraflores"
+                    ],
+                    "mustHave": [
+                      "catering para baby shower",
+                      "capacidad/servicio para ~40 personas"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    117,
+                    155,
+                    135
+                  ],
+                  "selected_provider_ids": [
+                    117
+                  ],
+                  "candidates": [
+                    {
+                      "id": 117,
+                      "title": "Kisu",
+                      "slug": "kisu",
+                      "category": "Catering",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Kisu encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/kisu",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% Off",
+                      "promoSummary": "5% de descuento en todos nuestros catálogos: packs, box y servicio de catering de quesos y charcuteria",
+                      "descriptionSnippet": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                      "serviceHighlights": [
+                        "Catering de quesos y charcutería",
+                        "Mesas para eventos (15 a 1000 personas)",
+                        "Boxes y packs gastronómicos",
+                        "Propuestas personalizadas con productos importados, mixtos y nacionales"
+                      ],
+                      "termsHighlights": [
+                        "Aplica sobre el precio de venta de la mesa (no incluye movilidad ni garantía del menaje).",
+                        "Las mesas requieren programación con al menos 1 semana de anticipación, sujeto a disponibilidad.",
+                        "Las cotizaciones no incluyen arreglo floral, mantel ni decoración de la mesa.",
+                        "El descuento es válido solo para pagos en efectivo, transferencia, Yape o Plin.",
+                        "Pagos con tarjeta no aplican descuento.",
+                        "Válido únicamente en Lima (validar zona de cobertura).",
+                        "Beneficio no transferible ni acumulable."
+                      ],
+                      "eventTypes": [],
+                      "description": "Kisu ofrece catering especializado en quesos y charcutería, creando mesas y experiencias gastronómicas ideales para eventos y celebraciones.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8300344091485853,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 155,
+                      "title": "Brianna's Catering",
+                      "slug": "briannas-catering",
+                      "category": "Catering",
+                      "location": "Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Brianna's Catering encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/briannas-catering",
+                      "websiteUrl": "www.briannascatering.com",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "S/. 1,500 de descuento",
+                      "promoSummary": "Vale de Obsequio de S/1,500.00 para utilizarlo en algún adicional del presupuesto de los novios",
+                      "descriptionSnippet": "Brianna’s Catering ofrece a los clientes de Sin Envolturas una propuesta gastronómica pensada para celebraciones especiales, combinando sabor, presentación y una experiencia cuidada en cada detalle.",
+                      "serviceHighlights": [
+                        "Catering para matrimonios",
+                        "Propuestas gastronómicas personalizadas",
+                        "Servicio para eventos sociales y celebraciones",
+                        "Asesoría en selección de menú"
+                      ],
+                      "termsHighlights": [
+                        "Válido únicamente en Lima",
+                        "No transferible ni acumulable con otras promociones",
+                        "Beneficio válido para novios nuevos de los años 2025 y 2026",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Brianna’s Catering ofrece a los clientes de Sin Envolturas una propuesta gastronómica pensada para celebraciones especiales, combinando sabor, presentación y una experiencia cuidada en cada detalle. Su enfoque busca elevar cada evento a través de una propuesta culinaria memorable.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8117671771888775,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 135,
+                      "title": "Paola Puerta Catering",
+                      "slug": "paola-puerta-catering",
+                      "category": "Catering",
+                      "location": "Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Paola Puerta Catering encaja con Catering en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/paola-puerta-catering",
+                      "websiteUrl": "https://acortar.link/wJ5aTZ",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "Grupo electrógeno gratis y más",
+                      "promoSummary": "Grupo electrógeno gratis, 50 velas colgantes y estacas de velas solo para clientes de Sin Envolturas.",
+                      "descriptionSnippet": "Paola Puerta Catering es un servicio especializado en la creación de experiencias gastronómicas para matrimonios y eventos, cuidando cada detalle para lograr celebraciones memorables.",
+                      "serviceHighlights": [
+                        "Catering para matrimonios y eventos",
+                        "Diseño de propuestas gastronómicas personalizadas",
+                        "Montaje y servicio de alimentos",
+                        "Asesoría en la experiencia integral del evento"
+                      ],
+                      "termsHighlights": [
+                        "Beneficios sujetos a contratación del servicio de catering.",
+                        "Aplican solo para nuevos contratos.",
+                        "Sujeto a disponibilidad."
+                      ],
+                      "eventTypes": [],
+                      "description": "Paola Puerta Catering es un servicio especializado en la creación de experiencias gastronómicas para matrimonios y eventos, cuidando cada detalle para lograr celebraciones memorables.",
+                      "fitScore": 100,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.8071725808147187,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            },
+            {
+              "category": "Fotografía y video",
+              "status": "shortlisted",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                60
+              ],
+              "recommended_providers": [
+                {
+                  "id": 60,
+                  "title": "Maria Bashi",
+                  "slug": "maria-bashi",
+                  "category": "Fotografía y video",
+                  "location": "Lima, Perú",
+                  "priceLevel": "high",
+                  "rating": "0.0",
+                  "reason": "Maria Bashi encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "20% Off",
+                  "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+                  "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                  "serviceHighlights": [
+                    "Sesiones de recién nacidos",
+                    "Sesiones de bebés",
+                    "Sesiones familiares",
+                    "Sesiones de embarazo",
+                    "Sesiones en casa, estudio o exteriores"
+                  ],
+                  "termsHighlights": [
+                    "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                    "La sesión de embarazo incluye a la pareja.",
+                    "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                    "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                    "Beneficio sujeto a disponibilidad"
+                  ],
+                  "eventTypes": [],
+                  "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                  "fitScore": 94,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match",
+                    "must_have_evidence"
+                  ],
+                  "retrievalScore": 0.7246706068966867,
+                  "retrievalSource": "vector"
+                }
+              ],
+              "sub_query_results": [
+                {
+                  "subQuery": {
+                    "id": "foto_video_baby_shower_miraflores",
+                    "label": "Fotografía y video en Miraflores para baby shower",
+                    "category": "Fotografía y video",
+                    "queryStrings": [
+                      "fotógrafo baby shower Miraflores",
+                      "video baby shower Miraflores",
+                      "paquete fotografía baby shower"
+                    ],
+                    "mustHave": [
+                      "servicio de fotografía/video para baby shower"
+                    ],
+                    "shouldAvoid": [],
+                    "maxSelections": 1,
+                    "allowCrossCategory": false
+                  },
+                  "candidate_provider_ids": [
+                    60,
+                    133
+                  ],
+                  "selected_provider_ids": [
+                    60
+                  ],
+                  "candidates": [
+                    {
+                      "id": 60,
+                      "title": "Maria Bashi",
+                      "slug": "maria-bashi",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "high",
+                      "rating": "0.0",
+                      "reason": "Maria Bashi encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/maria-bashi",
+                      "websiteUrl": null,
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "20% Off",
+                      "promoSummary": "20% de dscto. en sesiones de recién nacidos, bebés y familia - 20% de dscto. en sesiones de embarazo",
+                      "descriptionSnippet": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                      "serviceHighlights": [
+                        "Sesiones de recién nacidos",
+                        "Sesiones de bebés",
+                        "Sesiones familiares",
+                        "Sesiones de embarazo",
+                        "Sesiones en casa, estudio o exteriores"
+                      ],
+                      "termsHighlights": [
+                        "Las sesiones pueden realizarse en casa, estudio o exteriores.",
+                        "La sesión de embarazo incluye a la pareja.",
+                        "Las sesiones en exteriores se realizan en locaciones recomendadas por el fotógrafo.",
+                        "Las sesiones en casa se realizan en los distritos de La Molina, Miraflores, San Isidro, Surco y San Borja.",
+                        "Beneficio sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "María Bashi es una fotógrafa especializada en capturar momentos familiares y etapas importantes de la vida, con un enfoque natural y cercano.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7246706068966867,
+                      "retrievalSource": "vector"
+                    },
+                    {
+                      "id": 133,
+                      "title": "Uriel Santisteban Photography & Film",
+                      "slug": "uriel-santisteban-photography-film",
+                      "category": "Fotografía y video",
+                      "location": "Lima, Perú",
+                      "priceLevel": "very_high",
+                      "rating": "0.0",
+                      "reason": "Uriel Santisteban Photography & Film encaja con Fotografía y video en Miraflores para baby shower según su ficha y señales de precio/evento.",
+                      "detailUrl": "https://sinenvolturas.com/proveedores/uriel-santisteban-photography-film",
+                      "websiteUrl": "https://www.urielsantisteban.com/",
+                      "minPrice": null,
+                      "maxPrice": null,
+                      "promoBadge": "5% Off",
+                      "promoSummary": "5% de descuento en cualquier paquete de fotografía + video válido para paquetes de fotografía junto con video ( Ambos deben ser de la misma categoría).",
+                      "descriptionSnippet": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas.",
+                      "serviceHighlights": [
+                        "Fotografía para matrimonios",
+                        "Video de bodas",
+                        "Paquetes combinados de fotografía + video",
+                        "Cobertura integral del evento",
+                        "Producción y edición del material final"
+                      ],
+                      "termsHighlights": [
+                        "Ambos servicios deben pertenecer a la misma categoría",
+                        "Para más información, consultar paquetes disponibles con el proveedor",
+                        "Sujeto a disponibilidad"
+                      ],
+                      "eventTypes": [],
+                      "description": "Uriel Santisteban Photography & Films ofrece a los clientes de Sin Envolturas una propuesta integral de fotografía y video, capturando cada momento del evento desde distintas perspectivas. Su enfoque combina estética y narrativa para contar cada historia de forma completa.",
+                      "fitScore": 94,
+                      "fitWarnings": [],
+                      "fitTags": [
+                        "need_match",
+                        "semantic_match",
+                        "must_have_evidence"
+                      ],
+                      "retrievalScore": 0.7083923107334159,
+                      "retrievalSource": "vector"
+                    }
+                  ],
+                  "no_match_reason": null
+                }
+              ],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            147
+          ],
+          "recommended_providers": [
+            {
+              "id": 147,
+              "title": "Casa Club 147",
+              "slug": "casa-club-147",
+              "category": "Locales",
+              "location": "Perú",
+              "priceLevel": "high",
+              "rating": "0.0",
+              "reason": "Casa Club 147 encaja con Locales en Miraflores para baby shower según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/casa-club-147",
+              "websiteUrl": "https://casaclub147.com/",
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% Off Alquiler local",
+              "promoSummary": "10% de descuento para clientes de Sin Envolturas.",
+              "descriptionSnippet": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "serviceHighlights": [
+                "Alquiler de local para eventos",
+                "Espacios para matrimonios",
+                "Eventos sociales (cumpleaños, aniversarios, showers)",
+                "Eventos institucionales",
+                "Alojamiento para hasta 32 personas"
+              ],
+              "termsHighlights": [
+                "Beneficio no transferible ni acumulable con otras promociones.",
+                "Sujeto a disponibilidad."
+              ],
+              "eventTypes": [],
+              "description": "Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.",
+              "fitScore": 100,
+              "fitWarnings": [],
+              "fitTags": [
+                "event_match",
+                "need_match",
+                "semantic_match",
+                "must_have_evidence"
+              ],
+              "retrievalScore": 0.4694756449442559,
+              "retrievalSource": "vector"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El rango de invitados (40) corresponde a un entorno no íntimo (21-50)."
+          ],
+          "conversation_summary": "Baby shower en Miraflores para ~40 personas; se busca un local delicado con presupuesto medio. Frente activo: Locales.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T04:30:29.315Z"
+        },
+        "perf": {
+          "trace_id": "01KWGHFGMG1M8ZAVZC2GKTZJDS",
+          "conversation_id": "conv_6a45e9656aa48194bf6394cd9e9a003e0c532ebbefaebcca",
+          "runtime_latency_ms": 13900,
+          "extraction_latency_ms": 6933,
+          "compose_latency_ms": 3759,
+          "tools_called_count": 3,
+          "provider_results_count": 3,
+          "recommendation_context_candidates": 3,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18648,
+          "cached_input_tokens": 14592,
+          "cache_hit_rate": 0.8418137763932156,
+          "extraction_to_compose_ratio": 1.8443735035913806,
+          "captured_at": "2026-07-02T04:30:33.105Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T04:30:33.166Z",
+  "completedAt": "2026-07-02T04:30:33.167Z"
+}

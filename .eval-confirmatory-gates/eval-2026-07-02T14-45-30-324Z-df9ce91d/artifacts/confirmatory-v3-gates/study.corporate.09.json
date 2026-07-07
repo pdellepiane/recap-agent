@@ -1,0 +1,557 @@
+{
+  "runId": "eval-2026-07-02T14-45-30-324Z-df9ce91d",
+  "caseId": "study.corporate.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "confirmatory-v3-gates",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 10999,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->refinar_criterios"
+  ],
+  "planDiffSummary": [
+    "current_node=\"refinar_criterios\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"corporativo\"",
+    "vendor_category=\"Locales\"",
+    "active_need_category=\"Locales\"",
+    "location=\"Lima\"",
+    "budget_signal=\"mínimo\"",
+    "guest_range=\"201+\"",
+    "provider_needs=Locales:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-confirmatory-gates/eval-2026-07-02T14-45-30-324Z-df9ce91d/artifacts/confirmatory-v3-gates/study.corporate.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->refinar_criterios."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 10999,
+    "p95_latency_ms": 10999,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 16503,
+    "cache_hit_rate": 0.8860361210748222
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito un auditorio dentro del aeropuerto de Lima para un evento corporativo de 900 personas mañana y con presupuesto mínimo."
+      },
+      "outputText": "No encontré coincidencias con los criterios actuales: auditorio dentro del aeropuerto de Lima para 900 personas y presupuesto mínimo\n\nPara ajustar la búsqueda, ¿prefieres mantener lo de dentro del aeropuerto o ampliar a locales cercanos al aeropuerto?",
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "trace_id": "01KWHMSP8KK1EJHW8H3F7VMBZ2",
+        "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+        "plan_id": "01KWHMSBNVD2GM50F3GRZD7DAE",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "5c0b228e4e84",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/refinar_criterios/system.txt",
+          "nodes/refinar_criterios/response_contract.txt",
+          "nodes/refinar_criterios/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.773119197239562,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima), parece alineado al rango mínimo\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 10847,
+          "load_plan": 7,
+          "prepare_working_plan": 0,
+          "extraction": 5007,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 2590,
+          "provider_enrichment": 61,
+          "prompt_bundle_load": 0,
+          "compose_reply": 3158,
+          "save_plan": 19
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11588,
+            "output_tokens": 546,
+            "total_tokens": 12134,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4303,
+            "output_tokens": 66,
+            "total_tokens": 4369,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15891,
+            "output_tokens": 612,
+            "total_tokens": 16503,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWHMSP8KK1EJHW8H3F7VMBZ2",
+        "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+        "runtime_latency_ms": 10847,
+        "extraction_latency_ms": 5007,
+        "compose_latency_ms": 3158,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16503,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8860361210748222,
+        "extraction_to_compose_ratio": 1.5854971500949968,
+        "captured_at": "2026-07-02T14:47:46.708Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWHMSBNVD2GM50F3GRZD7DAE",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-confirmatory-v3-gates-study.corporate.09-e38f7b0e",
+        "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "refinar_criterios",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.8,
+        "event_type": "corporativo",
+        "vendor_category": "Locales",
+        "active_need_category": "Locales",
+        "location": "Lima",
+        "budget_signal": "mínimo",
+        "guest_range": "201+",
+        "preferences": [],
+        "hard_constraints": [
+          "Auditorio dentro del aeropuerto de Lima"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Locales",
+            "status": "no_providers_available",
+            "preferences": [],
+            "hard_constraints": [
+              "Auditorio dentro del aeropuerto de Lima"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "El evento corporativo requiere un espacio/auditorio (no solo sala para actividad puntual).",
+          "'mañana' no se usa como restricción estricta de búsqueda sin una fecha/horario exactos para proveedores."
+        ],
+        "conversation_summary": "Evento corporativo con 900 personas en Lima. Necesidad activa: auditorio dentro del aeropuerto de Lima con presupuesto mínimo.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T14:47:43.532Z"
+      },
+      "latencyMs": 10999,
+      "rawTargetResponse": {
+        "message": "No encontré coincidencias con los criterios actuales: auditorio dentro del aeropuerto de Lima para 900 personas y presupuesto mínimo\n\nPara ajustar la búsqueda, ¿prefieres mantener lo de dentro del aeropuerto o ampliar a locales cercanos al aeropuerto?",
+        "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+        "plan_id": "01KWHMSBNVD2GM50F3GRZD7DAE",
+        "current_node": "refinar_criterios",
+        "trace": {
+          "trace_id": "01KWHMSP8KK1EJHW8H3F7VMBZ2",
+          "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+          "plan_id": "01KWHMSBNVD2GM50F3GRZD7DAE",
+          "previous_node": "contacto_inicial",
+          "next_node": "refinar_criterios",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "refinar_criterios"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "5c0b228e4e84",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/refinar_criterios/system.txt",
+            "nodes/refinar_criterios/response_contract.txt",
+            "nodes/refinar_criterios/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Locales\",\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 147,\n      \"title\": \"Casa Club 147\",\n      \"slug\": \"casa-club-147\",\n      \"category\": \"Locales\",\n      \"location\": \"Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/casa-club-147\",\n      \"websiteUrl\": \"https://casaclub147.com/\",\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% Off Alquiler local\",\n      \"promoSummary\": \"10% de descuento para clientes de Sin Envolturas.\",\n      \"descriptionSnippet\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"serviceHighlights\": [\n        \"Alquiler de local para eventos\",\n        \"Espacios para matrimonios\",\n        \"Eventos sociales (cumpleaños, aniversarios, showers)\",\n        \"Eventos institucionales\",\n        \"Alojamiento para hasta 32 personas\"\n      ],\n      \"termsHighlights\": [\n        \"Beneficio no transferible ni acumulable con otras promociones.\",\n        \"Sujeto a disponibilidad.\"\n      ],\n      \"description\": \"Casa Club 147 es un espacio para eventos en Cieneguilla que ofrece ambientes amplios y cómodos, ideales para celebraciones como matrimonios, cumpleaños y reuniones especiales.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.773119197239562,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Locales, reporta cobertura en Perú (confirma atención exacta en Lima), parece alineado al rango mínimo\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 10847,
+            "load_plan": 7,
+            "prepare_working_plan": 0,
+            "extraction": 5007,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 2590,
+            "provider_enrichment": 61,
+            "prompt_bundle_load": 0,
+            "compose_reply": 3158,
+            "save_plan": 19
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11588,
+              "output_tokens": 546,
+              "total_tokens": 12134,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4303,
+              "output_tokens": 66,
+              "total_tokens": 4369,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15891,
+              "output_tokens": 612,
+              "total_tokens": 16503,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWHMSBNVD2GM50F3GRZD7DAE",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-confirmatory-v3-gates-study.corporate.09-e38f7b0e",
+          "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "refinar_criterios",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.8,
+          "event_type": "corporativo",
+          "vendor_category": "Locales",
+          "active_need_category": "Locales",
+          "location": "Lima",
+          "budget_signal": "mínimo",
+          "guest_range": "201+",
+          "preferences": [],
+          "hard_constraints": [
+            "Auditorio dentro del aeropuerto de Lima"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Locales",
+              "status": "no_providers_available",
+              "preferences": [],
+              "hard_constraints": [
+                "Auditorio dentro del aeropuerto de Lima"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "El evento corporativo requiere un espacio/auditorio (no solo sala para actividad puntual).",
+            "'mañana' no se usa como restricción estricta de búsqueda sin una fecha/horario exactos para proveedores."
+          ],
+          "conversation_summary": "Evento corporativo con 900 personas en Lima. Necesidad activa: auditorio dentro del aeropuerto de Lima con presupuesto mínimo.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T14:47:43.532Z"
+        },
+        "perf": {
+          "trace_id": "01KWHMSP8KK1EJHW8H3F7VMBZ2",
+          "conversation_id": "conv_6a467a0f98e48190a674605d8f09c03f0ba8e78b9e8df012",
+          "runtime_latency_ms": 10847,
+          "extraction_latency_ms": 5007,
+          "compose_latency_ms": 3158,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16503,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8860361210748222,
+          "extraction_to_compose_ratio": 1.5854971500949968,
+          "captured_at": "2026-07-02T14:47:46.708Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T14:47:46.703Z",
+  "completedAt": "2026-07-02T14:47:46.704Z"
+}

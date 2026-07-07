@@ -1,0 +1,550 @@
+{
+  "runId": "eval-2026-07-02T22-58-27-631Z-ec580b7b",
+  "caseId": "study.wedding.02",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "confirmatory-v4-gates",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 13272,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"boda\"",
+    "vendor_category=\"Catering\"",
+    "active_need_category=\"Catering\"",
+    "budget_signal=\"medio\"",
+    "guest_range=\"51-100\"",
+    "provider_needs=Catering:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-confirmatory-gates/eval-2026-07-02T22-58-27-631Z-ec580b7b/artifacts/confirmatory-v4-gates/study.wedding.02.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->aclarar_pedir_faltante."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 13272,
+    "p95_latency_ms": 13272,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.15384615384615385,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 20997,
+    "cache_hit_rate": 0.17505983490450838
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito catering para una boda de 80 personas con presupuesto medio."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara avanzar con el catering, solo me falta la ubicación de la boda: ciudad o país, por ejemplo Lima o Perú\n\nCon ese dato ya puedo buscar opciones que encajen mejor con 80 personas y presupuesto medio",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWJGWKBWRZW4A6QZ8QG7CYV6",
+        "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+        "plan_id": "01KWJGW8K0SN4JYX8M5EMRS17Q",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "location"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "list_locations"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "list_locations",
+            "input": "{}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "list_locations",
+            "output": "[\n  {\n    \"cityId\": null,\n    \"countryId\": 173,\n    \"city\": null,\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": null,\n      \"country_id\": 173,\n      \"city\": null,\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 68127,\n    \"countryId\": 142,\n    \"city\": \"Aguascalientes\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 68127,\n      \"country_id\": 142,\n      \"city\": \"Aguascalientes\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69103,\n    \"countryId\": 142,\n    \"city\": \"Cholula\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69103,\n      \"country_id\": 142,\n      \"city\": \"Cholula\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 72102,\n    \"countryId\": 142,\n    \"city\": \"Ciudad de México\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 72102,\n      \"country_id\": 142,\n      \"city\": \"Ciudad de México\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69615,\n    \"countryId\": 142,\n    \"city\": \"Cuernavaca\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69615,\n      \"country_id\": 142,\n      \"city\": \"Cuernavaca\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 142544,\n    \"countryId\": 142,\n    \"city\": \"Guadalajara\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 142544,\n      \"country_id\": 142,\n      \"city\": \"Guadalajara\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 71666,\n    \"countryId\": 142,\n    \"city\": \"León\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 71666,\n      \"country_id\": 142,\n      \"city\": \"León\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74228,\n    \"countryId\": 142,\n    \"city\": \"San Miguel de Allende\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74228,\n      \"country_id\": 142,\n      \"city\": \"San Miguel de Allende\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74985,\n    \"countryId\": 142,\n    \"city\": \"Santiago de Querétaro\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74985,\n      \"country_id\": 142,\n      \"city\": \"Santiago de Querétaro\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 75804,\n    \"countryId\": 142,\n    \"city\": \"Tulum\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 75804,\n      \"country_id\": 142,\n      \"city\": \"Tulum\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 80701,\n    \"countryId\": 173,\n    \"city\": \"Lima\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80701,\n      \"country_id\": 173,\n      \"city\": \"Lima\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80777,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Arequipa\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80777,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Arequipa\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80843,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Ica\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80843,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Ica\",\n      \"country\": \"Perú\"\n    }\n  }\n]"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 11082,
+          "load_plan": 45,
+          "prepare_working_plan": 11,
+          "extraction": 5401,
+          "apply_extraction": 21,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 18,
+          "compose_reply": 5449,
+          "save_plan": 107
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11573,
+            "output_tokens": 441,
+            "total_tokens": 12014,
+            "cached_input_tokens": 0
+          },
+          "reply": {
+            "input_tokens": 8900,
+            "output_tokens": 83,
+            "total_tokens": 8983,
+            "cached_input_tokens": 3584
+          },
+          "total": {
+            "input_tokens": 20473,
+            "output_tokens": 524,
+            "total_tokens": 20997,
+            "cached_input_tokens": 3584
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWJGWKBWRZW4A6QZ8QG7CYV6",
+        "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+        "runtime_latency_ms": 11082,
+        "extraction_latency_ms": 5401,
+        "compose_latency_ms": 5449,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 20997,
+        "cached_input_tokens": 3584,
+        "cache_hit_rate": 0.17505983490450838,
+        "extraction_to_compose_ratio": 0.9911910442282987,
+        "captured_at": "2026-07-02T22:58:42.173Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWJGW8K0SN4JYX8M5EMRS17Q",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-confirmatory-v4-gates-study.wedding.02-319cd796",
+        "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "boda",
+        "vendor_category": "Catering",
+        "active_need_category": "Catering",
+        "location": null,
+        "budget_signal": "medio",
+        "guest_range": "51-100",
+        "preferences": [],
+        "hard_constraints": [],
+        "missing_fields": [
+          "location"
+        ],
+        "provider_needs": [
+          {
+            "category": "Catering",
+            "status": "search_ready",
+            "preferences": [],
+            "hard_constraints": [],
+            "missing_fields": [
+              "location"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "No se especificó ubicación, por lo que no se usa para filtrar todavía."
+        ],
+        "conversation_summary": "Boda para ~80 personas. El frente activo es encontrar catering con presupuesto medio.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T22:58:36.690Z"
+      },
+      "latencyMs": 13272,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara avanzar con el catering, solo me falta la ubicación de la boda: ciudad o país, por ejemplo Lima o Perú\n\nCon ese dato ya puedo buscar opciones que encajen mejor con 80 personas y presupuesto medio",
+        "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+        "plan_id": "01KWJGW8K0SN4JYX8M5EMRS17Q",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWJGWKBWRZW4A6QZ8QG7CYV6",
+          "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+          "plan_id": "01KWJGW8K0SN4JYX8M5EMRS17Q",
+          "previous_node": "contacto_inicial",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "location"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "list_locations"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "list_locations",
+              "input": "{}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "list_locations",
+              "output": "[\n  {\n    \"cityId\": null,\n    \"countryId\": 173,\n    \"city\": null,\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": null,\n      \"country_id\": 173,\n      \"city\": null,\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 68127,\n    \"countryId\": 142,\n    \"city\": \"Aguascalientes\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 68127,\n      \"country_id\": 142,\n      \"city\": \"Aguascalientes\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69103,\n    \"countryId\": 142,\n    \"city\": \"Cholula\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69103,\n      \"country_id\": 142,\n      \"city\": \"Cholula\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 72102,\n    \"countryId\": 142,\n    \"city\": \"Ciudad de México\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 72102,\n      \"country_id\": 142,\n      \"city\": \"Ciudad de México\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 69615,\n    \"countryId\": 142,\n    \"city\": \"Cuernavaca\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 69615,\n      \"country_id\": 142,\n      \"city\": \"Cuernavaca\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 142544,\n    \"countryId\": 142,\n    \"city\": \"Guadalajara\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 142544,\n      \"country_id\": 142,\n      \"city\": \"Guadalajara\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 71666,\n    \"countryId\": 142,\n    \"city\": \"León\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 71666,\n      \"country_id\": 142,\n      \"city\": \"León\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74228,\n    \"countryId\": 142,\n    \"city\": \"San Miguel de Allende\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74228,\n      \"country_id\": 142,\n      \"city\": \"San Miguel de Allende\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 74985,\n    \"countryId\": 142,\n    \"city\": \"Santiago de Querétaro\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 74985,\n      \"country_id\": 142,\n      \"city\": \"Santiago de Querétaro\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 75804,\n    \"countryId\": 142,\n    \"city\": \"Tulum\",\n    \"country\": \"México\",\n    \"raw\": {\n      \"city_id\": 75804,\n      \"country_id\": 142,\n      \"city\": \"Tulum\",\n      \"country\": \"México\"\n    }\n  },\n  {\n    \"cityId\": 80701,\n    \"countryId\": 173,\n    \"city\": \"Lima\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80701,\n      \"country_id\": 173,\n      \"city\": \"Lima\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80777,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Arequipa\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80777,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Arequipa\",\n      \"country\": \"Perú\"\n    }\n  },\n  {\n    \"cityId\": 80843,\n    \"countryId\": 173,\n    \"city\": \"Provincia de Ica\",\n    \"country\": \"Perú\",\n    \"raw\": {\n      \"city_id\": 80843,\n      \"country_id\": 173,\n      \"city\": \"Provincia de Ica\",\n      \"country\": \"Perú\"\n    }\n  }\n]"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 11082,
+            "load_plan": 45,
+            "prepare_working_plan": 11,
+            "extraction": 5401,
+            "apply_extraction": 21,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 18,
+            "compose_reply": 5449,
+            "save_plan": 107
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11573,
+              "output_tokens": 441,
+              "total_tokens": 12014,
+              "cached_input_tokens": 0
+            },
+            "reply": {
+              "input_tokens": 8900,
+              "output_tokens": 83,
+              "total_tokens": 8983,
+              "cached_input_tokens": 3584
+            },
+            "total": {
+              "input_tokens": 20473,
+              "output_tokens": 524,
+              "total_tokens": 20997,
+              "cached_input_tokens": 3584
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWJGW8K0SN4JYX8M5EMRS17Q",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-confirmatory-v4-gates-study.wedding.02-319cd796",
+          "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "boda",
+          "vendor_category": "Catering",
+          "active_need_category": "Catering",
+          "location": null,
+          "budget_signal": "medio",
+          "guest_range": "51-100",
+          "preferences": [],
+          "hard_constraints": [],
+          "missing_fields": [
+            "location"
+          ],
+          "provider_needs": [
+            {
+              "category": "Catering",
+              "status": "search_ready",
+              "preferences": [],
+              "hard_constraints": [],
+              "missing_fields": [
+                "location"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "No se especificó ubicación, por lo que no se usa para filtrar todavía."
+          ],
+          "conversation_summary": "Boda para ~80 personas. El frente activo es encontrar catering con presupuesto medio.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T22:58:36.690Z"
+        },
+        "perf": {
+          "trace_id": "01KWJGWKBWRZW4A6QZ8QG7CYV6",
+          "conversation_id": "conv_6a46ed1d817881978ddd747ac03bcc100df515aa6098f6f6",
+          "runtime_latency_ms": 11082,
+          "extraction_latency_ms": 5401,
+          "compose_latency_ms": 5449,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 20997,
+          "cached_input_tokens": 3584,
+          "cache_hit_rate": 0.17505983490450838,
+          "extraction_to_compose_ratio": 0.9911910442282987,
+          "captured_at": "2026-07-02T22:58:42.173Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T22:58:42.192Z",
+  "completedAt": "2026-07-02T22:58:42.193Z"
+}

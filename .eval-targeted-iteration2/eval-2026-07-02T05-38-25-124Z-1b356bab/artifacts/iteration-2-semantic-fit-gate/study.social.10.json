@@ -1,0 +1,1559 @@
+{
+  "runId": "eval-2026-07-02T05-38-25-124Z-1b356bab",
+  "caseId": "study.social.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "iteration-2-semantic-fit-gate",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.75,
+  "totalLatencyMs": 25289,
+  "totalToolCalls": 3,
+  "nodeTransitions": [
+    "contacto_inicial->recomendar",
+    "recomendar->recomendar"
+  ],
+  "planDiffSummary": [
+    "current_node=\"recomendar\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"quinceanos\"",
+    "vendor_category=\"Hogar y deco\"",
+    "active_need_category=\"Hogar y deco\"",
+    "location=\"Lima\"",
+    "provider_needs=Hogar y deco:shortlisted"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-targeted-iteration2/eval-2026-07-02T05-38-25-124Z-1b356bab/artifacts/iteration-2-semantic-fit-gate/study.social.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition recomendar->recomendar."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was false instead of true."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Plan field provider_needs did not contain the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.75,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 12644.5,
+    "p95_latency_ms": 14152,
+    "tool_calls_total": 3,
+    "unique_tools_called": 2,
+    "tool_call_rate_per_turn": 1.5,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.34615384615384615,
+    "state_expectation_pass_rate": 0.5,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 40194,
+    "cache_hit_rate": 0.8888428253096337
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito decoración futurista con robots para quinceaños en Lima."
+      },
+      "outputText": "Encontré una opción de Hogar y deco que puede encajar con una decoración futurista para quinceaños en Lima\n\n1. Nina Creativa\n Nina Creativa destaca por personalización de piezas y temáticas a elección, con 10% off en la compra total\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Su foco principal es velas, recuerdos y regalos personalizados; conviene confirmar si puede llevar el concepto futurista con robots que buscas.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n2. Nina Creativa\n Tiene servicio de etiquetado, lazos y nombres impresos, útil para ambientar un quinceaños con una línea visual temática\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: No hay precio mínimo ni rango publicado.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n3. Nina Creativa\n Ofrece kits y regalos personalizados, lo que puede ayudar a armar detalles decorativos coherentes con la fiesta\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Los pedidos personalizados requieren anticipación de 10 días a 20 días hábiles.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n4. Nina Creativa\n Trabaja entregas en todo el Perú, así que puede ser útil si quieres coordinar desde Lima con margen de tiempo\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La promoción no incluye costo de envío.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n5. Nina Creativa\n Puede adaptarse a una temática de evento con elementos personalizados y de regalo\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La información disponible no confirma experiencia específica en robots o decoración futurista.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGNDGGTMZSGFSTFMAF49T9Z",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+        "previous_node": "contacto_inicial",
+        "next_node": "recomendar",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan",
+          "get_provider_detail"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Hogar y deco\",\n  \"location\": \"Lima\"\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "input": "{\n  \"provider_id\": 179\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"slug\": \"nina-creativa\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/nina-creativa\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"10% de descuento en el total de la compra (no incluye costo de envío).\",\n      \"descriptionSnippet\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.\",\n      \"serviceHighlights\": [\n        \"Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.\",\n        \"Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.\",\n        \"Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para pedidos con entrega en todo el Perú.\",\n        \"No acumulable con otras promociones, cupones o descuentos vigentes.\",\n        \"Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.\",\n        \"Sujeto a disponibilidad de stock y agenda de producción.\"\n      ],\n      \"description\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8174142128945553,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Hogar y deco, opera en Lima, Perú\"\n    }\n  ]\n}"
+          },
+          {
+            "tool": "get_provider_detail",
+            "output": "{\n  \"id\": 179,\n  \"title\": \"Nina Creativa\",\n  \"slug\": \"nina-creativa\",\n  \"category\": \"Hogar y deco\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"mid\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/nina-creativa\",\n  \"websiteUrl\": null,\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"10% off\",\n  \"promoSummary\": \"10% de descuento en el total de la compra (no incluye costo de envío).\",\n  \"descriptionSnippet\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.\",\n  \"serviceHighlights\": [\n    \"Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.\",\n    \"Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.\",\n    \"Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.\"\n  ],\n  \"termsHighlights\": [\n    \"Válido para pedidos con entrega en todo el Perú.\",\n    \"No acumulable con otras promociones, cupones o descuentos vigentes.\",\n    \"Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.\",\n    \"Sujeto a disponibilidad de stock y agenda de producción.\"\n  ],\n  \"description\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.\",\n  \"eventTypes\": []\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con decoración futurista con robots (hogar y deco) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8174142128945553,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 179,
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8174142128945553,
+            "fit_score": 81
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            179
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 13903,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 6118,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 2526,
+          "provider_enrichment": 67,
+          "prompt_bundle_load": 1,
+          "compose_reply": 5150,
+          "save_plan": 25
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11418,
+            "output_tokens": 471,
+            "total_tokens": 11889,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 9411,
+            "output_tokens": 359,
+            "total_tokens": 9770,
+            "cached_input_tokens": 7680
+          },
+          "total": {
+            "input_tokens": 20829,
+            "output_tokens": 830,
+            "total_tokens": 21659,
+            "cached_input_tokens": 18688
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGNDGGTMZSGFSTFMAF49T9Z",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "runtime_latency_ms": 13903,
+        "extraction_latency_ms": 6118,
+        "compose_latency_ms": 5150,
+        "tools_called_count": 2,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 21659,
+        "cached_input_tokens": 18688,
+        "cache_hit_rate": 0.8972106198089203,
+        "extraction_to_compose_ratio": 1.1879611650485438,
+        "captured_at": "2026-07-02T05:39:21.754Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-iteration-2-semantic-fit-gate-study.social.10-93ed6ba2",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "quinceanos",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración futurista",
+          "robots"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [
+              "decoración futurista",
+              "robots"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              179
+            ],
+            "recommended_providers": [
+              {
+                "id": 179,
+                "title": "Nina Creativa",
+                "slug": "nina-creativa",
+                "category": "Hogar y deco",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Nina Creativa encaja con decoración futurista con robots (hogar y deco) según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                "serviceHighlights": [
+                  "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                  "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                  "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                ],
+                "termsHighlights": [
+                  "Válido para pedidos con entrega en todo el Perú.",
+                  "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                  "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                  "Sujeto a disponibilidad de stock y agenda de producción."
+                ],
+                "eventTypes": [],
+                "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                "fitScore": 81,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8174142128945553,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          179
+        ],
+        "recommended_providers": [
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con decoración futurista con robots (hogar y deco) según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 81,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8174142128945553,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Quinceaños en Lima: buscar proveedor para decoración futurista con temática de robots.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T05:39:16.579Z"
+      },
+      "latencyMs": 14152,
+      "rawTargetResponse": {
+        "message": "Encontré una opción de Hogar y deco que puede encajar con una decoración futurista para quinceaños en Lima\n\n1. Nina Creativa\n Nina Creativa destaca por personalización de piezas y temáticas a elección, con 10% off en la compra total\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Su foco principal es velas, recuerdos y regalos personalizados; conviene confirmar si puede llevar el concepto futurista con robots que buscas.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n2. Nina Creativa\n Tiene servicio de etiquetado, lazos y nombres impresos, útil para ambientar un quinceaños con una línea visual temática\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: No hay precio mínimo ni rango publicado.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n3. Nina Creativa\n Ofrece kits y regalos personalizados, lo que puede ayudar a armar detalles decorativos coherentes con la fiesta\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Los pedidos personalizados requieren anticipación de 10 días a 20 días hábiles.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n4. Nina Creativa\n Trabaja entregas en todo el Perú, así que puede ser útil si quieres coordinar desde Lima con margen de tiempo\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La promoción no incluye costo de envío.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n5. Nina Creativa\n Puede adaptarse a una temática de evento con elementos personalizados y de regalo\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La información disponible no confirma experiencia específica en robots o decoración futurista.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGNDGGTMZSGFSTFMAF49T9Z",
+          "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+          "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+          "previous_node": "contacto_inicial",
+          "next_node": "recomendar",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan",
+            "get_provider_detail"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Hogar y deco\",\n  \"location\": \"Lima\"\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "input": "{\n  \"provider_id\": 179\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"slug\": \"nina-creativa\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/nina-creativa\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"10% de descuento en el total de la compra (no incluye costo de envío).\",\n      \"descriptionSnippet\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.\",\n      \"serviceHighlights\": [\n        \"Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.\",\n        \"Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.\",\n        \"Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para pedidos con entrega en todo el Perú.\",\n        \"No acumulable con otras promociones, cupones o descuentos vigentes.\",\n        \"Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.\",\n        \"Sujeto a disponibilidad de stock y agenda de producción.\"\n      ],\n      \"description\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8174142128945553,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Hogar y deco, opera en Lima, Perú\"\n    }\n  ]\n}"
+            },
+            {
+              "tool": "get_provider_detail",
+              "output": "{\n  \"id\": 179,\n  \"title\": \"Nina Creativa\",\n  \"slug\": \"nina-creativa\",\n  \"category\": \"Hogar y deco\",\n  \"location\": \"Lima, Perú\",\n  \"priceLevel\": \"mid\",\n  \"rating\": \"0.0\",\n  \"detailUrl\": \"https://sinenvolturas.com/proveedores/nina-creativa\",\n  \"websiteUrl\": null,\n  \"minPrice\": null,\n  \"maxPrice\": null,\n  \"promoBadge\": \"10% off\",\n  \"promoSummary\": \"10% de descuento en el total de la compra (no incluye costo de envío).\",\n  \"descriptionSnippet\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.\",\n  \"serviceHighlights\": [\n    \"Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.\",\n    \"Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.\",\n    \"Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.\"\n  ],\n  \"termsHighlights\": [\n    \"Válido para pedidos con entrega en todo el Perú.\",\n    \"No acumulable con otras promociones, cupones o descuentos vigentes.\",\n    \"Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.\",\n    \"Sujeto a disponibilidad de stock y agenda de producción.\"\n  ],\n  \"description\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.\",\n  \"eventTypes\": []\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 179,
+              "title": "Nina Creativa",
+              "slug": "nina-creativa",
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Nina Creativa encaja con decoración futurista con robots (hogar y deco) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+              "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "serviceHighlights": [
+                "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+              ],
+              "termsHighlights": [
+                "Válido para pedidos con entrega en todo el Perú.",
+                "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Sujeto a disponibilidad de stock y agenda de producción."
+              ],
+              "eventTypes": [],
+              "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8174142128945553,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 179,
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8174142128945553,
+              "fit_score": 81
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              179
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 13903,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 6118,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 2526,
+            "provider_enrichment": 67,
+            "prompt_bundle_load": 1,
+            "compose_reply": 5150,
+            "save_plan": 25
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11418,
+              "output_tokens": 471,
+              "total_tokens": 11889,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 9411,
+              "output_tokens": 359,
+              "total_tokens": 9770,
+              "cached_input_tokens": 7680
+            },
+            "total": {
+              "input_tokens": 20829,
+              "output_tokens": 830,
+              "total_tokens": 21659,
+              "cached_input_tokens": 18688
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-iteration-2-semantic-fit-gate-study.social.10-93ed6ba2",
+          "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "quinceanos",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración futurista",
+            "robots"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [
+                "decoración futurista",
+                "robots"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                179
+              ],
+              "recommended_providers": [
+                {
+                  "id": 179,
+                  "title": "Nina Creativa",
+                  "slug": "nina-creativa",
+                  "category": "Hogar y deco",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Nina Creativa encaja con decoración futurista con robots (hogar y deco) según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                  "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                  "serviceHighlights": [
+                    "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                    "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                    "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                  ],
+                  "termsHighlights": [
+                    "Válido para pedidos con entrega en todo el Perú.",
+                    "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                    "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                    "Sujeto a disponibilidad de stock y agenda de producción."
+                  ],
+                  "eventTypes": [],
+                  "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                  "fitScore": 81,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8174142128945553,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            179
+          ],
+          "recommended_providers": [
+            {
+              "id": 179,
+              "title": "Nina Creativa",
+              "slug": "nina-creativa",
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Nina Creativa encaja con decoración futurista con robots (hogar y deco) según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+              "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "serviceHighlights": [
+                "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+              ],
+              "termsHighlights": [
+                "Válido para pedidos con entrega en todo el Perú.",
+                "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Sujeto a disponibilidad de stock y agenda de producción."
+              ],
+              "eventTypes": [],
+              "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "fitScore": 81,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8174142128945553,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Quinceaños en Lima: buscar proveedor para decoración futurista con temática de robots.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T05:39:16.579Z"
+        },
+        "perf": {
+          "trace_id": "01KWGNDGGTMZSGFSTFMAF49T9Z",
+          "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+          "runtime_latency_ms": 13903,
+          "extraction_latency_ms": 6118,
+          "compose_latency_ms": 5150,
+          "tools_called_count": 2,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 21659,
+          "cached_input_tokens": 18688,
+          "cache_hit_rate": 0.8972106198089203,
+          "extraction_to_compose_ratio": 1.1879611650485438,
+          "captured_at": "2026-07-02T05:39:21.754Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay coincidencia exacta, busca decoración moderna para quinceaños."
+      },
+      "outputText": "Te dejo una opción de Hogar y deco que puede servirte para una decoración moderna en quinceaños en Lima\n\n1. Nina Creativa\n Nina Creativa puede adaptar piezas y detalles a una temática moderna, con personalización de nombres, lazos y estilos visuales\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Su foco principal es velas y recuerdos personalizados; conviene confirmar si puede llevar una ambientación completa para el quinceaños.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n2. Nina Creativa\n Tiene una propuesta útil si buscas detalles decorativos con identidad propia y un acabado más moderno\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: No hay rango de precio publicado.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n3. Nina Creativa\n Incluye kits y regalos personalizados que pueden complementar la ambientación del evento\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Los pedidos requieren anticipación de 10 días a 20 días hábiles.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n4. Nina Creativa\n Ofrece entrega en todo el Perú, lo que facilita coordinar desde Lima\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La promoción de 10% off no incluye costo de envío.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n5. Nina Creativa\n Puede encajar si quieres una línea decorativa simple y personalizada\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La información disponible no confirma experiencia específica en decoración moderna para quinceaños.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa",
+      "currentNode": "recomendar",
+      "trace": {
+        "trace_id": "01KWGNDVCKDT5BBPWY4BZE84WK",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+        "previous_node": "recomendar",
+        "next_node": "recomendar",
+        "node_path": [
+          "recomendar",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "recomendar"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "0ce2cfa67c61",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/recomendar/system.txt",
+          "nodes/recomendar/response_contract.txt",
+          "nodes/recomendar/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "get_provider_detail",
+          "get_related_providers",
+          "list_provider_reviews"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Hogar y deco\",\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"slug\": \"nina-creativa\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/nina-creativa\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"10% de descuento en el total de la compra (no incluye costo de envío).\",\n      \"descriptionSnippet\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.\",\n      \"serviceHighlights\": [\n        \"Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.\",\n        \"Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.\",\n        \"Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para pedidos con entrega en todo el Perú.\",\n        \"No acumulable con otras promociones, cupones o descuentos vigentes.\",\n        \"Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.\",\n        \"Sujeto a disponibilidad de stock y agenda de producción.\"\n      ],\n      \"description\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8025856935239141,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Hogar y deco, opera en Lima, Perú\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con hogar y deco según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8025856935239141,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [
+          {
+            "provider_id": 179,
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "retrieval_source": "hybrid",
+            "retrieval_score": 0.8025856935239141,
+            "fit_score": 80
+          }
+        ],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 1,
+          "context_candidates": 1,
+          "context_candidate_ids": [
+            179
+          ],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "recomendar",
+        "timing_ms": {
+          "total": 10662,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 4400,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 3025,
+          "provider_enrichment": 58,
+          "prompt_bundle_load": 1,
+          "compose_reply": 3134,
+          "save_plan": 28
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11523,
+            "output_tokens": 460,
+            "total_tokens": 11983,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 6242,
+            "output_tokens": 310,
+            "total_tokens": 6552,
+            "cached_input_tokens": 4608
+          },
+          "total": {
+            "input_tokens": 17765,
+            "output_tokens": 770,
+            "total_tokens": 18535,
+            "cached_input_tokens": 15616
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWGNDVCKDT5BBPWY4BZE84WK",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "runtime_latency_ms": 10662,
+        "extraction_latency_ms": 4400,
+        "compose_latency_ms": 3134,
+        "tools_called_count": 1,
+        "provider_results_count": 1,
+        "recommendation_context_candidates": 1,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 18535,
+        "cached_input_tokens": 15616,
+        "cache_hit_rate": 0.8790318041092035,
+        "extraction_to_compose_ratio": 1.4039566049776644,
+        "captured_at": "2026-07-02T05:39:32.884Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-iteration-2-semantic-fit-gate-study.social.10-93ed6ba2",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "recomendar",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.8,
+        "event_type": "quinceanos",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración futurista",
+          "robots",
+          "decoración moderna",
+          "estilo futurista",
+          "temática de robots"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "shortlisted",
+            "preferences": [
+              "decoración futurista",
+              "robots",
+              "decoración moderna",
+              "estilo futurista",
+              "temática de robots"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [],
+            "recommended_provider_ids": [
+              179
+            ],
+            "recommended_providers": [
+              {
+                "id": 179,
+                "title": "Nina Creativa",
+                "slug": "nina-creativa",
+                "category": "Hogar y deco",
+                "location": "Lima, Perú",
+                "priceLevel": "mid",
+                "rating": "0.0",
+                "reason": "Nina Creativa encaja con hogar y deco según su ficha y señales de precio/evento.",
+                "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                "websiteUrl": null,
+                "minPrice": null,
+                "maxPrice": null,
+                "promoBadge": "10% off",
+                "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                "serviceHighlights": [
+                  "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                  "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                  "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                ],
+                "termsHighlights": [
+                  "Válido para pedidos con entrega en todo el Perú.",
+                  "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                  "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                  "Sujeto a disponibilidad de stock y agenda de producción."
+                ],
+                "eventTypes": [],
+                "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                "fitScore": 80,
+                "fitWarnings": [],
+                "fitTags": [
+                  "need_match",
+                  "semantic_match"
+                ],
+                "retrievalScore": 0.8025856935239141,
+                "retrievalSource": "hybrid"
+              }
+            ],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [
+          179
+        ],
+        "recommended_providers": [
+          {
+            "id": 179,
+            "title": "Nina Creativa",
+            "slug": "nina-creativa",
+            "category": "Hogar y deco",
+            "location": "Lima, Perú",
+            "priceLevel": "mid",
+            "rating": "0.0",
+            "reason": "Nina Creativa encaja con hogar y deco según su ficha y señales de precio/evento.",
+            "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+            "websiteUrl": null,
+            "minPrice": null,
+            "maxPrice": null,
+            "promoBadge": "10% off",
+            "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+            "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+            "serviceHighlights": [
+              "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+              "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+              "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+            ],
+            "termsHighlights": [
+              "Válido para pedidos con entrega en todo el Perú.",
+              "No acumulable con otras promociones, cupones o descuentos vigentes.",
+              "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+              "Sujeto a disponibilidad de stock y agenda de producción."
+            ],
+            "eventTypes": [],
+            "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+            "fitScore": 80,
+            "fitWarnings": [],
+            "fitTags": [
+              "need_match",
+              "semantic_match"
+            ],
+            "retrievalScore": 0.8025856935239141,
+            "retrievalSource": "hybrid"
+          }
+        ],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Quinceaños en Lima. Se refinó la búsqueda para decoración moderna (futurista/robots).",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T05:39:29.730Z"
+      },
+      "latencyMs": 11137,
+      "rawTargetResponse": {
+        "message": "Te dejo una opción de Hogar y deco que puede servirte para una decoración moderna en quinceaños en Lima\n\n1. Nina Creativa\n Nina Creativa puede adaptar piezas y detalles a una temática moderna, con personalización de nombres, lazos y estilos visuales\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Su foco principal es velas y recuerdos personalizados; conviene confirmar si puede llevar una ambientación completa para el quinceaños.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n2. Nina Creativa\n Tiene una propuesta útil si buscas detalles decorativos con identidad propia y un acabado más moderno\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: No hay rango de precio publicado.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n3. Nina Creativa\n Incluye kits y regalos personalizados que pueden complementar la ambientación del evento\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: Los pedidos requieren anticipación de 10 días a 20 días hábiles.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n4. Nina Creativa\n Ofrece entrega en todo el Perú, lo que facilita coordinar desde Lima\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La promoción de 10% off no incluye costo de envío.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa\n\n5. Nina Creativa\n Puede encajar si quieres una línea decorativa simple y personalizada\n Ubicación: Lima, Perú.\n Precio: $$.\n Promo: 10% off.\n Nota: La información disponible no confirma experiencia específica en decoración moderna para quinceaños.\n\n Ficha: https://sinenvolturas.com/proveedores/nina-creativa",
+        "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+        "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+        "current_node": "recomendar",
+        "trace": {
+          "trace_id": "01KWGNDVCKDT5BBPWY4BZE84WK",
+          "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+          "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+          "previous_node": "recomendar",
+          "next_node": "recomendar",
+          "node_path": [
+            "recomendar",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "0ce2cfa67c61",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/recomendar/system.txt",
+            "nodes/recomendar/response_contract.txt",
+            "nodes/recomendar/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "get_provider_detail",
+            "get_related_providers",
+            "list_provider_reviews"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Hogar y deco\",\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 179,\n      \"title\": \"Nina Creativa\",\n      \"slug\": \"nina-creativa\",\n      \"category\": \"Hogar y deco\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"mid\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/nina-creativa\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": \"10% off\",\n      \"promoSummary\": \"10% de descuento en el total de la compra (no incluye costo de envío).\",\n      \"descriptionSnippet\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.\",\n      \"serviceHighlights\": [\n        \"Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.\",\n        \"Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.\",\n        \"Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento.\"\n      ],\n      \"termsHighlights\": [\n        \"Válido para pedidos con entrega en todo el Perú.\",\n        \"No acumulable con otras promociones, cupones o descuentos vigentes.\",\n        \"Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.\",\n        \"Sujeto a disponibilidad de stock y agenda de producción.\"\n      ],\n      \"description\": \"Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.\",\n      \"eventTypes\": [],\n      \"retrievalScore\": 0.8025856935239141,\n      \"retrievalSource\": \"hybrid\",\n      \"reason\": \"coincide con la categoría Hogar y deco, opera en Lima, Perú\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [
+            {
+              "id": 179,
+              "title": "Nina Creativa",
+              "slug": "nina-creativa",
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Nina Creativa encaja con hogar y deco según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+              "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "serviceHighlights": [
+                "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+              ],
+              "termsHighlights": [
+                "Válido para pedidos con entrega en todo el Perú.",
+                "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Sujeto a disponibilidad de stock y agenda de producción."
+              ],
+              "eventTypes": [],
+              "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8025856935239141,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [
+            {
+              "provider_id": 179,
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "retrieval_source": "hybrid",
+              "retrieval_score": 0.8025856935239141,
+              "fit_score": 80
+            }
+          ],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 1,
+            "context_candidates": 1,
+            "context_candidate_ids": [
+              179
+            ],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "recomendar",
+          "timing_ms": {
+            "total": 10662,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 4400,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 3025,
+            "provider_enrichment": 58,
+            "prompt_bundle_load": 1,
+            "compose_reply": 3134,
+            "save_plan": 28
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11523,
+              "output_tokens": 460,
+              "total_tokens": 11983,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 6242,
+              "output_tokens": 310,
+              "total_tokens": 6552,
+              "cached_input_tokens": 4608
+            },
+            "total": {
+              "input_tokens": 17765,
+              "output_tokens": 770,
+              "total_tokens": 18535,
+              "cached_input_tokens": 15616
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWGND2YJR2FX8A7D1FKEZAX9",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-iteration-2-semantic-fit-gate-study.social.10-93ed6ba2",
+          "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "recomendar",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.8,
+          "event_type": "quinceanos",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración futurista",
+            "robots",
+            "decoración moderna",
+            "estilo futurista",
+            "temática de robots"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "shortlisted",
+              "preferences": [
+                "decoración futurista",
+                "robots",
+                "decoración moderna",
+                "estilo futurista",
+                "temática de robots"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [],
+              "recommended_provider_ids": [
+                179
+              ],
+              "recommended_providers": [
+                {
+                  "id": 179,
+                  "title": "Nina Creativa",
+                  "slug": "nina-creativa",
+                  "category": "Hogar y deco",
+                  "location": "Lima, Perú",
+                  "priceLevel": "mid",
+                  "rating": "0.0",
+                  "reason": "Nina Creativa encaja con hogar y deco según su ficha y señales de precio/evento.",
+                  "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+                  "websiteUrl": null,
+                  "minPrice": null,
+                  "maxPrice": null,
+                  "promoBadge": "10% off",
+                  "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+                  "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+                  "serviceHighlights": [
+                    "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                    "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                    "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+                  ],
+                  "termsHighlights": [
+                    "Válido para pedidos con entrega en todo el Perú.",
+                    "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                    "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                    "Sujeto a disponibilidad de stock y agenda de producción."
+                  ],
+                  "eventTypes": [],
+                  "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+                  "fitScore": 80,
+                  "fitWarnings": [],
+                  "fitTags": [
+                    "need_match",
+                    "semantic_match"
+                  ],
+                  "retrievalScore": 0.8025856935239141,
+                  "retrievalSource": "hybrid"
+                }
+              ],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [
+            179
+          ],
+          "recommended_providers": [
+            {
+              "id": 179,
+              "title": "Nina Creativa",
+              "slug": "nina-creativa",
+              "category": "Hogar y deco",
+              "location": "Lima, Perú",
+              "priceLevel": "mid",
+              "rating": "0.0",
+              "reason": "Nina Creativa encaja con hogar y deco según su ficha y señales de precio/evento.",
+              "detailUrl": "https://sinenvolturas.com/proveedores/nina-creativa",
+              "websiteUrl": null,
+              "minPrice": null,
+              "maxPrice": null,
+              "promoBadge": "10% off",
+              "promoSummary": "10% de descuento en el total de la compra (no incluye costo de envío).",
+              "descriptionSnippet": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión.",
+              "serviceHighlights": [
+                "Recuerdos para Eventos (Souvenirs): Diseño y producción de recordatorios personalizados para ocasiones especiales como bautizos, matrimonios, primera comunión, baby showers y cumpleaños.",
+                "Kits y Regalos Personalizados: Creación de cajas de regalo que combinan sus velas con otros elementos, como arreglos de flores eternas en mini macetas personalizadas y sets de joyería.",
+                "Personalización Integral: Servicio de etiquetado, lazos decorativos, nombres impresos y temáticas a elección del cliente para adaptar cada producto al concepto de su evento."
+              ],
+              "termsHighlights": [
+                "Válido para pedidos con entrega en todo el Perú.",
+                "No acumulable con otras promociones, cupones o descuentos vigentes.",
+                "Los pedidos de velas personalizadas o recuerdos requieren una anticipación mínima de 10 días a 20 días hábiles.",
+                "Sujeto a disponibilidad de stock y agenda de producción."
+              ],
+              "eventTypes": [],
+              "description": "Nina Creativa se dedica a la elaboración de velas artesanales personalizadas para toda ocasión. Nuestro enfoque combina el diseño creativo con aromas exclusivos para acompañar momentos especiales, desde recuerdos para eventos (bautizos, bodas y baby showers) hasta piezas de decoración para el hogar. Cada vela esta hecha a mano, asegurando un producto único y de alta calidad para nuestros clientes.",
+              "fitScore": 80,
+              "fitWarnings": [],
+              "fitTags": [
+                "need_match",
+                "semantic_match"
+              ],
+              "retrievalScore": 0.8025856935239141,
+              "retrievalSource": "hybrid"
+            }
+          ],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Quinceaños en Lima. Se refinó la búsqueda para decoración moderna (futurista/robots).",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T05:39:29.730Z"
+        },
+        "perf": {
+          "trace_id": "01KWGNDVCKDT5BBPWY4BZE84WK",
+          "conversation_id": "conv_6a45f984a5f88193b4f03c13ba0db43c0b6013c05117fd45",
+          "runtime_latency_ms": 10662,
+          "extraction_latency_ms": 4400,
+          "compose_latency_ms": 3134,
+          "tools_called_count": 1,
+          "provider_results_count": 1,
+          "recommendation_context_candidates": 1,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 18535,
+          "cached_input_tokens": 15616,
+          "cache_hit_rate": 0.8790318041092035,
+          "extraction_to_compose_ratio": 1.4039566049776644,
+          "captured_at": "2026-07-02T05:39:32.884Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T05:39:33.011Z",
+  "completedAt": "2026-07-02T05:39:33.013Z"
+}

@@ -1,0 +1,566 @@
+{
+  "runId": "eval-2026-07-02T14-45-30-324Z-df9ce91d",
+  "caseId": "study.birthday.09",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "confirmatory-v3-gates",
+  "status": "passed",
+  "hardGatePassed": true,
+  "finalScore": 1,
+  "totalLatencyMs": 11218,
+  "totalToolCalls": 1,
+  "nodeTransitions": [
+    "contacto_inicial->refinar_criterios"
+  ],
+  "planDiffSummary": [
+    "current_node=\"refinar_criterios\"",
+    "intent=\"buscar_proveedores\"",
+    "event_type=\"cumpleanos\"",
+    "vendor_category=\"Música\"",
+    "active_need_category=\"Música\"",
+    "location=\"Lima\"",
+    "budget_signal=\"mínimo\"",
+    "provider_needs=Música:no_providers_available"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-confirmatory-gates/eval-2026-07-02T14-45-30-324Z-df9ce91d/artifacts/confirmatory-v3-gates/study.birthday.09.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "All required nodes were present in the node path."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Observed transition contacto_inicial->refinar_criterios."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Trace field search_ready matched expectation."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 1,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 1,
+    "avg_latency_ms": 11218,
+    "p95_latency_ms": 11218,
+    "tool_calls_total": 1,
+    "unique_tools_called": 1,
+    "tool_call_rate_per_turn": 1,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.2692307692307692,
+    "state_expectation_pass_rate": 1,
+    "trajectory_expectation_pass_rate": 1,
+    "plan_persistence_rate": 1,
+    "total_tokens": 16478,
+    "cache_hit_rate": 0.8864265927977839
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito una banda de astronautas reales para un cumpleaños en Lima mañana, presupuesto mínimo."
+      },
+      "outputText": "No encontré coincidencias para esa banda/show temático con los criterios actuales\n\nPara destrabar la búsqueda, ¿prefieres ampliar el tipo de música a una opción más cercana o mantener el tema y ajustar el presupuesto?",
+      "currentNode": "refinar_criterios",
+      "trace": {
+        "trace_id": "01KWHMQXNG43JSJ8NHYZH086BS",
+        "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+        "plan_id": "01KWHMQK3JRNN8XHJ4PXFQK501",
+        "previous_node": "contacto_inicial",
+        "next_node": "refinar_criterios",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "buscar_proveedores",
+          "busqueda_exitosa",
+          "hay_resultados",
+          "refinar_criterios"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [],
+        "search_ready": true,
+        "prompt_bundle_id": "5c0b228e4e84",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/refinar_criterios/system.txt",
+          "nodes/refinar_criterios/response_contract.txt",
+          "nodes/refinar_criterios/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "search_providers_from_plan",
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [
+          "search_providers_from_plan"
+        ],
+        "tool_inputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": \"Lima\"\n}"
+          }
+        ],
+        "tool_outputs": [
+          {
+            "tool": "search_providers_from_plan",
+            "output": "{\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música, opera en Lima, Perú, parece alineado al rango mínimo\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+          }
+        ],
+        "provider_results": [],
+        "search_strategy": "search_from_plan",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 10934,
+          "load_plan": 120,
+          "prepare_working_plan": 0,
+          "extraction": 4763,
+          "apply_extraction": 0,
+          "compute_sufficiency": 0,
+          "provider_search": 3250,
+          "provider_enrichment": 76,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2687,
+          "save_plan": 30
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11577,
+            "output_tokens": 532,
+            "total_tokens": 12109,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4307,
+            "output_tokens": 62,
+            "total_tokens": 4369,
+            "cached_input_tokens": 3072
+          },
+          "total": {
+            "input_tokens": 15884,
+            "output_tokens": 594,
+            "total_tokens": 16478,
+            "cached_input_tokens": 14080
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWHMQXNG43JSJ8NHYZH086BS",
+        "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+        "runtime_latency_ms": 10934,
+        "extraction_latency_ms": 4763,
+        "compose_latency_ms": 2687,
+        "tools_called_count": 1,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16478,
+        "cached_input_tokens": 14080,
+        "cache_hit_rate": 0.8864265927977839,
+        "extraction_to_compose_ratio": 1.7726088574618533,
+        "captured_at": "2026-07-02T14:46:48.753Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWHMQK3JRNN8XHJ4PXFQK501",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-confirmatory-v3-gates-study.birthday.09-e894c181",
+        "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "refinar_criterios",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.85,
+        "event_type": "cumpleanos",
+        "vendor_category": "Música",
+        "active_need_category": "Música",
+        "location": "Lima",
+        "budget_signal": "mínimo",
+        "guest_range": null,
+        "preferences": [
+          "banda de astronautas reales"
+        ],
+        "hard_constraints": [
+          "banda de astronautas reales",
+          "Lima",
+          "mañana"
+        ],
+        "missing_fields": [],
+        "provider_needs": [
+          {
+            "category": "Música",
+            "status": "no_providers_available",
+            "preferences": [
+              "banda de astronautas reales"
+            ],
+            "hard_constraints": [
+              "banda de astronautas reales",
+              "Lima",
+              "mañana"
+            ],
+            "missing_fields": [],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Cumpleaños en Lima, el usuario busca una banda de astronautas reales para mañana con presupuesto mínimo. Frente activo: Música.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T14:46:46.045Z"
+      },
+      "latencyMs": 11218,
+      "rawTargetResponse": {
+        "message": "No encontré coincidencias para esa banda/show temático con los criterios actuales\n\nPara destrabar la búsqueda, ¿prefieres ampliar el tipo de música a una opción más cercana o mantener el tema y ajustar el presupuesto?",
+        "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+        "plan_id": "01KWHMQK3JRNN8XHJ4PXFQK501",
+        "current_node": "refinar_criterios",
+        "trace": {
+          "trace_id": "01KWHMQXNG43JSJ8NHYZH086BS",
+          "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+          "plan_id": "01KWHMQK3JRNN8XHJ4PXFQK501",
+          "previous_node": "contacto_inicial",
+          "next_node": "refinar_criterios",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "refinar_criterios"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [],
+          "search_ready": true,
+          "prompt_bundle_id": "5c0b228e4e84",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/refinar_criterios/system.txt",
+            "nodes/refinar_criterios/response_contract.txt",
+            "nodes/refinar_criterios/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "search_providers_from_plan",
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [
+            "search_providers_from_plan"
+          ],
+          "tool_inputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "input": "{\n  \"source\": \"agent_service\",\n  \"activeNeedCategory\": \"Música\",\n  \"location\": \"Lima\"\n}"
+            }
+          ],
+          "tool_outputs": [
+            {
+              "tool": "search_providers_from_plan",
+              "output": "{\n  \"providers\": [\n    {\n      \"id\": 187,\n      \"title\": \"Dj Bufi\",\n      \"slug\": \"dj-bufi\",\n      \"category\": \"Música\",\n      \"location\": \"Lima, Perú\",\n      \"priceLevel\": \"high\",\n      \"rating\": \"0.0\",\n      \"detailUrl\": \"https://sinenvolturas.com/proveedores/dj-bufi\",\n      \"websiteUrl\": null,\n      \"minPrice\": null,\n      \"maxPrice\": null,\n      \"promoBadge\": null,\n      \"promoSummary\": null,\n      \"descriptionSnippet\": null,\n      \"serviceHighlights\": [],\n      \"termsHighlights\": [],\n      \"reason\": \"coincide con la categoría Música, opera en Lima, Perú, parece alineado al rango mínimo\",\n      \"retrievalSource\": \"api\"\n    }\n  ]\n}"
+            }
+          ],
+          "provider_results": [],
+          "search_strategy": "search_from_plan",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 10934,
+            "load_plan": 120,
+            "prepare_working_plan": 0,
+            "extraction": 4763,
+            "apply_extraction": 0,
+            "compute_sufficiency": 0,
+            "provider_search": 3250,
+            "provider_enrichment": 76,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2687,
+            "save_plan": 30
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11577,
+              "output_tokens": 532,
+              "total_tokens": 12109,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4307,
+              "output_tokens": 62,
+              "total_tokens": 4369,
+              "cached_input_tokens": 3072
+            },
+            "total": {
+              "input_tokens": 15884,
+              "output_tokens": 594,
+              "total_tokens": 16478,
+              "cached_input_tokens": 14080
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWHMQK3JRNN8XHJ4PXFQK501",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-confirmatory-v3-gates-study.birthday.09-e894c181",
+          "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "refinar_criterios",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.85,
+          "event_type": "cumpleanos",
+          "vendor_category": "Música",
+          "active_need_category": "Música",
+          "location": "Lima",
+          "budget_signal": "mínimo",
+          "guest_range": null,
+          "preferences": [
+            "banda de astronautas reales"
+          ],
+          "hard_constraints": [
+            "banda de astronautas reales",
+            "Lima",
+            "mañana"
+          ],
+          "missing_fields": [],
+          "provider_needs": [
+            {
+              "category": "Música",
+              "status": "no_providers_available",
+              "preferences": [
+                "banda de astronautas reales"
+              ],
+              "hard_constraints": [
+                "banda de astronautas reales",
+                "Lima",
+                "mañana"
+              ],
+              "missing_fields": [],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Cumpleaños en Lima, el usuario busca una banda de astronautas reales para mañana con presupuesto mínimo. Frente activo: Música.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T14:46:46.045Z"
+        },
+        "perf": {
+          "trace_id": "01KWHMQXNG43JSJ8NHYZH086BS",
+          "conversation_id": "conv_6a4679d61f088196a1509196a9e3f0000db52af48b77316f",
+          "runtime_latency_ms": 10934,
+          "extraction_latency_ms": 4763,
+          "compose_latency_ms": 2687,
+          "tools_called_count": 1,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16478,
+          "cached_input_tokens": 14080,
+          "cache_hit_rate": 0.8864265927977839,
+          "extraction_to_compose_ratio": 1.7726088574618533,
+          "captured_at": "2026-07-02T14:46:48.753Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T14:46:48.751Z",
+  "completedAt": "2026-07-02T14:46:48.752Z"
+}

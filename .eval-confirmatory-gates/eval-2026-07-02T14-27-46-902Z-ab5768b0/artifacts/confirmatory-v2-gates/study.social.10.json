@@ -1,0 +1,957 @@
+{
+  "runId": "eval-2026-07-02T14-27-46-902Z-ab5768b0",
+  "caseId": "study.social.10",
+  "suite": "technical_evaluation_50",
+  "target": "live_lambda",
+  "configLabel": "confirmatory-v2-gates",
+  "status": "failed",
+  "hardGatePassed": false,
+  "finalScore": 0.625,
+  "totalLatencyMs": 13755,
+  "totalToolCalls": 0,
+  "nodeTransitions": [
+    "contacto_inicial->aclarar_pedir_faltante",
+    "aclarar_pedir_faltante->aclarar_pedir_faltante"
+  ],
+  "planDiffSummary": [
+    "current_node=\"aclarar_pedir_faltante\"",
+    "intent=\"refinar_busqueda\"",
+    "event_type=\"quinceanos\"",
+    "vendor_category=\"Hogar y deco\"",
+    "active_need_category=\"Hogar y deco\"",
+    "location=\"Lima\"",
+    "provider_needs=Hogar y deco:search_ready"
+  ],
+  "artifactPaths": {
+    "caseResult": "/Users/leonardocandio/Work/thesis/recap-agent/.eval-confirmatory-gates/eval-2026-07-02T14-27-46-902Z-ab5768b0/artifacts/confirmatory-v2-gates/study.social.10.json"
+  },
+  "expectationResults": [
+    {
+      "id": "expected-node-path",
+      "type": "node_path_contains",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Missing required nodes: recomendar."
+    },
+    {
+      "id": "terminal-node",
+      "type": "node_transition",
+      "passed": false,
+      "severity": "hard",
+      "score": 0,
+      "message": "Expected transition did not match. Observed aclarar_pedir_faltante->aclarar_pedir_faltante. Allowed=*->recomendar, *->seguir_refinando_guardar_plan."
+    },
+    {
+      "id": "persistence",
+      "type": "trace_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Trace field plan_persisted matched expectation."
+    },
+    {
+      "id": "search-state",
+      "type": "trace_field_equals",
+      "passed": false,
+      "severity": "soft",
+      "score": 0,
+      "message": "Trace field search_ready was false instead of true."
+    },
+    {
+      "id": "event-type",
+      "type": "plan_field_equals",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field event_type matched exactly."
+    },
+    {
+      "id": "need-0",
+      "type": "plan_field_subset",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Plan field provider_needs contained the expected subset."
+    },
+    {
+      "id": "token-usage",
+      "type": "token_usage_present",
+      "passed": true,
+      "severity": "hard",
+      "score": 1,
+      "message": "Token usage was present for expected turns."
+    },
+    {
+      "id": "turn-budget",
+      "type": "budget_constraints",
+      "passed": true,
+      "severity": "soft",
+      "score": 1,
+      "message": "Budget constraints passed."
+    }
+  ],
+  "scorerResults": [
+    {
+      "id": "expectation-core",
+      "type": "expectation_pass_rate",
+      "score": 0.625,
+      "weight": 1,
+      "skipped": false,
+      "message": "Average expectation score across 8 expectations."
+    }
+  ],
+  "benchmarkMetrics": {
+    "turn_count": 2,
+    "avg_latency_ms": 6877.5,
+    "p95_latency_ms": 7077,
+    "tool_calls_total": 0,
+    "unique_tools_called": 0,
+    "tool_call_rate_per_turn": 0,
+    "tool_precision": 1,
+    "tool_recall": 1,
+    "tool_f1": 1,
+    "branch_coverage": 0.23076923076923078,
+    "state_expectation_pass_rate": 0.75,
+    "trajectory_expectation_pass_rate": 0,
+    "plan_persistence_rate": 1,
+    "total_tokens": 33685,
+    "cache_hit_rate": 0.8021873367945686
+  },
+  "turns": [
+    {
+      "turnIndex": 0,
+      "input": {
+        "text": "Necesito decoración futurista con robots para quinceaños en Lima."
+      },
+      "outputText": "Claro, te ayudo con eso\n\nPara buscar mejor la decoración futurista con robots, necesito un presupuesto aproximado o la cantidad de invitados\n\nCon uno de esos datos puedo ajustar las opciones a algo que sí te sirva para tus quinceaños en Lima",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWHKVS6KXWNBYACJATGE2MB0",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+        "previous_node": "contacto_inicial",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "contacto_inicial",
+          "deteccion_intencion",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "buscar_proveedores",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "deteccion_intencion",
+        "timing_ms": {
+          "total": 6922,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 4691,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 2200,
+          "save_plan": 14
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11574,
+            "output_tokens": 455,
+            "total_tokens": 12029,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 4153,
+            "output_tokens": 69,
+            "total_tokens": 4222,
+            "cached_input_tokens": 0
+          },
+          "total": {
+            "input_tokens": 15727,
+            "output_tokens": 524,
+            "total_tokens": 16251,
+            "cached_input_tokens": 11008
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWHKVS6KXWNBYACJATGE2MB0",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "runtime_latency_ms": 6922,
+        "extraction_latency_ms": 4691,
+        "compose_latency_ms": 2200,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 16251,
+        "cached_input_tokens": 11008,
+        "cache_hit_rate": 0.6999427735741082,
+        "extraction_to_compose_ratio": 2.1322727272727273,
+        "captured_at": "2026-07-02T14:31:26.675Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-confirmatory-v2-gates-study.social.10-4f9408b1",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "buscar_proveedores",
+        "intent_confidence": 0.9,
+        "event_type": "quinceanos",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración futurista",
+          "con robots"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración futurista",
+              "con robots"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [],
+        "conversation_summary": "Quinceaños en Lima; se necesita decoración futurista con robots.",
+        "last_user_goal": "buscar_proveedores",
+        "open_questions": [],
+        "updated_at": "2026-07-02T14:31:24.461Z"
+      },
+      "latencyMs": 7077,
+      "rawTargetResponse": {
+        "message": "Claro, te ayudo con eso\n\nPara buscar mejor la decoración futurista con robots, necesito un presupuesto aproximado o la cantidad de invitados\n\nCon uno de esos datos puedo ajustar las opciones a algo que sí te sirva para tus quinceaños en Lima",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWHKVS6KXWNBYACJATGE2MB0",
+          "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+          "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+          "previous_node": "contacto_inicial",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "buscar_proveedores",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "deteccion_intencion",
+          "timing_ms": {
+            "total": 6922,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 4691,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 2200,
+            "save_plan": 14
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11574,
+              "output_tokens": 455,
+              "total_tokens": 12029,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 4153,
+              "output_tokens": 69,
+              "total_tokens": 4222,
+              "cached_input_tokens": 0
+            },
+            "total": {
+              "input_tokens": 15727,
+              "output_tokens": 524,
+              "total_tokens": 16251,
+              "cached_input_tokens": 11008
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-confirmatory-v2-gates-study.social.10-4f9408b1",
+          "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "buscar_proveedores",
+          "intent_confidence": 0.9,
+          "event_type": "quinceanos",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración futurista",
+            "con robots"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración futurista",
+                "con robots"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [],
+          "conversation_summary": "Quinceaños en Lima; se necesita decoración futurista con robots.",
+          "last_user_goal": "buscar_proveedores",
+          "open_questions": [],
+          "updated_at": "2026-07-02T14:31:24.461Z"
+        },
+        "perf": {
+          "trace_id": "01KWHKVS6KXWNBYACJATGE2MB0",
+          "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+          "runtime_latency_ms": 6922,
+          "extraction_latency_ms": 4691,
+          "compose_latency_ms": 2200,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 16251,
+          "cached_input_tokens": 11008,
+          "cache_hit_rate": 0.6999427735741082,
+          "extraction_to_compose_ratio": 2.1322727272727273,
+          "captured_at": "2026-07-02T14:31:26.675Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    },
+    {
+      "turnIndex": 1,
+      "input": {
+        "text": "Si no hay coincidencia exacta, busca decoración moderna para quinceaños."
+      },
+      "outputText": "Perfecto, entonces lo ajustamos a decoración moderna para quinceaños\n\nSolo me falta un presupuesto aproximado o la cantidad de invitados para poder buscar opciones que encajen mejor en Lima\n\nCon eso ya puedo avanzar sin mantenerte en una coincidencia tan exacta",
+      "currentNode": "aclarar_pedir_faltante",
+      "trace": {
+        "trace_id": "01KWHKVZQWHXA22ZZQ9VCGNV0F",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+        "previous_node": "aclarar_pedir_faltante",
+        "next_node": "aclarar_pedir_faltante",
+        "node_path": [
+          "aclarar_pedir_faltante",
+          "existe_plan_guardado",
+          "refinar_criterios",
+          "minimos_para_buscar",
+          "aclarar_pedir_faltante"
+        ],
+        "intent": "refinar_busqueda",
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "search_ready": false,
+        "prompt_bundle_id": "eca74294f36b",
+        "prompt_file_paths": [
+          "shared/base_system.txt",
+          "shared/agent_personality.txt",
+          "shared/domain_scope.txt",
+          "shared/domain_knowledge.txt",
+          "shared/output_style.txt",
+          "shared/flow_discipline.txt",
+          "shared/question_strategy.txt",
+          "shared/common_anti_patterns.txt",
+          "nodes/aclarar_pedir_faltante/system.txt",
+          "nodes/aclarar_pedir_faltante/response_contract.txt",
+          "nodes/aclarar_pedir_faltante/tool_policy.txt"
+        ],
+        "tools_considered": [
+          "list_categories",
+          "get_category_by_slug",
+          "list_locations"
+        ],
+        "tools_called": [],
+        "tool_inputs": [],
+        "tool_outputs": [],
+        "provider_results": [],
+        "search_strategy": "none",
+        "close_action_summary": {
+          "type": null,
+          "category": null,
+          "reason_preview": null
+        },
+        "selection_resolution_summary": {
+          "selected_provider_references": [],
+          "selected_provider_hints_count": 0,
+          "provider_plan_operation_types": [],
+          "provider_plan_operation_categories": []
+        },
+        "contact_validation_summary": {
+          "status": "not_provided",
+          "field": null,
+          "reason_preview": null,
+          "extraction_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          },
+          "plan_contact_fields_present": {
+            "name": false,
+            "email": false,
+            "phone": false
+          }
+        },
+        "provider_candidate_audit": [],
+        "faq_resolution_summary": {
+          "is_faq_turn": false,
+          "kb_query_present": false,
+          "file_search_called": false,
+          "file_search_output_count": 0
+        },
+        "recommendation_funnel": {
+          "available_candidates": 0,
+          "context_candidates": 0,
+          "context_candidate_ids": [],
+          "presentation_limit": 6
+        },
+        "plan_persisted": true,
+        "plan_persist_reason": "refinar_criterios",
+        "timing_ms": {
+          "total": 6270,
+          "load_plan": 8,
+          "prepare_working_plan": 0,
+          "extraction": 4266,
+          "apply_extraction": 1,
+          "compute_sufficiency": 0,
+          "provider_search": 0,
+          "provider_enrichment": 0,
+          "prompt_bundle_load": 1,
+          "compose_reply": 1944,
+          "save_plan": 44
+        },
+        "token_usage": {
+          "extraction": {
+            "input_tokens": 11668,
+            "output_tokens": 540,
+            "total_tokens": 12208,
+            "cached_input_tokens": 11008
+          },
+          "reply": {
+            "input_tokens": 5156,
+            "output_tokens": 70,
+            "total_tokens": 5226,
+            "cached_input_tokens": 4096
+          },
+          "total": {
+            "input_tokens": 16824,
+            "output_tokens": 610,
+            "total_tokens": 17434,
+            "cached_input_tokens": 15104
+          }
+        }
+      },
+      "perf": {
+        "trace_id": "01KWHKVZQWHXA22ZZQ9VCGNV0F",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "runtime_latency_ms": 6270,
+        "extraction_latency_ms": 4266,
+        "compose_latency_ms": 1944,
+        "tools_called_count": 0,
+        "provider_results_count": 0,
+        "recommendation_context_candidates": 0,
+        "recommendation_presentation_limit": 6,
+        "total_tokens": 17434,
+        "cached_input_tokens": 15104,
+        "cache_hit_rate": 0.8977650974797908,
+        "extraction_to_compose_ratio": 2.1944444444444446,
+        "captured_at": "2026-07-02T14:31:33.372Z",
+        "persisted": true,
+        "storage_target": "recap-agent-runtime-perf"
+      },
+      "plan": {
+        "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+        "channel": "terminal_whatsapp_eval",
+        "external_user_id": "terminal_whatsapp_eval-confirmatory-v2-gates-study.social.10-4f9408b1",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "lifecycle_state": "active",
+        "contact_name": null,
+        "contact_email": null,
+        "contact_phone": null,
+        "guest_auth": {
+          "status": "none",
+          "email": null,
+          "token": null,
+          "token_expires_at": null,
+          "last_error": null,
+          "requested_at": null
+        },
+        "current_node": "aclarar_pedir_faltante",
+        "intent": "refinar_busqueda",
+        "intent_confidence": 0.7,
+        "event_type": "quinceanos",
+        "vendor_category": "Hogar y deco",
+        "active_need_category": "Hogar y deco",
+        "location": "Lima",
+        "budget_signal": null,
+        "guest_range": null,
+        "preferences": [
+          "decoración futurista",
+          "con robots",
+          "decoración moderna",
+          "estilo futurista/robots"
+        ],
+        "hard_constraints": [],
+        "missing_fields": [
+          "budget_or_guest_range"
+        ],
+        "provider_needs": [
+          {
+            "category": "Hogar y deco",
+            "status": "search_ready",
+            "preferences": [
+              "decoración futurista",
+              "con robots",
+              "decoración moderna",
+              "estilo futurista/robots"
+            ],
+            "hard_constraints": [],
+            "missing_fields": [
+              "budget_or_guest_range"
+            ],
+            "recommended_provider_ids": [],
+            "recommended_providers": [],
+            "sub_query_results": [],
+            "selected_provider_ids": [],
+            "selected_provider_hints": []
+          }
+        ],
+        "recommended_provider_ids": [],
+        "recommended_providers": [],
+        "selected_provider_ids": [],
+        "selected_provider_hints": [],
+        "assumptions": [
+          "\"decoración moderna\" implica decoración para el salón/espacio del quinceaños dentro de Hogar y deco."
+        ],
+        "conversation_summary": "Quinceaños en Lima; se busca decoración moderna/futurista (robots). Frente activo: Hogar y deco.",
+        "last_user_goal": "refinar_busqueda",
+        "open_questions": [],
+        "updated_at": "2026-07-02T14:31:31.411Z"
+      },
+      "latencyMs": 6678,
+      "rawTargetResponse": {
+        "message": "Perfecto, entonces lo ajustamos a decoración moderna para quinceaños\n\nSolo me falta un presupuesto aproximado o la cantidad de invitados para poder buscar opciones que encajen mejor en Lima\n\nCon eso ya puedo avanzar sin mantenerte en una coincidencia tan exacta",
+        "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+        "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+        "current_node": "aclarar_pedir_faltante",
+        "trace": {
+          "trace_id": "01KWHKVZQWHXA22ZZQ9VCGNV0F",
+          "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+          "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+          "previous_node": "aclarar_pedir_faltante",
+          "next_node": "aclarar_pedir_faltante",
+          "node_path": [
+            "aclarar_pedir_faltante",
+            "existe_plan_guardado",
+            "refinar_criterios",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante"
+          ],
+          "intent": "refinar_busqueda",
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "search_ready": false,
+          "prompt_bundle_id": "eca74294f36b",
+          "prompt_file_paths": [
+            "shared/base_system.txt",
+            "shared/agent_personality.txt",
+            "shared/domain_scope.txt",
+            "shared/domain_knowledge.txt",
+            "shared/output_style.txt",
+            "shared/flow_discipline.txt",
+            "shared/question_strategy.txt",
+            "shared/common_anti_patterns.txt",
+            "nodes/aclarar_pedir_faltante/system.txt",
+            "nodes/aclarar_pedir_faltante/response_contract.txt",
+            "nodes/aclarar_pedir_faltante/tool_policy.txt"
+          ],
+          "tools_considered": [
+            "list_categories",
+            "get_category_by_slug",
+            "list_locations"
+          ],
+          "tools_called": [],
+          "tool_inputs": [],
+          "tool_outputs": [],
+          "provider_results": [],
+          "search_strategy": "none",
+          "close_action_summary": {
+            "type": null,
+            "category": null,
+            "reason_preview": null
+          },
+          "selection_resolution_summary": {
+            "selected_provider_references": [],
+            "selected_provider_hints_count": 0,
+            "provider_plan_operation_types": [],
+            "provider_plan_operation_categories": []
+          },
+          "contact_validation_summary": {
+            "status": "not_provided",
+            "field": null,
+            "reason_preview": null,
+            "extraction_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            },
+            "plan_contact_fields_present": {
+              "name": false,
+              "email": false,
+              "phone": false
+            }
+          },
+          "provider_candidate_audit": [],
+          "faq_resolution_summary": {
+            "is_faq_turn": false,
+            "kb_query_present": false,
+            "file_search_called": false,
+            "file_search_output_count": 0
+          },
+          "recommendation_funnel": {
+            "available_candidates": 0,
+            "context_candidates": 0,
+            "context_candidate_ids": [],
+            "presentation_limit": 6
+          },
+          "plan_persisted": true,
+          "plan_persist_reason": "refinar_criterios",
+          "timing_ms": {
+            "total": 6270,
+            "load_plan": 8,
+            "prepare_working_plan": 0,
+            "extraction": 4266,
+            "apply_extraction": 1,
+            "compute_sufficiency": 0,
+            "provider_search": 0,
+            "provider_enrichment": 0,
+            "prompt_bundle_load": 1,
+            "compose_reply": 1944,
+            "save_plan": 44
+          },
+          "token_usage": {
+            "extraction": {
+              "input_tokens": 11668,
+              "output_tokens": 540,
+              "total_tokens": 12208,
+              "cached_input_tokens": 11008
+            },
+            "reply": {
+              "input_tokens": 5156,
+              "output_tokens": 70,
+              "total_tokens": 5226,
+              "cached_input_tokens": 4096
+            },
+            "total": {
+              "input_tokens": 16824,
+              "output_tokens": 610,
+              "total_tokens": 17434,
+              "cached_input_tokens": 15104
+            }
+          }
+        },
+        "plan": {
+          "plan_id": "01KWHKVJEH5VSF2TDN9216R4SF",
+          "channel": "terminal_whatsapp_eval",
+          "external_user_id": "terminal_whatsapp_eval-confirmatory-v2-gates-study.social.10-4f9408b1",
+          "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+          "lifecycle_state": "active",
+          "contact_name": null,
+          "contact_email": null,
+          "contact_phone": null,
+          "guest_auth": {
+            "status": "none",
+            "email": null,
+            "token": null,
+            "token_expires_at": null,
+            "last_error": null,
+            "requested_at": null
+          },
+          "current_node": "aclarar_pedir_faltante",
+          "intent": "refinar_busqueda",
+          "intent_confidence": 0.7,
+          "event_type": "quinceanos",
+          "vendor_category": "Hogar y deco",
+          "active_need_category": "Hogar y deco",
+          "location": "Lima",
+          "budget_signal": null,
+          "guest_range": null,
+          "preferences": [
+            "decoración futurista",
+            "con robots",
+            "decoración moderna",
+            "estilo futurista/robots"
+          ],
+          "hard_constraints": [],
+          "missing_fields": [
+            "budget_or_guest_range"
+          ],
+          "provider_needs": [
+            {
+              "category": "Hogar y deco",
+              "status": "search_ready",
+              "preferences": [
+                "decoración futurista",
+                "con robots",
+                "decoración moderna",
+                "estilo futurista/robots"
+              ],
+              "hard_constraints": [],
+              "missing_fields": [
+                "budget_or_guest_range"
+              ],
+              "recommended_provider_ids": [],
+              "recommended_providers": [],
+              "sub_query_results": [],
+              "selected_provider_ids": [],
+              "selected_provider_hints": []
+            }
+          ],
+          "recommended_provider_ids": [],
+          "recommended_providers": [],
+          "selected_provider_ids": [],
+          "selected_provider_hints": [],
+          "assumptions": [
+            "\"decoración moderna\" implica decoración para el salón/espacio del quinceaños dentro de Hogar y deco."
+          ],
+          "conversation_summary": "Quinceaños en Lima; se busca decoración moderna/futurista (robots). Frente activo: Hogar y deco.",
+          "last_user_goal": "refinar_busqueda",
+          "open_questions": [],
+          "updated_at": "2026-07-02T14:31:31.411Z"
+        },
+        "perf": {
+          "trace_id": "01KWHKVZQWHXA22ZZQ9VCGNV0F",
+          "conversation_id": "conv_6a46763c924c819698643a963a97dd8f0950c19eeac84bd9",
+          "runtime_latency_ms": 6270,
+          "extraction_latency_ms": 4266,
+          "compose_latency_ms": 1944,
+          "tools_called_count": 0,
+          "provider_results_count": 0,
+          "recommendation_context_candidates": 0,
+          "recommendation_presentation_limit": 6,
+          "total_tokens": 17434,
+          "cached_input_tokens": 15104,
+          "cache_hit_rate": 0.8977650974797908,
+          "extraction_to_compose_ratio": 2.1944444444444446,
+          "captured_at": "2026-07-02T14:31:33.372Z",
+          "persisted": true,
+          "storage_target": "recap-agent-runtime-perf"
+        }
+      }
+    }
+  ],
+  "startedAt": "2026-07-02T14:31:33.378Z",
+  "completedAt": "2026-07-02T14:31:33.379Z"
+}
