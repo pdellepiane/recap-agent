@@ -14,22 +14,12 @@ import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
-import { resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
+import { resolveChannelApiKey, resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
-
-type TerminalRequestBody = {
-  text: string;
-  user_id: string;
-  channel: string;
-  message_id?: string;
-  received_at?: string;
-  session_id?: string | null;
-  client_mode?: 'cli' | 'channel';
-  /** Phone number provided by the channel payload (e.g. WhatsApp). */
-  contact_phone?: string | null;
-};
+import { apiKeysMatch, readApiKeyHeader } from './api-key-auth';
+import { channelRequestSchema } from './request-contract';
 
 const config = getConfig();
 
@@ -37,22 +27,40 @@ let runtimePromise: Promise<{
   service: AgentService;
   perfStore: PerfStore;
 }> | null = null;
+let channelApiKeyPromise: Promise<string> | null = null;
 
 export async function handler(
   event: APIGatewayProxyEventV2,
 ): Promise<APIGatewayProxyStructuredResultV2> {
   try {
-    const runtime = await getRuntime();
+    const expectedApiKey = await getChannelApiKey();
+    if (!apiKeysMatch(readApiKeyHeader(event.headers), expectedApiKey)) {
+      return json(401, { error: 'Unauthorized.' });
+    }
 
     if (!event.body) {
       return json(400, { error: 'Missing request body.' });
     }
 
-    const body = JSON.parse(event.body) as TerminalRequestBody;
-
-    if (!body.text || !body.user_id || !body.channel) {
-      return json(400, { error: 'text, user_id, and channel are required.' });
+    let rawBody: unknown;
+    try {
+      rawBody = JSON.parse(event.body) as unknown;
+    } catch {
+      return json(400, { error: 'Request body must be valid JSON.' });
     }
+    const parsedBody = channelRequestSchema.safeParse(rawBody);
+    if (!parsedBody.success) {
+      return json(400, {
+        error: 'Invalid request body.',
+        issues: parsedBody.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          message: issue.message,
+        })),
+      });
+    }
+    const body = parsedBody.data;
+
+    const runtime = await getRuntime();
 
     const channel = body.channel;
     const messageId = body.message_id ?? crypto.randomUUID();
@@ -119,6 +127,17 @@ export async function handler(
       error: error instanceof Error ? error.message : 'Unknown server error.',
     });
   }
+}
+
+async function getChannelApiKey(): Promise<string> {
+  if (!channelApiKeyPromise) {
+    channelApiKeyPromise = resolveChannelApiKey({
+      directApiKey: config.channelAuth.apiKey,
+      secretId: config.channelAuth.secretId,
+      region: config.aws.region,
+    });
+  }
+  return channelApiKeyPromise;
 }
 
 async function getRuntime(): Promise<{

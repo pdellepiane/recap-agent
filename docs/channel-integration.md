@@ -2,7 +2,7 @@
 
 This guide is the working contract for connecting consumer channels to the deployed recap-agent runtime. It covers the live Lambda Function URL, request and response payloads, telemetry persistence, provider API dependencies, and the adapter responsibilities that must stay outside the channel-agnostic runtime.
 
-Last verified against CloudFormation outputs on 2026-04-21.
+Last verified against CloudFormation outputs on 2026-07-14.
 
 ## Live Runtime Endpoints
 
@@ -12,7 +12,8 @@ Current development deployment:
 | --- | --- |
 | Runtime HTTP endpoint | `https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/` |
 | HTTP method | `POST` |
-| Function URL auth | `NONE` |
+| Function URL native auth | `NONE` (no SigV4/AWS credentials) |
+| Application auth | `X-API-Key` validated from Secrets Manager |
 | AWS region | `us-east-1` |
 | CloudFormation stack | `recap-agent-runtime` |
 | Lambda function | `recap-agent-runtime` |
@@ -20,7 +21,18 @@ Current development deployment:
 | Perf table | `recap-agent-runtime-perf` |
 | Default channel fallback | `terminal_whatsapp` |
 
-The runtime endpoint is a Lambda Function URL created in [infra/cloudformation/stack.yaml](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/infra/cloudformation/stack.yaml). It is currently unauthenticated at the Function URL layer, so production channel adapters must apply their own webhook authentication, rate limits, and abuse controls before forwarding traffic.
+The runtime endpoint is a Lambda Function URL created in `infra/cloudformation/stack.yaml`. Lambda Function URLs only provide native `AWS_IAM` or `NONE` auth. This deployment uses `NONE` so adapters do not need AWS credentials or SigV4, then validates a dedicated `X-API-Key` inside Lambda before runtime initialization. The key is stored in Secrets Manager as `recap-agent/channel-api-key` and is separate from both `SE_API_KEY` and the OpenAI key.
+
+Channel adapters must still verify the original WhatsApp webhook signature. The runtime API key authenticates the adapter to this Lambda; it does not authenticate Meta's webhook to the adapter. Keep the key server-side, never put it in browser code, logs, URLs, or WhatsApp payloads.
+
+Configure these two server-side adapter secrets:
+
+```text
+AGENT_FUNCTION_URL=https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/
+CHANNEL_API_KEY=<value provisioned from recap-agent/channel-api-key>
+```
+
+The adapter does not need `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, an AWS profile, or SigV4 signing. AWS access is only needed by deployment/operations workflows that create or rotate the secret. Provision the key into the adapter's own secret store through the deployment pipeline; do not fetch it from Secrets Manager on every message.
 
 Resolve the latest deployment values instead of hardcoding them in long-lived adapters:
 
@@ -55,13 +67,14 @@ The runtime owns:
 
 ## Request Contract
 
-Send JSON with `content-type: application/json`.
+Send JSON with `content-type: application/json` and `X-API-Key: <CHANNEL_API_KEY>`.
 
 | Field | Required | Type | Meaning |
 | --- | --- | --- | --- |
 | `text` | Yes | string | The inbound user message exactly as the user sent it after channel-level cleanup. |
 | `user_id` | Yes | string | Stable channel-specific external user id. This is the state key together with `channel`. |
-| `channel` | No | string | Stable channel identifier. Defaults to `DEFAULT_INBOUND_CHANNEL`, currently `terminal_whatsapp`. |
+| `channel` | Yes | string | Stable channel identifier. Use `whatsapp` in production and `whatsapp_sandbox` for sandbox traffic. |
+| `contact_phone` | WhatsApp: Yes | string or null | Sender phone in international E.164 form, including `+`, for example `+51999999999`. Required for `whatsapp` and `whatsapp_sandbox`. |
 | `message_id` | No | string | Channel message id or deterministic adapter fallback. If omitted, Lambda generates a UUID. |
 | `received_at` | No | ISO-8601 string | Channel receive timestamp. If omitted, Lambda uses server time. |
 | `client_mode` | No | `channel` or `cli` | `channel` returns only user-facing fields. `cli` includes trace, perf, and plan diagnostics. |
@@ -73,8 +86,9 @@ Minimal production request:
 ```json
 {
   "text": "Hola, necesito catering para una boda de 80 personas en Lima",
-  "user_id": "whatsapp:+51999999999",
+  "user_id": "whatsapp:51999999999",
   "channel": "whatsapp",
+  "contact_phone": "+51999999999",
   "message_id": "wamid.HBgLNTE5OTk5OTk5OTkVAgARGBI",
   "received_at": "2026-04-21T21:17:26.000Z",
   "client_mode": "channel"
@@ -100,16 +114,47 @@ Example curl:
 curl -sS \
   -X POST "https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/" \
   -H "content-type: application/json" \
+  -H "X-API-Key: ${CHANNEL_API_KEY}" \
   --data '{
     "text": "Hola, necesito catering para una boda de 80 personas en Lima",
-    "user_id": "whatsapp:+51999999999",
+    "user_id": "whatsapp:51999999999",
     "channel": "whatsapp",
+    "contact_phone": "+51999999999",
     "message_id": "wamid.example.0001",
     "received_at": "2026-04-21T21:17:26.000Z",
     "session_id": "whatsapp-session-abc123",
     "client_mode": "channel"
   }'
 ```
+
+## WhatsApp Phone Context
+
+Always pass the WhatsApp sender in both identity and phone-context fields:
+
+```ts
+const from = message.from.replace(/\D/gu, '');
+
+const request = {
+  channel: 'whatsapp',
+  user_id: `whatsapp:${from}`,
+  contact_phone: `+${from}`,
+  text: message.text.body,
+  message_id: message.id,
+  received_at: new Date(Number(message.timestamp) * 1000).toISOString(),
+  client_mode: 'channel' as const,
+};
+```
+
+The two fields have different jobs:
+
+| Field | Purpose |
+| --- | --- |
+| `user_id` | Stable namespaced plan identity. Together with `channel`, it selects the durable plan. |
+| `contact_phone` | Trusted channel contact context. It is normalized to digits, injected into the plan before classification/extraction, persisted as `plan.contact_phone`, and used for Agent API history, inbound/outbound logs, human takeover, and quote/contact flows. |
+
+Do not rely on `user_id` as an implicit phone fallback. Do not omit `contact_phone` because the same digits appear in `user_id`. For WhatsApp channels the Lambda rejects a missing phone context with `400`. It also rejects local-format values such as `999999999`; send `+51999999999`. Current phone validation supports Peru (`+51`), Mexico (`+52`), and NANP (`+1`). Passing the field on every turn is intentional: it hydrates new plans immediately and repairs older plans that did not yet store the phone, so the extractor and reply agent see the phone on the first turn and do not ask the user for it again.
+
+To rotate runtime access, replace `CHANNEL_API_KEY` in the ignored `.env` file and run `AWS_PROFILE=se-dev npm run deploy`. Update the adapter's server-side secret atomically with the deployed value. Requests using the old value receive `401` after rotation.
 
 ## Channel Response Contract
 
@@ -228,13 +273,15 @@ The handler currently returns JSON errors with these status codes:
 
 | Status | Body | Cause |
 | --- | --- | --- |
+| `401` | `{ "error": "Unauthorized." }` | Missing or invalid `X-API-Key`. Do not retry until adapter configuration is fixed. |
 | `400` | `{ "error": "Missing request body." }` | Empty HTTP body. |
-| `400` | `{ "error": "text and user_id are required." }` | Missing or empty `text` or `user_id`. |
-| `500` | `{ "error": "..." }` | JSON parsing failure, runtime bootstrap failure, OpenAI error, provider failure not handled by the flow, DynamoDB failure, or other unexpected exception. |
+| `400` | `{ "error": "Request body must be valid JSON." }` | Malformed JSON. |
+| `400` | `{ "error": "Invalid request body.", "issues": [...] }` | Missing fields, invalid timestamp, or missing/malformed WhatsApp `contact_phone`. |
+| `500` | `{ "error": "..." }` | Secret/runtime bootstrap failure, OpenAI error, provider failure not handled by the flow, DynamoDB failure, or other unexpected exception. |
 
 Adapter retry policy:
 
-- Do not retry `400` responses; fix the adapter payload.
+- Do not retry `400` or `401` responses; fix the adapter payload or credential.
 - Retry transient `500`, network timeouts, or connection failures with bounded exponential backoff.
 - Keep `message_id` stable across retries so support logs and perf records can be correlated.
 - The runtime does not currently enforce idempotency on duplicate `message_id`; channel adapters should avoid sending the same inbound message twice when a previous request completed successfully.
@@ -248,7 +295,8 @@ Use stable values:
 ```json
 {
   "channel": "whatsapp",
-  "user_id": "whatsapp:+51999999999"
+  "user_id": "whatsapp:51999999999",
+  "contact_phone": "+51999999999"
 }
 ```
 
@@ -285,11 +333,13 @@ type RuntimeRequest = {
   channel: string;
   message_id: string;
   received_at: string;
+  contact_phone: string;
   client_mode: 'channel';
 };
 
 type RuntimeChannelResponse = {
-  message: string;
+  message: string | null;
+  delivery: { action: 'send' | 'suppress'; reason: string };
   conversation_id: string | null;
   plan_id: string;
   current_node: string;
@@ -298,7 +348,10 @@ type RuntimeChannelResponse = {
 async function forwardTurn(request: RuntimeRequest): Promise<RuntimeChannelResponse> {
   const response = await fetch(process.env.AGENT_FUNCTION_URL, {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': process.env.CHANNEL_API_KEY,
+    },
     body: JSON.stringify(request),
   });
 
@@ -321,12 +374,15 @@ For a WhatsApp webhook, map native fields like this:
 | --- | --- |
 | `text` | inbound text body after trimming unsupported channel wrappers |
 | `user_id` | `whatsapp:${from}` where `from` is the platform sender id |
+| `contact_phone` | `+${from}` after removing non-digits from Meta's sender id |
 | `channel` | `whatsapp` |
 | `message_id` | WhatsApp `wamid` |
 | `received_at` | WhatsApp timestamp converted to ISO-8601 |
 | `client_mode` | `channel` |
 
-The runtime response should be rendered as a plain text WhatsApp message:
+Send a WhatsApp reply only when `delivery.action === "send"` and `message` is non-null. A suppressed acknowledgement/reaction or an active human handoff returns `delivery.action === "suppress"`; acknowledge the webhook without sending a WhatsApp message.
+
+The sent runtime response should be rendered as a plain text WhatsApp message:
 
 ```json
 {
@@ -488,6 +544,7 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `SINENVOLTURAS_BASE_URL` | `https://api.sinenvolturas.com/api-web/vendor` |
 | `AGENT_API_BASE_URL` | `https://api.sinenvolturas.com/api/agent` |
 | `SE_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/se-api-key` |
+| `CHANNEL_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/channel-api-key` |
 | `DEFAULT_INBOUND_CHANNEL` | `terminal_whatsapp` unless overridden |
 | `PROVIDER_SEARCH_LIMIT` | `15` |
 | `SEARCH_SUMMARY_WORD_LIMIT` | `5` |
@@ -497,6 +554,8 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `PERF_RETENTION_DAYS` | `30` |
 
 Human escalation uses the dedicated Agent API service key stored in Secrets Manager and sent as `X-Agent-Key` by the gateway. The guest validation bearer token is user-scoped and must not be reused here.
+
+Inbound channel authentication uses a different dedicated secret. Adapters send the `CHANNEL_API_KEY` value as `X-API-Key`; Lambda resolves the expected value through `CHANNEL_API_SECRET_ID` and compares it in constant time before loading the agent runtime. The deployment script generates a cryptographically random key into the ignored local `.env` file when one does not exist, then publishes it to Secrets Manager.
 
 For phone-bearing turns, the response classifier retrieves the last five Agent API messages before logging the inbound message. Every generated message with `delivery.action: "send"` is logged outbound whenever the Agent Conversation gateway is configured, independently of classifier availability. Suppressed turns never create an outbound log. Agent API failures are traced and do not block channel delivery. Once human escalation is active, inbound messages are logged but the runtime returns `delivery.action: "suppress"` and does not continue as a bot. The bot suppression window lasts 12 hours from the handoff request. Its expiration is persisted as `human_escalation.bot_suppressed_until`; the first later inbound turn clears the escalation state and resumes normal processing. This internal duration is not included in user-facing copy.
 
@@ -521,7 +580,8 @@ curl -sS \
     --query "Stacks[0].Outputs[?OutputKey=='FunctionUrl'].OutputValue" \
     --output text)" \
   -H "content-type: application/json" \
-  --data '{"text":"Hola, estoy planeando una boda en Lima para 80 personas","user_id":"smoke-channel-user","channel":"channel_smoke","message_id":"smoke-001","received_at":"2026-04-21T21:17:26.000Z","client_mode":"channel"}'
+  -H "X-API-Key: ${CHANNEL_API_KEY}" \
+  --data '{"text":"Hola, estoy planeando una boda en Lima para 80 personas","user_id":"whatsapp:51999999999","contact_phone":"+51999999999","channel":"whatsapp","message_id":"smoke-001","received_at":"2026-07-14T21:17:26.000Z","client_mode":"channel"}'
 ```
 
 Expected shape:
@@ -542,8 +602,10 @@ Live eval target requests use the same Function URL and send `client_mode: "cli"
 Before a channel adapter is considered complete:
 
 - [ ] It verifies native webhook authenticity before calling the runtime.
+- [ ] It reads `CHANNEL_API_KEY` from server-side secret configuration and sends it as `X-API-Key`.
 - [ ] It uses a stable `channel` string.
 - [ ] It always passes a stable `user_id`.
+- [ ] For WhatsApp, it always passes `contact_phone` as E.164 with `+` on every turn.
 - [ ] It always passes the native `message_id`, or a deterministic fallback.
 - [ ] It always passes `received_at` as ISO-8601.
 - [ ] It sets `client_mode` to `channel`.
@@ -556,7 +618,7 @@ Before a channel adapter is considered complete:
 
 ## Known Integration Risks
 
-- The Function URL is unauthenticated. Put production adapters behind their own authenticated ingress and do not expose the raw URL directly to untrusted clients.
+- Lambda Function URL native auth remains `NONE`, so AWS credentials are unnecessary. Protection is application-layer `X-API-Key`; key leakage would permit invocation and must be handled by rotating `CHANNEL_API_KEY` and redeploying.
 - Duplicate inbound turns are not currently suppressed by the runtime. Adapter idempotency matters.
 - `client_mode: "cli"` can return large traces and full plan snapshots. Do not enable it for user-facing channels.
 - Provider API field completeness can drift. Search uses a mixed endpoint strategy to improve recall, but channel adapters should treat provider details as runtime-generated text, not as a stable direct API contract.

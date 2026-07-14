@@ -260,6 +260,15 @@ export class AgentService {
       channel: inbound.channel,
       externalUserId: inbound.externalUserId,
     });
+    const normalizedChannelPhone = this.normalizePhone(inbound.contactPhone);
+    if (normalizedChannelPhone) {
+      classifierPlan = mergePlan(classifierPlan, {
+        contact_phone: normalizedChannelPhone,
+      });
+      if (existingPlan) {
+        existingPlan = classifierPlan;
+      }
+    }
     let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
     if (this.dependencies.responseClassifier) {
       const preflightStartedAt = Date.now();

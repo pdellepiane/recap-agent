@@ -4,11 +4,14 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { Command } from 'commander';
+import dotenv from 'dotenv';
 
 import { evalReportSchema } from './case-schema';
 import { listEvaluationAssets, runEvaluation } from './runner';
 import { renderMarkdownReport } from './reporting';
 import { runTechnicalStudy } from './technical-study';
+
+dotenv.config({ quiet: true });
 
 type RunCommandOptions = {
   suite?: string;

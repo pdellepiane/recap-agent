@@ -17,6 +17,9 @@ Parameters:
   SeApiSecretArn:
     Type: String
     Description: ARN of the Secrets Manager secret containing the Sin Envolturas Agent API key.
+  ChannelApiSecretArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing the inbound channel API key.
   OpenAIModel:
     Type: String
     Default: gpt-5.4-mini
@@ -218,6 +221,7 @@ Resources:
                 Resource:
                   - !Ref OpenAISecretArn
                   - !Ref SeApiSecretArn
+                  - !Ref ChannelApiSecretArn
 
   RuntimeFunction:
     Type: AWS::Lambda::Function
@@ -235,6 +239,7 @@ Resources:
         Variables:
           OPENAI_SECRET_ID: !Ref OpenAISecretArn
           SE_API_SECRET_ID: !Ref SeApiSecretArn
+          CHANNEL_API_SECRET_ID: !Ref ChannelApiSecretArn
           OPENAI_MODEL: !Ref OpenAIModel
           OPENAI_EXTRACTOR_MODEL: !Ref OpenAIExtractorModel
           OPENAI_RESPONSE_CLASSIFIER_MODEL: !Ref OpenAIResponseClassifierModel
@@ -270,6 +275,9 @@ Resources:
       AuthType: NONE
       TargetFunctionArn: !GetAtt RuntimeFunction.Arn
       Cors:
+        AllowHeaders:
+          - content-type
+          - x-api-key
         AllowMethods:
           - POST
         AllowOrigins:
@@ -302,3 +310,5 @@ Outputs:
     Value: !Ref OpenAISecretArn
   SeApiSecretArn:
     Value: !Ref SeApiSecretArn
+  ChannelApiSecretArn:
+    Value: !Ref ChannelApiSecretArn

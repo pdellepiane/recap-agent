@@ -40,10 +40,28 @@ export async function resolveSeApiKey(options: {
   });
 }
 
+export async function resolveChannelApiKey(options: {
+  directApiKey: string | null;
+  secretId: string | null;
+  region: string;
+}): Promise<string> {
+  if (options.directApiKey) {
+    return options.directApiKey;
+  }
+  if (!options.secretId) {
+    throw new Error('CHANNEL_API_SECRET_ID is required when CHANNEL_API_KEY is not set.');
+  }
+  return resolveSecretValue({
+    secretId: options.secretId,
+    region: options.region,
+    jsonKey: 'CHANNEL_API_KEY',
+  });
+}
+
 async function resolveSecretValue(options: {
   secretId: string;
   region: string;
-  jsonKey: 'OPENAI_API_KEY' | 'SE_API_KEY';
+  jsonKey: 'OPENAI_API_KEY' | 'SE_API_KEY' | 'CHANNEL_API_KEY';
 }): Promise<string> {
   const cachedSecret = cachedSecrets.get(options.secretId);
   if (cachedSecret) {
@@ -70,7 +88,7 @@ async function resolveSecretValue(options: {
 
 function extractApiKey(
   secretString: string,
-  jsonKey: 'OPENAI_API_KEY' | 'SE_API_KEY',
+  jsonKey: 'OPENAI_API_KEY' | 'SE_API_KEY' | 'CHANNEL_API_KEY',
 ): string {
   const trimmed = secretString.trim();
   if (trimmed.startsWith('{')) {

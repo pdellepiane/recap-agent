@@ -39,6 +39,7 @@ type CliOptions = {
 
 type ResolvedCliConfig = {
   functionUrl: string;
+  apiKey: string;
   plansTableName: string;
   stackName: string;
   region: string;
@@ -230,6 +231,7 @@ async function main() {
     try {
       result = await invokeLambda(
         config.functionUrl,
+        config.apiKey,
         {
           channel: config.channel,
           user_id: config.userId,
@@ -344,9 +346,14 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
 
   const showPlan = resolveBooleanToggle(options, 'plan', 'noPlan', true);
   const showTrace = resolveBooleanToggle(options, 'trace', 'noTrace', true);
+  const apiKey = process.env.CHANNEL_API_KEY;
+  if (!apiKey) {
+    throw new Error('CHANNEL_API_KEY is required in .env to invoke the protected Function URL.');
+  }
 
   return {
     functionUrl,
+    apiKey,
     plansTableName,
     stackName: options.stackName,
     region: options.region,
@@ -400,6 +407,7 @@ async function getStackOutputs(stackName: string, region: string) {
 
 async function invokeLambda(
   functionUrl: string,
+  apiKey: string,
   body: Record<string, unknown>,
   timeoutMs: number,
   progressReporter?: TurnProgressReporter,
@@ -420,6 +428,7 @@ async function invokeLambda(
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'x-api-key': apiKey,
       },
       body: JSON.stringify(body),
       signal: controller.signal,

@@ -30,6 +30,10 @@ export async function runLiveLambdaCase(args: {
       status: 'skipped',
     };
   }
+  const channelApiKey = process.env.CHANNEL_API_KEY;
+  if (!channelApiKey) {
+    throw new Error('CHANNEL_API_KEY is required for live Lambda evaluations.');
+  }
 
   const channel =
     args.currentCase.configOverrides?.liveLambda?.channel ??
@@ -73,6 +77,7 @@ export async function runLiveLambdaCase(args: {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'x-api-key': channelApiKey,
       },
       body: JSON.stringify({
         channel: input.channel ?? channel,
@@ -81,6 +86,7 @@ export async function runLiveLambdaCase(args: {
         message_id: `${args.currentCase.id}-${turnIndex}`,
         received_at: input.receivedAt ?? new Date().toISOString(),
         session_id: input.sessionId ?? args.currentCase.id,
+        contact_phone: input.contactPhone,
         client_mode: 'cli',
       }),
       signal: AbortSignal.timeout(95_000),

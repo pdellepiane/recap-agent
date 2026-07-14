@@ -1,11 +1,19 @@
 import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const env = loadDotEnv(path.join(root, '.env'));
+const envPath = path.join(root, '.env');
+const env = loadDotEnv(envPath);
 
-const required = ['OPENAI_API_KEY', 'SE_API_KEY'];
+if (!env.CHANNEL_API_KEY) {
+  env.CHANNEL_API_KEY = crypto.randomBytes(32).toString('base64url');
+  upsertDotEnvValue(envPath, 'CHANNEL_API_KEY', env.CHANNEL_API_KEY);
+  console.log('Generated CHANNEL_API_KEY and stored it in the ignored local .env file.');
+}
+
+const required = ['OPENAI_API_KEY', 'SE_API_KEY', 'CHANNEL_API_KEY'];
 for (const key of required) {
   if (!env[key]) {
     throw new Error(`${key} is required in .env for deployment.`);
@@ -24,6 +32,7 @@ const stackName = process.env.STACK_NAME ?? 'recap-agent-runtime';
 const functionName = process.env.FUNCTION_NAME ?? 'recap-agent-runtime';
 const secretName = process.env.OPENAI_SECRET_NAME ?? 'recap-agent/openai-api-key';
 const seApiSecretName = process.env.SE_API_SECRET_NAME ?? 'recap-agent/se-api-key';
+const channelApiSecretName = process.env.CHANNEL_API_SECRET_NAME ?? 'recap-agent/channel-api-key';
 const artifactBucket = process.env.ARTIFACT_BUCKET ?? `recap-agent-artifacts-${getAccountId(awsEnv)}-${awsEnv.AWS_REGION}`;
 const artifactKey = `lambda/${Date.now()}-recap-agent.zip`;
 const artifactDir = path.join(root, '.artifacts');
@@ -45,6 +54,12 @@ const seApiSecretArn = execFileSync(
   ['secretsmanager', 'describe-secret', '--secret-id', seApiSecretName, '--query', 'ARN', '--output', 'text'],
   { env: awsEnv, encoding: 'utf8' },
 ).trim();
+syncSecret(channelApiSecretName, env.CHANNEL_API_KEY, awsEnv);
+const channelApiSecretArn = execFileSync(
+  'aws',
+  ['secretsmanager', 'describe-secret', '--secret-id', channelApiSecretName, '--query', 'ARN', '--output', 'text'],
+  { env: awsEnv, encoding: 'utf8' },
+).trim();
 zipArtifact(path.join(root, 'dist'), artifactZip);
 run('aws', ['s3', 'cp', artifactZip, `s3://${artifactBucket}/${artifactKey}`], { env: awsEnv });
 run(
@@ -64,6 +79,7 @@ run(
     `CodeS3Key=${artifactKey}`,
     `OpenAISecretArn=${secretArn}`,
     `SeApiSecretArn=${seApiSecretArn}`,
+    `ChannelApiSecretArn=${channelApiSecretArn}`,
     `OpenAIModel=${process.env.OPENAI_MODEL ?? env.OPENAI_MODEL ?? 'gpt-5.4-mini'}`,
     `OpenAIExtractorModel=${process.env.OPENAI_EXTRACTOR_MODEL ?? env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.4-nano'}`,
     `OpenAIResponseClassifierModel=${process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? 'gpt-5.4-nano'}`,
@@ -153,6 +169,18 @@ function loadDotEnv(filePath) {
     result[key] = value;
   }
   return result;
+}
+
+function upsertDotEnvValue(filePath, key, value) {
+  const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
+  const lines = content.split(/\r?\n/);
+  const index = lines.findIndex((line) => line.startsWith(`${key}=`));
+  if (index >= 0) {
+    lines[index] = `${key}=${value}`;
+  } else {
+    lines.push(`${key}=${value}`);
+  }
+  fs.writeFileSync(filePath, `${lines.join('\n').replace(/^\n+/u, '')}\n`, { mode: 0o600 });
 }
 
 function run(command, args, options) {

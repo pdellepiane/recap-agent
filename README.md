@@ -228,6 +228,8 @@ These env vars are read through one validated runtime config module in [config.t
 
 Human escalation uses a dedicated Sin Envolturas Agent API service key. The deploy script reads `SE_API_KEY` from local `.env`, publishes it to Secrets Manager as `recap-agent/se-api-key`, and passes the resulting ARN to Lambda as `SE_API_SECRET_ID`. Do not reuse the guest/user validation bearer token for this integration.
 
+Channel adapters call the Function URL without AWS credentials or SigV4 and authenticate with `X-API-Key`. The deployment script generates `CHANNEL_API_KEY` into the ignored local `.env` when absent, publishes it to `recap-agent/channel-api-key`, and gives Lambda only the secret ARN. WhatsApp adapters must also send `contact_phone` in international form (for example `+51999999999`) on every turn so it is available to the plan before extraction and is reused by Agent API logging, human handoff, and contact flows.
+
 The native SDK response classifier reads bounded plan and Agent API conversation context before the normal agent flow. It runs in `enforce` mode: clear acknowledgements and reactions emit `message: null` with an explicit suppress delivery action. Classifier failures and ambiguous turns still fail open to a normal response.
 
 The same low-cost classifier call also monitors conversation health. One explicit-frustration assessment or two consecutive non-progress assessments triggers a single optional human-help offer. The offer does not request takeover by itself: structured acceptance uses the existing Agent API escalation workflow, while a decline resumes the automated flow. The terminal panel displays the health status, reason, and help-offer response for demos.

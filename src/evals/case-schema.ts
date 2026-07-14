@@ -264,6 +264,7 @@ const turnInputSchema = z.object({
   externalUserId: z.string().optional(),
   receivedAt: z.string().optional(),
   sessionId: z.string().optional(),
+  contactPhone: z.string().nullable().optional(),
 });
 
 const turnOutcomeSchema = <T extends z.ZodTypeAny>(inner: T) =>

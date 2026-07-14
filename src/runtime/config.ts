@@ -3,6 +3,10 @@ import { z } from 'zod';
 import type { ProviderSearchMode } from './provider-gateway';
 
 export type AppConfig = {
+  channelAuth: {
+    apiKey: string | null;
+    secretId: string | null;
+  };
   openAi: {
     apiKey: string | null;
     secretId: string | null;
@@ -77,6 +81,8 @@ export type AgentFeatureFlags = {
 };
 
 const environmentSchema = z.object({
+  CHANNEL_API_KEY: z.string().min(1).optional(),
+  CHANNEL_API_SECRET_ID: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_SECRET_ID: z.string().min(1).optional(),
   OPENAI_PROMPT_CACHE_RETENTION: z.enum(['in-memory', '24h']).default('in-memory'),
@@ -136,6 +142,10 @@ export function getConfig(): AppConfig {
   const environment = environmentSchema.parse(process.env);
 
   return {
+    channelAuth: {
+      apiKey: environment.CHANNEL_API_KEY ?? null,
+      secretId: environment.CHANNEL_API_SECRET_ID ?? null,
+    },
     openAi: {
       apiKey: environment.OPENAI_API_KEY ?? null,
       secretId: environment.OPENAI_SECRET_ID ?? null,

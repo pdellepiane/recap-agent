@@ -4,6 +4,7 @@ import { setTimeout as sleep } from 'node:timers/promises';
 
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 import { Command } from 'commander';
+import dotenv from 'dotenv';
 
 import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import type { DecisionNode } from '../core/decision-nodes';
@@ -12,6 +13,8 @@ import {
   ObservableLiveTurnPlanner,
   type ObservableLiveContext,
 } from './observable-live-script';
+
+dotenv.config({ quiet: true });
 
 type CliOptions = {
   url?: string;
@@ -167,6 +170,10 @@ async function invokeLambda(
   body: LambdaRequestBody,
   timeoutMs: number,
 ): Promise<LambdaTranscriptPayload> {
+  const channelApiKey = process.env.CHANNEL_API_KEY;
+  if (!channelApiKey) {
+    throw new Error('CHANNEL_API_KEY is required for the protected Function URL.');
+  }
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -174,6 +181,7 @@ async function invokeLambda(
       method: 'POST',
       headers: {
         'content-type': 'application/json',
+        'x-api-key': channelApiKey,
       },
       body: JSON.stringify(body),
       signal: controller.signal,

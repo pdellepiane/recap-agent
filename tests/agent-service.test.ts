@@ -3946,7 +3946,16 @@ describe('AgentService', () => {
   });
 
   it('seeds contact phone from webhook payload and skips asking for it', async () => {
-    const runtime = new FakeRuntime();
+    class PhoneAwareRuntime extends FakeRuntime {
+      public extractorPlanPhone: string | null = null;
+
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        this.extractorPlanPhone = request.plan.contact_phone;
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new PhoneAwareRuntime();
     const planStore = new RecordingPlanStore();
     const service = new AgentService({
       planStore,
@@ -3966,6 +3975,7 @@ describe('AgentService', () => {
     });
 
     expect(response.plan.contact_phone).toBe('51954779071');
+    expect(runtime.extractorPlanPhone).toBe('51954779071');
     expect(response.trace.operational_note).toBeNull();
   });
 

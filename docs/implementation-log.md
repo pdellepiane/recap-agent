@@ -3741,3 +3741,41 @@ development Lambda was redeployed in enforced mode. A scoped live turn recorded
 successful inbound and outbound logging calls in its trace, and the production
 Agent API history returned the generated assistant reply as `direction:
 "outbound"` alongside the corresponding inbound message.
+
+## Protect channel invocation and hydrate WhatsApp phone context
+
+- Added a dedicated `CHANNEL_API_KEY` service credential, Secrets Manager
+  publication, least-privilege Lambda secret access, and CloudFormation wiring.
+- Added constant-time `X-API-Key` validation before runtime initialization while
+  retaining Function URL `NONE` auth so adapters do not need AWS credentials.
+- Updated terminal and live-eval callers to authenticate with the channel key.
+- Added a typed Lambda request contract that requires valid international
+  `contact_phone` context for production and sandbox WhatsApp channels.
+- Hydrated normalized channel phone context into the working plan before the
+  classifier and extractor run, and added regression coverage proving the first
+  extractor turn sees the persisted phone.
+- Reworked `docs/channel-integration.md` with authentication, rotation, complete
+  delivery behavior, and explicit Meta WhatsApp field mapping.
+
+### Reason
+
+The raw Function URL needed a service-to-service credential without requiring
+channel infrastructure to hold AWS IAM credentials. Separately, treating the
+WhatsApp sender only as a user id allowed the first model turn to miss trusted
+phone context and potentially ask for it again.
+
+### Decision
+
+Use a separate high-entropy application API key in `X-API-Key`, validated before
+any expensive work. Require adapters to pass the WhatsApp sender twice with
+different semantics: namespaced `user_id` for plan identity and E.164
+`contact_phone` for trusted contact context and downstream requests.
+
+**Validation:** `npm run check` passed with 39 test files and 243 tests. The
+deployment generated the local channel key without printing it, published
+`recap-agent/channel-api-key`, and updated the development Lambda. Live probes
+confirmed missing and incorrect keys return `401`, an authenticated WhatsApp
+request without phone context returns a field-specific `400`, and a valid first
+turn persisted the normalized phone in the plan before extraction. That same
+phone appeared in Agent API history retrieval plus inbound and outbound logging,
+and the reply asked only for event details rather than the user's phone.
