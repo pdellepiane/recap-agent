@@ -7569,6 +7569,34 @@ describe('AgentService', () => {
     expect(gateway.operations).toEqual(['get', 'log:inbound', 'log:outbound']);
   });
 
+  it('logs sent outbound messages whenever the Agent Conversation gateway is configured', async () => {
+    const gateway = new TrackingAgentConversationGateway([]);
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new FakeRuntime(),
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'outbound-log-user',
+      text: 'Necesito catering en Lima para una boda de 80 personas',
+      messageId: 'outbound-log-message',
+      receivedAt: '2026-07-14T15:00:00.000Z',
+      contactPhone: '+51 900000321',
+    });
+
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(gateway.operations).toEqual(['log:outbound']);
+    expect(gateway.loggedMessages).toHaveLength(1);
+    expect(gateway.loggedMessages[0]).toMatchObject({
+      phoneNumber: '51900000321',
+      body: response.outbound.text,
+      direction: 'outbound',
+    });
+  });
+
   it('enforces acknowledgement suppression before extraction and provider search', async () => {
     class CountingRuntime extends FakeRuntime {
       public extractCalls = 0;

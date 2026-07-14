@@ -150,7 +150,7 @@ export class AgentService {
   ): Promise<HandleTurnResponse> {
     const response = await this.handleTurnCore(inbound);
     if (
-      this.dependencies.responseClassifier &&
+      this.dependencies.agentConversationGateway &&
       response.outbound.delivery.action === 'send' &&
       response.outbound.text
     ) {
@@ -163,7 +163,7 @@ export class AgentService {
           outputs: response.trace.tool_outputs,
         };
         await this.logAgentMessageWithTrace(
-          this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway(),
+          this.dependencies.agentConversationGateway,
           {
             phoneNumber,
             body: response.outbound.text,

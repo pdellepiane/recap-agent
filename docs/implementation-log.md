@@ -3715,3 +3715,29 @@ Agent API-backed reaction turn returned `message: null`, suppressed delivery,
 and no extractor or reply usage. A separate phone-free handoff persisted an
 expiration exactly 12 hours after `requested_at`; its confirmation exposed no
 duration, and the following inbound turn remained silent with zero model usage.
+
+## Decouple outbound Agent API logging from classification
+
+- Changed sent-message logging to depend on the configured Agent Conversation
+  gateway instead of the optional response classifier.
+- Kept suppressed deliveries excluded from outbound logs.
+- Added service coverage proving a normal generated reply is logged with its
+  canonical phone number even when no classifier is configured.
+
+### Reason
+
+Outbound conversation history is a channel integration responsibility. Tying it
+to classifier availability could silently omit assistant replies in runtimes or
+tests that configure the Agent API gateway independently.
+
+### Decision
+
+Log every generated `send` delivery through the configured Agent Conversation
+gateway before returning it. Preserve best-effort behavior so logging failures
+never block the user response.
+
+**Validation:** `npm run check` passed with 37 test files and 238 tests. The
+development Lambda was redeployed in enforced mode. A scoped live turn recorded
+successful inbound and outbound logging calls in its trace, and the production
+Agent API history returned the generated assistant reply as `direction:
+"outbound"` alongside the corresponding inbound message.
