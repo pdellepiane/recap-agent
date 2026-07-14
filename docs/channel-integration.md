@@ -315,14 +315,70 @@ Recommended channel identifiers:
 
 ## Adapter Flow
 
-1. Receive the native channel webhook.
-2. Verify the webhook signature or platform token.
-3. Deduplicate using the native channel message id.
-4. Normalize the inbound text and sender id.
-5. Send one POST to the runtime Function URL.
-6. Read `message` from the response.
-7. Send exactly that message through the channel.
-8. Store channel-side metadata for support and feedback correlation.
+The webhook server is a thin authenticated adapter. It should acknowledge Meta
+quickly and run the slower agent turn in a background worker.
+
+```mermaid
+flowchart TD
+    META["Meta WhatsApp Cloud API"] -->|"GET verification or POST webhook"| WEBHOOK["Webhook HTTPS endpoint"]
+    WEBHOOK --> KIND{"Verification request?"}
+    KIND -->|"GET"| VERIFY["Validate verify token and return hub.challenge"]
+    VERIFY --> META
+    KIND -->|"POST"| SIGNATURE["Verify X-Hub-Signature-256 against raw body"]
+    SIGNATURE -->|"Invalid"| REJECT["Return 401; do not enqueue"]
+    SIGNATURE -->|"Valid"| PARSE["Extract supported inbound message events"]
+    PARSE --> DEDUPE{"wamid already accepted?"}
+    DEDUPE -->|"Yes"| ACK["Return HTTP 200"]
+    DEDUPE -->|"No"| STORE["Persist idempotency record and enqueue turn"]
+    STORE --> ACK
+    STORE --> WORKER["Webhook turn worker"]
+    WORKER --> MAP["Map from to user_id and E.164 contact_phone"]
+    MAP -->|"POST plus X-API-Key"| RUNTIME["recap-agent Function URL"]
+    RUNTIME --> DELIVERY{"delivery.action"}
+    DELIVERY -->|"suppress"| COMPLETE["Mark complete; send no WhatsApp message"]
+    DELIVERY -->|"send"| SEND["POST text message to Meta Graph API"]
+    SEND -->|"Success"| COMPLETE
+    SEND -->|"Transient failure"| RETRY["Bounded retry using the same wamid job"]
+    RETRY --> SEND
+    RUNTIME -->|"Network or 5xx"| RUNTIME_RETRY["Bounded runtime retry with same message_id"]
+    RUNTIME_RETRY --> RUNTIME
+    RUNTIME -->|"400 or 401"| CONFIG_ERROR["Dead-letter and alert; do not retry blindly"]
+```
+
+### HTTP Webhook Path
+
+1. Handle Meta's `GET` verification handshake by comparing the configured verify
+   token and returning `hub.challenge` only when it matches.
+2. For `POST`, retain the raw request bytes and verify
+   `X-Hub-Signature-256` with the Meta app secret before parsing JSON. Reject an
+   invalid signature.
+3. Extract each supported inbound user-message event. Ignore delivery/read
+   status events and unsupported message types unless the adapter explicitly
+   normalizes them to text.
+4. Claim an idempotency key such as `whatsapp:<wamid>` in durable storage. The
+   claim and queue publication should be atomic or otherwise safe against Meta
+   retries.
+5. Enqueue one job per new inbound message and return HTTP `200` immediately.
+   Do not wait for the Lambda agent turn before acknowledging Meta.
+
+### Turn Worker Path
+
+1. Read the queued event and normalize Meta's `from` to digits.
+2. Build `user_id: whatsapp:<from>` and `contact_phone: +<from>`. Pass both on
+   every turn.
+3. Call the Function URL with server-side `X-API-Key` and the original WhatsApp
+   `wamid` as `message_id`.
+4. On `delivery.action: "send"`, send the non-null `message` to Meta's Graph API
+   using the WhatsApp business phone-number id and the original `from` as `to`.
+5. On `delivery.action: "suppress"`, mark the job complete without sending. This
+   covers enforced acknowledgement/reaction suppression and the human-support
+   ownership window.
+6. Persist `plan_id`, `current_node`, runtime delivery action, Graph API message
+   id, and final job status for support correlation.
+7. Retry network errors, `429`, and transient `5xx` responses with bounded
+   exponential backoff. Reuse the original `message_id`; never create a new turn
+   id for a retry. Treat runtime `400` and `401` as adapter/configuration errors
+   that require an alert rather than blind retries.
 
 Pseudo-code:
 
@@ -362,6 +418,27 @@ async function forwardTurn(request: RuntimeRequest): Promise<RuntimeChannelRespo
 
   return body as RuntimeChannelResponse;
 }
+```
+
+The process must branch on delivery before calling Meta:
+
+```ts
+const runtimeResponse = await forwardTurn(request);
+
+if (runtimeResponse.delivery.action === 'send' && runtimeResponse.message) {
+  await sendWhatsAppText({
+    to: from,
+    body: runtimeResponse.message,
+    idempotencyKey: request.message_id,
+  });
+}
+
+await markTurnComplete({
+  messageId: request.message_id,
+  planId: runtimeResponse.plan_id,
+  currentNode: runtimeResponse.current_node,
+  delivery: runtimeResponse.delivery,
+});
 ```
 
 A production adapter should validate the response shape before rendering. Keep that validation in the adapter package, not in `src/runtime`.

@@ -3779,3 +3779,25 @@ request without phone context returns a field-specific `400`, and a valid first
 turn persisted the normalized phone in the plan before extraction. That same
 phone appeared in Agent API history retrieval plus inbound and outbound logging,
 and the reply asked only for event details rather than the user's phone.
+
+## Document the production WhatsApp webhook server flow
+
+- Added a Mermaid architecture flow covering Meta verification, raw-body
+  signature validation, durable idempotency, queue acknowledgement, runtime
+  authentication, delivery suppression, Graph API send, retries, and alerts.
+- Split webhook responsibilities into a fast HTTP acceptance path and a slower
+  queued turn-worker path.
+- Added executable-shape TypeScript showing the mandatory delivery-action branch
+  before sending through WhatsApp.
+
+### Reason
+
+Calling the synchronous agent runtime directly inside the Meta webhook response
+window risks webhook retries, duplicate plans, and duplicate user replies. The
+adapter also needs an explicit rule for suppressed turns and human handoff.
+
+### Decision
+
+Verify and enqueue quickly, then process each unique WhatsApp `wamid` in a
+worker. Use the same `wamid` as runtime `message_id` across retries and only call
+the Graph API when the runtime explicitly returns a send delivery.
