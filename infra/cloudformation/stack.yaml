@@ -14,12 +14,24 @@ Parameters:
   OpenAISecretArn:
     Type: String
     Description: ARN of the Secrets Manager secret containing the OpenAI API key.
+  SeApiSecretArn:
+    Type: String
+    Description: ARN of the Secrets Manager secret containing the Sin Envolturas Agent API key.
   OpenAIModel:
     Type: String
     Default: gpt-5.4-mini
   OpenAIExtractorModel:
     Type: String
     Default: gpt-5.4-nano
+  OpenAIResponseClassifierModel:
+    Type: String
+    Default: gpt-5.4-nano
+  ResponseClassifierMode:
+    Type: String
+    Default: enforce
+    AllowedValues:
+      - observe
+      - enforce
   OpenAIPromptCacheRetention:
     Type: String
     Default: in-memory
@@ -35,6 +47,19 @@ Parameters:
   SinEnvolturasGuestAuthBaseUrl:
     Type: String
     Default: https://se-v2-api-dev.jnq.io/api-web/user
+  AgentApiBaseUrl:
+    Type: String
+    Default: https://api.sinenvolturas.com/api/agent
+  AgentApiTimeoutMs:
+    Type: Number
+    Default: 5000
+    MinValue: 250
+    MaxValue: 30000
+  AgentApiMaxRetries:
+    Type: Number
+    Default: 2
+    MinValue: 0
+    MaxValue: 5
   ProviderSearchMode:
     Type: String
     Default: hybrid
@@ -190,7 +215,9 @@ Resources:
               - Effect: Allow
                 Action:
                   - secretsmanager:GetSecretValue
-                Resource: !Ref OpenAISecretArn
+                Resource:
+                  - !Ref OpenAISecretArn
+                  - !Ref SeApiSecretArn
 
   RuntimeFunction:
     Type: AWS::Lambda::Function
@@ -207,8 +234,11 @@ Resources:
       Environment:
         Variables:
           OPENAI_SECRET_ID: !Ref OpenAISecretArn
+          SE_API_SECRET_ID: !Ref SeApiSecretArn
           OPENAI_MODEL: !Ref OpenAIModel
           OPENAI_EXTRACTOR_MODEL: !Ref OpenAIExtractorModel
+          OPENAI_RESPONSE_CLASSIFIER_MODEL: !Ref OpenAIResponseClassifierModel
+          RESPONSE_CLASSIFIER_MODE: !Ref ResponseClassifierMode
           OPENAI_PROMPT_CACHE_RETENTION: !Ref OpenAIPromptCacheRetention
           PLANS_TABLE_NAME: !Ref PlansTable
           PERF_TABLE_NAME: !Ref PerfTable
@@ -218,6 +248,9 @@ Resources:
           SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
           SINENVOLTURAS_GUEST_SERVICE_BASE_URL: !Ref SinEnvolturasGuestServiceBaseUrl
           SINENVOLTURAS_GUEST_AUTH_BASE_URL: !Ref SinEnvolturasGuestAuthBaseUrl
+          AGENT_API_BASE_URL: !Ref AgentApiBaseUrl
+          AGENT_API_TIMEOUT_MS: !Ref AgentApiTimeoutMs
+          AGENT_API_MAX_RETRIES: !Ref AgentApiMaxRetries
           PROVIDER_SEARCH_MODE: !Ref ProviderSearchMode
           PROVIDER_VECTOR_STORE_NAME: !Ref ProviderVectorStoreName
           PROVIDER_VECTOR_STORE_ID: !Ref ProviderVectorStoreId
@@ -267,3 +300,5 @@ Outputs:
     Value: !Ref PerfTable
   OpenAISecretArn:
     Value: !Ref OpenAISecretArn
+  SeApiSecretArn:
+    Value: !Ref SeApiSecretArn

@@ -81,6 +81,14 @@ npm run terminal -- --show-raw --full-plan
 npm run terminal -- --url https://... --plans-table recap-agent-runtime-plans
 ```
 
+Classifier demo against the deployed Lambda:
+
+```bash
+npm run terminal -- --user-id classifier-demo --contact-phone "+51 999999999" --no-plan --no-trace
+```
+
+Use a dedicated demo phone because phone-bearing turns read and append production Agent API conversation history. Send a normal planning request first, then send `👍`. The CLI displays a prominent `response classifier` panel. In `enforce` mode the second turn should show `prediction=SUPPRESS`, `actual_delivery=SUPPRESS`, `context=agent_api`, and `fallback=false`.
+
 Built-in debug commands inside the CLI:
 
 - `/help`
@@ -188,6 +196,8 @@ Full usage guidance is documented in [evaluation-framework.md](/Users/leonardoca
 ```bash
 OPENAI_MODEL=gpt-5.4-mini
 OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano
+OPENAI_RESPONSE_CLASSIFIER_MODEL=gpt-5.4-nano
+RESPONSE_CLASSIFIER_MODE=enforce
 OPENAI_PROMPT_CACHE_RETENTION=in-memory
 AWS_REGION=us-east-1
 PLANS_TABLE_NAME=recap-agent-runtime-plans
@@ -195,6 +205,8 @@ PROMPTS_DIR=/var/task/prompts
 SINENVOLTURAS_BASE_URL=https://api.sinenvolturas.com/api-web/vendor
 SINENVOLTURAS_GUEST_SERVICE_BASE_URL=https://se-v2-api-dev.jnq.io/api/guest-service
 SINENVOLTURAS_GUEST_AUTH_BASE_URL=https://se-v2-api-dev.jnq.io/api-web/user
+AGENT_API_BASE_URL=https://api.sinenvolturas.com/api/agent
+SE_API_SECRET_ID=arn:aws:secretsmanager:us-east-1:...:secret:recap-agent/se-api-key-...
 DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
 PROVIDER_SEARCH_LIMIT=15
 SEARCH_SUMMARY_WORD_LIMIT=5
@@ -205,7 +217,7 @@ PERF_TABLE_NAME=recap-agent-runtime-perf
 PERF_RETENTION_DAYS=30
 ```
 
-These env vars are read through one validated runtime config module in [config.ts](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/src/runtime/config.ts). `stack.yaml` supplies the Lambda environment at deploy time, so the CloudFormation defaults and deploy script must stay aligned with `config.ts`. That file is the central place for:
+These env vars are read through one validated runtime config module in [config.ts](/Users/leonardocandio/Work/thesis/recap-agent/src/runtime/config.ts). `stack.yaml` supplies the Lambda environment at deploy time, so the CloudFormation defaults and deploy script must stay aligned with `config.ts`. That file is the central place for:
 
 - model selection
 - provider search limits
@@ -213,6 +225,12 @@ These env vars are read through one validated runtime config module in [config.t
 - provider detail lookup limits
 - default inbound channel
 - AWS table and prompt paths
+
+Human escalation uses a dedicated Sin Envolturas Agent API service key. The deploy script reads `SE_API_KEY` from local `.env`, publishes it to Secrets Manager as `recap-agent/se-api-key`, and passes the resulting ARN to Lambda as `SE_API_SECRET_ID`. Do not reuse the guest/user validation bearer token for this integration.
+
+The native SDK response classifier reads bounded plan and Agent API conversation context before the normal agent flow. It runs in `enforce` mode: clear acknowledgements and reactions emit `message: null` with an explicit suppress delivery action. Classifier failures and ambiguous turns still fail open to a normal response.
+
+The same low-cost classifier call also monitors conversation health. One explicit-frustration assessment or two consecutive non-progress assessments triggers a single optional human-help offer. The offer does not request takeover by itself: structured acceptance uses the existing Agent API escalation workflow, while a decline resumes the automated flow. The terminal panel displays the health status, reason, and help-offer response for demos.
 
 Linting is enforced through [eslint.config.mjs](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/eslint.config.mjs), including an explicit ban on `any` in TypeScript files.
 

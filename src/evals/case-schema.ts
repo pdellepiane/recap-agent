@@ -173,6 +173,7 @@ const turnTraceSchema = z.object({
   timing_ms: z.object({
     total: z.number().nonnegative(),
     load_plan: z.number().nonnegative(),
+    response_classification: z.number().nonnegative().optional(),
     prepare_working_plan: z.number().nonnegative(),
     extraction: z.number().nonnegative(),
     apply_extraction: z.number().nonnegative(),
@@ -184,6 +185,12 @@ const turnTraceSchema = z.object({
     save_plan: z.number().nonnegative(),
   }),
   token_usage: z.object({
+    classifier: z.object({
+      input_tokens: z.number().nonnegative(),
+      output_tokens: z.number().nonnegative(),
+      total_tokens: z.number().nonnegative(),
+      cached_input_tokens: z.number().nonnegative().optional(),
+    }).nullable().optional(),
     extraction: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
@@ -203,6 +210,28 @@ const turnTraceSchema = z.object({
       cached_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
   }),
+  response_classifier: z.object({
+    mode: z.enum(['observe', 'enforce']),
+    action: z.enum(['respond', 'suppress_acknowledgement', 'suppress_reaction']),
+    reason: z.string(),
+    would_suppress: z.boolean(),
+    context_source: z.enum(['agent_api', 'local_plan']),
+    has_prior_outbound_message: z.boolean(),
+    fallback_used: z.boolean(),
+    conversation_health: z.enum(['progressing', 'uncertain', 'stalled', 'frustrated']),
+    health_reason: z.enum([
+      'normal_progress',
+      'repeated_question',
+      'repeated_correction',
+      'unresolved_error',
+      'circular_conversation',
+      'explicit_frustration',
+      'insufficient_context',
+    ]),
+    human_help_response: z.enum(['not_applicable', 'accept', 'decline', 'unclear']),
+    prompt_bundle_id: z.string().nullable(),
+    prompt_file_paths: z.array(z.string()),
+  }).optional(),
 });
 
 const cliPerfSummarySchema = z.object({
@@ -215,6 +244,11 @@ const cliPerfSummarySchema = z.object({
   provider_results_count: z.number().int().nonnegative(),
   recommendation_context_candidates: z.number().int().nonnegative().default(0),
   recommendation_presentation_limit: z.number().int().positive().default(5),
+  response_classifier_action: z.string().nullable().optional(),
+  response_classifier_would_suppress: z.boolean().nullable().optional(),
+  conversation_health_status: z.string().nullable().optional(),
+  conversation_health_reason: z.string().nullable().optional(),
+  human_help_response: z.string().nullable().optional(),
   total_tokens: z.number().nonnegative().nullable(),
   cached_input_tokens: z.number().nonnegative().nullable(),
   cache_hit_rate: z.number().min(0).max(1).nullable(),
@@ -564,7 +598,11 @@ export const evalMatrixSchema = z.object({
 export type EvalMatrix = z.infer<typeof evalMatrixSchema>;
 
 export const lambdaTurnResponseSchema = z.object({
-  message: z.string(),
+  message: z.string().nullable(),
+  delivery: z.object({
+    action: z.enum(['send', 'suppress']),
+    reason: z.string(),
+  }).optional(),
   conversation_id: z.string().nullable(),
   plan_id: z.string(),
   current_node: decisionNodeSchema,

@@ -77,7 +77,7 @@ export async function runOfflineCase(args: {
     turns.push({
       turnIndex,
       input,
-      outputText: response.outbound.text,
+      outputText: response.outbound.text ?? '',
       currentNode: response.plan.current_node,
       trace: response.trace,
       plan: response.plan,

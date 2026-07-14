@@ -1,6 +1,7 @@
 import type { DecisionNode } from './decision-nodes';
 import type { ProviderSummary } from './provider';
 import type { TurnDecision } from './turn-decision';
+import type { MessageResponseClassifierTrace } from '../runtime/message-response-classifier';
 
 export type ToolOutputTrace = {
   tool: string;
@@ -171,6 +172,7 @@ export type TurnTrace = {
   timing_ms: {
     total: number;
     load_plan: number;
+    response_classification?: number;
     prepare_working_plan: number;
     extraction: number;
     apply_extraction: number;
@@ -182,6 +184,12 @@ export type TurnTrace = {
     save_plan: number;
   };
   token_usage: {
+    classifier?: {
+      input_tokens: number;
+      output_tokens: number;
+      total_tokens: number;
+      cached_input_tokens?: number;
+    } | null;
     extraction: {
       input_tokens: number;
       output_tokens: number;
@@ -201,4 +209,5 @@ export type TurnTrace = {
       cached_input_tokens?: number;
     } | null;
   };
+  response_classifier?: MessageResponseClassifierTrace;
 };

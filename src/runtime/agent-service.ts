@@ -18,6 +18,7 @@ import {
   isPlanFinished,
   mergePlan,
   replaceProviderNeeds,
+  type ConversationHealthState,
   type PersistedPlan,
   type PlanSnapshot,
   type ProviderNeed,
@@ -55,6 +56,17 @@ import {
 } from '../core/turn-decision';
 import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
 import type { TokenUsage } from './contracts';
+import {
+  NoopAgentConversationGateway,
+  type AgentConversationGateway,
+  type AgentGatewayResult,
+  type AgentMessageLogInput,
+  type AgentConversationMessage,
+} from './agent-conversation-gateway';
+import type {
+  MessageResponseClassifier,
+  MessageResponseClassifierTrace,
+} from './message-response-classifier';
 import type { MessageRenderer } from './message-renderer';
 import {
   inferCurrencyFromBudget,
@@ -118,6 +130,7 @@ const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 const MAX_STARTER_NEEDS = 5;
 const MAX_DETAILED_ELICITATION_NEEDS = 5;
 const MAX_PROVIDER_QUERIES_PER_NEED = 3;
+const HUMAN_ESCALATION_SUPPRESSION_MS = 12 * 60 * 60 * 1_000;
 
 export class AgentService {
   constructor(
@@ -125,12 +138,47 @@ export class AgentService {
       planStore: PlanStore;
       runtime: AgentRuntime;
       providerGateway: ProviderGateway;
+      agentConversationGateway?: AgentConversationGateway;
+      responseClassifier?: MessageResponseClassifier;
       promptLoader: PromptLoader;
       renderers: Record<string, MessageRenderer>;
     },
   ) {}
 
   async handleTurn(
+    inbound: NormalizedInboundMessage,
+  ): Promise<HandleTurnResponse> {
+    const response = await this.handleTurnCore(inbound);
+    if (
+      this.dependencies.responseClassifier &&
+      response.outbound.delivery.action === 'send' &&
+      response.outbound.text
+    ) {
+      const phoneNumber = this.resolveEscalationPhone(inbound, response.plan);
+      if (phoneNumber) {
+        const toolUsage: ToolUsage = {
+          considered: response.trace.tools_considered,
+          called: response.trace.tools_called,
+          inputs: response.trace.tool_inputs,
+          outputs: response.trace.tool_outputs,
+        };
+        await this.logAgentMessageWithTrace(
+          this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway(),
+          {
+            phoneNumber,
+            body: response.outbound.text,
+            direction: 'outbound',
+            whatsappMessageId: inbound.messageId,
+            sentAt: new Date().toISOString(),
+          },
+          toolUsage,
+        );
+      }
+    }
+    return response;
+  }
+
+  private async handleTurnCore(
     inbound: NormalizedInboundMessage,
   ): Promise<HandleTurnResponse> {
     const handleTurnStartedAt = Date.now();
@@ -143,6 +191,7 @@ export class AgentService {
     const timingMs = {
       total: 0,
       load_plan: 0,
+      response_classification: 0,
       prepare_working_plan: 0,
       extraction: 0,
       apply_extraction: 0,
@@ -154,14 +203,19 @@ export class AgentService {
       save_plan: 0,
     };
     const tokenUsage: {
+      classifier: TokenUsage | null;
       extraction: TokenUsage | null;
       reply: TokenUsage | null;
       total: TokenUsage | null;
     } = {
+      classifier: null,
       extraction: null,
       reply: null,
       total: null,
     };
+    const agentConversationGateway =
+      this.dependencies.agentConversationGateway ??
+      new NoopAgentConversationGateway('not_configured');
     const loadPlanStartedAt = Date.now();
     let existingPlan = await this.dependencies.planStore.getByExternalUser(
       inbound.channel,
@@ -176,6 +230,267 @@ export class AgentService {
           )
         : null;
     timingMs.load_plan += Date.now() - loadPlanStartedAt;
+
+    if (
+      existingPlan?.human_escalation.status === 'requested' &&
+      !this.isHumanEscalationSuppressionActive(existingPlan)
+    ) {
+      const expiredAt = this.resolveHumanEscalationSuppressedUntil(existingPlan);
+      this.recordDeterministicToolInput(toolUsage, 'expire_human_escalation_window', {
+        bot_suppressed_until: expiredAt,
+      });
+      existingPlan = mergePlan(existingPlan, {
+        current_node: resolveResumeNode(existingPlan),
+        human_escalation: {
+          status: 'none',
+          requested_at: null,
+          bot_suppressed_until: null,
+          phone_number: null,
+          last_error: null,
+        },
+      });
+      this.recordDeterministicToolOutput(toolUsage, 'expire_human_escalation_window', {
+        status: 'expired',
+        resumed_node: existingPlan.current_node,
+      });
+    }
+
+    let classifierPlan = existingPlan ?? createEmptyPlan({
+      planId: ulid(),
+      channel: inbound.channel,
+      externalUserId: inbound.externalUserId,
+    });
+    let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
+    if (this.dependencies.responseClassifier) {
+      const preflightStartedAt = Date.now();
+      const preflight = await this.runResponseClassifierPreflight({
+        inbound,
+        plan: classifierPlan,
+        gateway: agentConversationGateway,
+        toolUsage,
+        skipClassification: existingPlan?.human_escalation.status === 'requested',
+      });
+      timingMs.response_classification += Date.now() - preflightStartedAt;
+      tokenUsage.classifier = preflight.tokenUsage;
+      tokenUsage.total = this.sumTokenUsage(tokenUsage.classifier);
+      responseClassifierTrace = preflight.trace;
+    }
+
+    if (existingPlan?.human_escalation.status === 'requested') {
+      const planToSave = mergePlan(existingPlan, {
+        current_node: 'solicitar_agente_humano',
+      });
+      const savePlanStartedAt = Date.now();
+      await this.dependencies.planStore.save({
+        plan: planToSave,
+        reason: 'human_escalation_soft_pause',
+      });
+      timingMs.save_plan += Date.now() - savePlanStartedAt;
+      timingMs.total = Date.now() - handleTurnStartedAt;
+      const extraction = this.buildSyntheticEscalationExtraction(
+        'El usuario escribió después de que se pidió una revisión humana.',
+      );
+      const outbound = this.suppressOutbound(planToSave.conversation_id, 'human_escalation_active');
+      return {
+        plan: planToSave,
+        outbound,
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode: existingPlan.current_node,
+          currentNode: 'solicitar_agente_humano',
+          nodePath: [existingPlan.current_node, 'solicitar_agente_humano'],
+          extraction,
+          missingFields: [],
+          searchReady: false,
+          promptBundleId: 'deterministic:human_escalation_soft_pause',
+          promptFilePaths: [],
+          toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'human_escalation_soft_pause',
+          timingMs,
+          tokenUsage,
+          searchStrategy: 'none',
+          turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
+          operationalNote: 'Conversation is soft-paused after human escalation.',
+          responseClassifier: responseClassifierTrace,
+        }),
+      };
+    }
+
+    if (responseClassifierTrace) {
+      const previousHealth = classifierPlan.conversation_health;
+      const healthUpdate = this.reduceConversationHealth(previousHealth, responseClassifierTrace);
+      classifierPlan = mergePlan(classifierPlan, {
+        conversation_health: healthUpdate.state,
+      });
+      if (existingPlan) {
+        existingPlan = classifierPlan;
+      }
+
+      if (
+        previousHealth.help_offer_status === 'offered' &&
+        responseClassifierTrace.human_help_response === 'accept'
+      ) {
+        const phoneNumber = this.resolveEscalationPhone(inbound, classifierPlan);
+        const gatewayResult = phoneNumber
+          ? await this.requestHumanTakeoverWithTrace(
+              agentConversationGateway,
+              phoneNumber,
+              toolUsage,
+            )
+          : this.missingPhoneEscalationResult();
+        const planToSave = mergePlan(classifierPlan, {
+          current_node: 'solicitar_agente_humano',
+          intent: 'solicitar_humano',
+          human_escalation: {
+            status: 'requested',
+            requested_at: new Date().toISOString(),
+            bot_suppressed_until: this.newHumanEscalationSuppressedUntil(),
+            phone_number: phoneNumber,
+            last_error: gatewayResult.status === 'failed'
+              ? gatewayResult.error
+              : gatewayResult.status === 'skipped'
+                ? gatewayResult.message
+                : null,
+          },
+        });
+        const savePlanStartedAt = Date.now();
+        await this.dependencies.planStore.save({
+          plan: planToSave,
+          reason: 'human_help_offer_accepted',
+        });
+        timingMs.save_plan += Date.now() - savePlanStartedAt;
+        timingMs.total = Date.now() - handleTurnStartedAt;
+        const extraction = this.buildSyntheticEscalationExtraction(
+          'El usuario aceptó la oferta de apoyo humano.',
+        );
+        return {
+          plan: planToSave,
+          outbound: this.renderOutbound(
+            { text: this.humanEscalationRequestedMessage(gatewayResult) },
+            [],
+            inbound.channel,
+            planToSave.conversation_id,
+          ),
+          trace: this.buildTrace({
+            plan: planToSave,
+            previousNode: classifierPlan.current_node,
+            currentNode: 'solicitar_agente_humano',
+            nodePath: [classifierPlan.current_node, 'solicitar_agente_humano'],
+            extraction,
+            missingFields: [],
+            searchReady: false,
+            promptBundleId: 'deterministic:human_help_offer_accepted',
+            promptFilePaths: [],
+            toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason: 'human_help_offer_accepted',
+            timingMs,
+            tokenUsage,
+            searchStrategy: 'none',
+            turnDecision: this.humanEscalationTurnDecision('human_help_offer_accepted'),
+            operationalNote: this.humanEscalationOperationalNote(gatewayResult),
+            responseClassifier: responseClassifierTrace,
+          }),
+        };
+      }
+
+      if (healthUpdate.shouldOfferHelp) {
+        const planToSave = mergePlan(classifierPlan, {
+          current_node: 'ofrecer_agente_humano',
+        });
+        const savePlanStartedAt = Date.now();
+        await this.dependencies.planStore.save({
+          plan: planToSave,
+          reason: 'conversation_health_help_offer',
+        });
+        timingMs.save_plan += Date.now() - savePlanStartedAt;
+        timingMs.total = Date.now() - handleTurnStartedAt;
+        const extraction = this.buildSyntheticConversationHealthExtraction();
+        return {
+          plan: planToSave,
+          outbound: this.renderOutbound(
+            { text: this.conversationHealthHelpOfferMessage() },
+            [],
+            inbound.channel,
+            planToSave.conversation_id,
+          ),
+          trace: this.buildTrace({
+            plan: planToSave,
+            previousNode: classifierPlan.current_node,
+            currentNode: 'ofrecer_agente_humano',
+            nodePath: [classifierPlan.current_node, 'ofrecer_agente_humano'],
+            extraction,
+            missingFields: planToSave.missing_fields,
+            searchReady: false,
+            promptBundleId: 'deterministic:conversation_health_help_offer',
+            promptFilePaths: [
+              'prompts/nodes/ofrecer_agente_humano/system.txt',
+              'prompts/nodes/ofrecer_agente_humano/response_contract.txt',
+              'prompts/nodes/ofrecer_agente_humano/tool_policy.txt',
+            ],
+            toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason: 'conversation_health_help_offer',
+            timingMs,
+            tokenUsage,
+            searchStrategy: 'none',
+            turnDecision: this.conversationHealthTurnDecision(responseClassifierTrace.health_reason),
+            operationalNote: 'Conversation health monitor offered optional human help.',
+            responseClassifier: responseClassifierTrace,
+          }),
+        };
+      }
+    }
+
+    if (
+      responseClassifierTrace?.mode === 'enforce' &&
+      responseClassifierTrace.would_suppress
+    ) {
+      const planToSave = existingPlan ?? classifierPlan;
+      const savePlanStartedAt = Date.now();
+      await this.dependencies.planStore.save({
+        plan: planToSave,
+        reason: 'response_classifier_suppressed',
+      });
+      timingMs.save_plan += Date.now() - savePlanStartedAt;
+      timingMs.total = Date.now() - handleTurnStartedAt;
+      const extraction = this.buildSyntheticSuppressionExtraction(responseClassifierTrace.reason);
+      return {
+        plan: planToSave,
+        outbound: this.suppressOutbound(
+          planToSave.conversation_id,
+          responseClassifierTrace.action,
+        ),
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode: existingPlan?.current_node ?? 'contacto_inicial',
+          currentNode: planToSave.current_node,
+          nodePath: [planToSave.current_node],
+          extraction,
+          missingFields: planToSave.missing_fields,
+          searchReady: false,
+          promptBundleId: responseClassifierTrace.prompt_bundle_id ?? 'classifier:fallback',
+          promptFilePaths: responseClassifierTrace.prompt_file_paths,
+          toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'response_classifier_suppressed',
+          timingMs,
+          tokenUsage,
+          searchStrategy: 'none',
+          operationalNote: 'Reply delivery was suppressed by the response classifier.',
+          responseClassifier: responseClassifierTrace,
+        }),
+      };
+    }
 
     if (existingPlan && isPlanFinished(existingPlan)) {
       const extractionStartedAt = Date.now();
@@ -254,7 +569,11 @@ export class AgentService {
           invitedEventLookupResult: finishedInvitedEventLookupResult,
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
-        tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+        tokenUsage.total = this.sumTokenUsage(
+          tokenUsage.classifier,
+          tokenUsage.extraction,
+          tokenUsage.reply,
+        );
         timingMs.compose_reply += Date.now() - extractionStartedAt;
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
@@ -277,6 +596,7 @@ export class AgentService {
             planPersistReason: respondNode === 'consultar_evento_invitado' ? respondNode : null,
             timingMs,
             tokenUsage,
+            responseClassifier: responseClassifierTrace,
             searchStrategy: 'none',
             operationalNote: finishedErrorMessage,
           }),
@@ -285,13 +605,7 @@ export class AgentService {
     }
 
     const previousNode = existingPlan?.current_node ?? 'contacto_inicial';
-    const loadedPlan =
-      existingPlan ??
-      createEmptyPlan({
-        planId: ulid(),
-        channel: inbound.channel,
-        externalUserId: inbound.externalUserId,
-      });
+    const loadedPlan = existingPlan ?? classifierPlan;
 
     const prepareWorkingPlanStartedAt = Date.now();
     let planToResume = loadedPlan;
@@ -411,6 +725,73 @@ export class AgentService {
       timingMs.save_plan += Date.now() - savePlanStartedAt;
     };
 
+    if (extraction.intent === 'solicitar_humano') {
+      currentNode = 'solicitar_agente_humano';
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+      const phoneNumber = this.resolveEscalationPhone(inbound, mergedPlan);
+      const requestedAt = new Date().toISOString();
+      const gatewayResult = phoneNumber
+        ? await this.requestHumanTakeoverWithTrace(
+            agentConversationGateway,
+            phoneNumber,
+            toolUsage,
+          )
+        : this.missingPhoneEscalationResult();
+      const planToSave = mergePlan(mergedPlan, {
+        current_node: currentNode,
+        intent: 'solicitar_humano',
+        human_escalation: {
+          status: 'requested',
+          requested_at: requestedAt,
+          bot_suppressed_until: this.newHumanEscalationSuppressedUntil(),
+          phone_number: phoneNumber,
+          last_error: gatewayResult.status === 'failed'
+            ? gatewayResult.error
+            : gatewayResult.status === 'skipped'
+              ? gatewayResult.message
+              : null,
+        },
+      });
+      await persistPlan(planToSave, currentNode);
+      planPersisted = true;
+      planPersistReason = currentNode;
+      timingMs.total = Date.now() - handleTurnStartedAt;
+      const outbound = this.renderOutbound(
+        { text: this.humanEscalationRequestedMessage(gatewayResult) },
+        [],
+        inbound.channel,
+        planToSave.conversation_id,
+      );
+      return {
+        plan: planToSave,
+        outbound,
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode,
+          currentNode,
+          nodePath,
+          extraction,
+          missingFields: [],
+          searchReady: false,
+          promptBundleId: 'deterministic:solicitar_agente_humano',
+          promptFilePaths: [],
+          toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted,
+          planPersistReason,
+          timingMs,
+          tokenUsage,
+          responseClassifier: responseClassifierTrace,
+          searchStrategy,
+          turnDecision: this.humanEscalationTurnDecision(currentNode),
+          operationalNote: this.humanEscalationOperationalNote(gatewayResult),
+        }),
+      };
+    }
+
     if (extraction.pauseRequested || extraction.intent === 'pausar') {
       currentNode = 'guardar_cerrar_temporalmente';
       if (nodePath[nodePath.length - 1] !== currentNode) {
@@ -440,7 +821,11 @@ export class AgentService {
         toolUsage,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      tokenUsage.total = this.sumTokenUsage(
+        tokenUsage.classifier,
+        tokenUsage.extraction,
+        tokenUsage.reply,
+      );
       const recommendationFunnel = this.resolveRecommendationFunnel(
         reply.recommendationFunnel ?? null,
         providerResults,
@@ -470,6 +855,7 @@ export class AgentService {
           planPersistReason: planPersistReason,
           timingMs,
           tokenUsage,
+          responseClassifier: responseClassifierTrace,
           searchStrategy,
           operationalNote: errorMessage,
         }),
@@ -546,7 +932,11 @@ export class AgentService {
           toolUsage,
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
-        tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+        tokenUsage.total = this.sumTokenUsage(
+          tokenUsage.classifier,
+          tokenUsage.extraction,
+          tokenUsage.reply,
+        );
         const recommendationFunnel = this.resolveRecommendationFunnel(
           reply.recommendationFunnel ?? null,
           providerResults,
@@ -576,6 +966,7 @@ export class AgentService {
             planPersistReason: planPersistReason,
             timingMs,
             tokenUsage,
+            responseClassifier: responseClassifierTrace,
             searchStrategy,
             operationalNote: errorMessage,
           }),
@@ -611,7 +1002,11 @@ export class AgentService {
         toolUsage,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      tokenUsage.total = this.sumTokenUsage(
+        tokenUsage.classifier,
+        tokenUsage.extraction,
+        tokenUsage.reply,
+      );
       const recommendationFunnel = this.resolveRecommendationFunnel(
         reply.recommendationFunnel ?? null,
         providerResults,
@@ -641,6 +1036,7 @@ export class AgentService {
           planPersistReason: planPersistReason,
           timingMs,
           tokenUsage,
+          responseClassifier: responseClassifierTrace,
           searchStrategy,
           operationalNote: errorMessage,
         }),
@@ -677,7 +1073,11 @@ export class AgentService {
           toolUsage,
         });
       tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      tokenUsage.total = this.sumTokenUsage(
+        tokenUsage.classifier,
+        tokenUsage.extraction,
+        tokenUsage.reply,
+      );
       const recommendationFunnel = this.resolveRecommendationFunnel(
         reply.recommendationFunnel ?? null,
         providerResults,
@@ -707,6 +1107,7 @@ export class AgentService {
           planPersistReason: planPersistReason,
           timingMs,
           tokenUsage,
+          responseClassifier: responseClassifierTrace,
           searchStrategy,
           operationalNote: errorMessage,
         }),
@@ -751,7 +1152,11 @@ export class AgentService {
         invitedEventLookupResult,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      tokenUsage.total = this.sumTokenUsage(
+        tokenUsage.classifier,
+        tokenUsage.extraction,
+        tokenUsage.reply,
+      );
       const recommendationFunnel = this.resolveRecommendationFunnel(
         reply.recommendationFunnel ?? null,
         providerResults,
@@ -781,6 +1186,7 @@ export class AgentService {
           planPersistReason: planPersistReason,
           timingMs,
           tokenUsage,
+          responseClassifier: responseClassifierTrace,
           searchStrategy,
           operationalNote: errorMessage,
         }),
@@ -1094,7 +1500,11 @@ export class AgentService {
       invitedEventLookupResult,
     });
     tokenUsage.reply = reply.tokenUsage ?? null;
-    tokenUsage.total = this.sumTokenUsage(tokenUsage.extraction, tokenUsage.reply);
+      tokenUsage.total = this.sumTokenUsage(
+        tokenUsage.classifier,
+        tokenUsage.extraction,
+        tokenUsage.reply,
+      );
     const recommendationFunnel = this.resolveRecommendationFunnel(
       reply.recommendationFunnel ?? null,
       providerResults,
@@ -1130,6 +1540,7 @@ export class AgentService {
         planPersistReason,
         timingMs,
         tokenUsage,
+        responseClassifier: responseClassifierTrace,
         searchStrategy,
         turnDecision,
         sessionFocusUsed: Boolean(sessionFocus),
@@ -1139,20 +1550,19 @@ export class AgentService {
     };
   }
 
-  private sumTokenUsage(
-    first: TokenUsage | null,
-    second: TokenUsage | null,
-  ): TokenUsage | null {
-    if (!first && !second) {
+  private sumTokenUsage(...usages: Array<TokenUsage | null>): TokenUsage | null {
+    if (!usages.some((usage) => usage)) {
       return null;
     }
 
     return {
-      input_tokens: (first?.input_tokens ?? 0) + (second?.input_tokens ?? 0),
-      output_tokens: (first?.output_tokens ?? 0) + (second?.output_tokens ?? 0),
-      total_tokens: (first?.total_tokens ?? 0) + (second?.total_tokens ?? 0),
-      cached_input_tokens:
-        (first?.cached_input_tokens ?? 0) + (second?.cached_input_tokens ?? 0),
+      input_tokens: usages.reduce((total, usage) => total + (usage?.input_tokens ?? 0), 0),
+      output_tokens: usages.reduce((total, usage) => total + (usage?.output_tokens ?? 0), 0),
+      total_tokens: usages.reduce((total, usage) => total + (usage?.total_tokens ?? 0), 0),
+      cached_input_tokens: usages.reduce(
+        (total, usage) => total + (usage?.cached_input_tokens ?? 0),
+        0,
+      ),
     };
   }
 
@@ -1454,6 +1864,398 @@ export class AgentService {
     });
   }
 
+  private async runResponseClassifierPreflight(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    gateway: AgentConversationGateway;
+    toolUsage: ToolUsage;
+    skipClassification: boolean;
+  }): Promise<{
+    trace: MessageResponseClassifierTrace;
+    tokenUsage: TokenUsage | null;
+  }> {
+    const classifier = this.dependencies.responseClassifier;
+    if (!classifier) {
+      throw new Error('Response classifier was not configured.');
+    }
+
+    const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
+    let messages: AgentConversationMessage[] = [];
+    let contextSource: MessageResponseClassifierTrace['context_source'] = 'local_plan';
+    if (phoneNumber) {
+      const recent = await this.getAgentConversationMessagesWithTrace(
+        args.gateway,
+        phoneNumber,
+        args.toolUsage,
+      );
+      if (recent.status === 'success') {
+        messages = recent.messages;
+        contextSource = 'agent_api';
+      }
+      await this.logAgentMessageWithTrace(
+        args.gateway,
+        {
+          phoneNumber,
+          body: args.inbound.text,
+          direction: 'inbound',
+          whatsappMessageId: args.inbound.messageId,
+          sentAt: args.inbound.receivedAt,
+        },
+        args.toolUsage,
+      );
+    }
+
+    if (args.skipClassification) {
+      return {
+        trace: {
+          mode: classifier.mode,
+          action: 'respond',
+          reason: 'requires_response',
+          would_suppress: false,
+          context_source: contextSource,
+          has_prior_outbound_message: messages.some((message) => message.direction === 'outbound'),
+          fallback_used: false,
+          conversation_health: 'uncertain',
+          health_reason: 'insufficient_context',
+          human_help_response: 'not_applicable',
+          prompt_bundle_id: null,
+          prompt_file_paths: [],
+        },
+        tokenUsage: null,
+      };
+    }
+
+    this.recordDeterministicToolInput(args.toolUsage, 'classify_reply_delivery', {
+      model: 'configured',
+      context_source: contextSource,
+      recent_message_count: messages.length,
+    });
+    const result = await classifier.classify({
+      inboundText: args.inbound.text,
+      plan: args.plan,
+      messages,
+      contextSource,
+    });
+    this.recordDeterministicToolOutput(args.toolUsage, 'classify_reply_delivery', result.trace);
+    return result;
+  }
+
+  private async getAgentConversationMessagesWithTrace(
+    gateway: AgentConversationGateway,
+    phoneNumber: string,
+    toolUsage: ToolUsage,
+  ): Promise<
+    | { status: 'success'; messages: AgentConversationMessage[] }
+    | Exclude<Awaited<ReturnType<AgentConversationGateway['getRecentMessages']>>, { status: 'success' }>
+  > {
+    this.recordDeterministicToolInput(toolUsage, 'get_agent_conversation_messages', {
+      phone_number: phoneNumber,
+      auth: 'X-Agent-Key [redacted]',
+    });
+    let result: Awaited<ReturnType<AgentConversationGateway['getRecentMessages']>>;
+    try {
+      result = await gateway.getRecentMessages(phoneNumber);
+    } catch (error) {
+      result = {
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+        retryable: true,
+      };
+    }
+    this.recordDeterministicToolOutput(toolUsage, 'get_agent_conversation_messages', {
+      status: result.status,
+      ...(result.status === 'success'
+        ? {
+            message_count: result.messages.length,
+            directions: result.messages.map((message) => message.direction),
+            sources: result.messages.map((message) => message.source),
+          }
+        : this.redactAgentGatewayResult(result)),
+    });
+    return result;
+  }
+
+  private async logAgentMessageWithTrace(
+    gateway: AgentConversationGateway,
+    input: AgentMessageLogInput,
+    toolUsage: ToolUsage,
+  ): Promise<AgentGatewayResult> {
+    this.recordDeterministicToolInput(toolUsage, 'log_agent_conversation_message', {
+      phone_number: input.phoneNumber,
+      direction: input.direction,
+      body_length: input.body.length,
+      whatsapp_message_id: input.whatsappMessageId ?? null,
+    });
+    let result: AgentGatewayResult;
+    try {
+      result = await gateway.logMessage(input);
+    } catch (error) {
+      result = {
+        status: 'failed',
+        error: error instanceof Error ? error.message : String(error),
+        retryable: true,
+      };
+    }
+    this.recordDeterministicToolOutput(
+      toolUsage,
+      'log_agent_conversation_message',
+      this.redactAgentGatewayResult(result),
+    );
+    return result;
+  }
+
+  private async requestHumanTakeoverWithTrace(
+    gateway: AgentConversationGateway,
+    phoneNumber: string,
+    toolUsage: ToolUsage,
+  ): Promise<AgentGatewayResult> {
+    this.recordDeterministicToolInput(toolUsage, 'request_human_takeover', {
+      phone_number: phoneNumber,
+      auth: 'X-Agent-Key [redacted]',
+    });
+    const result = await gateway.requestHumanTakeover(phoneNumber);
+    this.recordDeterministicToolOutput(
+      toolUsage,
+      'request_human_takeover',
+      this.redactAgentGatewayResult(result),
+    );
+    return result;
+  }
+
+  private missingPhoneEscalationResult(): AgentGatewayResult {
+    return {
+      status: 'skipped',
+      reason: 'missing_phone_number',
+      message: 'Human escalation requires a phone number for the Agent API.',
+    };
+  }
+
+  private redactAgentGatewayResult(result: AgentGatewayResult): Record<string, unknown> {
+    if (result.status === 'success') {
+      return {
+        status: result.status,
+        message: result.message,
+      };
+    }
+    if (result.status === 'skipped') {
+      return {
+        status: result.status,
+        reason: result.reason,
+        message: result.message,
+      };
+    }
+    return {
+      status: result.status,
+      error: result.error,
+      retryable: result.retryable,
+    };
+  }
+
+  private resolveEscalationPhone(
+    inbound: NormalizedInboundMessage,
+    plan: PlanSnapshot,
+  ): string | null {
+    return this.normalizePhone(inbound.contactPhone) ??
+      this.normalizePhone(plan.contact_phone) ??
+      this.normalizePhone(inbound.externalUserId);
+  }
+
+  private humanEscalationRequestedMessage(result: AgentGatewayResult): string {
+    if (result.status === 'success') {
+      return 'Listo, ya pedí apoyo. Una persona del equipo se unirá a este chat y te responderá por aquí. Mientras tanto, dejaré la conversación en sus manos';
+    }
+
+    return 'No pude registrar la solicitud automáticamente, pero dejé este chat para revisión manual. Una persona del equipo podrá continuar la conversación por aquí';
+  }
+
+  private conversationHealthHelpOfferMessage(): string {
+    return 'Siento que no estamos avanzando como deberíamos. ¿Quieres que una persona del equipo se una a este chat para ayudarte?';
+  }
+
+  private newHumanEscalationSuppressedUntil(): string {
+    return new Date(Date.now() + HUMAN_ESCALATION_SUPPRESSION_MS).toISOString();
+  }
+
+  private resolveHumanEscalationSuppressedUntil(plan: PlanSnapshot): string | null {
+    const explicitSuppressedUntil = plan.human_escalation.bot_suppressed_until;
+    if (explicitSuppressedUntil && Number.isFinite(Date.parse(explicitSuppressedUntil))) {
+      return explicitSuppressedUntil;
+    }
+    const requestedAt = plan.human_escalation.requested_at;
+    const requestedAtEpoch = requestedAt ? Date.parse(requestedAt) : Number.NaN;
+    if (!Number.isFinite(requestedAtEpoch)) {
+      return null;
+    }
+    return new Date(requestedAtEpoch + HUMAN_ESCALATION_SUPPRESSION_MS).toISOString();
+  }
+
+  private isHumanEscalationSuppressionActive(plan: PlanSnapshot): boolean {
+    const suppressedUntil = this.resolveHumanEscalationSuppressedUntil(plan);
+    return suppressedUntil !== null && Date.parse(suppressedUntil) > Date.now();
+  }
+
+  private reduceConversationHealth(
+    previous: ConversationHealthState,
+    trace: MessageResponseClassifierTrace,
+  ): { state: ConversationHealthState; shouldOfferHelp: boolean } {
+    if (trace.fallback_used) {
+      return { state: previous, shouldOfferHelp: false };
+    }
+
+    const assessedAt = new Date().toISOString();
+    if (previous.help_offer_status === 'offered') {
+      if (trace.human_help_response === 'decline') {
+        return {
+          state: {
+            status: 'progressing',
+            reason: 'normal_progress',
+            consecutive_non_progress_turns: 0,
+            help_offer_status: 'declined',
+            help_offered_at: previous.help_offered_at,
+            last_assessed_at: assessedAt,
+          },
+          shouldOfferHelp: false,
+        };
+      }
+      return {
+        state: {
+          ...previous,
+          status: trace.conversation_health,
+          reason: trace.health_reason,
+          last_assessed_at: assessedAt,
+        },
+        shouldOfferHelp: false,
+      };
+    }
+
+    const isNonProgress =
+      trace.conversation_health === 'stalled' ||
+      trace.conversation_health === 'frustrated';
+    const consecutiveNonProgressTurns = isNonProgress
+      ? previous.consecutive_non_progress_turns + 1
+      : trace.conversation_health === 'progressing'
+        ? 0
+        : previous.consecutive_non_progress_turns;
+    const offerStatus =
+      previous.help_offer_status === 'declined' && trace.conversation_health === 'progressing'
+        ? 'none'
+        : previous.help_offer_status;
+    const shouldOfferHelp =
+      offerStatus === 'none' &&
+      (trace.conversation_health === 'frustrated' || consecutiveNonProgressTurns >= 2);
+
+    return {
+      state: {
+        status: trace.conversation_health,
+        reason: trace.health_reason,
+        consecutive_non_progress_turns: consecutiveNonProgressTurns,
+        help_offer_status: shouldOfferHelp ? 'offered' : offerStatus,
+        help_offered_at: shouldOfferHelp ? assessedAt : previous.help_offered_at,
+        last_assessed_at: assessedAt,
+      },
+      shouldOfferHelp,
+    };
+  }
+
+  private humanEscalationOperationalNote(result: AgentGatewayResult): string {
+    if (result.status === 'success') {
+      return 'Human takeover was requested through the Agent API.';
+    }
+    if (result.status === 'skipped') {
+      return `Local human escalation soft-pause only: ${result.reason}.`;
+    }
+    return `Human escalation API call failed: ${result.error}`;
+  }
+
+  private humanEscalationTurnDecision(reason: string): TurnDecision {
+    return turnDecisionSchema.parse({
+      nextNode: 'solicitar_agente_humano',
+      routeKind: 'human_escalation',
+      providerSearchMode: 'none',
+      presentationScope: 'human_escalation',
+      focusNeedCategory: null,
+      needsToSearch: [],
+      needsToPresent: [],
+      stopReason: reason,
+      persistReason: 'solicitar_agente_humano',
+      invariantStatus: 'valid',
+      invariantViolations: [],
+    });
+  }
+
+  private conversationHealthTurnDecision(reason: string): TurnDecision {
+    return turnDecisionSchema.parse({
+      nextNode: 'ofrecer_agente_humano',
+      routeKind: 'human_help_offer',
+      providerSearchMode: 'none',
+      presentationScope: 'human_help_offer',
+      focusNeedCategory: null,
+      needsToSearch: [],
+      needsToPresent: [],
+      stopReason: reason,
+      persistReason: 'conversation_health_help_offer',
+      invariantStatus: 'valid',
+      invariantViolations: [],
+    });
+  }
+
+  private buildSyntheticEscalationExtraction(summary: string): ExtractionResult {
+    return {
+      intent: 'solicitar_humano',
+      secondaryIntents: [],
+      intentConfidence: 1,
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: summary,
+      selectedProviderHints: [],
+      selectedProviderReferences: [],
+      closeAction: null,
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: {
+        eventType: null,
+        needCategory: null,
+        location: null,
+        budgetAmount: null,
+        budgetCurrency: null,
+        mustHave: [],
+        shouldAvoid: [],
+        rankingNotes: 'No aplica: el turno está escalado a revisión humana.',
+      },
+      kbQuery: null,
+      providerQueryIntents: [],
+      providerPlanOperations: [],
+      providerExplanationRequest: null,
+      providerDetailRequest: null,
+    };
+  }
+
+  private buildSyntheticSuppressionExtraction(reason: string): ExtractionResult {
+    return this.buildSyntheticEscalationExtraction(
+      `The response classifier suppressed delivery: ${reason}.`,
+    );
+  }
+
+  private buildSyntheticConversationHealthExtraction(): ExtractionResult {
+    return {
+      ...this.buildSyntheticEscalationExtraction(
+        'El monitor de salud conversacional ofreció apoyo humano opcional.',
+      ),
+      intent: null,
+      intentConfidence: 1,
+    };
+  }
+
   private resolveRecommendationFunnel(
     runtimeFunnel:
       | {
@@ -1543,6 +2345,18 @@ export class AgentService {
         needsToPresent: [],
         stopReason: null,
         persistReason: 'guardar_cerrar_temporalmente',
+      };
+    } else if (evidence.extractionIntent === 'solicitar_humano') {
+      decision = {
+        nextNode: 'solicitar_agente_humano',
+        routeKind: 'human_escalation',
+        providerSearchMode: 'none',
+        presentationScope: 'human_escalation',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: null,
+        persistReason: 'solicitar_agente_humano',
       };
     } else if (evidence.extractionIntent === 'consultar_faq') {
       decision = {
@@ -1881,6 +2695,8 @@ export class AgentService {
         ? 'faq'
         : args.currentNode === 'consultar_evento_invitado'
           ? 'invited_event_lookup'
+        : args.currentNode === 'solicitar_agente_humano'
+          ? 'human_escalation'
         : args.currentNode === 'crear_lead_cerrar'
           ? 'close'
           : args.currentNode === 'elicitacion_necesidades'
@@ -1903,6 +2719,8 @@ export class AgentService {
         ? 'faq'
         : args.currentNode === 'consultar_evento_invitado'
           ? 'invited_event_lookup'
+        : args.currentNode === 'solicitar_agente_humano'
+          ? 'human_escalation'
         : args.currentNode === 'crear_lead_cerrar'
           ? 'close'
           : args.currentNode === 'guardar_cerrar_temporalmente'
@@ -1974,6 +2792,7 @@ export class AgentService {
     planPersistReason: string | null;
     timingMs: TurnTrace['timing_ms'];
     tokenUsage: TurnTrace['token_usage'];
+    responseClassifier?: MessageResponseClassifierTrace;
     searchStrategy: SearchStrategyTrace;
     turnDecision?: TurnDecision;
     sessionFocusUsed?: boolean;
@@ -2025,6 +2844,7 @@ export class AgentService {
       plan_persist_reason: args.planPersistReason,
       timing_ms: args.timingMs,
       token_usage: args.tokenUsage,
+      response_classifier: args.responseClassifier,
     };
   }
 
@@ -2261,6 +3081,10 @@ export class AgentService {
 
     if (extraction.intent === 'consultar_evento_invitado') {
       return 'consultar_evento_invitado';
+    }
+
+    if (extraction.intent === 'solicitar_humano') {
+      return 'solicitar_agente_humano';
     }
 
     if ((plan.missing_fields ?? []).length > 0) {
@@ -4106,6 +4930,10 @@ export class AgentService {
           })),
           conversationId,
           structuredMessageKind,
+          delivery: {
+            action: 'send',
+            reason: 'reply_composed',
+          },
         };
       }
     }
@@ -4114,6 +4942,25 @@ export class AgentService {
       text: this.sanitizeAssistantOutput(reply.text),
       conversationId,
       structuredMessageKind,
+      delivery: {
+        action: 'send',
+        reason: 'reply_composed',
+      },
+    };
+  }
+
+  private suppressOutbound(
+    conversationId: string | null,
+    reason: string,
+  ): NormalizedOutboundMessage {
+    return {
+      text: null,
+      conversationId,
+      structuredMessageKind: null,
+      delivery: {
+        action: 'suppress',
+        reason,
+      },
     };
   }
 

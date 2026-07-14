@@ -5,7 +5,7 @@ import path from 'node:path';
 const root = process.cwd();
 const env = loadDotEnv(path.join(root, '.env'));
 
-const required = ['OPENAI_API_KEY'];
+const required = ['OPENAI_API_KEY', 'SE_API_KEY'];
 for (const key of required) {
   if (!env[key]) {
     throw new Error(`${key} is required in .env for deployment.`);
@@ -23,6 +23,7 @@ const awsEnv = {
 const stackName = process.env.STACK_NAME ?? 'recap-agent-runtime';
 const functionName = process.env.FUNCTION_NAME ?? 'recap-agent-runtime';
 const secretName = process.env.OPENAI_SECRET_NAME ?? 'recap-agent/openai-api-key';
+const seApiSecretName = process.env.SE_API_SECRET_NAME ?? 'recap-agent/se-api-key';
 const artifactBucket = process.env.ARTIFACT_BUCKET ?? `recap-agent-artifacts-${getAccountId(awsEnv)}-${awsEnv.AWS_REGION}`;
 const artifactKey = `lambda/${Date.now()}-recap-agent.zip`;
 const artifactDir = path.join(root, '.artifacts');
@@ -36,6 +37,12 @@ syncSecret(secretName, env.OPENAI_API_KEY, awsEnv);
 const secretArn = execFileSync(
   'aws',
   ['secretsmanager', 'describe-secret', '--secret-id', secretName, '--query', 'ARN', '--output', 'text'],
+  { env: awsEnv, encoding: 'utf8' },
+).trim();
+syncSecret(seApiSecretName, env.SE_API_KEY, awsEnv);
+const seApiSecretArn = execFileSync(
+  'aws',
+  ['secretsmanager', 'describe-secret', '--secret-id', seApiSecretName, '--query', 'ARN', '--output', 'text'],
   { env: awsEnv, encoding: 'utf8' },
 ).trim();
 zipArtifact(path.join(root, 'dist'), artifactZip);
@@ -56,8 +63,11 @@ run(
     `CodeS3Bucket=${artifactBucket}`,
     `CodeS3Key=${artifactKey}`,
     `OpenAISecretArn=${secretArn}`,
+    `SeApiSecretArn=${seApiSecretArn}`,
     `OpenAIModel=${process.env.OPENAI_MODEL ?? env.OPENAI_MODEL ?? 'gpt-5.4-mini'}`,
     `OpenAIExtractorModel=${process.env.OPENAI_EXTRACTOR_MODEL ?? env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.4-nano'}`,
+    `OpenAIResponseClassifierModel=${process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? 'gpt-5.4-nano'}`,
+    `ResponseClassifierMode=${process.env.RESPONSE_CLASSIFIER_MODE ?? env.RESPONSE_CLASSIFIER_MODE ?? 'enforce'}`,
     `OpenAIPromptCacheRetention=${process.env.OPENAI_PROMPT_CACHE_RETENTION ?? env.OPENAI_PROMPT_CACHE_RETENTION ?? 'in-memory'}`,
     `PerfRetentionDays=${process.env.PERF_RETENTION_DAYS ?? env.PERF_RETENTION_DAYS ?? '30'}`,
     `ProviderSearchMode=${process.env.PROVIDER_SEARCH_MODE ?? env.PROVIDER_SEARCH_MODE ?? 'hybrid'}`,
@@ -65,6 +75,9 @@ run(
     `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,
     `ProviderVectorMaxResults=${process.env.PROVIDER_VECTOR_MAX_RESULTS ?? env.PROVIDER_VECTOR_MAX_RESULTS ?? '12'}`,
     `ProviderVectorScoreThreshold=${process.env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? '0.2'}`,
+    `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://api.sinenvolturas.com/api/agent'}`,
+    `AgentApiTimeoutMs=${process.env.AGENT_API_TIMEOUT_MS ?? env.AGENT_API_TIMEOUT_MS ?? '5000'}`,
+    `AgentApiMaxRetries=${process.env.AGENT_API_MAX_RETRIES ?? env.AGENT_API_MAX_RETRIES ?? '2'}`,
     `SinEnvolturasGuestServiceBaseUrl=${process.env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? 'https://se-v2-api-dev.jnq.io/api/guest-service'}`,
     `SinEnvolturasGuestAuthBaseUrl=${process.env.SINENVOLTURAS_GUEST_AUTH_BASE_URL ?? env.SINENVOLTURAS_GUEST_AUTH_BASE_URL ?? 'https://se-v2-api-dev.jnq.io/api-web/user'}`,
     `AgentFeatureProviderPlanning=${process.env.AGENT_FEATURE_PROVIDER_PLANNING ?? env.AGENT_FEATURE_PROVIDER_PLANNING ?? 'true'}`,
@@ -172,23 +185,44 @@ function ensureBucketExists(bucket, env) {
 }
 
 function syncSecret(secretName, secretValue, env) {
+  const tempDir = fs.mkdtempSync(path.join(artifactDir, 'secret-'));
+  const secretFile = path.join(tempDir, 'value');
+  fs.writeFileSync(secretFile, secretValue, { mode: 0o600 });
   try {
-    execFileSync(
-      'aws',
-      ['secretsmanager', 'describe-secret', '--secret-id', secretName],
-      { env, stdio: 'ignore' },
-    );
-    run(
-      'aws',
-      ['secretsmanager', 'put-secret-value', '--secret-id', secretName, '--secret-string', secretValue],
-      { env },
-    );
-  } catch {
-    run(
-      'aws',
-      ['secretsmanager', 'create-secret', '--name', secretName, '--secret-string', secretValue],
-      { env },
-    );
+    try {
+      execFileSync(
+        'aws',
+        ['secretsmanager', 'describe-secret', '--secret-id', secretName],
+        { env, stdio: 'ignore' },
+      );
+      run(
+        'aws',
+        [
+          'secretsmanager',
+          'put-secret-value',
+          '--secret-id',
+          secretName,
+          '--secret-string',
+          `file://${secretFile}`,
+        ],
+        { env },
+      );
+    } catch {
+      run(
+        'aws',
+        [
+          'secretsmanager',
+          'create-secret',
+          '--name',
+          secretName,
+          '--secret-string',
+          `file://${secretFile}`,
+        ],
+        { env },
+      );
+    }
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
 }
 

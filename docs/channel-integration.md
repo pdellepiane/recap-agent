@@ -118,6 +118,7 @@ Default mode and `client_mode: "channel"` return only the user-facing envelope:
 ```json
 {
   "message": "¡Perfecto! Para ayudarte con opciones de catering, ¿tienes un rango de presupuesto o alguna preferencia de estilo de comida?",
+  "delivery": { "action": "send", "reason": "reply_composed" },
   "conversation_id": "conv_abc123",
   "plan_id": "f1b6f0c3-9d59-4c4e-a48c-3a3284b0f2c7",
   "current_node": "aclarar_pedir_faltante"
@@ -128,7 +129,8 @@ Field meanings:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
-| `message` | string | The only field that should be rendered to the end user. Prompt-authored conversational content is Spanish. |
+| `message` | string or null | User-facing text when `delivery.action` is `send`; null when delivery is suppressed. |
+| `delivery` | object | `{ action: "send" | "suppress", reason: string }`. Adapters must send only when the action is `send`. |
 | `conversation_id` | string or null | OpenAI conversation id used by the runtime when available. |
 | `plan_id` | string | Internal persisted event-plan id. Useful for support correlation, not for end-user display. |
 | `current_node` | string | Current decision-flow node after this turn. Useful for adapter logs and support dashboards. |
@@ -476,12 +478,16 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | --- | --- |
 | `OPENAI_MODEL` | `gpt-5.4-mini` |
 | `OPENAI_EXTRACTOR_MODEL` | `gpt-5.4-nano` |
+| `OPENAI_RESPONSE_CLASSIFIER_MODEL` | `gpt-5.4-nano` |
+| `RESPONSE_CLASSIFIER_MODE` | `enforce` |
 | `OPENAI_PROMPT_CACHE_RETENTION` | `in-memory` |
 | `AWS_REGION` | `us-east-1` |
 | `PLANS_TABLE_NAME` | `recap-agent-runtime-plans` |
 | `PERF_TABLE_NAME` | `recap-agent-runtime-perf` |
 | `PROMPTS_DIR` | `/var/task/prompts` |
 | `SINENVOLTURAS_BASE_URL` | `https://api.sinenvolturas.com/api-web/vendor` |
+| `AGENT_API_BASE_URL` | `https://api.sinenvolturas.com/api/agent` |
+| `SE_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/se-api-key` |
 | `DEFAULT_INBOUND_CHANNEL` | `terminal_whatsapp` unless overridden |
 | `PROVIDER_SEARCH_LIMIT` | `15` |
 | `SEARCH_SUMMARY_WORD_LIMIT` | `5` |
@@ -489,6 +495,12 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `PRESENTATION_PROVIDER_LIMIT` | `5` |
 | `PROVIDER_DETAIL_LOOKUP_LIMIT` | `3` |
 | `PERF_RETENTION_DAYS` | `30` |
+
+Human escalation uses the dedicated Agent API service key stored in Secrets Manager and sent as `X-Agent-Key` by the gateway. The guest validation bearer token is user-scoped and must not be reused here.
+
+For phone-bearing turns, the response classifier retrieves the last five Agent API messages before logging the inbound message, then logs any generated outbound message. Agent API failures are traced and fall back to local plan context without blocking the response. Once human escalation is active, inbound messages are logged but the runtime returns `delivery.action: "suppress"` and does not continue as a bot. The bot suppression window lasts 12 hours from the handoff request. Its expiration is persisted as `human_escalation.bot_suppressed_until`; the first later inbound turn clears the escalation state and resumes normal processing. This internal duration is not included in user-facing copy.
+
+That classifier call also produces a structured conversation-health assessment. The runtime persists consecutive non-progress evidence and emits one optional human-help offer after one explicit-frustration assessment or two consecutive stalled/frustrated assessments. The offer is still a normal outbound message and must be delivered. Only a later structured acceptance invokes the Agent API takeover endpoint; a decline resumes the channel's normal response flow.
 
 After any Lambda-impacting change, redeploy development Lambda so channel and eval validation exercise current behavior.
 

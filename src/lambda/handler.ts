@@ -7,10 +7,14 @@ import { getConfig } from '../runtime/config';
 import { DynamoPlanStore } from '../storage/dynamo-plan-store';
 import { OpenAiAgentRuntime } from '../runtime/openai-agent-runtime';
 import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
+import {
+  HttpAgentConversationGateway,
+} from '../runtime/agent-conversation-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
+import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
-import { resolveOpenAiApiKey } from '../runtime/secrets';
+import { resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
@@ -98,6 +102,7 @@ export async function handler(
 
     return json(200, {
       message: response.outbound.text,
+      delivery: response.outbound.delivery,
       conversation_id: response.outbound.conversationId,
       plan_id: response.plan.plan_id,
       current_node: response.plan.current_node,
@@ -128,6 +133,10 @@ async function getRuntime(): Promise<{
         region: config.aws.region,
       });
       process.env.OPENAI_API_KEY = apiKey;
+      const seApiKey = await resolveSeApiKey({
+        secretId: config.agentApi.secretId,
+        region: config.aws.region,
+      });
 
       const promptLoader = new PromptLoader(config.prompts.dir);
       const providerVectorSearchGateway =
@@ -148,6 +157,12 @@ async function getRuntime(): Promise<{
         searchMode: config.providerApi.searchMode,
         vectorSearchGateway: providerVectorSearchGateway,
       });
+      const agentConversationGateway = new HttpAgentConversationGateway({
+        baseUrl: config.agentApi.baseUrl,
+        apiKey: seApiKey,
+        timeoutMs: config.agentApi.timeoutMs,
+        maxRetries: config.agentApi.maxRetries,
+      });
       const runtime = new OpenAiAgentRuntime({
         apiKey,
         replyModel: config.openAi.models.reply,
@@ -160,6 +175,12 @@ async function getRuntime(): Promise<{
         providerGateway,
         knowledgeBase: config.knowledgeBase,
         features: config.features,
+      });
+      const responseClassifier = new OpenAiMessageResponseClassifier({
+        apiKey,
+        model: config.openAi.models.responseClassifier,
+        mode: config.responseClassifier.mode,
+        promptLoader,
       });
       const planStore = new DynamoPlanStore(config.storage.plansTableName, {
         region: config.aws.region,
@@ -175,6 +196,8 @@ async function getRuntime(): Promise<{
           planStore,
           runtime,
           providerGateway,
+          agentConversationGateway,
+          responseClassifier,
           promptLoader,
           renderers: {
             whatsapp: new WhatsAppMessageRenderer(),

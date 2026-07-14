@@ -1,5 +1,94 @@
 # Implementation Log
 
+## 2026-07-10
+
+### Surface response-classifier decisions in the terminal demo
+
+**Reason:** The Bun terminal exposed classifier token usage in the detailed trace, but it did not clearly present the decision and did not send a canonical phone number for production Agent API conversation context.
+
+**Changes:**
+- Added `--contact-phone` and `TERMINAL_CONTACT_PHONE` to the developer CLI and included `contact_phone` in Lambda turns.
+- Added a prominent response-classifier panel showing mode, predicted and actual delivery, action, reason, context source, prior-outbound evidence, and fallback status.
+- Added the same classifier detail and classification latency to the trace table, plus a two-turn demo recipe using a dedicated phone number.
+
+**Decision:** Keep `user_id` as the plan identity and treat the optional international phone as the explicit Agent API context identity. Do not infer a phone from an arbitrary terminal user id.
+
+**Validation:** `npm run check` passed with 37 test files and 232 tests. `npm run terminal -- --help` exposes `--contact-phone`, and a safe live terminal turn rendered the new classifier panel with `mode=observe`, `prediction=SEND`, `actual_delivery=SEND`, `context=local_plan`, and `fallback=false`. The existing model probe separately confirmed `suppress_reaction` for `👍` with prior outbound Agent API context.
+
+## 2026-07-09
+
+### Add context-aware reply suppression
+
+**Reason:** The runtime should avoid unnecessary acknowledgements and reaction replies without risking silence on requests, questions, corrections, or event-planning work.
+
+**Changes:**
+- Added a native OpenAI SDK Structured Outputs classifier using `gpt-5.4-nano`, a Spanish prompt stored with the `deteccion_intencion` node, bounded plan/message context, and a strict fail-open response policy.
+- Wired the verified production Agent API conversation endpoint into classifier preflight, inbound/outbound message logging, and silent human-handoff follow-up handling.
+- Added `observe` and `enforce` delivery modes, an explicit `{ action, reason }` channel delivery contract, classifier trace/perf/token/cost telemetry, seed evaluation labels, and focused unit/service coverage.
+- Added CloudFormation and deployment configuration for `OPENAI_RESPONSE_CLASSIFIER_MODEL` and `RESPONSE_CLASSIFIER_MODE`, defaulting to `observe` without adding credentials or IAM permissions.
+
+**Decision:** Semantic suppression is LLM-structured and only allowed with prior outbound context. Any Agent API, classifier, schema, prompt, or model failure sends the normal reply. Existing human escalation now logs inbound follow-ups and remains silent to avoid bot interference.
+
+**Validation:** `npm run check` passed with 37 test files and 232 tests. Development deployment completed with `OPENAI_RESPONSE_CLASSIFIER_MODEL=gpt-5.4-nano` and `RESPONSE_CLASSIFIER_MODE=observe`. The production history probe returned `200` and five messages for `GET https://api.sinenvolturas.com/api/agent/conversations/messages?phone_number=51991347878`. A scoped observe-mode Lambda smoke turn returned `200`, delivered a normal reply, and recorded a non-fallback classifier trace with 296 tokens. `enforce` remains blocked on the documented promotion gate.
+
+## 2026-07-07
+
+### Use the verified production Agent API route
+
+**Reason:** The documented development Agent API base URL did not expose the required routes. Read-only probes against the production host confirmed that the configured `X-Agent-Key` is valid and that the conversation endpoint is live.
+
+**Changes:**
+- Changed the Agent API default base URL in runtime config, CloudFormation, deployment script, environment example, and operational documentation to `https://api.sinenvolturas.com/api/agent`.
+
+**Decision:** Use the verified production Agent API route until the backend team deploys and confirms an equivalent isolated development route. Keep the dedicated service key in Secrets Manager; do not reuse guest authentication tokens.
+
+**Validation:** `GET /api/agent/conversations/messages?phone_number=51991347878` returned `200` with the configured `SE_API_KEY` and `401` with an invalid or absent key. The same documented route on `https://se-v2-api-dev.jnq.io/api/agent` returned `404`, independent of the supplied phone number or key.
+
+### Redesign thesis conference poster
+
+**Reason:** The conference poster needed to be A0 landscape, remove the UTEC logo, and present the agent architecture and evaluation results with a more visual, less text-heavy structure.
+
+**Changes:**
+- Added a self-contained LaTeX poster under `docs/thesis/poster/` using the original `tikzposter` template style, with A0 landscape layout, four adapted columns, metric cards, architecture figure, recommendation funnel, and a non-overlapping state diagram.
+- Copied the provided architecture PNG into the poster figure directory for reproducible local builds.
+- Removed the previous logo-dependent title treatment and kept only textual affiliation.
+- Installed the missing TinyTeX dependencies needed by the original template path: `tikzposter`, `ae`, `extsizes`, and `a0poster`.
+- Routed state-diagram arrows around node boxes and added a compact technical-contributions block to reduce left-column empty space without adding extra diagrams.
+
+**Decision:** Keep the original `tikzposter`-based visual language instead of the interim dependency-light workaround. Limit the poster to the architecture figure and state diagram as the main visuals, using tables and metric cards for the rest to avoid over-diagramming.
+
+**Validation:** Built `docs/thesis/poster/recap-agent-poster.tex` with the bundled LaTeX compile workflow and rendered the one-page PDF to PNG for visual inspection. The final render is A0 landscape, includes the state diagram, has no visible overlapping content, and keeps the UTEC logo out of the poster.
+
+### Wire Agent API service key through Secrets Manager
+
+**Reason:** Development now has the dedicated Sin Envolturas Agent API key in local `.env` as `SE_API_KEY`, so Lambda should use a service credential from Secrets Manager instead of carrying a temporary feature gate or reusing user validation credentials.
+
+**Changes:**
+- Updated deployment to require `SE_API_KEY`, publish it to Secrets Manager as `recap-agent/se-api-key`, and pass the secret ARN to the runtime stack.
+- Added CloudFormation parameters, Lambda environment, and IAM permissions for `SE_API_SECRET_ID`.
+- Updated Lambda bootstrap to resolve the SE service key from Secrets Manager and always construct the HTTP Agent API gateway in deployed runtime.
+- Reworked secret caching so OpenAI and SE credentials are cached independently.
+- Removed the Agent API staging switch from config, docs, examples, and gateway skip reasons.
+- Hardened deploy-time secret publishing so AWS CLI reads secret values from temporary `0600` files instead of command-line arguments.
+
+**Decision:** Agent API calls use only the dedicated `X-Agent-Key` service credential from Secrets Manager. The guest/user validation bearer token remains scoped to guest/event validation and is not reused.
+
+**Validation:** `npm run check` passed after the change. Non-mutating live probes with `SE_API_KEY` against `GET /conversations/messages`, `GET /messages`, and `GET /conversations/request-human` on `https://se-v2-api-dev.jnq.io/api/agent` all returned `404 Ruta no encontrada`, so the dev route mismatch remains independent of the credential. `npm run deploy` published the `recap-agent/se-api-key` secret and updated `recap-agent-runtime`; Lambda now has `SE_API_SECRET_ID` set and no legacy staging-switch or direct Agent API key environment variables.
+
+### Stage human escalation without requiring Agent API credentials
+
+**Reason:** The human-operator handoff endpoints are needed for the WhatsApp-style workflow, but live probes against the documented development `/api/agent` routes returned `404`/`405` route mismatches instead of the documented authenticated responses. The integration should be ready in code while avoiding a hard dependency on an unconfirmed `X-Agent-Key` or route deployment.
+
+**Changes:**
+- Added `solicitar_humano` and `solicitar_agente_humano` as first-class intent/node state for human review requests.
+- Added persisted `human_escalation` state to plans with requested status, timestamp, phone number, and last error.
+- Added a typed Agent API gateway with no-op and HTTP implementations.
+- Routed explicit human-support requests into a deterministic local soft-pause that avoids provider search and future bot continuation.
+- Updated Spanish extractor and node prompts so human-support requests are not treated as FAQ.
+- Added unit coverage for no-op escalation, HTTP gateway auth/method/malformed/retry behavior, and service soft-pause behavior.
+
+**Decision:** Do not reuse the guest/user validation bearer token. It is user-scoped and belongs to the event lookup flow; the Agent API must use a separate service-style `X-Agent-Key`.
+
 ## 2026-06-26
 
 ### Activate shared assistant personality
@@ -3568,3 +3657,61 @@ still displayed the historical V1 label.
 
 Presentation artifacts must derive version labels from study metadata. Raw run
 reports remain unchanged; regenerate only derivative tables, charts, and text.
+
+## Add a context-aware frustration and conversation-progress monitor
+
+- Extended the existing native `gpt-5.4-nano` Structured Output with conversation
+  health, a typed reason, and the user's response to an outstanding help offer.
+- Persisted consecutive non-progress evidence and help-offer state in the event
+  plan.
+- Added the `ofrecer_agente_humano` state-machine node and a deterministic Spanish
+  offer that runs before extraction, provider search, and reply composition.
+- Routed structured acceptance through the verified Agent API takeover workflow;
+  declines resume the automated flow without immediately repeating the offer.
+- Added trace, perf, terminal-demo, unit, service, prompt, and labelled-eval
+  coverage for progress, stalls, explicit frustration, acceptance, and decline.
+- Made the terminal client exit cleanly when scripted input reaches EOF after a
+  demo turn.
+
+### Reason
+
+The assistant needed a low-cost way to notice circular or unresolved interactions
+and proactively offer help before user frustration becomes abandonment.
+
+### Decision
+
+Reuse the existing classifier call instead of adding another model request. Offer
+human help after one explicit-frustration assessment or two consecutive
+non-progress assessments, but never request takeover until the user accepts.
+
+## Enforce reply suppression and bound human handoff silence
+
+- Changed typed runtime, CloudFormation, deployment, examples, and channel docs
+  to default `RESPONSE_CLASSIFIER_MODE` to `enforce`.
+- Added a persisted `human_escalation.bot_suppressed_until` timestamp set 12
+  hours after direct or frustration-monitor handoff requests.
+- Kept inbound Agent API logging active while bypassing classifier, extractor,
+  search, and reply work during the handoff window.
+- Added legacy fallback from `requested_at`, automatic state clearing and normal
+  flow resumption after expiry, and trace evidence for that transition.
+- Reworked deterministic and prompt copy so users are clearly told that a team
+  member will join the chat, without exposing the internal 12-hour window.
+
+### Reason
+
+Once customer support takes ownership, concurrent bot replies can confuse both
+the user and the representative. An indefinite pause, however, can permanently
+strand conversations if support ownership is never cleared.
+
+### Decision
+
+Enforce classifier suppression now. Give customer support exclusive chat
+ownership for a bounded 12-hour internal window, then resume automatically on
+the next inbound turn. Keep that duration operational rather than user-facing.
+
+**Validation:** `npm run check` passed with 37 test files and 237 tests. The
+development Lambda was deployed with `RESPONSE_CLASSIFIER_MODE=enforce`. A live
+Agent API-backed reaction turn returned `message: null`, suppressed delivery,
+and no extractor or reply usage. A separate phone-free handoff persisted an
+expiration exactly 12 hours after `requested_at`; its confirmation exposed no
+duration, and the following inbound turn remained silent with zero model usage.

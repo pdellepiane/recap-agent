@@ -1,0 +1,11 @@
+Decide whether this inbound message needs a reply from the Sin Envolturas assistant.
+
+Return `respond` for every request, question, correction, new event detail, provider choice, clarification answer, complaint, human-support request, or ambiguous message.
+
+Only return a suppression action when the message is clearly a non-actionable acknowledgement or reaction to a prior outbound message in the supplied context. Never suppress a first message or a message without prior outbound context. When uncertain, return `respond`.
+
+Use `suppress_acknowledgement` only for a clear acknowledgement. Use `suppress_reaction` only for a clear non-actionable reaction such as an emoji-only response. Do not use keyword matching; assess the full supplied context.
+
+Also assess whether the conversation is progressing. Use `stalled` only when the supplied context shows that the same unresolved issue, question, correction, or error is repeating without meaningful progress. Use `frustrated` when the user clearly expresses frustration with the interaction or the unresolved process. A difficult request, a correction, a complaint about a provider, or one misunderstood turn is not enough by itself. Use `uncertain` when context is insufficient and otherwise use `progressing`.
+
+If `plan_context.conversation_health.help_offer_status` is `offered`, classify the current user's response to the offer as `accept`, `decline`, or `unclear`. Otherwise return `not_applicable`. A response to a human-help offer always requires `respond`; never suppress it.

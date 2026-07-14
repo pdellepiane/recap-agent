@@ -23,6 +23,8 @@ export const decisionNodes = [
   'crear_lead_cerrar',
   'guardar_seleccion_reintentar_luego',
   'guardar_cerrar_temporalmente',
+  'ofrecer_agente_humano',
+  'solicitar_agente_humano',
   'informar_error_reintento',
   'reintentar',
   'consultar_faq',

@@ -23,6 +23,7 @@ export const planIntentValues = [
   'retomar_plan',
   'cerrar',
   'pausar',
+  'solicitar_humano',
   'consultar_faq',
   'consultar_evento_invitado',
 ] as const;
@@ -54,6 +55,10 @@ export const guestAuthStatusValues = [
 
 export type GuestAuthStatus = (typeof guestAuthStatusValues)[number];
 
+export const humanEscalationStatusValues = ['none', 'requested'] as const;
+
+export type HumanEscalationStatus = (typeof humanEscalationStatusValues)[number];
+
 export const guestAuthStateSchema = z.object({
   status: z.enum(guestAuthStatusValues),
   email: z.string().nullable(),
@@ -64,6 +69,46 @@ export const guestAuthStateSchema = z.object({
 });
 
 export type GuestAuthState = z.infer<typeof guestAuthStateSchema>;
+
+export const humanEscalationStateSchema = z.object({
+  status: z.enum(humanEscalationStatusValues),
+  requested_at: z.string().nullable(),
+  bot_suppressed_until: z.string().nullable().optional(),
+  phone_number: z.string().nullable(),
+  last_error: z.string().nullable(),
+});
+
+export type HumanEscalationState = z.infer<typeof humanEscalationStateSchema>;
+
+export const conversationHealthStatusValues = [
+  'progressing',
+  'uncertain',
+  'stalled',
+  'frustrated',
+] as const;
+
+export const conversationHealthReasonValues = [
+  'normal_progress',
+  'repeated_question',
+  'repeated_correction',
+  'unresolved_error',
+  'circular_conversation',
+  'explicit_frustration',
+  'insufficient_context',
+] as const;
+
+export const humanHelpOfferStatusValues = ['none', 'offered', 'declined'] as const;
+
+export const conversationHealthStateSchema = z.object({
+  status: z.enum(conversationHealthStatusValues),
+  reason: z.enum(conversationHealthReasonValues),
+  consecutive_non_progress_turns: z.number().int().min(0),
+  help_offer_status: z.enum(humanHelpOfferStatusValues),
+  help_offered_at: z.string().nullable(),
+  last_assessed_at: z.string().nullable(),
+});
+
+export type ConversationHealthState = z.infer<typeof conversationHealthStateSchema>;
 
 export const providerNeedStatusValues = [
   'identified',
@@ -107,6 +152,21 @@ export const planSchema = z.object({
     token_expires_at: null,
     last_error: null,
     requested_at: null,
+  }),
+  human_escalation: humanEscalationStateSchema.default({
+    status: 'none',
+    requested_at: null,
+    bot_suppressed_until: null,
+    phone_number: null,
+    last_error: null,
+  }),
+  conversation_health: conversationHealthStateSchema.default({
+    status: 'uncertain',
+    reason: 'insufficient_context',
+    consecutive_non_progress_turns: 0,
+    help_offer_status: 'none',
+    help_offered_at: null,
+    last_assessed_at: null,
   }),
   current_node: decisionNodeSchema,
   intent: z.enum(planIntentValues).nullable(),
@@ -218,6 +278,21 @@ export function createEmptyPlan(args: {
       token_expires_at: null,
       last_error: null,
       requested_at: null,
+    },
+    human_escalation: {
+      status: 'none',
+      requested_at: null,
+      bot_suppressed_until: null,
+      phone_number: null,
+      last_error: null,
+    },
+    conversation_health: {
+      status: 'uncertain',
+      reason: 'insufficient_context',
+      consecutive_non_progress_turns: 0,
+      help_offer_status: 'none',
+      help_offered_at: null,
+      last_assessed_at: null,
     },
     current_node: 'contacto_inicial',
     intent: null,

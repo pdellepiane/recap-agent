@@ -30,6 +30,10 @@ export class PromptLoader {
     return this.load([...extractorPromptFiles], []);
   }
 
+  async loadResponseClassifierBundle(): Promise<PromptBundle> {
+    return this.load(['nodes/deteccion_intencion/response_classifier.txt'], []);
+  }
+
   private async load(
     relativePaths: readonly string[],
     allowedTools: readonly ToolName[],

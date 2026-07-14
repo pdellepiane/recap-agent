@@ -49,6 +49,7 @@ export type TurnPerfRecord = {
   runtime_latency_ms: number;
   timing_ms: TurnTrace['timing_ms'];
   token_usage: TurnTrace['token_usage'];
+  response_classifier?: TurnTrace['response_classifier'];
   previous_node: string;
   node_path: string[];
   intent: string | null;
@@ -108,6 +109,11 @@ export type CliPerfSummary = {
   storage_target: string | null;
   recommendation_context_candidates: number | null;
   recommendation_presentation_limit: number | null;
+  response_classifier_action: string | null;
+  response_classifier_would_suppress: boolean | null;
+  conversation_health_status: string | null;
+  conversation_health_reason: string | null;
+  human_help_response: string | null;
 };
 
 export function buildTurnPerfRecord(args: {
@@ -168,6 +174,7 @@ export function buildTurnPerfRecord(args: {
     runtime_latency_ms: args.trace.timing_ms.total,
     timing_ms: args.trace.timing_ms,
     token_usage: args.trace.token_usage,
+    response_classifier: args.trace.response_classifier,
     previous_node: args.trace.previous_node,
     node_path: args.trace.node_path,
     intent: args.trace.intent,
@@ -295,6 +302,11 @@ export function toCliPerfSummary(
     storage_target: meta?.storageTarget ?? null,
     recommendation_context_candidates: record.recommendation_funnel_context_candidates,
     recommendation_presentation_limit: record.recommendation_funnel_presentation_limit,
+    response_classifier_action: record.response_classifier?.action ?? null,
+    response_classifier_would_suppress: record.response_classifier?.would_suppress ?? null,
+    conversation_health_status: record.response_classifier?.conversation_health ?? null,
+    conversation_health_reason: record.response_classifier?.health_reason ?? null,
+    human_help_response: record.response_classifier?.human_help_response ?? null,
   };
 }
 

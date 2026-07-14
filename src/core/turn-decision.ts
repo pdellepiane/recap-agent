@@ -59,6 +59,8 @@ export const routeKindValues = [
   'invited_event_lookup',
   'close',
   'pause',
+  'human_help_offer',
+  'human_escalation',
   'error',
 ] as const;
 
@@ -81,6 +83,8 @@ export const presentationScopeValues = [
   'close',
   'faq',
   'invited_event_lookup',
+  'human_help_offer',
+  'human_escalation',
 ] as const;
 
 export type PresentationScope = (typeof presentationScopeValues)[number];

@@ -339,6 +339,7 @@ function buildStudyRow(
   const grounding = result.turns.map(assessGrounding);
   const costs = result.turns.map((turn) =>
     estimateTurnCost(turn, pricing, {
+      classifier: 'gpt-5.4-nano',
       extractor: 'gpt-5.4-nano',
       reply: 'gpt-5.4-mini',
     }),
@@ -914,13 +915,16 @@ function renderGrounding(results: EvalResult[]): string {
 type TurnStudyTelemetry = {
   scenario: string;
   turn: number;
+  classifierModel: string;
   extractorModel: string;
   replyModel: string;
+  classifierLlmCalls: number;
   extractionLlmCalls: number;
   replyLlmCalls: number;
   toolCalls: number;
   tools: string;
   runtimeLatencyMs: number;
+  classificationLatencyMs: number;
   extractionLatencyMs: number;
   providerSearchLatencyMs: number;
   composeLatencyMs: number;
@@ -942,13 +946,16 @@ function renderTurnTelemetry(results: EvalResult[]): string {
       return {
         scenario: result.caseId,
         turn: turn.turnIndex,
+        classifierModel: 'gpt-5.4-nano',
         extractorModel: 'gpt-5.4-nano',
         replyModel: 'gpt-5.4-mini',
+        classifierLlmCalls: turn.trace.token_usage.classifier ? 1 : 0,
         extractionLlmCalls: turn.trace.token_usage.extraction ? 1 : 0,
         replyLlmCalls: turn.trace.token_usage.reply ? 1 : 0,
         toolCalls: turn.trace.tools_called.length,
         tools: turn.trace.tools_called.join('|'),
         runtimeLatencyMs: turn.trace.timing_ms.total,
+        classificationLatencyMs: turn.trace.timing_ms.response_classification ?? 0,
         extractionLatencyMs: turn.trace.timing_ms.extraction,
         providerSearchLatencyMs:
           turn.trace.timing_ms.provider_search + turn.trace.timing_ms.provider_enrichment,

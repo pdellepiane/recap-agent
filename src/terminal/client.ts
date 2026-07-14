@@ -23,6 +23,7 @@ type CliOptions = {
   stackName: string;
   plansTable?: string;
   userId: string;
+  contactPhone?: string;
   channel: string;
   region: string;
   profile: string;
@@ -43,6 +44,7 @@ type ResolvedCliConfig = {
   region: string;
   profile: string;
   userId: string;
+  contactPhone: string | null;
   channel: string;
   timeoutMs: number;
   showRaw: boolean;
@@ -53,7 +55,11 @@ type ResolvedCliConfig = {
 };
 
 type LambdaSuccessPayload = {
-  message: string;
+  message: string | null;
+  delivery?: {
+    action: 'send' | 'suppress';
+    reason: string;
+  };
   conversation_id: string | null;
   plan_id: string;
   current_node: string;
@@ -119,6 +125,11 @@ program
     process.env.TERMINAL_USER_ID ?? '51999999999',
   )
   .option(
+    '--contact-phone <phone>',
+    'International phone used for Agent API conversation context, for example +51 999999999',
+    process.env.TERMINAL_CONTACT_PHONE,
+  )
+  .option(
     '--channel <channel>',
     'Channel identifier sent to the runtime',
     process.env.TERMINAL_CHANNEL ?? 'terminal_whatsapp',
@@ -167,7 +178,15 @@ async function main() {
   const rl = readline.createInterface({ input, output });
 
   while (true) {
-    const line = (await rl.question(pc.cyan('you> '))).trim();
+    let line: string;
+    try {
+      line = (await rl.question(pc.cyan('you> '))).trim();
+    } catch (error) {
+      if (isReadlineClosed(error)) {
+        return;
+      }
+      throw error;
+    }
 
     if (!line) {
       continue;
@@ -214,6 +233,7 @@ async function main() {
         {
           channel: config.channel,
           user_id: config.userId,
+          contact_phone: config.contactPhone,
           text: line,
           session_id: sessionId,
           client_mode: 'cli',
@@ -239,6 +259,7 @@ async function main() {
         durationMs,
         result.body.trace,
         result.body.perf ?? null,
+        result.body.delivery,
       );
       localTiming.render_reply_ms = Date.now() - renderReplyStartedAt;
 
@@ -284,6 +305,15 @@ async function main() {
   }
 }
 
+function isReadlineClosed(error: unknown): boolean {
+  return Boolean(
+    error &&
+    typeof error === 'object' &&
+    'code' in error &&
+    error.code === 'ERR_USE_AFTER_CLOSE',
+  );
+}
+
 async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> {
   const outputs =
     options.url && options.plansTable
@@ -322,6 +352,7 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
     region: options.region,
     profile: options.profile,
     userId: options.userId,
+    contactPhone: options.contactPhone?.trim() || null,
     channel: options.channel,
     timeoutMs: options.timeoutMs,
     showRaw: options.showRaw,
@@ -423,6 +454,7 @@ function renderIntro(config: ResolvedCliConfig) {
     `${pc.bold('Stack')}: ${config.stackName}`,
     `${pc.bold('AWS')}: ${config.profile} @ ${config.region}`,
     `${pc.bold('User')}: ${config.userId}`,
+    `${pc.bold('Context phone')}: ${config.contactPhone ?? 'none (local plan context)'}`,
     `${pc.bold('Channel')}: ${config.channel}`,
     '',
     pc.gray('Commands: /help  /config  /plan  /exit'),
@@ -470,6 +502,7 @@ function renderConfig(config: ResolvedCliConfig) {
     ['AWS Profile', config.profile],
     ['AWS Region', config.region],
     ['User ID', config.userId],
+    ['Context Phone', config.contactPhone ?? 'none (local plan context)'],
     ['Channel', config.channel],
     ['Timeout (ms)', String(config.timeoutMs)],
     ['Show Trace', String(config.showTrace)],
@@ -483,11 +516,12 @@ function renderConfig(config: ResolvedCliConfig) {
 }
 
 function renderReply(
-  message: string,
+  message: string | null,
   node: string,
   durationMs: number,
   trace: TurnTrace,
   perf: CliPerfSummary | null,
+  delivery?: LambdaSuccessPayload['delivery'],
 ) {
   const runtimeTiming = trace.timing_ms;
   const runtimeTokens = trace.token_usage.total;
@@ -505,11 +539,44 @@ function renderReply(
       ? ` · cache ${(totalCacheHitRate * 100).toFixed(1)}%`
       : '';
   const perfHint = perf ? ` · perf ${perf.runtime_latency_ms}ms` : '';
+  renderClassifierDecision(trace, delivery, message);
+  const displayMessage = message ?? 'No outbound reply was sent for this turn.';
   output.write(
-    `${boxen(message, {
+    `${boxen(displayMessage, {
       padding: 1,
       borderColor: 'green',
-      title: `agent reply · ${node} · ${durationMs}ms${timingHint}${tokensHint}${cacheHint}${perfHint}`,
+      title: `${message ? 'agent reply' : 'delivery suppressed'} · ${node} · ${durationMs}ms${timingHint}${tokensHint}${cacheHint}${perfHint}`,
+      titleAlignment: 'left',
+    })}\n`,
+  );
+}
+
+function renderClassifierDecision(
+  trace: TurnTrace,
+  delivery: LambdaSuccessPayload['delivery'],
+  message: string | null,
+): void {
+  const classifier = trace.response_classifier;
+  if (!classifier) {
+    return;
+  }
+  const predictedDelivery = classifier.would_suppress ? 'SUPPRESS' : 'SEND';
+  const actualDelivery = delivery?.action.toUpperCase() ?? (message ? 'SEND' : 'SUPPRESS');
+  const lines = [
+    `mode=${classifier.mode}`,
+    `prediction=${predictedDelivery} (${classifier.action})`,
+    `actual_delivery=${actualDelivery}`,
+    `reason=${classifier.reason}`,
+    `health=${classifier.conversation_health} (${classifier.health_reason})`,
+    `help_response=${classifier.human_help_response}`,
+    `context=${classifier.context_source} prior_outbound=${String(classifier.has_prior_outbound_message)}`,
+    `fallback=${String(classifier.fallback_used)}`,
+  ];
+  output.write(
+    `${boxen(lines.join('\n'), {
+      padding: 1,
+      borderColor: classifier.would_suppress ? 'yellow' : 'green',
+      title: 'response classifier + frustration monitor',
       titleAlignment: 'left',
     })}\n`,
   );
@@ -557,6 +624,23 @@ function renderTrace(
     ['Transition', `${trace.previous_node} -> ${trace.next_node}`],
     ['Node Path', trace.node_path.join(' -> ')],
     ['Intent', trace.intent ?? 'null'],
+    [
+      'Response Classifier',
+      trace.response_classifier
+        ? [
+            `mode=${trace.response_classifier.mode}`,
+            `action=${trace.response_classifier.action}`,
+            `reason=${trace.response_classifier.reason}`,
+            `would_suppress=${String(trace.response_classifier.would_suppress)}`,
+            `health=${trace.response_classifier.conversation_health}`,
+            `health_reason=${trace.response_classifier.health_reason}`,
+            `help_response=${trace.response_classifier.human_help_response}`,
+            `context=${trace.response_classifier.context_source}`,
+            `prior_outbound=${String(trace.response_classifier.has_prior_outbound_message)}`,
+            `fallback=${String(trace.response_classifier.fallback_used)}`,
+          ].join('\n')
+        : 'not available',
+    ],
     [
       'Structured Extraction',
       [
@@ -624,6 +708,7 @@ function renderTrace(
       [
         `total=${trace.timing_ms.total}ms`,
         `load_plan=${trace.timing_ms.load_plan}ms`,
+        `response_classification=${trace.timing_ms.response_classification ?? 0}ms`,
         `prepare_working_plan=${trace.timing_ms.prepare_working_plan}ms`,
         `extraction=${trace.timing_ms.extraction}ms`,
         `apply_extraction=${trace.timing_ms.apply_extraction}ms`,
@@ -667,6 +752,8 @@ function renderTrace(
             `runtime=${perf.runtime_latency_ms}ms extraction=${perf.extraction_latency_ms}ms compose=${perf.compose_latency_ms}ms`,
             `tools=${perf.tools_called_count} providers=${perf.provider_results_count}`,
             `funnel_context=${perf.recommendation_context_candidates ?? 'n/a'} presentation_limit=${perf.recommendation_presentation_limit ?? 'n/a'}`,
+            `classifier=${perf.response_classifier_action ?? 'n/a'} would_suppress=${perf.response_classifier_would_suppress ?? 'n/a'}`,
+            `health=${perf.conversation_health_status ?? 'n/a'} (${perf.conversation_health_reason ?? 'n/a'}) help_response=${perf.human_help_response ?? 'n/a'}`,
             `total_tokens=${perf.total_tokens ?? 'n/a'} cached_input=${perf.cached_input_tokens ?? 'n/a'}`,
             `cache_hit_rate=${
               perf.cache_hit_rate === null
@@ -687,6 +774,9 @@ function renderTrace(
         trace.token_usage.extraction
           ? `extraction: ${formatTokenUsageWithCache(trace.token_usage.extraction)}`
           : 'extraction: not available',
+        trace.token_usage.classifier
+          ? `classifier: ${formatTokenUsageWithCache(trace.token_usage.classifier)}`
+          : 'classifier: not available',
         trace.token_usage.reply
           ? `reply: ${formatTokenUsageWithCache(trace.token_usage.reply)}`
           : 'reply: not available',

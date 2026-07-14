@@ -22,6 +22,17 @@ import { AgentService } from '../src/runtime/agent-service';
 import { executeFinishPlanTool } from '../src/runtime/finish-plan-tool';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import type {
+  AgentConversationGateway,
+  AgentGatewayResult,
+  AgentMessageLogInput,
+  AgentConversationMessage,
+} from '../src/runtime/agent-conversation-gateway';
+import type {
+  MessageResponseClassifier,
+  MessageResponseClassifierResult,
+  ResponseClassifierMode,
+} from '../src/runtime/message-response-classifier';
+import type {
   CategoryLocationProviderSearchInput,
   CreateProviderReviewInput,
   FavoriteRequestInput,
@@ -205,6 +216,149 @@ class InvitedEventRuntime extends FakeRuntime {
       contactEmail: null,
       contactPhone: null,
       providerFitCriteria: testProviderFitCriteria,
+    };
+  }
+}
+
+class HumanEscalationRuntime extends FakeRuntime {
+  public extractCalls = 0;
+
+  override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    void request;
+    this.extractCalls += 1;
+    return {
+      intent: 'solicitar_humano',
+      intentConfidence: 0.99,
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'El usuario pide hablar con una persona del equipo.',
+      selectedProviderHints: [],
+      selectedProviderReferences: [],
+      closeAction: null,
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: testProviderFitCriteria,
+      kbQuery: null,
+      providerQueryIntents: [],
+      providerPlanOperations: [],
+      providerExplanationRequest: null,
+      providerDetailRequest: null,
+    };
+  }
+}
+
+class FakeAgentConversationGateway implements AgentConversationGateway {
+  public requestedPhones: string[] = [];
+
+  constructor(private readonly result: AgentGatewayResult) {}
+
+  async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
+    void input;
+    return this.result;
+  }
+
+  async getRecentMessages(phoneNumber: string): Promise<
+    | { status: 'success'; messages: AgentConversationMessage[] }
+    | Exclude<AgentGatewayResult, { status: 'success' }>
+  > {
+    void phoneNumber;
+    if (this.result.status === 'success') {
+      return { status: 'success', messages: [] };
+    }
+    return this.result;
+  }
+
+  async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
+    this.requestedPhones.push(phoneNumber);
+    return this.result;
+  }
+}
+
+class TrackingAgentConversationGateway implements AgentConversationGateway {
+  public readonly operations: string[] = [];
+  public readonly loggedMessages: AgentMessageLogInput[] = [];
+
+  constructor(private readonly messages: AgentConversationMessage[]) {}
+
+  async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
+    this.operations.push(`log:${input.direction}`);
+    this.loggedMessages.push(input);
+    return { status: 'success', message: 'Message logged.' };
+  }
+
+  async getRecentMessages(): Promise<{ status: 'success'; messages: AgentConversationMessage[] }> {
+    this.operations.push('get');
+    return { status: 'success', messages: this.messages };
+  }
+
+  async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
+    this.operations.push(`takeover:${phoneNumber}`);
+    return { status: 'success', message: 'Human takeover requested.' };
+  }
+}
+
+class FakeResponseClassifier implements MessageResponseClassifier {
+  public readonly calls: Array<{
+    inboundText: string;
+    messages: AgentConversationMessage[];
+  }> = [];
+
+  constructor(
+    public readonly mode: ResponseClassifierMode,
+    private readonly action: 'respond' | 'suppress_acknowledgement' | 'suppress_reaction',
+    private readonly health: {
+      status: MessageResponseClassifierResult['trace']['conversation_health'];
+      reason: MessageResponseClassifierResult['trace']['health_reason'];
+      helpResponse: MessageResponseClassifierResult['trace']['human_help_response'];
+    } = {
+      status: 'progressing',
+      reason: 'normal_progress',
+      helpResponse: 'not_applicable',
+    },
+  ) {}
+
+  async classify(args: {
+    inboundText: string;
+    plan: PersistedPlan;
+    messages: AgentConversationMessage[];
+    contextSource: 'agent_api' | 'local_plan';
+  }): Promise<MessageResponseClassifierResult> {
+    this.calls.push({ inboundText: args.inboundText, messages: args.messages });
+    const reason = this.action === 'suppress_acknowledgement'
+      ? 'acknowledgement'
+      : this.action === 'suppress_reaction'
+        ? 'reaction'
+        : 'requires_response';
+    return {
+      trace: {
+        mode: this.mode,
+        action: this.action,
+        reason,
+        would_suppress: this.action !== 'respond',
+        context_source: args.contextSource,
+        has_prior_outbound_message: args.messages.some((message) => message.direction === 'outbound'),
+        fallback_used: false,
+        conversation_health: this.health.status,
+        health_reason: this.health.reason,
+        human_help_response: this.health.helpResponse,
+        prompt_bundle_id: 'test-classifier',
+        prompt_file_paths: [],
+      },
+      tokenUsage: {
+        input_tokens: 10,
+        output_tokens: 2,
+        total_tokens: 12,
+      },
     };
   }
 }
@@ -7230,5 +7384,417 @@ describe('AgentService', () => {
     });
 
     expect(response.outbound.text).toBe('Puedes revisar tu lista aquí');
+  });
+
+  it('routes explicit human support requests to local soft-pause when Agent API is not configured', async () => {
+    const runtime = new HumanEscalationRuntime();
+    const agentGateway = new FakeAgentConversationGateway({
+      status: 'skipped',
+      reason: 'not_configured',
+      message: 'Agent API human takeover is not configured.',
+    });
+    const planStore = new InMemoryPlanStore();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: agentGateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-human-escalation',
+      text: 'quiero hablar con una persona de soporte',
+      messageId: 'msg-human-escalation',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51 987654321',
+    });
+
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.intent).toBe('solicitar_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.human_escalation.phone_number).toBe('51987654321');
+    expect(response.plan.human_escalation.last_error).toBe('Agent API human takeover is not configured.');
+    expect(Date.parse(response.plan.human_escalation.bot_suppressed_until ?? '') - Date.now())
+      .toBeGreaterThan(11 * 60 * 60 * 1_000);
+    expect(response.trace.route_kind).toBe('human_escalation');
+    expect(response.trace.tools_called).toContain('request_human_takeover');
+    expect(response.trace.search_strategy).toBe('none');
+    expect(response.trace.provider_results).toHaveLength(0);
+    expect(agentGateway.requestedPhones).toEqual(['51987654321']);
+    expect(response.outbound.text).toContain('Una persona del equipo podrá continuar');
+    expect(response.outbound.text).not.toMatch(/12|horas/iu);
+  });
+
+  it('keeps escalated conversations soft-paused without extracting or searching again', async () => {
+    const runtime = new HumanEscalationRuntime();
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-escalated',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-escalated',
+        }),
+        {
+          current_node: 'solicitar_agente_humano',
+          intent: 'solicitar_humano',
+          human_escalation: {
+            status: 'requested',
+            requested_at: new Date(Date.now() - 60_000).toISOString(),
+            bot_suppressed_until: new Date(Date.now() + 60_000).toISOString(),
+            phone_number: '51987654321',
+            last_error: 'Agent API human takeover is not configured.',
+          },
+        },
+      ),
+    });
+
+    const response = await new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-escalated',
+      text: 'sigues ahi?',
+      messageId: 'msg-escalated-follow-up',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51 987654321',
+    });
+
+    expect(runtime.extractCalls).toBe(0);
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.trace.route_kind).toBe('human_escalation');
+    expect(response.trace.tools_called).toEqual([]);
+    expect(response.trace.provider_results).toHaveLength(0);
+    expect(response.outbound.text).toBeNull();
+    expect(response.outbound.delivery).toEqual({
+      action: 'suppress',
+      reason: 'human_escalation_active',
+    });
+  });
+
+  it('resumes automated processing after the 12-hour human escalation window expires', async () => {
+    const runtime = new FakeRuntime();
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-expired-escalation',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-expired-escalation',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-expired-escalation',
+        }),
+        {
+          current_node: 'solicitar_agente_humano',
+          intent: 'solicitar_humano',
+          human_escalation: {
+            status: 'requested',
+            requested_at: new Date(Date.now() - (13 * 60 * 60 * 1_000)).toISOString(),
+            phone_number: '51987654321',
+            last_error: null,
+          },
+        },
+      ),
+    });
+
+    const response = await new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-expired-escalation',
+      text: 'Quiero retomar la planificación',
+      messageId: 'msg-expired-escalation',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51 987654321',
+    });
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(response.plan.human_escalation).toEqual({
+      status: 'none',
+      requested_at: null,
+      bot_suppressed_until: null,
+      phone_number: null,
+      last_error: null,
+    });
+    expect(response.trace.tools_called).toContain('expire_human_escalation_window');
+    expect(response.outbound.delivery.action).toBe('send');
+  });
+
+  it('observes acknowledgement suppression while retaining the full reply flow and logging both messages', async () => {
+    const classifier = new FakeResponseClassifier('observe', 'suppress_acknowledgement');
+    const gateway = new TrackingAgentConversationGateway([
+      {
+        id: 1,
+        direction: 'outbound',
+        source: 'agent',
+        body: '¿Quieres que te comparta más opciones?',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      },
+    ]);
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new FakeRuntime(),
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: '51991347878',
+      text: 'Gracias!',
+      messageId: 'classifier-observe',
+      receivedAt: '2026-07-09T10:00:00.000Z',
+      contactPhone: '+51 991347878',
+    });
+
+    expect(response.outbound.delivery.action).toBe('send');
+    expect(response.outbound.text).not.toBeNull();
+    expect(response.trace.response_classifier?.would_suppress).toBe(true);
+    expect(response.trace.token_usage.classifier?.total_tokens).toBe(12);
+    expect(classifier.calls).toHaveLength(1);
+    expect(gateway.operations).toEqual(['get', 'log:inbound', 'log:outbound']);
+  });
+
+  it('enforces acknowledgement suppression before extraction and provider search', async () => {
+    class CountingRuntime extends FakeRuntime {
+      public extractCalls = 0;
+
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        this.extractCalls += 1;
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new CountingRuntime();
+    const classifier = new FakeResponseClassifier('enforce', 'suppress_acknowledgement');
+    const gateway = new TrackingAgentConversationGateway([
+      {
+        id: 1,
+        direction: 'outbound',
+        source: 'agent',
+        body: '¿Quieres que te comparta más opciones?',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      },
+    ]);
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: '51991347878',
+      text: '👍',
+      messageId: 'classifier-enforce',
+      receivedAt: '2026-07-09T10:00:00.000Z',
+      contactPhone: '+51 991347878',
+    });
+
+    expect(runtime.extractCalls).toBe(0);
+    expect(response.outbound.text).toBeNull();
+    expect(response.outbound.delivery).toEqual({
+      action: 'suppress',
+      reason: 'suppress_acknowledgement',
+    });
+    expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
+  });
+
+  it('offers human help after a second consecutive stalled turn and bypasses normal agent work', async () => {
+    class CountingRuntime extends FakeRuntime {
+      public extractCalls = 0;
+
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        this.extractCalls += 1;
+        return await super.extract(request);
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-stall',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'health-stalled',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'health-stalled-user',
+        }),
+        {
+          conversation_health: {
+            status: 'stalled',
+            reason: 'repeated_question',
+            consecutive_non_progress_turns: 1,
+            help_offer_status: 'none',
+            help_offered_at: null,
+            last_assessed_at: '2026-07-10T10:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const runtime = new CountingRuntime();
+    const classifier = new FakeResponseClassifier('observe', 'respond', {
+      status: 'stalled',
+      reason: 'circular_conversation',
+      helpResponse: 'not_applicable',
+    });
+    const gateway = new TrackingAgentConversationGateway([]);
+
+    const response = await new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'health-stalled-user',
+      text: 'Todavía no logramos resolverlo',
+      messageId: 'health-stalled-turn',
+      receivedAt: '2026-07-10T10:01:00.000Z',
+      contactPhone: '+51 900000001',
+    });
+
+    expect(runtime.extractCalls).toBe(0);
+    expect(response.plan.current_node).toBe('ofrecer_agente_humano');
+    expect(response.plan.conversation_health).toMatchObject({
+      consecutive_non_progress_turns: 2,
+      help_offer_status: 'offered',
+    });
+    expect(response.trace.route_kind).toBe('human_help_offer');
+    expect(response.outbound.text).toContain('una persona del equipo se una a este chat');
+    expect(gateway.operations).toEqual(['get', 'log:inbound', 'log:outbound']);
+  });
+
+  it('routes structured acceptance of a health-monitor offer through human takeover', async () => {
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-offer',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'health-offered',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'health-offered-user',
+        }),
+        {
+          current_node: 'ofrecer_agente_humano',
+          conversation_health: {
+            status: 'frustrated',
+            reason: 'explicit_frustration',
+            consecutive_non_progress_turns: 1,
+            help_offer_status: 'offered',
+            help_offered_at: '2026-07-10T10:00:00.000Z',
+            last_assessed_at: '2026-07-10T10:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const classifier = new FakeResponseClassifier('observe', 'respond', {
+      status: 'progressing',
+      reason: 'normal_progress',
+      helpResponse: 'accept',
+    });
+    const gateway = new TrackingAgentConversationGateway([]);
+
+    const response = await new AgentService({
+      planStore,
+      runtime: new FakeRuntime(),
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'health-offered-user',
+      text: 'Sí, por favor',
+      messageId: 'health-accept-turn',
+      receivedAt: '2026-07-10T10:02:00.000Z',
+      contactPhone: '+51 900000002',
+    });
+
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(Date.parse(response.plan.human_escalation.bot_suppressed_until ?? '') - Date.now())
+      .toBeGreaterThan(11 * 60 * 60 * 1_000);
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.trace.route_kind).toBe('human_escalation');
+    expect(response.outbound.text).toContain('Una persona del equipo se unirá a este chat');
+    expect(response.outbound.text).not.toMatch(/12|horas/iu);
+    expect(gateway.operations).toEqual([
+      'get',
+      'log:inbound',
+      'takeover:51900000002',
+      'log:outbound',
+    ]);
+  });
+
+  it('resumes normal processing after a structured decline without repeating the offer', async () => {
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-decline',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'health-declined',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'health-declined-user',
+        }),
+        {
+          current_node: 'ofrecer_agente_humano',
+          conversation_health: {
+            status: 'stalled',
+            reason: 'circular_conversation',
+            consecutive_non_progress_turns: 2,
+            help_offer_status: 'offered',
+            help_offered_at: '2026-07-10T10:00:00.000Z',
+            last_assessed_at: '2026-07-10T10:00:00.000Z',
+          },
+        },
+      ),
+    });
+    const classifier = new FakeResponseClassifier('enforce', 'respond', {
+      status: 'progressing',
+      reason: 'normal_progress',
+      helpResponse: 'decline',
+    });
+
+    const response = await new AgentService({
+      planStore,
+      runtime: new FakeRuntime(),
+      providerGateway: new FakeGateway(),
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'health-declined-user',
+      text: 'Prefiero continuar por aquí',
+      messageId: 'health-decline-turn',
+      receivedAt: '2026-07-10T10:03:00.000Z',
+    });
+
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(response.plan.conversation_health.help_offer_status).toBe('declined');
+    expect(response.trace.route_kind).not.toBe('human_help_offer');
+    expect(response.outbound.delivery.action).toBe('send');
   });
 });

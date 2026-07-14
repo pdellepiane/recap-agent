@@ -11,7 +11,11 @@ export type NormalizedInboundMessage = {
 };
 
 export type NormalizedOutboundMessage = {
-  text: string;
+  text: string | null;
   conversationId: string | null;
   structuredMessageKind: string | null;
+  delivery: {
+    action: 'send' | 'suppress';
+    reason: string;
+  };
 };

@@ -109,7 +109,7 @@ export async function runLiveLambdaCase(args: {
     turns.push({
       turnIndex,
       input,
-      outputText: parsed.message,
+      outputText: parsed.message ?? '',
       currentNode: parsed.current_node,
       trace: parsed.trace,
       perf: parsed.perf ?? null,

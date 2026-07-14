@@ -159,6 +159,14 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
     files: buildNodeFiles('guardar_cerrar_temporalmente'),
     allowedTools: [],
   },
+  ofrecer_agente_humano: {
+    files: buildNodeFiles('ofrecer_agente_humano'),
+    allowedTools: [],
+  },
+  solicitar_agente_humano: {
+    files: buildNodeFiles('solicitar_agente_humano'),
+    allowedTools: [],
+  },
   informar_error_reintento: {
     files: buildNodeFiles('informar_error_reintento'),
     allowedTools: [],

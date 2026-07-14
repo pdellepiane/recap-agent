@@ -248,6 +248,14 @@ expectations:
 
 Offline fixtures must stay token-free; do not fake token consumption in offline cases.
 
+### Response classifier promotion
+
+`evals/classifiers/reply-suppression-seed.jsonl` is the initial labelled Spanish corpus for acknowledgement, reaction, campaign, provider-selection, correction, new-requirement, ambiguous, first-contact, support, and FAQ turns. Expand this corpus before enabling delivery suppression.
+
+The classifier now runs in `enforce`. Continue evaluating at least 200 labelled turns, including 100 must-reply turns and 50 acknowledgement/reaction turns. Operational quality should retain at least 99% must-reply recall, at least 90% acknowledgement/reaction suppression recall, and no false suppressions for provider selection, new planning, corrections, questions, or human-escalation requests. Return to `observe` if those safeguards regress.
+
+`evals/classifiers/conversation-health-seed.jsonl` seeds the conversation-health labels used by the same classifier call. It covers normal progress, insufficient context, repeated questions and corrections, unresolved error loops, explicit interaction frustration, provider complaints, and responses to an offered human handoff. Before tuning thresholds, review false help offers separately from missed stalls; the runtime deliberately requires either one explicit-frustration decision or two consecutive stalled/frustrated turns.
+
 ### Why layered expectations
 
 Exact transcript matching is usually the wrong contract for agents in active development.

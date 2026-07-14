@@ -10,7 +10,11 @@ export type AppConfig = {
     models: {
       reply: string;
       extractor: string;
+      responseClassifier: string;
     };
+  };
+  responseClassifier: {
+    mode: 'observe' | 'enforce';
   };
   aws: {
     region: string;
@@ -32,6 +36,12 @@ export type AppConfig = {
     vectorStoreId: string | null;
     vectorMaxResults: number;
     vectorScoreThreshold: number;
+  };
+  agentApi: {
+    baseUrl: string;
+    secretId: string | null;
+    timeoutMs: number;
+    maxRetries: number;
   };
   recommendation: {
     replyProviderLimit: number;
@@ -72,6 +82,8 @@ const environmentSchema = z.object({
   OPENAI_PROMPT_CACHE_RETENTION: z.enum(['in-memory', '24h']).default('in-memory'),
   OPENAI_MODEL: z.string().min(1).default('gpt-5.4-mini'),
   OPENAI_EXTRACTOR_MODEL: z.string().min(1).default('gpt-5.4-nano'),
+  OPENAI_RESPONSE_CLASSIFIER_MODEL: z.string().min(1).default('gpt-5.4-nano'),
+  RESPONSE_CLASSIFIER_MODE: z.enum(['observe', 'enforce']).default('enforce'),
   AWS_REGION: z.string().min(1).default('us-east-1'),
   PLANS_TABLE_NAME: z.string().min(1).default('recap-agent-plans'),
   PROMPTS_DIR: z.string().min(1).optional(),
@@ -87,6 +99,13 @@ const environmentSchema = z.object({
     .string()
     .url()
     .default('https://se-v2-api-dev.jnq.io/api-web/user'),
+  AGENT_API_BASE_URL: z
+    .string()
+    .url()
+    .default('https://api.sinenvolturas.com/api/agent'),
+  SE_API_SECRET_ID: z.string().min(1).optional(),
+  AGENT_API_TIMEOUT_MS: z.coerce.number().int().min(250).max(30_000).default(5_000),
+  AGENT_API_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
   AGENT_FUNCTION_URL: z.string().url().optional(),
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(12),
@@ -125,7 +144,11 @@ export function getConfig(): AppConfig {
         reply: environment.OPENAI_MODEL,
         extractor:
           environment.OPENAI_EXTRACTOR_MODEL ?? environment.OPENAI_MODEL,
+        responseClassifier: environment.OPENAI_RESPONSE_CLASSIFIER_MODEL,
       },
+    },
+    responseClassifier: {
+      mode: environment.RESPONSE_CLASSIFIER_MODE,
     },
     aws: {
       region: environment.AWS_REGION,
@@ -147,6 +170,12 @@ export function getConfig(): AppConfig {
       vectorStoreId: environment.PROVIDER_VECTOR_STORE_ID ?? null,
       vectorMaxResults: environment.PROVIDER_VECTOR_MAX_RESULTS,
       vectorScoreThreshold: environment.PROVIDER_VECTOR_SCORE_THRESHOLD,
+    },
+    agentApi: {
+      baseUrl: environment.AGENT_API_BASE_URL.replace(/\/+$/u, ''),
+      secretId: environment.SE_API_SECRET_ID ?? null,
+      timeoutMs: environment.AGENT_API_TIMEOUT_MS,
+      maxRetries: environment.AGENT_API_MAX_RETRIES,
     },
     recommendation: {
       replyProviderLimit: environment.REPLY_PROVIDER_LIMIT,

@@ -32,8 +32,12 @@ export type CostEstimate = {
 export function estimateTurnCost(
   turn: EvalTurnResult,
   pricing: PricingConfig,
-  models: { extractor: string; reply: string },
+  models: { classifier?: string; extractor: string; reply: string },
 ): CostEstimate {
+  const classifier = estimateModelUsage(
+    turn.trace.token_usage.classifier ?? null,
+    models.classifier ? pricing.models[models.classifier] : undefined,
+  );
   const extraction = estimateModelUsage(
     turn.trace.token_usage.extraction,
     pricing.models[models.extractor],
@@ -43,7 +47,7 @@ export function estimateTurnCost(
   const lambdaUsd =
     pricing.lambda.requestUsd +
     lambdaSeconds * pricing.lambda.memoryGb * pricing.lambda.gbSecondUsd;
-  const openaiUsd = extraction + reply;
+  const openaiUsd = classifier + extraction + reply;
   return {
     openaiUsd,
     lambdaUsd,
