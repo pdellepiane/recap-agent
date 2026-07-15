@@ -71,4 +71,66 @@ describe('AgentParticipationService', () => {
     });
     expect(result).toEqual({ status: 'plan_not_found' });
   });
+
+  it('lets the CRM overtake an active conversation', async () => {
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed_active_for_overtake',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'plan-overtake',
+        channel: 'whatsapp',
+        externalUserId: 'whatsapp:51999999999',
+      }), {
+        current_node: 'entrevista',
+        intent: 'elicitar_necesidades',
+        contact_phone: '51999999999',
+      }),
+    });
+
+    const result = await new AgentParticipationService(planStore).overtakeConversation({
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:51999999999',
+      requestedAt: '2026-07-15T22:30:00.000Z',
+    });
+
+    expect(result.status).toBe('overtaken');
+    if (result.status !== 'overtaken') {
+      throw new Error('Expected the CRM to overtake the conversation.');
+    }
+    expect(result.plan.current_node).toBe('solicitar_agente_humano');
+    expect(result.plan.intent).toBe('solicitar_humano');
+    expect(result.plan.human_escalation).toEqual({
+      status: 'requested',
+      requested_at: '2026-07-15T22:30:00.000Z',
+      phone_number: '51999999999',
+      last_error: null,
+    });
+  });
+
+  it('is idempotent when the CRM already owns the conversation', async () => {
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed_overtaken',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'plan-already-overtaken',
+        channel: 'whatsapp',
+        externalUserId: 'whatsapp:51999999999',
+      }), {
+        current_node: 'solicitar_agente_humano',
+        intent: 'solicitar_humano',
+        human_escalation: {
+          status: 'requested',
+          requested_at: '2026-07-15T22:30:00.000Z',
+          phone_number: '51999999999',
+          last_error: null,
+        },
+      }),
+    });
+
+    const result = await new AgentParticipationService(planStore).overtakeConversation({
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:51999999999',
+    });
+    expect(result.status).toBe('already_overtaken');
+  });
 });

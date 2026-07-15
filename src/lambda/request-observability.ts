@@ -9,6 +9,8 @@ export type ChannelRequestOutcome =
   | 'plan_not_found'
   | 'agent_participation_resumed'
   | 'agent_participation_unchanged'
+  | 'conversation_overtaken'
+  | 'conversation_overtake_unchanged'
   | 'internal_error';
 
 export type ChannelRequestValidationIssue = {

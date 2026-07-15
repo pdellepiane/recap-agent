@@ -25,8 +25,8 @@ import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
 import { bearerTokenMatchesAny, readBearerAuthorization } from './bearer-auth';
 import {
+  agentParticipationRequestSchema,
   channelRequestSchema,
-  resumeAutomatedAgentRequestSchema,
 } from './request-contract';
 import {
   buildChannelRequestLog,
@@ -114,7 +114,7 @@ export async function handler(
       return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
     }
     if (isControlOperationRequest(rawBody)) {
-      const parsedOperation = resumeAutomatedAgentRequestSchema.safeParse(rawBody);
+      const parsedOperation = agentParticipationRequestSchema.safeParse(rawBody);
       if (!parsedOperation.success) {
         const validationIssues = parsedOperation.error.issues.map((issue) => ({
           path: issue.path.join('.'),
@@ -136,10 +136,16 @@ export async function handler(
         externalUserId: operation.user_id,
         messageId: operation.request_id,
       };
-      const result = await getAgentParticipationService().resumeAutomatedAgent({
-        channel: operation.channel,
-        externalUserId: operation.user_id,
-      });
+      const result = operation.operation === 'resume_automated_agent'
+        ? await getAgentParticipationService().resumeAutomatedAgent({
+            channel: operation.channel,
+            externalUserId: operation.user_id,
+          })
+        : await getAgentParticipationService().overtakeConversation({
+            channel: operation.channel,
+            externalUserId: operation.user_id,
+            requestedAt: operation.requested_at,
+          });
       if (result.status === 'plan_not_found') {
         return respond(404, {
           operation: operation.operation,
@@ -151,9 +157,7 @@ export async function handler(
         status: result.status,
         plan_id: result.plan.plan_id,
         current_node: result.plan.current_node,
-      }, result.status === 'resumed'
-        ? 'agent_participation_resumed'
-        : 'agent_participation_unchanged', {
+      }, operationOutcome(result.status), {
         currentNode: result.plan.current_node,
       });
     }
@@ -374,6 +378,21 @@ function isControlOperationRequest(value: unknown): value is Record<string, unkn
     && value !== null
     && 'operation' in value
     && value.operation !== 'process_message';
+}
+
+function operationOutcome(
+  status: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken',
+): ChannelRequestOutcome {
+  switch (status) {
+    case 'resumed':
+      return 'agent_participation_resumed';
+    case 'already_active':
+      return 'agent_participation_unchanged';
+    case 'overtaken':
+      return 'conversation_overtaken';
+    case 'already_overtaken':
+      return 'conversation_overtake_unchanged';
+  }
 }
 
 function json(

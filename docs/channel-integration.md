@@ -79,7 +79,7 @@ Send JSON with `content-type: application/json` and `Authorization: Bearer <CHAN
 
 | Field | Required | Type | Meaning |
 | --- | --- | --- | --- |
-| `operation` | Yes | `process_message` | Explicitly identifies a conversational turn. CRM release requests use `resume_automated_agent` instead. |
+| `operation` | Yes | `process_message` | Explicitly identifies a conversational turn. CRM ownership requests use `overtake_conversation` or `resume_automated_agent` instead. |
 | `text` | Yes | string | The inbound user message exactly as the user sent it after channel-level cleanup. |
 | `user_id` | Yes | string | Stable channel-specific external user id. This is the state key together with `channel`. |
 | `channel` | Yes | string | Stable channel identifier. Use `whatsapp` in production and `whatsapp_sandbox` for sandbox traffic. |
@@ -289,10 +289,33 @@ The example above is shape-focused and omits most nested `plan` fields. The actu
 
 ## CRM Agent Participation Contract
 
-After human takeover, the automated agent remains paused until the CRM backend
-explicitly releases the conversation. The CRM button must call the same Lambda
-Function URL with the standard channel Bearer credential. This is a backend
-request; do not expose `CHANNEL_API_KEY` in CRM browser code.
+The CRM backend controls who owns the conversation through two idempotent
+operations on the same Lambda Function URL. Both use the standard channel
+Bearer credential. These are backend requests; do not expose `CHANNEL_API_KEY`
+in CRM browser code.
+
+| Operation | Effect | First result | Retry result |
+| --- | --- | --- | --- |
+| `overtake_conversation` | Gives the CRM representative ownership and suppresses subsequent automated replies. | `overtaken` | `already_overtaken` |
+| `resume_automated_agent` | Releases human ownership and restores automated participation. | `resumed` | `already_active` |
+
+CRM takeover request:
+
+```bash
+curl -sS \
+  -X POST "${AGENT_FUNCTION_URL}" \
+  -H "content-type: application/json" \
+  -H "Authorization: Bearer ${CHANNEL_API_KEY}" \
+  --data '{
+    "operation": "overtake_conversation",
+    "channel": "whatsapp",
+    "user_id": "whatsapp:51999999999",
+    "request_id": "crm-overtake-01KXQ2Y8Y8V5BNM0J8X1P0T5M4",
+    "requested_at": "2026-07-15T22:00:00.000Z"
+  }'
+```
+
+CRM release request:
 
 ```bash
 curl -sS \
@@ -312,7 +335,18 @@ The `channel` and `user_id` values must exactly match the plan identity used by
 the WhatsApp adapter. `request_id` is required for redacted operational
 correlation. `requested_at` is optional and does not control participation.
 
-A successful first request returns:
+A successful takeover returns:
+
+```json
+{
+  "operation": "overtake_conversation",
+  "status": "overtaken",
+  "plan_id": "01KXQ2...",
+  "current_node": "solicitar_agente_humano"
+}
+```
+
+A successful release returns:
 
 ```json
 {
@@ -323,11 +357,11 @@ A successful first request returns:
 }
 ```
 
-The operation does not invoke a model and does not produce a WhatsApp message.
-It clears the persisted human-escalation state and restores the appropriate
-planning node. Repeating the request is safe and returns `status:
-"already_active"`. A missing plan returns HTTP `404` with `status:
-"plan_not_found"`.
+Neither operation invokes a model or produces a WhatsApp message. Takeover
+persists human-escalation state immediately, so later `process_message` turns
+return suppressed delivery until the release operation clears that state and
+restores the appropriate planning node. A missing plan returns HTTP `404` with
+`status: "plan_not_found"`.
 
 ## Error Responses
 
@@ -340,7 +374,7 @@ The handler currently returns JSON errors with these status codes:
 | `400` | `{ "error": "Request body must be valid JSON." }` | Malformed JSON. |
 | `400` | `{ "error": "Invalid request body.", "issues": [...] }` | Missing fields, invalid timestamp, or missing/malformed WhatsApp `contact_phone`. |
 | `400` | `{ "error": "Invalid operation request.", "issues": [...] }` | Unknown operation or malformed CRM control request. |
-| `404` | `{ "operation": "resume_automated_agent", "status": "plan_not_found" }` | CRM supplied a `channel` and `user_id` pair with no persisted plan. |
+| `404` | `{ "operation": "<ownership operation>", "status": "plan_not_found" }` | CRM supplied a `channel` and `user_id` pair with no persisted plan. |
 | `500` | `{ "error": "..." }` | Secret/runtime bootstrap failure, OpenAI error, provider failure not handled by the flow, DynamoDB failure, or other unexpected exception. |
 
 Adapter retry policy:
@@ -746,7 +780,8 @@ failures are traced and do not block channel delivery. Once human escalation is
 active, the runtime returns `delivery.action: "suppress"` and does not continue
 as a bot. Elapsed time never clears that state. Only an authenticated
 `resume_automated_agent` operation from the CRM restores automated
-participation.
+participation. The CRM can enter the same state directly with an authenticated
+`overtake_conversation` operation.
 
 That classifier call also produces a structured conversation-health assessment. The runtime persists consecutive non-progress evidence and emits one optional human-help offer after one explicit-frustration assessment or two consecutive stalled/frustrated assessments. The offer is still a normal outbound message and must be delivered. Only a later structured acceptance invokes the Agent API takeover endpoint; a decline resumes the channel's normal response flow.
 
@@ -792,7 +827,7 @@ Before a channel adapter is considered complete:
 
 - [ ] It verifies native webhook authenticity before calling the runtime.
 - [ ] It reads `CHANNEL_API_KEY` from server-side secret configuration and sends it as `Authorization: Bearer <token>`.
-- [ ] Every conversational turn sends `operation: process_message`; CRM release requests send `operation: resume_automated_agent`.
+- [ ] Every conversational turn sends `operation: process_message`; CRM ownership controls send `operation: overtake_conversation` or `operation: resume_automated_agent`.
 - [ ] It does not hold `SE_API_KEY` or write inbound messages directly to the Agent API.
 - [ ] It uses a stable `channel` string.
 - [ ] It always passes a stable `user_id`.
@@ -806,7 +841,7 @@ Before a channel adapter is considered complete:
 - [ ] It retries only transient failures with bounded backoff.
 - [ ] It deduplicates inbound webhook retries.
 - [ ] It keeps all channel formatting, templates, auth, and retry logic outside `src/runtime`.
-- [ ] The CRM backend sends `resume_automated_agent` with the exact plan identity when an operator releases human ownership; the browser never receives `CHANNEL_API_KEY`.
+- [ ] The CRM backend sends ownership operations with the exact plan identity when an operator takes or releases the conversation; the browser never receives `CHANNEL_API_KEY`.
 
 ## Known Integration Risks
 

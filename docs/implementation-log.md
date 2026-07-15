@@ -2,6 +2,33 @@
 
 ## 2026-07-15
 
+### Add explicit CRM conversation takeover
+
+**Reason:** The CRM could release human ownership but had no symmetric control
+to take ownership of an active automated conversation before a user requested
+handoff through the agent flow.
+
+**Changes:**
+- Added the authenticated `overtake_conversation` operation with the same exact
+  `(channel, user_id)` identity and correlation fields as the release request.
+- Extended `AgentParticipationService` to persist human ownership, move the plan
+  to `solicitar_agente_humano`, and return `overtaken` or the idempotent
+  `already_overtaken` result.
+- Kept the operation model-free and reply-free; later `process_message` turns
+  use the existing deterministic suppression path.
+- Added typed request/service tests, redacted operation outcomes, README and CRM
+  integration documentation, response examples, and checklist updates.
+
+**Decision:** Treat CRM takeover and release as symmetric server-side ownership
+controls. Do not call the Agent API human-request endpoint when the CRM itself
+initiates takeover because the representative already owns that workflow.
+
+**Validation:** `npm run check` passed with 41 test files and 257 tests, and the
+development Lambda was redeployed. A live synthetic ownership cycle returned
+`overtaken`, then `already_overtaken`; the following `process_message` returned
+`message: null` with `human_escalation_active` suppression, and the release
+operation returned `resumed` at `entrevista`.
+
 ### Discriminate every Lambda request with an operation
 
 **Reason:** CRM control requests already used an explicit operation while

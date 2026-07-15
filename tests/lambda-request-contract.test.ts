@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   channelRequestSchema,
+  overtakeConversationRequestSchema,
   resumeAutomatedAgentRequestSchema,
 } from '../src/lambda/request-contract';
 
@@ -70,5 +71,16 @@ describe('Lambda channel request contract', () => {
       request_id: 'crm-resume-123',
     });
     expect(result.success).toBe(false);
+  });
+
+  it('accepts an explicit CRM conversation takeover operation', () => {
+    const result = overtakeConversationRequestSchema.safeParse({
+      operation: 'overtake_conversation',
+      channel: 'whatsapp',
+      user_id: 'whatsapp:51999999999',
+      request_id: 'crm-overtake-123',
+      requested_at: '2026-07-15T22:30:00.000Z',
+    });
+    expect(result.success).toBe(true);
   });
 });
