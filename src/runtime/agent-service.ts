@@ -130,8 +130,6 @@ const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 const MAX_STARTER_NEEDS = 5;
 const MAX_DETAILED_ELICITATION_NEEDS = 5;
 const MAX_PROVIDER_QUERIES_PER_NEED = 3;
-const HUMAN_ESCALATION_SUPPRESSION_MS = 12 * 60 * 60 * 1_000;
-
 export class AgentService {
   constructor(
     private readonly dependencies: {
@@ -203,30 +201,6 @@ export class AgentService {
           )
         : null;
     timingMs.load_plan += Date.now() - loadPlanStartedAt;
-
-    if (
-      existingPlan?.human_escalation.status === 'requested' &&
-      !this.isHumanEscalationSuppressionActive(existingPlan)
-    ) {
-      const expiredAt = this.resolveHumanEscalationSuppressedUntil(existingPlan);
-      this.recordDeterministicToolInput(toolUsage, 'expire_human_escalation_window', {
-        bot_suppressed_until: expiredAt,
-      });
-      existingPlan = mergePlan(existingPlan, {
-        current_node: resolveResumeNode(existingPlan),
-        human_escalation: {
-          status: 'none',
-          requested_at: null,
-          bot_suppressed_until: null,
-          phone_number: null,
-          last_error: null,
-        },
-      });
-      this.recordDeterministicToolOutput(toolUsage, 'expire_human_escalation_window', {
-        status: 'expired',
-        resumed_node: existingPlan.current_node,
-      });
-    }
 
     let classifierPlan = existingPlan ?? createEmptyPlan({
       planId: ulid(),
@@ -344,7 +318,6 @@ export class AgentService {
           human_escalation: {
             status: 'requested',
             requested_at: new Date().toISOString(),
-            bot_suppressed_until: this.newHumanEscalationSuppressedUntil(),
             phone_number: phoneNumber,
             last_error: gatewayResult.status === 'failed'
               ? gatewayResult.error
@@ -742,7 +715,6 @@ export class AgentService {
         human_escalation: {
           status: 'requested',
           requested_at: requestedAt,
-          bot_suppressed_until: this.newHumanEscalationSuppressedUntil(),
           phone_number: phoneNumber,
           last_error: gatewayResult.status === 'failed'
             ? gatewayResult.error
@@ -2067,28 +2039,6 @@ export class AgentService {
 
   private conversationHealthHelpOfferMessage(): string {
     return 'Siento que no estamos avanzando como deberíamos. ¿Quieres que una persona del equipo se una a este chat para ayudarte?';
-  }
-
-  private newHumanEscalationSuppressedUntil(): string {
-    return new Date(Date.now() + HUMAN_ESCALATION_SUPPRESSION_MS).toISOString();
-  }
-
-  private resolveHumanEscalationSuppressedUntil(plan: PlanSnapshot): string | null {
-    const explicitSuppressedUntil = plan.human_escalation.bot_suppressed_until;
-    if (explicitSuppressedUntil && Number.isFinite(Date.parse(explicitSuppressedUntil))) {
-      return explicitSuppressedUntil;
-    }
-    const requestedAt = plan.human_escalation.requested_at;
-    const requestedAtEpoch = requestedAt ? Date.parse(requestedAt) : Number.NaN;
-    if (!Number.isFinite(requestedAtEpoch)) {
-      return null;
-    }
-    return new Date(requestedAtEpoch + HUMAN_ESCALATION_SUPPRESSION_MS).toISOString();
-  }
-
-  private isHumanEscalationSuppressionActive(plan: PlanSnapshot): boolean {
-    const suppressedUntil = this.resolveHumanEscalationSuppressedUntil(plan);
-    return suppressedUntil !== null && Date.parse(suppressedUntil) > Date.now();
   }
 
   private reduceConversationHealth(

@@ -282,6 +282,48 @@ Adapters should ignore unknown fields to stay forward-compatible with non-breaki
 
 The example above is shape-focused and omits most nested `plan` fields. The actual plan snapshot includes the full persisted event-plan state, provider needs, selected providers, shortlist data, and open questions.
 
+## CRM Agent Participation Contract
+
+After human takeover, the automated agent remains paused until the CRM backend
+explicitly releases the conversation. The CRM button must call the same Lambda
+Function URL with the standard channel Bearer credential. This is a backend
+request; do not expose `CHANNEL_API_KEY` in CRM browser code.
+
+```bash
+curl -sS \
+  -X POST "${AGENT_FUNCTION_URL}" \
+  -H "content-type: application/json" \
+  -H "Authorization: Bearer ${CHANNEL_API_KEY}" \
+  --data '{
+    "operation": "resume_automated_agent",
+    "channel": "whatsapp",
+    "user_id": "whatsapp:51999999999",
+    "request_id": "crm-resume-01KXQ2Y8Y8V5BNM0J8X1P0T5M4",
+    "requested_at": "2026-07-15T22:00:00.000Z"
+  }'
+```
+
+The `channel` and `user_id` values must exactly match the plan identity used by
+the WhatsApp adapter. `request_id` is required for redacted operational
+correlation. `requested_at` is optional and does not control participation.
+
+A successful first request returns:
+
+```json
+{
+  "operation": "resume_automated_agent",
+  "status": "resumed",
+  "plan_id": "01KXQ2...",
+  "current_node": "entrevista"
+}
+```
+
+The operation does not invoke a model and does not produce a WhatsApp message.
+It clears the persisted human-escalation state and restores the appropriate
+planning node. Repeating the request is safe and returns `status:
+"already_active"`. A missing plan returns HTTP `404` with `status:
+"plan_not_found"`.
+
 ## Error Responses
 
 The handler currently returns JSON errors with these status codes:
@@ -292,6 +334,8 @@ The handler currently returns JSON errors with these status codes:
 | `400` | `{ "error": "Missing request body." }` | Empty HTTP body. |
 | `400` | `{ "error": "Request body must be valid JSON." }` | Malformed JSON. |
 | `400` | `{ "error": "Invalid request body.", "issues": [...] }` | Missing fields, invalid timestamp, or missing/malformed WhatsApp `contact_phone`. |
+| `400` | `{ "error": "Invalid operation request.", "issues": [...] }` | Unknown operation or malformed CRM control request. |
+| `404` | `{ "operation": "resume_automated_agent", "status": "plan_not_found" }` | CRM supplied a `channel` and `user_id` pair with no persisted plan. |
 | `500` | `{ "error": "..." }` | Secret/runtime bootstrap failure, OpenAI error, provider failure not handled by the flow, DynamoDB failure, or other unexpected exception. |
 
 Adapter retry policy:
@@ -693,11 +737,9 @@ only when Agent API message persistence is intentionally required. Human
 takeover requests use a different endpoint and remain enabled. Agent API
 failures are traced and do not block channel delivery. Once human escalation is
 active, the runtime returns `delivery.action: "suppress"` and does not continue
-as a bot. The bot suppression window lasts 12 hours from the handoff
-request. Its expiration is persisted as
-`human_escalation.bot_suppressed_until`; the first later inbound turn clears the
-escalation state and resumes normal processing. This internal duration is not
-included in user-facing copy.
+as a bot. Elapsed time never clears that state. Only an authenticated
+`resume_automated_agent` operation from the CRM restores automated
+participation.
 
 That classifier call also produces a structured conversation-health assessment. The runtime persists consecutive non-progress evidence and emits one optional human-help offer after one explicit-frustration assessment or two consecutive stalled/frustrated assessments. The offer is still a normal outbound message and must be delivered. Only a later structured acceptance invokes the Agent API takeover endpoint; a decline resumes the channel's normal response flow.
 
@@ -756,6 +798,7 @@ Before a channel adapter is considered complete:
 - [ ] It retries only transient failures with bounded backoff.
 - [ ] It deduplicates inbound webhook retries.
 - [ ] It keeps all channel formatting, templates, auth, and retry logic outside `src/runtime`.
+- [ ] The CRM backend sends `resume_automated_agent` with the exact plan identity when an operator releases human ownership; the browser never receives `CHANNEL_API_KEY`.
 
 ## Known Integration Risks
 

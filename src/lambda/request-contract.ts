@@ -32,3 +32,15 @@ export const channelRequestSchema = z.object({
 });
 
 export type ChannelRequestBody = z.infer<typeof channelRequestSchema>;
+
+export const resumeAutomatedAgentRequestSchema = z.object({
+  operation: z.literal('resume_automated_agent'),
+  channel: z.string().trim().min(1),
+  user_id: z.string().trim().min(1),
+  request_id: z.string().trim().min(1),
+  requested_at: z.string().datetime({ offset: true }).optional(),
+});
+
+export type ResumeAutomatedAgentRequestBody = z.infer<
+  typeof resumeAutomatedAgentRequestSchema
+>;

@@ -233,7 +233,7 @@ Channel adapters call the Function URL without AWS credentials or SigV4 and auth
 
 The native SDK response classifier reads bounded plan and Agent API conversation context before the normal agent flow. It runs in `enforce` mode: clear acknowledgements and reactions emit `message: null` with an explicit suppress delivery action. Classifier failures and ambiguous turns still fail open to a normal response.
 
-The same low-cost classifier call also monitors conversation health. One explicit-frustration assessment or two consecutive non-progress assessments triggers a single optional human-help offer. The offer does not request takeover by itself: structured acceptance uses the existing Agent API escalation workflow, while a decline resumes the automated flow. The terminal panel displays the health status, reason, and help-offer response for demos.
+The same low-cost classifier call also monitors conversation health. One explicit-frustration assessment or two consecutive non-progress assessments triggers a single optional human-help offer. The offer does not request takeover by itself: structured acceptance uses the existing Agent API escalation workflow, while a decline resumes the automated flow. After takeover, the automated agent stays paused until the CRM sends an authenticated `resume_automated_agent` operation; there is no time-based cooldown. The terminal panel displays the health status, reason, and help-offer response for demos.
 
 Linting is enforced through [eslint.config.mjs](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/eslint.config.mjs), including an explicit ban on `any` in TypeScript files.
 

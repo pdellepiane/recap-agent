@@ -7427,8 +7427,6 @@ describe('AgentService', () => {
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.human_escalation.phone_number).toBe('51987654321');
     expect(response.plan.human_escalation.last_error).toBe('Agent API human takeover is not configured.');
-    expect(Date.parse(response.plan.human_escalation.bot_suppressed_until ?? '') - Date.now())
-      .toBeGreaterThan(11 * 60 * 60 * 1_000);
     expect(response.trace.route_kind).toBe('human_escalation');
     expect(response.trace.tools_called).toContain('request_human_takeover');
     expect(response.trace.search_strategy).toBe('none');
@@ -7455,7 +7453,6 @@ describe('AgentService', () => {
           human_escalation: {
             status: 'requested',
             requested_at: new Date(Date.now() - 60_000).toISOString(),
-            bot_suppressed_until: new Date(Date.now() + 60_000).toISOString(),
             phone_number: '51987654321',
             last_error: 'Agent API human takeover is not configured.',
           },
@@ -7490,7 +7487,7 @@ describe('AgentService', () => {
     });
   });
 
-  it('resumes automated processing after the 12-hour human escalation window expires', async () => {
+  it('does not resume escalated conversations based on elapsed time', async () => {
     const runtime = new FakeRuntime();
     const planStore = new InMemoryPlanStore();
     await planStore.save({
@@ -7529,16 +7526,13 @@ describe('AgentService', () => {
       contactPhone: '+51 987654321',
     });
 
-    expect(runtime.composeRequests).toHaveLength(1);
-    expect(response.plan.human_escalation).toEqual({
-      status: 'none',
-      requested_at: null,
-      bot_suppressed_until: null,
-      phone_number: null,
-      last_error: null,
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.trace.tools_called).not.toContain('expire_human_escalation_window');
+    expect(response.outbound.delivery).toEqual({
+      action: 'suppress',
+      reason: 'human_escalation_active',
     });
-    expect(response.trace.tools_called).toContain('expire_human_escalation_window');
-    expect(response.outbound.delivery.action).toBe('send');
   });
 
   it('observes acknowledgement suppression while retaining the full reply flow and logging only inbound', async () => {
@@ -7772,8 +7766,6 @@ describe('AgentService', () => {
     });
 
     expect(response.plan.human_escalation.status).toBe('requested');
-    expect(Date.parse(response.plan.human_escalation.bot_suppressed_until ?? '') - Date.now())
-      .toBeGreaterThan(11 * 60 * 60 * 1_000);
     expect(response.plan.current_node).toBe('solicitar_agente_humano');
     expect(response.trace.route_kind).toBe('human_escalation');
     expect(response.outbound.text).toContain('Una persona del equipo se unirá a este chat');

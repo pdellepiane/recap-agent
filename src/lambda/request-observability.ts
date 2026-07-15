@@ -6,6 +6,9 @@ export type ChannelRequestOutcome =
   | 'missing_body'
   | 'invalid_json'
   | 'invalid_request'
+  | 'plan_not_found'
+  | 'agent_participation_resumed'
+  | 'agent_participation_unchanged'
   | 'internal_error';
 
 export type ChannelRequestValidationIssue = {

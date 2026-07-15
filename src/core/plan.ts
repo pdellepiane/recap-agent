@@ -73,7 +73,6 @@ export type GuestAuthState = z.infer<typeof guestAuthStateSchema>;
 export const humanEscalationStateSchema = z.object({
   status: z.enum(humanEscalationStatusValues),
   requested_at: z.string().nullable(),
-  bot_suppressed_until: z.string().nullable().optional(),
   phone_number: z.string().nullable(),
   last_error: z.string().nullable(),
 });
@@ -156,7 +155,6 @@ export const planSchema = z.object({
   human_escalation: humanEscalationStateSchema.default({
     status: 'none',
     requested_at: null,
-    bot_suppressed_until: null,
     phone_number: null,
     last_error: null,
   }),
@@ -282,7 +280,6 @@ export function createEmptyPlan(args: {
     human_escalation: {
       status: 'none',
       requested_at: null,
-      bot_suppressed_until: null,
       phone_number: null,
       last_error: null,
     },

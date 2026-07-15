@@ -16,6 +16,7 @@ import {
 } from '../runtime/agent-conversation-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
+import { AgentParticipationService } from '../runtime/agent-participation-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
 import { resolveChannelApiKeys, resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
@@ -23,7 +24,10 @@ import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../l
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
 import { bearerTokenMatchesAny, readBearerAuthorization } from './bearer-auth';
-import { channelRequestSchema } from './request-contract';
+import {
+  channelRequestSchema,
+  resumeAutomatedAgentRequestSchema,
+} from './request-contract';
 import {
   buildChannelRequestLog,
   type ChannelRequestOutcome,
@@ -37,6 +41,8 @@ let runtimePromise: Promise<{
   perfStore: PerfStore;
 }> | null = null;
 let channelApiKeysPromise: Promise<string[]> | null = null;
+let planStore: DynamoPlanStore | null = null;
+let agentParticipationService: AgentParticipationService | null = null;
 
 export async function handler(
   event: APIGatewayProxyEventV2,
@@ -106,6 +112,50 @@ export async function handler(
       rawBody = JSON.parse(event.body) as unknown;
     } catch {
       return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
+    }
+    if (isOperationRequest(rawBody)) {
+      const parsedOperation = resumeAutomatedAgentRequestSchema.safeParse(rawBody);
+      if (!parsedOperation.success) {
+        const validationIssues = parsedOperation.error.issues.map((issue) => ({
+          path: issue.path.join('.'),
+          code: issue.code,
+          message: issue.message,
+        }));
+        return respond(400, {
+          error: 'Invalid operation request.',
+          issues: validationIssues.map((issue) => ({
+            path: issue.path,
+            message: issue.message,
+          })),
+        }, 'invalid_request', { validationIssues });
+      }
+
+      const operation = parsedOperation.data;
+      requestIdentity = {
+        channel: operation.channel,
+        externalUserId: operation.user_id,
+        messageId: operation.request_id,
+      };
+      const result = await getAgentParticipationService().resumeAutomatedAgent({
+        channel: operation.channel,
+        externalUserId: operation.user_id,
+      });
+      if (result.status === 'plan_not_found') {
+        return respond(404, {
+          operation: operation.operation,
+          status: result.status,
+        }, 'plan_not_found');
+      }
+      return respond(200, {
+        operation: operation.operation,
+        status: result.status,
+        plan_id: result.plan.plan_id,
+        current_node: result.plan.current_node,
+      }, result.status === 'resumed'
+        ? 'agent_participation_resumed'
+        : 'agent_participation_unchanged', {
+        currentNode: result.plan.current_node,
+      });
     }
     const parsedBody = channelRequestSchema.safeParse(rawBody);
     if (!parsedBody.success) {
@@ -274,9 +324,7 @@ async function getRuntime(): Promise<{
         mode: config.responseClassifier.mode,
         promptLoader,
       });
-      const planStore = new DynamoPlanStore(config.storage.plansTableName, {
-        region: config.aws.region,
-      });
+      const runtimePlanStore = getPlanStore();
       const perfStore = config.performance.tableName
         ? new DynamoPerfStore(config.performance.tableName, {
             region: config.aws.region,
@@ -285,7 +333,7 @@ async function getRuntime(): Promise<{
 
       return {
         service: new AgentService({
-          planStore,
+          planStore: runtimePlanStore,
           runtime,
           providerGateway,
           agentConversationGateway,
@@ -303,6 +351,28 @@ async function getRuntime(): Promise<{
   }
 
   return runtimePromise;
+}
+
+function getPlanStore(): DynamoPlanStore {
+  if (!planStore) {
+    planStore = new DynamoPlanStore(config.storage.plansTableName, {
+      region: config.aws.region,
+    });
+  }
+  return planStore;
+}
+
+function getAgentParticipationService(): AgentParticipationService {
+  if (!agentParticipationService) {
+    agentParticipationService = new AgentParticipationService(getPlanStore());
+  }
+  return agentParticipationService;
+}
+
+function isOperationRequest(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object'
+    && value !== null
+    && 'operation' in value;
 }
 
 function json(

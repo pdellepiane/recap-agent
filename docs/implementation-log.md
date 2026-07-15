@@ -2,6 +2,35 @@
 
 ## 2026-07-15
 
+### Replace timed handoff expiry with explicit CRM release
+
+**Reason:** Human ownership should end when the CRM operator deliberately lets
+the automated agent participate again, not after an arbitrary 12-hour timeout
+that may fire while a representative still owns the conversation.
+
+**Changes:**
+- Removed `human_escalation.bot_suppressed_until`, the 12-hour calculation, and
+  automatic elapsed-time resumption from plan state and runtime behavior.
+- Added an authenticated `resume_automated_agent` control request keyed by the
+  exact persisted `channel` and `user_id` plan identity.
+- Added an `AgentParticipationService` that clears handoff state, restores the
+  deterministic resume node, and returns idempotent `resumed` or
+  `already_active` results without invoking a model or producing a reply.
+- Added typed request validation, redacted operation observability, a 404 result
+  for missing plans, focused service/contract tests, and a CRM integration
+  example.
+
+**Decision:** Keep the automated agent suppressed indefinitely after human
+takeover. The CRM backend must use the existing Bearer-authenticated Function
+URL to release it; the browser must not hold the channel credential.
+
+**Validation:** `npm run check` passed with 41 test files and 253 tests, and the
+development Lambda was redeployed. A live synthetic Dynamo plan was placed in
+human ownership; the first authenticated CRM request returned `resumed`, the
+retry returned `already_active`, and the persisted plan showed
+`human_escalation.status=none`, `current_node=entrevista`, and save reason
+`crm_resume_automated_agent` with no timed-suppression field.
+
 ### Disable Agent API message writes behind an explicit toggle
 
 **Reason:** The runtime should not persist inbound or outbound conversation
