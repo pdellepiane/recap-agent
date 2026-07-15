@@ -46,6 +46,7 @@ export type AppConfig = {
     secretId: string | null;
     timeoutMs: number;
     maxRetries: number;
+    messageLoggingEnabled: boolean;
   };
   recommendation: {
     replyProviderLimit: number;
@@ -112,6 +113,7 @@ const environmentSchema = z.object({
   SE_API_SECRET_ID: z.string().min(1).optional(),
   AGENT_API_TIMEOUT_MS: z.coerce.number().int().min(250).max(30_000).default(5_000),
   AGENT_API_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
+  AGENT_MESSAGE_LOGGING_ENABLED: z.enum(['true', 'false']).default('false'),
   AGENT_FUNCTION_URL: z.string().url().optional(),
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(12),
@@ -186,6 +188,7 @@ export function getConfig(): AppConfig {
       secretId: environment.SE_API_SECRET_ID ?? null,
       timeoutMs: environment.AGENT_API_TIMEOUT_MS,
       maxRetries: environment.AGENT_API_MAX_RETRIES,
+      messageLoggingEnabled: environment.AGENT_MESSAGE_LOGGING_ENABLED === 'true',
     },
     recommendation: {
       replyProviderLimit: environment.REPLY_PROVIDER_LIMIT,

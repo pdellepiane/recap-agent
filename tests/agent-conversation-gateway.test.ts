@@ -34,6 +34,7 @@ describe('AgentConversationGateway', () => {
       apiKey: 'secret-key',
       timeoutMs: 1_000,
       maxRetries: 0,
+      messageLoggingEnabled: true,
     });
 
     await expect(gateway.requestHumanTakeover('51987654321')).resolves.toEqual({
@@ -67,6 +68,7 @@ describe('AgentConversationGateway', () => {
       apiKey: 'bad-key',
       timeoutMs: 1_000,
       maxRetries: 2,
+      messageLoggingEnabled: true,
     });
 
     await expect(gateway.requestHumanTakeover('51987654321')).resolves.toEqual({
@@ -86,6 +88,7 @@ describe('AgentConversationGateway', () => {
       apiKey: 'secret-key',
       timeoutMs: 1_000,
       maxRetries: 2,
+      messageLoggingEnabled: true,
     });
 
     await expect(gateway.requestHumanTakeover('51987654321')).resolves.toEqual({
@@ -107,6 +110,7 @@ describe('AgentConversationGateway', () => {
       apiKey: 'secret-key',
       timeoutMs: 1_000,
       maxRetries: 0,
+      messageLoggingEnabled: true,
     });
 
     await expect(gateway.requestHumanTakeover('51987654321')).resolves.toEqual({
@@ -142,6 +146,7 @@ describe('AgentConversationGateway', () => {
       apiKey: 'secret-key',
       timeoutMs: 1_000,
       maxRetries: 0,
+      messageLoggingEnabled: false,
     });
 
     await expect(gateway.getRecentMessages('51987654321')).resolves.toEqual({
@@ -182,6 +187,7 @@ describe('AgentConversationGateway', () => {
       apiKey: 'secret-key',
       timeoutMs: 1_000,
       maxRetries: 1,
+      messageLoggingEnabled: true,
     });
 
     await expect(gateway.requestHumanTakeover('51987654321')).resolves.toEqual({
@@ -189,6 +195,30 @@ describe('AgentConversationGateway', () => {
       message: 'Human takeover requested.',
     });
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('disables message writes without disabling other Agent API operations', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.logMessage({
+      phoneNumber: '51987654321',
+      body: 'Hola',
+      direction: 'inbound',
+    })).resolves.toEqual({
+      status: 'skipped',
+      reason: 'disabled',
+      message: 'Agent API message logging is disabled.',
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
   });
 });
 

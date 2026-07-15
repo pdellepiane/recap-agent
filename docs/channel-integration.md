@@ -36,8 +36,9 @@ The adapter does not need `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, an AWS p
 
 The adapter must not call the Agent API `/messages` endpoint directly and must
 not hold `SE_API_KEY`. After the adapter authenticates with `CHANNEL_API_KEY`,
-Lambda resolves the private Agent API credential from Secrets Manager and logs
-the normalized inbound message internally. These are two internal trust-boundary
+Lambda resolves the private Agent API credential from Secrets Manager for
+read-only history and human escalation. Message writes remain disabled unless
+`AGENT_MESSAGE_LOGGING_ENABLED=true`. These are two internal trust-boundary
 secrets, but only one credential is exposed to the channel adapter.
 
 Resolve the latest deployment values instead of hardcoding them in long-lived adapters:
@@ -69,7 +70,7 @@ The runtime owns:
 - intent and event-plan extraction;
 - provider search and enrichment;
 - Spanish reply composition;
-- Agent API inbound-message logging through Lambda's private service credential;
+- optional Agent API message logging through Lambda's private service credential, disabled by default;
 - runtime traces and performance telemetry.
 
 ## Request Contract
@@ -157,7 +158,7 @@ The two fields have different jobs:
 | Field | Purpose |
 | --- | --- |
 | `user_id` | Stable namespaced plan identity. Together with `channel`, it selects the durable plan. |
-| `contact_phone` | Trusted channel contact context. It is normalized to digits, injected into the plan before classification/extraction, persisted as `plan.contact_phone`, and used for Agent API history, inbound logging, human takeover, and quote/contact flows. |
+| `contact_phone` | Trusted channel contact context. It is normalized to digits, injected into the plan before classification/extraction, persisted as `plan.contact_phone`, and used for Agent API history, optional message logging, human takeover, and quote/contact flows. |
 
 Do not rely on `user_id` as an implicit phone fallback. Do not omit `contact_phone` because the same digits appear in `user_id`. For WhatsApp channels the Lambda rejects a missing phone context with `400`. It also rejects local-format values such as `999999999`; send `+51999999999`. Current phone validation supports Peru (`+51`), Mexico (`+52`), and NANP (`+1`). Passing the field on every turn is intentional: it hydrates new plans immediately and repairs older plans that did not yet store the phone, so the extractor and reply agent see the phone on the first turn and do not ask the user for it again.
 
@@ -665,6 +666,7 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `PROMPTS_DIR` | `/var/task/prompts` |
 | `SINENVOLTURAS_BASE_URL` | `https://api.sinenvolturas.com/api-web/vendor` |
 | `AGENT_API_BASE_URL` | `https://api.sinenvolturas.com/api/agent` |
+| `AGENT_MESSAGE_LOGGING_ENABLED` | `false` |
 | `SE_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/se-api-key` |
 | `CHANNEL_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/channel-api-key` |
 | `LOG_RETENTION_DAYS` | `7` |
@@ -676,20 +678,22 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `PROVIDER_DETAIL_LOOKUP_LIMIT` | `3` |
 | `PERF_RETENTION_DAYS` | `30` |
 
-Human escalation and inbound conversation logging use the dedicated Agent API
-service key stored in Secrets Manager and sent as `X-Agent-Key` by Lambda's
-gateway. The adapter never receives this key. The guest validation bearer token
-is user-scoped and must not be reused here.
+Agent API history reads, optional message logging, and human escalation use the
+dedicated service key stored in Secrets Manager and sent as `X-Agent-Key` by
+Lambda's gateway. The adapter never receives this key. The guest validation
+bearer token is user-scoped and must not be reused here.
 
 Inbound channel authentication uses a different dedicated secret. Adapters send the `CHANNEL_API_KEY` value through the standard `Authorization: Bearer` scheme; Lambda resolves both `AWSCURRENT` and, when present, `AWSPREVIOUS` through `CHANNEL_API_SECRET_ID` and compares the supplied token against every accepted value in constant time before loading the agent runtime. The deployment script generates a cryptographically random opaque value into the ignored local `.env` file when one does not exist, publishes it to Secrets Manager, and skips unchanged writes so a normal redeploy does not accidentally advance the rotation stages.
 
-For phone-bearing turns, the response classifier retrieves the last five Agent
-API messages before Lambda logs the inbound message. Lambda does not log
-generated outbound messages; the delivery adapter remains authoritative for
-what was actually sent through Meta. Agent API failures are traced and do not
-block channel delivery. Once human escalation is active, inbound messages are
-logged but the runtime returns `delivery.action: "suppress"` and does not
-continue as a bot. The bot suppression window lasts 12 hours from the handoff
+For phone-bearing turns, the response classifier can still retrieve the last
+five Agent API messages as read-only context. `AGENT_MESSAGE_LOGGING_ENABLED`
+gates every `POST /messages` operation and defaults to `false`; with that value,
+Lambda does not log inbound or outbound messages. Set it to `true` and redeploy
+only when Agent API message persistence is intentionally required. Human
+takeover requests use a different endpoint and remain enabled. Agent API
+failures are traced and do not block channel delivery. Once human escalation is
+active, the runtime returns `delivery.action: "suppress"` and does not continue
+as a bot. The bot suppression window lasts 12 hours from the handoff
 request. Its expiration is persisted as
 `human_escalation.bot_suppressed_until`; the first later inbound turn clears the
 escalation state and resumes normal processing. This internal duration is not

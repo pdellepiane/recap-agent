@@ -206,6 +206,7 @@ SINENVOLTURAS_BASE_URL=https://api.sinenvolturas.com/api-web/vendor
 SINENVOLTURAS_GUEST_SERVICE_BASE_URL=https://se-v2-api-dev.jnq.io/api/guest-service
 SINENVOLTURAS_GUEST_AUTH_BASE_URL=https://se-v2-api-dev.jnq.io/api-web/user
 AGENT_API_BASE_URL=https://api.sinenvolturas.com/api/agent
+AGENT_MESSAGE_LOGGING_ENABLED=false
 SE_API_SECRET_ID=arn:aws:secretsmanager:us-east-1:...:secret:recap-agent/se-api-key-...
 DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
 PROVIDER_SEARCH_LIMIT=15
@@ -226,7 +227,7 @@ These env vars are read through one validated runtime config module in [config.t
 - default inbound channel
 - AWS table and prompt paths
 
-Human escalation and inbound conversation logging use a dedicated Sin Envolturas Agent API service key. The deploy script reads `SE_API_KEY` from local `.env`, publishes it to Secrets Manager as `recap-agent/se-api-key`, and passes the resulting ARN to Lambda as `SE_API_SECRET_ID`. Lambda resolves it privately; channel adapters do not receive it and must not call the Agent API message endpoint directly. Generated outbound messages are not logged by Lambda because the channel delivery adapter is authoritative for what was actually sent. Do not reuse the guest/user validation bearer token for this integration.
+Agent API history reads, optional message logging, and human escalation use a dedicated Sin Envolturas Agent API service key. The deploy script reads `SE_API_KEY` from local `.env`, publishes it to Secrets Manager as `recap-agent/se-api-key`, and passes the resulting ARN to Lambda as `SE_API_SECRET_ID`. Lambda resolves it privately; channel adapters do not receive it and must not call the Agent API message endpoint directly. `AGENT_MESSAGE_LOGGING_ENABLED` defaults to `false`, so Lambda performs no `/messages` writes unless an operator explicitly enables them and redeploys. Generated outbound messages remain the delivery adapter's responsibility. Do not reuse the guest/user validation bearer token for this integration.
 
 Channel adapters call the Function URL without AWS credentials or SigV4 and authenticate with the standard `Authorization: Bearer <CHANNEL_API_KEY>` scheme. The deployment script generates `CHANNEL_API_KEY` into the ignored local `.env` when absent, publishes it to `recap-agent/channel-api-key`, and gives Lambda only the secret ARN. Overlap-safe rotation uses the same secret's standard `AWSCURRENT` and `AWSPREVIOUS` stages, and Lambda accepts both during migration. WhatsApp adapters must also send `contact_phone` in international form (for example `+51999999999`) on every turn so it is available to the plan before extraction and is reused by Agent API logging, human handoff, and contact flows.
 

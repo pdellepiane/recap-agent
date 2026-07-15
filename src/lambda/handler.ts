@@ -253,6 +253,7 @@ async function getRuntime(): Promise<{
         apiKey: seApiKey,
         timeoutMs: config.agentApi.timeoutMs,
         maxRetries: config.agentApi.maxRetries,
+        messageLoggingEnabled: config.agentApi.messageLoggingEnabled,
       });
       const runtime = new OpenAiAgentRuntime({
         apiKey,

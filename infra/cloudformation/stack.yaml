@@ -63,6 +63,13 @@ Parameters:
     Default: 2
     MinValue: 0
     MaxValue: 5
+  AgentMessageLoggingEnabled:
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+    Description: Allow POST writes to the Agent API messages endpoint.
   ProviderSearchMode:
     Type: String
     Default: hybrid
@@ -283,6 +290,7 @@ Resources:
           AGENT_API_BASE_URL: !Ref AgentApiBaseUrl
           AGENT_API_TIMEOUT_MS: !Ref AgentApiTimeoutMs
           AGENT_API_MAX_RETRIES: !Ref AgentApiMaxRetries
+          AGENT_MESSAGE_LOGGING_ENABLED: !Ref AgentMessageLoggingEnabled
           PROVIDER_SEARCH_MODE: !Ref ProviderSearchMode
           PROVIDER_VECTOR_STORE_NAME: !Ref ProviderVectorStoreName
           PROVIDER_VECTOR_STORE_ID: !Ref ProviderVectorStoreId

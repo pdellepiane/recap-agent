@@ -19,7 +19,7 @@ export type AgentGatewayResult =
     }
   | {
       status: 'skipped';
-      reason: 'not_configured' | 'missing_phone_number';
+      reason: 'disabled' | 'not_configured' | 'missing_phone_number';
       message: string;
     }
   | {
@@ -104,10 +104,18 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       apiKey: string;
       timeoutMs: number;
       maxRetries: number;
+      messageLoggingEnabled: boolean;
     },
   ) {}
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
+    if (!this.options.messageLoggingEnabled) {
+      return {
+        status: 'skipped',
+        reason: 'disabled',
+        message: 'Agent API message logging is disabled.',
+      };
+    }
     const payload: Record<string, unknown> = {
       phone_number: input.phoneNumber,
       body: input.body,

@@ -2,6 +2,33 @@
 
 ## 2026-07-15
 
+### Disable Agent API message writes behind an explicit toggle
+
+**Reason:** The runtime should not persist inbound or outbound conversation
+messages through `POST /messages` unless an operator deliberately enables that
+integration. Read-only history and human takeover are separate capabilities and
+must remain available.
+
+**Changes:**
+- Added typed `AGENT_MESSAGE_LOGGING_ENABLED` runtime configuration with a
+  default of `false` in TypeScript, CloudFormation, and deployment wiring.
+- Gated the Agent Conversation gateway's message-write method before any HTTP
+  request, returning a structured disabled result when the toggle is off.
+- Preserved `GET /conversations/messages` history retrieval and
+  `POST /conversations/request-human` escalation behavior.
+- Added gateway coverage proving disabled logging performs no fetch call, and
+  updated the runtime and channel documentation.
+
+**Decision:** Gate message persistence at the HTTP gateway boundary so every
+current or future caller is covered. Keep the switch independent from Agent API
+history and human escalation instead of disabling the entire gateway.
+
+**Validation:** `npm run check` passed with 40 test files and 248 tests. The
+development stack was redeployed with the Lambda environment value set to
+`false`. A scoped live turn returned HTTP 200, recorded the message-log action
+as `skipped` with reason `disabled`, and left the synthetic phone's Agent API
+history count unchanged at zero before and after the turn.
+
 ### Add overlap-safe channel bearer rotation
 
 **Reason:** A second channel credential was needed without interrupting the
