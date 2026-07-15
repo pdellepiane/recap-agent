@@ -25,11 +25,18 @@ export function readBearerAuthorization(
   };
 }
 
-export function bearerTokensMatch(provided: string | null, expected: string): boolean {
+export function bearerTokenMatchesAny(
+  provided: string | null,
+  expectedTokens: readonly string[],
+): boolean {
   if (!provided) {
     return false;
   }
   const providedDigest = crypto.createHash('sha256').update(provided).digest();
-  const expectedDigest = crypto.createHash('sha256').update(expected).digest();
-  return crypto.timingSafeEqual(providedDigest, expectedDigest);
+  let matched = false;
+  for (const expected of expectedTokens) {
+    const expectedDigest = crypto.createHash('sha256').update(expected).digest();
+    matched = crypto.timingSafeEqual(providedDigest, expectedDigest) || matched;
+  }
+  return matched;
 }

@@ -40,30 +40,39 @@ export async function resolveSeApiKey(options: {
   });
 }
 
-export async function resolveChannelApiKey(options: {
+export async function resolveChannelApiKeys(options: {
   directApiKey: string | null;
   secretId: string | null;
   region: string;
-}): Promise<string> {
+}): Promise<string[]> {
   if (options.directApiKey) {
-    return options.directApiKey;
+    return [options.directApiKey];
   }
   if (!options.secretId) {
     throw new Error('CHANNEL_API_SECRET_ID is required when CHANNEL_API_KEY is not set.');
   }
-  return resolveSecretValue({
+  const current = await resolveSecretValue({
+    secretId: options.secretId,
+    region: options.region,
+    jsonKey: 'CHANNEL_API_KEY',
+    versionStage: 'AWSCURRENT',
+  });
+  const previous = await resolveOptionalPreviousSecretValue({
     secretId: options.secretId,
     region: options.region,
     jsonKey: 'CHANNEL_API_KEY',
   });
+  return [...new Set([current, ...(previous ? [previous] : [])])];
 }
 
 async function resolveSecretValue(options: {
   secretId: string;
   region: string;
   jsonKey: 'OPENAI_API_KEY' | 'SE_API_KEY' | 'CHANNEL_API_KEY';
+  versionStage?: 'AWSCURRENT' | 'AWSPREVIOUS';
 }): Promise<string> {
-  const cachedSecret = cachedSecrets.get(options.secretId);
+  const cacheKey = `${options.secretId}:${options.versionStage ?? 'AWSCURRENT'}`;
+  const cachedSecret = cachedSecrets.get(cacheKey);
   if (cachedSecret) {
     return cachedSecret;
   }
@@ -72,6 +81,7 @@ async function resolveSecretValue(options: {
   const response = await client.send(
     new GetSecretValueCommand({
       SecretId: options.secretId,
+      ...(options.versionStage ? { VersionStage: options.versionStage } : {}),
     }),
   );
 
@@ -82,8 +92,33 @@ async function resolveSecretValue(options: {
   }
 
   const secretValue = extractApiKey(secretString, options.jsonKey);
-  cachedSecrets.set(options.secretId, secretValue);
+  cachedSecrets.set(cacheKey, secretValue);
   return secretValue;
+}
+
+async function resolveOptionalPreviousSecretValue(options: {
+  secretId: string;
+  region: string;
+  jsonKey: 'CHANNEL_API_KEY';
+}): Promise<string | null> {
+  try {
+    return await resolveSecretValue({
+      ...options,
+      versionStage: 'AWSPREVIOUS',
+    });
+  } catch (error) {
+    if (isResourceNotFound(error)) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+function isResourceNotFound(error: unknown): boolean {
+  return typeof error === 'object'
+    && error !== null
+    && 'name' in error
+    && error.name === 'ResourceNotFoundException';
 }
 
 function extractApiKey(

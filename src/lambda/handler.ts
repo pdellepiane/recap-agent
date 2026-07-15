@@ -18,11 +18,11 @@ import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
-import { resolveChannelApiKey, resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
+import { resolveChannelApiKeys, resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
-import { bearerTokensMatch, readBearerAuthorization } from './bearer-auth';
+import { bearerTokenMatchesAny, readBearerAuthorization } from './bearer-auth';
 import { channelRequestSchema } from './request-contract';
 import {
   buildChannelRequestLog,
@@ -36,7 +36,7 @@ let runtimePromise: Promise<{
   service: AgentService;
   perfStore: PerfStore;
 }> | null = null;
-let channelApiKeyPromise: Promise<string> | null = null;
+let channelApiKeysPromise: Promise<string[]> | null = null;
 
 export async function handler(
   event: APIGatewayProxyEventV2,
@@ -88,8 +88,8 @@ export async function handler(
   };
 
   try {
-    const expectedApiKey = await getChannelApiKey();
-    if (!bearerTokensMatch(authorization.token, expectedApiKey)) {
+    const expectedApiKeys = await getChannelApiKeys();
+    if (!bearerTokenMatchesAny(authorization.token, expectedApiKeys)) {
       return respond(401, { error: 'Unauthorized.' }, 'unauthorized', {
         responseHeaders: {
           'www-authenticate': 'Bearer realm="recap-agent"',
@@ -201,15 +201,15 @@ export async function handler(
   }
 }
 
-async function getChannelApiKey(): Promise<string> {
-  if (!channelApiKeyPromise) {
-    channelApiKeyPromise = resolveChannelApiKey({
+async function getChannelApiKeys(): Promise<string[]> {
+  if (!channelApiKeysPromise) {
+    channelApiKeysPromise = resolveChannelApiKeys({
       directApiKey: config.channelAuth.apiKey,
       secretId: config.channelAuth.secretId,
       region: config.aws.region,
     });
   }
-  return channelApiKeyPromise;
+  return channelApiKeysPromise;
 }
 
 async function getRuntime(): Promise<{

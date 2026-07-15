@@ -21,7 +21,7 @@ Current development deployment:
 | Perf table | `recap-agent-runtime-perf` |
 | Default channel fallback | `terminal_whatsapp` |
 
-The runtime endpoint is a Lambda Function URL created in `infra/cloudformation/stack.yaml`. Lambda Function URLs only provide native `AWS_IAM` or `NONE` auth. This deployment uses `NONE` so adapters do not need AWS credentials or SigV4, then validates a standard HTTP bearer token inside Lambda before runtime initialization. The opaque bearer value is stored in Secrets Manager as `recap-agent/channel-api-key` and is separate from both `SE_API_KEY` and the OpenAI key.
+The runtime endpoint is a Lambda Function URL created in `infra/cloudformation/stack.yaml`. Lambda Function URLs only provide native `AWS_IAM` or `NONE` auth. This deployment uses `NONE` so adapters do not need AWS credentials or SigV4, then validates a standard HTTP bearer token inside Lambda before runtime initialization. The opaque bearer value is stored in Secrets Manager as `recap-agent/channel-api-key` and is separate from both `SE_API_KEY` and the OpenAI key. Lambda accepts the secret versions labeled `AWSCURRENT` and `AWSPREVIOUS` so credential rotation can overlap without interrupting an adapter that still holds the prior token.
 
 Channel adapters must still verify the original WhatsApp webhook signature. The runtime bearer token authenticates the adapter to this Lambda; it does not authenticate Meta's webhook to the adapter. Keep the token server-side, never put it in browser code, logs, URLs, or WhatsApp payloads.
 
@@ -161,7 +161,14 @@ The two fields have different jobs:
 
 Do not rely on `user_id` as an implicit phone fallback. Do not omit `contact_phone` because the same digits appear in `user_id`. For WhatsApp channels the Lambda rejects a missing phone context with `400`. It also rejects local-format values such as `999999999`; send `+51999999999`. Current phone validation supports Peru (`+51`), Mexico (`+52`), and NANP (`+1`). Passing the field on every turn is intentional: it hydrates new plans immediately and repairs older plans that did not yet store the phone, so the extractor and reply agent see the phone on the first turn and do not ask the user for it again.
 
-To rotate runtime access, replace `CHANNEL_API_KEY` in the ignored `.env` file and run `AWS_PROFILE=se-dev npm run deploy`. Update the adapter's server-side secret atomically with the deployed value. Requests using the old value receive `401` after rotation.
+To rotate runtime access without interrupting the current adapter:
+
+```bash
+AWS_PROFILE=se-dev npm run rotate:channel-key
+AWS_PROFILE=se-dev npm run deploy
+```
+
+The rotation command generates a new opaque value without printing it, writes it to the ignored local `.env`, and publishes it as `AWSCURRENT`. AWS automatically moves the former current version to `AWSPREVIOUS`, and Lambda accepts both stages. Retrieve `AWSCURRENT` through an authorized deployment workflow and update the adapter's server-side secret. After every adapter has migrated, a later explicit rotation can retire the older value; do not repeatedly publish an unchanged value because that would advance secret versions unnecessarily. The deploy script compares the desired value with `AWSCURRENT` and skips unchanged secret writes.
 
 ## Channel Response Contract
 
@@ -674,7 +681,7 @@ service key stored in Secrets Manager and sent as `X-Agent-Key` by Lambda's
 gateway. The adapter never receives this key. The guest validation bearer token
 is user-scoped and must not be reused here.
 
-Inbound channel authentication uses a different dedicated secret. Adapters send the `CHANNEL_API_KEY` value through the standard `Authorization: Bearer` scheme; Lambda resolves the expected value through `CHANNEL_API_SECRET_ID` and compares it in constant time before loading the agent runtime. The deployment script generates a cryptographically random opaque value into the ignored local `.env` file when one does not exist, then publishes it to Secrets Manager.
+Inbound channel authentication uses a different dedicated secret. Adapters send the `CHANNEL_API_KEY` value through the standard `Authorization: Bearer` scheme; Lambda resolves both `AWSCURRENT` and, when present, `AWSPREVIOUS` through `CHANNEL_API_SECRET_ID` and compares the supplied token against every accepted value in constant time before loading the agent runtime. The deployment script generates a cryptographically random opaque value into the ignored local `.env` file when one does not exist, publishes it to Secrets Manager, and skips unchanged writes so a normal redeploy does not accidentally advance the rotation stages.
 
 For phone-bearing turns, the response classifier retrieves the last five Agent
 API messages before Lambda logs the inbound message. Lambda does not log
@@ -748,7 +755,7 @@ Before a channel adapter is considered complete:
 
 ## Known Integration Risks
 
-- Lambda Function URL native auth remains `NONE`, so AWS credentials are unnecessary. Protection is application-layer bearer authentication; token leakage would permit invocation and must be handled by rotating `CHANNEL_API_KEY` and redeploying.
+- Lambda Function URL native auth remains `NONE`, so AWS credentials are unnecessary. Protection is application-layer bearer authentication; token leakage would permit invocation and must be handled by rotating `CHANNEL_API_KEY`, redeploying, migrating adapters, and then retiring the compromised previous version rather than leaving it accepted indefinitely.
 - Duplicate inbound turns are not currently suppressed by the runtime. Adapter idempotency matters.
 - `client_mode: "cli"` can return large traces and full plan snapshots. Do not enable it for user-facing channels.
 - Provider API field completeness can drift. Search uses a mixed endpoint strategy to improve recall, but channel adapters should treat provider details as runtime-generated text, not as a stable direct API contract.

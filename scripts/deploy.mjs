@@ -224,6 +224,25 @@ function syncSecret(secretName, secretValue, env) {
         ['secretsmanager', 'describe-secret', '--secret-id', secretName],
         { env, stdio: 'ignore' },
       );
+      const currentSecretValue = execFileSync(
+        'aws',
+        [
+          'secretsmanager',
+          'get-secret-value',
+          '--secret-id',
+          secretName,
+          '--version-stage',
+          'AWSCURRENT',
+          '--query',
+          'SecretString',
+          '--output',
+          'text',
+        ],
+        { env, encoding: 'utf8' },
+      ).replace(/\r?\n$/u, '');
+      if (currentSecretValue === secretValue) {
+        return;
+      }
       run(
         'aws',
         [

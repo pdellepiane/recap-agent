@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
-  bearerTokensMatch,
+  bearerTokenMatchesAny,
   readBearerAuthorization,
 } from '../src/lambda/bearer-auth';
 
@@ -14,7 +14,7 @@ describe('Lambda channel bearer authentication', () => {
       authorizationHeaderPresent: true,
       token: 'channel-secret',
     });
-    expect(bearerTokensMatch(authorization.token, 'channel-secret')).toBe(true);
+    expect(bearerTokenMatchesAny(authorization.token, ['channel-secret'])).toBe(true);
   });
 
   it('accepts a case-insensitive Bearer scheme', () => {
@@ -37,7 +37,14 @@ describe('Lambda channel bearer authentication', () => {
       authorizationHeaderPresent: true,
       token: null,
     });
-    expect(bearerTokensMatch(null, 'channel-secret')).toBe(false);
-    expect(bearerTokensMatch('wrong-secret', 'channel-secret')).toBe(false);
+    expect(bearerTokenMatchesAny(null, ['channel-secret'])).toBe(false);
+    expect(bearerTokenMatchesAny('wrong-secret', ['channel-secret'])).toBe(false);
+  });
+
+  it('accepts both current and previous rotation tokens', () => {
+    const acceptedTokens = ['new-channel-secret', 'previous-channel-secret'];
+    expect(bearerTokenMatchesAny('new-channel-secret', acceptedTokens)).toBe(true);
+    expect(bearerTokenMatchesAny('previous-channel-secret', acceptedTokens)).toBe(true);
+    expect(bearerTokenMatchesAny('unknown-channel-secret', acceptedTokens)).toBe(false);
   });
 });

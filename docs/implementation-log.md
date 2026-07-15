@@ -2,6 +2,33 @@
 
 ## 2026-07-15
 
+### Add overlap-safe channel bearer rotation
+
+**Reason:** A second channel credential was needed without interrupting the
+adapter that still uses the existing bearer token. Replacing the one accepted
+value immediately would turn a normal key migration into a channel outage.
+
+**Changes:**
+- Changed Lambda channel authentication to resolve and accept the standard
+  Secrets Manager `AWSCURRENT` and `AWSPREVIOUS` stages from the same secret.
+- Kept constant-time digest comparison across every accepted opaque token.
+- Made deployment secret synchronization idempotent so unchanged deployments
+  do not create redundant secret versions or displace the useful previous key.
+- Added a rotation command that generates a token without printing it, stores
+  it in the ignored `.env`, and publishes it through Secrets Manager.
+- Updated integration and operational documentation with the overlap workflow
+  and explicit retirement requirement.
+
+**Decision:** Use AWS Secrets Manager staging labels rather than a custom JSON
+key array or a second secret. One secret remains the source of truth, while the
+standard current/previous labels provide a bounded two-token migration window.
+
+**Validation:** `npm run check` passed with 40 test files and 247 tests. The
+development Lambda was first deployed with the existing token, the channel
+secret was rotated, and Lambda was deployed again to refresh its cached key
+set. Live low-cost probes returned the typed request-validation `400` for both
+`AWSCURRENT` and `AWSPREVIOUS`, while a random bearer token returned `401`.
+
 ### Standardize channel authentication on HTTP Bearer
 
 **Reason:** The WhatsApp adapter used the standard `Authorization: Bearer`
