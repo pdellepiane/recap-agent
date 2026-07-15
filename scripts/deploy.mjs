@@ -86,6 +86,7 @@ run(
     `ResponseClassifierMode=${process.env.RESPONSE_CLASSIFIER_MODE ?? env.RESPONSE_CLASSIFIER_MODE ?? 'enforce'}`,
     `OpenAIPromptCacheRetention=${process.env.OPENAI_PROMPT_CACHE_RETENTION ?? env.OPENAI_PROMPT_CACHE_RETENTION ?? 'in-memory'}`,
     `PerfRetentionDays=${process.env.PERF_RETENTION_DAYS ?? env.PERF_RETENTION_DAYS ?? '30'}`,
+    `LogRetentionDays=${process.env.LOG_RETENTION_DAYS ?? env.LOG_RETENTION_DAYS ?? '7'}`,
     `ProviderSearchMode=${process.env.PROVIDER_SEARCH_MODE ?? env.PROVIDER_SEARCH_MODE ?? 'hybrid'}`,
     `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
     `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,

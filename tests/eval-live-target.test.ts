@@ -189,7 +189,9 @@ describe('live lambda eval target', () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockImplementation(async (_url: string, init: RequestInit) => {
-        expect(new Headers(init.headers).get('x-api-key')).toBe('test-channel-api-key');
+        expect(new Headers(init.headers).get('authorization')).toBe(
+          'Bearer test-channel-api-key',
+        );
         const bodyText =
           typeof init.body === 'string' ? init.body : await new Response(init.body).text();
         const parsedBody = JSON.parse(bodyText) as Record<string, unknown>;

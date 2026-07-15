@@ -99,6 +99,19 @@ Parameters:
       - 'true'
       - 'false'
     Description: Store redacted assistant-message previews in perf traces for feedback validation.
+  LogRetentionDays:
+    Type: Number
+    Default: 7
+    AllowedValues:
+      - 1
+      - 3
+      - 5
+      - 7
+      - 14
+      - 30
+      - 60
+      - 90
+    Description: Number of days to retain runtime CloudWatch logs.
   KbEnabled:
     Type: String
     Default: 'true'
@@ -141,6 +154,14 @@ Parameters:
       - 'false'
 
 Resources:
+  RuntimeLogGroup:
+    Type: AWS::Logs::LogGroup
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      LogGroupName: !Sub '/aws/lambda/${FunctionName}'
+      RetentionInDays: !Ref LogRetentionDays
+
   PlansTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -225,6 +246,7 @@ Resources:
 
   RuntimeFunction:
     Type: AWS::Lambda::Function
+    DependsOn: RuntimeLogGroup
     Properties:
       FunctionName: !Ref FunctionName
       Handler: lambda/index.handler
@@ -232,6 +254,11 @@ Resources:
       Timeout: 90
       MemorySize: 1024
       Role: !GetAtt RuntimeRole.Arn
+      LoggingConfig:
+        ApplicationLogLevel: INFO
+        LogFormat: JSON
+        LogGroup: !Ref RuntimeLogGroup
+        SystemLogLevel: WARN
       Code:
         S3Bucket: !Ref CodeS3Bucket
         S3Key: !Ref CodeS3Key
@@ -276,12 +303,14 @@ Resources:
       TargetFunctionArn: !GetAtt RuntimeFunction.Arn
       Cors:
         AllowHeaders:
+          - authorization
           - content-type
-          - x-api-key
         AllowMethods:
           - POST
         AllowOrigins:
           - '*'
+        ExposeHeaders:
+          - www-authenticate
 
   RuntimeFunctionUrlPermission:
     Type: AWS::Lambda::Permission
@@ -306,6 +335,8 @@ Outputs:
     Value: !Ref PlansTable
   PerfTableName:
     Value: !Ref PerfTable
+  RuntimeLogGroupName:
+    Value: !Ref RuntimeLogGroup
   OpenAISecretArn:
     Value: !Ref OpenAISecretArn
   SeApiSecretArn:

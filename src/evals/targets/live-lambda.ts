@@ -77,7 +77,7 @@ export async function runLiveLambdaCase(args: {
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': channelApiKey,
+        authorization: `Bearer ${channelApiKey}`,
       },
       body: JSON.stringify({
         channel: input.channel ?? channel,

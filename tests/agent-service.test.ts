@@ -7541,7 +7541,7 @@ describe('AgentService', () => {
     expect(response.outbound.delivery.action).toBe('send');
   });
 
-  it('observes acknowledgement suppression while retaining the full reply flow and logging both messages', async () => {
+  it('observes acknowledgement suppression while retaining the full reply flow and logging only inbound', async () => {
     const classifier = new FakeResponseClassifier('observe', 'suppress_acknowledgement');
     const gateway = new TrackingAgentConversationGateway([
       {
@@ -7576,10 +7576,10 @@ describe('AgentService', () => {
     expect(response.trace.response_classifier?.would_suppress).toBe(true);
     expect(response.trace.token_usage.classifier?.total_tokens).toBe(12);
     expect(classifier.calls).toHaveLength(1);
-    expect(gateway.operations).toEqual(['get', 'log:inbound', 'log:outbound']);
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
   });
 
-  it('logs sent outbound messages whenever the Agent Conversation gateway is configured', async () => {
+  it('does not log sent outbound messages through the Agent Conversation gateway', async () => {
     const gateway = new TrackingAgentConversationGateway([]);
     const response = await new AgentService({
       planStore: new InMemoryPlanStore(),
@@ -7598,12 +7598,12 @@ describe('AgentService', () => {
     });
 
     expect(response.outbound.delivery.action).toBe('send');
-    expect(gateway.operations).toEqual(['log:outbound']);
+    expect(gateway.operations).toEqual(['log:inbound']);
     expect(gateway.loggedMessages).toHaveLength(1);
     expect(gateway.loggedMessages[0]).toMatchObject({
       phoneNumber: '51900000321',
-      body: response.outbound.text,
-      direction: 'outbound',
+      body: 'Necesito catering en Lima para una boda de 80 personas',
+      direction: 'inbound',
     });
   });
 
@@ -7721,7 +7721,7 @@ describe('AgentService', () => {
     });
     expect(response.trace.route_kind).toBe('human_help_offer');
     expect(response.outbound.text).toContain('una persona del equipo se una a este chat');
-    expect(gateway.operations).toEqual(['get', 'log:inbound', 'log:outbound']);
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
   });
 
   it('routes structured acceptance of a health-monitor offer through human takeover', async () => {
@@ -7782,7 +7782,6 @@ describe('AgentService', () => {
       'get',
       'log:inbound',
       'takeover:51900000002',
-      'log:outbound',
     ]);
   });
 

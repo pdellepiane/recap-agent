@@ -428,7 +428,7 @@ async function invokeLambda(
       method: 'POST',
       headers: {
         'content-type': 'application/json',
-        'x-api-key': apiKey,
+        authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify(body),
       signal: controller.signal,

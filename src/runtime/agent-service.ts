@@ -148,34 +148,7 @@ export class AgentService {
   async handleTurn(
     inbound: NormalizedInboundMessage,
   ): Promise<HandleTurnResponse> {
-    const response = await this.handleTurnCore(inbound);
-    if (
-      this.dependencies.agentConversationGateway &&
-      response.outbound.delivery.action === 'send' &&
-      response.outbound.text
-    ) {
-      const phoneNumber = this.resolveEscalationPhone(inbound, response.plan);
-      if (phoneNumber) {
-        const toolUsage: ToolUsage = {
-          considered: response.trace.tools_considered,
-          called: response.trace.tools_called,
-          inputs: response.trace.tool_inputs,
-          outputs: response.trace.tool_outputs,
-        };
-        await this.logAgentMessageWithTrace(
-          this.dependencies.agentConversationGateway,
-          {
-            phoneNumber,
-            body: response.outbound.text,
-            direction: 'outbound',
-            whatsappMessageId: inbound.messageId,
-            sentAt: new Date().toISOString(),
-          },
-          toolUsage,
-        );
-      }
-    }
-    return response;
+    return await this.handleTurnCore(inbound);
   }
 
   private async handleTurnCore(
@@ -283,6 +256,21 @@ export class AgentService {
       tokenUsage.classifier = preflight.tokenUsage;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.classifier);
       responseClassifierTrace = preflight.trace;
+    } else if (this.dependencies.agentConversationGateway) {
+      const phoneNumber = this.resolveEscalationPhone(inbound, classifierPlan);
+      if (phoneNumber) {
+        await this.logAgentMessageWithTrace(
+          agentConversationGateway,
+          {
+            phoneNumber,
+            body: inbound.text,
+            direction: 'inbound',
+            whatsappMessageId: inbound.messageId,
+            sentAt: inbound.receivedAt,
+          },
+          toolUsage,
+        );
+      }
     }
 
     if (existingPlan?.human_escalation.status === 'requested') {

@@ -1,5 +1,67 @@
 # Implementation Log
 
+## 2026-07-15
+
+### Standardize channel authentication on HTTP Bearer
+
+**Reason:** The WhatsApp adapter used the standard `Authorization: Bearer`
+scheme while Lambda only inspected a custom `X-API-Key` header. Valid adapter
+credentials therefore appeared absent and every runtime request returned 401.
+
+**Changes:**
+- Replaced the custom header parser with strict, case-insensitive Bearer scheme
+  parsing and constant-time opaque-token validation.
+- Added the standard `WWW-Authenticate: Bearer realm="recap-agent"` challenge to
+  401 responses and changed redacted request telemetry to distinguish header
+  presence from a valid Bearer credential shape.
+- Updated Function URL CORS, terminal and eval clients, tests, request examples,
+  adapter pseudocode, README guidance, and the live integration contract.
+
+**Decision:** `Authorization: Bearer <CHANNEL_API_KEY>` is the only supported
+channel authentication contract. Do not retain an `X-API-Key` compatibility
+path while the integration is under active development.
+
+**Validation:** `npm run check` passed with 40 test files and 246 tests. The
+development Lambda and Function URL CORS configuration were redeployed. Live
+non-mutating probes confirmed that missing credentials and the removed
+`X-API-Key` contract both return 401, while a valid Bearer token advances to the
+typed WhatsApp request validator and returns the expected missing
+`contact_phone` 400. CloudWatch records the corresponding authorization-header
+and bearer-token presence booleans without storing credentials.
+
+### Make the Lambda boundary diagnosable and keep Agent API credentials private
+
+**Reason:** A WhatsApp message was stored upstream twice, while all six related
+Function URL invocations returned an opaque 4xx and produced no plan or perf
+record. The adapter's direct Agent API write also made it appear that successful
+message storage proved successful runtime authentication, and Lambda-side
+outbound logging could record a generated reply before Meta delivery was known.
+
+**Changes:**
+- Added one redacted `channel_request_completed` structured record per Lambda
+  invocation with status, typed outcome, validation issues, duration, delivery
+  action, and hashed correlation identifiers.
+- Imported the existing runtime log group into CloudFormation, configured JSON
+  application logs, reduced routine system-log volume, and set 7-day retention
+  without adding a paid dashboard or custom metrics.
+- Removed Lambda-side outbound Agent API logging while preserving inbound
+  logging and Agent API history reads used by the response classifier.
+- Clarified that channel adapters use only `CHANNEL_API_KEY`; Lambda alone
+  resolves `SE_API_KEY` from Secrets Manager for private downstream operations.
+
+**Decision:** Keep distinct credentials across trust boundaries, but expose only
+the channel credential to adapters. Make Lambda the sole owner of authenticated
+inbound Agent API logging and make the delivery adapter authoritative for
+outbound messages actually sent through Meta.
+
+**Validation:** `npm run check` passed with 40 test files and 245 tests. The
+existing log group was imported without replacement, the development Lambda was
+redeployed, and CloudFormation applied seven-day retention. Live non-mutating
+probes produced a redacted `unauthorized` record for HTTP 401 and an
+`invalid_request` record whose only issue identified missing `contact_phone` for
+HTTP 400. Lambda advanced logging reports JSON format, application level
+`INFO`, and system level `WARN`.
+
 ## 2026-07-10
 
 ### Surface response-classifier decisions in the terminal demo

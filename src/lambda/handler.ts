@@ -1,6 +1,10 @@
 import crypto from 'node:crypto';
 
-import type { APIGatewayProxyEventV2, APIGatewayProxyStructuredResultV2 } from 'aws-lambda';
+import type {
+  APIGatewayProxyEventV2,
+  APIGatewayProxyStructuredResultV2,
+  Context,
+} from 'aws-lambda';
 
 import { PromptLoader } from '../runtime/prompt-loader';
 import { getConfig } from '../runtime/config';
@@ -18,8 +22,13 @@ import { resolveChannelApiKey, resolveOpenAiApiKey, resolveSeApiKey } from '../r
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
-import { apiKeysMatch, readApiKeyHeader } from './api-key-auth';
+import { bearerTokensMatch, readBearerAuthorization } from './bearer-auth';
 import { channelRequestSchema } from './request-contract';
+import {
+  buildChannelRequestLog,
+  type ChannelRequestOutcome,
+  type ChannelRequestValidationIssue,
+} from './request-observability';
 
 const config = getConfig();
 
@@ -31,39 +40,99 @@ let channelApiKeyPromise: Promise<string> | null = null;
 
 export async function handler(
   event: APIGatewayProxyEventV2,
+  context?: Context,
 ): Promise<APIGatewayProxyStructuredResultV2> {
+  const startedAt = Date.now();
+  const requestId = context?.awsRequestId ?? event.requestContext.requestId;
+  const method = event.requestContext.http.method;
+  const authorization = readBearerAuthorization(event.headers);
+  let requestIdentity: {
+    channel?: string;
+    externalUserId?: string;
+    messageId?: string;
+  } = {};
+  const respond = (
+    statusCode: number,
+    body: unknown,
+    outcome: ChannelRequestOutcome,
+    diagnostics?: {
+      validationIssues?: ChannelRequestValidationIssue[];
+      deliveryAction?: string;
+      currentNode?: string;
+      error?: unknown;
+      responseHeaders?: Record<string, string>;
+    },
+  ): APIGatewayProxyStructuredResultV2 => {
+    const record = buildChannelRequestLog({
+      requestId,
+      method,
+      statusCode,
+      outcome,
+      durationMs: Date.now() - startedAt,
+      authorizationHeaderPresent: authorization.authorizationHeaderPresent,
+      bearerTokenPresent: authorization.token !== null,
+      channel: requestIdentity.channel,
+      externalUserId: requestIdentity.externalUserId,
+      messageId: requestIdentity.messageId,
+      validationIssues: diagnostics?.validationIssues,
+      deliveryAction: diagnostics?.deliveryAction,
+      currentNode: diagnostics?.currentNode,
+      error: diagnostics?.error,
+    });
+    if (statusCode >= 500) {
+      console.error(record);
+    } else {
+      console.info(record);
+    }
+    return json(statusCode, body, diagnostics?.responseHeaders);
+  };
+
   try {
     const expectedApiKey = await getChannelApiKey();
-    if (!apiKeysMatch(readApiKeyHeader(event.headers), expectedApiKey)) {
-      return json(401, { error: 'Unauthorized.' });
+    if (!bearerTokensMatch(authorization.token, expectedApiKey)) {
+      return respond(401, { error: 'Unauthorized.' }, 'unauthorized', {
+        responseHeaders: {
+          'www-authenticate': 'Bearer realm="recap-agent"',
+        },
+      });
     }
 
     if (!event.body) {
-      return json(400, { error: 'Missing request body.' });
+      return respond(400, { error: 'Missing request body.' }, 'missing_body');
     }
 
     let rawBody: unknown;
     try {
       rawBody = JSON.parse(event.body) as unknown;
     } catch {
-      return json(400, { error: 'Request body must be valid JSON.' });
+      return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
     }
     const parsedBody = channelRequestSchema.safeParse(rawBody);
     if (!parsedBody.success) {
-      return json(400, {
+      const validationIssues = parsedBody.error.issues.map((issue) => ({
+        path: issue.path.join('.'),
+        code: issue.code,
+        message: issue.message,
+      }));
+      return respond(400, {
         error: 'Invalid request body.',
-        issues: parsedBody.error.issues.map((issue) => ({
-          path: issue.path.join('.'),
+        issues: validationIssues.map((issue) => ({
+          path: issue.path,
           message: issue.message,
         })),
-      });
+      }, 'invalid_request', { validationIssues });
     }
     const body = parsedBody.data;
+    const channel = body.channel;
+    const messageId = body.message_id ?? crypto.randomUUID();
+    requestIdentity = {
+      channel,
+      externalUserId: body.user_id,
+      messageId,
+    };
 
     const runtime = await getRuntime();
 
-    const channel = body.channel;
-    const messageId = body.message_id ?? crypto.randomUUID();
     const receivedAt = body.received_at ?? new Date().toISOString();
     const response = await runtime.service.handleTurn({
       channel,
@@ -108,7 +177,7 @@ export async function handler(
 
     const includeDiagnostics = body.client_mode === 'cli';
 
-    return json(200, {
+    return respond(200, {
       message: response.outbound.text,
       delivery: response.outbound.delivery,
       conversation_id: response.outbound.conversationId,
@@ -121,11 +190,14 @@ export async function handler(
             plan: response.plan,
           }
         : {}),
+    }, 'success', {
+      deliveryAction: response.outbound.delivery.action,
+      currentNode: response.plan.current_node,
     });
   } catch (error) {
-    return json(500, {
+    return respond(500, {
       error: error instanceof Error ? error.message : 'Unknown server error.',
-    });
+    }, 'internal_error', { error });
   }
 }
 
@@ -235,11 +307,13 @@ async function getRuntime(): Promise<{
 function json(
   statusCode: number,
   body: unknown,
+  headers?: Record<string, string>,
 ): APIGatewayProxyStructuredResultV2 {
   return {
     statusCode,
     headers: {
       'content-type': 'application/json',
+      ...headers,
     },
     body: JSON.stringify(body, null, 2),
   };
