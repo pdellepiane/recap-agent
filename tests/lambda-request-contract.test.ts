@@ -1,15 +1,13 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  agentParticipationRequestSchema,
   channelRequestSchema,
-  overtakeConversationRequestSchema,
-  resumeAutomatedAgentRequestSchema,
 } from '../src/lambda/request-contract';
 
 describe('Lambda channel request contract', () => {
   it('accepts WhatsApp requests with explicit international phone context', () => {
     const result = channelRequestSchema.safeParse({
-      operation: 'process_message',
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
@@ -23,7 +21,6 @@ describe('Lambda channel request contract', () => {
 
   it('rejects WhatsApp requests without phone context', () => {
     const result = channelRequestSchema.safeParse({
-      operation: 'process_message',
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
@@ -33,7 +30,6 @@ describe('Lambda channel request contract', () => {
 
   it('rejects malformed phone context instead of silently dropping it', () => {
     const result = channelRequestSchema.safeParse({
-      operation: 'process_message',
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
@@ -42,45 +38,21 @@ describe('Lambda channel request contract', () => {
     expect(result.success).toBe(false);
   });
 
-  it('requires the process_message operation for conversational turns', () => {
-    const result = channelRequestSchema.safeParse({
-      text: 'Necesito catering',
-      user_id: 'whatsapp:51999999999',
-      channel: 'whatsapp',
-      contact_phone: '+51999999999',
-    });
-    expect(result.success).toBe(false);
-  });
-
-  it('accepts an explicit CRM request to resume the automated agent', () => {
-    const result = resumeAutomatedAgentRequestSchema.safeParse({
-      operation: 'resume_automated_agent',
+  it('accepts a conversation ownership request', () => {
+    const result = agentParticipationRequestSchema.safeParse({
       channel: 'whatsapp',
       user_id: 'whatsapp:51999999999',
-      request_id: 'crm-resume-123',
+      request_id: 'ownership-request-123',
       requested_at: '2026-07-15T20:00:00.000Z',
     });
     expect(result.success).toBe(true);
   });
 
-  it('rejects unknown CRM operations', () => {
-    const result = resumeAutomatedAgentRequestSchema.safeParse({
-      operation: 'enable_bot_later',
+  it('rejects a conversation ownership request without correlation identity', () => {
+    const result = agentParticipationRequestSchema.safeParse({
       channel: 'whatsapp',
       user_id: 'whatsapp:51999999999',
-      request_id: 'crm-resume-123',
     });
     expect(result.success).toBe(false);
-  });
-
-  it('accepts an explicit CRM conversation takeover operation', () => {
-    const result = overtakeConversationRequestSchema.safeParse({
-      operation: 'overtake_conversation',
-      channel: 'whatsapp',
-      user_id: 'whatsapp:51999999999',
-      request_id: 'crm-overtake-123',
-      requested_at: '2026-07-15T22:30:00.000Z',
-    });
-    expect(result.success).toBe(true);
   });
 });

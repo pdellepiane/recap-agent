@@ -2,6 +2,32 @@
 
 ## 2026-07-15
 
+### Restore message requests and separate ownership endpoints
+
+**Reason:** A shared body-level operation discriminator combined message
+processing and conversation ownership into one endpoint, breaking the existing
+channel request flow. Conversation ownership is also independent of the system
+that initiates the transition.
+
+**Changes:**
+- Restored `POST /` as the message endpoint with its original request body and
+  no operation field.
+- Added separate `POST /conversations/overtake` and
+  `POST /conversations/resume` endpoints with a shared typed ownership body.
+- Removed caller-specific naming from routes, persistence reasons, errors,
+  tests, and current integration documentation.
+- Updated terminal and live-evaluation clients to use the restored message
+  contract and added focused route coverage.
+
+**Decision:** Use HTTP paths to separate the three purposes. Keep ownership
+transitions caller-agnostic and infer no source-system identity inside Lambda.
+
+**Validation:** `npm run check` passed with 42 test files and 259 tests, and the
+development Lambda was redeployed. A live synthetic cycle returned `overtaken`
+from `/conversations/overtake`, accepted an operation-less request at `/` and
+suppressed it while externally owned, returned `resumed` from
+`/conversations/resume`, and returned HTTP `404` for an unknown path.
+
 ### Add explicit CRM conversation takeover
 
 **Reason:** The CRM could release human ownership but had no symmetric control

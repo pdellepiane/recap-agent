@@ -80,7 +80,6 @@ export async function runLiveLambdaCase(args: {
         authorization: `Bearer ${channelApiKey}`,
       },
       body: JSON.stringify({
-        operation: 'process_message',
         channel: input.channel ?? channel,
         user_id: input.externalUserId ?? externalUserId,
         text: input.text,

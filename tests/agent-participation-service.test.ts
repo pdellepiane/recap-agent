@@ -72,7 +72,7 @@ describe('AgentParticipationService', () => {
     expect(result).toEqual({ status: 'plan_not_found' });
   });
 
-  it('lets the CRM overtake an active conversation', async () => {
+  it('lets an external owner overtake an active conversation', async () => {
     const planStore = new InMemoryPlanStore();
     await planStore.save({
       reason: 'seed_active_for_overtake',
@@ -95,7 +95,7 @@ describe('AgentParticipationService', () => {
 
     expect(result.status).toBe('overtaken');
     if (result.status !== 'overtaken') {
-      throw new Error('Expected the CRM to overtake the conversation.');
+      throw new Error('Expected the external owner to overtake the conversation.');
     }
     expect(result.plan.current_node).toBe('solicitar_agente_humano');
     expect(result.plan.intent).toBe('solicitar_humano');
@@ -107,7 +107,7 @@ describe('AgentParticipationService', () => {
     });
   });
 
-  it('is idempotent when the CRM already owns the conversation', async () => {
+  it('is idempotent when an external participant already owns the conversation', async () => {
     const planStore = new InMemoryPlanStore();
     await planStore.save({
       reason: 'seed_overtaken',

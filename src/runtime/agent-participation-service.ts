@@ -43,7 +43,7 @@ export class AgentParticipationService {
     });
     await this.planStore.save({
       plan: resumedPlan,
-      reason: 'crm_resume_automated_agent',
+      reason: 'resume_automated_agent',
     });
     return { status: 'resumed', plan: resumedPlan };
   }
@@ -73,7 +73,7 @@ export class AgentParticipationService {
     });
     await this.planStore.save({
       plan: overtakenPlan,
-      reason: 'crm_overtake_conversation',
+      reason: 'overtake_conversation',
     });
     return { status: 'overtaken', plan: overtakenPlan };
   }

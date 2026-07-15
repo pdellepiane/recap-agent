@@ -28,6 +28,7 @@ import {
   agentParticipationRequestSchema,
   channelRequestSchema,
 } from './request-contract';
+import { resolveRuntimeRequestRoute } from './request-route';
 import {
   buildChannelRequestLog,
   type ChannelRequestOutcome,
@@ -51,6 +52,7 @@ export async function handler(
   const startedAt = Date.now();
   const requestId = context?.awsRequestId ?? event.requestContext.requestId;
   const method = event.requestContext.http.method;
+  const route = resolveRuntimeRequestRoute(event.rawPath);
   const authorization = readBearerAuthorization(event.headers);
   let requestIdentity: {
     channel?: string;
@@ -103,6 +105,10 @@ export async function handler(
       });
     }
 
+    if (route === 'not_found') {
+      return respond(404, { error: 'Not found.' }, 'route_not_found');
+    }
+
     if (!event.body) {
       return respond(400, { error: 'Missing request body.' }, 'missing_body');
     }
@@ -113,7 +119,7 @@ export async function handler(
     } catch {
       return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
     }
-    if (isControlOperationRequest(rawBody)) {
+    if (route !== 'message') {
       const parsedOperation = agentParticipationRequestSchema.safeParse(rawBody);
       if (!parsedOperation.success) {
         const validationIssues = parsedOperation.error.issues.map((issue) => ({
@@ -122,7 +128,7 @@ export async function handler(
           message: issue.message,
         }));
         return respond(400, {
-          error: 'Invalid operation request.',
+          error: 'Invalid conversation ownership request.',
           issues: validationIssues.map((issue) => ({
             path: issue.path,
             message: issue.message,
@@ -130,34 +136,32 @@ export async function handler(
         }, 'invalid_request', { validationIssues });
       }
 
-      const operation = parsedOperation.data;
+      const controlRequest = parsedOperation.data;
       requestIdentity = {
-        channel: operation.channel,
-        externalUserId: operation.user_id,
-        messageId: operation.request_id,
+        channel: controlRequest.channel,
+        externalUserId: controlRequest.user_id,
+        messageId: controlRequest.request_id,
       };
-      const result = operation.operation === 'resume_automated_agent'
+      const result = route === 'resume_automated_agent'
         ? await getAgentParticipationService().resumeAutomatedAgent({
-            channel: operation.channel,
-            externalUserId: operation.user_id,
+            channel: controlRequest.channel,
+            externalUserId: controlRequest.user_id,
           })
         : await getAgentParticipationService().overtakeConversation({
-            channel: operation.channel,
-            externalUserId: operation.user_id,
-            requestedAt: operation.requested_at,
+            channel: controlRequest.channel,
+            externalUserId: controlRequest.user_id,
+            requestedAt: controlRequest.requested_at,
           });
       if (result.status === 'plan_not_found') {
         return respond(404, {
-          operation: operation.operation,
           status: result.status,
         }, 'plan_not_found');
       }
       return respond(200, {
-        operation: operation.operation,
         status: result.status,
         plan_id: result.plan.plan_id,
         current_node: result.plan.current_node,
-      }, operationOutcome(result.status), {
+      }, participationOutcome(result.status), {
         currentNode: result.plan.current_node,
       });
     }
@@ -373,14 +377,7 @@ function getAgentParticipationService(): AgentParticipationService {
   return agentParticipationService;
 }
 
-function isControlOperationRequest(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object'
-    && value !== null
-    && 'operation' in value
-    && value.operation !== 'process_message';
-}
-
-function operationOutcome(
+function participationOutcome(
   status: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken',
 ): ChannelRequestOutcome {
   switch (status) {

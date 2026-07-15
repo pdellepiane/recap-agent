@@ -5,7 +5,6 @@ import { parseInternationalPhone } from '../runtime/phone';
 const whatsAppChannels = new Set(['whatsapp', 'whatsapp_sandbox']);
 
 export const channelRequestSchema = z.object({
-  operation: z.literal('process_message'),
   text: z.string().trim().min(1),
   user_id: z.string().trim().min(1),
   channel: z.string().trim().min(1),
@@ -34,28 +33,11 @@ export const channelRequestSchema = z.object({
 
 export type ChannelRequestBody = z.infer<typeof channelRequestSchema>;
 
-const participationRequestFields = {
+export const agentParticipationRequestSchema = z.object({
   channel: z.string().trim().min(1),
   user_id: z.string().trim().min(1),
   request_id: z.string().trim().min(1),
   requested_at: z.string().datetime({ offset: true }).optional(),
-};
-
-export const resumeAutomatedAgentRequestSchema = z.object({
-  operation: z.literal('resume_automated_agent'),
-  ...participationRequestFields,
 });
 
-export const overtakeConversationRequestSchema = z.object({
-  operation: z.literal('overtake_conversation'),
-  ...participationRequestFields,
-});
-
-export const agentParticipationRequestSchema = z.discriminatedUnion('operation', [
-  resumeAutomatedAgentRequestSchema,
-  overtakeConversationRequestSchema,
-]);
-
-export type ResumeAutomatedAgentRequestBody = z.infer<
-  typeof resumeAutomatedAgentRequestSchema
->;
+export type AgentParticipationRequestBody = z.infer<typeof agentParticipationRequestSchema>;
