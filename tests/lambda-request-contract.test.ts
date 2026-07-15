@@ -8,6 +8,7 @@ import {
 describe('Lambda channel request contract', () => {
   it('accepts WhatsApp requests with explicit international phone context', () => {
     const result = channelRequestSchema.safeParse({
+      operation: 'process_message',
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
@@ -21,6 +22,7 @@ describe('Lambda channel request contract', () => {
 
   it('rejects WhatsApp requests without phone context', () => {
     const result = channelRequestSchema.safeParse({
+      operation: 'process_message',
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
@@ -30,10 +32,21 @@ describe('Lambda channel request contract', () => {
 
   it('rejects malformed phone context instead of silently dropping it', () => {
     const result = channelRequestSchema.safeParse({
+      operation: 'process_message',
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '999999999',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('requires the process_message operation for conversational turns', () => {
+    const result = channelRequestSchema.safeParse({
+      text: 'Necesito catering',
+      user_id: 'whatsapp:51999999999',
+      channel: 'whatsapp',
+      contact_phone: '+51999999999',
     });
     expect(result.success).toBe(false);
   });

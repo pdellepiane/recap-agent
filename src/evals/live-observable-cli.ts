@@ -36,6 +36,7 @@ type LambdaTranscriptPayload = {
 };
 
 type LambdaRequestBody = {
+  operation: 'process_message';
   channel: string;
   user_id: string;
   text: string;
@@ -155,6 +156,7 @@ export function buildLambdaRequestBody(args: {
   sessionId: string;
 }): LambdaRequestBody {
   return {
+    operation: 'process_message',
     channel: args.channel,
     user_id: args.userId,
     text: args.text,

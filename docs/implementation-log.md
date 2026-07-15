@@ -2,6 +2,31 @@
 
 ## 2026-07-15
 
+### Discriminate every Lambda request with an operation
+
+**Reason:** CRM control requests already used an explicit operation while
+conversational turns were identified only by the absence of that field. The
+shared Function URL should have a uniform, unambiguous request envelope.
+
+**Changes:**
+- Made `operation: "process_message"` mandatory for conversational requests.
+- Kept `operation: "resume_automated_agent"` for CRM ownership release and
+  routed the two operations explicitly before their typed validation paths.
+- Updated the terminal client, both live evaluation clients, contract tests,
+  adapter pseudocode, field mappings, curl examples, README, and integration
+  checklist.
+
+**Decision:** Use required operation literals as the clean request
+discriminator. Do not accept operation-less conversational payloads while the
+integration remains in active development.
+
+**Validation:** `npm run check` passed with 41 test files and 254 tests, and the
+development Lambda was redeployed. Live low-cost probes showed
+`process_message` reaching the WhatsApp phone validator, an otherwise valid
+operation-less turn being rejected specifically at `operation`, and
+`resume_automated_agent` still returning `already_active` for the active
+synthetic plan.
+
 ### Replace timed handoff expiry with explicit CRM release
 
 **Reason:** Human ownership should end when the CRM operator deliberately lets

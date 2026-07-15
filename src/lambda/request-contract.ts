@@ -5,6 +5,7 @@ import { parseInternationalPhone } from '../runtime/phone';
 const whatsAppChannels = new Set(['whatsapp', 'whatsapp_sandbox']);
 
 export const channelRequestSchema = z.object({
+  operation: z.literal('process_message'),
   text: z.string().trim().min(1),
   user_id: z.string().trim().min(1),
   channel: z.string().trim().min(1),

@@ -79,6 +79,7 @@ Send JSON with `content-type: application/json` and `Authorization: Bearer <CHAN
 
 | Field | Required | Type | Meaning |
 | --- | --- | --- | --- |
+| `operation` | Yes | `process_message` | Explicitly identifies a conversational turn. CRM release requests use `resume_automated_agent` instead. |
 | `text` | Yes | string | The inbound user message exactly as the user sent it after channel-level cleanup. |
 | `user_id` | Yes | string | Stable channel-specific external user id. This is the state key together with `channel`. |
 | `channel` | Yes | string | Stable channel identifier. Use `whatsapp` in production and `whatsapp_sandbox` for sandbox traffic. |
@@ -93,6 +94,7 @@ Minimal production request:
 
 ```json
 {
+  "operation": "process_message",
   "text": "Hola, necesito catering para una boda de 80 personas en Lima",
   "user_id": "whatsapp:51999999999",
   "channel": "whatsapp",
@@ -107,6 +109,7 @@ Developer diagnostics request:
 
 ```json
 {
+  "operation": "process_message",
   "text": "Necesito un local para 100 personas en Lima",
   "user_id": "51999999999",
   "channel": "terminal_whatsapp",
@@ -124,6 +127,7 @@ curl -sS \
   -H "content-type: application/json" \
   -H "Authorization: Bearer ${CHANNEL_API_KEY}" \
   --data '{
+    "operation": "process_message",
     "text": "Hola, necesito catering para una boda de 80 personas en Lima",
     "user_id": "whatsapp:51999999999",
     "channel": "whatsapp",
@@ -143,6 +147,7 @@ Always pass the WhatsApp sender in both identity and phone-context fields:
 const from = message.from.replace(/\D/gu, '');
 
 const request = {
+  operation: 'process_message' as const,
   channel: 'whatsapp',
   user_id: `whatsapp:${from}`,
   contact_phone: `+${from}`,
@@ -450,6 +455,7 @@ Pseudo-code:
 
 ```ts
 type RuntimeRequest = {
+  operation: 'process_message';
   text: string;
   user_id: string;
   channel: string;
@@ -515,6 +521,7 @@ For a WhatsApp webhook, map native fields like this:
 
 | Runtime field | WhatsApp source |
 | --- | --- |
+| `operation` | Constant `process_message` |
 | `text` | inbound text body after trimming unsupported channel wrappers |
 | `user_id` | `whatsapp:${from}` where `from` is the platform sender id |
 | `contact_phone` | `+${from}` after removing non-digits from Meta's sender id |
@@ -763,7 +770,7 @@ curl -sS \
     --output text)" \
   -H "content-type: application/json" \
   -H "Authorization: Bearer ${CHANNEL_API_KEY}" \
-  --data '{"text":"Hola, estoy planeando una boda en Lima para 80 personas","user_id":"whatsapp:51999999999","contact_phone":"+51999999999","channel":"whatsapp","message_id":"smoke-001","received_at":"2026-07-14T21:17:26.000Z","client_mode":"channel"}'
+  --data '{"operation":"process_message","text":"Hola, estoy planeando una boda en Lima para 80 personas","user_id":"whatsapp:51999999999","contact_phone":"+51999999999","channel":"whatsapp","message_id":"smoke-001","received_at":"2026-07-14T21:17:26.000Z","client_mode":"channel"}'
 ```
 
 Expected shape:
@@ -785,6 +792,7 @@ Before a channel adapter is considered complete:
 
 - [ ] It verifies native webhook authenticity before calling the runtime.
 - [ ] It reads `CHANNEL_API_KEY` from server-side secret configuration and sends it as `Authorization: Bearer <token>`.
+- [ ] Every conversational turn sends `operation: process_message`; CRM release requests send `operation: resume_automated_agent`.
 - [ ] It does not hold `SE_API_KEY` or write inbound messages directly to the Agent API.
 - [ ] It uses a stable `channel` string.
 - [ ] It always passes a stable `user_id`.

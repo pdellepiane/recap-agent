@@ -333,6 +333,10 @@ describe('live lambda eval target', () => {
       'session-token-test',
       'session-token-test',
     ]);
+    expect(requestBodies.map((body) => body.operation)).toEqual([
+      'process_message',
+      'process_message',
+    ]);
     expect(result.turns).toHaveLength(2);
     expect(result.turns.every((turn) => (turn.trace.token_usage.total?.total_tokens ?? 0) > 0)).toBe(true);
     expect(result.turns.every((turn) => (turn.perf?.total_tokens ?? 0) > 0)).toBe(true);

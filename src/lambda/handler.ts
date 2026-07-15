@@ -113,7 +113,7 @@ export async function handler(
     } catch {
       return respond(400, { error: 'Request body must be valid JSON.' }, 'invalid_json');
     }
-    if (isOperationRequest(rawBody)) {
+    if (isControlOperationRequest(rawBody)) {
       const parsedOperation = resumeAutomatedAgentRequestSchema.safeParse(rawBody);
       if (!parsedOperation.success) {
         const validationIssues = parsedOperation.error.issues.map((issue) => ({
@@ -369,10 +369,11 @@ function getAgentParticipationService(): AgentParticipationService {
   return agentParticipationService;
 }
 
-function isOperationRequest(value: unknown): value is Record<string, unknown> {
+function isControlOperationRequest(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object'
     && value !== null
-    && 'operation' in value;
+    && 'operation' in value
+    && value.operation !== 'process_message';
 }
 
 function json(

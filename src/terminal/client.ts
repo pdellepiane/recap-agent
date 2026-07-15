@@ -233,6 +233,7 @@ async function main() {
         config.functionUrl,
         config.apiKey,
         {
+          operation: 'process_message',
           channel: config.channel,
           user_id: config.userId,
           contact_phone: config.contactPhone,

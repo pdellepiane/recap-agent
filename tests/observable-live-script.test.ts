@@ -103,6 +103,7 @@ describe('observable live eval script', () => {
       sessionId: 'observable-session',
     });
 
+    expect(body.operation).toBe('process_message');
     expect(body.client_mode).toBe('cli');
 
     const plan = richPlan();
