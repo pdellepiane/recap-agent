@@ -4024,3 +4024,29 @@ adapter also needs an explicit rule for suppressed turns and human handoff.
 Verify and enqueue quickly, then process each unique WhatsApp `wamid` in a
 worker. Use the same `wamid` as runtime `message_id` across retries and only call
 the Graph API when the runtime explicitly returns a send delivery.
+
+## Route guest email validation through the production API
+
+- Changed the guest-auth default in runtime configuration, the HTTP gateway,
+  CloudFormation, and the deploy script from the development host to
+  `https://api.sinenvolturas.com/api-web/user`.
+- Updated operational and thesis documentation to show the production auth URL.
+- Left the guest-service event lookup URL unchanged because it is a separate API.
+
+### Reason
+
+The deployed runtime still sent login-code requests to the development host even
+though the equivalent production routes were available.
+
+### Decision
+
+Use the production user-auth API for both `POST /request-login-code` and `POST
+/login-code`. Keep their existing payloads and response handling because a safe
+production probe confirmed the expected contract.
+
+**Validation:** A production probe with a reserved nonexistent email returned
+`200` from `/request-login-code`, and an invalid synthetic code returned the
+expected `400 Invalid or expired code` from `/login-code`. `npm run check` passed
+with 42 test files and 259 tests. The development runtime and provider-sync
+stacks deployed successfully, and the active Lambda configuration reports the
+production guest-auth base URL.

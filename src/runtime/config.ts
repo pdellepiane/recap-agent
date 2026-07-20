@@ -105,7 +105,7 @@ const environmentSchema = z.object({
   SINENVOLTURAS_GUEST_AUTH_BASE_URL: z
     .string()
     .url()
-    .default('https://se-v2-api-dev.jnq.io/api-web/user'),
+    .default('https://api.sinenvolturas.com/api-web/user'),
   AGENT_API_BASE_URL: z
     .string()
     .url()

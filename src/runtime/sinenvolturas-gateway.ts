@@ -961,7 +961,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     body: Record<string, unknown>,
     options?: { throwOnHttpError?: boolean },
   ): Promise<{ ok: boolean; status: number; body: T }> {
-    const baseUrl = this.options.guestAuthBaseUrl ?? 'https://se-v2-api-dev.jnq.io/api-web/user';
+    const baseUrl = this.options.guestAuthBaseUrl ?? 'https://api.sinenvolturas.com/api-web/user';
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: 'POST',
       headers: {

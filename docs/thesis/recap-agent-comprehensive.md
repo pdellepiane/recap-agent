@@ -98,7 +98,7 @@ El runtime es **agnóstico al canal**: WhatsApp, webchat y la terminal CLI se re
 | `PROMPTS_DIR` | `/var/task/prompts` | Ruta al bundle de prompts |
 | `SINENVOLTURAS_BASE_URL` | `https://api.sinenvolturas.com/api-web/vendor` | API del marketplace |
 | `SINENVOLTURAS_GUEST_SERVICE_BASE_URL` | `https://se-v2-api-dev.jnq.io/api/guest-service` | API de invitados (lookup anónimo) |
-| `SINENVOLTURAS_GUEST_AUTH_BASE_URL` | `https://se-v2-api-dev.jnq.io/api-web/user` | API de autenticación de invitados (login code + verify) |
+| `SINENVOLTURAS_GUEST_AUTH_BASE_URL` | `https://api.sinenvolturas.com/api-web/user` | API de autenticación de invitados (login code + verify) |
 | `PROVIDER_SEARCH_MODE` | `hybrid` | `api` / `vector` / `hybrid` |
 | `PROVIDER_SEARCH_LIMIT` | 12 | Candidatos persistidos |
 | `REPLY_PROVIDER_LIMIT` | 6 | Top que recibe el LLM |
@@ -471,7 +471,7 @@ none → code_requested → authenticated → (lookup exitoso)
 | Re-auth automática | Si `lookupAuthenticatedGuest()` falla con token válido, se resetea `guest_auth` y se reinicia el flujo |
 | Trazabilidad | `requestGuestLoginCode`, `verifyGuestLoginCode`, y `lookupAuthenticatedGuest` se registran en `tools_called` con `tool_inputs` que redactan el token |
 
-**Configuración:** `SINENVOLTURAS_GUEST_AUTH_BASE_URL` (default `https://se-v2-api-dev.jnq.io/api-web/user`) — endpoint base para los tres métodos de auth. Inyectado en Lambda vía CloudFormation y `scripts/deploy.mjs`.
+**Configuración:** `SINENVOLTURAS_GUEST_AUTH_BASE_URL` (default `https://api.sinenvolturas.com/api-web/user`) — endpoint base para los tres métodos de auth. Inyectado en Lambda vía CloudFormation y `scripts/deploy.mjs`.
 
 ### 4.4 Búsqueda híbrida con vector store (`provider-vector-search.ts`)
 
