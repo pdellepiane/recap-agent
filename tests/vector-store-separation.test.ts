@@ -74,6 +74,25 @@ function createRequest(currentNode: ComposeReplyRequest['currentNode']): Compose
 }
 
 describe('FAQ and provider vector store separation', () => {
+  it('keeps guest authentication and event lookup in production by default', () => {
+    withEnv(
+      {
+        SINENVOLTURAS_GUEST_SERVICE_BASE_URL: undefined,
+        SINENVOLTURAS_GUEST_AUTH_BASE_URL: undefined,
+      },
+      () => {
+        const config = getConfig();
+
+        expect(config.providerApi.guestAuthBaseUrl).toBe(
+          'https://api.sinenvolturas.com/api-web/user',
+        );
+        expect(config.providerApi.guestServiceBaseUrl).toBe(
+          'https://api.sinenvolturas.com/api/guest-service',
+        );
+      },
+    );
+  });
+
   it('maps KB_VECTOR_STORE_ID only to FAQ knowledge-base config', () => {
     withEnv(
       {

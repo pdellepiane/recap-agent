@@ -96,7 +96,7 @@ run(
     `AgentApiTimeoutMs=${process.env.AGENT_API_TIMEOUT_MS ?? env.AGENT_API_TIMEOUT_MS ?? '5000'}`,
     `AgentApiMaxRetries=${process.env.AGENT_API_MAX_RETRIES ?? env.AGENT_API_MAX_RETRIES ?? '2'}`,
     `AgentMessageLoggingEnabled=${process.env.AGENT_MESSAGE_LOGGING_ENABLED ?? env.AGENT_MESSAGE_LOGGING_ENABLED ?? 'false'}`,
-    `SinEnvolturasGuestServiceBaseUrl=${process.env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? 'https://se-v2-api-dev.jnq.io/api/guest-service'}`,
+    `SinEnvolturasGuestServiceBaseUrl=${process.env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? env.SINENVOLTURAS_GUEST_SERVICE_BASE_URL ?? 'https://api.sinenvolturas.com/api/guest-service'}`,
     `SinEnvolturasGuestAuthBaseUrl=${process.env.SINENVOLTURAS_GUEST_AUTH_BASE_URL ?? env.SINENVOLTURAS_GUEST_AUTH_BASE_URL ?? 'https://api.sinenvolturas.com/api-web/user'}`,
     `AgentFeatureProviderPlanning=${process.env.AGENT_FEATURE_PROVIDER_PLANNING ?? env.AGENT_FEATURE_PROVIDER_PLANNING ?? 'true'}`,
     `AgentFeatureProviderSearch=${process.env.AGENT_FEATURE_PROVIDER_SEARCH ?? env.AGENT_FEATURE_PROVIDER_SEARCH ?? 'true'}`,

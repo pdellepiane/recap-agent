@@ -2,6 +2,41 @@
 
 ## 2026-07-21
 
+### Align guest authentication and event lookup on production
+
+**Reason:** A valid production login code returned an authenticated token, but
+the runtime immediately sent that production identity and token to the
+development guest-service lookup. The dev lookup returned HTTP `404`, causing
+the deterministic flow to clear the valid session and ask for email validation
+again.
+
+**Changes:**
+- Changed the guest-service default from
+  `https://se-v2-api-dev.jnq.io/api/guest-service` to
+  `https://api.sinenvolturas.com/api/guest-service` in runtime configuration,
+  CloudFormation, and the deployment script.
+- Updated operational and thesis documentation so guest authentication and
+  event lookup show the same production environment.
+- Added regression coverage that requires both guest API defaults to resolve to
+  production when no override is supplied.
+
+**Decision:** Treat guest code issuance, code verification, and authenticated
+event lookup as one environment-bound flow. Do not mix a token or user identity
+from one environment with data lookup in another. Explicit environment
+overrides remain available for isolated testing, but the checked-in and deployed
+defaults must stay aligned.
+
+**Validation:** `npm run check` passed with 43 test files and 276 tests. The
+development runtime and provider-sync stacks redeployed successfully, and the
+active Lambda reports both guest URLs on `api.sinenvolturas.com`. The code from
+the original failed session was already invalid or expired, so the exact
+persisted session requested a fresh production code and moved cleanly to
+`guest_auth.status = code_requested` with no stored error. The fresh code then
+authenticated successfully, production guest lookup returned the account's
+event context, and the assistant rendered the event response. DynamoDB retained
+`guest_auth.status = authenticated`, a 24-hour token expiry, and no error; Lambda
+reported zero errors in the live validation window.
+
 ### Make ownership transitions observable and enforce their HTTP contract
 
 **Reason:** A manual resume appeared not to change a live overtaken plan. The

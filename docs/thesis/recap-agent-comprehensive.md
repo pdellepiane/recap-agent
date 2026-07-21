@@ -97,7 +97,7 @@ El runtime es **agnóstico al canal**: WhatsApp, webchat y la terminal CLI se re
 | `PLANS_TABLE_NAME` | `recap-agent-plans` | Tabla de planes |
 | `PROMPTS_DIR` | `/var/task/prompts` | Ruta al bundle de prompts |
 | `SINENVOLTURAS_BASE_URL` | `https://api.sinenvolturas.com/api-web/vendor` | API del marketplace |
-| `SINENVOLTURAS_GUEST_SERVICE_BASE_URL` | `https://se-v2-api-dev.jnq.io/api/guest-service` | API de invitados (lookup anónimo) |
+| `SINENVOLTURAS_GUEST_SERVICE_BASE_URL` | `https://api.sinenvolturas.com/api/guest-service` | API de invitados (lookup anónimo y autenticado) |
 | `SINENVOLTURAS_GUEST_AUTH_BASE_URL` | `https://api.sinenvolturas.com/api-web/user` | API de autenticación de invitados (login code + verify) |
 | `PROVIDER_SEARCH_MODE` | `hybrid` | `api` / `vector` / `hybrid` |
 | `PROVIDER_SEARCH_LIMIT` | 12 | Candidatos persistidos |
