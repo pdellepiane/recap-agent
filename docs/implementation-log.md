@@ -1,5 +1,127 @@
 # Implementation Log
 
+## 2026-07-21
+
+### Make ownership transitions observable and enforce their HTTP contract
+
+**Reason:** A manual resume appeared not to change a live overtaken plan. The
+runtime logs proved that no successful resume transition occurred, but rejected
+requests did not include their path, so an unauthenticated resume could not be
+distinguished from another Function URL call.
+
+**Changes:**
+- Restored the identified live test plan through the authenticated resume
+  endpoint and confirmed the persisted state is bot-active at `entrevista`.
+- Added redacted request path, resolved route, body presence, ownership
+  operation, hashed ownership request id, transition result, plan id, and human
+  escalation state to structured request completion logs.
+- Kept message ids and ownership request ids in distinct hashed fields so
+  operational correlation does not blur conversational and control requests.
+- Enforced the documented POST-only Function URL contract with HTTP `405` and
+  `Allow: POST` for authenticated callers using another method.
+- Added handler-level and pure observability regression coverage, including
+  pre-authentication resume logging and sensitive path redaction.
+- Documented response-driven caller behavior, failure handling, and a CloudWatch
+  Logs Insights query for live ownership debugging.
+
+**Decision:** The trusted server-side caller may update its local ownership
+indicator only after a confirmed `200` ownership response. Browser code must not
+receive the channel credential. Emit enough structured state to diagnose route,
+authentication, identity, and transition failures without logging raw user,
+phone, message, request, or credential values.
+
+**Validation:** `npm run check` passed with 43 test files and 275 tests. The
+development runtime and provider-sync stacks redeployed successfully. Live
+probes returned `401` for a resume without the Bearer header, `405` plus
+`Allow: POST` for an authenticated GET, and `200 already_active` for an
+authenticated idempotent retry. CloudWatch recorded all three with the resume
+path and route; the successful retry also included the hashed ownership request
+id and the active plan state. A Logs Insights query matched all three records,
+Lambda reported zero errors in the validation window, and DynamoDB retained the
+resumed `human_escalation.status = none` state at `entrevista`.
+
+### Fail open on history outages and require explicit automation confidence
+
+**Reason:** A conversation-history outage must not silently discard a legitimate
+inbound message. Prior outbound history is also not the defining signal for a
+corporate automated response; an unequivocal automated business template can
+be identified from the inbound message itself.
+
+**Changes:**
+- Removed `suppress_context_unavailable` from runtime and evaluation actions.
+  Failed Agent API history reads now skip the classifier, retain
+  `conversation_context_unavailable` as trace evidence, and continue through
+  the normal response flow.
+- Added structured `automation_confidence` output and a deterministic invariant
+  that permits `suppress_automated_response` only with reason
+  `automated_response` and confidence `high`.
+- Allowed that high-confidence automation action without prior outbound
+  history. Acknowledgement and reaction suppression still requires outbound
+  conversational context.
+- Expanded regression and labelled-corpus coverage for context-free corporate
+  automation, uncertain templates, human business contacts, and history-read
+  failures.
+- Added a generic branded reception-template case after a live GoCleaning demo
+  showed high automation confidence paired with an incorrect `respond` action.
+- Added typed automation pattern and scope evidence so the runtime can normalize
+  inconsistent classifier actions without keyword matching, while protecting
+  quoted bot text and context-free generic business greetings.
+
+**Decision:** Enforcement suppresses only an accepted classifier decision; it
+does not convert an infrastructure failure into a silent delivery drop. Keep
+ambiguous and human-looking business messages fail-open, and retain fresh
+five-message classification with no persisted number-level guard.
+
+**Validation:** `npm run check` passed with 42 test files and 270 tests. A live
+classifier evaluation suppressed all 13 automation cases, including four with
+no outbound history and the GoCleaning reception template, and none of the 12
+human/business lookalikes. The
+development Lambda and provider-sync stack were redeployed. An authenticated
+Lambda smoke with successful empty Agent API history returned
+`suppress_automated_response`, `automation_confidence: "high"`,
+`has_prior_outbound_message: false`, and `message: null`; only the classifier
+ran, using 1,692 tokens. A second authenticated smoke with the exact GoCleaning
+message returned pattern `generic_corporate_reception`, scope `current_sender`,
+`message: null`, and classifier-only usage of 2,111 tokens. A forced
+failed-history service test confirmed the classifier is skipped and the normal
+extraction/reply path sends a response.
+
+### Suppress high-confidence corporate automated responses
+
+**Reason:** Corporate WhatsApp numbers can answer the assistant with automated
+menus, away notices, routing messages, and templated confirmations. Treating
+those messages as event-planning input invokes extraction, search, and reply
+generation unnecessarily and can create a bot-to-bot loop.
+
+**Changes:**
+- Extended the existing structured response classifier with
+  `suppress_automated_response` and contextual Spanish guidance for
+  high-confidence automation detection without keyword matching.
+- Kept the external Agent API's five latest messages as the authoritative
+  context and preserved the prior-outbound requirement for model-selected
+  suppression.
+- Added `suppress_context_unavailable` so a failed history lookup stops before
+  every model call; successful empty history still supports first contact.
+- Added classifier and service regression coverage, including refreshed
+  classification on every turn, plus 12 automation and 12 must-respond corpus
+  examples.
+- Updated runtime/eval schemas and channel documentation for both new delivery
+  reasons.
+
+**Decision:** Do not persist an automation guard, cooldown, or blacklist. Each
+inbound message reads fresh five-message context and is classified again. Keep
+rapid-message coalescing outside this change and preserve fail-open behavior for
+classifier/model/schema failures.
+
+**Validation:** `npm run check` passed with 42 test files and 266 tests. A live
+classifier evaluation suppressed all 12 automation examples and none of the 12
+must-respond lookalikes. The development Lambda and provider-sync stack were
+redeployed. An authenticated Lambda smoke turn with synthetic prior-outbound
+Agent API history returned `message: null` and delivery action `suppress` with
+reason `suppress_automated_response`; extraction, provider search, and reply
+composition were skipped, and the classifier was the only model call at 1,217
+tokens.
+
 ## 2026-07-15
 
 ### Restore message requests and separate ownership endpoints

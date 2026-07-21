@@ -1,8 +1,11 @@
 import crypto from 'node:crypto';
 
+import type { RuntimeRequestRoute } from './request-route';
+
 export type ChannelRequestOutcome =
   | 'success'
   | 'unauthorized'
+  | 'method_not_allowed'
   | 'missing_body'
   | 'invalid_json'
   | 'invalid_request'
@@ -24,6 +27,9 @@ export type ChannelRequestLog = {
   event: 'channel_request_completed';
   request_id: string;
   method: string;
+  request_path: string;
+  request_route: RuntimeRequestRoute;
+  request_body_present: boolean;
   status_code: number;
   outcome: ChannelRequestOutcome;
   duration_ms: number;
@@ -32,6 +38,11 @@ export type ChannelRequestLog = {
   channel?: string;
   external_user_hash?: string;
   message_id_hash?: string;
+  ownership_request_id_hash?: string;
+  ownership_operation?: 'overtake' | 'resume';
+  participation_status?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
+  plan_id?: string;
+  human_escalation_status?: 'none' | 'requested';
   validation_issues?: ChannelRequestValidationIssue[];
   delivery_action?: string;
   current_node?: string;
@@ -42,6 +53,9 @@ export type ChannelRequestLog = {
 export function buildChannelRequestLog(args: {
   requestId: string;
   method: string;
+  requestPath: string;
+  requestRoute: RuntimeRequestRoute;
+  requestBodyPresent: boolean;
   statusCode: number;
   outcome: ChannelRequestOutcome;
   durationMs: number;
@@ -50,6 +64,10 @@ export function buildChannelRequestLog(args: {
   channel?: string;
   externalUserId?: string;
   messageId?: string;
+  ownershipRequestId?: string;
+  participationStatus?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
+  planId?: string;
+  humanEscalationStatus?: 'none' | 'requested';
   validationIssues?: ChannelRequestValidationIssue[];
   deliveryAction?: string;
   currentNode?: string;
@@ -60,6 +78,9 @@ export function buildChannelRequestLog(args: {
     event: 'channel_request_completed',
     request_id: args.requestId,
     method: args.method,
+    request_path: redact(args.requestPath),
+    request_route: args.requestRoute,
+    request_body_present: args.requestBodyPresent,
     status_code: args.statusCode,
     outcome: args.outcome,
     duration_ms: Math.max(0, Math.round(args.durationMs)),
@@ -70,6 +91,15 @@ export function buildChannelRequestLog(args: {
       ? { external_user_hash: sha256(args.externalUserId) }
       : {}),
     ...(args.messageId ? { message_id_hash: sha256(args.messageId) } : {}),
+    ...(args.ownershipRequestId
+      ? { ownership_request_id_hash: sha256(args.ownershipRequestId) }
+      : {}),
+    ...ownershipOperation(args.requestRoute),
+    ...(args.participationStatus ? { participation_status: args.participationStatus } : {}),
+    ...(args.planId ? { plan_id: args.planId } : {}),
+    ...(args.humanEscalationStatus
+      ? { human_escalation_status: args.humanEscalationStatus }
+      : {}),
     ...(args.validationIssues && args.validationIssues.length > 0
       ? { validation_issues: args.validationIssues }
       : {}),
@@ -77,6 +107,18 @@ export function buildChannelRequestLog(args: {
     ...(args.currentNode ? { current_node: args.currentNode } : {}),
     ...error,
   };
+}
+
+function ownershipOperation(
+  route: RuntimeRequestRoute,
+): Pick<ChannelRequestLog, 'ownership_operation'> {
+  if (route === 'overtake_conversation') {
+    return { ownership_operation: 'overtake' };
+  }
+  if (route === 'resume_automated_agent') {
+    return { ownership_operation: 'resume' };
+  }
+  return {};
 }
 
 function describeError(error: unknown): Pick<

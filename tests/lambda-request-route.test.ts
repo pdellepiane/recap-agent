@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  isRuntimeRequestMethodAllowed,
   resolveRuntimeRequestRoute,
   runtimeRequestPaths,
 } from '../src/lambda/request-route';
@@ -24,5 +25,12 @@ describe('Lambda request routing', () => {
 
   it('rejects unknown paths', () => {
     expect(resolveRuntimeRequestRoute('/unknown')).toBe('not_found');
+  });
+
+  it('accepts only POST for runtime requests', () => {
+    expect(isRuntimeRequestMethodAllowed('POST')).toBe(true);
+    expect(isRuntimeRequestMethodAllowed('post')).toBe(true);
+    expect(isRuntimeRequestMethodAllowed('GET')).toBe(false);
+    expect(isRuntimeRequestMethodAllowed('OPTIONS')).toBe(false);
   });
 });

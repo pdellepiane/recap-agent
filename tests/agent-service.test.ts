@@ -28,6 +28,7 @@ import type {
   AgentConversationMessage,
 } from '../src/runtime/agent-conversation-gateway';
 import type {
+  MessageResponseClassifierAction,
   MessageResponseClassifier,
   MessageResponseClassifierResult,
   ResponseClassifierMode,
@@ -315,7 +316,7 @@ class FakeResponseClassifier implements MessageResponseClassifier {
 
   constructor(
     public readonly mode: ResponseClassifierMode,
-    private readonly action: 'respond' | 'suppress_acknowledgement' | 'suppress_reaction',
+    private readonly action: MessageResponseClassifierAction,
     private readonly health: {
       status: MessageResponseClassifierResult['trace']['conversation_health'];
       reason: MessageResponseClassifierResult['trace']['health_reason'];
@@ -338,7 +339,9 @@ class FakeResponseClassifier implements MessageResponseClassifier {
       ? 'acknowledgement'
       : this.action === 'suppress_reaction'
         ? 'reaction'
-        : 'requires_response';
+        : this.action === 'suppress_automated_response'
+          ? 'automated_response'
+          : 'requires_response';
     return {
       trace: {
         mode: this.mode,
@@ -351,6 +354,15 @@ class FakeResponseClassifier implements MessageResponseClassifier {
         conversation_health: this.health.status,
         health_reason: this.health.reason,
         human_help_response: this.health.helpResponse,
+        automation_confidence: this.action === 'suppress_automated_response'
+          ? 'high'
+          : 'not_automated',
+        automation_pattern: this.action === 'suppress_automated_response'
+          ? 'interactive_menu'
+          : 'none',
+        automation_scope: this.action === 'suppress_automated_response'
+          ? 'current_sender'
+          : 'none_or_uncertain',
         prompt_bundle_id: 'test-classifier',
         prompt_file_paths: [],
       },
@@ -7535,14 +7547,14 @@ describe('AgentService', () => {
     });
   });
 
-  it('observes acknowledgement suppression while retaining the full reply flow and logging only inbound', async () => {
-    const classifier = new FakeResponseClassifier('observe', 'suppress_acknowledgement');
+  it('observes automated-response suppression while retaining the full reply flow', async () => {
+    const classifier = new FakeResponseClassifier('observe', 'suppress_automated_response');
     const gateway = new TrackingAgentConversationGateway([
       {
         id: 1,
         direction: 'outbound',
         source: 'agent',
-        body: '¿Quieres que te comparta más opciones?',
+        body: 'Hola, quisiera información para organizar un evento.',
         status: 'sent',
         sentAt: null,
         createdAt: null,
@@ -7559,7 +7571,7 @@ describe('AgentService', () => {
     }).handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: '51991347878',
-      text: 'Gracias!',
+      text: 'Gracias por comunicarte. Elige una opción para continuar.',
       messageId: 'classifier-observe',
       receivedAt: '2026-07-09T10:00:00.000Z',
       contactPhone: '+51 991347878',
@@ -7649,6 +7661,209 @@ describe('AgentService', () => {
     });
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
     expect(gateway.operations).toEqual(['get', 'log:inbound']);
+  });
+
+  it('enforces automated-response suppression before all normal agent work', async () => {
+    class CountingRuntime extends FakeRuntime {
+      public extractCalls = 0;
+
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        this.extractCalls += 1;
+        return await super.extract(request);
+      }
+    }
+
+    const runtime = new CountingRuntime();
+    const classifier = new FakeResponseClassifier('enforce', 'suppress_automated_response');
+    const gateway = new TrackingAgentConversationGateway([{
+      id: 1,
+      direction: 'outbound',
+      source: 'agent',
+      body: 'Hola, quisiera información para organizar un evento.',
+      status: 'sent',
+      sentAt: null,
+      createdAt: null,
+    }]);
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'automated-response-user',
+      text: 'Gracias por comunicarte. Elige una opción del menú para continuar.',
+      messageId: 'automated-response-message',
+      receivedAt: '2026-07-21T10:00:00.000Z',
+      contactPhone: '+51 900000401',
+    });
+
+    expect(runtime.extractCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(classifier.calls).toHaveLength(1);
+    expect(response.trace.provider_results).toHaveLength(0);
+    expect(response.trace.token_usage).toMatchObject({
+      classifier: { total_tokens: 12 },
+      extraction: null,
+      reply: null,
+      total: { total_tokens: 12 },
+    });
+    expect(response.outbound).toMatchObject({
+      text: null,
+      delivery: {
+        action: 'suppress',
+        reason: 'suppress_automated_response',
+      },
+    });
+  });
+
+  it('classifies every automated response turn again without persisting an automation guard', async () => {
+    const planStore = new InMemoryPlanStore();
+    const runtime = new FakeRuntime();
+    const classifier = new FakeResponseClassifier('enforce', 'suppress_automated_response');
+    const gateway = new TrackingAgentConversationGateway([{
+      id: 1,
+      direction: 'outbound',
+      source: 'agent',
+      body: 'Hola, quisiera información.',
+      status: 'sent',
+      sentAt: null,
+      createdAt: null,
+    }]);
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    });
+
+    const first = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'repeat-automation-user',
+      text: 'Selecciona una opción para continuar.',
+      messageId: 'repeat-automation-1',
+      receivedAt: '2026-07-21T10:00:00.000Z',
+      contactPhone: '+51 900000402',
+    });
+    const second = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'repeat-automation-user',
+      text: 'No recibimos una opción válida. Intenta nuevamente.',
+      messageId: 'repeat-automation-2',
+      receivedAt: '2026-07-21T10:01:00.000Z',
+      contactPhone: '+51 900000402',
+    });
+
+    expect(first.outbound.delivery.action).toBe('suppress');
+    expect(second.outbound.delivery.action).toBe('suppress');
+    expect(classifier.calls).toHaveLength(2);
+    expect(gateway.operations).toEqual([
+      'get',
+      'log:inbound',
+      'get',
+      'log:inbound',
+    ]);
+    expect(runtime.composeRequests).toHaveLength(0);
+  });
+
+  it('fails open to the normal flow when external conversation history fails', async () => {
+    class CountingRuntime extends FakeRuntime {
+      public extractCalls = 0;
+
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        this.extractCalls += 1;
+        return await super.extract(request);
+      }
+    }
+
+    class FailingHistoryGateway implements AgentConversationGateway {
+      public readonly operations: string[] = [];
+
+      async logMessage(): Promise<AgentGatewayResult> {
+        this.operations.push('log:inbound');
+        return { status: 'success', message: 'Message logged.' };
+      }
+
+      async getRecentMessages(): Promise<Exclude<AgentGatewayResult, { status: 'success' }>> {
+        this.operations.push('get');
+        return {
+          status: 'failed',
+          error: 'Conversation history is unavailable.',
+          retryable: true,
+        };
+      }
+
+      async requestHumanTakeover(): Promise<AgentGatewayResult> {
+        return { status: 'success', message: 'Human takeover requested.' };
+      }
+    }
+
+    const runtime = new CountingRuntime();
+    const classifier = new FakeResponseClassifier('enforce', 'respond');
+    const gateway = new FailingHistoryGateway();
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'history-failure-user',
+      text: 'Necesito ayuda con un evento.',
+      messageId: 'history-failure-message',
+      receivedAt: '2026-07-21T10:00:00.000Z',
+      contactPhone: '+51 900000403',
+    });
+
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
+    expect(classifier.calls).toHaveLength(0);
+    expect(runtime.extractCalls).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(response.trace.response_classifier).toMatchObject({
+      action: 'respond',
+      reason: 'conversation_context_unavailable',
+      would_suppress: false,
+      fallback_used: true,
+    });
+    expect(response.trace.token_usage.classifier).toBeNull();
+    expect(response.outbound.text).not.toBeNull();
+    expect(response.outbound.delivery.action).toBe('send');
+  });
+
+  it('treats successful empty history as a valid first contact', async () => {
+    const runtime = new FakeRuntime();
+    const classifier = new FakeResponseClassifier('enforce', 'respond');
+    const gateway = new TrackingAgentConversationGateway([]);
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      responseClassifier: classifier,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'empty-history-user',
+      text: 'Hola, necesito ayuda con mi boda.',
+      messageId: 'empty-history-message',
+      receivedAt: '2026-07-21T10:00:00.000Z',
+      contactPhone: '+51 900000404',
+    });
+
+    expect(classifier.calls).toHaveLength(1);
+    expect(classifier.calls[0]?.messages).toEqual([]);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(response.outbound.delivery.action).toBe('send');
   });
 
   it('offers human help after a second consecutive stalled turn and bypasses normal agent work', async () => {

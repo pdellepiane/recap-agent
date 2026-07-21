@@ -327,6 +327,50 @@ curl -sS \
 The `channel` and `user_id` values must exactly match the plan identity used by
 the WhatsApp adapter. `request_id` is required for redacted operational
 correlation. `requested_at` is optional and does not control participation.
+The endpoint path is exact, without a trailing slash, and only `POST` is
+accepted. A trusted server-side caller must send the channel credential; a
+browser must never receive `CHANNEL_API_KEY`.
+
+The caller must treat the Lambda response as the source of truth instead of
+optimistically changing its local ownership indicator:
+
+| HTTP status | Meaning | Caller action |
+| --- | --- | --- |
+| `200` with `resumed` or `already_active` | The bot owns the conversation. | Mark the conversation bot-active. |
+| `200` with `overtaken` or `already_overtaken` | The external owner owns the conversation. | Keep automated delivery paused. |
+| `400` | The JSON body or ownership identity is invalid. | Fix the request; do not change local ownership. |
+| `401` | The Bearer header is absent or invalid. | Fix trusted-server credential injection; do not retry from browser code. |
+| `404` with `plan_not_found` | The `channel` and `user_id` pair does not identify a plan. | Reconcile the exact plan identity. |
+| `405` | The caller used a method other than `POST`. | Send `POST`; the response includes `Allow: POST`. |
+| `500` | The transition failed before it could be confirmed. | Keep prior ownership and retry with the same logical operation. |
+
+Every invocation writes one structured `channel_request_completed` record to
+`/aws/lambda/recap-agent-runtime`. Ownership diagnostics include
+`request_path`, `request_route`, `ownership_operation`, authentication and body
+presence, `ownership_request_id_hash`, `participation_status`, `plan_id`,
+`current_node`, and `human_escalation_status` when each value is available.
+Known sensitive identifiers are hashed or redacted.
+
+Use this CloudWatch Logs Insights query while testing ownership controls:
+
+```text
+fields @timestamp, requestId, message.method, message.request_path,
+  message.request_route, message.status_code, message.outcome,
+  message.authorization_header_present, message.bearer_token_present,
+  message.ownership_operation, message.ownership_request_id_hash,
+  message.participation_status, message.plan_id, message.current_node,
+  message.human_escalation_status, message.error_name,
+  message.error_message_redacted
+| filter message.event = "channel_request_completed"
+| filter message.ownership_operation in ["overtake", "resume"]
+| sort @timestamp desc
+| limit 100
+```
+
+Because path and route are recorded before authentication, a rejected request
+still identifies whether the caller attempted message, overtake, resume, or an
+unknown path. `request_body_present` reports only presence; request bodies and
+credentials are never copied into the log.
 
 A successful takeover returns:
 
@@ -366,6 +410,8 @@ The handler currently returns JSON errors with these status codes:
 | `400` | `{ "error": "Invalid request body.", "issues": [...] }` | Missing fields, invalid timestamp, or missing/malformed WhatsApp `contact_phone`. |
 | `400` | `{ "error": "Invalid conversation ownership request.", "issues": [...] }` | A conversation ownership endpoint received malformed identity or correlation fields. |
 | `404` | `{ "status": "plan_not_found" }` | An ownership request supplied a `channel` and `user_id` pair with no persisted plan. |
+| `404` | `{ "error": "Not found." }` | The authenticated caller used an unknown path, including a trailing-slash variant. |
+| `405` | `{ "error": "Method not allowed." }` | The authenticated caller used a method other than `POST`. |
 | `500` | `{ "error": "..." }` | Secret/runtime bootstrap failure, OpenAI error, provider failure not handled by the flow, DynamoDB failure, or other unexpected exception. |
 
 Adapter retry policy:
@@ -375,7 +421,8 @@ challenge. AWS Lambda Function URLs currently expose that response header on the
 wire as `x-amzn-Remapped-www-authenticate`; adapters should branch on HTTP 401
 and must not depend on the remapped header name.
 
-- Do not retry `400` or `401` responses; fix the adapter payload or credential.
+- Do not retry `400`, `401`, `404`, or `405` responses; fix the adapter payload,
+  credential, identity, path, or method.
 - Retry transient `500`, network timeouts, or connection failures with bounded exponential backoff.
 - Keep `message_id` stable across retries so support logs and perf records can be correlated.
 - The runtime does not currently enforce idempotency on duplicate `message_id`; channel adapters should avoid sending the same inbound message twice when a previous request completed successfully.
@@ -467,8 +514,8 @@ flowchart TD
 4. On `delivery.action: "send"`, send the non-null `message` to Meta's Graph API
    using the WhatsApp business phone-number id and the original `from` as `to`.
 5. On `delivery.action: "suppress"`, mark the job complete without sending. This
-   covers enforced acknowledgement/reaction suppression and the human-support
-   ownership window.
+   covers enforced acknowledgement, reaction, corporate automated-response,
+   unavailable-context, and human-support suppression.
 6. Persist `plan_id`, `current_node`, runtime delivery action, Graph API message
    id, and final job status for support correlation.
 7. Retry network errors, `429`, and transient `5xx` responses with bounded
@@ -553,7 +600,7 @@ For a WhatsApp webhook, map native fields like this:
 | `received_at` | WhatsApp timestamp converted to ISO-8601 |
 | `client_mode` | `channel` |
 
-Send a WhatsApp reply only when `delivery.action === "send"` and `message` is non-null. A suppressed acknowledgement/reaction or an active human handoff returns `delivery.action === "suppress"`; acknowledge the webhook without sending a WhatsApp message.
+Send a WhatsApp reply only when `delivery.action === "send"` and `message` is non-null. A suppressed acknowledgement, reaction, high-confidence corporate automated response, or active human handoff returns `delivery.action === "suppress"`; acknowledge the webhook without sending a WhatsApp message. The corresponding delivery reasons are `suppress_acknowledgement`, `suppress_reaction`, `suppress_automated_response`, and `human_escalation_active`. A conversation-history lookup failure is not a delivery-suppression reason and follows the normal send path.
 
 The sent runtime response should be rendered as a plain text WhatsApp message:
 
@@ -759,18 +806,33 @@ bearer token is user-scoped and must not be reused here.
 
 Inbound channel authentication uses a different dedicated secret. Adapters send the `CHANNEL_API_KEY` value through the standard `Authorization: Bearer` scheme; Lambda resolves both `AWSCURRENT` and, when present, `AWSPREVIOUS` through `CHANNEL_API_SECRET_ID` and compares the supplied token against every accepted value in constant time before loading the agent runtime. The deployment script generates a cryptographically random opaque value into the ignored local `.env` file when one does not exist, publishes it to Secrets Manager, and skips unchanged writes so a normal redeploy does not accidentally advance the rotation stages.
 
-For phone-bearing turns, the response classifier can still retrieve the last
-five Agent API messages as read-only context. `AGENT_MESSAGE_LOGGING_ENABLED`
-gates every `POST /messages` operation and defaults to `false`; with that value,
-Lambda does not log inbound or outbound messages. Set it to `true` and redeploy
-only when Agent API message persistence is intentionally required. Human
-takeover requests use a different endpoint and remain enabled. Agent API
-failures are traced and do not block channel delivery. Once human escalation is
-active, the runtime returns `delivery.action: "suppress"` and does not continue
-as a bot. Elapsed time never clears that state. Only an authenticated request
-to `POST /conversations/resume` restores automated participation. An
-authenticated request to `POST /conversations/overtake` enters the same
-externally owned state directly.
+For phone-bearing turns, the response classifier retrieves the last five Agent
+API messages as authoritative read-only context. Another service populates that
+history, so `AGENT_MESSAGE_LOGGING_ENABLED` remains `false` and Lambda does not
+duplicate inbound or outbound writes. A successful empty history is treated as
+a valid first contact. A failed history read skips the classifier, records
+`conversation_context_unavailable` as fail-open trace evidence, and continues
+through the normal extraction and reply flow. Human takeover requests use a different
+endpoint and remain enabled. Once human escalation is active, the runtime
+returns `delivery.action: "suppress"` and does not continue as a bot. Elapsed
+time never clears that state. Only an authenticated request to
+`POST /conversations/resume` restores automated participation. An authenticated
+request to `POST /conversations/overtake` enters the same externally owned state
+directly.
+
+The classifier may return `suppress_automated_response` only when its structured
+decision identifies a corporate automated or templated business response with
+`automation_confidence: "high"` and reason `automated_response`. That action does
+not require prior outbound history when the inbound message itself is
+unequivocally automated. Acknowledgement and reaction suppression still requires
+prior outbound context. Structured `automation_pattern` and `automation_scope`
+evidence prevents quoted bot text from suppressing a human question and allows a
+generic corporate reception template only when outbound contact exists. The
+runtime normalizes an inconsistent action from this typed evidence rather than
+using keywords or exact-string routing. The runtime does not persist an
+automation guard, cooldown, or blacklist. Every later inbound message retrieves
+fresh history and runs the classifier again. Rapid-message coalescing remains an
+adapter concern and is not part of this behavior.
 
 That classifier call also produces a structured conversation-health assessment. The runtime persists consecutive non-progress evidence and emits one optional human-help offer after one explicit-frustration assessment or two consecutive stalled/frustrated assessments. The offer is still a normal outbound message and must be delivered. Only a later structured acceptance invokes the Agent API takeover endpoint; a decline resumes the channel's normal response flow.
 

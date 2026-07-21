@@ -1,0 +1,115 @@
+{
+  "captured_at_utc": "2026-07-21T14:17:14Z",
+  "window": {
+    "from_utc": "2026-07-14T00:00:00Z",
+    "through_utc": "2026-07-20T21:26:52.089Z"
+  },
+  "dynamodb": {
+    "whatsapp_success_turns": 134,
+    "unique_message_hashes": 131,
+    "unique_user_hashes": 51,
+    "unique_non_null_conversations": 47,
+    "assistant_message_present": 119,
+    "assistant_message_absent": 15,
+    "successes_by_day": {
+      "2026-07-14": 1,
+      "2026-07-15": 14,
+      "2026-07-16": 4,
+      "2026-07-17": 73,
+      "2026-07-18": 38,
+      "2026-07-19": 2,
+      "2026-07-20": 2
+    }
+  },
+  "cloudwatch": {
+    "whatsapp_completion_events": 143,
+    "conversation_successes": 133,
+    "internal_errors": 2,
+    "ownership_operations": 8,
+    "delivery_send": 118,
+    "delivery_suppress": 15,
+    "first_structured_event_utc": "2026-07-15T19:29:52.230Z",
+    "successes_by_day": {
+      "2026-07-15": 14,
+      "2026-07-16": 4,
+      "2026-07-17": 73,
+      "2026-07-18": 38,
+      "2026-07-19": 2,
+      "2026-07-20": 2
+    }
+  },
+  "join": {
+    "paired_success_records": 133,
+    "unmatched_cloudwatch_successes": 0,
+    "dynamodb_only_successes": 1,
+    "user_hash_mismatches": 0,
+    "final_node_mismatches": 0,
+    "dynamodb_only_record": {
+      "message_hash_prefix": "999e8068013b",
+      "captured_at_utc": "2026-07-14T16:35:03.354Z",
+      "next_node": "aclarar_pedir_faltante",
+      "runtime_latency_ms": 11135,
+      "reason": "Predates deployment of structured channel completion logging"
+    },
+    "cloudwatch_request_minus_runtime_trace_ms": {
+      "average": 136.7,
+      "p50": 13,
+      "p95": 512,
+      "minimum": 7,
+      "maximum": 592
+    }
+  },
+  "recovered_errors": [
+    {
+      "message_hash_prefix": "a7d6315875b4",
+      "error": "ModelBehaviorError: closeAction.reason missing for clarify",
+      "error_completed_at_utc": "2026-07-18T04:32:21.893Z",
+      "retry_success_at_utc": "2026-07-18T04:32:29.253Z",
+      "retry_success_node": "entrevista",
+      "approximate_recovery_seconds": 7.4
+    },
+    {
+      "message_hash_prefix": "c2953bb5d5c8",
+      "error": "Failed to acquire conversation lock",
+      "error_completed_at_utc": "2026-07-18T17:03:28.470Z",
+      "retry_success_at_utc": "2026-07-18T17:03:41.560Z",
+      "retry_success_node": "consultar_evento_invitado",
+      "approximate_recovery_seconds": 13.1
+    }
+  ],
+  "duplicate_success_groups": [
+    {
+      "message_hash_prefix": "42f3d5e57b63",
+      "attempts": 2,
+      "delivery_actions": ["send", "send"],
+      "same_user": true,
+      "same_user_message": true,
+      "same_plan": false,
+      "same_conversation": false,
+      "same_assistant_message": false,
+      "final_nodes": ["entrevista", "entrevista"]
+    },
+    {
+      "message_hash_prefix": "a143c39213b3",
+      "attempts": 2,
+      "delivery_actions": ["send", "send"],
+      "same_user": true,
+      "same_user_message": true,
+      "same_plan": true,
+      "same_conversation": true,
+      "same_assistant_message": false,
+      "final_nodes": ["consultar_evento_invitado", "consultar_evento_invitado"]
+    },
+    {
+      "message_hash_prefix": "f3c70996f77a",
+      "attempts": 2,
+      "delivery_actions": ["suppress", "suppress"],
+      "same_user": true,
+      "same_user_message": true,
+      "same_plan": false,
+      "same_conversation": true,
+      "same_assistant_message": true,
+      "final_nodes": ["contacto_inicial", "contacto_inicial"]
+    }
+  ]
+}

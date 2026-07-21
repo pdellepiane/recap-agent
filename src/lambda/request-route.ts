@@ -10,6 +10,10 @@ export type RuntimeRequestRoute =
   | 'resume_automated_agent'
   | 'not_found';
 
+export function isRuntimeRequestMethodAllowed(method: string): boolean {
+  return method.toUpperCase() === 'POST';
+}
+
 export function resolveRuntimeRequestRoute(rawPath: string): RuntimeRequestRoute {
   switch (rawPath) {
     case runtimeRequestPaths.message:

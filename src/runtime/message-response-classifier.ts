@@ -8,8 +8,30 @@ import type { AgentConversationMessage } from './agent-conversation-gateway';
 import type { PromptLoader } from './prompt-loader';
 
 const classifierOutputSchema = z.object({
-  action: z.enum(['respond', 'suppress_acknowledgement', 'suppress_reaction']),
-  reason: z.enum(['requires_response', 'acknowledgement', 'reaction']),
+  action: z.enum([
+    'respond',
+    'suppress_acknowledgement',
+    'suppress_reaction',
+    'suppress_automated_response',
+  ]),
+  reason: z.enum([
+    'requires_response',
+    'acknowledgement',
+    'reaction',
+    'automated_response',
+  ]),
+  automation_confidence: z.enum(['not_automated', 'uncertain', 'high']),
+  automation_pattern: z.enum([
+    'none',
+    'generic_corporate_reception',
+    'interactive_menu',
+    'away_or_hours_notice',
+    'routing_or_queue',
+    'automated_confirmation',
+    'repeated_template',
+    'explicit_virtual_assistant',
+  ]),
+  automation_scope: z.enum(['current_sender', 'quoted_or_discussed', 'none_or_uncertain']),
   conversation_health: z.enum(['progressing', 'uncertain', 'stalled', 'frustrated']),
   health_reason: z.enum([
     'normal_progress',
@@ -25,13 +47,17 @@ const classifierOutputSchema = z.object({
 
 export type ResponseClassifierMode = 'observe' | 'enforce';
 
+export type MessageResponseClassifierAction = z.infer<typeof classifierOutputSchema>['action'];
+
 export type MessageResponseClassifierTrace = {
   mode: ResponseClassifierMode;
-  action: z.infer<typeof classifierOutputSchema>['action'];
+  action: MessageResponseClassifierAction;
   reason:
     | z.infer<typeof classifierOutputSchema>['reason']
     | 'classifier_unavailable'
+    | 'conversation_context_unavailable'
     | 'missing_outbound_context'
+    | 'automation_confidence_insufficient'
     | 'help_offer_response_requires_reply';
   would_suppress: boolean;
   context_source: 'agent_api' | 'local_plan';
@@ -40,6 +66,9 @@ export type MessageResponseClassifierTrace = {
   conversation_health: z.infer<typeof classifierOutputSchema>['conversation_health'];
   health_reason: z.infer<typeof classifierOutputSchema>['health_reason'];
   human_help_response: z.infer<typeof classifierOutputSchema>['human_help_response'];
+  automation_confidence: z.infer<typeof classifierOutputSchema>['automation_confidence'];
+  automation_pattern: z.infer<typeof classifierOutputSchema>['automation_pattern'];
+  automation_scope: z.infer<typeof classifierOutputSchema>['automation_scope'];
   prompt_bundle_id: string | null;
   prompt_file_paths: string[];
 };
@@ -118,15 +147,40 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
 
       const hasOutstandingHelpOffer =
         args.plan.conversation_health.help_offer_status === 'offered';
-      const validSuppression =
-        decision.action === 'respond' ||
-        (hasPriorOutboundMessage && !hasOutstandingHelpOffer);
-      const action = validSuppression ? decision.action : 'respond';
-      const reason = validSuppression
-        ? decision.reason
-        : hasOutstandingHelpOffer
-          ? 'help_offer_response_requires_reply'
-          : 'missing_outbound_context';
+      const isHighConfidenceAutomatedResponse =
+        decision.automation_confidence === 'high' &&
+        decision.automation_scope === 'current_sender' &&
+        decision.automation_pattern !== 'none' &&
+        (decision.automation_pattern !== 'generic_corporate_reception' ||
+          hasPriorOutboundMessage);
+      const isContextualAcknowledgementOrReaction =
+        decision.action === 'suppress_acknowledgement' ||
+        decision.action === 'suppress_reaction';
+      const shouldSuppressAutomation =
+        isHighConfidenceAutomatedResponse && !hasOutstandingHelpOffer;
+      const validContextualSuppression =
+        isContextualAcknowledgementOrReaction &&
+        hasPriorOutboundMessage &&
+        !hasOutstandingHelpOffer;
+      const action = shouldSuppressAutomation
+        ? 'suppress_automated_response'
+        : decision.action === 'respond'
+          ? 'respond'
+          : validContextualSuppression
+            ? decision.action
+            : 'respond';
+      const reason = shouldSuppressAutomation
+        ? 'automated_response'
+        : action !== 'respond'
+          ? decision.reason
+          : hasOutstandingHelpOffer && decision.action !== 'respond'
+            ? 'help_offer_response_requires_reply'
+            : decision.action === 'suppress_automated_response'
+              ? 'automation_confidence_insufficient'
+              : isContextualAcknowledgementOrReaction && !hasPriorOutboundMessage
+                ? 'missing_outbound_context'
+                : decision.reason;
+      const decisionNormalized = action !== decision.action || reason !== decision.reason;
       return {
         trace: {
           mode: this.options.mode,
@@ -135,10 +189,13 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           would_suppress: action !== 'respond',
           context_source: args.contextSource,
           has_prior_outbound_message: hasPriorOutboundMessage,
-          fallback_used: !validSuppression,
+          fallback_used: decisionNormalized,
           conversation_health: decision.conversation_health,
           health_reason: decision.health_reason,
           human_help_response: decision.human_help_response,
+          automation_confidence: decision.automation_confidence,
+          automation_pattern: decision.automation_pattern,
+          automation_scope: decision.automation_scope,
           prompt_bundle_id: bundle.id,
           prompt_file_paths: bundle.filePaths,
         },
@@ -198,6 +255,9 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         conversation_health: 'uncertain',
         health_reason: 'insufficient_context',
         human_help_response: 'not_applicable',
+        automation_confidence: 'uncertain',
+        automation_pattern: 'none',
+        automation_scope: 'none_or_uncertain',
         prompt_bundle_id: args.promptBundleId,
         prompt_file_paths: args.promptFilePaths,
       },

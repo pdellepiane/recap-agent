@@ -28,7 +28,10 @@ import {
   agentParticipationRequestSchema,
   channelRequestSchema,
 } from './request-contract';
-import { resolveRuntimeRequestRoute } from './request-route';
+import {
+  isRuntimeRequestMethodAllowed,
+  resolveRuntimeRequestRoute,
+} from './request-route';
 import {
   buildChannelRequestLog,
   type ChannelRequestOutcome,
@@ -58,6 +61,7 @@ export async function handler(
     channel?: string;
     externalUserId?: string;
     messageId?: string;
+    ownershipRequestId?: string;
   } = {};
   const respond = (
     statusCode: number,
@@ -67,6 +71,9 @@ export async function handler(
       validationIssues?: ChannelRequestValidationIssue[];
       deliveryAction?: string;
       currentNode?: string;
+      participationStatus?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
+      planId?: string;
+      humanEscalationStatus?: 'none' | 'requested';
       error?: unknown;
       responseHeaders?: Record<string, string>;
     },
@@ -74,6 +81,9 @@ export async function handler(
     const record = buildChannelRequestLog({
       requestId,
       method,
+      requestPath: event.rawPath,
+      requestRoute: route,
+      requestBodyPresent: Boolean(event.body),
       statusCode,
       outcome,
       durationMs: Date.now() - startedAt,
@@ -82,6 +92,10 @@ export async function handler(
       channel: requestIdentity.channel,
       externalUserId: requestIdentity.externalUserId,
       messageId: requestIdentity.messageId,
+      ownershipRequestId: requestIdentity.ownershipRequestId,
+      participationStatus: diagnostics?.participationStatus,
+      planId: diagnostics?.planId,
+      humanEscalationStatus: diagnostics?.humanEscalationStatus,
       validationIssues: diagnostics?.validationIssues,
       deliveryAction: diagnostics?.deliveryAction,
       currentNode: diagnostics?.currentNode,
@@ -107,6 +121,14 @@ export async function handler(
 
     if (route === 'not_found') {
       return respond(404, { error: 'Not found.' }, 'route_not_found');
+    }
+
+    if (!isRuntimeRequestMethodAllowed(method)) {
+      return respond(405, { error: 'Method not allowed.' }, 'method_not_allowed', {
+        responseHeaders: {
+          allow: 'POST',
+        },
+      });
     }
 
     if (!event.body) {
@@ -140,7 +162,7 @@ export async function handler(
       requestIdentity = {
         channel: controlRequest.channel,
         externalUserId: controlRequest.user_id,
-        messageId: controlRequest.request_id,
+        ownershipRequestId: controlRequest.request_id,
       };
       const result = route === 'resume_automated_agent'
         ? await getAgentParticipationService().resumeAutomatedAgent({
@@ -163,6 +185,9 @@ export async function handler(
         current_node: result.plan.current_node,
       }, participationOutcome(result.status), {
         currentNode: result.plan.current_node,
+        participationStatus: result.status,
+        planId: result.plan.plan_id,
+        humanEscalationStatus: result.plan.human_escalation.status,
       });
     }
     const parsedBody = channelRequestSchema.safeParse(rawBody);

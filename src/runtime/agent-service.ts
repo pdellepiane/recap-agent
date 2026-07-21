@@ -1851,6 +1851,7 @@ export class AgentService {
     const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
     let messages: AgentConversationMessage[] = [];
     let contextSource: MessageResponseClassifierTrace['context_source'] = 'local_plan';
+    let conversationContextUnavailable = false;
     if (phoneNumber) {
       const recent = await this.getAgentConversationMessagesWithTrace(
         args.gateway,
@@ -1860,6 +1861,8 @@ export class AgentService {
       if (recent.status === 'success') {
         messages = recent.messages;
         contextSource = 'agent_api';
+      } else if (recent.status === 'failed') {
+        conversationContextUnavailable = true;
       }
       await this.logAgentMessageWithTrace(
         args.gateway,
@@ -1887,6 +1890,32 @@ export class AgentService {
           conversation_health: 'uncertain',
           health_reason: 'insufficient_context',
           human_help_response: 'not_applicable',
+          automation_confidence: 'uncertain',
+          automation_pattern: 'none',
+          automation_scope: 'none_or_uncertain',
+          prompt_bundle_id: null,
+          prompt_file_paths: [],
+        },
+        tokenUsage: null,
+      };
+    }
+
+    if (conversationContextUnavailable) {
+      return {
+        trace: {
+          mode: classifier.mode,
+          action: 'respond',
+          reason: 'conversation_context_unavailable',
+          would_suppress: false,
+          context_source: contextSource,
+          has_prior_outbound_message: false,
+          fallback_used: true,
+          conversation_health: 'uncertain',
+          health_reason: 'insufficient_context',
+          human_help_response: 'not_applicable',
+          automation_confidence: 'uncertain',
+          automation_pattern: 'none',
+          automation_scope: 'none_or_uncertain',
           prompt_bundle_id: null,
           prompt_file_paths: [],
         },
