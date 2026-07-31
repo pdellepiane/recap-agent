@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
 
+import { configureRequiredLocalAwsProfile } from '../../aws/local-profile';
+
 import { createEmptyPlan, mergePlan, normalizeRawPlan, planIntentValues, planSchema } from '../../core/plan';
 import { getConfig } from '../../runtime/config';
 import { DynamoPlanStore } from '../../storage/dynamo-plan-store';
@@ -15,12 +17,10 @@ export async function runLiveLambdaCase(args: {
   turns: EvalTurnResult[];
   status: 'passed' | 'failed' | 'errored' | 'skipped';
 }> {
-  const profile = process.env.AWS_PROFILE ?? 'se-dev';
-  const region = process.env.AWS_REGION ?? 'us-east-1';
-  process.env.AWS_PROFILE = profile;
-  process.env.AWS_REGION = region;
-  process.env.AWS_SDK_LOAD_CONFIG = process.env.AWS_SDK_LOAD_CONFIG ?? '1';
-  process.env.AWS_PAGER = '';
+  configureRequiredLocalAwsProfile({
+    profile: process.env.AWS_PROFILE,
+    region: process.env.AWS_REGION,
+  });
 
   const liveDefaults = await resolveLiveLambdaDefaults(args);
   const functionUrl = liveDefaults.functionUrl;

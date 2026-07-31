@@ -6,6 +6,8 @@ import process from 'node:process';
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 
+import { assertRequiredAwsIdentity, createRequiredAwsEnv, REQUIRED_AWS_PROFILE } from './aws-profile.mjs';
+
 dotenv.config({ quiet: true });
 
 const program = new Command();
@@ -29,8 +31,8 @@ program
   )
   .option(
     '--profile <profile>',
-    'AWS profile',
-    process.env.AWS_PROFILE ?? 'se-dev',
+    `AWS profile; only ${REQUIRED_AWS_PROFILE} is allowed`,
+    process.env.AWS_PROFILE ?? REQUIRED_AWS_PROFILE,
   )
   .option('--dry-run', 'List matching items without deleting them', false)
   .option('--yes', 'Execute deletion without an extra confirmation guard', false);
@@ -45,13 +47,12 @@ if (!options.dryRun && !options.yes) {
   process.exit(1);
 }
 
-const awsEnv = {
+const awsEnv = createRequiredAwsEnv({
   ...process.env,
   AWS_PROFILE: options.profile,
   AWS_REGION: options.region,
-  AWS_SDK_LOAD_CONFIG: '1',
-  AWS_PAGER: '',
-};
+});
+assertRequiredAwsIdentity(awsEnv);
 
 const tableName = resolveTableName({
   explicitTableName: options.table,

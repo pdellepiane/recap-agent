@@ -3,6 +3,8 @@ import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 
+import { assertRequiredAwsIdentity, createRequiredAwsEnv } from './aws-profile.mjs';
+
 const root = process.cwd();
 const envPath = path.join(root, '.env');
 const env = loadDotEnv(envPath);
@@ -20,13 +22,8 @@ for (const key of required) {
   }
 }
 
-const awsEnv = {
-  ...process.env,
-  AWS_PROFILE: process.env.AWS_PROFILE ?? 'se-dev',
-  AWS_REGION: process.env.AWS_REGION ?? 'us-east-1',
-  AWS_SDK_LOAD_CONFIG: '1',
-  AWS_PAGER: '',
-};
+const awsEnv = createRequiredAwsEnv();
+assertRequiredAwsIdentity(awsEnv);
 
 const stackName = process.env.STACK_NAME ?? 'recap-agent-runtime';
 const functionName = process.env.FUNCTION_NAME ?? 'recap-agent-runtime';

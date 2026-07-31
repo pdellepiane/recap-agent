@@ -2,6 +2,31 @@
 
 ## 2026-07-31
 
+### Fail closed on the repository's AWS account and profile
+
+**Reason:** An interactive `aws login` can rewrite the local `default` profile,
+which belongs to a separate AWS account on this workstation. Repository scripts
+must never inherit that profile or accept a caller-selected account implicitly.
+
+**Changes:**
+- Added a repository-wide instruction requiring `se-dev` in `us-east-1`, backed
+  by the local `se-signin` login profile.
+- Added a shared guard for mutating Node scripts. It rejects any other profile
+  or region and verifies AWS account `684516060775` through STS before work.
+- Applied the same profile rejection to the terminal and live evaluation SDK
+  paths, documented the safety rule, and corrected a diagnostic command that
+  previously omitted its explicit profile.
+- Added regression tests proving that `default` and other regions are rejected.
+
+**Decision:** AWS isolation is an executable invariant, not a shell convention.
+The workstation's `default` profile remains independent and must never be used
+by this repository.
+
+**Validation:** Restored `default` to account `385982457198` in `us-east-2`.
+Verified `se-dev` resolves through `se-signin` to account `684516060775`, proved
+the guard rejects `default`, and ran all subsequent AWS validation and cleanup
+with explicit `AWS_PROFILE=se-dev AWS_REGION=us-east-1`.
+
 ### Make authentication guidance conversational and replace the FAQ corpus safely
 
 **Reason:** Authentication recovery used a hardcoded customer-facing sentence

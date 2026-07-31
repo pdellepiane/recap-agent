@@ -4,15 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
+import { assertRequiredAwsIdentity, createRequiredAwsEnv } from './aws-profile.mjs';
+
 const root = process.cwd();
 const envPath = path.join(root, '.env');
-const awsEnv = {
-  ...process.env,
-  AWS_PROFILE: process.env.AWS_PROFILE ?? 'se-dev',
-  AWS_REGION: process.env.AWS_REGION ?? 'us-east-1',
-  AWS_SDK_LOAD_CONFIG: '1',
-  AWS_PAGER: '',
-};
+const awsEnv = createRequiredAwsEnv();
+assertRequiredAwsIdentity(awsEnv);
 const secretName = process.env.CHANNEL_API_SECRET_NAME ?? 'recap-agent/channel-api-key';
 const newToken = crypto.randomBytes(32).toString('base64url');
 const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'recap-agent-channel-key-'));

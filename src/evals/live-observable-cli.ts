@@ -6,6 +6,7 @@ import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-clo
 import { Command } from 'commander';
 import dotenv from 'dotenv';
 
+import { configureRequiredLocalAwsProfile } from '../aws/local-profile';
 import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import type { DecisionNode } from '../core/decision-nodes';
 import type { TurnTrace } from '../core/trace';
@@ -85,10 +86,10 @@ async function main(): Promise<void> {
   program.parse();
   const options = program.opts<CliOptions>();
 
-  process.env.AWS_PROFILE = options.profile;
-  process.env.AWS_REGION = options.region;
-  process.env.AWS_SDK_LOAD_CONFIG = process.env.AWS_SDK_LOAD_CONFIG ?? '1';
-  process.env.AWS_PAGER = '';
+  configureRequiredLocalAwsProfile({
+    profile: options.profile,
+    region: options.region,
+  });
 
   const functionUrl = await resolveFunctionUrl(options);
   const userId = options.userId ?? `observable-eval-${new Date().toISOString()}-${Math.random()

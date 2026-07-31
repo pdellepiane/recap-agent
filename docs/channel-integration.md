@@ -717,7 +717,7 @@ Then query the perf table GSI `channel-user-turns`:
 ```bash
 HASH="$(printf '%s' 'whatsapp:+51999999999' | shasum -a 256 | awk '{print $1}')"
 
-aws dynamodb query \
+AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws dynamodb query \
   --table-name recap-agent-runtime-perf \
   --index-name channel-user-turns \
   --key-condition-expression "gsi1pk = :pk AND gsi1sk BETWEEN :from AND :to" \

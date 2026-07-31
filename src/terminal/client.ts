@@ -11,6 +11,7 @@ import { Command } from 'commander';
 import dotenv from 'dotenv';
 import pc from 'picocolors';
 
+import { configureRequiredLocalAwsProfile } from '../aws/local-profile';
 import type { PlanSnapshot } from '../core/plan';
 import type { TurnTrace } from '../core/trace';
 import type { CliPerfSummary } from '../logs/trace/perf';
@@ -163,10 +164,10 @@ async function main() {
   program.parse();
   const options = program.opts<CliOptions>();
 
-  process.env.AWS_PROFILE = options.profile;
-  process.env.AWS_REGION = options.region;
-  process.env.AWS_SDK_LOAD_CONFIG = process.env.AWS_SDK_LOAD_CONFIG ?? '1';
-  process.env.AWS_PAGER = '';
+  configureRequiredLocalAwsProfile({
+    profile: options.profile,
+    region: options.region,
+  });
 
   const config = await resolveDefaults(options);
   const planStore = new DynamoPlanStore(config.plansTableName, {

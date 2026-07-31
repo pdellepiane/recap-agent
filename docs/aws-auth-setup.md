@@ -2,6 +2,19 @@
 
 Internal note for restarting work on this repo without auth friction.
 
+## Hard Safety Requirement
+
+Every AWS CLI and local AWS SDK operation for this repository must use `se-dev`
+in `us-east-1`. Never use the `default` profile. Repository mutation scripts
+reject other profiles and verify AWS account `684516060775` before continuing.
+
+The backing login profile currently configured on this machine is named
+`se-signin`. Refresh it without changing `default`:
+
+```bash
+aws login --profile se-signin
+```
+
 ## Working Local Profile
 
 Use:
