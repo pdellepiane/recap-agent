@@ -2,6 +2,47 @@
 
 ## 2026-07-31
 
+### Use one canonical message context across every model stage
+
+**Reason:** Only the response classifier consumed Agent API history. The
+extractor and reply composer could therefore lose campaign context, references,
+corrections, and merged FAQ plus user-action meaning even though the endpoint
+already returned the relevant messages. The reply composer also relied on an
+independent OpenAI conversation session, creating two competing transcript
+authorities.
+
+**Changes:**
+- Added a typed per-turn message context built from one Agent API history read,
+  capped at five recent messages and shared by classification, extraction, and
+  reply composition.
+- Deduplicated the current inbound message by native WhatsApp id, with a bounded
+  timestamp-and-body identity fallback for older endpoint records.
+- Kept the event plan as compact typed business memory and the Agent API as raw
+  channel history. Reply runs are now stateless and no longer append internal
+  extraction or composition payloads to an OpenAI conversation session.
+- Added extractor guidance for resolving references and producing standalone
+  FAQ or user-information queries without copying the full transcript into the
+  query.
+- Added redacted context observability: availability, source, retrieved and
+  retained counts, excluded-current count, directions, message sources, and
+  campaign-entry source. Message bodies remain absent from traces.
+- Added fail-open behavior for history outages and regression coverage for
+  native-id and fallback deduplication, bounded context, campaign anchors,
+  history propagation, outages, and merged FAQ plus user-action turns.
+
+**Decision:** Read external history once per turn and reuse one immutable,
+curated context object. Pass only typed plan state to deterministic transition
+logic. Do not persist raw transcripts in the plan, and do not use
+`conversation_id` as a second memory system.
+
+**Validation:** `npm run check` passed with 48 test files and 319 tests, and
+`npm run build` completed. Both development CloudFormation stacks deployed
+successfully. A synthetic deployed Lambda FAQ turn returned `200`, stayed in
+`resolver_consultas_informativas`, and exposed the new redacted trace with
+`history_status: empty`, `context_source: agent_api`, zero retained messages,
+and no raw bodies. The exact synthetic plan and session-focus records were
+deleted after the probe.
+
 ### Derive intents, tools, and reachable states from plan capabilities
 
 **Reason:** A no-plan conversation could still present the extractor with the

@@ -104,6 +104,12 @@ import {
   type InformationAuthentication,
 } from './information-orchestrator';
 import { NoopKnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
+import {
+  buildTurnMessageContext,
+  localTurnMessageContext,
+  unavailableTurnMessageContext,
+  type TurnMessageContext,
+} from './turn-message-context';
 
 export type HandleTurnResponse = {
   plan: PlanSnapshot;
@@ -257,13 +263,22 @@ export class AgentService {
     const hasUnsupportedImageMedia = inbound.media?.some(
       (item) => item.kind === 'image',
     ) ?? false;
+    const messageContextStartedAt = Date.now();
+    const messageContext = await this.prepareTurnMessageContext({
+      inbound,
+      plan: classifierPlan,
+      gateway: agentConversationGateway,
+      gatewayConfigured: Boolean(this.dependencies.agentConversationGateway),
+      toolUsage,
+    });
+    timingMs.response_classification += Date.now() - messageContextStartedAt;
     let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
     if (this.dependencies.responseClassifier && !hasUnsupportedImageMedia) {
       const preflightStartedAt = Date.now();
       const preflight = await this.runResponseClassifierPreflight({
         inbound,
         plan: classifierPlan,
-        gateway: agentConversationGateway,
+        messageContext,
         toolUsage,
         skipClassification: existingPlan?.human_escalation.status === 'requested',
       });
@@ -271,21 +286,6 @@ export class AgentService {
       tokenUsage.classifier = preflight.tokenUsage;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.classifier);
       responseClassifierTrace = preflight.trace;
-    } else if (this.dependencies.agentConversationGateway && !hasUnsupportedImageMedia) {
-      const phoneNumber = this.resolveEscalationPhone(inbound, classifierPlan);
-      if (phoneNumber) {
-        await this.logAgentMessageWithTrace(
-          agentConversationGateway,
-          {
-            phoneNumber,
-            body: inbound.text,
-            direction: 'inbound',
-            whatsappMessageId: inbound.messageId,
-            sentAt: inbound.receivedAt,
-          },
-          toolUsage,
-        );
-      }
     }
 
     if (existingPlan?.human_escalation.status === 'requested') {
@@ -323,6 +323,7 @@ export class AgentService {
           planPersistReason: 'human_escalation_soft_pause',
           timingMs,
           tokenUsage,
+          messageContext,
           searchStrategy: 'none',
           turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
           operationalNote: 'Conversation is soft-paused after human escalation.',
@@ -374,6 +375,7 @@ export class AgentService {
           planPersistReason: 'unsupported_image_media',
           timingMs,
           tokenUsage,
+          messageContext,
           searchStrategy: 'none',
           operationalNote:
             'Trusted channel media metadata reported an image; media retrieval and interpretation are not enabled.',
@@ -452,6 +454,7 @@ export class AgentService {
             planPersistReason: 'human_help_offer_accepted',
             timingMs,
             tokenUsage,
+            messageContext,
             searchStrategy: 'none',
             turnDecision: this.humanEscalationTurnDecision('human_help_offer_accepted'),
             operationalNote: this.humanEscalationOperationalNote(gatewayResult),
@@ -501,6 +504,7 @@ export class AgentService {
             planPersistReason: 'conversation_health_help_offer',
             timingMs,
             tokenUsage,
+            messageContext,
             searchStrategy: 'none',
             turnDecision: this.conversationHealthTurnDecision(responseClassifierTrace.health_reason),
             operationalNote: 'Conversation health monitor offered optional human help.',
@@ -546,6 +550,7 @@ export class AgentService {
           planPersistReason: 'response_classifier_suppressed',
           timingMs,
           tokenUsage,
+          messageContext,
           searchStrategy: 'none',
           operationalNote: 'Reply delivery was suppressed by the response classifier.',
           responseClassifier: responseClassifierTrace,
@@ -558,6 +563,7 @@ export class AgentService {
       const rawExtractionResult = await this.dependencies.runtime.extract({
         userMessage: inbound.text,
         plan: existingPlan,
+        messageContext,
       });
       let finishedExtraction =
         'extraction' in rawExtractionResult
@@ -581,6 +587,7 @@ export class AgentService {
           timingMs,
           tokenUsage,
           responseClassifierTrace,
+          messageContext,
           handleTurnStartedAt,
         });
       }
@@ -615,6 +622,7 @@ export class AgentService {
           currentNode: respondNode,
           previousNode: existingPlan.current_node,
           userMessage: inbound.text,
+          messageContext,
           plan: planForReply,
           extraction: finishedExtraction,
           missingFields: finishedSufficiency.missingFields,
@@ -658,6 +666,7 @@ export class AgentService {
             planPersistReason: null,
             timingMs,
             tokenUsage,
+            messageContext,
             responseClassifier: responseClassifierTrace,
             searchStrategy: 'none',
             operationalNote: finishedErrorMessage,
@@ -693,6 +702,7 @@ export class AgentService {
     const rawExtractionResult = await this.dependencies.runtime.extract({
       userMessage: inbound.text,
       plan: workingPlan,
+      messageContext,
     });
     let extraction =
       'extraction' in rawExtractionResult
@@ -726,6 +736,7 @@ export class AgentService {
         timingMs,
         tokenUsage,
         responseClassifierTrace,
+        messageContext,
         handleTurnStartedAt,
       });
     }
@@ -865,6 +876,7 @@ export class AgentService {
           planPersistReason,
           timingMs,
           tokenUsage,
+          messageContext,
           responseClassifier: responseClassifierTrace,
           searchStrategy,
           turnDecision: this.humanEscalationTurnDecision(currentNode),
@@ -891,6 +903,7 @@ export class AgentService {
         currentNode,
         previousNode,
         userMessage: inbound.text,
+        messageContext,
         plan: planToSave,
         extraction,
         missingFields: sufficiency.missingFields,
@@ -936,6 +949,7 @@ export class AgentService {
           planPersistReason: planPersistReason,
           timingMs,
           tokenUsage,
+          messageContext,
           responseClassifier: responseClassifierTrace,
           searchStrategy,
           operationalNote: errorMessage,
@@ -1002,6 +1016,7 @@ export class AgentService {
           currentNode,
           previousNode,
           userMessage: inbound.text,
+          messageContext,
           plan: planToSave,
           extraction,
           missingFields: sufficiency.missingFields,
@@ -1047,6 +1062,7 @@ export class AgentService {
             planPersistReason: planPersistReason,
             timingMs,
             tokenUsage,
+            messageContext,
             responseClassifier: responseClassifierTrace,
             searchStrategy,
             operationalNote: errorMessage,
@@ -1072,6 +1088,7 @@ export class AgentService {
         currentNode,
         previousNode,
         userMessage: inbound.text,
+        messageContext,
         plan: planToSave,
         extraction,
         missingFields: sufficiency.missingFields,
@@ -1117,6 +1134,7 @@ export class AgentService {
           planPersistReason: planPersistReason,
           timingMs,
           tokenUsage,
+          messageContext,
           responseClassifier: responseClassifierTrace,
           searchStrategy,
           operationalNote: errorMessage,
@@ -1418,6 +1436,7 @@ export class AgentService {
       currentNode,
       previousNode,
       userMessage: inbound.text,
+      messageContext,
       plan: planAfterFlow,
       extraction,
       missingFields: sufficiency.missingFields,
@@ -1475,6 +1494,7 @@ export class AgentService {
         planPersistReason,
         timingMs,
         tokenUsage,
+        messageContext,
         responseClassifier: responseClassifierTrace,
         searchStrategy,
         turnDecision,
@@ -1525,6 +1545,7 @@ export class AgentService {
     timingMs: TurnTiming;
     tokenUsage: TurnTokenUsage;
     responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
@@ -1649,6 +1670,7 @@ export class AgentService {
       currentNode,
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
+      messageContext: args.messageContext,
       plan: planForInformation,
       extraction: args.extraction,
       missingFields: [],
@@ -1719,6 +1741,7 @@ export class AgentService {
         planPersistReason: currentNode,
         timingMs: args.timingMs,
         tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
         responseClassifier: args.responseClassifierTrace,
         searchStrategy: 'none',
         turnDecision,
@@ -2386,7 +2409,7 @@ export class AgentService {
   private async runResponseClassifierPreflight(args: {
     inbound: NormalizedInboundMessage;
     plan: PlanSnapshot;
-    gateway: AgentConversationGateway;
+    messageContext: TurnMessageContext;
     toolUsage: ToolUsage;
     skipClassification: boolean;
   }): Promise<{
@@ -2398,34 +2421,8 @@ export class AgentService {
       throw new Error('Response classifier was not configured.');
     }
 
-    const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
-    let messages: AgentConversationMessage[] = [];
-    let contextSource: MessageResponseClassifierTrace['context_source'] = 'local_plan';
-    let conversationContextUnavailable = false;
-    if (phoneNumber) {
-      const recent = await this.getAgentConversationMessagesWithTrace(
-        args.gateway,
-        phoneNumber,
-        args.toolUsage,
-      );
-      if (recent.status === 'success') {
-        messages = recent.messages;
-        contextSource = 'agent_api';
-      } else if (recent.status === 'failed') {
-        conversationContextUnavailable = true;
-      }
-      await this.logAgentMessageWithTrace(
-        args.gateway,
-        {
-          phoneNumber,
-          body: args.inbound.text,
-          direction: 'inbound',
-          whatsappMessageId: args.inbound.messageId,
-          sentAt: args.inbound.receivedAt,
-        },
-        args.toolUsage,
-      );
-    }
+    const messages = args.messageContext.recentMessages;
+    const contextSource = args.messageContext.contextSource;
 
     if (args.skipClassification) {
       return {
@@ -2450,7 +2447,7 @@ export class AgentService {
       };
     }
 
-    if (conversationContextUnavailable) {
+    if (args.messageContext.historyStatus === 'unavailable') {
       return {
         trace: {
           mode: classifier.mode,
@@ -2476,6 +2473,7 @@ export class AgentService {
     this.recordDeterministicToolInput(args.toolUsage, 'classify_reply_delivery', {
       model: 'configured',
       context_source: contextSource,
+      history_status: args.messageContext.historyStatus,
       recent_message_count: messages.length,
     });
     const result = await classifier.classify({
@@ -2484,8 +2482,55 @@ export class AgentService {
       messages,
       contextSource,
     });
-    this.recordDeterministicToolOutput(args.toolUsage, 'classify_reply_delivery', result.trace);
+    this.recordDeterministicToolOutput(
+      args.toolUsage,
+      'classify_reply_delivery',
+      result.trace,
+    );
     return result;
+  }
+
+  private async prepareTurnMessageContext(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    gateway: AgentConversationGateway;
+    gatewayConfigured: boolean;
+    toolUsage: ToolUsage;
+  }): Promise<TurnMessageContext> {
+    const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
+    if (!args.gatewayConfigured) {
+      return localTurnMessageContext('not_configured');
+    }
+    if (!phoneNumber) {
+      return localTurnMessageContext('missing_phone_number');
+    }
+
+    const recent = await this.getAgentConversationMessagesWithTrace(
+      args.gateway,
+      phoneNumber,
+      args.toolUsage,
+    );
+    await this.logAgentMessageWithTrace(
+      args.gateway,
+      {
+        phoneNumber,
+        body: args.inbound.text,
+        direction: 'inbound',
+        whatsappMessageId: args.inbound.messageId,
+        sentAt: args.inbound.receivedAt,
+      },
+      args.toolUsage,
+    );
+
+    if (recent.status !== 'success') {
+      return recent.status === 'failed'
+        ? unavailableTurnMessageContext()
+        : localTurnMessageContext('not_configured');
+    }
+    return buildTurnMessageContext({
+      messages: recent.messages,
+      inbound: args.inbound,
+    });
   }
 
   private async getAgentConversationMessagesWithTrace(
@@ -3341,6 +3386,7 @@ export class AgentService {
     timingMs: TurnTrace['timing_ms'];
     tokenUsage: TurnTrace['token_usage'];
     responseClassifier?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
     searchStrategy: SearchStrategyTrace;
     turnDecision?: TurnDecision;
     sessionFocusUsed?: boolean;
@@ -3394,6 +3440,21 @@ export class AgentService {
       timing_ms: args.timingMs,
       token_usage: args.tokenUsage,
       response_classifier: args.responseClassifier,
+      message_context: {
+        history_status: args.messageContext.historyStatus,
+        context_source: args.messageContext.contextSource,
+        retrieved_message_count: args.messageContext.retrievedMessageCount,
+        recent_message_count: args.messageContext.recentMessages.length,
+        excluded_current_message_count:
+          args.messageContext.excludedCurrentMessageCount,
+        directions: args.messageContext.recentMessages.map(
+          (message) => message.direction,
+        ),
+        sources: args.messageContext.recentMessages.map(
+          (message) => message.source,
+        ),
+        entry_source: args.messageContext.entryMessage?.source ?? null,
+      },
     };
   }
 

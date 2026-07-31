@@ -18,6 +18,8 @@ Definiciones de campos:
 
 - informationRequests:
   - Lista ordenada de consultas informativas de solo lectura. Usa [] si el turno no contiene ninguna.
+  - `query` debe ser autosuficiente para el motor informativo. Si el mensaje actual usa una referencia breve como "eso", "el segundo" o "no llegó", resuélvela con el historial reciente y el estado pendiente; incluye en `query` solo el referente necesario.
+  - No conviertas todo el historial en una consulta ni mezcles una pregunta anterior que el usuario ya cambió o corrigió.
   - Cada objeto del esquema debe incluir siempre todos los campos comunes. Usa null o [] en los campos que no correspondan.
   - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones, funcionalidades, listas de regalos, soporte o capacidades, sin pedir datos de una operación propia. Usa `query` como reformulación semántica completa; `eventHint`, `resource`, `orderId` y `authAction` deben ser null; `aspects` y `sensitiveFields` deben ser [].
   - `associated_event`: consulta información de un evento real asociado a la cuenta del usuario, como fecha, hora, lugar, asistencia, acompañante, anfitrión, rol o confirmados. Usa `eventHint` si el usuario identifica el evento; `resource`, `orderId` y `authAction` deben ser null; `aspects` y `sensitiveFields` deben ser [].

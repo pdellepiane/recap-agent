@@ -134,6 +134,22 @@ export type SearchStrategyTrace =
   | 'existing_plan_shortlist'
   | 'multi_need_query_intents';
 
+export type MessageContextTrace = {
+  history_status:
+    | 'available'
+    | 'empty'
+    | 'unavailable'
+    | 'not_configured'
+    | 'missing_phone_number';
+  context_source: 'agent_api' | 'local_plan';
+  retrieved_message_count: number;
+  recent_message_count: number;
+  excluded_current_message_count: number;
+  directions: Array<'inbound' | 'outbound'>;
+  sources: Array<string | null>;
+  entry_source: string | null;
+};
+
 export type TurnTrace = {
   trace_id: string;
   conversation_id: string | null;
@@ -212,4 +228,5 @@ export type TurnTrace = {
     } | null;
   };
   response_classifier?: MessageResponseClassifierTrace;
+  message_context: MessageContextTrace;
 };

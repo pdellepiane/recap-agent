@@ -13,6 +13,7 @@ export type AgentConversationMessage = {
   source: string | null;
   body: string;
   status: string;
+  whatsappMessageId?: string | null;
   sentAt: string | null;
   createdAt: string | null;
 };
@@ -165,6 +166,7 @@ const messageSchema = z.object({
   source: z.string().nullable().optional(),
   body: z.string(),
   status: z.string(),
+  whatsapp_message_id: z.string().nullable().optional(),
   sent_at: z.string().nullable().optional(),
   created_at: z.string().nullable().optional(),
 });
@@ -335,6 +337,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         source: message.source ?? null,
         body: message.body,
         status: message.status,
+        whatsappMessageId: message.whatsapp_message_id ?? null,
         sentAt: message.sent_at ?? null,
         createdAt: message.created_at ?? null,
       })),

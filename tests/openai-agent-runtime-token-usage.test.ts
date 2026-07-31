@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ComposeReplyRequest, TokenUsage } from '../src/runtime/contracts';
+import type {
+  ComposeReplyRequest,
+  ExtractRequest,
+  TokenUsage,
+} from '../src/runtime/contracts';
 import type { AgentFeatureFlags } from '../src/runtime/config';
+import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
+import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 
 function createRuntimeForTokenUsageTests(
   features?: AgentFeatureFlags,
@@ -108,6 +114,66 @@ describe('OpenAiAgentRuntime capability context', () => {
     expect(summary).toContain('Responder preguntas generales sobre Sin Envolturas');
     expect(summary).not.toContain('buscar/recomendar opciones');
     expect(summary).not.toContain('Consultar información de eventos asociados');
+  });
+
+  it('includes curated channel history in extraction and reply inputs', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.userMessage = 'No ha llegado nada';
+    request.messageContext = {
+      historyStatus: 'available',
+      contextSource: 'agent_api',
+      retrievedMessageCount: 1,
+      excludedCurrentMessageCount: 0,
+      recentMessages: [
+        {
+          id: 1,
+          direction: 'outbound',
+          source: 'agent',
+          body: 'Envié un código a sandra@example.com.',
+          status: 'sent',
+          sentAt: '2026-07-31T09:45:00.000Z',
+          createdAt: null,
+        },
+      ],
+      entryMessage: null,
+    };
+    const extractionRequest: ExtractRequest = {
+      userMessage: request.userMessage,
+      plan: request.plan,
+      messageContext: request.messageContext,
+    };
+    const typedRuntime = runtime as unknown as {
+      composeExtractorInput: (
+        extractionRequest: ExtractRequest,
+        policy: ReturnType<typeof deriveDynamicAgentPolicy>,
+      ) => string;
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+
+    const extractionInput = typedRuntime.composeExtractorInput(
+      extractionRequest,
+      deriveDynamicAgentPolicy(request.plan),
+    );
+    const replyInput = typedRuntime.composeConversationInput(request, {
+      available_candidates: 0,
+      context_candidates: 0,
+      context_candidate_ids: [],
+      presentation_limit: 0,
+    });
+
+    expect(extractionInput).toContain('Envié un código a sandra@example.com.');
+    expect(extractionInput).toContain('Mensaje del usuario: No ha llegado nada');
+    expect(replyInput).toContain('Envié un código a sandra@example.com.');
+    expect(replyInput).toContain('Mensaje del usuario: No ha llegado nada');
   });
 
   it('includes both purchase lookup paths when purchase information is enabled', () => {
@@ -274,6 +340,7 @@ function createComposeRequest(
     currentNode,
     previousNode: 'contacto_inicial',
     userMessage: '¿Cuánto cobra Sin Envolturas?',
+    messageContext: localTurnMessageContext('not_configured'),
     plan: {
       plan_id: 'plan-1',
       channel: 'terminal_whatsapp_eval',

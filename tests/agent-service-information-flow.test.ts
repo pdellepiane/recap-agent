@@ -8,6 +8,7 @@ import type {
 } from '../src/core/information';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import {
+  type AgentConversationMessage,
   type AgentConversationGateway,
   type AgentGatewayResult,
   type AgentMessageLogInput,
@@ -357,6 +358,23 @@ describe('AgentService first-class information flow', () => {
     ]);
     const knowledgeGateway = new FakeKnowledgeGateway();
     const purchaseGateway = new FakePurchaseGateway();
+    purchaseGateway.recentMessages = [
+      conversationMessage({
+        id: 1,
+        direction: 'outbound',
+        body: 'Este es un recordatorio del evento de Ana y Luis.',
+        source: 'admin_campaign',
+        sentAt: '2026-07-31T14:00:00.000Z',
+      }),
+      conversationMessage({
+        id: 2,
+        direction: 'inbound',
+        body: 'Busca fotógrafos y dime cuánto cobra Sin Envolturas.',
+        source: 'whatsapp',
+        whatsappMessageId: 'conflict-1',
+        sentAt: '2026-07-31T14:01:00.000Z',
+      }),
+    ];
     const service = createService({
       runtime,
       knowledgeGateway,
@@ -369,7 +387,8 @@ describe('AgentService first-class information flow', () => {
       externalUserId: 'user-conflict',
       text: 'Busca fotógrafos y dime cuánto cobra Sin Envolturas.',
       messageId: 'conflict-1',
-      receivedAt: new Date().toISOString(),
+      receivedAt: '2026-07-31T14:01:00.000Z',
+      contactPhone: '+51999999999',
     });
 
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
@@ -378,6 +397,33 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.composeRequests.at(-1)?.informationResults).toEqual([]);
     expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
       'confirmar cuál quiere resolver primero',
+    );
+    expect(purchaseGateway.recentMessageCalls).toBe(1);
+    expect(runtime.extractRequests.at(-1)?.messageContext).toEqual(
+      expect.objectContaining({
+        historyStatus: 'available',
+        retrievedMessageCount: 2,
+        excludedCurrentMessageCount: 1,
+        recentMessages: [
+          expect.objectContaining({
+            body: 'Este es un recordatorio del evento de Ana y Luis.',
+          }),
+        ],
+      }),
+    );
+    expect(runtime.composeRequests.at(-1)?.messageContext).toEqual(
+      runtime.extractRequests.at(-1)?.messageContext,
+    );
+    expect(runtime.composeRequests.at(-1)?.extraction).toEqual(
+      expect.objectContaining({
+        actionIntent: 'buscar_proveedores',
+        informationRequests: [
+          expect.objectContaining({
+            kind: 'faq',
+            query: '¿Cuánto cobra Sin Envolturas?',
+          }),
+        ],
+      }),
     );
   });
 
@@ -449,13 +495,14 @@ describe('AgentService first-class information flow', () => {
 });
 
 class InformationRuntime implements AgentRuntime {
+  public readonly extractRequests: ExtractRequest[] = [];
   public readonly composeRequests: ComposeReplyRequest[] = [];
   private extractionIndex = 0;
 
   constructor(private readonly extractions: ExtractionResult[]) {}
 
   async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
+    this.extractRequests.push(request);
     const next =
       this.extractions[this.extractionIndex] ??
       this.extractions[this.extractions.length - 1];
@@ -497,6 +544,8 @@ class FakePurchaseGateway implements AgentConversationGateway {
   public ordersCalls = 0;
   public giftCalls = 0;
   public lastToken: string | null = null;
+  public recentMessageCalls = 0;
+  public recentMessages: AgentConversationMessage[] | null = null;
   public giftResult: AgentPurchaseLookupResult = {
     status: 'success',
     resource: 'gift_purchases',
@@ -509,8 +558,13 @@ class FakePurchaseGateway implements AgentConversationGateway {
   }
 
   async getRecentMessages(): Promise<
-    Exclude<AgentGatewayResult, { status: 'success' }>
+    | { status: 'success'; messages: AgentConversationMessage[] }
+    | Exclude<AgentGatewayResult, { status: 'success' }>
   > {
+    this.recentMessageCalls += 1;
+    if (this.recentMessages) {
+      return { status: 'success', messages: this.recentMessages };
+    }
     return { status: 'skipped', reason: 'disabled', message: 'disabled' };
   }
 
@@ -558,7 +612,24 @@ function createService(args: {
       providerGateway: provider,
       agentGateway: args.purchaseGateway,
     }),
+    agentConversationGateway: args.purchaseGateway,
   });
+}
+
+function conversationMessage(
+  overrides: Partial<AgentConversationMessage> &
+    Pick<AgentConversationMessage, 'id' | 'direction' | 'body'>,
+): AgentConversationMessage {
+  return {
+    id: overrides.id,
+    direction: overrides.direction,
+    source: overrides.source ?? null,
+    body: overrides.body,
+    status: overrides.status ?? 'delivered',
+    whatsappMessageId: overrides.whatsappMessageId ?? null,
+    sentAt: overrides.sentAt ?? null,
+    createdAt: overrides.createdAt ?? null,
+  };
 }
 
 function extraction(

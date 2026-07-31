@@ -1,7 +1,6 @@
 import {
   Agent,
   InputGuardrailTripwireTriggered,
-  OpenAIConversationsSession,
   OutputGuardrailTripwireTriggered,
   retryPolicies,
   run,
@@ -12,7 +11,6 @@ import type {
   InputGuardrail,
   OutputGuardrail,
 } from '@openai/agents';
-import OpenAI from 'openai';
 import { z } from 'zod';
 
 import type { PersistedPlan } from '../core/plan';
@@ -61,6 +59,7 @@ import {
   resolveDynamicTools,
   type DynamicAgentPolicy,
 } from './dynamic-agent-policy';
+import { buildModelVisibleConversationHistory } from './turn-message-context';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -69,8 +68,6 @@ type RuntimeContext = {
 };
 
 export class OpenAiAgentRuntime implements AgentRuntime {
-  private readonly client: OpenAI;
-
   constructor(
     private readonly options: {
       apiKey: string;
@@ -88,9 +85,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       };
       features?: AgentFeatureFlags;
     },
-  ) {
-    this.client = new OpenAI({ apiKey: options.apiKey, maxRetries: 3 });
-  }
+  ) {}
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const bundle = await this.options.promptLoader.loadExtractorBundle();
@@ -204,11 +199,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       modelSettings: this.buildReplyModelSettings(request),
     });
 
-    const session = new OpenAIConversationsSession({
-      client: this.client,
-      conversationId: request.plan.conversation_id ?? undefined,
-    });
-
     const recommendationFunnel: RecommendationFunnelTrace = {
       available_candidates: request.providerResults.length,
       context_candidates: Math.min(
@@ -227,7 +217,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     let runResult: unknown;
     try {
       const result = await run(agent, input, {
-        session,
         context: {
           toolUsage: request.toolUsage,
         },
@@ -255,8 +244,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         throw error;
       }
     }
-    request.plan.conversation_id = await session.getSessionId();
-
     const parseSchema = outputSchema;
     const structured = parseSchema.parse(
       this.normalizeSpanishVocabulary(this.normalizeSupportEmails(finalOutput)),
@@ -518,6 +505,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       'extractor',
     );
     return [
+      `Estado del historial: ${request.messageContext.historyStatus}.`,
+      `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
       `Mensaje del usuario: ${request.userMessage}`,
       `Plan base (JSON compacto): ${JSON.stringify(this.buildExtractorPlanSnapshot(request.plan))}`,
       `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`,
@@ -656,6 +645,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const parts: Array<string | null> = [
       `Nodo previo: ${this.modelVisibleNodeName(request.previousNode)}`,
       `Nodo actual: ${this.modelVisibleNodeName(request.currentNode)}`,
+      `Estado del historial: ${request.messageContext.historyStatus}.`,
+      `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
       `Mensaje del usuario: ${request.userMessage}`,
       request.turnDecision
         ? `Decisión determinística del estado: ${JSON.stringify({

@@ -24,8 +24,8 @@ revisions and stable burst idempotency records.
 
 Existing persisted plans will not be discarded, reset, or silently interpreted
 as new plans. A bounded, one-time migration will add schema metadata and a
-revision to every existing `PLAN` item while preserving its `plan_id`, OpenAI
-`conversation_id`, current node, provider needs, shortlist, selections,
+revision to every existing `PLAN` item while preserving its `plan_id`, optional
+legacy `conversation_id`, current node, provider needs, shortlist, selections,
 contact data, conversation summary, and timestamps. The migration compatibility
 logic will live only in the migration utility, not as a permanent runtime shim.
 
@@ -86,7 +86,7 @@ to one response based on the complete event context.
 - Let later explicit corrections in a burst override earlier statements.
 - Prevent concurrent mutations for the same conversation.
 - Make retries idempotent with a stable `burst_id`.
-- Preserve every valid existing plan and its OpenAI conversation continuity.
+- Preserve every valid existing plan and its typed business-state continuity.
 - Keep WhatsApp timing, webhook, delivery, and retry behavior in the adapter.
 - Keep the core runtime channel-agnostic.
 - Add complete traceability for aggregation latency and burst composition.
@@ -292,8 +292,8 @@ cannot begin runtime execution until the current lane operation completes.
 
 The current response is still delivered unless its delivery action is
 suppressed. Cancelling or silently hiding a response after the runtime has
-mutated the plan would make persisted plan state and OpenAI conversation
-history diverge from what the user saw.
+mutated the plan would make persisted plan state and the channel-visible
+conversation diverge from what the user saw.
 
 ### 9.8 Unsupported or non-user events
 
@@ -490,12 +490,13 @@ extraction, and the post-reduction plan. It produces one structured outbound
 message addressing all actionable parts of the burst without narrating each
 message separately.
 
-### 13.6 OpenAI conversation continuity
+### 13.6 Model context continuity
 
-Each burst is appended to the existing OpenAI conversation as one logical user
-turn followed by one assistant output. Existing `conversation_id` values are
-preserved by migration, so active plans continue their current session rather
-than starting over.
+Reply runs remain stateless. Each burst supplies its current ordered messages,
+the curated Agent API history read for that turn, and the current structured
+plan explicitly. Existing `conversation_id` values may be preserved as legacy
+correlation metadata during migration, but they are not a context or memory
+authority.
 
 ## 14. Agent API Conversation Logging
 
@@ -503,11 +504,14 @@ The external Agent API remains an audit/history source for individual channel
 messages. For a burst:
 
 1. Read recent history once.
-2. Pass that prior history plus the current in-memory ordered burst to the
-   classifier; do not depend on immediate read-after-write behavior.
-3. Log every constituent inbound message separately, preserving native message
+2. Remove current-burst messages already present in the external response by
+   native message id, with a bounded timestamp-and-body identity fallback.
+3. Pass that prior history plus the current in-memory ordered burst to the
+   classifier, extractor, and reply composer; do not depend on immediate
+   read-after-write behavior.
+4. Log every constituent inbound message separately, preserving native message
    id and original timestamp.
-4. Log the one outbound response once when outbound logging is enabled.
+5. Log the one outbound response once when outbound logging is enabled.
 
 Failure to log one constituent message remains observable but must not split
 the burst or cause multiple assistant replies.
@@ -598,10 +602,10 @@ is not completed.
 
 ### 16.4 External side effects
 
-OpenAI conversation writes and provider/Agent API calls cannot participate in a
-DynamoDB transaction. The design minimizes duplicate effects with lane leases,
-stable execution records, and cached completion. It does not claim impossible
-global exactly-once guarantees.
+Model calls and provider/Agent API calls cannot participate in a DynamoDB
+transaction. The design minimizes duplicate effects with lane leases, stable
+execution records, and cached completion. It does not claim impossible global
+exactly-once guarantees.
 
 ## 17. Existing Plan Migration
 
@@ -618,7 +622,7 @@ version 2:
 - set `schema_version = 2`;
 - set `revision = 1`;
 - preserve `plan_id`;
-- preserve `conversation_id`;
+- preserve the optional legacy `conversation_id` correlation field;
 - preserve `current_node` and lifecycle state;
 - preserve every event, need, shortlist, selection, contact, escalation,
   health, summary, and open-question field;
@@ -1038,9 +1042,9 @@ shared storage and coordination.
 
 ### Process every message and suppress intermediate replies
 
-Rejected because each fragment can still mutate the plan, invoke tools, append
-OpenAI conversation history, and race with other fragments. Suppressing
-delivery does not undo those effects.
+Rejected because each fragment can still mutate the plan, invoke tools, issue
+model calls, and race with other fragments. Suppressing delivery does not undo
+those effects.
 
 ### SQS batching window alone
 

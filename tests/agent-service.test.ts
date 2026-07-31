@@ -87,9 +87,11 @@ function providerNeedQuery(
 }
 
 class FakeRuntime implements AgentRuntime {
+  public readonly extractRequests: ExtractRequest[] = [];
   public readonly composeRequests: ComposeReplyRequest[] = [];
 
   async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    this.extractRequests.push(request);
     if (request.userMessage.includes('stop')) {
       return {
         actionIntent: 'pausar',
@@ -7977,13 +7979,82 @@ describe('AgentService', () => {
     });
 
     expect(response.outbound.delivery.action).toBe('send');
-    expect(gateway.operations).toEqual(['log:inbound']);
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
     expect(gateway.loggedMessages).toHaveLength(1);
     expect(gateway.loggedMessages[0]).toMatchObject({
       phoneNumber: '51900000321',
       body: 'Necesito catering en Lima para una boda de 80 personas',
       direction: 'inbound',
     });
+  });
+
+  it('reads channel history once and shares the curated context with extraction and reply', async () => {
+    const runtime = new FakeRuntime();
+    const gateway = new TrackingAgentConversationGateway([
+      {
+        id: 1,
+        direction: 'outbound',
+        source: 'admin_campaign',
+        body: 'Recordatorio del evento Fernanda y Christian.',
+        status: 'sent',
+        sentAt: '2026-07-31T09:42:00.000Z',
+        createdAt: '2026-07-31T09:42:00.000Z',
+      },
+      {
+        id: 2,
+        direction: 'inbound',
+        source: null,
+        body: 'Gracias',
+        status: 'received',
+        sentAt: '2026-07-31T09:43:00.000Z',
+        createdAt: '2026-07-31T09:43:00.000Z',
+      },
+      {
+        id: 3,
+        direction: 'inbound',
+        source: null,
+        body: 'Necesito catering en Lima para una boda de 80 personas',
+        status: 'received',
+        whatsappMessageId: 'context-current-message',
+        sentAt: '2026-07-31T09:44:00.000Z',
+        createdAt: '2026-07-31T09:44:00.000Z',
+      },
+    ]);
+
+    await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      agentConversationGateway: gateway,
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'shared-message-context-user',
+      text: 'Necesito catering en Lima para una boda de 80 personas',
+      messageId: 'context-current-message',
+      receivedAt: '2026-07-31T09:44:00.000Z',
+      contactPhone: '+51 900000322',
+    });
+
+    expect(gateway.operations).toEqual(['get', 'log:inbound']);
+    expect(runtime.extractRequests).toHaveLength(1);
+    expect(runtime.extractRequests[0]?.messageContext).toMatchObject({
+      historyStatus: 'available',
+      contextSource: 'agent_api',
+    });
+    expect(
+      runtime.extractRequests[0]?.messageContext.entryMessage?.source,
+    ).toBe('admin_campaign');
+    expect(
+      runtime.extractRequests[0]?.messageContext.recentMessages.map((message) => message.body),
+    ).toEqual([
+      'Recordatorio del evento Fernanda y Christian.',
+      'Gracias',
+    ]);
+    expect(runtime.composeRequests.at(-1)?.messageContext).toEqual(
+      runtime.extractRequests[0]?.messageContext,
+    );
   });
 
   it('enforces acknowledgement suppression before extraction and provider search', async () => {
@@ -8201,6 +8272,14 @@ describe('AgentService', () => {
     expect(classifier.calls).toHaveLength(0);
     expect(runtime.extractCalls).toBe(1);
     expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.extractRequests[0]?.messageContext).toMatchObject({
+      historyStatus: 'unavailable',
+      contextSource: 'local_plan',
+      recentMessages: [],
+    });
+    expect(runtime.composeRequests[0]?.messageContext).toEqual(
+      runtime.extractRequests[0]?.messageContext,
+    );
     expect(response.trace.response_classifier).toMatchObject({
       action: 'respond',
       reason: 'conversation_context_unavailable',

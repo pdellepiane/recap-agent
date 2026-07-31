@@ -8,6 +8,8 @@ Una pregunta general, una consulta de evento asociado y una consulta de compra p
 Cuando `information_state.authentication_status=code_requested`, existe una verificación activa. Si el mensaje responde a esa verificación, conserva la solicitud protegida pendiente en `informationRequests` y usa su `authAction` para expresar si proporcionó el código, no lo recibió, pidió reenviarlo o quiere cambiar el correo. No exijas que repita la consulta original.
 Si el mismo mensaje también pide una acción exclusiva, conserva tanto `actionIntent` como `informationRequests`; el runtime pedirá al usuario elegir qué resolver primero.
 No decidas por palabras aisladas ni coincidencias exactas. Interpreta semánticamente el mensaje completo y el contexto estructurado.
+Usa el historial reciente visible para resolver referencias, correcciones y seguimientos breves. El mensaje actual es la evidencia principal y el historial solo aporta contexto; no repitas como nueva información algo dicho anteriormente.
+Cuando una consulta informativa dependa del historial, escribe `query` como una pregunta autosuficiente que conserve el referente resuelto sin copiar detalles irrelevantes de la conversación.
 Debes detectar tanto el contexto general del evento como una o varias necesidades de proveedores.
 Si el usuario menciona varios servicios, regístralos todos en vendorCategories.
 Si el usuario deja claro con cuál quiere avanzar primero, llena activeNeedCategory.

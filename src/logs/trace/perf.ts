@@ -112,6 +112,7 @@ export type TurnPerfRecord = {
   timing_ms: TurnTrace['timing_ms'];
   token_usage: TurnTrace['token_usage'];
   response_classifier?: TurnTrace['response_classifier'];
+  message_context: TurnTrace['message_context'];
   previous_node: string;
   node_path: string[];
   intent: string | null;
@@ -266,6 +267,7 @@ export function buildTurnPerfRecord(args: {
     timing_ms: args.trace.timing_ms,
     token_usage: args.trace.token_usage,
     response_classifier: args.trace.response_classifier,
+    message_context: args.trace.message_context,
     previous_node: args.trace.previous_node,
     node_path: args.trace.node_path,
     intent: args.trace.intent,

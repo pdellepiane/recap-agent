@@ -13,6 +13,7 @@ import type {
 
 import type { StructuredMessage } from './structured-message';
 import type { ProviderFitCriteria } from './provider-fit';
+import type { TurnMessageContext } from './turn-message-context';
 import type {
   CloseAction,
 } from './close-flow-schemas';
@@ -61,12 +62,14 @@ export type ExtractionResult = {
 export type ExtractRequest = {
   userMessage: string;
   plan: PersistedPlan;
+  messageContext: TurnMessageContext;
 };
 
 export type ComposeReplyRequest = {
   currentNode: DecisionNode;
   previousNode: DecisionNode;
   userMessage: string;
+  messageContext: TurnMessageContext;
   plan: PersistedPlan;
   extraction: ExtractionResult;
   missingFields: string[];

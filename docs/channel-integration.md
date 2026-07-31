@@ -195,7 +195,7 @@ Field meanings:
 | --- | --- | --- |
 | `message` | string or null | User-facing text when `delivery.action` is `send`; null when delivery is suppressed. |
 | `delivery` | object | `{ action: "send" | "suppress", reason: string }`. Adapters must send only when the action is `send`. |
-| `conversation_id` | string or null | OpenAI conversation id used by the runtime when available. |
+| `conversation_id` | string or null | Optional legacy correlation field. The runtime does not use it as conversational memory. |
 | `plan_id` | string | Internal persisted event-plan id. Useful for support correlation, not for end-user display. |
 | `current_node` | string | Current decision-flow node after this turn. Useful for adapter logs and support dashboards. |
 
@@ -513,8 +513,9 @@ flowchart TD
    every turn.
 3. Call the Function URL with `Authorization: Bearer <CHANNEL_API_KEY>` and the original WhatsApp
    `wamid` as `message_id`.
-   Do not save the inbound message separately through the Agent API; Lambda owns
-   that write after authentication and request validation.
+   Do not save the inbound message separately through the Agent API. The
+   existing external conversation service owns history population; Lambda reads
+   that history and keeps its optional write path disabled by default.
 4. On `delivery.action: "send"`, send the non-null `message` to Meta's Graph API
    using the WhatsApp business phone-number id and the original `from` as `to`.
 5. On `delivery.action: "suppress"`, mark the job complete without sending. This
@@ -825,13 +826,25 @@ bearer token is user-scoped and must not be reused here.
 
 Inbound channel authentication uses a different dedicated secret. Adapters send the `CHANNEL_API_KEY` value through the standard `Authorization: Bearer` scheme; Lambda resolves both `AWSCURRENT` and, when present, `AWSPREVIOUS` through `CHANNEL_API_SECRET_ID` and compares the supplied token against every accepted value in constant time before loading the agent runtime. The deployment script generates a cryptographically random opaque value into the ignored local `.env` file when one does not exist, publishes it to Secrets Manager, and skips unchanged writes so a normal redeploy does not accidentally advance the rotation stages.
 
-For phone-bearing turns, the response classifier retrieves the last five Agent
-API messages as authoritative read-only context. Another service populates that
+For phone-bearing turns, the runtime retrieves the last five Agent API messages
+exactly once before model work. It removes the current inbound message when the
+endpoint has already recorded it, using the native WhatsApp message id when
+available and a bounded body-and-timestamp fallback otherwise. The same curated
+history is then passed to the response classifier, structured extractor, and
+reply composer. The extractor uses it to resolve references and follow-ups, and
+produces standalone FAQ and user-information queries for downstream retrieval.
+The reply composer receives the curated messages explicitly and runs without an
+OpenAI conversation session.
+
+The external Agent API is the canonical raw channel history. The event plan is
+the canonical typed business state and contains only compact durable facts; raw
+message transcripts are not copied into it. Another service populates external
 history, so `AGENT_MESSAGE_LOGGING_ENABLED` remains `false` and Lambda does not
 duplicate inbound or outbound writes. A successful empty history is treated as
-a valid first contact. A failed history read skips the classifier, records
-`conversation_context_unavailable` as fail-open trace evidence, and continues
-through the normal extraction and reply flow. Human takeover requests use a different
+a valid first contact. A failed history read skips the classifier, records the
+unavailable message-context status in the trace, and continues through extraction
+and reply using the current inbound message plus the structured plan. It never
+falls back to stale history. Human takeover requests use a different
 endpoint and remain enabled. Once human escalation is active, the runtime
 returns `delivery.action: "suppress"` and does not continue as a bot. Elapsed
 time never clears that state. Only an authenticated request to
