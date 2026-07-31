@@ -2,6 +2,53 @@
 
 ## 2026-07-31
 
+### Make authentication guidance conversational and replace the FAQ corpus safely
+
+**Reason:** Authentication recovery used a hardcoded customer-facing sentence
+that referenced Gmail-specific inbox language and could not adapt naturally.
+The first code message omitted delivery expectations and the welcome response
+expanded every enabled capability into a long list. The FAQ replacement script
+also used same-day batch IDs, read only one cleanup page, and could delete the
+supplemental customer-service corpus because cleanup was not source-scoped.
+
+**Changes:**
+- Replaced hardcoded authentication replies with typed guidance reasons and the
+  exact destination email. Required semantic facts are represented as typed
+  guidance requirements, while the information reply agent still writes the
+  final customer-facing message under node instructions.
+- Instructed the agent to explain why the registered email is needed, say that
+  a sent code can take up to one minute, mention only the main inbox and junk
+  mail, and offer resend or email correction when a code is missing. Provider-
+  specific inbox language is prohibited.
+- Replaced the welcome capability catalogue with a three-part structured
+  response: one brief greeting, one scope sentence, and one open question.
+- Made help-center scraping fail closed on missing categories, missing article
+  links, partial article failures, empty content, and exact duplicate bodies.
+- Added unique per-run batch IDs, per-file FAQ metadata, paginated and
+  source-scoped cleanup, cleanup-consistency retries, and a post-replacement
+  count/stale/duplicate audit.
+- Added `npm run sync:faq-kb` and documented the separation between scraped FAQ
+  articles and curated customer-service templates.
+
+**Decision:** Keep authentication execution deterministic but customer-facing
+wording model-generated from typed state. For first contact, ask what the person
+needs instead of presenting a tutorial. Treat the FAQ vector store as a merged
+corpus with independently replaceable sources rather than one destructive
+batch.
+
+**Validation:** The local scrape produced 52 non-empty, content-unique articles
+with the same slug set as the prior help-center corpus. The OpenAI FAQ store now
+contains one completed 52-file scraped batch plus all 27 curated support files:
+79 completed files total and zero duplicate FAQ slugs. Three live retrieval
+queries returned relevant evidence from the intended sources. `npm run check`
+passed with 50 test files and 325 tests, `npm run build` completed, and both
+development CloudFormation stacks deployed successfully through the guarded
+`se-dev` profile. Deployed probes returned the concise three-line welcome,
+explained that the registered email is needed to access account information,
+and handled a missing code with the exact destination email, the security
+reason, a one-minute expectation, main-inbox and junk-mail checks, and resend or
+email-change options. All synthetic plan and session records were deleted.
+
 ### Use one canonical message context across every model stage
 
 **Reason:** Only the response classifier consumed Agent API history. The

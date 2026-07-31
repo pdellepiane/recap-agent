@@ -10,6 +10,7 @@ import {
   type PlanSnapshot,
 } from '../src/core/plan';
 import { decisionNodes } from '../src/core/decision-nodes';
+import { createInformationAuthGuidance } from '../src/core/information';
 import type { ProviderDetail, ProviderSummary } from '../src/core/provider';
 import type {
   AgentRuntime,
@@ -1186,9 +1187,9 @@ describe('AgentService', () => {
           result.kind === 'associated_event' &&
           result.status === 'needs_input',
       );
-    expect(authResult?.status === 'needs_input' ? authResult.message : null).toContain(
-      'código',
-    );
+    expect(
+      authResult?.status === 'needs_input' ? authResult.guidance : null,
+    ).toEqual(createInformationAuthGuidance('otp_sent', 'maria@example.com'));
   });
 
   it('removes only unambiguous spaces next to the at sign in guest emails', async () => {
@@ -1220,7 +1221,8 @@ describe('AgentService', () => {
         ?.informationResults?.some(
           (result) =>
             result.status === 'needs_input' &&
-            result.message.includes('verificar tu cuenta'),
+            result.guidance.reason === 'otp_sent' &&
+            result.guidance.email === 'leonardo@gmail.com',
         ),
     ).toBe(true);
   });
@@ -5787,13 +5789,9 @@ describe('AgentService', () => {
           structuredMessage: {
             type: 'welcome',
             greeting_es: '¡Hola! Soy el asistente de Sin Envolturas.',
-            ask_es: 'Puedo ayudarte de varias formas. Elige por dónde quieres empezar.',
-            capability_lines_es: [
-              'armar un plan con proveedores para tu evento',
-              'responder preguntas sobre nuestros servicios',
-              'consultar información de eventos asociados a tu correo o teléfono',
-            ],
-            requested_fields_es: [],
+            scope_es:
+              'Puedo ayudarte con tu evento o responder una consulta sobre Sin Envolturas.',
+            ask_es: '¿Qué necesitas hoy?',
           },
         };
       }
@@ -5819,8 +5817,9 @@ describe('AgentService', () => {
     expect(response.trace.intent).toBeNull();
     expect(response.plan.provider_needs).toHaveLength(0);
     expect(response.outbound.text).toContain('Soy el asistente de Sin Envolturas');
-    expect(response.outbound.text).toContain('Armar un plan con proveedores');
-    expect(response.outbound.text).toContain('Consultar información de eventos');
+    expect(response.outbound.text).toContain('Puedo ayudarte con tu evento');
+    expect(response.outbound.text).toContain('¿Qué necesitas hoy?');
+    expect(response.outbound.text).not.toContain('\n- ');
   });
 
   it('keeps otro as a valid event type when planning evidence exists', async () => {
@@ -7455,8 +7454,8 @@ describe('AgentService', () => {
         ?.informationResults?.some(
           (result) =>
             result.status === 'needs_input' &&
-            result.message.includes('maria@example.com') &&
-            result.message.includes('correo no deseado'),
+            result.guidance.reason === 'otp_pending' &&
+            result.guidance.email === 'maria@example.com',
         ),
     ).toBe(true);
     expect(response.trace.tools_called).not.toContain('request_user_login_code');

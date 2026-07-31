@@ -6,6 +6,9 @@ export class TawkHelpScraper {
 
   async scrapeAllArticles(): Promise<ScrapedArticle[]> {
     const categories = await this.listCategories();
+    if (categories.length === 0) {
+      throw new Error('The help center returned no categories.');
+    }
     const articleSlugs = new Set<string>();
 
     for (const category of categories) {
@@ -15,14 +18,42 @@ export class TawkHelpScraper {
       }
     }
 
+    if (articleSlugs.size === 0) {
+      throw new Error('The help center returned no article links.');
+    }
+
     const articles: ScrapedArticle[] = [];
+    const failures: string[] = [];
     for (const slug of articleSlugs) {
       try {
         const article = await this.scrapeArticle(slug);
+        if (!article.title.trim() || !article.content.trim()) {
+          throw new Error('Article title or content is empty.');
+        }
         articles.push(article);
       } catch (error) {
-        console.error(`Failed to scrape article ${slug}:`, error instanceof Error ? error.message : String(error));
+        failures.push(
+          `${slug}: ${error instanceof Error ? error.message : String(error)}`,
+        );
       }
+    }
+
+    if (failures.length > 0) {
+      throw new Error(
+        `Refusing a partial knowledge-base overwrite; ${failures.length} articles failed: ${failures.join(' | ')}`,
+      );
+    }
+
+    const contentOwners = new Map<string, string>();
+    for (const article of articles) {
+      const contentKey = article.content.replace(/\s+/gu, ' ').trim();
+      const existingSlug = contentOwners.get(contentKey);
+      if (existingSlug) {
+        throw new Error(
+          `Duplicate article content found for ${existingSlug} and ${article.slug}.`,
+        );
+      }
+      contentOwners.set(contentKey, article.slug);
     }
 
     return articles;

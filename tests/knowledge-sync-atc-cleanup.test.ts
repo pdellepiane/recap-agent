@@ -28,20 +28,32 @@ vi.mock('openai', () => ({
 
 const atcSource = 'notion_customer_service_templates';
 
+function asyncFileList(
+  files: Array<{ id: string; attributes: Record<string, unknown> }>,
+): AsyncIterable<{ id: string; attributes: Record<string, unknown> }> {
+  return {
+    async *[Symbol.asyncIterator]() {
+      for (const file of files) {
+        yield file;
+      }
+    },
+  };
+}
+
 describe('ATC supplemental FAQ knowledge sync cleanup', () => {
   afterEach(() => {
     vi.clearAllMocks();
   });
 
   it('keeps non-ATC FAQ vector-store files while cleaning stale ATC files', async () => {
-    openAiClientMock.vectorStores.files.list.mockResolvedValue({
-      data: [
+    openAiClientMock.vectorStores.files.list.mockReturnValue(
+      asyncFileList([
         { id: 'vsf-current-atc', attributes: { batch_id: 'kb-atc-current', source: atcSource } },
         { id: 'vsf-old-atc', attributes: { batch_id: 'kb-atc-old', source: atcSource } },
         { id: 'vsf-old-faq', attributes: { batch_id: 'kb-faq-old', source: 'recap-agent-knowledge-sync' } },
         { id: 'vsf-unscoped', attributes: { batch_id: 'legacy-faq-old' } },
-      ],
-    });
+      ]),
+    );
     openAiClientMock.vectorStores.files.delete.mockResolvedValue({ deleted: true });
 
     const uploader = new OpenAiKnowledgeUploader({
@@ -92,14 +104,77 @@ describe('ATC supplemental FAQ knowledge sync cleanup', () => {
     );
 
     expect(openAiClientMock.vectorStores.fileBatches.create).toHaveBeenCalledWith('vs_kb_test', {
-      file_ids: ['file_atc_1'],
-      attributes: {
-        batch_id: 'kb-atc-current',
-        source: atcSource,
-        source_kind: 'response_sample',
-        channel: 'chat',
-        status: 'Vigente',
-      },
+      files: [
+        {
+          file_id: 'file_atc_1',
+          attributes: {
+            batch_id: 'kb-atc-current',
+            source: atcSource,
+            slug: 'sample',
+            category: 'ATC',
+            article_type: 'response_sample',
+            source_kind: 'response_sample',
+            channel: 'chat',
+            status: 'Vigente',
+          },
+        },
+      ],
+    });
+  });
+
+  it('audits only the configured source and detects stale files and duplicate slugs', async () => {
+    openAiClientMock.vectorStores.files.list.mockReturnValue(
+      asyncFileList([
+        {
+          id: 'vsf-current-1',
+          attributes: {
+            batch_id: 'kb-current',
+            source: atcSource,
+            slug: 'same-slug',
+          },
+        },
+        {
+          id: 'vsf-current-2',
+          attributes: {
+            batch_id: 'kb-current',
+            source: atcSource,
+            slug: 'same-slug',
+          },
+        },
+        {
+          id: 'vsf-stale',
+          attributes: {
+            batch_id: 'kb-old',
+            source: atcSource,
+            slug: 'old-slug',
+          },
+        },
+        {
+          id: 'vsf-other-source',
+          attributes: {
+            batch_id: 'kb-other',
+            source: 'recap-agent-knowledge-sync',
+            slug: 'other-slug',
+          },
+        },
+      ]),
+    );
+    const uploader = new OpenAiKnowledgeUploader({
+      baseUrl: 'https://sinenvolturas.tawk.help',
+      outputDir: 'dist/knowledge-base-atc',
+      openAiApiKey: 'test-key',
+      vectorStoreName: 'Sin Envolturas Knowledge Base',
+      vectorStoreId: 'vs_kb_test',
+      cleanupScopeSource: atcSource,
+    });
+
+    await expect(
+      uploader.auditCurrentBatch('vs_kb_test', 'kb-current'),
+    ).resolves.toEqual({
+      source: atcSource,
+      currentBatchFileCount: 2,
+      staleSourceFileCount: 1,
+      duplicateCurrentSlugs: ['same-slug'],
     });
   });
 });

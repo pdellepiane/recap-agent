@@ -8,6 +8,20 @@ export type UploadBatchResult = {
   fileIds: string[];
 };
 
+export type KnowledgeUploadFile = {
+  filePath: string;
+  slug: string;
+  category: string;
+  articleType: string;
+};
+
+export type KnowledgeStoreAudit = {
+  source: string;
+  currentBatchFileCount: number;
+  staleSourceFileCount: number;
+  duplicateCurrentSlugs: string[];
+};
+
 export class OpenAiKnowledgeUploader {
   private readonly client: OpenAI;
   private static readonly defaultSource = 'recap-agent-knowledge-sync';
@@ -17,31 +31,46 @@ export class OpenAiKnowledgeUploader {
   }
 
   async uploadBatch(
-    articleFiles: Array<{ filePath: string; slug: string; category: string; articleType: string }>,
+    articleFiles: KnowledgeUploadFile[],
     batchId: string,
   ): Promise<UploadBatchResult> {
     const vectorStoreId = await this.ensureVectorStore();
 
     // Upload each file to the OpenAI Files API
-    const uploadedFiles: Array<{ id: string; slug: string }> = [];
+    const uploadedFiles: Array<{
+      id: string;
+      slug: string;
+      category: string;
+      articleType: string;
+    }> = [];
     for (const article of articleFiles) {
       const uploaded = await this.client.files.create({
         file: fs.createReadStream(article.filePath),
         purpose: 'assistants',
       });
-      uploadedFiles.push({ id: uploaded.id, slug: article.slug });
+      uploadedFiles.push({
+        id: uploaded.id,
+        slug: article.slug,
+        category: article.category,
+        articleType: article.articleType,
+      });
     }
 
     console.log(`Uploaded ${uploadedFiles.length} files to OpenAI Files API`);
 
     // Add files to vector store as a batch with attributes
     const fileBatch = await this.client.vectorStores.fileBatches.create(vectorStoreId, {
-      file_ids: uploadedFiles.map((f) => f.id),
-      attributes: {
-        batch_id: batchId,
-        source: OpenAiKnowledgeUploader.defaultSource,
-        ...this.config.uploadAttributes,
-      },
+      files: uploadedFiles.map((file) => ({
+        file_id: file.id,
+        attributes: {
+          batch_id: batchId,
+          source: this.uploadSource(),
+          slug: this.attributeString(file.slug),
+          category: this.attributeString(file.category),
+          article_type: this.attributeString(file.articleType),
+          ...this.config.uploadAttributes,
+        },
+      })),
     });
 
     console.log(`Created vector store file batch ${fileBatch.id} in ${vectorStoreId}`);
@@ -57,18 +86,26 @@ export class OpenAiKnowledgeUploader {
   }
 
   async cleanupOldBatches(vectorStoreId: string, currentBatchId: string): Promise<void> {
-    const allFiles = await this.client.vectorStores.files.list(vectorStoreId);
+    const allFiles = [];
+    for await (const file of this.client.vectorStores.files.list(
+      vectorStoreId,
+      { limit: 100 },
+    )) {
+      allFiles.push(file);
+    }
 
-    const filesToDelete = allFiles.data.filter((file) => {
+    const cleanupSource =
+      this.config.cleanupScopeSource ?? this.uploadSource();
+
+    const filesToDelete = allFiles.filter((file) => {
       const attributes = file.attributes as Record<string, unknown> | null;
-      if (!attributes || attributes.batch_id === currentBatchId) {
+      if (
+        !attributes ||
+        attributes.source !== cleanupSource ||
+        attributes.batch_id === currentBatchId
+      ) {
         return false;
       }
-
-      if (this.config.cleanupScopeSource) {
-        return attributes.source === this.config.cleanupScopeSource;
-      }
-
       return true;
     });
 
@@ -80,13 +117,79 @@ export class OpenAiKnowledgeUploader {
     console.log(`Cleaning up ${filesToDelete.length} old vector store files from previous batches`);
 
     for (const file of filesToDelete) {
-      try {
-        await this.client.vectorStores.files.delete(file.id, { vector_store_id: vectorStoreId });
-        console.log(`Deleted vector store file ${file.id}`);
-      } catch (error) {
-        console.error(`Failed to delete vector store file ${file.id}:`, error instanceof Error ? error.message : String(error));
+      await this.client.vectorStores.files.delete(file.id, {
+        vector_store_id: vectorStoreId,
+      });
+      console.log(`Deleted vector store file ${file.id}`);
+    }
+  }
+
+  async auditCurrentBatch(
+    vectorStoreId: string,
+    currentBatchId: string,
+  ): Promise<KnowledgeStoreAudit> {
+    const source = this.config.cleanupScopeSource ?? this.uploadSource();
+    const sourceFiles: Array<{ batchId: unknown; slug: unknown }> = [];
+    for await (const file of this.client.vectorStores.files.list(
+      vectorStoreId,
+      { limit: 100 },
+    )) {
+      const attributes = file.attributes as Record<string, unknown> | null;
+      if (attributes?.source === source) {
+        sourceFiles.push({
+          batchId: attributes.batch_id,
+          slug: attributes.slug,
+        });
       }
     }
+
+    const currentFiles = sourceFiles.filter(
+      (file) => file.batchId === currentBatchId,
+    );
+    const slugCounts = new Map<string, number>();
+    for (const file of currentFiles) {
+      if (typeof file.slug !== 'string' || file.slug.length === 0) {
+        continue;
+      }
+      slugCounts.set(file.slug, (slugCounts.get(file.slug) ?? 0) + 1);
+    }
+
+    return {
+      source,
+      currentBatchFileCount: currentFiles.length,
+      staleSourceFileCount: sourceFiles.length - currentFiles.length,
+      duplicateCurrentSlugs: Array.from(slugCounts.entries())
+        .filter(([, count]) => count > 1)
+        .map(([slug]) => slug)
+        .sort(),
+    };
+  }
+
+  async waitForCleanCurrentBatch(args: {
+    vectorStoreId: string;
+    currentBatchId: string;
+    expectedFileCount: number;
+    maxWaitMs?: number;
+  }): Promise<KnowledgeStoreAudit> {
+    const maxWaitMs = args.maxWaitMs ?? 60_000;
+    const startedAt = Date.now();
+    let audit = await this.auditCurrentBatch(
+      args.vectorStoreId,
+      args.currentBatchId,
+    );
+    while (
+      (audit.currentBatchFileCount !== args.expectedFileCount ||
+        audit.staleSourceFileCount !== 0 ||
+        audit.duplicateCurrentSlugs.length > 0) &&
+      Date.now() - startedAt < maxWaitMs
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+      audit = await this.auditCurrentBatch(
+        args.vectorStoreId,
+        args.currentBatchId,
+      );
+    }
+    return audit;
   }
 
   private async ensureVectorStore(): Promise<string> {
@@ -108,6 +211,17 @@ export class OpenAiKnowledgeUploader {
 
     console.log(`Created new vector store: ${created.id}`);
     return created.id;
+  }
+
+  private uploadSource(): string {
+    const configuredSource = this.config.uploadAttributes?.source;
+    return typeof configuredSource === 'string'
+      ? configuredSource
+      : OpenAiKnowledgeUploader.defaultSource;
+  }
+
+  private attributeString(value: string): string {
+    return value.slice(0, 512);
   }
 
   private async pollBatchCompletion(vectorStoreId: string, batchId: string): Promise<void> {

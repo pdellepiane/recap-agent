@@ -59,7 +59,7 @@ describe('PromptLoader', () => {
       'Resolver en un solo turno una o varias consultas informativas',
     );
     expect(informationBundle.instructions).toContain(
-      'por seguridad necesitas verificar la cuenta',
+      'para poder acceder a “la información de tu cuenta”',
     );
     expect(informationBundle.instructions).toContain(
       'número de pedido',
@@ -68,7 +68,13 @@ describe('PromptLoader', () => {
       'No describas por adelantado todo el flujo',
     );
     expect(informationBundle.instructions).toContain(
-      'muestra el correo al que se envió',
+      'puede tardar hasta un minuto',
+    );
+    expect(informationBundle.instructions).toContain(
+      'bandeja principal o el correo no deseado',
+    );
+    expect(informationBundle.instructions).toContain(
+      'Nunca menciones una bandeja de promociones',
     );
     expect(informationBundle.instructions).toContain(
       'No uses palabras técnicas como endpoint, API, JWT, token',
@@ -90,7 +96,30 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain(
       'information_state.authentication_status=code_requested',
     );
-    expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir sitios externos');
+    expect(welcomeBundle.instructions).toContain(
+      'No prometas diseñar, construir ni editar sitios externos',
+    );
+    expect(welcomeBundle.instructions).toContain(
+      'una sola pregunta abierta',
+    );
+    expect(welcomeBundle.instructions).toContain(
+      'usar viñetas ni listas de capacidades',
+    );
+    expect(welcomeBundle.instructions).toContain(
+      'diga explícitamente que eres el asistente de Sin Envolturas',
+    );
+    expect(welcomeBundle.instructions).toContain(
+      'repetir entre campos una idea ya comunicada',
+    );
+    expect(informationBundle.instructions).toContain(
+      'Conserva esas palabras en la respuesta',
+    );
+    expect(informationBundle.instructions).toContain(
+      'Cada elemento de `guidance.requirements` es contenido obligatorio',
+    );
+    expect(informationBundle.instructions).toContain(
+      'por seguridad se necesita el código para confirmar que la cuenta es de la persona',
+    );
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
     expect(extractorBundle.instructions).toContain(

@@ -131,35 +131,27 @@ describe('WhatsAppMessageRenderer', () => {
   });
 
   describe('welcome messages', () => {
-    it('renders greeting, ask, capabilities, and bulleted fields with capitals and periods', () => {
+    it('renders a brief greeting, scope, and open question without lists', () => {
       const message: StructuredMessage = {
         type: 'welcome',
-        greeting_es: '¡Hola! Soy tu asistente.',
-        ask_es: '¿Qué tipo de evento quieres planificar?',
-        capability_lines_es: [
-          'armar un plan con proveedores',
-          'consultar eventos asociados a tu cuenta',
-        ],
-        requested_fields_es: [
-          'tipo de evento',
-          'ubicación',
-          'invitados aproximados',
-        ],
+        greeting_es: '¡Hola! Soy el asistente de Sin Envolturas.',
+        scope_es:
+          'Puedo ayudarte con tu evento o responder una consulta sobre Sin Envolturas.',
+        ask_es: '¿Qué necesitas hoy?',
       };
 
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toBe(
-        '¡Hola! Soy tu asistente.\n\n¿Qué tipo de evento quieres planificar?\n\n- Armar un plan con proveedores.\n- Consultar eventos asociados a tu cuenta.\n\n- Tipo de evento.\n- Ubicación.\n- Invitados aproximados.',
+        '¡Hola! Soy el asistente de Sin Envolturas.\n\nPuedo ayudarte con tu evento o responder una consulta sobre Sin Envolturas.\n\n¿Qué necesitas hoy?',
       );
     });
 
-    it('renders greeting and ask without fields', () => {
+    it('omits an absent optional scope', () => {
       const message: StructuredMessage = {
         type: 'welcome',
         greeting_es: '¡Hola!',
         ask_es: '¿En qué te ayudo?',
-        capability_lines_es: [],
       };
 
       const result = renderer.render({ message, providerResults: [] });

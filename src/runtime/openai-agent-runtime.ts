@@ -248,17 +248,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const structured = parseSchema.parse(
       this.normalizeSpanishVocabulary(this.normalizeSupportEmails(finalOutput)),
     );
-    const response =
-      structured.type === 'welcome'
-        ? {
-            ...structured,
-            capability_lines_es: this.resolveEnabledCapabilityLines(),
-          }
-        : structured;
-
     return {
       text: '',
-      structuredMessage: response,
+      structuredMessage: structured,
       tokenUsage: this.extractTokenUsage(runResult),
       recommendationFunnel,
     };

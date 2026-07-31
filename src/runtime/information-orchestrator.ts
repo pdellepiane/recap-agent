@@ -1,9 +1,11 @@
-import type {
-  InformationExecutionSummary,
-  InformationTaskResult,
-  PendingInformationRequest,
-  PurchaseInformation,
-  SensitivePurchaseField,
+import {
+  createInformationAuthGuidance,
+  type InformationAuthGuidance,
+  type InformationExecutionSummary,
+  type InformationTaskResult,
+  type PendingInformationRequest,
+  type PurchaseInformation,
+  type SensitivePurchaseField,
 } from '../core/information';
 import type {
   AgentConversationGateway,
@@ -24,7 +26,7 @@ export type InformationAuthentication = {
 
 export type InformationAuthBlock = {
   nextInput: 'email' | 'otp';
-  message: string;
+  guidance: InformationAuthGuidance;
 };
 
 export type InformationExecution = {
@@ -141,9 +143,9 @@ export class InformationOrchestrator {
         kind: request.kind,
         status: 'needs_input',
         nextInput: authBlock?.nextInput ?? 'email',
-        message:
-          authBlock?.message ??
-          'Necesito validar tu correo antes de consultar información personal.',
+        guidance:
+          authBlock?.guidance ??
+          createInformationAuthGuidance('email_required', null),
       };
     }
 

@@ -34,8 +34,8 @@ export const structuredMessageSchema = z.object({
     'generic',
   ]),
   greeting_es: z.string().optional(),
+  scope_es: z.string().optional(),
   ask_es: z.string().optional(),
-  capability_lines_es: z.array(z.string()).optional(),
   requested_fields_es: z.array(z.string()).optional(),
   intro_es: z.string().optional(),
   providers: z.array(providerRecommendationSchema).optional(),
@@ -55,10 +55,9 @@ export type MessageType = StructuredMessage['type'];
 
 export const welcomeMessageSchema = z.object({
   type: z.literal('welcome'),
-  greeting_es: z.string(),
-  ask_es: z.string(),
-  capability_lines_es: z.array(z.string()).min(1),
-  requested_fields_es: z.array(z.string()),
+  greeting_es: z.string().min(1).max(90),
+  scope_es: z.string().min(1).max(140),
+  ask_es: z.string().min(1).max(80),
 });
 
 export const recommendationMessageSchema = z.object({

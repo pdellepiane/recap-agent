@@ -72,7 +72,22 @@ the response gives one next step for the FAQ portion.
 
 ## Synchronization
 
-The existing knowledge scripts remain responsible for corpus preparation:
+The public help-center corpus can be scraped and replaced locally with:
+
+```bash
+npm run sync:faq-kb
+```
+
+The replacement is fail-closed: every discovered article must scrape with a
+non-empty title and body, exact duplicate bodies are rejected, existing local
+Markdown files are cleared only after a successful scrape, and each run gets a
+unique batch ID. The new batch is indexed before old FAQ associations are
+removed. Cleanup is paginated and source-scoped, so it replaces only
+`recap-agent-knowledge-sync` files and preserves supplemental customer-service
+documents in the same vector store. A bounded post-cleanup audit requires the
+expected file count, zero stale files, and zero duplicate slugs.
+
+Supplemental customer-service documents use their own source-scoped workflow:
 
 ```bash
 npm run generate:faq-atc-kb

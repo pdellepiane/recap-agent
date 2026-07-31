@@ -193,6 +193,72 @@ export type PurchaseInformation = {
   isThanked?: boolean | null;
 };
 
+export const informationAuthReasonValues = [
+  'email_required',
+  'email_change_required',
+  'otp_sent',
+  'otp_resent',
+  'otp_pending',
+  'otp_not_received',
+  'email_not_found',
+  'otp_send_failed',
+  'otp_invalid',
+] as const;
+
+export const informationAuthRequirementValues = [
+  'explain_account_information_access',
+  'explain_account_ownership_security',
+  'show_destination_email',
+  'wait_up_to_one_minute',
+  'check_main_inbox',
+  'check_junk_mail',
+  'offer_code_resend',
+  'offer_email_change',
+] as const;
+
+export type InformationAuthReason =
+  (typeof informationAuthReasonValues)[number];
+
+export type InformationAuthGuidance = {
+  reason: InformationAuthReason;
+  email: string | null;
+  requirements: (typeof informationAuthRequirementValues)[number][];
+};
+
+export function createInformationAuthGuidance(
+  reason: InformationAuthReason,
+  email: string | null,
+): InformationAuthGuidance {
+  const requirements: InformationAuthGuidance['requirements'] = [];
+
+  if (reason === 'email_required' || reason === 'email_change_required') {
+    requirements.push('explain_account_information_access');
+  }
+  if (reason === 'otp_not_received') {
+    requirements.push('explain_account_ownership_security');
+  }
+  if (email) {
+    requirements.push('show_destination_email');
+  }
+  if (
+    reason === 'otp_sent' ||
+    reason === 'otp_resent' ||
+    reason === 'otp_pending' ||
+    reason === 'otp_not_received'
+  ) {
+    requirements.push(
+      'wait_up_to_one_minute',
+      'check_main_inbox',
+      'check_junk_mail',
+    );
+  }
+  if (reason === 'otp_not_received') {
+    requirements.push('offer_code_resend', 'offer_email_change');
+  }
+
+  return { reason, email, requirements };
+}
+
 export type InformationTaskResult =
   | {
       requestId: string;
@@ -218,8 +284,8 @@ export type InformationTaskResult =
       requestId: string;
       kind: 'associated_event' | 'purchase';
       status: 'needs_input';
-      nextInput: 'email' | 'otp' | 'order_selection';
-      message: string;
+      nextInput: 'email' | 'otp';
+      guidance: InformationAuthGuidance;
     }
   | {
       requestId: string;

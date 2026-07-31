@@ -54,24 +54,12 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
       parts.push(message.greeting_es);
     }
 
+    if (message.scope_es) {
+      parts.push(message.scope_es);
+    }
+
     if (message.ask_es) {
       parts.push(message.ask_es);
-    }
-
-    const capabilityLines = message.capability_lines_es ?? [];
-    if (capabilityLines.length > 0) {
-      const bullets = capabilityLines
-        .map((line) => this.renderBullet(this.capitalize(line)))
-        .join('\n');
-      parts.push(bullets);
-    }
-
-    const fields = message.requested_fields_es ?? [];
-    if (fields.length > 0) {
-      const bullets = fields
-        .map((field) => this.renderBullet(this.capitalize(field)))
-        .join('\n');
-      parts.push(bullets);
     }
 
     return parts.filter(Boolean).join('\n\n');

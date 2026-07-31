@@ -2,9 +2,10 @@ import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
-import type {
-  ExtractedInformationRequest,
-  PurchaseInformation,
+import {
+  createInformationAuthGuidance,
+  type ExtractedInformationRequest,
+  type PurchaseInformation,
 } from '../src/core/information';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import {
@@ -78,11 +79,8 @@ describe('AgentService first-class information flow', () => {
       (result) => result.kind === 'purchase' && result.status === 'needs_input',
     );
     expect(
-      purchaseBlock?.status === 'needs_input' ? purchaseBlock.message : null,
-    ).toContain('Por seguridad');
-    expect(
-      purchaseBlock?.status === 'needs_input' ? purchaseBlock.message : null,
-    ).toContain('¿Cuál es el correo');
+      purchaseBlock?.status === 'needs_input' ? purchaseBlock.guidance : null,
+    ).toEqual(createInformationAuthGuidance('email_required', null));
     expect(response.plan.information_state.pending_requests).toHaveLength(1);
     expect(response.plan.information_state.pending_requests[0]?.kind).toBe(
       'purchase',
@@ -140,8 +138,8 @@ describe('AgentService first-class information flow', () => {
       }),
     );
     expect(
-      purchaseBlock?.status === 'needs_input' ? purchaseBlock.message : null,
-    ).toContain('¿Cuál es el correo');
+      purchaseBlock?.status === 'needs_input' ? purchaseBlock.guidance : null,
+    ).toEqual(createInformationAuthGuidance('email_required', null));
     expect(response.plan.information_state.pending_requests).toEqual([
       expect.objectContaining({
         kind: 'purchase',
@@ -151,9 +149,6 @@ describe('AgentService first-class information flow', () => {
     ]);
     expect(response.trace.extraction_summary.ambiguity_status).toBe('clear');
     expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
-    expect(response.outbound.text).toContain('Por seguridad');
-    expect(response.outbound.text).toContain('¿Cuál es el correo');
-    expect(response.outbound.text).not.toContain('pedidos recientes');
   });
 
   it('asks briefly for account verification when the user already supplied an order number', async () => {
@@ -167,7 +162,7 @@ describe('AgentService first-class information flow', () => {
       providerGateway: providerGateway(),
     });
 
-    const response = await service.handleTurn({
+    await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'specific-order-without-email',
       text: 'Revisa mi pedido ORD-000880.',
@@ -175,10 +170,14 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.outbound.text).toContain('Por seguridad');
-    expect(response.outbound.text).toContain('¿Cuál es el correo');
-    expect(response.outbound.text).not.toContain('pedido que compartiste');
-    expect(response.outbound.text).not.toContain('pedidos recientes');
+    const authBlock = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) => result.kind === 'purchase' && result.status === 'needs_input',
+      );
+    expect(
+      authBlock?.status === 'needs_input' ? authBlock.guidance : null,
+    ).toEqual(createInformationAuthGuidance('email_required', null));
   });
 
   it('uses one OTP to resume associated-event and purchase requests together', async () => {
@@ -223,8 +222,13 @@ describe('AgentService first-class information flow', () => {
           result.kind === 'purchase' && result.status === 'needs_input',
       );
     expect(
-      otpBlock?.status === 'needs_input' ? otpBlock.message : null,
-    ).toContain('leonardocandio22@gmail.com');
+      otpBlock?.status === 'needs_input' ? otpBlock.guidance : null,
+    ).toEqual(
+      createInformationAuthGuidance(
+        'otp_sent',
+        'leonardocandio22@gmail.com',
+      ),
+    );
 
     const second = await service.handleTurn({
       channel: 'terminal_whatsapp',
@@ -276,7 +280,7 @@ describe('AgentService first-class information flow', () => {
       messageId: 'missing-code-1',
       receivedAt: new Date().toISOString(),
     });
-    const missing = await service.handleTurn({
+    await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'missing-code-user',
       text: 'No ha llegado nada',
@@ -285,13 +289,21 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(provider.requestCodeCalls).toBe(1);
-    expect(missing.outbound.text).toContain('Por seguridad');
-    expect(missing.outbound.text).toContain('sandra.lopez.aguilar@gmail.com');
-    expect(missing.outbound.text).toContain('correo no deseado');
-    expect(missing.outbound.text).toContain('puedo enviarte otro código');
-    expect(missing.outbound.text).toContain('correo correcto');
+    const missingBlock = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) => result.kind === 'purchase' && result.status === 'needs_input',
+      );
+    expect(
+      missingBlock?.status === 'needs_input' ? missingBlock.guidance : null,
+    ).toEqual(
+      createInformationAuthGuidance(
+        'otp_not_received',
+        'sandra.lopez.aguilar@gmail.com',
+      ),
+    );
 
-    const resent = await service.handleTurn({
+    await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'missing-code-user',
       text: 'Sí, envíame otro',
@@ -300,8 +312,18 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(provider.requestCodeCalls).toBe(2);
-    expect(resent.outbound.text).toBe(
-      'Listo, envié un nuevo código a sandra.lopez.aguilar@gmail.com. Escríbelo aquí para continuar',
+    const resentBlock = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) => result.kind === 'purchase' && result.status === 'needs_input',
+      );
+    expect(
+      resentBlock?.status === 'needs_input' ? resentBlock.guidance : null,
+    ).toEqual(
+      createInformationAuthGuidance(
+        'otp_resent',
+        'sandra.lopez.aguilar@gmail.com',
+      ),
     );
   });
 
@@ -335,7 +357,7 @@ describe('AgentService first-class information flow', () => {
       messageId: 'change-email-1',
       receivedAt: new Date().toISOString(),
     });
-    const changed = await service.handleTurn({
+    await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'change-email-user',
       text: 'Me registré con correct@example.com',
@@ -344,9 +366,14 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(provider.requestCodeCalls).toBe(2);
-    expect(changed.plan.user_auth.email).toBe('correct@example.com');
-    expect(changed.outbound.text).toContain('correct@example.com');
-    expect(changed.outbound.text).not.toContain('old@example.com');
+    const changedBlock = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) => result.kind === 'purchase' && result.status === 'needs_input',
+      );
+    expect(
+      changedBlock?.status === 'needs_input' ? changedBlock.guidance : null,
+    ).toEqual(createInformationAuthGuidance('otp_sent', 'correct@example.com'));
   });
 
   it('persists information requests and executes neither side when a turn also asks for an exclusive action', async () => {

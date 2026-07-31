@@ -1,8 +1,12 @@
+import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
 import { TawkHelpScraper } from '../src/knowledge-sync/scraper';
 import { formatArticleToMarkdown } from '../src/knowledge-sync/formatter';
 import { OpenAiKnowledgeUploader } from '../src/knowledge-sync/openai-uploader';
+import { createKnowledgeBatchId } from '../src/knowledge-sync/sync';
+
+const scrapedFaqSource = 'recap-agent-knowledge-sync';
 
 async function main() {
   const baseUrl = process.env.KB_BASE_URL ?? 'https://sinenvolturas.tawk.help';
@@ -20,6 +24,11 @@ async function main() {
   console.log(`Scraped ${articles.length} articles`);
 
   fs.mkdirSync(outputDir, { recursive: true });
+  for (const existingFile of fs.readdirSync(outputDir)) {
+    if (existingFile.endsWith('.md')) {
+      fs.rmSync(path.join(outputDir, existingFile));
+    }
+  }
 
   const formattedArticles: Array<{ filePath: string; slug: string; category: string; articleType: string }> = [];
 
@@ -43,7 +52,7 @@ async function main() {
       process.exit(1);
     }
 
-    const batchId = `local-${new Date().toISOString().split('T')[0].replace(/-/g, '')}`;
+    const batchId = createKnowledgeBatchId('local');
 
     const uploader = new OpenAiKnowledgeUploader({
       baseUrl,
@@ -51,12 +60,33 @@ async function main() {
       openAiApiKey,
       vectorStoreName,
       vectorStoreId,
+      uploadAttributes: {
+        source: scrapedFaqSource,
+        source_kind: 'help_center_article',
+      },
+      cleanupScopeSource: scrapedFaqSource,
     });
 
     const result = await uploader.uploadBatch(formattedArticles, batchId);
     await uploader.cleanupOldBatches(result.vectorStoreId, batchId);
+    const audit = await uploader.waitForCleanCurrentBatch({
+      vectorStoreId: result.vectorStoreId,
+      currentBatchId: batchId,
+      expectedFileCount: formattedArticles.length,
+    });
+    if (
+      audit.currentBatchFileCount !== formattedArticles.length ||
+      audit.staleSourceFileCount !== 0 ||
+      audit.duplicateCurrentSlugs.length > 0
+    ) {
+      throw new Error(
+        `FAQ overwrite audit failed: ${audit.currentBatchFileCount}/${formattedArticles.length} current files, ` +
+        `${audit.staleSourceFileCount} stale files, ` +
+        `${audit.duplicateCurrentSlugs.length} duplicate slugs.`,
+      );
+    }
 
-    console.log('Upload complete:', result);
+    console.log('Upload complete:', { ...result, audit });
   }
 }
 

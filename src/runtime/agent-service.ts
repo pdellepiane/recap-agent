@@ -12,12 +12,13 @@ import type {
   NormalizedInboundMessage,
   NormalizedOutboundMessage,
 } from '../core/messages';
-import type {
-  ExtractedInformationRequest,
-  InformationExecutionSummary,
-  InformationSelectionCandidate,
-  InformationTaskResult,
-  PendingInformationRequest,
+import {
+  createInformationAuthGuidance,
+  type ExtractedInformationRequest,
+  type InformationExecutionSummary,
+  type InformationSelectionCandidate,
+  type InformationTaskResult,
+  type PendingInformationRequest,
 } from '../core/information';
 import {
   createEmptyPlan,
@@ -1690,10 +1691,7 @@ export class AgentService {
       args.extraction,
       composedReply,
     );
-    const reply = this.enforceInformationNextInputReply(
-      informationResults,
-      ambiguitySafeReply,
-    );
+    const reply = ambiguitySafeReply;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
       args.tokenUsage.classifier,
@@ -1858,8 +1856,10 @@ export class AgentService {
         authentication: null,
         authBlock: {
           nextInput: 'email',
-          message:
-            'Claro, podemos cambiarlo. ¿Cuál es el correo con el que te registraste en Sin Envolturas?',
+          guidance: createInformationAuthGuidance(
+            'email_change_required',
+            null,
+          ),
         },
       };
     }
@@ -1870,8 +1870,7 @@ export class AgentService {
         authentication: null,
         authBlock: {
           nextInput: 'email',
-          message:
-            'Claro, te ayudo a revisarlo. Por seguridad, primero necesito verificar tu cuenta. ¿Cuál es el correo con el que te registraste en Sin Envolturas? Te enviaré un código',
+          guidance: createInformationAuthGuidance('email_required', null),
         },
       };
     }
@@ -1912,7 +1911,12 @@ export class AgentService {
         authentication: null,
         authBlock: {
           nextInput: 'otp',
-          message: this.otpNotReceivedMessage(email),
+          guidance: createInformationAuthGuidance(
+            purchaseAuthAction === 'report_otp_not_received'
+              ? 'otp_not_received'
+              : 'otp_pending',
+            email,
+          ),
         },
       };
     }
@@ -1967,9 +1971,10 @@ export class AgentService {
         }),
         authBlock: {
           nextInput: 'otp',
-          message: isResend
-            ? `Listo, envié un nuevo código a ${email}. Escríbelo aquí para continuar`
-            : `Te envié un código a ${email}. Escríbelo aquí para verificar tu cuenta y continuar`,
+          guidance: createInformationAuthGuidance(
+            isResend ? 'otp_resent' : 'otp_sent',
+            email,
+          ),
         },
       };
     }
@@ -1989,7 +1994,7 @@ export class AgentService {
         }),
         authBlock: {
           nextInput: 'email',
-          message: `No encontré una cuenta registrada con ${email}. Revisa el correo y escríbeme el que usaste para registrarte en Sin Envolturas`,
+          guidance: createInformationAuthGuidance('email_not_found', email),
         },
       };
     }
@@ -2007,8 +2012,7 @@ export class AgentService {
       }),
       authBlock: {
         nextInput: 'email',
-        message:
-          'No pude enviar el código en este momento. Espera unos minutos y vuelve a intentarlo.',
+        guidance: createInformationAuthGuidance('otp_send_failed', email),
       },
     };
   }
@@ -2050,8 +2054,7 @@ export class AgentService {
         authentication: null,
         authBlock: {
           nextInput: 'otp',
-          message:
-            'No pude validar ese código. Cópialo completo desde el correo, sin espacios adicionales.',
+          guidance: createInformationAuthGuidance('otp_invalid', email),
         },
       };
     }
@@ -2284,38 +2287,6 @@ export class AgentService {
     };
   }
 
-  private enforceInformationNextInputReply(
-    results: InformationTaskResult[],
-    reply: ComposeReplyResult,
-  ): ComposeReplyResult {
-    if (
-      results.length === 0 ||
-      !results.every((result) => result.status === 'needs_input')
-    ) {
-      return reply;
-    }
-
-    const messages = Array.from(
-      new Set(
-        results
-          .map((result) =>
-            result.status === 'needs_input' ? result.message.trim() : '',
-          )
-          .filter((message) => message.length > 0),
-      ),
-    );
-    if (messages.length !== 1) {
-      return reply;
-    }
-
-    return {
-      ...reply,
-      text: messages[0] ?? reply.text,
-      structuredMessage: undefined,
-      recommendationFunnel: undefined,
-    };
-  }
-
   private resolveUserAuthEmail(plan: PlanSnapshot, userMessage: string): string | null {
     const contactEmail = this.normalizeUserEmailSpacing(plan.contact_email);
     const messageEmail = this.extractEmailFromText(userMessage);
@@ -2329,13 +2300,11 @@ export class AgentService {
     );
   }
 
-  private otpNotReceivedMessage(email: string): string {
-    return `Entiendo. Por seguridad necesitamos el código para confirmar que la cuenta es tuya. Lo enviamos a ${email}. Revisa promociones y correo no deseado, y confirma que sea el correo con el que te registraste en Sin Envolturas. Si está correcto, puedo enviarte otro código; si no, escríbeme el correo correcto`;
-  }
-
   private extractEmailFromText(text: string): string | null {
     const normalized = this.normalizeUserEmailSpacing(text);
-    return normalized?.match(/[^\s@]+@[^\s@]+\.[^\s@]{2,}/iu)?.[0] ?? null;
+    return normalized?.match(
+      /[A-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[A-Z0-9-]+(?:\.[A-Z0-9-]+)+/iu,
+    )?.[0] ?? null;
   }
 
   private normalizeUserEmailSpacing(value: string | null): string | null {

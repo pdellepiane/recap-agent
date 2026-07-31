@@ -1,8 +1,9 @@
 import { describe, expect, it, vi } from 'vitest';
 
-import type {
-  PendingInformationRequest,
-  PurchaseInformation,
+import {
+  createInformationAuthGuidance,
+  type PendingInformationRequest,
+  type PurchaseInformation,
 } from '../src/core/information';
 import {
   type AgentConversationGateway,
@@ -253,7 +254,7 @@ describe('InformationOrchestrator', () => {
       authentication: null,
       authBlock: {
         nextInput: 'email',
-        message: 'Necesito tu correo.',
+        guidance: createInformationAuthGuidance('email_required', null),
       },
     });
 
