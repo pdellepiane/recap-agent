@@ -26,15 +26,10 @@ function recommendationTurn(args: {
         fit_score: 90,
       }],
       next_node: 'recomendar',
-      faq_resolution_summary: {
-        is_faq_turn: false,
-        kb_query_present: false,
-        file_search_called: false,
-        file_search_output_count: 0,
-      },
+      information_execution_summary: [],
       close_action_summary: { type: null, category: null, reason_preview: null },
     },
-  } as EvalTurnResult;
+  } as unknown as EvalTurnResult;
 }
 
 describe('deterministic grounding assessment', () => {
@@ -58,5 +53,36 @@ describe('deterministic grounding assessment', () => {
     }));
     expect(mismatch.grounded).toBe(false);
     expect(mismatch.attributeMismatches).toBe(1);
+  });
+
+  it('grounds FAQ turns only when knowledge retrieval completed with evidence', () => {
+    const turn = {
+      trace: {
+        provider_results: [],
+        provider_candidate_audit: [],
+        next_node: 'resolver_consultas_informativas',
+        information_execution_summary: [
+          {
+            requestId: 'information-1',
+            kind: 'faq',
+            status: 'completed',
+            source: 'knowledge_base',
+            resultCount: 2,
+            durationMs: 20,
+          },
+        ],
+        close_action_summary: {
+          type: null,
+          category: null,
+          reason_preview: null,
+        },
+      },
+    } as unknown as EvalTurnResult;
+
+    expect(assessGrounding(turn)).toMatchObject({
+      turnClass: 'factual_faq',
+      groundingRequired: true,
+      grounded: true,
+    });
   });
 });

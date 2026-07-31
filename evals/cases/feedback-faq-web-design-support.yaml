@@ -9,7 +9,10 @@ inputs:
 fixtures:
   offline:
     extractionsByTurn:
-      - intent: consultar_faq
+      - actionIntent: null
+        informationRequests:
+          - kind: faq
+            query: diseño web soporte contacto Sin Envolturas
         intentConfidence: 0.95
         eventType: null
         vendorCategory: null
@@ -24,13 +27,12 @@ fixtures:
         conversationSummary: Pregunta fuera de alcance sobre diseño web y contacto de soporte.
         selectedProviderHints: []
         pauseRequested: false
-        kbQuery: diseño web soporte contacto Sin Envolturas
     repliesByTurn:
       - No diseño ni construyo webs externas. Para soporte de Sin Envolturas, puedes escribir por el chat o a hola@sinenvolturas.com.
 expectations:
   - id: faq-node
     type: node_transition
-    to: consultar_faq
+    to: resolver_consultas_informativas
   - id: no-provider-search
     type: tool_usage
     mustNotCall:
@@ -40,4 +42,3 @@ expectations:
     type: text_contains
     allOf: [web]
     anyOf: [hola@sinenvolturas.com, chat]
-

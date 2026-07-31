@@ -11,6 +11,8 @@ Serverless conversational agent runtime for Sin Envolturas.
   - one structured extractor agent.
 - Spanish prompt files under `prompts/`, mapped to exact flow nodes.
 - Real Sin Envolturas provider gateway for read-side operations.
+- First-class multi-capability information engine for FAQ, authenticated events,
+  orders, and gift-purchase details.
 - Lambda handler plus a local terminal client that hits the live Lambda Function URL.
 - CloudFormation stack for Lambda + DynamoDB + Function URL.
 
@@ -26,6 +28,7 @@ Serverless conversational agent runtime for Sin Envolturas.
 - `docs/implementation-log.md`: change log with reasons and decisions
 - `docs/evaluation-framework.md`: authoring and operating guide for the eval harness
 - `docs/channel-integration.md`: channel-agnostic contract and new-channel implementation guide
+- `docs/information-flow.md`: typed FAQ, event, order, and gift information architecture
 
 ## Local checks
 
@@ -204,10 +207,15 @@ PLANS_TABLE_NAME=recap-agent-runtime-plans
 PROMPTS_DIR=/var/task/prompts
 SINENVOLTURAS_BASE_URL=https://api.sinenvolturas.com/api-web/vendor
 SINENVOLTURAS_GUEST_SERVICE_BASE_URL=https://api.sinenvolturas.com/api/guest-service
-SINENVOLTURAS_GUEST_AUTH_BASE_URL=https://api.sinenvolturas.com/api-web/user
+SINENVOLTURAS_USER_AUTH_BASE_URL=https://api.sinenvolturas.com/api-web/user
 AGENT_API_BASE_URL=https://api.sinenvolturas.com/api/agent
 AGENT_MESSAGE_LOGGING_ENABLED=false
 SE_API_SECRET_ID=arn:aws:secretsmanager:us-east-1:...:secret:recap-agent/se-api-key-...
+KB_ENABLED=true
+KB_VECTOR_STORE_ID=vs_...
+KB_MAX_RESULTS=6
+KB_SCORE_THRESHOLD=0
+AGENT_FEATURE_PURCHASE_INFORMATION=true
 DEFAULT_INBOUND_CHANNEL=terminal_whatsapp
 PROVIDER_SEARCH_LIMIT=15
 SEARCH_SUMMARY_WORD_LIMIT=5
@@ -238,7 +246,7 @@ and the resulting participation and plan state when available. This makes an
 unauthenticated resume attempt distinguishable from a message or takeover
 attempt without logging bearer tokens, phone numbers, user ids, or request ids.
 
-The native SDK response classifier reads the five latest messages from the Agent API before the normal agent flow. That external history is populated outside Lambda; `AGENT_MESSAGE_LOGGING_ENABLED=false` remains the expected deployment default. In `enforce` mode, clear contextual acknowledgements and reactions, plus corporate automated or templated responses classified with explicit high confidence, emit `message: null` with an explicit suppress delivery action. High-confidence automation can be suppressed from the inbound message itself even when no prior outbound message is available; acknowledgement and reaction suppression still requires prior outbound context. A failed Agent API history read skips the classifier and fails open to the normal response flow. Classifier failures and ambiguous turns also fail open. No automation status is persisted, so every later inbound turn reads fresh history and is classified again.
+The native SDK response classifier reads the five latest messages from the Agent API before the normal agent flow. That external history is populated outside Lambda; `AGENT_MESSAGE_LOGGING_ENABLED=false` remains the expected deployment default. In `enforce` mode, clearly non-actionable acknowledgements and emoji-only reactions, plus corporate automated or templated responses classified with explicit high confidence, emit `message: null` with an explicit suppress delivery action. Those non-actionable messages can be suppressed even when campaign history is absent, while questions, corrections, selections, requests, and plan-relevant facts still require a response. A failed Agent API history read skips the classifier and fails open to the normal response flow. Classifier failures and ambiguous turns also fail open. No automation status is persisted, so every later inbound turn reads fresh history and is classified again.
 
 The same low-cost classifier call also monitors conversation health. One explicit-frustration assessment or two consecutive non-progress assessments triggers a single optional human-help offer. The offer does not request takeover by itself: structured acceptance uses the existing Agent API escalation workflow, while a decline resumes the automated flow. After takeover, the automated agent stays paused until an authenticated request reaches `POST /conversations/resume`; there is no time-based cooldown. The terminal panel displays the health status, reason, and help-offer response for demos.
 

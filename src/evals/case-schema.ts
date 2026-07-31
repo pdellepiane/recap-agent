@@ -2,7 +2,7 @@ import { z } from 'zod';
 
 import { decisionNodeSchema } from '../core/decision-nodes';
 import { eventTypeSchema } from '../core/event-type';
-import { planIntentValues, planSchema } from '../core/plan';
+import { actionIntentValues, planSchema } from '../core/plan';
 import type { PlanSnapshot } from '../core/plan';
 import { providerSummarySchema } from '../core/provider';
 import { providerCategorySchema } from '../core/provider-category';
@@ -14,6 +14,7 @@ import {
   providerReferenceSchema,
 } from '../runtime/extraction-schemas';
 import { closeActionSchema } from '../runtime/close-flow-schemas';
+import { extractedInformationRequestSchema } from '../core/information';
 
 const jsonValueSchema: z.ZodType<unknown> = z.lazy(() =>
   z.union([
@@ -38,8 +39,8 @@ const providerDetailSchema = providerSummarySchema.extend({
 });
 
 const extractionResultSchema = z.object({
-  intent: z.enum(planIntentValues).nullable(),
-  secondaryIntents: z.array(z.enum(planIntentValues)).default([]),
+  actionIntent: z.enum(actionIntentValues).nullable(),
+  informationRequests: z.array(extractedInformationRequestSchema).default([]),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: eventTypeSchema.nullable(),
   vendorCategory: providerCategorySchema.nullable(),
@@ -55,7 +56,6 @@ const extractionResultSchema = z.object({
   selectedProviderHints: z.array(z.string()).default([]),
   selectedProviderReferences: z.array(providerReferenceSchema).default([]),
   closeAction: closeActionSchema.nullable().default(null),
-  kbQuery: z.string().nullable().default(null),
   pauseRequested: z.boolean(),
   contactName: z.string().nullable().default(null),
   contactEmail: z.string().nullable().default(null),
@@ -146,17 +146,14 @@ const turnTraceSchema = z.object({
     retrieval_score: z.number().nullable(),
     fit_score: z.number().nullable(),
   })).default([]),
-  faq_resolution_summary: z.object({
-    is_faq_turn: z.boolean(),
-    kb_query_present: z.boolean(),
-    file_search_called: z.boolean(),
-    file_search_output_count: z.number().int().nonnegative(),
-  }).default({
-    is_faq_turn: false,
-    kb_query_present: false,
-    file_search_called: false,
-    file_search_output_count: 0,
-  }),
+  information_execution_summary: z.array(z.object({
+    requestId: z.string(),
+    kind: z.enum(['faq', 'associated_event', 'purchase']),
+    status: z.enum(['completed', 'needs_input', 'failed']),
+    source: z.enum(['knowledge_base', 'associated_event_api', 'agent_api']),
+    resultCount: z.number().int().nonnegative(),
+    durationMs: z.number().nonnegative(),
+  })).default([]),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),
     context_candidates: z.number().int().nonnegative(),

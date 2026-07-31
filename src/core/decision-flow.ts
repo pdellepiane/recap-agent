@@ -17,16 +17,11 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
     return 'entrevista';
   }
 
-  if (plan.current_node === 'consultar_evento_invitado') {
-    return 'consultar_evento_invitado';
-  }
-
-  if (plan.current_node === 'consultar_faq') {
-    // Returning from KB mode: resume planning where it makes sense.
-    if (plan.intent && plan.event_type) {
-      return 'entrevista';
+  if (plan.current_node === 'resolver_consultas_informativas') {
+    if (plan.information_state.pending_requests.length > 0) {
+      return 'resolver_consultas_informativas';
     }
-    return 'deteccion_intencion';
+    return plan.information_state.resume_node ?? 'deteccion_intencion';
   }
 
   const activeNeed = getActiveNeed(plan);

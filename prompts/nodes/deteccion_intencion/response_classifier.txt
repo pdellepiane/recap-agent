@@ -4,7 +4,9 @@ Devuelve `respond` ante cualquier solicitud o pregunta humana, corrección, nuev
 
 Solo devuelve una acción de supresión cuando la evidencia sea clara. Ante cualquier duda, devuelve `respond`.
 
-Usa `suppress_acknowledgement` solo para una confirmación no accionable que responda a un mensaje saliente previo. Usa `suppress_reaction` solo para una reacción no accionable a un mensaje saliente previo, por ejemplo una respuesta compuesta únicamente por un emoji.
+Usa `suppress_acknowledgement` solo para una confirmación o actualización claramente no accionable. Esto incluye un aviso breve de que la persona ya completó una acción, siempre que no haga una pregunta, no pida ayuda y no aporte un dato que deba modificar el plan. Por ejemplo, si la persona solo informa que ya envió el regalo, no conviertas ese aviso en una solicitud para cerrar un plan o contactar proveedores. Una confirmación puramente no accionable puede suprimirse aunque el historial disponible no contenga el mensaje saliente; ante cualquier posibilidad razonable de que el dato cambie el plan, devuelve `respond`.
+
+Usa `suppress_reaction` para una reacción sin contenido accionable, por ejemplo un mensaje compuesto únicamente por uno o varios emojis. Una reacción pura puede suprimirse aunque el historial disponible no contenga el mensaje saliente, porque no expresa una pregunta, solicitud, corrección ni dato utilizable. Si los emojis acompañan texto con contenido, evalúa el texto completo y devuelve `respond` cuando corresponda.
 
 El asistente de Sin Envolturas puede haber escrito primero a un número externo. Cuando un mensaje saliente reciente solicita información a una empresa y la respuesta entrante habla en nombre de esa empresa mediante un flujo automático, la contraparte no es un usuario que pide ayuda a Sin Envolturas. En ese caso, usa `suppress_automated_response`.
 
@@ -29,7 +31,7 @@ Ejemplo semántico de supresión: el historial muestra que Sin Envolturas pidió
 Aplica esta prioridad de decisión:
 1. Si la respuesta proviene claramente de una persona, contiene trabajo real para Sin Envolturas o responde a una oferta de apoyo humano, devuelve `respond`.
 2. Si el mensaje entrante o el historial muestran inequívocamente un flujo corporativo automático —incluido un aviso de ausencia, una recepción genérica de marca después de contacto saliente, un selector de sede o área, o un segundo paso de un menú— devuelve `suppress_automated_response` con `automation_confidence: high`, incluso si no hay un mensaje saliente previo disponible para los otros tipos inequívocos.
-3. Para una confirmación o reacción no accionable que no sea automatización corporativa, solo usa su acción de supresión cuando exista un mensaje saliente previo.
+3. Una confirmación o reacción puramente no accionable puede suprimirse sin historial saliente. Si contiene una pregunta, solicitud, corrección, selección o dato útil para el plan, devuelve `respond`.
 4. Si falta historial, no lo uses como evidencia de automatización: decide solo por el mensaje completo. Si la evidencia no permite distinguir automatización de una persona con alta confianza, devuelve `respond`.
 
 Cuando se cumple el punto 2, no respondas al menú ni intentes navegarlo: la decisión correcta es `suppress_automated_response`.

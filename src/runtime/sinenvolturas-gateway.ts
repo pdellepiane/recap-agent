@@ -15,8 +15,8 @@ import type {
   CategoryLocationProviderSearchInput,
   CreateProviderReviewInput,
   FavoriteRequestInput,
-  GuestLoginCodeRequestResult,
-  GuestLoginCodeVerificationResult,
+  UserLoginCodeRequestResult,
+  UserLoginCodeVerificationResult,
   KeywordProviderSearchInput,
   MarketplaceCategory,
   MarketplaceLocation,
@@ -115,7 +115,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     private readonly options: {
       baseUrl: string;
       guestServiceBaseUrl?: string;
-      guestAuthBaseUrl?: string;
+      userAuthBaseUrl?: string;
       persistedSearchLimit: number;
       summarySearchWordLimit: number;
       searchMode?: ProviderSearchMode;
@@ -505,8 +505,8 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return this.toUserEventLookupResult(input, response.data);
   }
 
-  async requestGuestLoginCode(email: string): Promise<GuestLoginCodeRequestResult> {
-    const response = await this.postGuestAuthJson<ApiEnvelope<Record<string, unknown>>>(
+  async requestUserLoginCode(email: string): Promise<UserLoginCodeRequestResult> {
+    const response = await this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>(
       '/request-login-code',
       { email },
       { throwOnHttpError: false },
@@ -515,7 +515,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     if (!response.ok) {
       return {
         status: response.status === 404 ? 'email_not_found' : 'failed',
-        error: this.authErrorMessage(response.body) ?? `Guest auth request failed with ${response.status}`,
+        error: this.authErrorMessage(response.body) ?? `User auth request failed with ${response.status}`,
       };
     }
 
@@ -530,11 +530,11 @@ export class SinEnvolturasGateway implements ProviderGateway {
     };
   }
 
-  async verifyGuestLoginCode(
+  async verifyUserLoginCode(
     email: string,
     code: string,
-  ): Promise<GuestLoginCodeVerificationResult> {
-    const response = await this.postGuestAuthJson<ApiEnvelope<Record<string, unknown>>>(
+  ): Promise<UserLoginCodeVerificationResult> {
+    const response = await this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>(
       '/login-code',
       { email, code },
       { throwOnHttpError: false },
@@ -549,7 +549,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
             : response.status === 401 || response.status === 422
               ? 'invalid_code'
               : 'failed',
-        error: authError ?? `Guest login failed with ${response.status}`,
+        error: authError ?? `User login failed with ${response.status}`,
       };
     }
 
@@ -559,7 +559,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return {
         status: 'authenticated',
         token,
-        tokenExpiresAt: this.defaultGuestTokenExpiry(),
+        tokenExpiresAt: this.defaultUserTokenExpiry(),
       };
     }
 
@@ -569,7 +569,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(args: {
+  async lookupAuthenticatedUserEvents(args: {
     token: string;
     email: string;
   }): Promise<UserEventLookupResult | null> {
@@ -956,12 +956,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return (await response.json()) as T;
   }
 
-  private async postGuestAuthJson<T>(
+  private async postUserAuthJson<T>(
     pathname: string,
     body: Record<string, unknown>,
     options?: { throwOnHttpError?: boolean },
   ): Promise<{ ok: boolean; status: number; body: T }> {
-    const baseUrl = this.options.guestAuthBaseUrl ?? 'https://api.sinenvolturas.com/api-web/user';
+    const baseUrl = this.options.userAuthBaseUrl ?? 'https://api.sinenvolturas.com/api-web/user';
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: 'POST',
       headers: {
@@ -972,7 +972,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const parsedBody = (await response.json().catch(() => ({}))) as T;
 
     if (!response.ok && options?.throwOnHttpError !== false) {
-      throw new Error(`Guest auth API request failed with ${response.status}`);
+      throw new Error(`User auth API request failed with ${response.status}`);
     }
 
     return {
@@ -1125,7 +1125,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     return null;
   }
 
-  private defaultGuestTokenExpiry(): string {
+  private defaultUserTokenExpiry(): string {
     return new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
   }
 

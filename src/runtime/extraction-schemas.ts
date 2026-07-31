@@ -1,11 +1,17 @@
 import { z } from 'zod';
 
 import { eventTypeSchema } from '../core/event-type';
-import { planIntentValues } from '../core/plan';
+import { actionIntentValues } from '../core/plan';
 import { providerCategorySchema } from '../core/provider-category';
 import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
 import { closeActionSchema } from './close-flow-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
+import {
+  purchaseAspectValues,
+  purchaseAuthActionValues,
+  purchaseResourceValues,
+  sensitivePurchaseFieldValues,
+} from '../core/information';
 
 export const providerReferenceSchema = z.object({
   providerId: z.number().int().positive().nullable(),
@@ -78,11 +84,32 @@ export const providerDetailRequestSchema = z.object({
 
 export type ProviderDetailRequest = z.infer<typeof providerDetailRequestSchema>;
 
+export const ambiguityEvidenceSchema = z.object({
+  status: z.enum(['clear', 'ambiguous']),
+  clarificationQuestion: z.string().nullable(),
+  interpretations: z.array(z.string()).max(3),
+});
+
+export const openAiInformationRequestSchema = z.object({
+  kind: z.enum(['faq', 'associated_event', 'purchase']),
+  query: z.string().min(1),
+  eventHint: z.string().nullable(),
+  resource: z.enum(purchaseResourceValues).nullable(),
+  orderId: z.string().nullable(),
+  aspects: z.array(z.enum(purchaseAspectValues)),
+  sensitiveFields: z.array(z.enum(sensitivePurchaseFieldValues)),
+  authAction: z.enum(purchaseAuthActionValues).nullable(),
+});
+
+export type OpenAiInformationRequest = z.infer<
+  typeof openAiInformationRequestSchema
+>;
+
 export const extractionSchema = z.object({
-  intent: z.enum(planIntentValues).nullable(),
-  secondaryIntents: z.array(z.enum(planIntentValues)).default([]),
-  kbQuery: z.string().nullable().default(null),
+  actionIntent: z.enum(actionIntentValues).nullable(),
+  informationRequests: z.array(openAiInformationRequestSchema).default([]),
   intentConfidence: z.number().min(0).max(1).nullable(),
+  ambiguity: ambiguityEvidenceSchema,
   eventType: eventTypeSchema.nullable(),
   vendorCategory: providerCategorySchema.nullable(),
   vendorCategories: z.array(providerCategorySchema),

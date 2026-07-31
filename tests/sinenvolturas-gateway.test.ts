@@ -214,12 +214,12 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     const gateway = new SinEnvolturasGateway({
       baseUrl: 'https://api.example.test/vendor',
-      guestAuthBaseUrl: 'https://api.example.test/user',
+      userAuthBaseUrl: 'https://api.example.test/user',
       persistedSearchLimit: 5,
       summarySearchWordLimit: 10,
     });
 
-    const result = await gateway.requestGuestLoginCode('maria@example.com');
+    const result = await gateway.requestUserLoginCode('maria@example.com');
 
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example.test/user/request-login-code',
@@ -250,12 +250,12 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     const gateway = new SinEnvolturasGateway({
       baseUrl: 'https://api.example.test/vendor',
-      guestAuthBaseUrl: 'https://api.example.test/user',
+      userAuthBaseUrl: 'https://api.example.test/user',
       persistedSearchLimit: 5,
       summarySearchWordLimit: 10,
     });
 
-    await expect(gateway.requestGuestLoginCode('missing@example.com')).resolves.toEqual({
+    await expect(gateway.requestUserLoginCode('missing@example.com')).resolves.toEqual({
       status: 'email_not_found',
       error: 'email not found',
     });
@@ -286,12 +286,12 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     const gateway = new SinEnvolturasGateway({
       baseUrl: 'https://api.example.test/vendor',
-      guestAuthBaseUrl: 'https://api.example.test/user',
+      userAuthBaseUrl: 'https://api.example.test/user',
       persistedSearchLimit: 5,
       summarySearchWordLimit: 10,
     });
 
-    const result = await gateway.verifyGuestLoginCode('maria@example.com', '123456');
+    const result = await gateway.verifyUserLoginCode('maria@example.com', '123456');
 
     expect(result.status).toBe('authenticated');
     if (result.status === 'authenticated') {
@@ -318,12 +318,12 @@ describe('SinEnvolturasGateway strict search mapping', () => {
 
     const gateway = new SinEnvolturasGateway({
       baseUrl: 'https://api.example.test/vendor',
-      guestAuthBaseUrl: 'https://api.example.test/user',
+      userAuthBaseUrl: 'https://api.example.test/user',
       persistedSearchLimit: 5,
       summarySearchWordLimit: 10,
     });
 
-    await expect(gateway.verifyGuestLoginCode('maria@example.com', '000000')).resolves.toEqual({
+    await expect(gateway.verifyUserLoginCode('maria@example.com', '000000')).resolves.toEqual({
       status: 'invalid_code',
       error: 'Invalid or expired code',
     });
@@ -359,7 +359,7 @@ describe('SinEnvolturasGateway strict search mapping', () => {
       summarySearchWordLimit: 10,
     });
 
-    const result = await gateway.lookupAuthenticatedGuest({
+    const result = await gateway.lookupAuthenticatedUserEvents({
       token: 'token-123',
       email: 'maria@example.com',
     });

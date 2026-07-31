@@ -10,8 +10,13 @@ import {
   type ProviderCategory,
 } from './provider-category';
 import { providerSubQueryResultSchema } from './provider-sub-query';
+import {
+  informationStateSchema,
+  userAuthStateSchema,
+  type UserAuthState,
+} from './information';
 
-export const planIntentValues = [
+export const actionIntentValues = [
   'elicitar_necesidades',
   'buscar_proveedores',
   'refinar_busqueda',
@@ -24,11 +29,11 @@ export const planIntentValues = [
   'cerrar',
   'pausar',
   'solicitar_humano',
-  'consultar_faq',
-  'consultar_evento_invitado',
 ] as const;
 
-export type PlanIntent = (typeof planIntentValues)[number];
+export type ActionIntent = (typeof actionIntentValues)[number];
+export const planIntentValues = actionIntentValues;
+export type PlanIntent = ActionIntent;
 
 export const guestRangeValues = [
   '1-20',
@@ -45,30 +50,11 @@ export const planLifecycleValues = ['active', 'finished'] as const;
 
 export type PlanLifecycleState = (typeof planLifecycleValues)[number];
 
-export const guestAuthStatusValues = [
-  'none',
-  'code_requested',
-  'authenticated',
-  'email_not_found',
-  'failed',
-] as const;
-
-export type GuestAuthStatus = (typeof guestAuthStatusValues)[number];
-
 export const humanEscalationStatusValues = ['none', 'requested'] as const;
 
 export type HumanEscalationStatus = (typeof humanEscalationStatusValues)[number];
 
-export const guestAuthStateSchema = z.object({
-  status: z.enum(guestAuthStatusValues),
-  email: z.string().nullable(),
-  token: z.string().nullable(),
-  token_expires_at: z.string().nullable(),
-  last_error: z.string().nullable(),
-  requested_at: z.string().nullable(),
-});
-
-export type GuestAuthState = z.infer<typeof guestAuthStateSchema>;
+export type { UserAuthState };
 
 export const humanEscalationStateSchema = z.object({
   status: z.enum(humanEscalationStatusValues),
@@ -144,13 +130,18 @@ export const planSchema = z.object({
   contact_name: z.string().nullable().default(null),
   contact_email: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
-  guest_auth: guestAuthStateSchema.default({
+  user_auth: userAuthStateSchema.default({
     status: 'none',
     email: null,
     token: null,
     token_expires_at: null,
     last_error: null,
     requested_at: null,
+  }),
+  information_state: informationStateSchema.default({
+    resume_node: null,
+    pending_requests: [],
+    selection_candidates: [],
   }),
   human_escalation: humanEscalationStateSchema.default({
     status: 'none',
@@ -269,13 +260,18 @@ export function createEmptyPlan(args: {
     contact_name: null,
     contact_email: null,
     contact_phone: null,
-    guest_auth: {
+    user_auth: {
       status: 'none',
       email: null,
       token: null,
       token_expires_at: null,
       last_error: null,
       requested_at: null,
+    },
+    information_state: {
+      resume_node: null,
+      pending_requests: [],
+      selection_candidates: [],
     },
     human_escalation: {
       status: 'none',

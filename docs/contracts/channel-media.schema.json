@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://recap-agent.local/schemas/channel-media.schema.json",
+  "title": "Channel media descriptor",
+  "description": "Channel-normalized metadata for provider-hosted media. The descriptor never contains media bytes or a download URL.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "type",
+    "id",
+    "mime_type",
+    "sha256"
+  ],
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "audio",
+        "document",
+        "sticker"
+      ],
+      "description": "The native message media class."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 512,
+      "description": "Opaque provider media identifier. For WhatsApp this is the image.id, video.id, audio.id, document.id, or sticker.id value from the webhook."
+    },
+    "mime_type": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 128,
+      "pattern": "^[A-Za-z0-9!#$%&'*+\\-.^_`|~]+/[A-Za-z0-9!#$%&'*+\\-.^_`|~]+$",
+      "description": "Internet media type following RFC 6838 and the IANA media type registry, such as image/jpeg."
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^[A-Fa-f0-9]{64}$",
+      "description": "Lowercase or uppercase hexadecimal SHA-256 digest supplied by the channel provider."
+    },
+    "filename": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1,
+      "maxLength": 255,
+      "description": "Optional provider-supplied filename, normally present for document messages."
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "document"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mime_type": {
+            "pattern": "^(application|text)/"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "image"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mime_type": {
+            "pattern": "^image/"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "sticker"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mime_type": {
+            "pattern": "^image/"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "audio"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mime_type": {
+            "pattern": "^audio/"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "type": {
+            "const": "video"
+          }
+        },
+        "required": [
+          "type"
+        ]
+      },
+      "then": {
+        "properties": {
+          "mime_type": {
+            "pattern": "^video/"
+          }
+        }
+      }
+    }
+  ]
+}

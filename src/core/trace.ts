@@ -2,6 +2,7 @@ import type { DecisionNode } from './decision-nodes';
 import type { ProviderSummary } from './provider';
 import type { TurnDecision } from './turn-decision';
 import type { MessageResponseClassifierTrace } from '../runtime/message-response-classifier';
+import type { InformationExecutionSummary } from './information';
 
 export type ToolOutputTrace = {
   tool: string;
@@ -22,6 +23,11 @@ export type RecommendationFunnelTrace = {
 
 export type ExtractionDebugSummary = {
   intent_confidence: number | null;
+  information_request_count: number;
+  information_request_kinds: string[];
+  ambiguity_status?: 'clear' | 'ambiguous' | null;
+  clarification_question_present?: boolean;
+  ambiguity_interpretation_count?: number;
   event_type: string | null;
   vendor_category: string | null;
   vendor_categories: string[];
@@ -74,6 +80,8 @@ export type PlanDebugSummary = {
     phone: boolean;
   };
   contact_validation_error: string | null;
+  user_auth_status: string;
+  pending_information_request_count: number;
 };
 
 export type CloseActionDebugSummary = {
@@ -119,13 +127,6 @@ export type ProviderCandidateAuditEntry = {
   fit_score: number | null;
 };
 
-export type FaqResolutionDebugSummary = {
-  is_faq_turn: boolean;
-  kb_query_present: boolean;
-  file_search_called: boolean;
-  file_search_output_count: number;
-};
-
 export type SearchStrategyTrace =
   | 'none'
   | 'search_from_plan'
@@ -166,7 +167,7 @@ export type TurnTrace = {
   selection_resolution_summary: SelectionResolutionDebugSummary;
   contact_validation_summary: ContactValidationDebugSummary;
   provider_candidate_audit: ProviderCandidateAuditEntry[];
-  faq_resolution_summary: FaqResolutionDebugSummary;
+  information_execution_summary: InformationExecutionSummary[];
   plan_persisted: boolean;
   plan_persist_reason: string | null;
   timing_ms: {
@@ -177,6 +178,7 @@ export type TurnTrace = {
     extraction: number;
     apply_extraction: number;
     compute_sufficiency: number;
+    information_execution?: number;
     provider_search: number;
     provider_enrichment: number;
     prompt_bundle_load: number;

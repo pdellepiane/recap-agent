@@ -47,7 +47,7 @@ Parameters:
   SinEnvolturasGuestServiceBaseUrl:
     Type: String
     Default: https://api.sinenvolturas.com/api/guest-service
-  SinEnvolturasGuestAuthBaseUrl:
+  SinEnvolturasUserAuthBaseUrl:
     Type: String
     Default: https://api.sinenvolturas.com/api-web/user
   AgentApiBaseUrl:
@@ -128,7 +128,17 @@ Parameters:
   KbVectorStoreId:
     Type: String
     Default: ''
-    Description: OpenAI vector store ID for file_search (empty to disable KB)
+    Description: OpenAI vector store ID for first-class knowledge retrieval.
+  KbMaxResults:
+    Type: Number
+    Default: 6
+    MinValue: 1
+    MaxValue: 50
+  KbScoreThreshold:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 1
   AgentFeatureProviderPlanning:
     Type: String
     Default: 'true'
@@ -154,6 +164,12 @@ Parameters:
       - 'true'
       - 'false'
   AgentFeatureInvitedEventLookup:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  AgentFeaturePurchaseInformation:
     Type: String
     Default: 'true'
     AllowedValues:
@@ -286,7 +302,7 @@ Resources:
           PROMPTS_DIR: /var/task/prompts
           SINENVOLTURAS_BASE_URL: !Ref SinEnvolturasBaseUrl
           SINENVOLTURAS_GUEST_SERVICE_BASE_URL: !Ref SinEnvolturasGuestServiceBaseUrl
-          SINENVOLTURAS_GUEST_AUTH_BASE_URL: !Ref SinEnvolturasGuestAuthBaseUrl
+          SINENVOLTURAS_USER_AUTH_BASE_URL: !Ref SinEnvolturasUserAuthBaseUrl
           AGENT_API_BASE_URL: !Ref AgentApiBaseUrl
           AGENT_API_TIMEOUT_MS: !Ref AgentApiTimeoutMs
           AGENT_API_MAX_RETRIES: !Ref AgentApiMaxRetries
@@ -298,11 +314,14 @@ Resources:
           PROVIDER_VECTOR_SCORE_THRESHOLD: !Ref ProviderVectorScoreThreshold
           KB_ENABLED: !Ref KbEnabled
           KB_VECTOR_STORE_ID: !Ref KbVectorStoreId
+          KB_MAX_RESULTS: !Ref KbMaxResults
+          KB_SCORE_THRESHOLD: !Ref KbScoreThreshold
           AGENT_FEATURE_PROVIDER_PLANNING: !Ref AgentFeatureProviderPlanning
           AGENT_FEATURE_PROVIDER_SEARCH: !Ref AgentFeatureProviderSearch
           AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS: !Ref AgentFeatureProviderQuoteRequests
           AGENT_FEATURE_FAQ: !Ref AgentFeatureFaq
           AGENT_FEATURE_INVITED_EVENT_LOOKUP: !Ref AgentFeatureInvitedEventLookup
+          AGENT_FEATURE_PURCHASE_INFORMATION: !Ref AgentFeaturePurchaseInformation
 
   RuntimeFunctionUrl:
     Type: AWS::Lambda::Url

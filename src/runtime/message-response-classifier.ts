@@ -153,14 +153,14 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         decision.automation_pattern !== 'none' &&
         (decision.automation_pattern !== 'generic_corporate_reception' ||
           hasPriorOutboundMessage);
-      const isContextualAcknowledgementOrReaction =
-        decision.action === 'suppress_acknowledgement' ||
+      const isNonActionableAcknowledgement =
+        decision.action === 'suppress_acknowledgement';
+      const isNonActionableReaction =
         decision.action === 'suppress_reaction';
       const shouldSuppressAutomation =
         isHighConfidenceAutomatedResponse && !hasOutstandingHelpOffer;
       const validContextualSuppression =
-        isContextualAcknowledgementOrReaction &&
-        hasPriorOutboundMessage &&
+        (isNonActionableAcknowledgement || isNonActionableReaction) &&
         !hasOutstandingHelpOffer;
       const action = shouldSuppressAutomation
         ? 'suppress_automated_response'
@@ -177,9 +177,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
             ? 'help_offer_response_requires_reply'
             : decision.action === 'suppress_automated_response'
               ? 'automation_confidence_insufficient'
-              : isContextualAcknowledgementOrReaction && !hasPriorOutboundMessage
-                ? 'missing_outbound_context'
-                : decision.reason;
+              : decision.reason;
       const decisionNormalized = action !== decision.action || reason !== decision.reason;
       return {
         trace: {

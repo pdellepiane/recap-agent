@@ -109,8 +109,14 @@ describe('structured extraction schemas', () => {
 
   it('defaults structured extraction arrays without legacy aliases', () => {
     const parsed = extractionSchema.parse({
-      intent: 'elicitar_necesidades',
+      actionIntent: 'elicitar_necesidades',
+      informationRequests: [],
       intentConfidence: 0.95,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
       eventType: 'boda',
       vendorCategory: null,
       vendorCategories: [],
@@ -159,8 +165,14 @@ describe('structured extraction schemas', () => {
 
   it('parses structured selected provider references and close actions', () => {
     const parsed = extractionSchema.parse({
-      intent: 'cerrar',
+      actionIntent: 'cerrar',
+      informationRequests: [],
       intentConfidence: 0.95,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
       eventType: 'boda',
       vendorCategory: null,
       vendorCategories: [],

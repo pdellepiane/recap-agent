@@ -92,7 +92,8 @@ class FakeRuntime implements AgentRuntime {
   async extract(request: ExtractRequest): Promise<ExtractionResult> {
     if (request.userMessage.includes('stop')) {
       return {
-        intent: 'pausar',
+        actionIntent: 'pausar',
+        informationRequests: [],
         intentConfidence: 0.95,
         eventType: null,
         vendorCategory: null,
@@ -116,7 +117,8 @@ class FakeRuntime implements AgentRuntime {
 
     if (request.userMessage.includes('proveedor 1')) {
       return {
-        intent: 'confirmar_proveedor',
+        actionIntent: 'confirmar_proveedor',
+        informationRequests: [],
         intentConfidence: 0.92,
         eventType: 'boda',
         vendorCategory: 'Fotografía y video',
@@ -139,7 +141,8 @@ class FakeRuntime implements AgentRuntime {
     }
 
     return {
-      intent: 'buscar_proveedores',
+      actionIntent: 'buscar_proveedores',
+      informationRequests: [],
       intentConfidence: 0.91,
       eventType: 'boda',
       vendorCategory: 'Fotografía y video',
@@ -171,7 +174,13 @@ class FaqRuntime extends FakeRuntime {
   override async extract(request: ExtractRequest): Promise<ExtractionResult> {
     void request;
     return {
-      intent: 'consultar_faq',
+      actionIntent: null,
+      informationRequests: [
+        {
+          kind: 'faq',
+          query: request.userMessage,
+        },
+      ],
       intentConfidence: 0.98,
       eventType: null,
       vendorCategory: null,
@@ -194,11 +203,36 @@ class FaqRuntime extends FakeRuntime {
   }
 }
 
+class LowConfidenceFaqRuntime extends FaqRuntime {
+  override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    const extraction = await super.extract(request);
+    return {
+      ...extraction,
+      intentConfidence: 0.42,
+      ambiguity: {
+        status: 'ambiguous',
+        clarificationQuestion: '¿A qué dato te refieres?',
+        interpretations: [
+          'el dato de tu evento',
+          'un dato de Sin Envolturas',
+        ],
+      },
+      assumptions: ['La referencia no identifica el dato solicitado.'],
+    };
+  }
+}
+
 class InvitedEventRuntime extends FakeRuntime {
   override async extract(request: ExtractRequest): Promise<ExtractionResult> {
-    void request;
     return {
-      intent: 'consultar_evento_invitado',
+      actionIntent: null,
+      informationRequests: [
+        {
+          kind: 'associated_event',
+          query: request.userMessage,
+          eventHint: null,
+        },
+      ],
       intentConfidence: 0.97,
       eventType: null,
       vendorCategory: null,
@@ -228,7 +262,8 @@ class HumanEscalationRuntime extends FakeRuntime {
     void request;
     this.extractCalls += 1;
     return {
-      intent: 'solicitar_humano',
+      actionIntent: 'solicitar_humano',
+      informationRequests: [],
       intentConfidence: 0.99,
       eventType: null,
       vendorCategory: null,
@@ -249,7 +284,6 @@ class HumanEscalationRuntime extends FakeRuntime {
       contactEmail: null,
       contactPhone: null,
       providerFitCriteria: testProviderFitCriteria,
-      kbQuery: null,
       providerQueryIntents: [],
       providerPlanOperations: [],
       providerExplanationRequest: null,
@@ -379,7 +413,8 @@ class MisclassifiedInvitedEventFollowUpRuntime extends FakeRuntime {
   override async extract(request: ExtractRequest): Promise<ExtractionResult> {
     void request;
     return {
-      intent: 'detallar_proveedor',
+      actionIntent: 'detallar_proveedor',
+      informationRequests: [],
       intentConfidence: 0.74,
       eventType: null,
       vendorCategory: null,
@@ -651,17 +686,17 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async requestGuestLoginCode(
+  async requestUserLoginCode(
     email: string,
-  ): Promise<Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>>> {
+  ): Promise<Awaited<ReturnType<ProviderGateway['requestUserLoginCode']>>> {
     void email;
     return { status: 'sent' };
   }
 
-  async verifyGuestLoginCode(
+  async verifyUserLoginCode(
     email: string,
     code: string,
-  ): Promise<Awaited<ReturnType<ProviderGateway['verifyGuestLoginCode']>>> {
+  ): Promise<Awaited<ReturnType<ProviderGateway['verifyUserLoginCode']>>> {
     void email;
     void code;
     return {
@@ -671,7 +706,7 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(args: {
+  async lookupAuthenticatedUserEvents(args: {
     token: string;
     email: string;
   }): Promise<UserEventLookupResult | null> {
@@ -753,10 +788,10 @@ class AuthScenarioGateway extends FakeGateway {
   public lastRequestedEmail: string | null = null;
   public lastLookupEmail: string | null = null;
   public lastVerifiedCode: string | null = null;
-  public requestCodeResult: Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>> = {
+  public requestCodeResult: Awaited<ReturnType<ProviderGateway['requestUserLoginCode']>> = {
     status: 'sent',
   };
-  public verificationResult: Awaited<ReturnType<ProviderGateway['verifyGuestLoginCode']>> = {
+  public verificationResult: Awaited<ReturnType<ProviderGateway['verifyUserLoginCode']>> = {
     status: 'authenticated',
     token: 'auth-token',
     tokenExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
@@ -812,25 +847,25 @@ class AuthScenarioGateway extends FakeGateway {
   };
   public authenticatedLookupError: string | null = null;
 
-  override async requestGuestLoginCode(
+  override async requestUserLoginCode(
     email: string,
-  ): Promise<Awaited<ReturnType<ProviderGateway['requestGuestLoginCode']>>> {
+  ): Promise<Awaited<ReturnType<ProviderGateway['requestUserLoginCode']>>> {
     this.requestCodeCalls += 1;
     this.lastRequestedEmail = email;
     return this.requestCodeResult;
   }
 
-  override async verifyGuestLoginCode(
+  override async verifyUserLoginCode(
     email: string,
     code: string,
-  ): Promise<Awaited<ReturnType<ProviderGateway['verifyGuestLoginCode']>>> {
+  ): Promise<Awaited<ReturnType<ProviderGateway['verifyUserLoginCode']>>> {
     void email;
     this.verifyCodeCalls += 1;
     this.lastVerifiedCode = code;
     return this.verificationResult;
   }
 
-  override async lookupAuthenticatedGuest(
+  override async lookupAuthenticatedUserEvents(
     args: {
       token: string;
       email: string;
@@ -885,7 +920,44 @@ describe('AgentService', () => {
     terminal_whatsapp: new WhatsAppMessageRenderer(),
   };
 
-  it('routes FAQ questions to consultar_faq from every saved active node', async () => {
+  it('uses trusted image metadata to return the unsupported-media response without model inference', async () => {
+    const planStore = new InMemoryPlanStore();
+    const runtime = new HumanEscalationRuntime();
+    const response = await new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:51999999999',
+      text: '',
+      messageId: 'wamid.image-123',
+      receivedAt: '2026-07-24T18:00:00.000Z',
+      contactPhone: '+51999999999',
+      media: [
+        {
+          kind: 'image',
+          providerMediaId: '2754859441498128',
+          mimeType: 'image/jpeg',
+          sha256: '81d3bd8a8db4868c9520ed47186e8b7c5789e61ff79f7f834be6950b808a90d3',
+          fileName: null,
+        },
+      ],
+    });
+
+    expect(runtime.extractCalls).toBe(0);
+    expect(response.outbound.text).toBe(
+      'Por ahora no puedo leer imágenes. Escribe aquí el dato que aparece y podré orientarte',
+    );
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.trace.prompt_bundle_id).toBe('deterministic:unsupported_image_media');
+    expect(response.trace.plan_persist_reason).toBe('unsupported_image_media');
+    expect(response.trace.tools_called).toEqual([]);
+  });
+
+  it('routes FAQ questions to the information resolver from every saved active node', async () => {
     for (const node of decisionNodes) {
       const runtime = new FaqRuntime();
       const planStore = new InMemoryPlanStore();
@@ -926,19 +998,59 @@ describe('AgentService', () => {
         receivedAt: new Date().toISOString(),
       });
 
-      expect(response.plan.current_node, node).toBe('consultar_faq');
-      expect(response.trace.next_node, node).toBe('consultar_faq');
-      expect(response.trace.intent, node).toBe('consultar_faq');
-      expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe('consultar_faq');
+      expect(response.plan.current_node, node).toBe('resolver_consultas_informativas');
+      expect(response.trace.next_node, node).toBe('resolver_consultas_informativas');
+      expect(response.trace.intent, node).toBeNull();
+      expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe(
+        'resolver_consultas_informativas',
+      );
       expect(gateway.searchCalls, node).toBe(0);
       expect(response.trace.tools_called, node).not.toContain(
         'search_providers_from_plan',
       );
-      expect(response.trace.plan_persist_reason, node).toBe('consultar_faq');
+      expect(response.trace.plan_persist_reason, node).toBe(
+        'resolver_consultas_informativas',
+      );
     }
   });
 
-  it('routes invited event questions to consultar_evento_invitado from every saved active node', async () => {
+  it('enforces one clarification question from structured FAQ ambiguity evidence', async () => {
+    const runtime = new LowConfidenceFaqRuntime();
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'faq-low-confidence',
+      text: 'El dato',
+      messageId: 'msg-faq-low-confidence',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(runtime.composeRequests.at(-1)?.currentNode).toBe(
+      'resolver_consultas_informativas',
+    );
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'pregunta como ambigua',
+    );
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'No contestes ninguna de las interpretaciones posibles',
+    );
+    expect(response.outbound.text).toBe(
+      '¿Quieres saber el dato de tu evento o un dato de Sin Envolturas?',
+    );
+    expect(response.outbound.text?.match(/\?/gu)).toHaveLength(1);
+    expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
+    expect(response.trace.extraction_summary.clarification_question_present).toBe(true);
+    expect(response.trace.extraction_summary.ambiguity_interpretation_count).toBe(2);
+  });
+
+  it('routes associated-event questions to the information resolver from every saved active node', async () => {
     for (const node of decisionNodes) {
       const runtime = new InvitedEventRuntime();
       const planStore = new InMemoryPlanStore();
@@ -980,24 +1092,24 @@ describe('AgentService', () => {
         receivedAt: new Date().toISOString(),
       });
 
-      expect(response.plan.current_node, node).toBe('consultar_evento_invitado');
-      expect(response.trace.next_node, node).toBe('consultar_evento_invitado');
-      expect(response.trace.intent, node).toBe('consultar_evento_invitado');
-      expect(response.trace.turn_decision.routeKind, node).toBe('invited_event_lookup');
+      expect(response.plan.current_node, node).toBe('resolver_consultas_informativas');
+      expect(response.trace.next_node, node).toBe('resolver_consultas_informativas');
+      expect(response.trace.intent, node).toBeNull();
+      expect(response.trace.turn_decision.routeKind, node).toBe('information_batch');
       expect(runtime.composeRequests.at(-1)?.currentNode, node).toBe(
-        'consultar_evento_invitado',
+        'resolver_consultas_informativas',
       );
       expect(gateway.searchCalls, node).toBe(0);
       expect(response.trace.tools_called, node).not.toContain(
         'search_providers_from_plan',
       );
       expect(response.trace.plan_persist_reason, node).toBe(
-        'consultar_evento_invitado',
+        'resolver_consultas_informativas',
       );
     }
   });
 
-  it('auto-rejects unknown guest auth emails without asking for a code', async () => {
+  it('auto-rejects unknown user auth emails without asking for a code', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1021,17 +1133,25 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('consultar_evento_invitado');
-    expect(response.plan.guest_auth.status).toBe('email_not_found');
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.plan.user_auth.status).toBe('email_not_found');
     expect(gateway.requestCodeCalls).toBe(1);
     expect(gateway.verifyCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(0);
-    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
-    expect(response.trace.tools_called).toContain('request_guest_login_code');
-    expect(response.trace.tools_called).not.toContain('verify_guest_login_code');
+    expect(
+      runtime.composeRequests
+        .at(-1)
+        ?.informationResults?.some(
+          (result) =>
+            result.kind === 'associated_event' &&
+            result.status === 'completed',
+        ),
+    ).toBe(false);
+    expect(response.trace.tools_called).toContain('request_user_login_code');
+    expect(response.trace.tools_called).not.toContain('verify_user_login_code');
   });
 
-  it('requests one login code for known guest auth emails', async () => {
+  it('requests one login code for known user auth emails', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1051,16 +1171,85 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.guest_auth.status).toBe('code_requested');
-    expect(response.plan.guest_auth.email).toBe('maria@example.com');
-    expect(response.plan.guest_auth.token).toBeNull();
+    expect(response.plan.user_auth.status).toBe('code_requested');
+    expect(response.plan.user_auth.email).toBe('maria@example.com');
+    expect(response.plan.user_auth.token).toBeNull();
     expect(gateway.requestCodeCalls).toBe(1);
     expect(gateway.verifyCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(0);
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain('código');
+    const authResult = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) =>
+          result.kind === 'associated_event' &&
+          result.status === 'needs_input',
+      );
+    expect(authResult?.status === 'needs_input' ? authResult.message : null).toContain(
+      'código',
+    );
   });
 
-  it('keeps the code challenge active after a wrong guest auth code', async () => {
+  it('removes only unambiguous spaces next to the at sign in guest emails', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: '+51999999999',
+      text: 'Quiero consultar mi evento. Mi correo es leonardo @gmail.com',
+      messageId: 'msg-auth-spaced-email',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(gateway.lastRequestedEmail).toBe('leonardo@gmail.com');
+    expect(response.plan.contact_email).toBe('leonardo@gmail.com');
+    expect(response.plan.user_auth.email).toBe('leonardo@gmail.com');
+    expect(
+      runtime.composeRequests
+        .at(-1)
+        ?.informationResults?.some(
+          (result) =>
+            result.status === 'needs_input' &&
+            result.message.includes('verificar tu cuenta'),
+        ),
+    ).toBe(true);
+  });
+
+  it('does not invent missing characters in malformed guest emails', async () => {
+    const runtime = new InvitedEventRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new AuthScenarioGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: '+51999999999',
+      text: 'Quiero consultar mi evento. Mi correo es leonardo @gmailcom',
+      messageId: 'msg-auth-missing-email-dot',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(gateway.requestCodeCalls).toBe(0);
+    expect(gateway.lastRequestedEmail).toBeNull();
+    expect(response.plan.contact_email).toBeNull();
+    expect(response.plan.user_auth.email).toBeNull();
+  });
+
+  it('keeps the code challenge active after a wrong user auth code', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1083,10 +1272,10 @@ describe('AgentService', () => {
           externalUserId: 'maria@example.com',
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: 'maria@example.com',
-          guest_auth: {
+          user_auth: {
             status: 'code_requested',
             email: 'maria@example.com',
             token: null,
@@ -1107,15 +1296,23 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.guest_auth.status).toBe('code_requested');
-    expect(response.plan.guest_auth.last_error).toBe('invalid code');
+    expect(response.plan.user_auth.status).toBe('code_requested');
+    expect(response.plan.user_auth.last_error).toBe('invalid code');
     expect(gateway.verifyCodeCalls).toBe(1);
     expect(gateway.lastVerifiedCode).toBe('000000');
     expect(gateway.authenticatedLookupCalls).toBe(0);
-    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
+    expect(
+      runtime.composeRequests
+        .at(-1)
+        ?.informationResults?.some(
+          (result) =>
+            result.kind === 'associated_event' &&
+            result.status === 'completed',
+        ),
+    ).toBe(false);
   });
 
-  it('persists the token and injects event context after a correct guest auth code', async () => {
+  it('persists the token and injects event context after a correct user auth code', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1134,10 +1331,10 @@ describe('AgentService', () => {
           externalUserId: 'maria@example.com',
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: 'maria@example.com',
-          guest_auth: {
+          user_auth: {
             status: 'code_requested',
             email: 'maria@example.com',
             token: null,
@@ -1158,20 +1355,30 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.guest_auth.status).toBe('authenticated');
-    expect(response.plan.guest_auth.token).toBe('auth-token');
-    expect(Date.parse(response.plan.guest_auth.token_expires_at ?? '')).toBeGreaterThan(
+    expect(response.plan.user_auth.status).toBe('authenticated');
+    expect(response.plan.user_auth.token).toBe('auth-token');
+    expect(Date.parse(response.plan.user_auth.token_expires_at ?? '')).toBeGreaterThan(
       Date.now() + 23 * 60 * 60 * 1000,
     );
     expect(gateway.verifyCodeCalls).toBe(1);
     expect(gateway.authenticatedLookupCalls).toBe(1);
     expect(gateway.lastLookupEmail).toBe('maria@example.com');
-    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult?.events[0]?.name).toBe(
-      'Cumpleaños de Ana',
-    );
+    const associatedEventResult = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) =>
+          result.kind === 'associated_event' &&
+          result.status === 'completed',
+      );
+    expect(
+      associatedEventResult?.kind === 'associated_event' &&
+        associatedEventResult.status === 'completed'
+        ? associatedEventResult.result.events[0]?.name
+        : null,
+    ).toBe('Cumpleaños de Ana');
   });
 
-  it('reuses a valid guest auth token on follow-up without sending another code', async () => {
+  it('reuses a valid user auth token on follow-up without sending another code', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1190,10 +1397,10 @@ describe('AgentService', () => {
           externalUserId: 'maria@example.com',
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: 'maria@example.com',
-          guest_auth: {
+          user_auth: {
             status: 'authenticated',
             email: 'maria@example.com',
             token: 'auth-token',
@@ -1214,15 +1421,27 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.guest_auth.status).toBe('authenticated');
+    expect(response.plan.user_auth.status).toBe('authenticated');
     expect(gateway.requestCodeCalls).toBe(0);
     expect(gateway.verifyCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(1);
     expect(gateway.lastLookupEmail).toBe('maria@example.com');
-    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult?.events).toHaveLength(1);
+    const followUpEventResult = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) =>
+          result.kind === 'associated_event' &&
+          result.status === 'completed',
+      );
+    expect(
+      followUpEventResult?.kind === 'associated_event' &&
+        followUpEventResult.status === 'completed'
+        ? followUpEventResult.result.events
+        : [],
+    ).toHaveLength(1);
   });
 
-  it('requests a new code after the 24 hour guest auth session expires', async () => {
+  it('requests a new code after the 24 hour user auth session expires', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1241,10 +1460,10 @@ describe('AgentService', () => {
           externalUserId: 'maria@example.com',
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: 'maria@example.com',
-          guest_auth: {
+          user_auth: {
             status: 'authenticated',
             email: 'maria@example.com',
             token: 'old-token',
@@ -1268,11 +1487,11 @@ describe('AgentService', () => {
     expect(gateway.requestCodeCalls).toBe(1);
     expect(gateway.verifyCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(0);
-    expect(response.plan.guest_auth.status).toBe('code_requested');
-    expect(response.plan.guest_auth.token).toBeNull();
+    expect(response.plan.user_auth.status).toBe('code_requested');
+    expect(response.plan.user_auth.token).toBeNull();
   });
 
-  it('clears a failing guest auth token and asks for re-authentication without requesting a code twice', async () => {
+  it('clears a failing user auth token and asks for re-authentication without requesting a code twice', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1292,10 +1511,10 @@ describe('AgentService', () => {
           externalUserId: 'maria@example.com',
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: 'maria@example.com',
-          guest_auth: {
+          user_auth: {
             status: 'authenticated',
             email: 'maria@example.com',
             token: 'expired-token',
@@ -1318,13 +1537,29 @@ describe('AgentService', () => {
 
     expect(gateway.authenticatedLookupCalls).toBe(1);
     expect(gateway.requestCodeCalls).toBe(0);
-    expect(response.plan.guest_auth.status).toBe('none');
-    expect(response.plan.guest_auth.token).toBeNull();
-    expect(runtime.composeRequests.at(-1)?.invitedEventLookupResult).toBeNull();
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain('validar tu correo nuevamente');
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.plan.user_auth.token).toBeNull();
+    expect(
+      runtime.composeRequests
+        .at(-1)
+        ?.informationResults?.some(
+          (result) =>
+            result.kind === 'associated_event' &&
+            result.status === 'completed',
+        ),
+    ).toBe(false);
+    expect(
+      runtime.composeRequests
+        .at(-1)
+        ?.informationResults?.some(
+          (result) =>
+            result.status === 'failed' &&
+            result.failureKind === 'unauthorized',
+        ),
+    ).toBe(true);
   });
 
-  it('keeps invited event follow-ups in consultar_evento_invitado even when extraction says provider detail', async () => {
+  it('keeps pending event follow-ups in the information resolver when extraction also finds a provider action', async () => {
     const runtime = new MisclassifiedInvitedEventFollowUpRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new FakeGateway();
@@ -1344,9 +1579,21 @@ describe('AgentService', () => {
           externalUserId,
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: externalUserId,
+          information_state: {
+            resume_node: 'entrevista',
+            pending_requests: [
+              {
+                requestId: 'information-1',
+                kind: 'associated_event',
+                query: 'Dame la información del evento asociado.',
+                eventHint: null,
+              },
+            ],
+            selection_candidates: [],
+          },
         },
       ),
       reason: 'seed-invited-follow-up',
@@ -1360,10 +1607,12 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('consultar_evento_invitado');
-    expect(response.trace.intent).toBe('consultar_evento_invitado');
-    expect(response.trace.turn_decision.routeKind).toBe('invited_event_lookup');
-    expect(runtime.composeRequests.at(-1)?.currentNode).toBe('consultar_evento_invitado');
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.trace.intent).toBe('detallar_proveedor');
+    expect(response.trace.turn_decision.routeKind).toBe('information_batch');
+    expect(runtime.composeRequests.at(-1)?.currentNode).toBe(
+      'resolver_consultas_informativas',
+    );
     expect(gateway.searchCalls).toBe(0);
   });
 
@@ -1437,7 +1686,8 @@ describe('AgentService', () => {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
         if (request.userMessage.includes('continuar')) {
           return {
-            intent: 'retomar_plan',
+            actionIntent: 'retomar_plan',
+            informationRequests: [],
             intentConfidence: 0.97,
             eventType: null,
             vendorCategory: null,
@@ -1507,7 +1757,8 @@ describe('AgentService', () => {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
         if (request.userMessage.includes('edo')) {
           return {
-            intent: 'confirmar_proveedor',
+            actionIntent: 'confirmar_proveedor',
+            informationRequests: [],
             intentConfidence: 0.97,
             eventType: 'cumpleanos',
             vendorCategory: 'Catering',
@@ -1676,7 +1927,8 @@ describe('AgentService', () => {
     class SpuriousReplaceRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'boda',
           vendorCategory: 'Catering',
@@ -1816,7 +2068,8 @@ describe('AgentService', () => {
     class PreserveContextRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'refinar_busqueda',
+          actionIntent: 'refinar_busqueda',
+          informationRequests: [],
           intentConfidence: 0.85,
           eventType: null,
           vendorCategory: null,
@@ -1914,7 +2167,8 @@ describe('AgentService', () => {
     class IncompleteRefinementRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'refinar_busqueda',
+          actionIntent: 'refinar_busqueda',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'quinceanos',
           vendorCategory: 'Hogar y deco',
@@ -2002,7 +2256,8 @@ describe('AgentService', () => {
     class BroadenRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'refinar_busqueda',
+          actionIntent: 'refinar_busqueda',
+          informationRequests: [],
           intentConfidence: 0.94,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -2154,7 +2409,8 @@ describe('AgentService', () => {
     class BroadenRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'refinar_busqueda',
+          actionIntent: 'refinar_busqueda',
+          informationRequests: [],
           intentConfidence: 0.94,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -2266,7 +2522,8 @@ describe('AgentService', () => {
     class BroadenRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'refinar_busqueda',
+          actionIntent: 'refinar_busqueda',
+          informationRequests: [],
           intentConfidence: 0.94,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -2416,7 +2673,8 @@ describe('AgentService', () => {
     class CriteriaChangeRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'refinar_busqueda',
+          actionIntent: 'refinar_busqueda',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -2544,7 +2802,8 @@ describe('AgentService', () => {
     class MixedTurnRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: 'Catering',
@@ -2741,7 +3000,8 @@ describe('AgentService', () => {
     class NumericNameSelectionRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: 'Música',
@@ -2881,7 +3141,8 @@ describe('AgentService', () => {
     class DescriptiveSelectionRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.93,
           eventType: 'boda',
           vendorCategory: 'Música',
@@ -3035,7 +3296,8 @@ describe('AgentService', () => {
     class EmbeddedAliasRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.94,
           eventType: 'boda',
           vendorCategory: 'Catering',
@@ -3158,7 +3420,8 @@ describe('AgentService', () => {
     class OrdinalSelectionRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Música',
@@ -3283,7 +3546,8 @@ describe('AgentService', () => {
     class PlanningRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.88,
           eventType: 'boda',
           vendorCategory: null,
@@ -3333,7 +3597,8 @@ describe('AgentService', () => {
     class ImplicitVenueRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.82,
           eventType: 'boda',
           vendorCategory: 'Locales',
@@ -3385,7 +3650,8 @@ describe('AgentService', () => {
     class ExplicitAuditoriumRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'corporativo',
           vendorCategory: 'Locales',
@@ -3437,7 +3703,8 @@ describe('AgentService', () => {
     class GuestCountRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -3568,7 +3835,8 @@ describe('AgentService', () => {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
         if (request.userMessage.includes('967')) {
           return {
-            intent: 'cerrar',
+            actionIntent: 'cerrar',
+            informationRequests: [],
             intentConfidence: 0.95,
             eventType: 'boda',
             vendorCategory: 'Fotografía y video',
@@ -3669,7 +3937,8 @@ describe('AgentService', () => {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
         if (request.userMessage.includes('carolina.gmail.com')) {
           return {
-            intent: 'cerrar',
+            actionIntent: 'cerrar',
+            informationRequests: [],
             intentConfidence: 0.95,
             eventType: 'boda',
             vendorCategory: 'Fotografía y video',
@@ -3768,7 +4037,8 @@ describe('AgentService', () => {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {
         if (request.userMessage.includes('954779071')) {
           return {
-            intent: 'cerrar',
+            actionIntent: 'cerrar',
+            informationRequests: [],
             intentConfidence: 0.95,
             eventType: 'boda',
             vendorCategory: 'Fotografía y video',
@@ -3867,7 +4137,8 @@ describe('AgentService', () => {
     class IncompleteInternationalPhoneRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -4093,7 +4364,8 @@ describe('AgentService', () => {
     class MultiOrdinalRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'confirmar_proveedor',
+          actionIntent: 'confirmar_proveedor',
+          informationRequests: [],
           intentConfidence: 0.97,
           eventType: 'boda',
           vendorCategory: 'Catering',
@@ -4176,8 +4448,8 @@ describe('AgentService', () => {
     class MultiIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
-          secondaryIntents: ['confirmar_proveedor'],
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.97,
           eventType: 'boda',
           vendorCategory: 'Música',
@@ -4364,7 +4636,8 @@ describe('AgentService', () => {
     class ElicitationRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -4494,7 +4767,8 @@ describe('AgentService', () => {
     class MissingLocationRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'cumpleanos',
           vendorCategory: 'Música',
@@ -4579,7 +4853,8 @@ describe('AgentService', () => {
     class MissingLocationFocusedNeedRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: 'Catering',
@@ -4638,7 +4913,8 @@ describe('AgentService', () => {
     class MultiFrontRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -4801,7 +5077,8 @@ describe('AgentService', () => {
     class FocusedRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.92,
           eventType: 'boda',
           vendorCategory: null,
@@ -4911,7 +5188,8 @@ describe('AgentService', () => {
     class ComplexCateringRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -5079,7 +5357,8 @@ describe('AgentService', () => {
     class CappedDetailedRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -5166,7 +5445,8 @@ describe('AgentService', () => {
     class DetailedQueryIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -5299,7 +5579,8 @@ describe('AgentService', () => {
 
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -5438,7 +5719,7 @@ describe('AgentService', () => {
 
     expect(response.plan.current_node).toBe('elicitacion_necesidades');
     expect(response.outbound.text).toContain('Busqué proveedores de Sin Envolturas');
-    expect(response.outbound.text).toContain('Catering\nOpciones para Catering.\n1. Sushi Mesa (Lima · $$)');
+    expect(response.outbound.text).toContain('Servicio de comida\nOpciones para Catering.\n1. Sushi Mesa (Lima · $$)');
     expect(response.outbound.text).toContain('Música\nOpciones para Música.\n1. Banda Clara (Lima · $$)');
     expect(response.outbound.text).not.toContain('Ubicación:');
     expect(response.outbound.text).toContain('Podemos revisar frente por frente');
@@ -5455,7 +5736,8 @@ describe('AgentService', () => {
           'Hogar y deco',
         ] as const;
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.82,
           eventType: 'otro',
           vendorCategory: null,
@@ -5543,7 +5825,8 @@ describe('AgentService', () => {
     class OtherEventRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'otro',
           vendorCategory: null,
@@ -5655,7 +5938,8 @@ describe('AgentService', () => {
           'Otros',
         ] as const;
         return {
-          intent: 'elicitar_necesidades',
+          actionIntent: 'elicitar_necesidades',
+          informationRequests: [],
           intentConfidence: 0.94,
           eventType: 'boda',
           vendorCategory: null,
@@ -5745,7 +6029,8 @@ describe('AgentService', () => {
     class BroadSearchRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'boda',
           vendorCategory: 'Catering',
@@ -5814,7 +6099,8 @@ describe('AgentService', () => {
     class BirthdayRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'cumpleanos',
           vendorCategory: null,
@@ -5881,7 +6167,8 @@ describe('AgentService', () => {
     class ExplicitBirthdayPlannerRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.92,
           eventType: 'cumpleanos',
           vendorCategory: 'Wedding planners',
@@ -5934,7 +6221,8 @@ describe('AgentService', () => {
     class SelectAndContinueRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'modificar_plan_proveedores',
+          actionIntent: 'modificar_plan_proveedores',
+          informationRequests: [],
           intentConfidence: 0.94,
           eventType: 'boda',
           vendorCategory: null,
@@ -6103,7 +6391,8 @@ describe('AgentService', () => {
         const base = await super.extract(request);
         return {
           ...base,
-          intent: 'modificar_plan_proveedores',
+          actionIntent: 'modificar_plan_proveedores',
+          informationRequests: [],
           vendorCategory: null,
           vendorCategories: [],
           activeNeedCategory: null,
@@ -6220,11 +6509,77 @@ describe('AgentService', () => {
     expect(deleted.plan.provider_needs.map((need) => need.category)).not.toContain('Música');
   });
 
+  it('rejects a close intent when no event plan has been established', async () => {
+    class FalseCloseRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          actionIntent: 'cerrar',
+          informationRequests: [],
+          intentConfidence: 0.91,
+          ambiguity: {
+            status: 'clear',
+            clarificationQuestion: null,
+            interpretations: [],
+          },
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'La persona indicó que ya envió un regalo.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          closeAction: { type: 'confirm_close' },
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: null,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const runtime = new FalseCloseRuntime();
+    const response = await new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    }).handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'false-close-without-plan',
+      text: 'Ya envié el regalo',
+      messageId: 'false-close-without-plan-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.lifecycle_state).toBe('active');
+    expect(response.plan.current_node).toBe('entrevista');
+    expect(response.plan.provider_needs).toEqual([]);
+    expect(response.trace.route_kind).toBe('ask_event_context');
+    expect(response.trace.tools_called).not.toContain('finish_plan');
+    expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
+      actionIntent: null,
+      closeAction: null,
+    });
+  });
+
   it('uses structured provider references to resolve close-time selections', async () => {
     class StructuredCloseSelectionRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.97,
           eventType: null,
           vendorCategory: null,
@@ -6356,7 +6711,8 @@ describe('AgentService', () => {
     class UnstructuredDeclineRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: null,
           vendorCategory: null,
@@ -6466,7 +6822,8 @@ describe('AgentService', () => {
     class StructuredDeferRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.97,
           eventType: null,
           vendorCategory: null,
@@ -6576,7 +6933,8 @@ describe('AgentService', () => {
     class ExtensionClarificationRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.81,
           eventType: null,
           vendorCategory: 'Catering',
@@ -6685,7 +7043,8 @@ describe('AgentService', () => {
     class InvalidClosePhoneRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: null,
+          actionIntent: null,
+          informationRequests: [],
           intentConfidence: 0.72,
           eventType: null,
           vendorCategory: null,
@@ -6801,7 +7160,8 @@ describe('AgentService', () => {
     class ResumeCloseRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: null,
           vendorCategory: null,
@@ -6905,7 +7265,8 @@ describe('AgentService', () => {
     class ExplainAllRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'explicar_recomendacion',
+          actionIntent: 'explicar_recomendacion',
+          informationRequests: [],
           intentConfidence: 0.96,
           eventType: 'boda',
           vendorCategory: null,
@@ -7040,7 +7401,7 @@ describe('AgentService', () => {
     expect(response.outbound.text).toContain('Catering: EDO');
   });
 
-  it('resends guest auth code on non-code follow-up while code challenge is active', async () => {
+  it('keeps one active code challenge on a non-code follow-up', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -7059,10 +7420,10 @@ describe('AgentService', () => {
           externalUserId: 'maria@example.com',
         }),
         {
-          current_node: 'consultar_evento_invitado',
-          intent: 'consultar_evento_invitado',
+          current_node: 'resolver_consultas_informativas',
+          intent: null,
           contact_email: 'maria@example.com',
-          guest_auth: {
+          user_auth: {
             status: 'code_requested',
             email: 'maria@example.com',
             token: null,
@@ -7083,18 +7444,28 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.guest_auth.status).toBe('code_requested');
-    expect(gateway.requestCodeCalls).toBe(1);
+    expect(response.plan.user_auth.status).toBe('code_requested');
+    expect(gateway.requestCodeCalls).toBe(0);
     expect(gateway.verifyCodeCalls).toBe(0);
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain('reenvió');
-    expect(response.trace.tools_called).toContain('request_guest_login_code');
+    expect(
+      runtime.composeRequests
+        .at(-1)
+        ?.informationResults?.some(
+          (result) =>
+            result.status === 'needs_input' &&
+            result.message.includes('maria@example.com') &&
+            result.message.includes('correo no deseado'),
+        ),
+    ).toBe(true);
+    expect(response.trace.tools_called).not.toContain('request_user_login_code');
   });
 
   it('does not coerce an unknown provider name to a similar generic first token', async () => {
     class UnknownProviderRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'modificar_plan_proveedores',
+          actionIntent: 'modificar_plan_proveedores',
+          informationRequests: [],
           intentConfidence: 0.92,
           eventType: null,
           vendorCategory: null,
@@ -7196,7 +7567,8 @@ describe('AgentService', () => {
     class UnselectRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'modificar_plan_proveedores',
+          actionIntent: 'modificar_plan_proveedores',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: null,
           vendorCategory: null,
@@ -7299,7 +7671,8 @@ describe('AgentService', () => {
     class PhoneCorrectionRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: null,
           vendorCategory: null,
@@ -7929,7 +8302,7 @@ describe('AgentService', () => {
       help_offer_status: 'offered',
     });
     expect(response.trace.route_kind).toBe('human_help_offer');
-    expect(response.outbound.text).toContain('una persona del equipo se una a este chat');
+    expect(response.outbound.text).toContain('una persona del equipo se una a esta conversación');
     expect(gateway.operations).toEqual(['get', 'log:inbound']);
   });
 
@@ -7983,7 +8356,7 @@ describe('AgentService', () => {
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.current_node).toBe('solicitar_agente_humano');
     expect(response.trace.route_kind).toBe('human_escalation');
-    expect(response.outbound.text).toContain('Una persona del equipo se unirá a este chat');
+    expect(response.outbound.text).toContain('Una persona del equipo se unirá a esta conversación');
     expect(response.outbound.text).not.toMatch(/12|horas/iu);
     expect(gateway.operations).toEqual([
       'get',

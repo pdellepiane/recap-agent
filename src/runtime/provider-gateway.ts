@@ -159,7 +159,7 @@ export type UserEventLookupResult = {
   };
 };
 
-export type GuestLoginCodeRequestResult =
+export type UserLoginCodeRequestResult =
   | {
       status: 'sent';
     }
@@ -168,7 +168,7 @@ export type GuestLoginCodeRequestResult =
       error: string;
     };
 
-export type GuestLoginCodeVerificationResult =
+export type UserLoginCodeVerificationResult =
   | {
       status: 'authenticated';
       token: string;
@@ -207,12 +207,12 @@ export interface ProviderGateway {
   }): Promise<ProviderSummary[]>;
   listUserEventsVendorContext(userId: number): Promise<Record<string, unknown>[]>;
   lookupUserEventContext(input: UserEventLookupInput): Promise<UserEventLookupResult | null>;
-  requestGuestLoginCode(email: string): Promise<GuestLoginCodeRequestResult>;
-  verifyGuestLoginCode(
+  requestUserLoginCode(email: string): Promise<UserLoginCodeRequestResult>;
+  verifyUserLoginCode(
     email: string,
     code: string,
-  ): Promise<GuestLoginCodeVerificationResult>;
-  lookupAuthenticatedGuest(args: {
+  ): Promise<UserLoginCodeVerificationResult>;
+  lookupAuthenticatedUserEvents(args: {
     token: string;
     email: string;
   }): Promise<UserEventLookupResult | null>;

@@ -70,6 +70,45 @@ describe('Lambda channel request observability', () => {
     expect(record.error_message_redacted).toBe('Failed for [phone] at [url]');
   });
 
+  it('records media shape while hashing provider media identifiers', () => {
+    const record = buildChannelRequestLog({
+      requestId: 'request-media',
+      method: 'POST',
+      requestPath: '/',
+      requestRoute: 'message',
+      requestBodyPresent: true,
+      statusCode: 200,
+      outcome: 'success',
+      durationMs: 25,
+      authorizationHeaderPresent: true,
+      bearerTokenPresent: true,
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:51991347878',
+      messageId: 'wamid.image',
+      mediaKinds: ['image'],
+      providerMediaIds: ['2754859441498128'],
+      feedbackSignalVersion: 1,
+      decisionSource: 'deterministic',
+      ambiguityStatus: 'clear',
+      modelCallCount: 0,
+      outputQualityFlagCount: 0,
+      spanishPolicyTermHitCount: 0,
+    });
+
+    expect(record).toMatchObject({
+      media_count: 1,
+      media_kinds: ['image'],
+      feedback_signal_version: 1,
+      decision_source: 'deterministic',
+      ambiguity_status: 'clear',
+      model_call_count: 0,
+      output_quality_flag_count: 0,
+      spanish_policy_term_hit_count: 0,
+    });
+    expect(record.provider_media_id_hashes?.[0]).toMatch(/^[a-f0-9]{64}$/u);
+    expect(JSON.stringify(record)).not.toContain('2754859441498128');
+  });
+
   it('records safe ownership correlation and resulting plan state', () => {
     const record = buildChannelRequestLog({
       requestId: 'request-3',

@@ -1,14 +1,17 @@
 import type { DecisionNode } from '../core/decision-nodes';
 import type { EventType } from '../core/event-type';
-import type { PersistedPlan, PlanIntent } from '../core/plan';
+import type { ActionIntent, PersistedPlan } from '../core/plan';
 import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderSummary } from '../core/provider';
 import type { ToolOutputTrace } from '../core/trace';
 import type { ToolInputTrace } from '../core/trace';
 import type { TurnDecision } from '../core/turn-decision';
+import type {
+  ExtractedInformationRequest,
+  InformationTaskResult,
+} from '../core/information';
 
 import type { StructuredMessage } from './structured-message';
-import type { UserEventLookupResult } from './provider-gateway';
 import type { ProviderFitCriteria } from './provider-fit';
 import type {
   CloseAction,
@@ -22,9 +25,14 @@ import type {
 } from './extraction-schemas';
 
 export type ExtractionResult = {
-  intent: PlanIntent | null;
-  secondaryIntents?: PlanIntent[];
+  actionIntent: ActionIntent | null;
+  informationRequests: ExtractedInformationRequest[];
   intentConfidence: number | null;
+  ambiguity?: {
+    status: 'clear' | 'ambiguous';
+    clarificationQuestion: string | null;
+    interpretations?: string[];
+  };
   eventType: EventType | null;
   vendorCategory: ProviderCategory | null;
   vendorCategories: ProviderCategory[];
@@ -44,7 +52,6 @@ export type ExtractionResult = {
   contactEmail: string | null;
   contactPhone: string | null;
   providerFitCriteria?: ProviderFitCriteria | null;
-  kbQuery?: string | null;
   providerQueryIntents?: ProviderQueryIntent[];
   providerPlanOperations?: ProviderPlanOperation[];
   providerExplanationRequest?: ProviderExplanationRequest | null;
@@ -70,7 +77,7 @@ export type ComposeReplyRequest = {
   promptBundleId: string;
   promptFilePaths: string[];
   toolUsage: ToolUsage;
-  invitedEventLookupResult?: UserEventLookupResult | null;
+  informationResults?: InformationTaskResult[];
 };
 
 export type ComposeReplyResult = {

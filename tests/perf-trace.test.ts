@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import {
   buildTurnPerfRecord,
+  detectSpanishPolicyTermHits,
   detectAssistantMessageQualityFlags,
   redactSensitiveText,
   toCliPerfSummary,
@@ -86,6 +87,8 @@ describe('perf trace module', () => {
         state_machine_invariant_violations: [],
         operational_note: 'No encontré más opciones distintas con los criterios actuales.',
         extraction_summary: {
+          information_request_count: 0,
+          information_request_kinds: [],
           intent_confidence: 0.9,
           event_type: 'boda',
           vendor_category: 'Catering',
@@ -108,6 +111,8 @@ describe('perf trace module', () => {
           contact_validation_error: null,
         },
         plan_summary: {
+          user_auth_status: 'none',
+          pending_information_request_count: 0,
           current_node: 'recomendar',
           lifecycle_state: 'active',
           event_type: 'boda',
@@ -161,12 +166,7 @@ describe('perf trace module', () => {
             fit_score: 91,
           },
         ],
-        faq_resolution_summary: {
-          is_faq_turn: false,
-          kb_query_present: false,
-          file_search_called: false,
-          file_search_output_count: 0,
-        },
+        information_execution_summary: [],
         plan_persisted: true,
         plan_persist_reason: 'recomendar',
         timing_ms: {
@@ -197,6 +197,19 @@ describe('perf trace module', () => {
       externalUserId: 'user-1',
       messageId: 'msg-1',
       userMessage: 'hola',
+      receivedAt: '2026-04-15T23:59:59.000Z',
+      sessionId: 'session-secret-1',
+      contactPhonePresent: true,
+      deliveryAction: 'send',
+      media: [
+        {
+          kind: 'image',
+          providerMediaId: 'media-secret-1',
+          mimeType: 'image/jpeg',
+          sha256: '81d3bd8a8db4868c9520ed47186e8b7c5789e61ff79f7f834be6950b808a90d3',
+          fileName: null,
+        },
+      ],
       assistantMessage: 'Compárteme tu teléfono +51 954779067 y revisa https://example.com filecite turn1 file 0',
       includeAssistantMessagePreview: true,
       structuredMessageKind: 'contact_request',
@@ -211,6 +224,11 @@ describe('perf trace module', () => {
     expect(record.external_user_hash).toHaveLength(64);
     expect(record.user_message_hash).toHaveLength(64);
     expect(record.user_message_preview).toBe('hola');
+    expect(record.media_count).toBe(1);
+    expect(record.media_kinds).toEqual(['image']);
+    expect(record.media_mime_types).toEqual(['image/jpeg']);
+    expect(record.provider_media_id_hashes[0]).toMatch(/^[a-f0-9]{64}$/u);
+    expect(JSON.stringify(record)).not.toContain('media-secret-1');
     expect(record.assistant_message_length).toBeGreaterThan(0);
     expect(record.assistant_message_hash).toHaveLength(64);
     expect(record.assistant_message_preview_redacted).toContain('[phone]');
@@ -246,7 +264,38 @@ describe('perf trace module', () => {
       },
     ]);
     expect(record.contact_validation_summary.status).toBe('not_provided');
-    expect(record.faq_resolution_summary.is_faq_turn).toBe(false);
+    expect(record.information_execution_summary).toEqual([]);
+    expect(record.feedback_signals).toMatchObject({
+      schema_version: 1,
+      input: {
+        shape: 'text_and_media',
+        ingress_delay_ms: 1000,
+        session_context_present: true,
+        contact_phone_context_present: true,
+      },
+      routing: {
+        decision_source: 'model_assisted',
+        ambiguity_status: null,
+        clarification_question_present: false,
+        ambiguity_interpretation_count: 0,
+      },
+      execution: {
+        model_call_stages: [],
+        model_call_count: 0,
+        tools_called_count: 1,
+      },
+      output: {
+        delivery_action: 'send',
+        link_count: 1,
+      },
+      storage_boundaries: {
+        raw_message_stored_in_feedback_signals: false,
+        raw_media_stored_in_feedback_signals: false,
+        provider_media_id_stored_raw_in_feedback_signals: false,
+      },
+    });
+    expect(record.feedback_signals.correlation.message_id_hash).toHaveLength(64);
+    expect(record.feedback_signals.correlation.session_id_hash).toHaveLength(64);
     expect(record.ttl_epoch_seconds).toBe(1778889600);
   });
 
@@ -268,6 +317,10 @@ describe('perf trace module', () => {
       user_message_length: 4,
       user_message_hash: 'hash-msg',
       user_message_preview: 'hola',
+      media_count: 0,
+      media_kinds: [],
+      media_mime_types: [],
+      provider_media_id_hashes: [],
       assistant_message_length: null,
       assistant_message_hash: null,
       assistant_message_preview_redacted: null,
@@ -329,6 +382,8 @@ describe('perf trace module', () => {
       state_machine_invariant_violations: [],
       operational_note: null,
       extraction_summary: {
+        information_request_count: 0,
+        information_request_kinds: [],
         intent_confidence: 0.9,
         event_type: 'boda',
         vendor_category: 'Catering',
@@ -351,6 +406,8 @@ describe('perf trace module', () => {
         contact_validation_error: null,
       },
       plan_summary: {
+        user_auth_status: 'none',
+        pending_information_request_count: 0,
         current_node: 'recomendar',
         lifecycle_state: 'active',
         event_type: 'boda',
@@ -395,12 +452,7 @@ describe('perf trace module', () => {
         plan_contact_fields_present: { name: false, email: false, phone: false },
       },
       provider_candidate_audit: [],
-      faq_resolution_summary: {
-        is_faq_turn: false,
-        kb_query_present: false,
-        file_search_called: false,
-        file_search_output_count: 0,
-      },
+      information_execution_summary: [],
       provider_results_count: 2,
       provider_result_ids: [1, 2],
       provider_result_summaries: [
@@ -418,12 +470,69 @@ describe('perf trace module', () => {
         recommendation_funnel_available_candidates: 4,
         recommendation_funnel_context_candidates: 2,
         recommendation_funnel_presentation_limit: 5,
+        feedback_signals: {
+          schema_version: 1,
+          correlation: {
+            message_id_hash: 'message-hash',
+            session_id_hash: null,
+          },
+          input: {
+            shape: 'text_only',
+            has_text: true,
+            text_length: 4,
+            media_count: 0,
+            media_kinds: [],
+            media_mime_types: [],
+            received_at: '2026-04-16T00:00:00.000Z',
+            ingress_delay_ms: 0,
+            session_context_present: false,
+            contact_phone_context_present: false,
+          },
+          routing: {
+            previous_node: 'entrevista',
+            next_node: 'recomendar',
+            intent: 'buscar_proveedores',
+            intent_confidence: 0.9,
+            ambiguity_status: 'clear',
+            clarification_question_present: false,
+            ambiguity_interpretation_count: 0,
+            route_kind: 'single_need_search',
+            faq_turn: false,
+            decision_source: 'model_assisted',
+            operational_note_present: false,
+          },
+          execution: {
+            model_call_stages: [],
+            model_call_count: 0,
+            tools_called_count: 1,
+            information_capability_count: 0,
+            information_partial_failure: false,
+            runtime_latency_ms: 999,
+          },
+          output: {
+            delivery_action: 'send',
+            character_count: 0,
+            word_count: 0,
+            question_count: 0,
+            link_count: 0,
+            list_item_count: 0,
+            structured_message_kind: null,
+            quality_flags: [],
+            spanish_policy_term_hits: [],
+          },
+          storage_boundaries: {
+            raw_message_stored_in_feedback_signals: false,
+            raw_media_stored_in_feedback_signals: false,
+            provider_media_id_stored_raw_in_feedback_signals: false,
+          },
+        },
       });
 
     expect(summary.runtime_latency_ms).toBe(999);
     expect(summary.total_tokens).toBe(1100);
     expect(summary.cache_hit_rate).toBe(0.2);
     expect(summary.extraction_to_compose_ratio).toBe(0.75);
+    expect(summary.feedback_signals.schema_version).toBe(1);
   });
 
   it('redacts sensitive assistant output and flags wording regressions', () => {
@@ -446,5 +555,8 @@ describe('perf trace module', () => {
       'command_like_contact_prompt',
       'welcome_menu_template',
     ]);
+    expect(detectSpanishPolicyTermHits(
+      'Confirma el RSVP por email en este chat. https://example.com/marketplace',
+    )).toEqual(['RSVP', 'email', 'chat']);
   });
 });

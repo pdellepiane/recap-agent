@@ -180,12 +180,8 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
       'get_relevant_providers',
     ],
   },
-  consultar_faq: {
-    files: buildNodeFiles('consultar_faq'),
-    allowedTools: [],
-  },
-  consultar_evento_invitado: {
-    files: buildNodeFiles('consultar_evento_invitado'),
+  resolver_consultas_informativas: {
+    files: buildNodeFiles('resolver_consultas_informativas'),
     allowedTools: [],
   },
 };

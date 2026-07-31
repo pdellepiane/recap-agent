@@ -49,7 +49,8 @@ class FakeRuntime implements AgentRuntime {
   async extract(request: ExtractRequest): Promise<ExtractionResult> {
     void request;
     return {
-      intent: 'buscar_proveedores',
+      actionIntent: 'buscar_proveedores',
+      informationRequests: [],
       intentConfidence: 0.91,
       eventType: 'boda',
       vendorCategory: 'Fotografía y video',
@@ -259,12 +260,12 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async requestGuestLoginCode(email: string): Promise<{ status: 'sent' }> {
+  async requestUserLoginCode(email: string): Promise<{ status: 'sent' }> {
     void email;
     return { status: 'sent' };
   }
 
-  async verifyGuestLoginCode(
+  async verifyUserLoginCode(
     email: string,
     code: string,
   ): Promise<{
@@ -281,7 +282,7 @@ class FakeGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(args: {
+  async lookupAuthenticatedUserEvents(args: {
     token: string;
     email: string;
   }): Promise<UserEventLookupResult | null> {
@@ -338,7 +339,8 @@ describe('Batch 4 — State machine fixes', () => {
     class EmptySearchRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'buscar_proveedores',
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
           intentConfidence: 0.9,
           eventType: 'boda',
           vendorCategory: 'Wedding planners',
@@ -512,7 +514,8 @@ describe('Batch 4 — State machine fixes', () => {
     class CloseIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -630,7 +633,8 @@ describe('Batch 4 — State machine fixes', () => {
     class CloseIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -747,7 +751,8 @@ describe('Batch 4 — State machine fixes', () => {
     class CloseIntentRuntime extends FakeRuntime {
       override async extract(): Promise<ExtractionResult> {
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',
@@ -853,7 +858,8 @@ describe('Batch 4 — State machine fixes', () => {
       async extract(request: ExtractRequest): Promise<ExtractionResult> {
         void request;
         return {
-          intent: 'cerrar',
+          actionIntent: 'cerrar',
+          informationRequests: [],
           intentConfidence: 0.95,
           eventType: 'boda',
           vendorCategory: 'Fotografía y video',

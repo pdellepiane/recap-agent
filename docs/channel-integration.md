@@ -79,7 +79,8 @@ Send JSON with `content-type: application/json` and `Authorization: Bearer <CHAN
 
 | Field | Required | Type | Meaning |
 | --- | --- | --- | --- |
-| `text` | Yes | string | The inbound user message exactly as the user sent it after channel-level cleanup. |
+| `text` | Conditional | string | The inbound text or native media caption after channel-level cleanup. Required when `media` is empty. |
+| `media` | Conditional | array | Provider-hosted media descriptors. Required when `text` is empty. See [Channel media integration](media-integration.md). |
 | `user_id` | Yes | string | Stable channel-specific external user id. This is the state key together with `channel`. |
 | `channel` | Yes | string | Stable channel identifier. Use `whatsapp` in production and `whatsapp_sandbox` for sandbox traffic. |
 | `contact_phone` | WhatsApp: Yes | string or null | Sender phone in international E.164 form, including `+`, for example `+51999999999`. Required for `whatsapp` and `whatsapp_sandbox`. |
@@ -88,6 +89,9 @@ Send JSON with `content-type: application/json` and `Authorization: Bearer <CHAN
 | `client_mode` | No | `channel` or `cli` | `channel` returns only user-facing fields. `cli` includes trace, perf, and plan diagnostics. |
 
 Use `client_mode: "channel"` for production channels. Use `client_mode: "cli"` only for developer tooling, evals, or controlled diagnostics.
+
+At least one of `text` or `media` must contain content. The runtime accepts a
+captionless media message without inventing placeholder text.
 
 Minimal production request:
 
@@ -494,8 +498,8 @@ flowchart TD
    `X-Hub-Signature-256` with the Meta app secret before parsing JSON. Reject an
    invalid signature.
 3. Extract each supported inbound user-message event. Ignore delivery/read
-   status events and unsupported message types unless the adapter explicitly
-   normalizes them to text.
+   status events. Normalize supported media messages to the documented `media`
+   descriptor even though media interpretation is not enabled yet.
 4. Claim an idempotency key such as `whatsapp:<wamid>` in durable storage. The
    claim and queue publication should be atomic or otherwise safe against Meta
    retries.
@@ -528,6 +532,13 @@ Pseudo-code:
 ```ts
 type RuntimeRequest = {
   text: string;
+  media: Array<{
+    type: 'image' | 'video' | 'audio' | 'document' | 'sticker';
+    id: string;
+    mime_type: string;
+    sha256: string;
+    filename?: string | null;
+  }>;
   user_id: string;
   channel: string;
   message_id: string;
@@ -593,6 +604,7 @@ For a WhatsApp webhook, map native fields like this:
 | Runtime field | WhatsApp source |
 | --- | --- |
 | `text` | inbound text body after trimming unsupported channel wrappers |
+| `media` | validated descriptor copied from the native media object; do not include bytes or a download URL |
 | `user_id` | `whatsapp:${from}` where `from` is the platform sender id |
 | `contact_phone` | `+${from}` after removing non-digits from Meta's sender id |
 | `channel` | `whatsapp` |
@@ -622,12 +634,19 @@ Do not expose `plan_id`, `current_node`, `trace`, provider tool details, or timi
 Every Lambda invocation emits one redacted structured CloudWatch record named
 `channel_request_completed`. It includes the HTTP status, outcome, duration,
 authorization-header and bearer-token presence, validation issue paths, delivery action, and hashed user and
-message identifiers when validation succeeds. It never includes message text,
+message identifiers when validation succeeds. Media turns also include the media
+count, distinct media classes, and hashed provider media identifiers. It never includes message text,
 raw phone numbers, raw user ids, raw message ids, or bearer tokens. The runtime log
 group uses JSON format, keeps application logs at `INFO`, suppresses routine
 Lambda system logs below `WARN`, and retains data for 7 days. No dashboard or
 custom metric is provisioned; native Function URL 4xx/5xx metrics plus Logs
 Insights remain the low-cost diagnostic path.
+
+Successful message records also summarize versioned feedback evidence:
+`feedback_signal_version`, deterministic or model-assisted decision source,
+model-call count, output-quality-flag count, and known Spanish-policy-term hit
+count. The complete bounded snapshot is stored in the DynamoDB performance
+record under `feedback_signals`.
 
 For a quick diagnostic tail:
 
@@ -824,8 +843,10 @@ The classifier may return `suppress_automated_response` only when its structured
 decision identifies a corporate automated or templated business response with
 `automation_confidence: "high"` and reason `automated_response`. That action does
 not require prior outbound history when the inbound message itself is
-unequivocally automated. Acknowledgement and reaction suppression still requires
-prior outbound context. Structured `automation_pattern` and `automation_scope`
+unequivocally automated. A clearly non-actionable acknowledgement or emoji-only
+reaction can also be suppressed when campaign history is absent. Questions,
+corrections, selections, requests, and plan-relevant facts always remain on the
+reply path. Structured `automation_pattern` and `automation_scope`
 evidence prevents quoted bot text from suppressing a human question and allows a
 generic corporate reception template only when outbound contact exists. The
 runtime normalizes an inconsistent action from this typed evidence rather than

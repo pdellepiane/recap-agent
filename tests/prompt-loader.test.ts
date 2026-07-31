@@ -48,39 +48,75 @@ describe('PromptLoader', () => {
     expect(after.id).not.toBe(before.id);
   });
 
-  it('includes explicit FAQ scope and gift-claim policy in prompt bundles', async () => {
-    const faqBundle = await loader.loadNodeBundle('consultar_faq');
-    const invitedEventBundle = await loader.loadNodeBundle('consultar_evento_invitado');
+  it('includes explicit question scope and operational capability boundaries in prompt bundles', async () => {
+    const informationBundle = await loader.loadNodeBundle(
+      'resolver_consultas_informativas',
+    );
     const welcomeBundle = await loader.loadNodeBundle('contacto_inicial');
     const extractorBundle = await loader.loadExtractorBundle();
 
-    expect(faqBundle.instructions).toContain('no realizas diseño/desarrollo web externo');
-    expect(faqBundle.instructions).toContain('no está obligado a comprar los regalos');
-    expect(faqBundle.instructions).toContain('reclamo se gestiona directamente con la marca');
-    expect(faqBundle.instructions).toContain('chat de la web');
-    expect(faqBundle.instructions).toContain('hola@sinenvolturas.com');
-    expect(faqBundle.instructions).toContain('beneficios, descuentos, Shop');
-    expect(faqBundle.instructions).toContain('transmisión en vivo');
-    expect(faqBundle.instructions).toContain('tipos de regalos');
-    expect(invitedEventBundle.instructions).toContain('Contexto verificado de evento asociado');
-    expect(invitedEventBundle.instructions).toContain('Ninguna.');
-    expect(invitedEventBundle.instructions).toContain('eventos de Sin Envolturas asociados');
-    expect(invitedEventBundle.instructions).toContain('nombre, url, lugar, fecha');
-    expect(invitedEventBundle.instructions).toContain('asistencia confirmada');
-    expect(invitedEventBundle.instructions).toContain('acompañantes indicado/no indicado');
-    expect(invitedEventBundle.instructions).not.toContain('plan.guest_auth');
-    expect(invitedEventBundle.instructions).not.toContain('código');
-    expect(invitedEventBundle.instructions).not.toContain('consultar_evento_invitado');
-    expect(extractorBundle.instructions).toContain('consultar_evento_invitado');
-    expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir webs externas');
+    expect(informationBundle.instructions).toContain(
+      'Resolver en un solo turno una o varias consultas informativas',
+    );
+    expect(informationBundle.instructions).toContain(
+      'por seguridad necesitas verificar la cuenta',
+    );
+    expect(informationBundle.instructions).toContain(
+      'número de pedido',
+    );
+    expect(informationBundle.instructions).toContain(
+      'No describas por adelantado todo el flujo',
+    );
+    expect(informationBundle.instructions).toContain(
+      'muestra el correo al que se envió',
+    );
+    expect(informationBundle.instructions).toContain(
+      'No uses palabras técnicas como endpoint, API, JWT, token',
+    );
+    expect(informationBundle.instructions).toContain(
+      'Nunca digas de forma general que no puedes ayudar con regalos',
+    );
+    expect(informationBundle.instructions).toContain(
+      'La fuente exclusiva para compras es kind=purchase',
+    );
+    expect(informationBundle.instructions).not.toContain('plan.user_auth');
+    expect(informationBundle.instructions).not.toContain('file_search');
+    expect(extractorBundle.instructions).toContain(
+      'informationRequests.kind=associated_event',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'report_otp_not_received',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'information_state.authentication_status=code_requested',
+    );
+    expect(welcomeBundle.instructions).toContain('No prometas diseñar ni construir sitios externos');
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
-    expect(extractorBundle.instructions).toContain('diseñar una web externa');
-    expect(extractorBundle.instructions).toContain('reclamos de productos');
-    expect(extractorBundle.instructions).toContain('dónde veo los confirmados');
-    expect(extractorBundle.instructions).toContain('tengo un problema con mi evento');
-    expect(extractorBundle.instructions).toContain('no puedo compartir mi evento');
-    expect(extractorBundle.instructions).toContain('mis invitados');
+    expect(extractorBundle.instructions).toContain(
+      'una pregunta sobre capacidad no es una solicitud de atención humana',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'una referencia breve como "el horario"',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'pregunta si puedes leer una fotografía',
+    );
+    expect(extractorBundle.instructions).toContain(
+      '“¿Cómo funciona la lista de regalos?” es FAQ',
+    );
+    expect(extractorBundle.instructions).toContain(
+      '“¿Cuál es el estado del regalo que compré?” es purchase',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'El número es opcional',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'La ausencia de número de orden no es ambigüedad',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'aspects=[summary, payment_status, shipping]',
+    );
     expect(extractorBundle.instructions).toContain('no reemplaces nombres de proveedores desconocidos');
     expect(extractorBundle.instructions).toContain('no quiero quedarme con X');
     expect(extractorBundle.instructions).toContain('respuestas negativas como "ninguna"');

@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+import type { InboundMedia } from '../../core/messages';
 import type { TurnTrace } from '../../core/trace';
 
 export type AssistantMessageQualityFlag =
@@ -24,6 +25,63 @@ export type ProviderResultPerfSummary = {
   location: string | null;
 };
 
+export type FeedbackSignalsV1 = {
+  schema_version: 1;
+  correlation: {
+    message_id_hash: string;
+    session_id_hash: string | null;
+  };
+  input: {
+    shape: 'text_only' | 'media_only' | 'text_and_media';
+    has_text: boolean;
+    text_length: number;
+    media_count: number;
+    media_kinds: InboundMedia['kind'][];
+    media_mime_types: string[];
+    received_at: string;
+    ingress_delay_ms: number | null;
+    session_context_present: boolean;
+    contact_phone_context_present: boolean;
+  };
+  routing: {
+    previous_node: string;
+    next_node: string;
+    intent: string | null;
+    intent_confidence: number | null;
+    ambiguity_status: 'clear' | 'ambiguous' | null;
+    clarification_question_present: boolean;
+    ambiguity_interpretation_count: number;
+    route_kind: TurnTrace['route_kind'];
+    faq_turn: boolean;
+    decision_source: 'deterministic' | 'model_assisted';
+    operational_note_present: boolean;
+  };
+  execution: {
+    model_call_stages: Array<'classifier' | 'extraction' | 'reply'>;
+    model_call_count: number;
+    tools_called_count: number;
+    information_capability_count: number;
+    information_partial_failure: boolean;
+    runtime_latency_ms: number;
+  };
+  output: {
+    delivery_action: 'send' | 'suppress';
+    character_count: number;
+    word_count: number;
+    question_count: number;
+    link_count: number;
+    list_item_count: number;
+    structured_message_kind: string | null;
+    quality_flags: AssistantMessageQualityFlag[];
+    spanish_policy_term_hits: string[];
+  };
+  storage_boundaries: {
+    raw_message_stored_in_feedback_signals: false;
+    raw_media_stored_in_feedback_signals: false;
+    provider_media_id_stored_raw_in_feedback_signals: false;
+  };
+};
+
 export type TurnPerfRecord = {
   pk: string;
   sk: string;
@@ -41,6 +99,10 @@ export type TurnPerfRecord = {
   user_message_length: number;
   user_message_hash: string;
   user_message_preview: string;
+  media_count: number;
+  media_kinds: InboundMedia['kind'][];
+  media_mime_types: string[];
+  provider_media_id_hashes: string[];
   assistant_message_length: number | null;
   assistant_message_hash: string | null;
   assistant_message_preview_redacted: string | null;
@@ -75,7 +137,7 @@ export type TurnPerfRecord = {
   selection_resolution_summary: TurnTrace['selection_resolution_summary'];
   contact_validation_summary: TurnTrace['contact_validation_summary'];
   provider_candidate_audit: TurnTrace['provider_candidate_audit'];
-  faq_resolution_summary: TurnTrace['faq_resolution_summary'];
+  information_execution_summary: TurnTrace['information_execution_summary'];
   provider_results_count: number;
   provider_result_ids: number[];
   provider_result_summaries: ProviderResultPerfSummary[];
@@ -90,6 +152,7 @@ export type TurnPerfRecord = {
   recommendation_funnel_available_candidates: number | null;
   recommendation_funnel_context_candidates: number | null;
   recommendation_funnel_presentation_limit: number | null;
+  feedback_signals: FeedbackSignalsV1;
 };
 
 export type CliPerfSummary = {
@@ -114,6 +177,7 @@ export type CliPerfSummary = {
   conversation_health_status: string | null;
   conversation_health_reason: string | null;
   human_help_response: string | null;
+  feedback_signals: FeedbackSignalsV1;
 };
 
 export function buildTurnPerfRecord(args: {
@@ -122,6 +186,11 @@ export function buildTurnPerfRecord(args: {
   externalUserId: string;
   messageId: string;
   userMessage: string;
+  media?: readonly InboundMedia[];
+  receivedAt?: string;
+  sessionId?: string | null;
+  contactPhonePresent?: boolean;
+  deliveryAction?: 'send' | 'suppress';
   assistantMessage?: string | null;
   includeAssistantMessagePreview?: boolean;
   structuredMessageKind?: string | null;
@@ -144,6 +213,24 @@ export function buildTurnPerfRecord(args: {
 
   const funnel = args.trace.recommendation_funnel;
   const assistantMessage = args.assistantMessage ?? null;
+  const media = args.media ?? [];
+  const assistantQualityFlags = assistantMessage
+    ? detectAssistantMessageQualityFlags(assistantMessage)
+    : [];
+  const feedbackSignals = buildFeedbackSignals({
+    trace: args.trace,
+    capturedAt,
+    messageId: args.messageId,
+    userMessage: args.userMessage,
+    media,
+    receivedAt: args.receivedAt ?? capturedAtIso,
+    sessionId: args.sessionId ?? null,
+    contactPhonePresent: args.contactPhonePresent ?? false,
+    deliveryAction: args.deliveryAction ?? 'send',
+    assistantMessage,
+    assistantQualityFlags,
+    structuredMessageKind: args.structuredMessageKind ?? null,
+  });
 
   return {
     pk: `CONVERSATION#${conversationKey}`,
@@ -162,14 +249,18 @@ export function buildTurnPerfRecord(args: {
     user_message_length: args.userMessage.length,
     user_message_hash: sha256(args.userMessage),
     user_message_preview: truncateText(args.userMessage, 160),
+    media_count: media.length,
+    media_kinds: media.map((item) => item.kind),
+    media_mime_types: media
+      .map((item) => item.mimeType)
+      .filter((mimeType): mimeType is string => mimeType !== null),
+    provider_media_id_hashes: media.map((item) => sha256(item.providerMediaId)),
     assistant_message_length: assistantMessage?.length ?? null,
     assistant_message_hash: assistantMessage ? sha256(assistantMessage) : null,
     assistant_message_preview_redacted: assistantMessage && args.includeAssistantMessagePreview
       ? truncateText(redactSensitiveText(assistantMessage), 240)
       : null,
-    assistant_message_quality_flags: assistantMessage
-      ? detectAssistantMessageQualityFlags(assistantMessage)
-      : [],
+    assistant_message_quality_flags: assistantQualityFlags,
     structured_message_kind: args.structuredMessageKind ?? null,
     runtime_latency_ms: args.trace.timing_ms.total,
     timing_ms: args.trace.timing_ms,
@@ -204,7 +295,7 @@ export function buildTurnPerfRecord(args: {
     selection_resolution_summary: args.trace.selection_resolution_summary,
     contact_validation_summary: args.trace.contact_validation_summary,
     provider_candidate_audit: args.trace.provider_candidate_audit,
-    faq_resolution_summary: args.trace.faq_resolution_summary,
+    information_execution_summary: args.trace.information_execution_summary,
     provider_results_count: args.trace.provider_results.length,
     provider_result_ids: args.trace.provider_results.map((provider) => provider.id),
     provider_result_summaries: args.trace.provider_results.map((provider) => ({
@@ -224,7 +315,159 @@ export function buildTurnPerfRecord(args: {
     recommendation_funnel_available_candidates: funnel?.available_candidates ?? null,
     recommendation_funnel_context_candidates: funnel?.context_candidates ?? null,
     recommendation_funnel_presentation_limit: funnel?.presentation_limit ?? null,
+    feedback_signals: feedbackSignals,
   };
+}
+
+function buildFeedbackSignals(args: {
+  trace: TurnTrace;
+  capturedAt: Date;
+  messageId: string;
+  userMessage: string;
+  media: readonly InboundMedia[];
+  receivedAt: string;
+  sessionId: string | null;
+  contactPhonePresent: boolean;
+  deliveryAction: 'send' | 'suppress';
+  assistantMessage: string | null;
+  assistantQualityFlags: AssistantMessageQualityFlag[];
+  structuredMessageKind: string | null;
+}): FeedbackSignalsV1 {
+  const hasText = args.userMessage.trim().length > 0;
+  const inputShape = hasText && args.media.length > 0
+    ? 'text_and_media'
+    : hasText
+      ? 'text_only'
+      : 'media_only';
+  const receivedAtMs = Date.parse(args.receivedAt);
+  const ingressDelayMs = Number.isFinite(receivedAtMs)
+    ? Math.max(0, args.capturedAt.getTime() - receivedAtMs)
+    : null;
+  const modelCallStages: FeedbackSignalsV1['execution']['model_call_stages'] = [];
+  if (args.trace.token_usage.classifier != null) {
+    modelCallStages.push('classifier');
+  }
+  if (args.trace.token_usage.extraction != null) {
+    modelCallStages.push('extraction');
+  }
+  if (args.trace.token_usage.reply != null) {
+    modelCallStages.push('reply');
+  }
+  const assistantText = args.assistantMessage ?? '';
+
+  return {
+    schema_version: 1,
+    correlation: {
+      message_id_hash: sha256(args.messageId),
+      session_id_hash: args.sessionId ? sha256(args.sessionId) : null,
+    },
+    input: {
+      shape: inputShape,
+      has_text: hasText,
+      text_length: args.userMessage.length,
+      media_count: args.media.length,
+      media_kinds: args.media.map((item) => item.kind),
+      media_mime_types: args.media
+        .map((item) => item.mimeType)
+        .filter((mimeType): mimeType is string => mimeType !== null),
+      received_at: args.receivedAt,
+      ingress_delay_ms: ingressDelayMs,
+      session_context_present: args.sessionId !== null,
+      contact_phone_context_present: args.contactPhonePresent,
+    },
+    routing: {
+      previous_node: args.trace.previous_node,
+      next_node: args.trace.next_node,
+      intent: args.trace.intent,
+      intent_confidence: args.trace.extraction_summary.intent_confidence,
+      ambiguity_status: args.trace.extraction_summary.ambiguity_status ?? null,
+      clarification_question_present:
+        args.trace.extraction_summary.clarification_question_present ?? false,
+      ambiguity_interpretation_count:
+        args.trace.extraction_summary.ambiguity_interpretation_count ?? 0,
+      route_kind: args.trace.route_kind,
+      faq_turn: args.trace.information_execution_summary.some(
+        (summary) => summary.kind === 'faq',
+      ),
+      decision_source: args.trace.prompt_bundle_id.startsWith('deterministic:')
+        ? 'deterministic'
+        : 'model_assisted',
+      operational_note_present: args.trace.operational_note !== null,
+    },
+    execution: {
+      model_call_stages: modelCallStages,
+      model_call_count: modelCallStages.length,
+      tools_called_count: args.trace.tools_called.length,
+      information_capability_count:
+        args.trace.information_execution_summary.length,
+      information_partial_failure:
+        args.trace.information_execution_summary.some(
+          (summary) => summary.status === 'failed',
+        ) &&
+        args.trace.information_execution_summary.some(
+          (summary) => summary.status === 'completed',
+        ),
+      runtime_latency_ms: args.trace.timing_ms.total,
+    },
+    output: {
+      delivery_action: args.deliveryAction,
+      character_count: assistantText.length,
+      word_count: countWords(assistantText),
+      question_count: countQuestions(assistantText),
+      link_count: countMatches(assistantText, /\bhttps?:\/\/\S+/giu),
+      list_item_count: countMatches(assistantText, /^\s*(?:[-*]|\d+[.)])\s+/gmu),
+      structured_message_kind: args.structuredMessageKind,
+      quality_flags: args.assistantQualityFlags,
+      spanish_policy_term_hits: detectSpanishPolicyTermHits(assistantText),
+    },
+    storage_boundaries: {
+      raw_message_stored_in_feedback_signals: false,
+      raw_media_stored_in_feedback_signals: false,
+      provider_media_id_stored_raw_in_feedback_signals: false,
+    },
+  };
+}
+
+function countWords(value: string): number {
+  return value.match(/\p{L}[\p{L}\p{M}'’-]*/gu)?.length ?? 0;
+}
+
+function countQuestions(value: string): number {
+  return Math.max(
+    countMatches(value, /\?/gu),
+    countMatches(value, /¿/gu),
+  );
+}
+
+function countMatches(value: string, pattern: RegExp): number {
+  return value.match(pattern)?.length ?? 0;
+}
+
+export function detectSpanishPolicyTermHits(value: string): string[] {
+  const withoutUrls = value.replace(/\bhttps?:\/\/\S+/giu, ' ');
+  const terms: Array<{ label: string; pattern: RegExp }> = [
+    { label: 'RSVP', pattern: /\brsvp\b/iu },
+    { label: 'email', pattern: /\be-?mail\b/iu },
+    { label: 'chat', pattern: /\bchat\b/iu },
+    { label: 'marketplace', pattern: /\bmarketplace\b/iu },
+    { label: 'delivery', pattern: /\bdelivery\b/iu },
+    { label: 'spam', pattern: /\bspam\b/iu },
+    { label: 'streaming', pattern: /\bstreaming\b/iu },
+    { label: 'host', pattern: /\bhost\b/iu },
+    { label: 'bartender', pattern: /\bbartender\b/iu },
+    { label: 'baby shower', pattern: /\bbaby\s+shower\b/iu },
+    { label: 'catering', pattern: /\bcatering\b/iu },
+    { label: 'screenshot', pattern: /\bscreenshot\b/iu },
+    { label: 'FAQ', pattern: /\bfaq\b/iu },
+    { label: 'feedback', pattern: /\bfeedback\b/iu },
+    { label: 'app', pattern: /\bapp\b/iu },
+    { label: 'login', pattern: /\blogin\b/iu },
+    { label: 'wedding planner', pattern: /\bwedding\s+planners?\b/iu },
+  ];
+
+  return terms
+    .filter((entry) => entry.pattern.test(withoutUrls))
+    .map((entry) => entry.label);
 }
 
 function toRedactedTracePreview(tool: string, value: string): RedactedTracePreview {
@@ -307,6 +550,7 @@ export function toCliPerfSummary(
     conversation_health_status: record.response_classifier?.conversation_health ?? null,
     conversation_health_reason: record.response_classifier?.health_reason ?? null,
     human_help_response: record.response_classifier?.human_help_response ?? null,
+    feedback_signals: record.feedback_signals,
   };
 }
 

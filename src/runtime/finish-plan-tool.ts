@@ -42,7 +42,7 @@ export async function executeFinishPlanTool(args: {
       status: 'failed',
       error: 'missing_contact_info',
       detail:
-        'Faltan datos de contacto. Solicita nombre, email y teléfono antes de llamar finish_plan.',
+        'Faltan datos de contacto. Solicita nombre, correo electrónico y teléfono antes de llamar finish_plan.',
     };
   }
 

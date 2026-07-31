@@ -55,11 +55,18 @@ export function assessGrounding(turn: EvalTurnResult): GroundingAssessment {
   }
 
   if (turnClass === 'factual_faq') {
-    const faq = turn.trace.faq_resolution_summary;
+    const faqResults = turn.trace.information_execution_summary.filter(
+      (summary) => summary.kind === 'faq',
+    );
     return {
       turnClass,
       groundingRequired: true,
-      grounded: faq.file_search_called && faq.file_search_output_count > 0,
+      grounded: faqResults.some(
+        (summary) =>
+          summary.status === 'completed' &&
+          summary.source === 'knowledge_base' &&
+          summary.resultCount > 0,
+      ),
       providerCount: 0,
       verifiedProviderCount: 0,
       unsupportedProviderIds: [],
@@ -85,7 +92,11 @@ function classifyTurn(turn: EvalTurnResult): TurnClass {
   ) {
     return 'recommendation';
   }
-  if (turn.trace.faq_resolution_summary.is_faq_turn) {
+  if (
+    turn.trace.information_execution_summary.some(
+      (summary) => summary.kind === 'faq',
+    )
+  ) {
     return 'factual_faq';
   }
   if (

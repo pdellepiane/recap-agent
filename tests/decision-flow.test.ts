@@ -35,7 +35,7 @@ describe('resolveResumeNode', () => {
     expect(resolveResumeNode(plan)).toBe('entrevista');
   });
 
-  it('keeps invited event lookup plans in the invited event node for follow-ups', () => {
+  it('keeps pending information work in the information resolver', () => {
     const plan = mergePlan(
       createEmptyPlan({
         planId: 'p-invited-event',
@@ -43,13 +43,25 @@ describe('resolveResumeNode', () => {
         externalUserId: 'u-invited-event',
       }),
       {
-        current_node: 'consultar_evento_invitado',
-        intent: 'consultar_evento_invitado',
+        current_node: 'resolver_consultas_informativas',
+        intent: null,
         contact_email: 'paolo.delepias@gmail.com',
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [
+            {
+              requestId: 'information-1',
+              kind: 'associated_event',
+              query: 'Consulta el evento asociado.',
+              eventHint: null,
+            },
+          ],
+          selection_candidates: [],
+        },
       },
     );
 
-    expect(resolveResumeNode(plan)).toBe('consultar_evento_invitado');
+    expect(resolveResumeNode(plan)).toBe('resolver_consultas_informativas');
   });
 
   it('falls back to entrevista when the active need has no_providers_available', () => {

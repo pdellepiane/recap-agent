@@ -20,8 +20,10 @@ Provider vector search is not exposed to the conversational agent as an ambient 
 
 To avoid mixing provider types or needs:
 
-- FAQ lookup remains isolated in the `consultar_faq` node and uses the FAQ vector store only.
-- Provider vector lookup runs only inside provider search, never inside `consultar_faq`.
+- FAQ lookup runs through the explicit knowledge gateway inside
+  `resolver_consultas_informativas` and uses the FAQ vector store only.
+- Provider vector lookup runs only inside provider search, never inside the
+  information resolver.
 - The provider query is built from the active provider need only: active category, active preferences, active hard constraints, event type, location, budget, and conversation summary.
 - If the plan contains several provider needs, inactive needs are not used as retrieval categories or filters.
 - The vector search applies metadata filters for category and country when available.

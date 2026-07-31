@@ -31,8 +31,7 @@ const REACHABLE_TRANSITIONS = new Set([
   'deteccion_intencion->minimos_para_buscar',
   'deteccion_intencion->entrevista',
   'deteccion_intencion->elicitacion_necesidades',
-  'deteccion_intencion->consultar_faq',
-  'deteccion_intencion->consultar_evento_invitado',
+  'deteccion_intencion->resolver_consultas_informativas',
   'minimos_para_buscar->buscar_proveedores',
   'minimos_para_buscar->aclarar_pedir_faltante',
   'entrevista->existe_plan_guardado',
@@ -57,8 +56,7 @@ const REACHABLE_TRANSITIONS = new Set([
   'existe_plan_guardado->refinar_criterios',
   'existe_plan_guardado->usuario_elige_proveedor',
   'existe_plan_guardado->seguir_refinando_guardar_plan',
-  'existe_plan_guardado->consultar_faq',
-  'existe_plan_guardado->consultar_evento_invitado',
+  'existe_plan_guardado->resolver_consultas_informativas',
   'refinar_criterios->minimos_para_buscar',
   'refinar_criterios->entrevista',
   'refinar_criterios->usuario_elige_proveedor',
@@ -74,8 +72,7 @@ const REACHABLE_TRANSITIONS = new Set([
   'informar_error_reintento->reintentar',
   'reintentar->minimos_para_buscar',
   'guardar_cerrar_temporalmente->existe_plan_guardado',
-  'consultar_faq->existe_plan_guardado',
-  'consultar_evento_invitado->existe_plan_guardado',
+  'resolver_consultas_informativas->existe_plan_guardado',
 ]);
 
 export type TechnicalStudyOptions = {

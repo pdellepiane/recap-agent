@@ -9,7 +9,15 @@ inputs:
 fixtures:
   offline:
     extractionsByTurn:
-      - intent: consultar_faq
+      - actionIntent: null
+        informationRequests:
+          - kind: purchase
+            resource: gift_purchases
+            query: Tengo un problema con un regalo de mi web.
+            orderId: null
+            aspects: [summary]
+            sensitiveFields: []
+            authAction: provide_email
         intentConfidence: 0.95
         eventType: null
         vendorCategory: null
@@ -24,17 +32,16 @@ fixtures:
         conversationSummary: Pregunta por regalos, compra obligatoria y reclamo con marca.
         selectedProviderHints: []
         pauseRequested: false
-        kbQuery: regalos no obligatorios reclamo marca soporte
     repliesByTurn:
-      - No estás obligado a comprar regalos. Recibes el valor según la comisión configurada y, si el problema es con una compra o producto, el reclamo se gestiona con la marca; igual podemos ayudarte por chat o email.
+      - Para revisar el regalo necesito el correo usado en la compra y te enviaré un código de verificación. El número de orden es opcional, pero ayuda a ubicar una compra específica.
 expectations:
   - id: faq-node
     type: node_transition
-    to: consultar_faq
+    to: resolver_consultas_informativas
   - id: gift-claim-copy
     type: text_contains
-    allOf: [marca]
-    anyOf: [No estás obligado, no estás obligado, no es obligatorio]
+    allOf: [correo]
+    anyOf: [número de orden, orden]
   - id: no-provider-search
     type: tool_usage
     mustNotCall:

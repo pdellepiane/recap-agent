@@ -1,8 +1,9 @@
 Definiciones de campos:
 
-- intent:
+- actionIntent:
+  - Acción exclusiva y opcional del turno. Debe ser null cuando el mensaje solo contiene consultas informativas.
   - elicitar_necesidades: el usuario describe un evento completo o pide ayuda para armar el plan; debes convertirlo en varias necesidades de proveedores con providerQueryIntents.
-  - No uses elicitar_necesidades para saludos, preguntas de onboarding o "cómo puedes ayudarme" sin datos de evento. En esos casos deja intent=null o usa el intent específico si hay una pregunta real.
+  - No uses elicitar_necesidades para saludos, preguntas de onboarding o "cómo puedes ayudarme" sin datos de evento. En esos casos deja actionIntent=null o usa el actionIntent específico si hay una pregunta real.
   - buscar_proveedores: quiere iniciar o continuar una búsqueda con intención de ver opciones.
   - refinar_busqueda: quiere ajustar criterios, ampliar o acotar resultados, incluyendo pedir más opciones dentro de la misma necesidad.
   - ver_opciones: quiere revisar alternativas sin expresar refinamiento claro.
@@ -13,20 +14,41 @@ Definiciones de campos:
   - retomar_plan: quiere seguir desde un plan ya guardado.
   - cerrar: quiere cerrar el plan o avanzar a contactar/cotizar con proveedores ya elegidos.
   - pausar: quiere dejarlo para después o retomarlo luego.
-  - solicitar_humano: pide hablar con una persona, asesor, agente humano, soporte humano u operador, o expresa que el bot no puede resolver su caso y quiere que alguien del equipo lo revise. Úsalo también cuando el usuario pide "contactarme con alguien", "que me atienda una persona", "derívame con soporte" o equivalentes. No lo uses para pedir contactar/cotizar proveedores elegidos; eso es cerrar.
-  - consultar_faq: quiere hacer una pregunta general sobre Sin Envolturas, precios, comisiones, funcionalidades, pagos, listas de regalo, soporte, capacidades de la plataforma, reclamos de productos, compras del Shop, o cualquier tema de la base de conocimiento que no requiera identificar un evento real del usuario. También úsalo cuando el usuario pida algo fuera de alcance pero relacionado con Sin Envolturas, por ejemplo diseñar una web externa.
-  - consultar_evento_invitado: quiere consultar información de un evento real de Sin Envolturas asociado al usuario que pregunta, ya sea como asistente, anfitrión, celebrado, dueño del evento o comprador. Úsalo para preguntas sobre fecha, hora, nombre del evento, RSVP, confirmados, invitados, acompañante, anfitrión, rol del usuario, evento propio, evento donde es host/celebrado, regalos u órdenes de ese evento. Si dice que tiene un problema con "mi evento", que no puede compartir su evento, o pregunta cómo ver o revisar datos de "mi evento", "mis invitados", "los confirmados" o "todo en un solo lugar", es consultar_evento_invitado, no un saludo ni onboarding genérico. Ejemplos: "tengo un problema con mi evento", "no puedo compartir mi evento", "¿a qué hora es mi evento?", "¿confirmé asistencia?", "¿dónde veo los confirmados?", "¿puedo llevar acompañante?", "¿cuál es la boda de Ana?", "¿qué evento tengo en Sin Envolturas?".
+  - solicitar_humano: pide explícitamente hablar con una persona, asesor, agente humano, soporte humano u operador, o dice de forma explícita que quiere que alguien del equipo revise su caso. Úsalo también cuando el usuario pide "contactarme con alguien", "que me atienda una persona", "derívame con soporte" o equivalentes. No lo uses cuando el usuario solo pregunta si el asistente puede hacer algo, por ejemplo leer una fotografía; una pregunta sobre capacidad no es una solicitud de atención humana. No lo uses para pedir contactar/cotizar proveedores elegidos; eso es cerrar.
 
-- secondaryIntents:
-  - lista opcional de ints adicionales presentes en el mensaje, además del intent principal.
-  - Úsalo cuando el mensaje combina intenciones claras. Ejemplo: "ok, elijo a DJ Pulga. Ahora necesito catering para tortas" tiene intent=buscar_proveedores y secondaryIntents=["confirmar_proveedor"] porque el usuario está cambiando de necesidad pero también seleccionó un proveedor de la shortlist.
-  - Si el usuario elige uno o varios proveedores Y pide algo más (otra categoría, otra búsqueda, cerrar), incluye confirmar_proveedor en secondaryIntents y llena selectedProviderHints con cada referencia elegida.
-  - Puede estar vacío si el mensaje tiene una sola intención clara.
+- informationRequests:
+  - Lista ordenada de consultas informativas de solo lectura. Usa [] si el turno no contiene ninguna.
+  - Cada objeto del esquema debe incluir siempre todos los campos comunes. Usa null o [] en los campos que no correspondan.
+  - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones, funcionalidades, listas de regalos, soporte o capacidades, sin pedir datos de una operación propia. Usa `query` como reformulación semántica completa; `eventHint`, `resource`, `orderId` y `authAction` deben ser null; `aspects` y `sensitiveFields` deben ser [].
+  - `associated_event`: consulta información de un evento real asociado a la cuenta del usuario, como fecha, hora, lugar, asistencia, acompañante, anfitrión, rol o confirmados. Usa `eventHint` si el usuario identifica el evento; `resource`, `orderId` y `authAction` deben ser null; `aspects` y `sensitiveFields` deben ser [].
+  - `purchase`: consulta datos personales de una orden o regalo comprado por el usuario. `resource=orders` para resumen o estado de órdenes; `resource=gift_purchases` para pagos, dedicatoria, tarjeta física, envío o agradecimiento de un regalo.
+  - En `purchase`, `orderId` contiene el número de orden si aparece y es null si no aparece. El número es opcional: nunca bloquees la extracción por su ausencia.
+  - No marques ambigüedad solo porque falta `orderId`. Con `orderId=null`, el flujo verificará el correo, revisará las compras recientes y permitirá elegir una; con un `orderId` presente, después de verificar el correo buscará directamente esa orden.
+  - No marques ambigüedad porque el usuario no separó “estado”, “pago” o “envío”. Para una consulta general sobre el estado de un pedido propio usa `resource=orders` y `aspects=[summary, payment_status, shipping]`.
+  - Usa `resource=gift_purchases` cuando la consulta sea específicamente sobre un regalo comprado, su pago, dedicatoria, tarjeta física, envío o agradecimiento. No preguntes al usuario si “pedido” significa orden o encargo de proveedor cuando ya expresó que es una compra propia en Sin Envolturas.
+  - En `purchase`, `aspects` debe contener una o más de: summary, payment_status, payment_details, shipping, dedication, thanks, decline.
+  - En `purchase`, `sensitiveFields` contiene solo campos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code, admin_comment.
+  - En `purchase`, `authAction` debe ser none, provide_email, provide_otp, report_otp_not_received, resend_otp o change_email según la acción explícita del usuario y el estado pendiente. Usa report_otp_not_received cuando la persona indique que el código no llegó, sin asumir que ya pidió reenviarlo. No copies códigos OTP en ningún otro campo.
+  - Crea una consulta `purchase` solo cuando la persona pida consultar, revisar o resolver información de una compra propia, o cuando responda a una verificación ya pendiente. Una frase que solo informa que ya envió o compró un regalo, sin pregunta ni solicitud, no es una consulta de compra.
+  - Distingue propiedad personal de información general semánticamente. “¿Cómo funciona la lista de regalos?” es FAQ. “¿Cuál es el estado del regalo que compré?” es purchase.
+  - Si no se puede saber si pregunta por una política general o por una operación propia, deja `informationRequests=[]`, marca `ambiguity.status=ambiguous` y formula una sola aclaración sobre esa diferencia.
+  - Un mensaje puede producir varias consultas: por ejemplo FAQ + purchase, FAQ + associated_event o associated_event + purchase. No las conviertas en una sola.
+  - Si además hay una acción exclusiva, conserva la acción en `actionIntent` y también todas las consultas en `informationRequests`.
 
 - intentConfidence:
   - alto si el mensaje es directo;
   - medio si hay inferencia razonable;
   - bajo si hay ambigüedad.
+
+- ambiguity:
+  - objeto obligatorio que registra si el mensaje puede interpretarse con seguridad usando el mensaje actual y el contexto disponible.
+  - status debe ser clear cuando existe una interpretación suficientemente respaldada y ambiguous cuando faltan datos para elegir entre dos o más interpretaciones razonables.
+  - Una consulta personal de pedidos no es ambigua por carecer de número de orden o por pedir solo “el estado”. Esos datos tienen rutas predeterminadas: compras recientes sin número y resumen/pago/envío como aspectos de estado.
+  - No decidas por palabras aisladas. Evalúa el mensaje completo junto con el plan y el contexto de sesión.
+  - Si status=ambiguous, clarificationQuestion debe contener una sola pregunta breve, autosuficiente y en español que permita distinguir las interpretaciones. No respondas ninguna interpretación dentro de la pregunta.
+  - Si status=ambiguous, interpretations debe contener entre dos y tres interpretaciones distintas, concretas y breves en español. Escríbelas como frases nominales que completen "¿Quieres saber ...?", sin signos de interrogación. Ejemplo: ["el horario de tu evento", "el horario de atención de Sin Envolturas"].
+  - Si status=clear, clarificationQuestion debe ser null e interpretations debe ser [].
+  - Una confianza numérica media no sustituye esta decisión. Si tus assumptions indican que falta el referente o contexto necesario para contestar, status debe ser ambiguous.
 
 - eventType:
   - tipo de evento canónico o null.
@@ -81,7 +103,7 @@ Definiciones de campos:
 
 - pauseRequested:
   - true si el usuario quiere pausar o retomar más tarde.
-  - false si quiere cerrar definitivamente (esos casos van en intent: cerrar).
+  - false si quiere cerrar definitivamente (esos casos van en actionIntent: cerrar).
 
 - contactName:
   - nombre completo del usuario cuando lo proporciona explícitamente para el cierre del plan.
@@ -125,7 +147,7 @@ Definiciones de campos:
   - Para proveedores, suficiente contexto útil normalmente es: category + location + (guestRange o budgetSignal). No exijas fecha exacta ni distrito exacto para marcar retrievalReady=true si ya hay ciudad y escala/presupuesto.
   - No incluyas fecha exacta, rango de fechas, zona o distrito en missingFields solo porque serían útiles; inclúyelos únicamente si el usuario los convirtió en una restricción necesaria o si no hay ninguna ubicación útil.
   - Si retrievalReady=true, missingFields puede seguir listando datos útiles para ajustar después, pero esos faltantes no deben bloquear la primera búsqueda.
-  - No generes todas las categorías del marketplace. Para una descripción general y poco detallada, usa solo 3 a 5 necesidades iniciales priorizadas por tipo de evento y marca retrievalReady=false hasta que el usuario elija por dónde empezar.
+  - No generes todas las categorías de la plataforma. Para una descripción general y poco detallada, usa solo 3 a 5 necesidades iniciales priorizadas por tipo de evento y marca retrievalReady=false hasta que el usuario elija por dónde empezar.
   - Solo marca varias necesidades con retrievalReady=true cuando el usuario ya dio una idea detallada del evento: estilo específico, restricciones, preferencias concretas, proveedores deseados o frentes explícitos.
   - Las necesidades deben estar adaptadas al eventType. Ejemplo: Wedding planners puede ser normal para boda, pero no lo propongas por defecto para cumpleanos o baby_shower si el usuario no lo pidió.
 
@@ -156,4 +178,4 @@ Definiciones de campos:
 
 Normas de extracción de contacto:
 - contactEmail, contactPhone y contactName se actualizan de forma independiente. Si el usuario corrige solo uno, devuelve null para los demás para preservar los valores anteriores.
-- Si el usuario proporciona un email, asegúrate de que contenga '@' y al menos un dominio con punto.
+- Si el usuario proporciona un correo electrónico, asegúrate de que contenga '@' y al menos un dominio con punto.

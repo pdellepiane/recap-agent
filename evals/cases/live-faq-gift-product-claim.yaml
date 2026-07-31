@@ -13,11 +13,11 @@ inputs:
 expectations:
   - id: enters-faq-node
     type: node_transition
-    to: consultar_faq
+    to: resolver_consultas_informativas
   - id: faq-tool-called
     type: tool_usage
     mustCall:
-      - file_search
+      - knowledge_base_search
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_keyword

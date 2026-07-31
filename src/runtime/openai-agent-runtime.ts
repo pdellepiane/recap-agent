@@ -6,11 +6,9 @@ import {
   retryPolicies,
   run,
   tool,
-  fileSearchTool,
 } from '@openai/agents';
 import type {
   AgentOutputType,
-  HostedTool,
   InputGuardrail,
   OutputGuardrail,
 } from '@openai/agents';
@@ -52,7 +50,11 @@ import {
   welcomeMessageSchema,
 } from './structured-message';
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
-import { extractionSchema } from './extraction-schemas';
+import {
+  extractionSchema,
+  type OpenAiInformationRequest,
+  type StructuredExtraction,
+} from './extraction-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
@@ -104,7 +106,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     try {
       const result = await run(extractor, input);
       return {
-        extraction: result.finalOutput as ExtractResult['extraction'],
+        extraction: this.normalizeExtraction(
+          result.finalOutput as StructuredExtraction,
+        ),
         tokenUsage: this.extractTokenUsage(result),
       };
     } catch (error) {
@@ -118,6 +122,49 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
   }
 
+  private normalizeExtraction(
+    extraction: StructuredExtraction,
+  ): ExtractResult['extraction'] {
+    return {
+      ...extraction,
+      informationRequests: extraction.informationRequests.flatMap((request) =>
+        this.normalizeInformationRequest(request),
+      ),
+    };
+  }
+
+  private normalizeInformationRequest(
+    request: OpenAiInformationRequest,
+  ): ExtractResult['extraction']['informationRequests'] {
+    if (request.kind === 'faq') {
+      return [{ kind: 'faq', query: request.query }];
+    }
+    if (request.kind === 'associated_event') {
+      return [
+        {
+          kind: 'associated_event',
+          query: request.query,
+          eventHint: request.eventHint,
+        },
+      ];
+    }
+    if (!request.resource || !request.authAction) {
+      return [];
+    }
+    return [
+      {
+        kind: 'purchase',
+        resource: request.resource,
+        query: request.query,
+        orderId: request.orderId,
+        aspects:
+          request.aspects.length > 0 ? request.aspects : ['summary'],
+        sensitiveFields: request.sensitiveFields,
+        authAction: request.authAction,
+      },
+    ];
+  }
+
   async composeReply(
     request: ComposeReplyRequest,
   ): Promise<ComposeReplyResult> {
@@ -128,22 +175,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     request.toolUsage.considered.push(...bundle.allowedTools);
 
-    const fileSearchTool = this.createFileSearchTool(request);
-    if (fileSearchTool) {
-      request.toolUsage.considered.push(fileSearchTool.name);
-    }
-    const agentTools = fileSearchTool ? [...tools, fileSearchTool] : tools;
-
     const outputSchema = this.resolveOutputSchema(request);
     const agent = new Agent<RuntimeContext, typeof outputSchema>({
       name: `reply_${request.currentNode}`,
       model: this.options.replyModel,
       instructions: () => bundle.instructions,
-      tools: agentTools,
+      tools,
       inputGuardrails: [this.createJailbreakInputGuardrail()],
       outputType: outputSchema,
       outputGuardrails: [this.createSupportEmailGuardrail<typeof outputSchema>()],
-      modelSettings: this.buildReplyModelSettings(request, Boolean(fileSearchTool)),
+      modelSettings: this.buildReplyModelSettings(request),
     });
 
     const session = new OpenAIConversationsSession({
@@ -197,16 +238,23 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         throw error;
       }
     }
-    this.recordHostedToolUsage(request.toolUsage, runResult);
-
     request.plan.conversation_id = await session.getSessionId();
 
     const parseSchema = outputSchema;
-    const structured = parseSchema.parse(this.normalizeSupportEmails(finalOutput));
+    const structured = parseSchema.parse(
+      this.normalizeSpanishVocabulary(this.normalizeSupportEmails(finalOutput)),
+    );
+    const response =
+      structured.type === 'welcome'
+        ? {
+            ...structured,
+            capability_lines_es: this.resolveEnabledCapabilityLines(),
+          }
+        : structured;
 
     return {
       text: '',
-      structuredMessage: structured,
+      structuredMessage: response,
       tokenUsage: this.extractTokenUsage(runResult),
       recommendationFunnel,
     };
@@ -461,7 +509,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return {
       current_node: plan.current_node,
       external_user_id: plan.external_user_id,
-      intent: plan.intent,
+      action_intent:
+        plan.current_node === 'resolver_consultas_informativas'
+          ? null
+          : plan.intent,
       event_type: plan.event_type,
       active_need_category: plan.active_need_category,
       vendor_category: plan.vendor_category,
@@ -493,6 +544,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       contact_phone: plan.contact_phone,
       conversation_summary: this.truncateText(plan.conversation_summary, 180),
       open_questions: plan.open_questions.slice(0, 3),
+      information_state: {
+        pending_requests: plan.information_state.pending_requests,
+        selection_candidates: plan.information_state.selection_candidates,
+        authentication_status: plan.user_auth.status,
+        authenticated_email: plan.user_auth.email,
+      },
     };
   }
 
@@ -562,8 +619,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ? request.toolUsage.considered.join(', ')
         : 'ninguna';
     const stripProviders =
-      request.currentNode === 'consultar_faq' ||
-      request.currentNode === 'consultar_evento_invitado';
+      request.currentNode === 'resolver_consultas_informativas';
     const includeAllGroupedProviders =
       request.currentNode === 'elicitacion_necesidades' &&
       this.hasShortlistedProviderNeeds(request.plan);
@@ -582,12 +638,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Mensaje del usuario: ${request.userMessage}`,
       request.turnDecision
         ? `Decisión determinística del estado: ${JSON.stringify({
-            route_kind: request.currentNode === 'consultar_evento_invitado'
-              ? 'associated_event_lookup'
-              : request.turnDecision.routeKind,
-            presentation_scope: request.currentNode === 'consultar_evento_invitado'
-              ? 'associated_event_lookup'
-              : request.turnDecision.presentationScope,
+            route_kind: request.turnDecision.routeKind,
+            presentation_scope: request.turnDecision.presentationScope,
             provider_search_mode: request.turnDecision.providerSearchMode,
             focus_need_category: request.turnDecision.focusNeedCategory,
             needs_to_present: request.turnDecision.needsToPresent,
@@ -600,22 +652,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         null,
         2,
       )}`,
-      request.currentNode === 'consultar_evento_invitado' && request.invitedEventLookupResult
-        ? `Contexto verificado de evento asociado: ${JSON.stringify(request.invitedEventLookupResult, null, 2)}`
+      request.informationResults && request.informationResults.length > 0
+        ? `Resultados verificados de capacidades informativas: ${JSON.stringify(request.informationResults, null, 2)}`
         : null,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       `Foco operativo del turno: ${focusNeedCategory ?? 'ninguno todavía'}`,
       `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
-      request.currentNode === 'consultar_evento_invitado'
-        ? 'Faltantes por necesidad: ninguno'
-        : `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
+      `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
       this.buildMissingFieldsInstruction(request),
-      request.currentNode === 'consultar_evento_invitado'
-        ? 'Faltantes: ninguno'
-        : `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
-      request.currentNode === 'consultar_evento_invitado'
-        ? 'Listo para buscar: no aplica'
-        : `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
+      `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
+      `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
       `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
     ];
 
@@ -649,16 +695,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private modelVisibleNodeName(node: ComposeReplyRequest['currentNode']): string {
-    return node === 'consultar_evento_invitado'
-      ? 'consultar_evento_asociado'
-      : node;
+    return node;
   }
 
   private buildMissingFieldsInstruction(request: ComposeReplyRequest): string {
-    if (request.currentNode === 'consultar_evento_invitado') {
-      return 'No pidas datos de proveedores ni datos de planificación; este turno solo consulta eventos asociados a la cuenta.';
-    }
-
     const hasPlanMissingFields = request.missingFields.length > 0;
     const hasNeedMissingFields = request.plan.provider_needs.some(
       (need) => need.missing_fields.length > 0,
@@ -692,9 +732,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private buildReplyExtractionSnapshot(extraction: ComposeReplyRequest['extraction']): Record<string, unknown> {
     return {
-      intent: extraction.intent === 'consultar_evento_invitado'
-        ? 'consultar_evento_asociado'
-        : extraction.intent,
+      action_intent: extraction.actionIntent,
+      information_requests: extraction.informationRequests,
       provider_explanation_request: extraction.providerExplanationRequest ?? null,
       provider_detail_request: extraction.providerDetailRequest ?? null,
       provider_plan_operations: extraction.providerPlanOperations ?? [],
@@ -747,26 +786,38 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private summarizeEnabledCapabilities(): string {
+    return this.resolveEnabledCapabilityLines()
+      .map((line) => `- ${line}`)
+      .join('\n');
+  }
+
+  private resolveEnabledCapabilityLines(): string[] {
     const capabilities = this.resolveFeatureFlags();
     const lines: string[] = [];
 
     if (capabilities.providerPlanning) {
-      lines.push('- Planificar un evento desde cero o continuar un plan guardado.');
+      lines.push('Planificar un evento desde cero o continuar un plan guardado.');
     }
     if (capabilities.providerPlanning && capabilities.providerSearch) {
-      lines.push('- Detectar varias necesidades de proveedores y buscar/recomendar opciones del marketplace.');
+      lines.push('Detectar varias necesidades de proveedores y buscar o recomendar opciones de la plataforma de proveedores.');
     }
     if (capabilities.providerPlanning && capabilities.providerQuoteRequests) {
-      lines.push('- Ayudar a elegir proveedores y preparar solicitudes de cotización/contacto.');
+      lines.push('Ayudar a elegir proveedores y preparar solicitudes de cotización/contacto.');
     }
     if (capabilities.faq) {
-      lines.push('- Responder preguntas sobre Sin Envolturas, precios, comisiones, regalos, pagos y soporte.');
+      lines.push('Responder preguntas generales sobre Sin Envolturas y ofrecer atención humana cuando el caso requiera revisar operaciones.');
     }
     if (capabilities.invitedEventLookup) {
-      lines.push('- Consultar información de eventos asociados al usuario, como RSVP, rol en el evento, anfitrión/celebrado y órdenes recientes.');
+      lines.push('Consultar información de eventos asociados al usuario, como confirmación de asistencia, relación con el evento y anfitriones.');
+    }
+    if (capabilities.purchaseInformation) {
+      lines.push('Consultar tus pedidos recientes o buscar uno directamente por su número después de verificar tu correo.');
+      lines.push('Consultar detalles de regalos comprados, como pago, dedicatoria, tarjeta física, envío y agradecimiento, cuando estén disponibles.');
     }
 
-    return lines.length > 0 ? lines.join('\n') : '- Explicar qué información necesita para derivar al canal correcto.';
+    return lines.length > 0
+      ? lines
+      : ['Explicar qué información necesita para derivar al canal correcto.'];
   }
 
   private resolveFeatureFlags(): AgentFeatureFlags {
@@ -776,6 +827,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       providerQuoteRequests: true,
       faq: true,
       invitedEventLookup: true,
+      purchaseInformation: true,
       ...this.options.features,
     };
   }
@@ -858,33 +910,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private buildReplyModelSettings(
     request: ComposeReplyRequest,
-    hasFileSearchTool: boolean,
   ) {
     const settings = this.buildModelSettings({
       model: this.options.replyModel,
       cacheKey: `reply:${request.currentNode}:${request.promptBundleId}`,
     });
 
-    if (request.currentNode === 'consultar_faq' && hasFileSearchTool) {
-      return {
-        ...settings,
-        toolChoice: 'required' as const,
-      };
-    }
-
     return settings;
-  }
-
-  private createFileSearchTool(request: ComposeReplyRequest): HostedTool | null {
-    const kb = this.options.knowledgeBase;
-    if (request.currentNode !== 'consultar_faq' || !kb?.enabled || !kb.vectorStoreId) {
-      return null;
-    }
-
-    return fileSearchTool(kb.vectorStoreId, {
-      includeSearchResults: true,
-      maxNumResults: 6,
-    });
   }
 
   private createSupportEmailGuardrail<TOutput extends AgentOutputType>(): OutputGuardrail<TOutput, RuntimeContext> {
@@ -933,8 +965,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private buildJailbreakExtraction(): ExtractResult['extraction'] {
     return {
-      intent: null,
+      actionIntent: null,
+      informationRequests: [],
       intentConfidence: 1,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
       eventType: null,
       vendorCategory: null,
       vendorCategories: [],
@@ -1019,6 +1057,69 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       .replace(/\bemail\s+protected\b/giu, SUPPORT_EMAIL)
       .replace(/\bhola\s*(?:\[at\]|\(at\)| at )\s*sinenvolturas\.com\b/giu, SUPPORT_EMAIL)
       .replace(/\b(?!hola@)[A-Z0-9._%+-]+@sinenvolturas\.com\b/giu, SUPPORT_EMAIL);
+  }
+
+  private normalizeSpanishVocabulary(value: unknown, userVisible = false): unknown {
+    if (typeof value === 'string') {
+      return userVisible ? this.normalizeSpanishVocabularyText(value) : value;
+    }
+
+    if (Array.isArray(value)) {
+      return value.map((entry) => this.normalizeSpanishVocabulary(entry, userVisible));
+    }
+
+    if (value && typeof value === 'object') {
+      const normalized: Record<string, unknown> = {};
+      for (const [key, entry] of Object.entries(value)) {
+        const entryIsUserVisible =
+          key !== 'requested_fields_es' && (userVisible || key.endsWith('_es'));
+        normalized[key] = this.normalizeSpanishVocabulary(entry, entryIsUserVisible);
+      }
+      return normalized;
+    }
+
+    return value;
+  }
+
+  private normalizeSpanishVocabularyText(value: string): string {
+    const replacements: ReadonlyArray<readonly [RegExp, string]> = [
+      [/\bel RSVP\b/giu, 'la confirmación de asistencia'],
+      [/\bla web\b/giu, 'el sitio de internet'],
+      [/\bel Excel\b/giu, 'la hoja de cálculo'],
+      [/\bdel Excel\b/giu, 'de la hoja de cálculo'],
+      [/\bEl delivery\b/gu, 'La entrega'],
+      [/\bel delivery\b/gu, 'la entrega'],
+      [/\bdel Shop\b/giu, 'de la tienda'],
+      [/\bun screenshot\b/giu, 'una captura de pantalla'],
+      [/\bRSVP\b/giu, 'confirmación de asistencia'],
+      [/\bShop\b/giu, 'tienda'],
+      [/\bExcel\b/giu, 'hoja de cálculo'],
+      [/\bQR\b/gu, 'código de pago'],
+      [/\be-?mail\b/giu, 'correo electrónico'],
+      [/\bchat\b/giu, 'conversación'],
+      [/\bweb\b/giu, 'sitio de internet'],
+      [/\blink\b/giu, 'enlace'],
+      [/\bonline\b/giu, 'en línea'],
+      [/\bdelivery\b/giu, 'entrega'],
+      [/\bspam\b/giu, 'correo no deseado'],
+      [/\bmarketplace\b/giu, 'plataforma de proveedores'],
+      [/\bstreaming\b/giu, 'transmisión en vivo'],
+      [/\bhost\b/giu, 'anfitrión'],
+      [/\bbartenders?\b/giu, 'personal de barra'],
+      [/\bbaby shower\b/giu, 'celebración por la llegada del bebé'],
+      [/\bcatering\b/giu, 'servicio de comida'],
+      [/\bwedding planners?\b/giu, 'organización de bodas'],
+      [/\bscreenshot\b/giu, 'captura de pantalla'],
+      [/\bFAQ\b/gu, 'preguntas frecuentes'],
+      [/\bfeedback\b/giu, 'comentarios'],
+      [/\bapp\b/giu, 'aplicación'],
+      [/\blogin\b/giu, 'acceso'],
+    ];
+
+    return replacements.reduce(
+      (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
+      value,
+    );
   }
 
   private stringifyForGuardrail(value: unknown): string {
@@ -1479,116 +1580,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     });
   }
 
-  private recordHostedToolUsage(
-    toolUsage: RuntimeContext['toolUsage'],
-    result: unknown,
-  ): void {
-    const resultRecord = result && typeof result === 'object'
-      ? result as Record<string, unknown>
-      : null;
-    const currentTurnItems = Array.isArray(resultRecord?.newItems)
-      ? resultRecord.newItems
-      : result;
-    const hostedCalls = this.collectHostedToolCalls(currentTurnItems);
-    for (const call of hostedCalls) {
-      if (!toolUsage.called.includes(call.name)) {
-        toolUsage.called.push(call.name);
-      }
-      this.recordToolInput(toolUsage, call.name, {
-        arguments: call.arguments ?? null,
-        queries: call.queries,
-      });
-      toolUsage.outputs.push({
-        tool: call.name,
-        output: JSON.stringify({
-          status: call.status ?? null,
-          result_count: call.resultCount,
-        }, null, 2),
-      });
-    }
-  }
-
-  private collectHostedToolCalls(value: unknown): Array<{
-    name: string;
-    arguments: string | null;
-    queries: string[];
-    status: string | null;
-    resultCount: number | null;
-  }> {
-    const calls: Array<{
-      name: string;
-      arguments: string | null;
-      queries: string[];
-      status: string | null;
-      resultCount: number | null;
-    }> = [];
-    const seen = new Set<unknown>();
-    const visit = (entry: unknown): void => {
-      if (!entry || typeof entry !== 'object' || seen.has(entry)) {
-        return;
-      }
-      seen.add(entry);
-      const record = entry as Record<string, unknown>;
-      const providerData = record.providerData && typeof record.providerData === 'object'
-        ? record.providerData as Record<string, unknown>
-        : null;
-      const type = typeof record.type === 'string'
-        ? record.type
-        : typeof providerData?.type === 'string'
-          ? providerData.type
-          : null;
-      const rawName = typeof record.name === 'string'
-        ? record.name
-        : typeof providerData?.name === 'string'
-          ? providerData.name
-          : type === 'file_search_call'
-            ? 'file_search'
-            : null;
-
-      if (type === 'hosted_tool_call' || type === 'file_search_call') {
-        const queries = this.extractStringArray(providerData?.queries ?? record.queries);
-        const results = Array.isArray(providerData?.results)
-          ? providerData.results
-          : Array.isArray(record.results)
-            ? record.results
-            : null;
-        calls.push({
-          name: rawName === 'file_search_call' ? 'file_search' : rawName ?? 'hosted_tool',
-          arguments: typeof record.arguments === 'string' ? record.arguments : null,
-          queries,
-          status: typeof record.status === 'string' ? record.status : null,
-          resultCount: results ? results.length : null,
-        });
-      }
-
-      for (const nested of Object.values(record)) {
-        if (Array.isArray(nested)) {
-          for (const item of nested) {
-            visit(item);
-          }
-        } else {
-          visit(nested);
-        }
-      }
-    };
-
-    visit(value);
-    const dedupedKeys = new Set<string>();
-    return calls.filter((call) => {
-      const key = `${call.name}:${call.arguments ?? ''}:${call.queries.join(',')}`;
-      if (dedupedKeys.has(key)) return false;
-      dedupedKeys.add(key);
-      return true;
-    });
-  }
-
-  private extractStringArray(value: unknown): string[] {
-    if (!Array.isArray(value)) {
-      return [];
-    }
-    return value.filter((entry): entry is string => typeof entry === 'string');
-  }
-
   private buildPromptPlanSnapshot(
     plan: PersistedPlan,
     focusNeedCategory: PersistedPlan['active_need_category'],
@@ -1599,9 +1590,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       contact_email: plan.contact_email,
       contact_phone: plan.contact_phone,
       current_node: this.modelVisibleNodeName(plan.current_node),
-      intent: plan.intent === 'consultar_evento_invitado'
-        ? 'consultar_evento_asociado'
-        : plan.intent,
+      action_intent:
+        plan.current_node === 'resolver_consultas_informativas'
+          ? null
+          : plan.intent,
+      information_state: {
+        pending_requests: plan.information_state.pending_requests,
+        selection_candidates: plan.information_state.selection_candidates,
+      },
       event_type: plan.event_type,
       focus_need_category: focusNeedCategory,
       vendor_category: plan.vendor_category,

@@ -71,9 +71,6 @@ export class PromptLoader {
   }
 
   private displayPath(relativePath: string): string {
-    return relativePath.replace(
-      'nodes/consultar_evento_invitado/',
-      'nodes/consultar_evento_asociado/',
-    );
+    return relativePath;
   }
 }

@@ -55,12 +55,11 @@ export const routeKindValues = [
   'present_existing_shortlist',
   'apply_selection',
   'modify_plan',
-  'faq',
-  'invited_event_lookup',
   'close',
   'pause',
   'human_help_offer',
   'human_escalation',
+  'information_batch',
   'error',
 ] as const;
 
@@ -81,10 +80,9 @@ export const presentationScopeValues = [
   'multi_need',
   'clarification',
   'close',
-  'faq',
-  'invited_event_lookup',
   'human_help_offer',
   'human_escalation',
+  'information_batch',
 ] as const;
 
 export type PresentationScope = (typeof presentationScopeValues)[number];

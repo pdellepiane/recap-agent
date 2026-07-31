@@ -145,10 +145,25 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
     }
 
     return [
-      need.category,
+      this.displayProviderCategory(need.category),
       need.summary_es,
       cards.join('\n'),
     ].filter(Boolean).join('\n');
+  }
+
+  private displayProviderCategory(
+    category: ProviderNeedRecommendation['category'],
+  ): string {
+    switch (category) {
+      case 'Catering':
+        return 'Servicio de comida';
+      case 'Wedding planners':
+        return 'Organización de bodas';
+      case 'Hogar y deco':
+        return 'Hogar y decoración';
+      default:
+        return category;
+    }
   }
 
   private renderCompactProviderRow(
@@ -320,13 +335,13 @@ abstract class BaseProviderMessageRenderer implements MessageRenderer {
       case 'full_name':
         return 'nombre completo';
       case 'email':
-        return 'email';
+        return 'correo electrónico';
       case 'phone':
         return 'teléfono con código de país';
       case 'contact_name':
         return 'nombre completo';
       case 'contact_email':
-        return 'email';
+        return 'correo electrónico';
       case 'contact_phone':
         return 'teléfono con código de país';
       default:

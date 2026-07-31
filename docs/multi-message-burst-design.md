@@ -6,7 +6,7 @@
 | Owner | TBD |
 | Reviewers | Runtime, channel-adapter, and operations owners |
 | Created | 2026-07-21 |
-| Last updated | 2026-07-21 |
+| Last updated | 2026-07-24 |
 | Expected size | Medium, approximately 2–3 engineering weeks |
 
 ## 1. Summary
@@ -77,7 +77,11 @@ to one response based on the complete event context.
 ## 4. Goals
 
 - Produce at most one automated response for one sealed burst.
-- Preserve each native message id, text, and receive timestamp.
+- Preserve each native message id, text or caption, typed media descriptors,
+  and receive timestamp.
+- Retain the individual messages temporarily so support and product teams can
+  replay misunderstood bursts, compare them with traces, and improve wording
+  and behavior from real failures rather than guesses.
 - Apply all messages in chronological order as one state-machine turn.
 - Let later explicit corrections in a burst override earlier statements.
 - Prevent concurrent mutations for the same conversation.
@@ -295,8 +299,12 @@ history diverge from what the user saw.
 
 Delivery receipts, read receipts, status callbacks, and unsupported channel
 events never join a burst. Supported media must first be normalized by the
-adapter into a typed message representation. V1 of this design accepts text
-messages only.
+adapter into the typed descriptor defined in
+[`docs/contracts/channel-media.schema.json`](contracts/channel-media.schema.json).
+The descriptor carries the provider media id, registered Internet media type,
+provider SHA-256 digest, and optional filename; it never carries media bytes or
+a download URL. Media interpretation remains out of scope, so an image-bearing
+burst takes the deterministic unsupported-image response path.
 
 ## 10. Burst Lifecycle
 
@@ -342,6 +350,19 @@ The message endpoint will accept one logical turn:
       "message_id": "wamid.3",
       "text": "En Lima; en realidad serán 90",
       "received_at": "2026-07-21T20:00:10.000Z"
+    },
+    {
+      "message_id": "wamid.4",
+      "text": "",
+      "received_at": "2026-07-21T20:00:12.000Z",
+      "media": [
+        {
+          "type": "image",
+          "id": "2754859441498128",
+          "mime_type": "image/jpeg",
+          "sha256": "81d3bd8a8db4868c9520ed47186e8b7c5789e61ff79f7f834be6950b808a90d3"
+        }
+      ]
     }
   ],
   "user_id": "whatsapp:51999999999",
@@ -358,6 +379,8 @@ Contract rules:
 - `messages` is a non-empty ordered array.
 - Every `message_id` is required and unique inside the request.
 - Every message has its own `received_at`.
+- Every message has non-empty `text`, at least one valid `media` descriptor, or
+  both. A native media caption is stored in `text`.
 - Identity, phone, session, and client mode remain turn-level fields.
 - The old flat `text`, `message_id`, and `received_at` request is removed at the
   coordinated cutover instead of being retained as a permanent union schema.
@@ -524,13 +547,17 @@ The adapter-owned burst table stores:
 - one lane state record;
 - one burst metadata record;
 - one item per native message;
+- validated media descriptors on the corresponding native-message item;
 - generation and deadlines;
 - processing and delivery status;
 - short retention TTL after completion.
 
 Individual message items avoid DynamoDB's single-item size limit and allow
-stable ordering and deduplication. Raw message text should be retained only as
-long as required for processing and bounded operational recovery.
+stable ordering and deduplication. Raw message text, captions, and media
+descriptors should be retained only as long as required for processing and
+bounded operational recovery. Provider media identifiers must be encrypted at
+rest and excluded from ordinary logs. The burst table never stores downloaded
+media bytes.
 
 ### 15.4 Plan save semantics
 

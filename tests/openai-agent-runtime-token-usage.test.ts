@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { ComposeReplyRequest, TokenUsage, ToolUsage } from '../src/runtime/contracts';
+import type { ComposeReplyRequest, TokenUsage } from '../src/runtime/contracts';
 import type { AgentFeatureFlags } from '../src/runtime/config';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 
@@ -96,6 +96,7 @@ describe('OpenAiAgentRuntime capability context', () => {
       providerQuoteRequests: false,
       faq: true,
       invitedEventLookup: false,
+      purchaseInformation: false,
     });
     const typedRuntime = runtime as unknown as {
       summarizeEnabledCapabilities: () => string;
@@ -104,9 +105,32 @@ describe('OpenAiAgentRuntime capability context', () => {
     const summary = typedRuntime.summarizeEnabledCapabilities();
 
     expect(summary).toContain('Planificar un evento');
-    expect(summary).toContain('Responder preguntas sobre Sin Envolturas');
+    expect(summary).toContain('Responder preguntas generales sobre Sin Envolturas');
     expect(summary).not.toContain('buscar/recomendar opciones');
     expect(summary).not.toContain('Consultar información de eventos asociados');
+  });
+
+  it('includes both purchase lookup paths when purchase information is enabled', () => {
+    const runtime = createRuntimeForTokenUsageTests({
+      providerPlanning: false,
+      providerSearch: false,
+      providerQuoteRequests: false,
+      faq: false,
+      invitedEventLookup: false,
+      purchaseInformation: true,
+    });
+    const typedRuntime = runtime as unknown as {
+      summarizeEnabledCapabilities: () => string;
+    };
+
+    const summary = typedRuntime.summarizeEnabledCapabilities();
+
+    expect(summary).toContain(
+      'Consultar tus pedidos recientes o buscar uno directamente por su número',
+    );
+    expect(summary).toContain(
+      'Consultar detalles de regalos comprados',
+    );
   });
 
   it('maps internal missing fields to user-facing labels in prompt snapshots', () => {
@@ -143,14 +167,14 @@ describe('OpenAiAgentRuntime capability context', () => {
   });
 });
 
-describe('OpenAiAgentRuntime event auth prompt isolation', () => {
-  it('does not expose guest auth internals to consultar_evento_invitado replies', () => {
+describe('OpenAiAgentRuntime information auth prompt isolation', () => {
+  it('does not expose user auth internals to information replies', () => {
     const runtime = createRuntimeWithKnowledgeBase();
-    const request = createComposeRequest('consultar_evento_invitado');
-    request.plan.intent = 'consultar_evento_invitado';
-    request.plan.current_node = 'consultar_evento_invitado';
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.plan.intent = null;
+    request.plan.current_node = 'resolver_consultas_informativas';
     request.plan.contact_email = 'maria@example.com';
-    request.plan.guest_auth = {
+    request.plan.user_auth = {
       status: 'authenticated',
       email: 'maria@example.com',
       token: 'secret-token',
@@ -158,23 +182,30 @@ describe('OpenAiAgentRuntime event auth prompt isolation', () => {
       last_error: null,
       requested_at: '2026-06-16T00:00:00.000Z',
     };
-    request.invitedEventLookupResult = {
-      lookup: { email: 'maria@example.com', phone: null },
-      user: {
-        id: 42,
-        fullName: 'María García',
-        email: 'maria@example.com',
-        fullPhone: null,
+    request.informationResults = [
+      {
+        requestId: 'info-1',
+        kind: 'associated_event',
+        status: 'completed',
+        result: {
+          lookup: { email: 'maria@example.com', phone: null },
+          user: {
+            id: 42,
+            fullName: 'María García',
+            email: 'maria@example.com',
+            fullPhone: null,
+          },
+          events: [],
+          counts: {
+            ownerEvents: 0,
+            guestEvents: 0,
+            hostEvents: 0,
+            celebratedEvents: 0,
+            recentOrders: 0,
+          },
+        },
       },
-      events: [],
-      counts: {
-        ownerEvents: 0,
-        guestEvents: 0,
-        hostEvents: 0,
-        celebratedEvents: 0,
-        recentOrders: 0,
-      },
-    };
+    ];
     const typedRuntime = runtime as unknown as {
       composeConversationInput: (
         request: ComposeReplyRequest,
@@ -194,8 +225,8 @@ describe('OpenAiAgentRuntime event auth prompt isolation', () => {
       presentation_limit: 0,
     });
 
-    expect(input).toContain('Contexto verificado de evento asociado');
-    expect(input).not.toContain('guest_auth');
+    expect(input).toContain('Resultados verificados de capacidades informativas');
+    expect(input).not.toContain('user_auth');
     expect(input).not.toContain('secret-token');
     expect(input).not.toContain('token_present');
     expect(input).not.toContain('token_expires_at');
@@ -205,8 +236,9 @@ describe('OpenAiAgentRuntime event auth prompt isolation', () => {
 
   it('does not include authenticated event context before deterministic lookup succeeds', () => {
     const runtime = createRuntimeWithKnowledgeBase();
-    const request = createComposeRequest('consultar_evento_invitado');
-    request.plan.intent = 'consultar_evento_invitado';
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.plan.intent = null;
+    request.plan.current_node = 'resolver_consultas_informativas';
     request.errorMessage = 'Se envió un código al correo. Pide el código para continuar.';
     const typedRuntime = runtime as unknown as {
       composeConversationInput: (
@@ -229,7 +261,7 @@ describe('OpenAiAgentRuntime event auth prompt isolation', () => {
 
     expect(input).toContain('Se envió un código al correo');
     expect(input).not.toContain('Contexto verificado de evento asociado');
-    expect(input).not.toContain('guest_auth');
+    expect(input).not.toContain('user_auth');
     expect(input).not.toContain('consultar_evento_invitado');
     expect(input).not.toContain('invited_event_lookup');
   });
@@ -251,13 +283,18 @@ function createComposeRequest(
       contact_name: null,
       contact_email: null,
       contact_phone: null,
-      guest_auth: {
+      user_auth: {
         status: 'none',
         email: null,
         token: null,
         token_expires_at: null,
         last_error: null,
         requested_at: null,
+      },
+      information_state: {
+        resume_node: null,
+        pending_requests: [],
+        selection_candidates: [],
       },
     human_escalation: {
       status: 'none',
@@ -274,7 +311,7 @@ function createComposeRequest(
       last_assessed_at: null,
     },
       current_node: currentNode,
-      intent: 'consultar_faq',
+      intent: null,
       intent_confidence: 0.95,
       event_type: null,
       vendor_category: null,
@@ -297,7 +334,13 @@ function createComposeRequest(
       updated_at: '2026-05-03T00:00:00.000Z',
     },
     extraction: {
-      intent: 'consultar_faq',
+      actionIntent: null,
+      informationRequests: [
+        {
+          kind: 'faq',
+          query: '¿Cuánto cobra Sin Envolturas?',
+        },
+      ],
       intentConfidence: 0.95,
       eventType: null,
       vendorCategory: null,
@@ -326,7 +369,9 @@ function createComposeRequest(
     providerResults: [],
     errorMessage: null,
     promptBundleId: 'bundle-1',
-    promptFilePaths: ['prompts/nodes/consultar_faq/system.txt'],
+    promptFilePaths: [
+      'prompts/nodes/resolver_consultas_informativas/system.txt',
+    ],
     toolUsage: {
       considered: [],
       called: [],
@@ -353,67 +398,6 @@ function createRuntimeWithKnowledgeBase(): OpenAiAgentRuntime {
     },
   });
 }
-
-describe('OpenAiAgentRuntime FAQ file search wiring', () => {
-  it('only enables the hosted file search tool for consultar_faq', () => {
-    const runtime = createRuntimeWithKnowledgeBase();
-    const faqRequest = createComposeRequest('consultar_faq');
-    const planningRequest = createComposeRequest('entrevista');
-    const typedRuntime = runtime as unknown as {
-      createFileSearchTool: (request: ComposeReplyRequest) => { name: string } | null;
-      buildReplyModelSettings: (
-        request: ComposeReplyRequest,
-        hasFileSearchTool: boolean,
-      ) => { toolChoice?: string };
-    };
-
-    expect(typedRuntime.createFileSearchTool(faqRequest)?.name).toBe('file_search');
-    expect(typedRuntime.createFileSearchTool(planningRequest)).toBeNull();
-    expect(typedRuntime.buildReplyModelSettings(faqRequest, true).toolChoice).toBe(
-      'required',
-    );
-  });
-
-  it('records hosted file_search calls from generated SDK run items', () => {
-    const runtime = createRuntimeWithKnowledgeBase();
-    const toolUsage: ToolUsage = {
-      considered: ['file_search'],
-      called: [],
-      inputs: [],
-      outputs: [],
-    };
-    const typedRuntime = runtime as unknown as {
-      recordHostedToolUsage: (toolUsage: ToolUsage, result: unknown) => void;
-    };
-
-    typedRuntime.recordHostedToolUsage(toolUsage, {
-      newItems: [
-        {
-          rawItem: {
-            type: 'file_search_call',
-            status: 'completed',
-            providerData: {
-              type: 'file_search_call',
-              queries: ['cuanto cuesta sin envolturas'],
-              results: [{ file_id: 'file-1' }],
-            },
-          },
-        },
-      ],
-    });
-
-    expect(toolUsage.called).toEqual(['file_search']);
-    expect(toolUsage.inputs[0]).toEqual({
-      tool: 'file_search',
-      input: JSON.stringify({
-        arguments: null,
-        queries: ['cuanto cuesta sin envolturas'],
-      }, null, 2),
-    });
-    expect(toolUsage.outputs[0]?.tool).toBe('file_search');
-    expect(toolUsage.outputs[0]?.output).toContain('"result_count": 1');
-  });
-});
 
 describe('OpenAiAgentRuntime guardrails', () => {
   it('detects and normalizes corrupted Sin Envolturas support emails', () => {
@@ -453,5 +437,32 @@ describe('OpenAiAgentRuntime guardrails', () => {
         '¿Cuánto cobra Sin Envolturas por regalos?',
       ),
     ).toEqual([]);
+  });
+
+  it('replaces common English service terms in user-visible output', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const typedRuntime = runtime as unknown as {
+      normalizeSpanishVocabulary: (value: unknown) => unknown;
+    };
+
+    expect(
+      typedRuntime.normalizeSpanishVocabulary({
+        type: 'multi_need_recommendation',
+        intro_es: 'Revisa el RSVP en la web o envía un screenshot del Excel por chat.',
+        needs: [{
+          category: 'Catering',
+          summary_es: 'El delivery del Shop se pagó con QR.',
+          providers: [],
+        }],
+      }),
+    ).toEqual({
+      type: 'multi_need_recommendation',
+      intro_es: 'Revisa la confirmación de asistencia en el sitio de internet o envía una captura de pantalla de la hoja de cálculo por conversación.',
+      needs: [{
+        category: 'Catering',
+        summary_es: 'La entrega de la tienda se pagó con código de pago.',
+        providers: [],
+      }],
+    });
   });
 });

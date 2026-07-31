@@ -282,7 +282,7 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toBe(
-        'Necesito tus datos para enviar la solicitud.\n\nEnvíame tu nombre completo, email, teléfono con código de país.',
+        'Necesito tus datos para enviar la solicitud.\n\nEnvíame tu nombre completo, correo electrónico, teléfono con código de país.',
       );
     });
 
@@ -295,7 +295,7 @@ describe('WhatsAppMessageRenderer', () => {
 
       const result = renderer.render({ message, providerResults: [] });
 
-      expect(result).toContain('nombre completo, email, teléfono con código de país');
+      expect(result).toContain('nombre completo, correo electrónico, teléfono con código de país');
       expect(result).not.toContain('contact_name');
       expect(result).not.toContain('contact_phone');
     });
@@ -347,7 +347,7 @@ describe('WhatsAppMessageRenderer', () => {
 
       expect(result).toContain('Busqué proveedores que encajan con tu plan.');
       expect(result).toContain(
-        'Catering\nOpciones para comida.\n1. La Botanería - sushi (Lima, Perú · $$)',
+        'Servicio de comida\nOpciones para comida.\n1. La Botanería - sushi (Lima, Perú · $$)',
       );
       expect(result).toContain(
         'Fotografía y video\nOpciones para foto.\n1. Foto Clara (Lima, Perú · $$)',
@@ -455,7 +455,7 @@ describe('WhatsAppMessageRenderer', () => {
       const result = renderer.render({ message, providerResults: [] });
 
       expect(result).toContain('Para continuar, necesito tus datos.');
-      expect(result).toContain('Envíame tu nombre completo, email, teléfono con código de país.');
+      expect(result).toContain('Envíame tu nombre completo, correo electrónico, teléfono con código de país.');
     });
   });
 

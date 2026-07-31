@@ -38,11 +38,20 @@ export type ChannelRequestLog = {
   channel?: string;
   external_user_hash?: string;
   message_id_hash?: string;
+  media_count?: number;
+  media_kinds?: string[];
+  provider_media_id_hashes?: string[];
   ownership_request_id_hash?: string;
   ownership_operation?: 'overtake' | 'resume';
   participation_status?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
   plan_id?: string;
   human_escalation_status?: 'none' | 'requested';
+  feedback_signal_version?: number;
+  decision_source?: 'deterministic' | 'model_assisted';
+  ambiguity_status?: 'clear' | 'ambiguous';
+  model_call_count?: number;
+  output_quality_flag_count?: number;
+  spanish_policy_term_hit_count?: number;
   validation_issues?: ChannelRequestValidationIssue[];
   delivery_action?: string;
   current_node?: string;
@@ -64,10 +73,18 @@ export function buildChannelRequestLog(args: {
   channel?: string;
   externalUserId?: string;
   messageId?: string;
+  mediaKinds?: string[];
+  providerMediaIds?: string[];
   ownershipRequestId?: string;
   participationStatus?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
   planId?: string;
   humanEscalationStatus?: 'none' | 'requested';
+  feedbackSignalVersion?: number;
+  decisionSource?: 'deterministic' | 'model_assisted';
+  ambiguityStatus?: 'clear' | 'ambiguous' | null;
+  modelCallCount?: number;
+  outputQualityFlagCount?: number;
+  spanishPolicyTermHitCount?: number;
   validationIssues?: ChannelRequestValidationIssue[];
   deliveryAction?: string;
   currentNode?: string;
@@ -91,6 +108,15 @@ export function buildChannelRequestLog(args: {
       ? { external_user_hash: sha256(args.externalUserId) }
       : {}),
     ...(args.messageId ? { message_id_hash: sha256(args.messageId) } : {}),
+    ...(args.mediaKinds
+      ? {
+          media_count: args.mediaKinds.length,
+          media_kinds: [...new Set(args.mediaKinds)],
+        }
+      : {}),
+    ...(args.providerMediaIds && args.providerMediaIds.length > 0
+      ? { provider_media_id_hashes: args.providerMediaIds.map(sha256) }
+      : {}),
     ...(args.ownershipRequestId
       ? { ownership_request_id_hash: sha256(args.ownershipRequestId) }
       : {}),
@@ -99,6 +125,18 @@ export function buildChannelRequestLog(args: {
     ...(args.planId ? { plan_id: args.planId } : {}),
     ...(args.humanEscalationStatus
       ? { human_escalation_status: args.humanEscalationStatus }
+      : {}),
+    ...(args.feedbackSignalVersion !== undefined
+      ? { feedback_signal_version: args.feedbackSignalVersion }
+      : {}),
+    ...(args.decisionSource ? { decision_source: args.decisionSource } : {}),
+    ...(args.ambiguityStatus ? { ambiguity_status: args.ambiguityStatus } : {}),
+    ...(args.modelCallCount !== undefined ? { model_call_count: args.modelCallCount } : {}),
+    ...(args.outputQualityFlagCount !== undefined
+      ? { output_quality_flag_count: args.outputQualityFlagCount }
+      : {}),
+    ...(args.spanishPolicyTermHitCount !== undefined
+      ? { spanish_policy_term_hit_count: args.spanishPolicyTermHitCount }
       : {}),
     ...(args.validationIssues && args.validationIssues.length > 0
       ? { validation_issues: args.validationIssues }

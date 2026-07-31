@@ -220,6 +220,174 @@ describe('AgentConversationGateway', () => {
     });
     expect(fetchMock).not.toHaveBeenCalled();
   });
+
+  it('retrieves a specific order with both required authentication headers', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        orders: [
+          {
+            id: 'ORD-000880',
+            payment_status: 'approved',
+            shipping_status: 'enroute',
+            grand_total: 250,
+            payment_method: 'Visa',
+            event_name: 'Boda Laura & Marcos',
+            event_date: '15/09/2026',
+            event_url: 'https://sinenvolturas.com/boda-laura-marcos',
+            items: [
+              {
+                gift_name: 'Aporte libre',
+                quantity: 1,
+                amount: 250,
+                row_total: 250,
+                type: 'cash',
+              },
+            ],
+            created_at: '2026-07-10',
+          },
+        ],
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    const result = await gateway.getOrders({
+      token: 'user-jwt',
+      orderId: 'ORD-000880',
+    });
+
+    expect(result.status).toBe('success');
+    expect(result.status === 'success' ? result.purchases[0]?.orderId : null).toBe(
+      'ORD-000880',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/orders?order_id=ORD-000880',
+      expect.objectContaining({
+        method: 'GET',
+        headers: {
+          'X-Agent-Key': 'secret-key',
+          Authorization: 'Bearer user-jwt',
+        },
+      }),
+    );
+  });
+
+  it('maps rich gift-purchase details from nullable API fields', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        purchases: [
+          {
+            id: 'ORD-000881',
+            payment_status: 'approved',
+            shipping_status: null,
+            grand_total: 300,
+            is_thanked: true,
+            payment: {
+              method: 'Transferencia',
+              amount: 300,
+              payment_id: null,
+              transaction_status: null,
+              gateway_message: null,
+              op_code: 'OP-123',
+              origin_bank: 'Banco origen',
+              destination_account: {
+                holder: 'Sin Envolturas',
+                bank: 'Banco destino',
+                number: '001',
+                cci: '002',
+                type: 'current',
+              },
+              voucher: ['voucher.png'],
+              paid_at: '2026-07-10 14:32:00',
+            },
+            decline_code: null,
+            admin_comment: null,
+            event_name: 'Boda',
+            event_date: '15/09/2026',
+            event_url: null,
+            items: [],
+            dedication: {
+              message: 'Muchas felicidades',
+              is_private: false,
+              send_physical: true,
+              physical_status: 'enroute',
+            },
+            thanks: {
+              message: 'Muchas gracias',
+              send_method: 'whatsapp',
+            },
+            created_at: '2026-07-10',
+          },
+        ],
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    const result = await gateway.getGiftPurchases({ token: 'user-jwt' });
+
+    expect(result.status).toBe('success');
+    if (result.status !== 'success') {
+      throw new Error('Expected gift purchase success.');
+    }
+    expect(result.purchases[0]?.dedication?.physicalStatus).toBe('enroute');
+    expect(result.purchases[0]?.thanks?.sendMethod).toBe('whatsapp');
+    expect(result.purchases[0]?.payment?.destinationAccount?.cci).toBe('002');
+  });
+
+  it('distinguishes an account-level order miss from an unavailable route', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(404, {
+        status: false,
+        data: null,
+        errors: null,
+        error: 'Order not found',
+      }))
+      .mockResolvedValueOnce(jsonResponse(404, {
+        message: 'The route api/agent/orders could not be found.',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(
+      gateway.getOrders({ token: 'user-jwt', orderId: 'ORD-404' }),
+    ).resolves.toEqual({
+      status: 'not_found',
+      resource: 'orders',
+      orderId: 'ORD-404',
+    });
+    await expect(
+      gateway.getOrders({ token: 'user-jwt', orderId: 'ORD-404' }),
+    ).resolves.toMatchObject({
+      status: 'route_unavailable',
+      resource: 'orders',
+      retryable: false,
+    });
+  });
 });
 
 function jsonResponse(status: number, body: unknown): Response {

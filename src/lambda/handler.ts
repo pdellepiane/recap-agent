@@ -18,6 +18,11 @@ import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import { AgentParticipationService } from '../runtime/agent-participation-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
+import {
+  NoopKnowledgeRetrievalGateway,
+  OpenAiKnowledgeRetrievalGateway,
+} from '../runtime/knowledge-retrieval-gateway';
+import { InformationOrchestrator } from '../runtime/information-orchestrator';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
 import { resolveChannelApiKeys, resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
@@ -62,6 +67,8 @@ export async function handler(
     externalUserId?: string;
     messageId?: string;
     ownershipRequestId?: string;
+    mediaKinds?: string[];
+    providerMediaIds?: string[];
   } = {};
   const respond = (
     statusCode: number,
@@ -74,6 +81,12 @@ export async function handler(
       participationStatus?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
       planId?: string;
       humanEscalationStatus?: 'none' | 'requested';
+      feedbackSignalVersion?: number;
+      decisionSource?: 'deterministic' | 'model_assisted';
+      ambiguityStatus?: 'clear' | 'ambiguous' | null;
+      modelCallCount?: number;
+      outputQualityFlagCount?: number;
+      spanishPolicyTermHitCount?: number;
       error?: unknown;
       responseHeaders?: Record<string, string>;
     },
@@ -93,9 +106,17 @@ export async function handler(
       externalUserId: requestIdentity.externalUserId,
       messageId: requestIdentity.messageId,
       ownershipRequestId: requestIdentity.ownershipRequestId,
+      mediaKinds: requestIdentity.mediaKinds,
+      providerMediaIds: requestIdentity.providerMediaIds,
       participationStatus: diagnostics?.participationStatus,
       planId: diagnostics?.planId,
       humanEscalationStatus: diagnostics?.humanEscalationStatus,
+      feedbackSignalVersion: diagnostics?.feedbackSignalVersion,
+      decisionSource: diagnostics?.decisionSource,
+      ambiguityStatus: diagnostics?.ambiguityStatus,
+      modelCallCount: diagnostics?.modelCallCount,
+      outputQualityFlagCount: diagnostics?.outputQualityFlagCount,
+      spanishPolicyTermHitCount: diagnostics?.spanishPolicyTermHitCount,
       validationIssues: diagnostics?.validationIssues,
       deliveryAction: diagnostics?.deliveryAction,
       currentNode: diagnostics?.currentNode,
@@ -212,17 +233,27 @@ export async function handler(
       channel,
       externalUserId: body.user_id,
       messageId,
+      mediaKinds: body.media.map((item) => item.type),
+      providerMediaIds: body.media.map((item) => item.id),
     };
 
     const runtime = await getRuntime();
 
     const receivedAt = body.received_at ?? new Date().toISOString();
+    const media = body.media.map((item) => ({
+      kind: item.type,
+      providerMediaId: item.id,
+      mimeType: item.mime_type,
+      sha256: item.sha256,
+      fileName: item.filename ?? null,
+    }));
     const response = await runtime.service.handleTurn({
       channel,
       externalUserId: body.user_id,
       text: body.text,
       messageId,
       receivedAt,
+      media,
       sessionId: body.session_id ?? null,
       contactPhone: body.contact_phone ?? null,
     });
@@ -232,6 +263,11 @@ export async function handler(
       externalUserId: body.user_id,
       messageId,
       userMessage: body.text,
+      media,
+      receivedAt,
+      sessionId: body.session_id ?? null,
+      contactPhonePresent: body.contact_phone !== null && body.contact_phone !== undefined,
+      deliveryAction: response.outbound.delivery.action,
       assistantMessage: response.outbound.text,
       includeAssistantMessagePreview: config.performance.captureAssistantPreview,
       structuredMessageKind: response.outbound.structuredMessageKind,
@@ -276,6 +312,13 @@ export async function handler(
     }, 'success', {
       deliveryAction: response.outbound.delivery.action,
       currentNode: response.plan.current_node,
+      feedbackSignalVersion: perfRecord.feedback_signals.schema_version,
+      decisionSource: perfRecord.feedback_signals.routing.decision_source,
+      ambiguityStatus: perfRecord.feedback_signals.routing.ambiguity_status,
+      modelCallCount: perfRecord.feedback_signals.execution.model_call_count,
+      outputQualityFlagCount: perfRecord.feedback_signals.output.quality_flags.length,
+      spanishPolicyTermHitCount:
+        perfRecord.feedback_signals.output.spanish_policy_term_hits.length,
     });
   } catch (error) {
     return respond(500, {
@@ -325,7 +368,7 @@ async function getRuntime(): Promise<{
       const providerGateway = new SinEnvolturasGateway({
         baseUrl: config.providerApi.baseUrl,
         guestServiceBaseUrl: config.providerApi.guestServiceBaseUrl,
-        guestAuthBaseUrl: config.providerApi.guestAuthBaseUrl,
+        userAuthBaseUrl: config.providerApi.userAuthBaseUrl,
         persistedSearchLimit: config.providerApi.persistedSearchLimit,
         summarySearchWordLimit: config.providerApi.summarySearchWordLimit,
         searchMode: config.providerApi.searchMode,
@@ -338,6 +381,20 @@ async function getRuntime(): Promise<{
         maxRetries: config.agentApi.maxRetries,
         messageLoggingEnabled: config.agentApi.messageLoggingEnabled,
       });
+      const knowledgeGateway =
+        config.knowledgeBase.enabled && config.knowledgeBase.vectorStoreId
+          ? new OpenAiKnowledgeRetrievalGateway({
+              apiKey,
+              vectorStoreId: config.knowledgeBase.vectorStoreId,
+              maxResults: config.knowledgeBase.maxResults,
+              scoreThreshold: config.knowledgeBase.scoreThreshold,
+            })
+          : new NoopKnowledgeRetrievalGateway();
+      const informationOrchestrator = new InformationOrchestrator({
+        knowledgeGateway,
+        providerGateway,
+        agentGateway: agentConversationGateway,
+      });
       const runtime = new OpenAiAgentRuntime({
         apiKey,
         replyModel: config.openAi.models.reply,
@@ -348,7 +405,6 @@ async function getRuntime(): Promise<{
         providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,
         promptLoader,
         providerGateway,
-        knowledgeBase: config.knowledgeBase,
         features: config.features,
       });
       const responseClassifier = new OpenAiMessageResponseClassifier({
@@ -370,6 +426,7 @@ async function getRuntime(): Promise<{
           runtime,
           providerGateway,
           agentConversationGateway,
+          informationOrchestrator,
           responseClassifier,
           promptLoader,
           renderers: {

@@ -12,6 +12,13 @@ import type {
   NormalizedInboundMessage,
   NormalizedOutboundMessage,
 } from '../core/messages';
+import type {
+  ExtractedInformationRequest,
+  InformationExecutionSummary,
+  InformationSelectionCandidate,
+  InformationTaskResult,
+  PendingInformationRequest,
+} from '../core/information';
 import {
   createEmptyPlan,
   getActiveNeed,
@@ -37,7 +44,6 @@ import { computeNeedSearchSufficiencies, computeSearchSufficiency } from '../cor
 import type {
   CloseActionDebugSummary,
   ContactValidationDebugSummary,
-  FaqResolutionDebugSummary,
   ExtractionDebugSummary,
   PlanDebugSummary,
   ProviderCandidateAuditEntry,
@@ -54,7 +60,12 @@ import {
   type SessionFocus,
   type TurnDecision,
 } from '../core/turn-decision';
-import type { AgentRuntime, ExtractionResult, ToolUsage } from './contracts';
+import type {
+  AgentRuntime,
+  ComposeReplyResult,
+  ExtractionResult,
+  ToolUsage,
+} from './contracts';
 import type { TokenUsage } from './contracts';
 import {
   NoopAgentConversationGateway,
@@ -83,9 +94,15 @@ import type {
 } from './extraction-schemas';
 import { parseInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
-import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
+import type { ProviderGateway } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
 import type { PlanStore } from '../storage/plan-store';
+import {
+  InformationOrchestrator,
+  type InformationAuthBlock,
+  type InformationAuthentication,
+} from './information-orchestrator';
+import { NoopKnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 
 export type HandleTurnResponse = {
   plan: PlanSnapshot;
@@ -125,6 +142,29 @@ type ProviderSearchExecutionResult = {
   strategy: SearchStrategyTrace;
 };
 
+type TurnTiming = {
+  total: number;
+  load_plan: number;
+  response_classification: number;
+  prepare_working_plan: number;
+  extraction: number;
+  apply_extraction: number;
+  compute_sufficiency: number;
+  information_execution: number;
+  provider_search: number;
+  provider_enrichment: number;
+  prompt_bundle_load: number;
+  compose_reply: number;
+  save_plan: number;
+};
+
+type TurnTokenUsage = {
+  classifier: TokenUsage | null;
+  extraction: TokenUsage | null;
+  reply: TokenUsage | null;
+  total: TokenUsage | null;
+};
+
 const MAX_BROADEN_SEARCH_PAGES = 5;
 const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 const MAX_STARTER_NEEDS = 5;
@@ -137,6 +177,7 @@ export class AgentService {
       runtime: AgentRuntime;
       providerGateway: ProviderGateway;
       agentConversationGateway?: AgentConversationGateway;
+      informationOrchestrator?: InformationOrchestrator;
       responseClassifier?: MessageResponseClassifier;
       promptLoader: PromptLoader;
       renderers: Record<string, MessageRenderer>;
@@ -159,7 +200,7 @@ export class AgentService {
       inputs: [] as { tool: string; input: string }[],
       outputs: [] as { tool: string; output: string }[],
     };
-    const timingMs = {
+    const timingMs: TurnTiming = {
       total: 0,
       load_plan: 0,
       response_classification: 0,
@@ -167,18 +208,14 @@ export class AgentService {
       extraction: 0,
       apply_extraction: 0,
       compute_sufficiency: 0,
+      information_execution: 0,
       provider_search: 0,
       provider_enrichment: 0,
       prompt_bundle_load: 0,
       compose_reply: 0,
       save_plan: 0,
     };
-    const tokenUsage: {
-      classifier: TokenUsage | null;
-      extraction: TokenUsage | null;
-      reply: TokenUsage | null;
-      total: TokenUsage | null;
-    } = {
+    const tokenUsage: TurnTokenUsage = {
       classifier: null,
       extraction: null,
       reply: null,
@@ -216,8 +253,11 @@ export class AgentService {
         existingPlan = classifierPlan;
       }
     }
+    const hasUnsupportedImageMedia = inbound.media?.some(
+      (item) => item.kind === 'image',
+    ) ?? false;
     let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
-    if (this.dependencies.responseClassifier) {
+    if (this.dependencies.responseClassifier && !hasUnsupportedImageMedia) {
       const preflightStartedAt = Date.now();
       const preflight = await this.runResponseClassifierPreflight({
         inbound,
@@ -230,7 +270,7 @@ export class AgentService {
       tokenUsage.classifier = preflight.tokenUsage;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.classifier);
       responseClassifierTrace = preflight.trace;
-    } else if (this.dependencies.agentConversationGateway) {
+    } else if (this.dependencies.agentConversationGateway && !hasUnsupportedImageMedia) {
       const phoneNumber = this.resolveEscalationPhone(inbound, classifierPlan);
       if (phoneNumber) {
         await this.logAgentMessageWithTrace(
@@ -286,6 +326,56 @@ export class AgentService {
           turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
           operationalNote: 'Conversation is soft-paused after human escalation.',
           responseClassifier: responseClassifierTrace,
+        }),
+      };
+    }
+
+    if (hasUnsupportedImageMedia) {
+      const previousNode = existingPlan?.current_node ?? 'contacto_inicial';
+      const planToSave = mergePlan(classifierPlan, {
+        current_node: 'resolver_consultas_informativas',
+        intent_confidence: 1,
+      });
+      const savePlanStartedAt = Date.now();
+      await this.dependencies.planStore.save({
+        plan: planToSave,
+        reason: 'unsupported_image_media',
+      });
+      timingMs.save_plan += Date.now() - savePlanStartedAt;
+      timingMs.total = Date.now() - handleTurnStartedAt;
+      const extraction = this.buildSyntheticUnsupportedImageExtraction();
+      const message =
+        'Por ahora no puedo leer imágenes. Escribe aquí el dato que aparece y podré orientarte';
+      return {
+        plan: planToSave,
+        outbound: this.renderOutbound(
+          { text: message },
+          [],
+          inbound.channel,
+          planToSave.conversation_id,
+        ),
+        trace: this.buildTrace({
+          plan: planToSave,
+          previousNode,
+          currentNode: 'resolver_consultas_informativas',
+          nodePath: previousNode === 'resolver_consultas_informativas'
+            ? ['resolver_consultas_informativas']
+            : [previousNode, 'resolver_consultas_informativas'],
+          extraction,
+          missingFields: planToSave.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:unsupported_image_media',
+          promptFilePaths: [],
+          toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'unsupported_image_media',
+          timingMs,
+          tokenUsage,
+          searchStrategy: 'none',
+          operationalNote:
+            'Trusted channel media metadata reported an image; media retrieval and interpretation are not enabled.',
         }),
       };
     }
@@ -468,7 +558,7 @@ export class AgentService {
         userMessage: inbound.text,
         plan: existingPlan,
       });
-      const finishedExtraction =
+      let finishedExtraction =
         'extraction' in rawExtractionResult
           ? rawExtractionResult.extraction
           : rawExtractionResult;
@@ -477,13 +567,29 @@ export class AgentService {
           ? (rawExtractionResult.tokenUsage ?? null)
           : null;
       timingMs.extraction += Date.now() - extractionStartedAt;
+      finishedExtraction =
+        this.normalizeInformationExtractionAmbiguity(finishedExtraction);
+
+      if (this.hasInformationWork(existingPlan, finishedExtraction)) {
+        return await this.handleInformationFlow({
+          inbound,
+          previousNode: existingPlan.current_node,
+          workingPlan: existingPlan,
+          extraction: finishedExtraction,
+          toolUsage,
+          timingMs,
+          tokenUsage,
+          responseClassifierTrace,
+          handleTurnStartedAt,
+        });
+      }
 
       const isPlanningIntent =
-        finishedExtraction.intent === 'buscar_proveedores' ||
-        finishedExtraction.intent === 'retomar_plan' ||
-        finishedExtraction.intent === 'ver_opciones' ||
-        finishedExtraction.intent === 'refinar_busqueda' ||
-        finishedExtraction.intent === 'confirmar_proveedor';
+        finishedExtraction.actionIntent === 'buscar_proveedores' ||
+        finishedExtraction.actionIntent === 'retomar_plan' ||
+        finishedExtraction.actionIntent === 'ver_opciones' ||
+        finishedExtraction.actionIntent === 'refinar_busqueda' ||
+        finishedExtraction.actionIntent === 'confirmar_proveedor';
 
       if (isPlanningIntent) {
         const freshPlan = createEmptyPlan({
@@ -500,30 +606,11 @@ export class AgentService {
         const finishedSufficiency = computeSearchSufficiency(existingPlan);
         const finishedProviders =
           getActiveNeed(existingPlan)?.recommended_providers ?? [];
-        const respondNode = finishedExtraction.intent === 'consultar_faq'
-          ? 'consultar_faq'
-          : finishedExtraction.intent === 'consultar_evento_invitado'
-            ? 'consultar_evento_invitado'
-            : 'necesidad_cubierta';
-        let planForReply = existingPlan;
-        let finishedInvitedEventLookupResult: UserEventLookupResult | null = null;
-        let finishedErrorMessage: string | null = null;
-        if (respondNode === 'consultar_evento_invitado') {
-          const authResult = await this.resolveInvitedEventAuthentication({
-            plan: mergePlan(existingPlan, { current_node: respondNode }),
-            userMessage: inbound.text,
-            toolUsage,
-          });
-          planForReply = authResult.plan;
-          finishedInvitedEventLookupResult = authResult.lookupResult;
-          finishedErrorMessage = authResult.message;
-          await this.dependencies.planStore.save({
-            plan: planForReply,
-            reason: respondNode,
-          });
-        }
+        const respondNode: DecisionNode = 'necesidad_cubierta';
+        const planForReply = existingPlan;
+        const finishedErrorMessage: string | null = null;
         const bundle = await this.dependencies.promptLoader.loadNodeBundle(respondNode);
-        const reply = await this.dependencies.runtime.composeReply({
+        const composedReply = await this.dependencies.runtime.composeReply({
           currentNode: respondNode,
           previousNode: existingPlan.current_node,
           userMessage: inbound.text,
@@ -536,8 +623,12 @@ export class AgentService {
           promptBundleId: bundle.id,
           promptFilePaths: bundle.filePaths,
           toolUsage,
-          invitedEventLookupResult: finishedInvitedEventLookupResult,
         });
+        const reply = this.enforceFaqAmbiguityReply(
+          respondNode,
+          finishedExtraction,
+          composedReply,
+        );
         tokenUsage.reply = reply.tokenUsage ?? null;
         tokenUsage.total = this.sumTokenUsage(
           tokenUsage.classifier,
@@ -562,8 +653,8 @@ export class AgentService {
             toolUsage,
             providerResults: finishedProviders,
             recommendationFunnel: this.resolveRecommendationFunnel(null, finishedProviders),
-            planPersisted: respondNode === 'consultar_evento_invitado',
-            planPersistReason: respondNode === 'consultar_evento_invitado' ? respondNode : null,
+            planPersisted: false,
+            planPersistReason: null,
             timingMs,
             tokenUsage,
             responseClassifier: responseClassifierTrace,
@@ -615,7 +706,28 @@ export class AgentService {
     let errorMessage: string | null = null;
     const applyExtractionStartedAt = Date.now();
     extraction = this.guardGenericElicitation(extraction);
-    extraction = this.guardInvitedEventFollowUp(workingPlan, extraction);
+    extraction = this.normalizeInformationExtractionAmbiguity(extraction);
+    extraction = this.guardCloseIntentWithoutEstablishedPlan(
+      workingPlan,
+      extraction,
+    );
+    if (
+      this.hasInformationWork(workingPlan, extraction) &&
+      extraction.actionIntent !== 'pausar' &&
+      extraction.actionIntent !== 'solicitar_humano'
+    ) {
+      return await this.handleInformationFlow({
+        inbound,
+        previousNode,
+        workingPlan,
+        extraction,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        responseClassifierTrace,
+        handleTurnStartedAt,
+      });
+    }
     const extractionNode = this.resolveExtractionNode(workingPlan, extraction);
     const { plan: extractedPlan, validationError } = this.applyExtraction(
       workingPlan,
@@ -634,7 +746,7 @@ export class AgentService {
         deferShortlistedDeletes:
           (extraction.selectedProviderReferences ?? []).length > 0 ||
           this.resolveEffectiveSelectionHints(extraction).length > 0 ||
-          extraction.intent === 'cerrar',
+          extraction.actionIntent === 'cerrar',
       },
     );
     const mergedPlan = operationResult.plan;
@@ -649,7 +761,7 @@ export class AgentService {
           mergedPlan,
           extraction.selectedProviderReferences ?? [],
           effectiveSelectionHints,
-          extraction.intent,
+          extraction.actionIntent,
       )
       : { resolved: false };
     const selectionShouldStop =
@@ -685,7 +797,6 @@ export class AgentService {
     let searchStrategy: SearchStrategyTrace = 'none';
     let planPersistReason: string | null = null;
     let planPersisted = false;
-    let invitedEventLookupResult: UserEventLookupResult | null = null;
     const persistPlan = async (plan: PlanSnapshot, reason: string) => {
       const savePlanStartedAt = Date.now();
       await this.dependencies.planStore.save({
@@ -695,7 +806,7 @@ export class AgentService {
       timingMs.save_plan += Date.now() - savePlanStartedAt;
     };
 
-    if (extraction.intent === 'solicitar_humano') {
+    if (extraction.actionIntent === 'solicitar_humano') {
       currentNode = 'solicitar_agente_humano';
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
@@ -761,7 +872,7 @@ export class AgentService {
       };
     }
 
-    if (extraction.pauseRequested || extraction.intent === 'pausar') {
+    if (extraction.pauseRequested || extraction.actionIntent === 'pausar') {
       currentNode = 'guardar_cerrar_temporalmente';
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
@@ -832,7 +943,7 @@ export class AgentService {
     }
 
     if (
-      extraction.intent === 'cerrar' ||
+      extraction.actionIntent === 'cerrar' ||
       this.shouldHandleCloseTurn(previousNode, extraction, validationError)
     ) {
       const isCloseContactClarification = extraction.closeAction?.type === 'clarify';
@@ -841,7 +952,7 @@ export class AgentService {
             mergedPlan,
             extraction.selectedProviderReferences ?? [],
             this.resolveEffectiveSelectionHints(extraction),
-            extraction.intent,
+            extraction.actionIntent,
           )
         : { resolved: false };
       let planToClose = mergedPlan;
@@ -969,156 +1080,6 @@ export class AgentService {
         promptBundleId: bundle.id,
         promptFilePaths: bundle.filePaths,
         toolUsage,
-      });
-      tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.total = this.sumTokenUsage(
-        tokenUsage.classifier,
-        tokenUsage.extraction,
-        tokenUsage.reply,
-      );
-      const recommendationFunnel = this.resolveRecommendationFunnel(
-        reply.recommendationFunnel ?? null,
-        providerResults,
-      );
-      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
-
-      await persistPlan(planToSave, planPersistReason ?? currentNode);
-      timingMs.total = Date.now() - handleTurnStartedAt;
-
-      return {
-        plan: planToSave,
-        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode,
-          currentNode,
-          nodePath,
-          extraction,
-          missingFields: sufficiency.missingFields,
-          searchReady: sufficiency.searchReady,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
-          toolUsage,
-          providerResults,
-          recommendationFunnel: recommendationFunnel,
-          planPersisted: true,
-          planPersistReason: planPersistReason,
-          timingMs,
-          tokenUsage,
-          responseClassifier: responseClassifierTrace,
-          searchStrategy,
-          operationalNote: errorMessage,
-        }),
-      };
-    }
-
-    if (extraction.intent === 'consultar_faq') {
-      currentNode = extraction.intent;
-      if (nodePath[nodePath.length - 1] !== currentNode) {
-        nodePath.push(currentNode);
-      }
-      // Preserve the planning state: only update current_node so resume works.
-      const planToSave = mergePlan(mergedPlan, { current_node: currentNode });
-      await persistPlan(planToSave, currentNode);
-      planPersisted = true;
-      planPersistReason = currentNode;
-
-      const promptBundleStartedAt = Date.now();
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
-      const composeReplyStartedAt = Date.now();
-      const reply = await this.dependencies.runtime.composeReply({
-        currentNode,
-        previousNode,
-        userMessage: inbound.text,
-        plan: planToSave,
-        extraction,
-        missingFields: sufficiency.missingFields,
-        searchReady: sufficiency.searchReady,
-        providerResults,
-        errorMessage,
-        promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
-          toolUsage,
-        });
-      tokenUsage.reply = reply.tokenUsage ?? null;
-      tokenUsage.total = this.sumTokenUsage(
-        tokenUsage.classifier,
-        tokenUsage.extraction,
-        tokenUsage.reply,
-      );
-      const recommendationFunnel = this.resolveRecommendationFunnel(
-        reply.recommendationFunnel ?? null,
-        providerResults,
-      );
-      timingMs.compose_reply += Date.now() - composeReplyStartedAt;
-
-      await persistPlan(planToSave, planPersistReason ?? currentNode);
-      timingMs.total = Date.now() - handleTurnStartedAt;
-
-      return {
-        plan: planToSave,
-        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode,
-          currentNode,
-          nodePath,
-          extraction,
-          missingFields: sufficiency.missingFields,
-          searchReady: sufficiency.searchReady,
-          promptBundleId: bundle.id,
-          promptFilePaths: bundle.filePaths,
-          toolUsage,
-          providerResults,
-          recommendationFunnel: recommendationFunnel,
-          planPersisted: true,
-          planPersistReason: planPersistReason,
-          timingMs,
-          tokenUsage,
-          responseClassifier: responseClassifierTrace,
-          searchStrategy,
-          operationalNote: errorMessage,
-        }),
-      };
-    }
-
-    if (extraction.intent === 'consultar_evento_invitado') {
-      currentNode = 'consultar_evento_invitado';
-      if (nodePath[nodePath.length - 1] !== currentNode) {
-        nodePath.push(currentNode);
-      }
-
-      const authResult = await this.resolveInvitedEventAuthentication({
-        plan: mergePlan(mergedPlan, { current_node: currentNode }),
-        userMessage: inbound.text,
-        toolUsage,
-      });
-      const planToSave = authResult.plan;
-      errorMessage = authResult.message;
-      invitedEventLookupResult = authResult.lookupResult;
-      await persistPlan(planToSave, currentNode);
-      planPersisted = true;
-      planPersistReason = currentNode;
-
-      const promptBundleStartedAt = Date.now();
-      const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
-      timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
-      const composeReplyStartedAt = Date.now();
-      const reply = await this.dependencies.runtime.composeReply({
-        currentNode,
-        previousNode,
-        userMessage: inbound.text,
-        plan: planToSave,
-        extraction,
-        missingFields: sufficiency.missingFields,
-        searchReady: sufficiency.searchReady,
-        providerResults,
-        errorMessage,
-        promptBundleId: bundle.id,
-        promptFilePaths: bundle.filePaths,
-        toolUsage,
-        invitedEventLookupResult,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.total = this.sumTokenUsage(
@@ -1452,7 +1413,7 @@ export class AgentService {
     );
     timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
     const composeReplyStartedAt = Date.now();
-    const reply = await this.dependencies.runtime.composeReply({
+    const composedReply = await this.dependencies.runtime.composeReply({
       currentNode,
       previousNode,
       userMessage: inbound.text,
@@ -1466,8 +1427,12 @@ export class AgentService {
       promptFilePaths: promptBundle.filePaths,
       toolUsage,
       turnDecision,
-      invitedEventLookupResult,
     });
+    const reply = this.enforceFaqAmbiguityReply(
+      currentNode,
+      extraction,
+      composedReply,
+    );
     tokenUsage.reply = reply.tokenUsage ?? null;
       tokenUsage.total = this.sumTokenUsage(
         tokenUsage.classifier,
@@ -1519,6 +1484,705 @@ export class AgentService {
     };
   }
 
+  private hasInformationWork(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): boolean {
+    return (
+      extraction.informationRequests.length > 0 ||
+      plan.information_state.pending_requests.length > 0
+    );
+  }
+
+  private normalizeInformationExtractionAmbiguity(
+    extraction: ExtractionResult,
+  ): ExtractionResult {
+    if (
+      extraction.ambiguity?.status !== 'ambiguous' ||
+      extraction.informationRequests.length === 0 ||
+      extraction.informationRequests.some((request) => request.kind === 'faq')
+    ) {
+      return extraction;
+    }
+
+    return {
+      ...extraction,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
+    };
+  }
+
+  private async handleInformationFlow(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    workingPlan: PlanSnapshot;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const resumeNode =
+      args.workingPlan.current_node === currentNode
+        ? args.workingPlan.information_state.resume_node
+        : args.workingPlan.current_node;
+    const planWithContact = mergePlan(args.workingPlan, {
+      contact_email:
+        args.extraction.contactEmail && this.isValidEmail(args.extraction.contactEmail)
+          ? args.extraction.contactEmail
+          : args.workingPlan.contact_email,
+    });
+    const requests = this.mergeInformationRequests(
+      planWithContact.information_state.pending_requests,
+      args.extraction.informationRequests,
+    );
+    let planForInformation = mergePlan(planWithContact, {
+      current_node: currentNode,
+      information_state: {
+        resume_node: resumeNode,
+        pending_requests: requests,
+        selection_candidates:
+          planWithContact.information_state.selection_candidates,
+      },
+    });
+
+    const hasActionConflict =
+      args.extraction.actionIntent !== null &&
+      requests.length > 0;
+    const hasAmbiguity = args.extraction.ambiguity?.status === 'ambiguous';
+    let informationResults: InformationTaskResult[] = [];
+    let informationSummaries: InformationExecutionSummary[] = [];
+    let operationalNote: string | null = null;
+
+    if (hasActionConflict) {
+      operationalNote =
+        'El mensaje combina una acción del plan con consultas informativas. Haz una sola pregunta breve para confirmar cuál quiere resolver primero. No ejecutes ni respondas ninguna de las dos rutas todavía.';
+    } else if (hasAmbiguity) {
+      operationalNote = this.resolveFaqAmbiguityNote(args.extraction);
+      planForInformation = mergePlan(planForInformation, {
+        information_state: {
+          ...planForInformation.information_state,
+          pending_requests:
+            planWithContact.information_state.pending_requests,
+        },
+      });
+    } else {
+      const informationStartedAt = Date.now();
+      const authResolution = await this.resolveInformationAuthentication({
+        plan: planForInformation,
+        userMessage: args.inbound.text,
+        requests,
+        toolUsage: args.toolUsage,
+      });
+      planForInformation = authResolution.plan;
+
+      requests.forEach((request) => {
+        this.recordDeterministicToolInput(
+          args.toolUsage,
+          this.informationToolName(request),
+          this.summarizeInformationToolInput(request),
+        );
+      });
+
+      const orchestrator =
+        this.dependencies.informationOrchestrator ??
+        new InformationOrchestrator({
+          knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
+          providerGateway: this.dependencies.providerGateway,
+          agentGateway:
+            this.dependencies.agentConversationGateway ??
+            new NoopAgentConversationGateway('not_configured'),
+        });
+      const execution = await orchestrator.execute({
+        requests,
+        authentication: authResolution.authentication,
+        authBlock: authResolution.authBlock,
+      });
+      args.timingMs.information_execution += Date.now() - informationStartedAt;
+      informationResults = execution.results;
+      informationSummaries = execution.summaries;
+      this.recordInformationExecutionTrace(
+        args.toolUsage,
+        informationSummaries,
+      );
+
+      if (
+        informationResults.some(
+          (result) =>
+            result.status === 'failed' &&
+            (result.kind === 'purchase' ||
+              result.kind === 'associated_event') &&
+            result.failureKind === 'unauthorized',
+        )
+      ) {
+        planForInformation = this.resetUserAuth(
+          planForInformation,
+          planForInformation.user_auth.email,
+          'Agent API rejected the stored user session.',
+        );
+      }
+
+      const nextState = this.reduceInformationState(
+        requests,
+        informationResults,
+      );
+      planForInformation = mergePlan(planForInformation, {
+        information_state: {
+          resume_node: resumeNode,
+          pending_requests: nextState.pendingRequests,
+          selection_candidates: nextState.selectionCandidates,
+        },
+      });
+    }
+
+    const promptBundleStartedAt = Date.now();
+    const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+    args.timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+    const composeReplyStartedAt = Date.now();
+    const composedReply = await this.dependencies.runtime.composeReply({
+      currentNode,
+      previousNode: args.previousNode,
+      userMessage: args.inbound.text,
+      plan: planForInformation,
+      extraction: args.extraction,
+      missingFields: [],
+      searchReady: false,
+      providerResults: [],
+      turnDecision: this.informationTurnDecision(
+        operationalNote ?? 'information_batch',
+      ),
+      errorMessage: operationalNote,
+      promptBundleId: bundle.id,
+      promptFilePaths: bundle.filePaths,
+      toolUsage: args.toolUsage,
+      informationResults,
+    });
+    const ambiguitySafeReply = this.enforceFaqAmbiguityReply(
+      currentNode,
+      args.extraction,
+      composedReply,
+    );
+    const reply = this.enforceInformationNextInputReply(
+      informationResults,
+      ambiguitySafeReply,
+    );
+    args.tokenUsage.reply = reply.tokenUsage ?? null;
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+      args.tokenUsage.reply,
+    );
+    args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+
+    const savePlanStartedAt = Date.now();
+    await this.dependencies.planStore.save({
+      plan: planForInformation,
+      reason: currentNode,
+    });
+    args.timingMs.save_plan += Date.now() - savePlanStartedAt;
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const turnDecision = this.informationTurnDecision(
+      operationalNote ?? 'information_batch',
+    );
+
+    return {
+      plan: planForInformation,
+      outbound: this.renderOutbound(
+        reply,
+        [],
+        args.inbound.channel,
+        planForInformation.conversation_id,
+      ),
+      trace: this.buildTrace({
+        plan: planForInformation,
+        previousNode: args.previousNode,
+        currentNode,
+        nodePath:
+          args.previousNode === currentNode
+            ? [currentNode]
+            : [args.previousNode, currentNode],
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: currentNode,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision,
+        operationalNote,
+        informationExecution: informationSummaries,
+      }),
+    };
+  }
+
+  private mergeInformationRequests(
+    pending: PendingInformationRequest[],
+    extracted: ExtractedInformationRequest[],
+  ): PendingInformationRequest[] {
+    const merged = [...pending];
+    let nextId = merged.length + 1;
+
+    for (const request of extracted) {
+      const matchingIndex = merged.findIndex((candidate) =>
+        this.sameInformationThread(candidate, request),
+      );
+      if (matchingIndex >= 0) {
+        const existing = merged[matchingIndex];
+        if (!existing) {
+          continue;
+        }
+        merged[matchingIndex] =
+          existing.kind === 'purchase' && request.kind === 'purchase'
+            ? {
+                ...request,
+                requestId: existing.requestId,
+                query: request.query || existing.query,
+                orderId: request.orderId ?? existing.orderId,
+                aspects: Array.from(
+                  new Set([...existing.aspects, ...request.aspects]),
+                ),
+                sensitiveFields: Array.from(
+                  new Set([
+                    ...existing.sensitiveFields,
+                    ...request.sensitiveFields,
+                  ]),
+                ),
+              }
+            : {
+                ...request,
+                requestId: existing.requestId,
+              };
+        continue;
+      }
+
+      let requestId = `information-${nextId}`;
+      while (merged.some((candidate) => candidate.requestId === requestId)) {
+        nextId += 1;
+        requestId = `information-${nextId}`;
+      }
+      merged.push({
+        ...request,
+        requestId,
+      } as PendingInformationRequest);
+      nextId += 1;
+    }
+
+    return merged;
+  }
+
+  private sameInformationThread(
+    pending: PendingInformationRequest,
+    extracted: ExtractedInformationRequest,
+  ): boolean {
+    if (pending.kind !== extracted.kind) {
+      return false;
+    }
+    if (pending.kind === 'purchase' && extracted.kind === 'purchase') {
+      return pending.resource === extracted.resource;
+    }
+    if (pending.kind === 'associated_event') {
+      return true;
+    }
+    return pending.kind === 'faq' && extracted.kind === 'faq'
+      ? pending.query.trim().toLocaleLowerCase('es') ===
+          extracted.query.trim().toLocaleLowerCase('es')
+      : false;
+  }
+
+  private async resolveInformationAuthentication(args: {
+    plan: PlanSnapshot;
+    userMessage: string;
+    requests: PendingInformationRequest[];
+    toolUsage: ToolUsage;
+  }): Promise<{
+    plan: PlanSnapshot;
+    authentication: InformationAuthentication | null;
+    authBlock: InformationAuthBlock | null;
+  }> {
+    const protectedRequests = args.requests.filter(
+      (request) =>
+        request.kind === 'associated_event' || request.kind === 'purchase',
+    );
+    if (protectedRequests.length === 0) {
+      return {
+        plan: args.plan,
+        authentication: null,
+        authBlock: null,
+      };
+    }
+
+    const purchaseAuthAction = protectedRequests.find(
+      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
+        request.kind === 'purchase',
+    )?.authAction;
+    const providedEmail = this.extractEmailFromText(args.userMessage);
+    if (purchaseAuthAction === 'change_email' && !providedEmail) {
+      return {
+        plan: this.resetUserAuth(args.plan, null),
+        authentication: null,
+        authBlock: {
+          nextInput: 'email',
+          message:
+            'Claro, podemos cambiarlo. ¿Cuál es el correo con el que te registraste en Sin Envolturas?',
+        },
+      };
+    }
+    const email = this.resolveUserAuthEmail(args.plan, args.userMessage);
+    if (!email || !this.isValidEmail(email)) {
+      return {
+        plan: this.resetUserAuth(args.plan, null),
+        authentication: null,
+        authBlock: {
+          nextInput: 'email',
+          message:
+            'Claro, te ayudo a revisarlo. Por seguridad, primero necesito verificar tu cuenta. ¿Cuál es el correo con el que te registraste en Sin Envolturas? Te enviaré un código',
+        },
+      };
+    }
+
+    let planForEmail =
+      args.plan.user_auth.email === email
+        ? args.plan
+        : this.resetUserAuth(args.plan, email);
+
+    if (this.hasValidUserAuthToken(planForEmail)) {
+      return {
+        plan: planForEmail,
+        authentication: {
+          token: planForEmail.user_auth.token ?? '',
+          email,
+        },
+        authBlock: null,
+      };
+    }
+
+    const code = this.extractUserLoginCode(args.userMessage);
+    if (planForEmail.user_auth.status === 'code_requested' && code) {
+      const verification = await this.verifyUserCodeForInformation(
+        planForEmail,
+        email,
+        code,
+        args.toolUsage,
+      );
+      return verification;
+    }
+
+    if (
+      planForEmail.user_auth.status === 'code_requested' &&
+      purchaseAuthAction !== 'resend_otp'
+    ) {
+      return {
+        plan: planForEmail,
+        authentication: null,
+        authBlock: {
+          nextInput: 'otp',
+          message: this.otpNotReceivedMessage(email),
+        },
+      };
+    }
+
+    const requested = await this.requestUserCodeForInformation(
+      planForEmail,
+      email,
+      args.toolUsage,
+      purchaseAuthAction === 'resend_otp',
+    );
+    planForEmail = requested.plan;
+    return {
+      plan: planForEmail,
+      authentication: null,
+      authBlock: requested.authBlock,
+    };
+  }
+
+  private async requestUserCodeForInformation(
+    plan: PlanSnapshot,
+    email: string,
+    toolUsage: ToolUsage,
+    isResend: boolean,
+  ): Promise<{
+    plan: PlanSnapshot;
+    authBlock: InformationAuthBlock;
+  }> {
+    this.recordDeterministicToolInput(
+      toolUsage,
+      'request_user_login_code',
+      { email_present: true },
+    );
+    const result = await this.dependencies.providerGateway.requestUserLoginCode(email);
+    this.recordDeterministicToolOutput(
+      toolUsage,
+      'request_user_login_code',
+      { status: result.status },
+    );
+
+    if (result.status === 'sent') {
+      return {
+        plan: mergePlan(plan, {
+          contact_email: email,
+          user_auth: {
+            status: 'code_requested',
+            email,
+            token: null,
+            token_expires_at: null,
+            last_error: null,
+            requested_at: new Date().toISOString(),
+          },
+        }),
+        authBlock: {
+          nextInput: 'otp',
+          message: isResend
+            ? `Listo, envié un nuevo código a ${email}. Escríbelo aquí para continuar`
+            : `Te envié un código a ${email}. Escríbelo aquí para verificar tu cuenta y continuar`,
+        },
+      };
+    }
+
+    if (result.status === 'email_not_found') {
+      return {
+        plan: mergePlan(plan, {
+          contact_email: email,
+          user_auth: {
+            status: 'email_not_found',
+            email,
+            token: null,
+            token_expires_at: null,
+            last_error: result.error,
+            requested_at: null,
+          },
+        }),
+        authBlock: {
+          nextInput: 'email',
+          message: `No encontré una cuenta registrada con ${email}. Revisa el correo y escríbeme el que usaste para registrarte en Sin Envolturas`,
+        },
+      };
+    }
+
+    return {
+      plan: mergePlan(plan, {
+        user_auth: {
+          status: 'failed',
+          email,
+          token: null,
+          token_expires_at: null,
+          last_error: result.error,
+          requested_at: null,
+        },
+      }),
+      authBlock: {
+        nextInput: 'email',
+        message:
+          'No pude enviar el código en este momento. Espera unos minutos y vuelve a intentarlo.',
+      },
+    };
+  }
+
+  private async verifyUserCodeForInformation(
+    plan: PlanSnapshot,
+    email: string,
+    code: string,
+    toolUsage: ToolUsage,
+  ): Promise<{
+    plan: PlanSnapshot;
+    authentication: InformationAuthentication | null;
+    authBlock: InformationAuthBlock | null;
+  }> {
+    this.recordDeterministicToolInput(
+      toolUsage,
+      'verify_user_login_code',
+      { email_present: true, code: '[redacted]' },
+    );
+    const result =
+      await this.dependencies.providerGateway.verifyUserLoginCode(email, code);
+    this.recordDeterministicToolOutput(
+      toolUsage,
+      'verify_user_login_code',
+      { status: result.status, token: '[redacted]' },
+    );
+
+    if (result.status !== 'authenticated') {
+      return {
+        plan: mergePlan(plan, {
+          user_auth: {
+            ...plan.user_auth,
+            status: 'code_requested',
+            token: null,
+            token_expires_at: null,
+            last_error: result.error,
+          },
+        }),
+        authentication: null,
+        authBlock: {
+          nextInput: 'otp',
+          message:
+            'No pude validar ese código. Cópialo completo desde el correo, sin espacios adicionales.',
+        },
+      };
+    }
+
+    return {
+      plan: mergePlan(plan, {
+        contact_email: email,
+        user_auth: {
+          status: 'authenticated',
+          email,
+          token: result.token,
+          token_expires_at: result.tokenExpiresAt,
+          last_error: null,
+          requested_at: plan.user_auth.requested_at,
+        },
+      }),
+      authentication: {
+        token: result.token,
+        email,
+      },
+      authBlock: null,
+    };
+  }
+
+  private reduceInformationState(
+    requests: PendingInformationRequest[],
+    results: InformationTaskResult[],
+  ): {
+    pendingRequests: PendingInformationRequest[];
+    selectionCandidates: InformationSelectionCandidate[];
+  } {
+    const resultsByRequest = new Map(
+      results.map((result) => [result.requestId, result]),
+    );
+    const pendingRequests: PendingInformationRequest[] = [];
+    const selectionCandidates: InformationSelectionCandidate[] = [];
+
+    for (const request of requests) {
+      const result = resultsByRequest.get(request.requestId);
+      if (!result) {
+        pendingRequests.push(request);
+        continue;
+      }
+      if (result.status === 'needs_input' || result.status === 'failed') {
+        pendingRequests.push(request);
+        continue;
+      }
+      if (
+        result.kind === 'purchase' &&
+        result.needsSelection
+      ) {
+        pendingRequests.push(request);
+        selectionCandidates.push({
+          requestId: request.requestId,
+          resource: result.resource,
+          orders: result.purchases.map((purchase) => ({
+            orderId: purchase.orderId,
+            eventName: purchase.eventName,
+            createdAt: purchase.createdAt,
+            grandTotal: purchase.grandTotal,
+            paymentStatus: purchase.paymentStatus,
+          })),
+        });
+      }
+    }
+
+    return { pendingRequests, selectionCandidates };
+  }
+
+  private informationToolName(
+    request: PendingInformationRequest,
+  ): string {
+    if (request.kind === 'faq') {
+      return 'knowledge_base_search';
+    }
+    if (request.kind === 'associated_event') {
+      return 'associated_event_lookup';
+    }
+    return request.resource === 'orders'
+      ? 'agent_api_orders'
+      : 'agent_api_gift_purchases';
+  }
+
+  private summarizeInformationToolInput(
+    request: PendingInformationRequest,
+  ): Record<string, unknown> {
+    if (request.kind === 'faq') {
+      return {
+        request_id: request.requestId,
+        query_present: request.query.trim().length > 0,
+      };
+    }
+    if (request.kind === 'associated_event') {
+      return {
+        request_id: request.requestId,
+        event_hint_present: Boolean(request.eventHint),
+      };
+    }
+    return {
+      request_id: request.requestId,
+      resource: request.resource,
+      order_id_present: Boolean(request.orderId),
+      aspects: request.aspects,
+      sensitive_fields_requested: request.sensitiveFields,
+    };
+  }
+
+  private recordInformationExecutionTrace(
+    toolUsage: ToolUsage,
+    summaries: InformationExecutionSummary[],
+  ): void {
+    for (const summary of summaries) {
+      if (summary.status !== 'needs_input') {
+        toolUsage.called.push(
+          summary.source === 'knowledge_base'
+            ? 'knowledge_base_search'
+            : summary.source === 'associated_event_api'
+              ? 'associated_event_lookup'
+              : 'agent_api_purchase_lookup',
+        );
+      }
+      toolUsage.outputs.push({
+        tool:
+          summary.source === 'knowledge_base'
+            ? 'knowledge_base_search'
+            : summary.source === 'associated_event_api'
+              ? 'associated_event_lookup'
+              : 'agent_api_purchase_lookup',
+        output: JSON.stringify({
+          request_id: summary.requestId,
+          kind: summary.kind,
+          status: summary.status,
+          result_count: summary.resultCount,
+          duration_ms: summary.durationMs,
+        }),
+      });
+    }
+  }
+
+  private informationTurnDecision(reason: string): TurnDecision {
+    return turnDecisionSchema.parse({
+      nextNode: 'resolver_consultas_informativas',
+      routeKind: 'information_batch',
+      providerSearchMode: 'none',
+      presentationScope: 'information_batch',
+      focusNeedCategory: null,
+      needsToSearch: [],
+      needsToPresent: [],
+      stopReason: null,
+      persistReason: reason,
+      invariantStatus: 'valid',
+      invariantViolations: [],
+    });
+  }
+
   private sumTokenUsage(...usages: Array<TokenUsage | null>): TokenUsage | null {
     if (!usages.some((usage) => usage)) {
       return null;
@@ -1535,106 +2199,151 @@ export class AgentService {
     };
   }
 
-  private async resolveInvitedEventAuthentication(args: {
-    plan: PlanSnapshot;
-    userMessage: string;
-    toolUsage: ToolUsage;
-  }): Promise<{
-    plan: PlanSnapshot;
-    message: string | null;
-    lookupResult: UserEventLookupResult | null;
-  }> {
-    const email = this.resolveGuestAuthEmail(args.plan, args.userMessage);
-    if (!email) {
-      return {
-        plan: this.resetGuestAuth(args.plan, null),
-        message: 'Pide el correo con el que está registrado o asociado a eventos en Sin Envolturas para poder consultarlos.',
-        lookupResult: null,
-      };
+  private resolveFaqAmbiguityNote(extraction: ExtractionResult): string | null {
+    if (extraction.ambiguity?.status !== 'ambiguous') {
+      return null;
     }
 
-    if (!this.isValidEmail(email)) {
-      return {
-        plan: this.resetGuestAuth(args.plan, null),
-        message: 'El correo no parece válido. Pide que lo envíe completo para consultar sus eventos.',
-        lookupResult: null,
-      };
-    }
-
-    const planForEmail =
-      args.plan.guest_auth.email === email
-        ? args.plan
-        : this.resetGuestAuth(args.plan, email);
-
-    if (this.hasValidGuestAuthToken(planForEmail)) {
-      const lookup = await this.lookupAuthenticatedGuestWithTrace(
-        planForEmail.guest_auth.token ?? '',
-        email,
-        args.toolUsage,
-      );
-      if (lookup.ok) {
-        return {
-          plan: planForEmail,
-          message: null,
-          lookupResult: lookup.result,
-        };
-      }
-      return {
-        plan: this.resetGuestAuth(planForEmail, email, lookup.error),
-        message: 'No pude consultar tus eventos con la sesión guardada. Para proteger tu información, necesito validar tu correo nuevamente.',
-        lookupResult: null,
-      };
-    }
-
-    const code = this.extractGuestLoginCode(args.userMessage);
-    if (planForEmail.guest_auth.status === 'code_requested' && code) {
-      return await this.verifyGuestCode(planForEmail, email, code, args.toolUsage);
-    }
-
-    if (planForEmail.guest_auth.status === 'code_requested') {
-      return await this.requestGuestCode(planForEmail, email, args.toolUsage, {
-        resend: true,
-      });
-    }
-
-    return await this.requestGuestCode(planForEmail, email, args.toolUsage);
+    return 'La extracción estructurada marcó esta pregunta como ambigua. Responde solamente con una pregunta breve que aclare a qué se refiere el usuario. No contestes ninguna de las interpretaciones posibles ni agregues datos de la base de conocimiento.';
   }
 
-  private resolveGuestAuthEmail(plan: PlanSnapshot, userMessage: string): string | null {
+  private enforceFaqAmbiguityReply(
+    currentNode: DecisionNode,
+    extraction: ExtractionResult,
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    if (
+      (
+        currentNode !== 'resolver_consultas_informativas'
+      ) ||
+      extraction.ambiguity?.status !== 'ambiguous'
+    ) {
+      return reply;
+    }
+
+    const candidate = extraction.ambiguity.clarificationQuestion?.trim() ?? '';
+    const interpretations = Array.from(new Set(
+      (extraction.ambiguity.interpretations ?? [])
+        .map((interpretation) => interpretation.trim())
+        .filter((interpretation) =>
+          interpretation.length > 0 &&
+          interpretation.length <= 100 &&
+          !interpretation.includes('\n') &&
+          !interpretation.includes('?') &&
+          !interpretation.includes('¿'),
+        ),
+    )).slice(0, 3);
+    const questionMarkCount = candidate.match(/\?/gu)?.length ?? 0;
+    const openingQuestionMarkCount = candidate.match(/¿/gu)?.length ?? 0;
+    const isValidSingleQuestion =
+      candidate.length > 0 &&
+      candidate.length <= 240 &&
+      !candidate.includes('\n') &&
+      questionMarkCount === 1 &&
+      openingQuestionMarkCount <= 1;
+    const interpretationQuestion = interpretations.length >= 2
+      ? `¿Quieres saber ${interpretations.length === 2
+        ? `${interpretations[0]} o ${interpretations[1]}`
+        : `${interpretations[0]}, ${interpretations[1]} o ${interpretations[2]}`}?`
+      : null;
+    const clarificationQuestion =
+      interpretationQuestion ??
+      (isValidSingleQuestion
+        ? candidate
+        : '¿Podrías indicar a qué información te refieres?');
+
+    return {
+      ...reply,
+      text: clarificationQuestion,
+      structuredMessage: undefined,
+      recommendationFunnel: undefined,
+    };
+  }
+
+  private enforceInformationNextInputReply(
+    results: InformationTaskResult[],
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    if (
+      results.length === 0 ||
+      !results.every((result) => result.status === 'needs_input')
+    ) {
+      return reply;
+    }
+
+    const messages = Array.from(
+      new Set(
+        results
+          .map((result) =>
+            result.status === 'needs_input' ? result.message.trim() : '',
+          )
+          .filter((message) => message.length > 0),
+      ),
+    );
+    if (messages.length !== 1) {
+      return reply;
+    }
+
+    return {
+      ...reply,
+      text: messages[0] ?? reply.text,
+      structuredMessage: undefined,
+      recommendationFunnel: undefined,
+    };
+  }
+
+  private resolveUserAuthEmail(plan: PlanSnapshot, userMessage: string): string | null {
+    const contactEmail = this.normalizeUserEmailSpacing(plan.contact_email);
+    const messageEmail = this.extractEmailFromText(userMessage);
+    const externalUserEmail = this.normalizeUserEmailSpacing(plan.external_user_id);
+
     return (
-      (plan.contact_email && this.isValidEmail(plan.contact_email) ? plan.contact_email : null) ??
-      this.extractEmailFromText(userMessage) ??
-      (this.isValidEmail(plan.external_user_id) ? plan.external_user_id : null) ??
-      plan.contact_email
+      messageEmail ??
+      (this.isValidEmail(contactEmail) ? contactEmail : null) ??
+      (this.isValidEmail(externalUserEmail) ? externalUserEmail : null) ??
+      contactEmail
     );
   }
 
-  private extractEmailFromText(text: string): string | null {
-    return text.match(/[^\s@]+@[^\s@]+\.[^\s@]{2,}/iu)?.[0] ?? null;
+  private otpNotReceivedMessage(email: string): string {
+    return `Entiendo. Por seguridad necesitamos el código para confirmar que la cuenta es tuya. Lo enviamos a ${email}. Revisa promociones y correo no deseado, y confirma que sea el correo con el que te registraste en Sin Envolturas. Si está correcto, puedo enviarte otro código; si no, escríbeme el correo correcto`;
   }
 
-  private extractGuestLoginCode(text: string): string | null {
+  private extractEmailFromText(text: string): string | null {
+    const normalized = this.normalizeUserEmailSpacing(text);
+    return normalized?.match(/[^\s@]+@[^\s@]+\.[^\s@]{2,}/iu)?.[0] ?? null;
+  }
+
+  private normalizeUserEmailSpacing(value: string | null): string | null {
+    if (!value) {
+      return null;
+    }
+
+    return value.trim().replace(/\s*@\s*/gu, '@');
+  }
+
+  private extractUserLoginCode(text: string): string | null {
     const matches = text.match(/\b[A-Za-z0-9]{4,8}\b/gu) ?? [];
     return matches.find((match) => /\d/u.test(match)) ?? null;
   }
 
-  private hasValidGuestAuthToken(plan: PlanSnapshot): boolean {
-    if (plan.guest_auth.status !== 'authenticated' || !plan.guest_auth.token) {
+  private hasValidUserAuthToken(plan: PlanSnapshot): boolean {
+    if (plan.user_auth.status !== 'authenticated' || !plan.user_auth.token) {
       return false;
     }
-    if (!plan.guest_auth.token_expires_at) {
+    if (!plan.user_auth.token_expires_at) {
       return true;
     }
-    return Date.parse(plan.guest_auth.token_expires_at) > Date.now();
+    return Date.parse(plan.user_auth.token_expires_at) > Date.now();
   }
 
-  private resetGuestAuth(
+  private resetUserAuth(
     plan: PlanSnapshot,
     email: string | null,
     lastError: string | null = null,
   ): PlanSnapshot {
     return mergePlan(plan, {
-      guest_auth: {
+      user_auth: {
         status: 'none',
         email,
         token: null,
@@ -1643,166 +2352,6 @@ export class AgentService {
         requested_at: null,
       },
     });
-  }
-
-  private async requestGuestCode(
-    plan: PlanSnapshot,
-    email: string,
-    toolUsage: ToolUsage,
-    options: { resend?: boolean } = {},
-  ): Promise<{
-    plan: PlanSnapshot;
-    message: string | null;
-    lookupResult: UserEventLookupResult | null;
-  }> {
-    this.recordDeterministicToolInput(toolUsage, 'request_guest_login_code', { email });
-    const result = await this.dependencies.providerGateway.requestGuestLoginCode(email);
-    this.recordDeterministicToolOutput(toolUsage, 'request_guest_login_code', result);
-
-    if (result.status === 'sent') {
-      return {
-        plan: mergePlan(plan, {
-          contact_email: email,
-          guest_auth: {
-            status: 'code_requested',
-            email,
-            token: null,
-            token_expires_at: null,
-            last_error: null,
-            requested_at: new Date().toISOString(),
-          },
-        }),
-        message: options.resend
-          ? 'Se reenvió un código al correo. Pide revisar spam o promociones, confirmar que el correo esté bien escrito, o enviar otro correo si quiere cambiarlo.'
-          : 'Se envió un código al correo. Pide el código para continuar.',
-        lookupResult: null,
-      };
-    }
-
-    if (result.status === 'email_not_found') {
-      return {
-        plan: mergePlan(plan, {
-          contact_email: email,
-          guest_auth: {
-            status: 'email_not_found',
-            email,
-            token: null,
-            token_expires_at: null,
-            last_error: result.error,
-            requested_at: null,
-          },
-        }),
-        message: 'No se encontró ese correo en Sin Envolturas. No pidas código; pide revisar el correo usado para el evento o registro.',
-        lookupResult: null,
-      };
-    }
-
-    return {
-      plan: mergePlan(plan, {
-        contact_email: email,
-        guest_auth: {
-          status: 'failed',
-          email,
-          token: null,
-          token_expires_at: null,
-          last_error: result.error,
-          requested_at: null,
-        },
-      }),
-      message: 'No se pudo enviar el código por ahora. Pide intentar nuevamente en unos minutos.',
-      lookupResult: null,
-    };
-  }
-
-  private async verifyGuestCode(
-    plan: PlanSnapshot,
-    email: string,
-    code: string,
-    toolUsage: ToolUsage,
-  ): Promise<{
-    plan: PlanSnapshot;
-    message: string | null;
-    lookupResult: UserEventLookupResult | null;
-  }> {
-    this.recordDeterministicToolInput(toolUsage, 'verify_guest_login_code', {
-      email,
-      code: '[redacted]',
-    });
-    const result = await this.dependencies.providerGateway.verifyGuestLoginCode(email, code);
-    this.recordDeterministicToolOutput(toolUsage, 'verify_guest_login_code', {
-      ...result,
-      token: result.status === 'authenticated' ? '[redacted]' : undefined,
-    });
-
-    if (result.status !== 'authenticated') {
-      return {
-        plan: mergePlan(plan, {
-          guest_auth: {
-            ...plan.guest_auth,
-            status: 'code_requested',
-            token: null,
-            token_expires_at: null,
-            last_error: result.error,
-          },
-        }),
-        message: 'El código no pudo validarse. Pide revisar el código o solicitar otro correo si corresponde.',
-        lookupResult: null,
-      };
-    }
-
-    const authenticatedPlan = mergePlan(plan, {
-      contact_email: email,
-      guest_auth: {
-        status: 'authenticated',
-        email,
-        token: result.token,
-        token_expires_at: result.tokenExpiresAt,
-        last_error: null,
-        requested_at: plan.guest_auth.requested_at,
-      },
-    });
-    const lookup = await this.lookupAuthenticatedGuestWithTrace(result.token, email, toolUsage);
-    if (lookup.ok) {
-      return {
-        plan: authenticatedPlan,
-        message: null,
-        lookupResult: lookup.result,
-      };
-    }
-
-    return {
-      plan: this.resetGuestAuth(authenticatedPlan, email, lookup.error),
-      message: 'La sesión no pudo consultar eventos. Pide volver a validar el correo para continuar.',
-      lookupResult: null,
-    };
-  }
-
-  private async lookupAuthenticatedGuestWithTrace(
-    token: string,
-    email: string,
-    toolUsage: ToolUsage,
-  ): Promise<
-    | { ok: true; result: UserEventLookupResult | null }
-    | { ok: false; error: string }
-  > {
-    this.recordDeterministicToolInput(toolUsage, 'lookup_authenticated_guest', {
-      email,
-      authorization: 'Bearer [redacted]',
-    });
-    try {
-      const result = await this.dependencies.providerGateway.lookupAuthenticatedGuest({
-        token,
-        email,
-      });
-      this.recordDeterministicToolOutput(toolUsage, 'lookup_authenticated_guest', result);
-      return { ok: true, result };
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.recordDeterministicToolOutput(toolUsage, 'lookup_authenticated_guest', {
-        error: message,
-      });
-      return { ok: false, error: message };
-    }
   }
 
   private recordDeterministicToolInput(
@@ -2060,14 +2609,14 @@ export class AgentService {
 
   private humanEscalationRequestedMessage(result: AgentGatewayResult): string {
     if (result.status === 'success') {
-      return 'Listo, ya pedí apoyo. Una persona del equipo se unirá a este chat y te responderá por aquí. Mientras tanto, dejaré la conversación en sus manos';
+      return 'Listo, ya pedí apoyo. Una persona del equipo se unirá a esta conversación y te responderá por aquí. Mientras tanto, dejaré la conversación en sus manos';
     }
 
-    return 'No pude registrar la solicitud automáticamente, pero dejé este chat para revisión manual. Una persona del equipo podrá continuar la conversación por aquí';
+    return 'No pude registrar la solicitud automáticamente, pero dejé esta conversación para revisión manual. Una persona del equipo podrá continuar por aquí';
   }
 
   private conversationHealthHelpOfferMessage(): string {
-    return 'Siento que no estamos avanzando como deberíamos. ¿Quieres que una persona del equipo se una a este chat para ayudarte?';
+    return 'Siento que no estamos avanzando como deberíamos. ¿Quieres que una persona del equipo se una a esta conversación para ayudarte?';
   }
 
   private reduceConversationHealth(
@@ -2177,8 +2726,8 @@ export class AgentService {
 
   private buildSyntheticEscalationExtraction(summary: string): ExtractionResult {
     return {
-      intent: 'solicitar_humano',
-      secondaryIntents: [],
+      actionIntent: 'solicitar_humano',
+      informationRequests: [],
       intentConfidence: 1,
       eventType: null,
       vendorCategory: null,
@@ -2208,7 +2757,6 @@ export class AgentService {
         shouldAvoid: [],
         rankingNotes: 'No aplica: el turno está escalado a revisión humana.',
       },
-      kbQuery: null,
       providerQueryIntents: [],
       providerPlanOperations: [],
       providerExplanationRequest: null,
@@ -2227,8 +2775,25 @@ export class AgentService {
       ...this.buildSyntheticEscalationExtraction(
         'El monitor de salud conversacional ofreció apoyo humano opcional.',
       ),
-      intent: null,
+      actionIntent: null,
       intentConfidence: 1,
+    };
+  }
+
+  private buildSyntheticUnsupportedImageExtraction(): ExtractionResult {
+    return {
+      ...this.buildSyntheticEscalationExtraction(
+        'Trusted channel metadata reported an image attachment.',
+      ),
+      actionIntent: null,
+      intentConfidence: 1,
+      informationRequests: [
+        {
+          kind: 'faq',
+          query: 'capacidad para leer imágenes',
+        },
+      ],
+      providerFitCriteria: null,
     };
   }
 
@@ -2285,7 +2850,7 @@ export class AgentService {
 
     return decisionEvidenceSchema.parse({
       previousNode: args.previousNode,
-      extractionIntent: args.extraction.intent,
+      extractionIntent: args.extraction.actionIntent,
       explicitNeedCategoryCount: this.countExplicitNeedCategories(args.extraction),
       extractionProviderQueryIntentCount: args.extraction.providerQueryIntents?.length ?? 0,
       extractionProviderPlanOperationCount: args.extraction.providerPlanOperations?.length ?? 0,
@@ -2333,30 +2898,6 @@ export class AgentService {
         needsToPresent: [],
         stopReason: null,
         persistReason: 'solicitar_agente_humano',
-      };
-    } else if (evidence.extractionIntent === 'consultar_faq') {
-      decision = {
-        nextNode: 'consultar_faq',
-        routeKind: 'faq',
-        providerSearchMode: 'none',
-        presentationScope: 'faq',
-        focusNeedCategory: evidence.focusedNeedCategory,
-        needsToSearch: [],
-        needsToPresent: [],
-        stopReason: null,
-        persistReason: 'consultar_faq',
-      };
-    } else if (evidence.extractionIntent === 'consultar_evento_invitado') {
-      decision = {
-        nextNode: 'consultar_evento_invitado',
-        routeKind: 'invited_event_lookup',
-        providerSearchMode: 'none',
-        presentationScope: 'invited_event_lookup',
-        focusNeedCategory: evidence.focusedNeedCategory,
-        needsToSearch: [],
-        needsToPresent: [],
-        stopReason: null,
-        persistReason: 'consultar_evento_invitado',
       };
     } else if (evidence.extractionIntent === 'cerrar') {
       decision = {
@@ -2563,7 +3104,7 @@ export class AgentService {
 
   private isBroadProviderMenuRequest(extraction: ExtractionResult): boolean {
     return (
-      extraction.intent === 'buscar_proveedores' &&
+      extraction.actionIntent === 'buscar_proveedores' &&
       this.countExplicitNeedCategories(extraction) > 1 &&
       (extraction.providerQueryIntents ?? []).length === 0 &&
       extraction.budgetSignal === 'medio' &&
@@ -2597,9 +3138,9 @@ export class AgentService {
       focusedCategory &&
       readyByPlan.has(focusedCategory) &&
       (
-        extraction.intent === 'buscar_proveedores' ||
-        extraction.intent === 'confirmar_proveedor' ||
-        extraction.intent === 'refinar_busqueda'
+        extraction.actionIntent === 'buscar_proveedores' ||
+        extraction.actionIntent === 'confirmar_proveedor' ||
+        extraction.actionIntent === 'refinar_busqueda'
       )
     ) {
       return plan.provider_needs.some((need) => need.category === focusedCategory)
@@ -2612,8 +3153,8 @@ export class AgentService {
       sessionFocusCategory &&
       readyByPlan.has(sessionFocusCategory) &&
       (
-        extraction.intent === 'buscar_proveedores' ||
-        extraction.intent === 'refinar_busqueda'
+        extraction.actionIntent === 'buscar_proveedores' ||
+        extraction.actionIntent === 'refinar_busqueda'
       )
     ) {
       return plan.provider_needs.some((need) => need.category === sessionFocusCategory)
@@ -2667,10 +3208,8 @@ export class AgentService {
     focusNeedCategory: ProviderCategory | null;
   }): TurnDecision {
     const presentationScope =
-      args.currentNode === 'consultar_faq'
-        ? 'faq'
-        : args.currentNode === 'consultar_evento_invitado'
-          ? 'invited_event_lookup'
+      args.currentNode === 'resolver_consultas_informativas'
+        ? 'information_batch'
         : args.currentNode === 'solicitar_agente_humano'
           ? 'human_escalation'
         : args.currentNode === 'crear_lead_cerrar'
@@ -2691,10 +3230,8 @@ export class AgentService {
 
     return turnDecisionSchema.parse({
       nextNode: args.currentNode,
-      routeKind: args.currentNode === 'consultar_faq'
-        ? 'faq'
-        : args.currentNode === 'consultar_evento_invitado'
-          ? 'invited_event_lookup'
+      routeKind: args.currentNode === 'resolver_consultas_informativas'
+        ? 'information_batch'
         : args.currentNode === 'solicitar_agente_humano'
           ? 'human_escalation'
         : args.currentNode === 'crear_lead_cerrar'
@@ -2774,6 +3311,7 @@ export class AgentService {
     sessionFocusUsed?: boolean;
     sessionFocusKeyPresent?: boolean;
     operationalNote: string | null;
+    informationExecution?: InformationExecutionSummary[];
   }): TurnTrace {
     const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
     const turnDecision = args.turnDecision ?? this.fallbackTurnDecision({
@@ -2789,7 +3327,7 @@ export class AgentService {
       previous_node: args.previousNode,
       next_node: args.currentNode,
       node_path: args.nodePath,
-      intent: args.plan.intent,
+      intent: args.extraction.actionIntent,
       missing_fields: args.missingFields,
       search_ready: args.searchReady,
       prompt_bundle_id: args.promptBundleId,
@@ -2815,7 +3353,7 @@ export class AgentService {
       selection_resolution_summary: this.summarizeSelectionResolution(args.extraction),
       contact_validation_summary: contactValidationSummary,
       provider_candidate_audit: this.summarizeProviderCandidateAudit(args.providerResults),
-      faq_resolution_summary: this.summarizeFaqResolution(args.currentNode, args.extraction, args.toolUsage),
+      information_execution_summary: args.informationExecution ?? [],
       plan_persisted: args.planPersisted,
       plan_persist_reason: args.planPersistReason,
       timing_ms: args.timingMs,
@@ -2830,6 +3368,16 @@ export class AgentService {
   ): ExtractionDebugSummary {
     return {
       intent_confidence: extraction.intentConfidence,
+      information_request_count: extraction.informationRequests.length,
+      information_request_kinds: extraction.informationRequests.map(
+        (request) => request.kind,
+      ),
+      ambiguity_status: extraction.ambiguity?.status ?? null,
+      clarification_question_present: Boolean(
+        extraction.ambiguity?.clarificationQuestion,
+      ),
+      ambiguity_interpretation_count:
+        extraction.ambiguity?.interpretations?.length ?? 0,
       event_type: extraction.eventType,
       vendor_category: extraction.vendorCategory,
       vendor_categories: extraction.vendorCategories,
@@ -2887,6 +3435,9 @@ export class AgentService {
         phone: Boolean(plan.contact_phone),
       },
       contact_validation_error: contactValidationSummary.reason_preview,
+      user_auth_status: plan.user_auth.status,
+      pending_information_request_count:
+        plan.information_state.pending_requests.length,
     };
   }
 
@@ -3009,20 +3560,6 @@ export class AgentService {
     }));
   }
 
-  private summarizeFaqResolution(
-    currentNode: DecisionNode,
-    extraction: ExtractionResult,
-    toolUsage: ToolUsage,
-  ): FaqResolutionDebugSummary {
-    const fileSearchToolNames = new Set(['file_search', 'hosted_file_search']);
-    return {
-      is_faq_turn: currentNode === 'consultar_faq',
-      kb_query_present: Boolean(extraction.kbQuery),
-      file_search_called: toolUsage.called.some((toolName) => fileSearchToolNames.has(toolName)),
-      file_search_output_count: toolUsage.outputs.filter((output) => fileSearchToolNames.has(output.tool)).length,
-    };
-  }
-
   private resolveExtractionNode(
     plan: PersistedPlan,
     extraction: ExtractionResult,
@@ -3031,35 +3568,27 @@ export class AgentService {
       return 'deteccion_intencion';
     }
 
-    if (extraction.intent === 'refinar_busqueda' || extraction.intent === 'ver_opciones') {
+    if (extraction.actionIntent === 'refinar_busqueda' || extraction.actionIntent === 'ver_opciones') {
       return 'refinar_criterios';
     }
 
-    if (extraction.intent === 'elicitar_necesidades') {
+    if (extraction.actionIntent === 'elicitar_necesidades') {
       return 'elicitacion_necesidades';
     }
 
     if (
-      extraction.intent === 'modificar_plan_proveedores' ||
-      extraction.intent === 'explicar_recomendacion' ||
-      extraction.intent === 'detallar_proveedor'
+      extraction.actionIntent === 'modificar_plan_proveedores' ||
+      extraction.actionIntent === 'explicar_recomendacion' ||
+      extraction.actionIntent === 'detallar_proveedor'
     ) {
       return 'seguir_refinando_guardar_plan';
     }
 
-    if (extraction.intent === 'confirmar_proveedor') {
+    if (extraction.actionIntent === 'confirmar_proveedor') {
       return 'usuario_elige_proveedor';
     }
 
-    if (extraction.intent === 'consultar_faq') {
-      return 'consultar_faq';
-    }
-
-    if (extraction.intent === 'consultar_evento_invitado') {
-      return 'consultar_evento_invitado';
-    }
-
-    if (extraction.intent === 'solicitar_humano') {
+    if (extraction.actionIntent === 'solicitar_humano') {
       return 'solicitar_agente_humano';
     }
 
@@ -3106,7 +3635,7 @@ export class AgentService {
 
     const candidate = mergePlan(plan, {
       current_node: extractionNode,
-      intent: guardedExtraction.intent ?? plan.intent,
+      intent: guardedExtraction.actionIntent ?? plan.intent,
       intent_confidence: guardedExtraction.intentConfidence ?? plan.intent_confidence,
       event_type: guardedExtraction.eventType ?? plan.event_type,
       vendor_category: guardedExtraction.vendorCategory ?? plan.vendor_category,
@@ -3126,7 +3655,7 @@ export class AgentService {
       contact_email: nextEmail,
       contact_phone: nextPhone,
       provider_needs: this.buildNeedUpdates(plan, guardedExtraction),
-      last_user_goal: guardedExtraction.intent ?? plan.last_user_goal,
+      last_user_goal: guardedExtraction.actionIntent ?? plan.last_user_goal,
     });
 
     const sufficiency = computeSearchSufficiency(candidate);
@@ -3194,7 +3723,7 @@ export class AgentService {
   }
 
   private guardGenericElicitation(extraction: ExtractionResult): ExtractionResult {
-    if (extraction.intent !== 'elicitar_necesidades') {
+    if (extraction.actionIntent !== 'elicitar_necesidades') {
       return extraction;
     }
     if (this.hasStructuredPlanningSignal(extraction)) {
@@ -3203,59 +3732,7 @@ export class AgentService {
 
     return {
       ...extraction,
-      intent: null,
-      vendorCategory: null,
-      vendorCategories: [],
-      activeNeedCategory: null,
-      providerQueryIntents: [],
-      providerPlanOperations: [],
-      providerExplanationRequest: null,
-      providerDetailRequest: null,
-    };
-  }
-
-  private guardInvitedEventFollowUp(
-    plan: PlanSnapshot,
-    extraction: ExtractionResult,
-  ): ExtractionResult {
-    if (plan.current_node !== 'consultar_evento_invitado') {
-      return extraction;
-    }
-
-    const explicitModeSwitchIntents = new Set([
-      'elicitar_necesidades',
-      'buscar_proveedores',
-      'refinar_busqueda',
-      'ver_opciones',
-      'confirmar_proveedor',
-      'modificar_plan_proveedores',
-      'retomar_plan',
-      'cerrar',
-      'pausar',
-      'consultar_faq',
-      'consultar_evento_invitado',
-    ]);
-    if (extraction.intent && explicitModeSwitchIntents.has(extraction.intent)) {
-      return extraction;
-    }
-
-    const hasProviderContext =
-      plan.provider_needs.length > 0 ||
-      plan.recommended_providers.length > 0 ||
-      plan.recommended_provider_ids.length > 0;
-    if (
-      hasProviderContext &&
-      (
-        extraction.intent === 'detallar_proveedor' ||
-        extraction.intent === 'explicar_recomendacion'
-      )
-    ) {
-      return extraction;
-    }
-
-    return {
-      ...extraction,
-      intent: 'consultar_evento_invitado',
+      actionIntent: null,
       vendorCategory: null,
       vendorCategories: [],
       activeNeedCategory: null,
@@ -3625,7 +4102,7 @@ export class AgentService {
     plan: PlanSnapshot,
     selectedProviderReferences: ProviderReference[],
     selectedProviderHints: string[],
-    intent: ExtractionResult['intent'],
+    intent: ExtractionResult['actionIntent'],
   ): SelectionResolution {
     const activeNeed = getActiveNeed(plan);
     const needsWithProviders = [
@@ -3764,7 +4241,7 @@ export class AgentService {
 
   private resolveSingleProviderSelection(
     needsWithProviders: ProviderNeed[],
-    intent: ExtractionResult['intent'],
+    intent: ExtractionResult['actionIntent'],
   ): ProviderSelectionMatch[] {
     if (intent !== 'confirmar_proveedor') {
       return [];
@@ -3861,7 +4338,7 @@ export class AgentService {
 
   private shouldBroadenProviderSearch(
     baselinePlan: PlanSnapshot,
-    intent: ExtractionResult['intent'],
+    intent: ExtractionResult['actionIntent'],
     extraction: ExtractionResult,
   ): boolean {
     if (intent !== 'refinar_busqueda' && intent !== 'ver_opciones') {
@@ -4138,8 +4615,8 @@ export class AgentService {
 
   private hasDetailedElicitationConcept(extraction: ExtractionResult): boolean {
     if (
-      extraction.intent !== 'elicitar_necesidades' &&
-      extraction.intent !== 'buscar_proveedores'
+      extraction.actionIntent !== 'elicitar_necesidades' &&
+      extraction.actionIntent !== 'buscar_proveedores'
     ) {
       return false;
     }
@@ -4219,7 +4696,7 @@ export class AgentService {
   }): Promise<ProviderSearchExecutionResult> {
     const { baselinePlan, extraction, plan, timingMs, toolUsage } = args;
 
-    if (this.shouldBroadenProviderSearch(baselinePlan, extraction.intent, extraction)) {
+    if (this.shouldBroadenProviderSearch(baselinePlan, extraction.actionIntent, extraction)) {
       const broadenedResult = await this.searchMoreProviders({
         plan,
         toolUsage,
@@ -4653,7 +5130,7 @@ export class AgentService {
     extraction: ExtractionResult,
     categories: ProviderCategory[],
   ): boolean {
-    if (extraction.intent === 'elicitar_necesidades') {
+    if (extraction.actionIntent === 'elicitar_necesidades') {
       return false;
     }
     if (categories.length <= 3) {
@@ -4725,6 +5202,24 @@ export class AgentService {
         extraction.closeAction?.type === 'request_contact' ||
         extraction.closeAction?.type === 'abandon_plan')
     );
+  }
+
+  private guardCloseIntentWithoutEstablishedPlan(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): ExtractionResult {
+    const hasEstablishedPlan =
+      plan.event_type !== null ||
+      plan.provider_needs.length > 0;
+    if (extraction.actionIntent !== 'cerrar' || hasEstablishedPlan) {
+      return extraction;
+    }
+
+    return {
+      ...extraction,
+      actionIntent: null,
+      closeAction: null,
+    };
   }
 
   private isCloseContactFieldTurn(

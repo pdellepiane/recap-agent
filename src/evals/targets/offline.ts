@@ -142,7 +142,8 @@ class FixtureRuntime implements AgentRuntime {
 
     return {
       extraction: {
-        intent: 'buscar_proveedores',
+        actionIntent: 'buscar_proveedores',
+        informationRequests: [],
         intentConfidence: 0.9,
         eventType: null,
         vendorCategory: null,
@@ -333,11 +334,11 @@ class FixtureProviderGateway implements ProviderGateway {
     };
   }
 
-  async requestGuestLoginCode(): Promise<{ status: 'sent' }> {
+  async requestUserLoginCode(): Promise<{ status: 'sent' }> {
     return { status: 'sent' };
   }
 
-  async verifyGuestLoginCode(): Promise<{
+  async verifyUserLoginCode(): Promise<{
     status: 'authenticated';
     token: string;
     tokenExpiresAt: string;
@@ -349,7 +350,7 @@ class FixtureProviderGateway implements ProviderGateway {
     };
   }
 
-  async lookupAuthenticatedGuest(args: {
+  async lookupAuthenticatedUserEvents(args: {
     token: string;
     email: string;
   }): Promise<UserEventLookupResult | null> {

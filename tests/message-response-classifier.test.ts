@@ -133,7 +133,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     });
   });
 
-  it('still requires outbound context for acknowledgement suppression', async () => {
+  it('suppresses a clearly non-actionable acknowledgement without outbound context', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
@@ -156,11 +156,42 @@ describe('OpenAiMessageResponseClassifier', () => {
     });
 
     expect(response.trace).toMatchObject({
-      action: 'respond',
-      reason: 'missing_outbound_context',
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
       has_prior_outbound_message: false,
-      fallback_used: true,
-      would_suppress: false,
+      fallback_used: false,
+      would_suppress: true,
+    });
+  });
+
+  it('suppresses an emoji-only reaction even when outbound history is unavailable', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_reaction',
+      reason: 'reaction',
+    })));
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.4-nano',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const response = await classifier.classify({
+      inboundText: '🤗🌷',
+      plan: createEmptyPlan({
+        planId: 'classifier-emoji-only-reaction',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'suppress_reaction',
+      reason: 'reaction',
+      has_prior_outbound_message: false,
+      fallback_used: false,
+      would_suppress: true,
     });
   });
 

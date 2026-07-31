@@ -1,5 +1,338 @@
 # Implementation Log
 
+## 2026-07-31
+
+### Suppress non-actionable campaign replies and improve missing-code support
+
+**Reason:** Recorded WhatsApp conversations showed three customer-facing
+regressions: a gift-completion update was interpreted as closing an event plan,
+an emoji-only reaction received a long welcome message when campaign history was
+missing, and a customer who did not receive an email code was repeatedly asked
+for that code without clear recovery options. Authentication messages were also
+too long for a support conversation.
+
+**Changes:**
+- Allowed structured acknowledgement and reaction suppression without prior
+  outbound history only when the classifier finds no question, request,
+  correction, selection, or plan-relevant fact. Added prompt and labelled-corpus
+  coverage for emoji-only replies and completed-gift updates.
+- Clarified extractor rules so a statement that a gift was already sent is not
+  a provider-plan close action or a personal-purchase lookup request.
+- Added a state-machine invariant that rejects `cerrar` when the persisted plan
+  has neither an event nor a provider need. Closing now requires evidence that a
+  plan was established before the current turn, independent of classifier or
+  extractor quality.
+- Added typed `report_otp_not_received` evidence. The runtime now explains the
+  security requirement, shows the exact destination email, asks the customer to
+  check promotions and junk mail, and offers to resend or change the address.
+- Made resending explicit and user-driven, and fixed email correction so a newly
+  provided address takes precedence over the stored one.
+- Replaced the verbose authentication walkthrough with short, next-step-only
+  customer-service messages and tightened the information-node response
+  contract to one to three brief paragraphs.
+
+**Decision:** Semantic decisions remain in structured LLM outputs. Deterministic
+runtime code validates and executes the typed suppression and authentication
+evidence; it does not use keyword or exact-string routing.
+
+**Validation:** `npm run check` passed with 46 test files and 306 tests, and
+`npm run build` completed successfully. The development runtime and
+provider-sync CloudFormation stacks deployed successfully. Live Lambda probes
+with synthetic users returned `message: null` and suppressed delivery for both
+an emoji-only reaction and “Ya envié el regalo”, with no prior outbound history
+and non-fallback structured classifier evidence. A seeded code-pending probe
+returned the short recovery message with the exact destination email, security
+reason, inbox checks, resend option, and email-change option without requesting
+another code automatically. The synthetic DynamoDB plan was deleted after the
+probe.
+
+## 2026-07-29
+
+### Make purchase lookup guidance explicit and prevent clarification loops
+
+**Reason:** A recorded WhatsApp conversation showed that a personal order-status
+request could enter a repeated clarification loop. Structured extraction had
+already identified a purchase request, but also marked the turn ambiguous; the
+runtime then discarded the newly extracted request and asked increasingly
+specific questions instead of beginning verification. The purchase instructions
+also did not tell the customer clearly what each requested datum would be used
+for.
+
+**Changes:**
+- Added an information-flow invariant that treats valid typed authenticated
+  lookup requests as actionable evidence even when the model also emits an
+  inconsistent ambiguity flag. Genuinely vague turns and FAQ requests with
+  semantic ambiguity still receive one clarification question.
+- Expanded Spanish extraction examples so personal order-status wording maps to
+  `orders` with useful default aspects and does not require an order number or a
+  narrower status category before authentication begins.
+- Made the first purchase reply explicitly explain, in customer-service
+  language, that the email is used to send an account-verification code, that
+  the order number is optional, and what happens on each path. When the user
+  already supplied an order number, the reply acknowledges that it will identify
+  the exact purchase and asks only for the email needed to verify the account.
+- Defined the no-number path as: verify the email, retrieve recent orders,
+  present a compact choice when needed, and then use the selected order for the
+  precise lookup. Defined the number-provided path as: verify the email and
+  perform the precise lookup directly.
+- Made the next-input reply deterministic when every information task is
+  waiting for the same prerequisite, so the reply model cannot replace this
+  guidance with another exploratory question.
+- Updated the welcome capability list to state that recent-order and direct
+  order-number lookup are supported, alongside supported gift-purchase details.
+- Added automatic exact-detail retrieval when the recent-order endpoint returns
+  exactly one candidate; multiple candidates continue through explicit
+  selection.
+
+**Decision:** The LLM remains responsible for semantic interpretation and typed
+request extraction. Deterministic runtime code enforces consistency between that
+typed evidence and the next state, and preserves the exact customer-facing
+prerequisite instructions required for authentication and lookup.
+
+**Validation:** `npm run check` passed with 46 test files and 303 tests, and
+`npm run build` completed successfully. The regression suite includes the
+recorded typed-request-plus-ambiguity shape, both email/order-number paths, and
+the recent-list-to-exact-detail transition. Both CloudFormation stacks deployed
+successfully with `AWS_PROFILE=se-dev`. The active Lambda reports the production
+Agent API URL, purchase information enabled, and message logging disabled.
+Redacted probes with the retained test JWT returned HTTP `200` and empty arrays
+for both collection routes, as expected for the designated account, and HTTP
+`404` for nonexistent exact-order probes. Fresh deployed conversation probes
+for the recorded opening phrase and a message containing an order number both
+entered `resolver_consultas_informativas`, retained a purchase request, reported
+clear ambiguity state, and returned the expected customer-facing guidance for
+their respective lookup paths.
+
+## 2026-07-27
+
+### Introduce the first-class multi-capability information engine
+
+**Reason:** FAQ, associated-event lookup, orders, and gift purchases are
+independent read-only needs that users can naturally combine. The former
+single-intent FAQ route and bespoke event-auth branch could not resolve a mixed
+turn coherently, and hosted `file_search` made retrieval behavior depend on a
+node-specific reply-agent tool. Purchase prompts also issued blanket gift
+refusals despite the new authenticated Agent API contracts.
+
+**Changes:**
+- Replaced informational intents and `secondaryIntents` with one structured turn
+  plan: optional exclusive `actionIntent` plus ordered typed
+  `informationRequests`.
+- Added the `resolver_consultas_informativas` node, shared
+  `InformationTaskResult[]`, concurrent `Promise.allSettled` orchestration,
+  partial-success composition, compact pending-request persistence, resume
+  state, and recent-order selection state.
+- Added an explicit OpenAI vector-store search gateway and removed the hosted
+  `file_search` tool from reply composition.
+- Replaced `guest_auth` with shared `user_auth`. One production email OTP unlocks
+  pending event and purchase requests, and original personal questions resume
+  automatically after verification.
+- Added strict Agent API clients for `/orders` and `/gift-purchases`, with
+  optional `order_id`, both required headers, bounded retry handling, malformed
+  payload rejection, account-level versus route-level `404` classification, and
+  request-scoped sensitive-field projection.
+- Prevented associated-event results from acting as a purchase-data shortcut by
+  removing embedded orders and finance fields before composition.
+- Updated Spanish extraction and reply prompts for semantic personal-versus-FAQ
+  routing, mixed read-only turns, action conflicts, email-first verification,
+  optional order numbers, recent-order retrieval, partial results, and supported
+  personal gift details.
+- Added capability-level latency, source, status, and result-count telemetry
+  without raw questions, evidence, API payloads, credentials, or payment data.
+- Added typed runtime configuration and CloudFormation/deploy parameters for
+  knowledge retrieval and purchase information. The Agent API is pinned to
+  `https://api.sinenvolturas.com/api/agent`; message logging remains disabled by
+  default and no development-host fallback exists.
+- Removed the obsolete `consultar_faq` and `consultar_evento_invitado` prompt
+  bundles and compatibility routes.
+
+**Decision:** Read-only capabilities compose through one information engine.
+Planning, provider selection, closing, pause, and takeover remain exclusive
+action flows. LLM extraction makes semantic routing decisions; deterministic
+code validates and preserves typed evidence. Existing secrets are reused through
+the repository's Secrets Manager deployment path, while JWTs remain isolated
+from prompts, traces, and pending information state.
+
+**Validation:** `npm run check` passed with 46 test files and 299 tests. Coverage
+includes standalone and mixed extraction, concurrent orchestration, partial
+success, OTP resumption and reuse, order ID propagation, recent-order selection,
+gift detail projection, sensitive-field disclosure, expired authentication,
+invalid OTP, malformed payloads, retry behavior, both `404` meanings, vector
+retrieval, source grounding, state-machine behavior, gateway behavior, Lambda
+request handling, and terminal/WhatsApp parity. `npm run build` and
+CloudFormation template validation also passed. The development runtime and
+provider-sync stacks deployed successfully using the existing secret names.
+The active Lambda reports the production Agent API and user-auth URLs, purchase
+information enabled, knowledge retrieval enabled, and message logging disabled.
+A redacted production OTP request for the designated acceptance account returned
+HTTP `200` with a successful envelope. The interactive code exchange then
+returned HTTP `200`, a successful envelope, and a JWT that remained only in
+process memory. Authenticated production probes sent both `X-Agent-Key` and the
+JWT bearer header to `/orders` and `/gift-purchases`; each returned a JSON error
+envelope with HTTP `404`. Because neither request supplied an order ID, this is
+route-level unavailability rather than an account-level order miss. No JWT,
+service key, personal purchase detail, or payment data was printed or persisted;
+the final acceptance process retained neither the OTP nor JWT after exit.
+
+## 2026-07-24
+
+### Make ambiguous FAQ clarification enforceable
+
+**Reason:** A stakeholder run of `npm run demo:feedback-fixes` exposed a real
+nondeterministic failure. For “El horario”, structured extraction recorded that
+the reference lacked an event or other context but assigned confidence `0.55`.
+The runtime only treated confidence below `0.50` as ambiguous, so it searched
+the knowledge base and answered with customer-service hours instead of asking
+what schedule the user meant.
+
+**Changes:**
+- Replaced the numeric ambiguity cutoff with a required typed extraction object
+  containing `status` (`clear` or `ambiguous`), two or three candidate
+  interpretations, and one optional clarification question.
+- Instructed extraction to decide ambiguity semantically from the complete
+  message and available context, not from exact words. If its assumptions say
+  that the necessary referent is missing, it must mark the turn ambiguous.
+- Enforced a final-response invariant for ambiguous FAQ turns: use the
+  extractor's bounded interpretations to produce one short Spanish contrast
+  question; otherwise use its validated question or a safe generic
+  clarification. A reply-model answer cannot override the structured ambiguity
+  decision or silently choose one interpretation.
+- Added ambiguity status and clarification-question presence to DynamoDB
+  feedback signals, plus ambiguity status to the CloudWatch completion summary.
+- Strengthened the demonstration so it requires both explicit structured
+  ambiguity evidence and exactly one delivered question.
+
+**Decision:** Numeric intent confidence remains useful telemetry but is not a
+stable ambiguity state boundary. Conversational behavior is controlled by
+explicit typed extraction evidence, and deterministic code only validates and
+preserves that established decision.
+
+**Validation:** The failed live trace was
+`01KYADH929VMZS0BWP774ABH4Y`; it stored confidence `0.55`, an assumption that
+the context was missing, no operational ambiguity note, a file search, and an
+answer with zero questions. After the fix, `npm run check` passed with 43 test
+files and 287 tests. The runtime and provider-sync stacks deployed successfully
+with `se-signin`, and the complete demonstration passed. Corrected trace
+`01KYAEMWGD2GMSY999P74X6EN4` delivered “¿Quieres saber el horario del evento o
+el horario de atención de Sin Envolturas?” DynamoDB recorded explicit
+`ambiguous` status, two interpretations, one clarification question, and one
+delivered question. CloudWatch contained the matching protected message hash,
+ambiguity status, successful HTTP `200`, and zero output-quality or
+Spanish-policy warnings.
+
+### Harden live WhatsApp question handling for nontechnical users
+
+**Reason:** A cross-source review of 35 retained WhatsApp question turns found
+that 24 concerned gifts, purchases, payments, deliveries, or transaction
+discrepancies even though the runtime has no dedicated integration that can
+verify or modify those operations. The reference-search prompt encouraged the
+assistant to turn documentation into operational answers, producing unsupported
+causes and contradictory procedures. Ten native WhatsApp message identifiers
+were processed twice, and a fragmented “dato” then “horario” exchange was
+misread as a request for business hours. All retained quality-flag arrays were
+empty. CloudWatch recorded successful HTTP `200` executions for recent
+representative cases, confirming a routing and wording problem rather than a
+Lambda failure.
+
+**Changes:**
+- Added a repeatable channel-contract demonstration script and presenter guide.
+  The demonstration asserts that the existing text-only payload works with
+  `media` omitted, a captionless image works with `text` omitted, and a request
+  with neither returns HTTP `400`.
+- Added the complete evidence-driven demonstration
+  `npm run demo:feedback-fixes`, which organizes the audit into capability,
+  ambiguity, verification, email, language, image, duplicate/burst, and
+  observability categories. Each category states the observed evidence,
+  justification, deployed proof, and remaining limitation. It prints trace ids
+  and protected correlation values for cross-source verification.
+- Added `feedback_signals` schema version 1 to every new turn-performance
+  record. The bounded snapshot stores hashed correlation, request shape and
+  ingress delay, routing confidence and decision source, model/tool stages,
+  output complexity, existing quality flags, and known Spanish-policy-term
+  warnings.
+- Added a small CloudWatch summary of the feedback signal version, decision
+  source, model-call count, quality-flag count, and Spanish-policy warning count
+  for fast cross-source correlation.
+- Kept raw message bodies, raw media, raw provider media identifiers, URLs, and
+  credentials outside the feedback snapshot. Documented how a future raw-log
+  export should be joined and labelled without becoming a keyword-based flow
+  controller.
+- Replaced gift, sales, purchase, payment, withdrawal, balance, order, and claim
+  guidance with an explicit capability boundary: the conversation can directly
+  provide event information, while operational cases are offered to a person
+  from the team for review.
+- Updated structured extraction guidance so transaction-related questions use
+  the general question route even when they mention a specific event. The
+  runtime no longer asks users to authenticate before explaining that those
+  operations require human review.
+- Added one-question clarification guidance for ambiguous short messages and a
+  direct statement that photographs and screenshots cannot currently be read.
+- Expanded guest verification notes to explain why the code is required, where
+  to find it, what to type, and what happens when issuance or validation fails.
+- Added conservative guest-email normalization that removes whitespace only
+  immediately around `@`; it does not infer missing punctuation or characters.
+- Strengthened global Spanish-only wording, normalized known leaked English
+  service terms in user-visible structured fields, and rendered English
+  canonical provider categories with Spanish display labels while preserving
+  internal typed values.
+- Updated the multi-message burst design to state that constituent messages are
+  retained temporarily for replay, trace comparison, and evidence-based wording
+  improvements. Raw messages remain outside the durable event plan.
+- Added a complete provider-hosted media descriptor to the channel contract,
+  matching WhatsApp's native `id`, `mime_type`, `sha256`, and optional filename
+  fields. The Internet media type follows RFC 6838/IANA, and the descriptor is
+  published as JSON Schema Draft 2020-12.
+- Allowed captionless media requests, carried validated media metadata through
+  the channel-agnostic inbound message, and added a deterministic image response
+  that bypasses classifier, extraction, document search, and reply-model calls.
+- Added safe media evidence to DynamoDB performance traces and CloudWatch
+  completion logs: count, class, registered media type, and hashed provider
+  media identifiers. Raw identifiers, URLs, access tokens, and media bytes are
+  excluded.
+- Documented current non-support, exact WhatsApp adapter mapping, persistence,
+  privacy boundaries, and the future authenticated retrieval and integrity
+  verification path in `docs/media-integration.md`.
+- Added the dated, sanitized
+  `analysis/live-whatsapp-faq-audit/` dossier with reproducible DynamoDB and
+  CloudWatch checks.
+
+**Decision:** Do not use documentation search as a substitute for a
+transactional integration. Do not diagnose a user's gift or payment state
+without a verified operational source. Message-burst persistence belongs in the
+adapter's short-lived burst store, where native message identifiers support
+ordering, deduplication, replay, and quality analysis; it does not belong in the
+long-lived event plan. Treat the WhatsApp media object as trusted channel
+evidence that an image was actually sent, but do not download or interpret it
+until a bounded media resolver is implemented.
+
+**Validation:** `npm run check` passed with 43 test files and 287 tests. The
+development runtime and provider-sync stacks deployed successfully with AWS
+profile `se-dev`. Live prompt probes confirmed the event-information-only
+transaction boundary, one-question schedule clarification, detailed
+verification-code guidance, conservative spaced-email handling, and the direct
+image limitation. A final captionless media-contract probe returned HTTP `200` in 526
+ms with prompt bundle `deterministic:unsupported_image_media`, zero model token
+usage, and no tools. DynamoDB stored one `image/jpeg` descriptor with only the
+provider media id hash; CloudWatch recorded the same hash, media count, and
+class on the correlated successful request. The `se-dev` account contains only
+the runtime, provider-sync, and knowledge-sync Lambdas/stacks; the Meta webhook
+adapter is not deployed from this repository or account, so that external
+adapter must adopt the documented mapping before real WhatsApp images reach the
+runtime with this descriptor.
+The packaged demonstration subsequently passed against that deployment: the
+legacy body with no `media` field returned HTTP `200`, the image body with no
+`text` field returned HTTP `200` through the deterministic path with no tools or
+model tokens, and the content-free body returned the expected HTTP `400`.
+The complete categorized demonstration also passed live. It verified the
+event-information-only transaction boundary, one-question clarification for
+“El horario”, detailed verification instructions plus conservative whitespace
+repair around `@`, and a captionless `image/jpeg` request. The image case used
+trace `01KYAC1G0EXZ906N6V5WEJ2D59`, completed inside the runtime in 13 ms, and
+made zero model or tool calls. DynamoDB persisted feedback schema version 1 with
+`media_only` input and deterministic routing; CloudWatch recorded the same
+protected message correlation with one image, zero model calls, zero quality
+flags, and zero known Spanish-policy term warnings.
+
 ## 2026-07-21
 
 ### Align guest authentication and event lookup on production

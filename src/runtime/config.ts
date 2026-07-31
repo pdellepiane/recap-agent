@@ -32,7 +32,7 @@ export type AppConfig = {
   providerApi: {
     baseUrl: string;
     guestServiceBaseUrl: string;
-    guestAuthBaseUrl: string;
+    userAuthBaseUrl: string;
     persistedSearchLimit: number;
     summarySearchWordLimit: number;
     searchMode: ProviderSearchMode;
@@ -69,6 +69,8 @@ export type AppConfig = {
     vectorStoreName: string;
     vectorStoreId: string | null;
     enabled: boolean;
+    maxResults: number;
+    scoreThreshold: number;
   };
   features: AgentFeatureFlags;
 };
@@ -79,6 +81,7 @@ export type AgentFeatureFlags = {
   providerQuoteRequests: boolean;
   faq: boolean;
   invitedEventLookup: boolean;
+  purchaseInformation: boolean;
 };
 
 const environmentSchema = z.object({
@@ -102,7 +105,7 @@ const environmentSchema = z.object({
     .string()
     .url()
     .default('https://api.sinenvolturas.com/api/guest-service'),
-  SINENVOLTURAS_GUEST_AUTH_BASE_URL: z
+  SINENVOLTURAS_USER_AUTH_BASE_URL: z
     .string()
     .url()
     .default('https://api.sinenvolturas.com/api-web/user'),
@@ -133,11 +136,14 @@ const environmentSchema = z.object({
   KB_VECTOR_STORE_NAME: z.string().min(1).default('Sin Envolturas Knowledge Base'),
   KB_VECTOR_STORE_ID: z.string().optional(),
   KB_ENABLED: z.enum(['true', 'false']).default('true'),
+  KB_MAX_RESULTS: z.coerce.number().int().min(1).max(50).default(6),
+  KB_SCORE_THRESHOLD: z.coerce.number().min(0).max(1).default(0),
   AGENT_FEATURE_PROVIDER_PLANNING: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_PROVIDER_SEARCH: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_FAQ: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_INVITED_EVENT_LOOKUP: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_PURCHASE_INFORMATION: z.enum(['true', 'false']).default('true'),
 });
 
 export function getConfig(): AppConfig {
@@ -174,7 +180,7 @@ export function getConfig(): AppConfig {
     providerApi: {
       baseUrl: environment.SINENVOLTURAS_BASE_URL,
       guestServiceBaseUrl: environment.SINENVOLTURAS_GUEST_SERVICE_BASE_URL,
-      guestAuthBaseUrl: environment.SINENVOLTURAS_GUEST_AUTH_BASE_URL,
+      userAuthBaseUrl: environment.SINENVOLTURAS_USER_AUTH_BASE_URL,
       persistedSearchLimit: environment.PROVIDER_SEARCH_LIMIT,
       summarySearchWordLimit: environment.SEARCH_SUMMARY_WORD_LIMIT,
       searchMode: environment.PROVIDER_SEARCH_MODE,
@@ -211,6 +217,8 @@ export function getConfig(): AppConfig {
       vectorStoreName: environment.KB_VECTOR_STORE_NAME,
       vectorStoreId: environment.KB_VECTOR_STORE_ID ?? null,
       enabled: environment.KB_ENABLED === 'true',
+      maxResults: environment.KB_MAX_RESULTS,
+      scoreThreshold: environment.KB_SCORE_THRESHOLD,
     },
     features: {
       providerPlanning: environment.AGENT_FEATURE_PROVIDER_PLANNING === 'true',
@@ -218,6 +226,8 @@ export function getConfig(): AppConfig {
       providerQuoteRequests: environment.AGENT_FEATURE_PROVIDER_QUOTE_REQUESTS === 'true',
       faq: environment.AGENT_FEATURE_FAQ === 'true',
       invitedEventLookup: environment.AGENT_FEATURE_INVITED_EVENT_LOOKUP === 'true',
+      purchaseInformation:
+        environment.AGENT_FEATURE_PURCHASE_INFORMATION === 'true',
     },
   };
 }
