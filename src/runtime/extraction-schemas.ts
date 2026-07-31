@@ -1,7 +1,7 @@
 import { z } from 'zod';
 
 import { eventTypeSchema } from '../core/event-type';
-import { actionIntentValues } from '../core/plan';
+import { actionIntentValues, type ActionIntent } from '../core/plan';
 import { providerCategorySchema } from '../core/provider-category';
 import { providerNeedSubQuerySchema } from '../core/provider-sub-query';
 import { closeActionSchema } from './close-flow-schemas';
@@ -136,3 +136,22 @@ export const extractionSchema = z.object({
 });
 
 export type StructuredExtraction = z.infer<typeof extractionSchema>;
+
+export function createDynamicExtractionSchema(args: {
+  allowedActionIntents: readonly ActionIntent[];
+  allowClose: boolean;
+  allowPause: boolean;
+}) {
+  const allowedActionIntents = args.allowedActionIntents as readonly [
+    ActionIntent,
+    ...ActionIntent[],
+  ];
+
+  return extractionSchema.extend({
+    actionIntent: z.enum(allowedActionIntents).nullable(),
+    closeAction: args.allowClose
+      ? closeActionSchema.nullable().default(null)
+      : z.null().default(null),
+    pauseRequested: args.allowPause ? z.boolean() : z.literal(false),
+  });
+}

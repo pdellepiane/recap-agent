@@ -2,6 +2,43 @@
 
 ## 2026-07-31
 
+### Derive intents, tools, and reachable states from plan capabilities
+
+**Reason:** A no-plan conversation could still present the extractor with the
+global `cerrar` intent and rely on a later invariant to discard it. That made an
+impossible transition visible to the model and treated the state machine as a
+post-classification guard instead of the source of available actions.
+
+**Changes:**
+- Added a typed per-turn capability policy derived from structured plan state,
+  including active-plan, search-ready, shortlist, selection, contact, close,
+  pause, and finish capabilities.
+- Replaced the extractor's global intent enum at runtime with a dynamic output
+  schema. A plan with no provider needs cannot emit `cerrar`, `pausar`, a close
+  action, or `pauseRequested=true`; shortlist actions are unavailable until a
+  recommendation exists.
+- Added the current allowed-intent set to extractor context so instructions and
+  the structured output contract describe the same turn-level capabilities.
+- Filtered each node's maximum tool manifest against plan prerequisites before
+  tools are exposed to the reply agent. Search requires a search-ready active
+  plan, provider inspection requires known candidates, and `finish_plan`
+  requires an active plan, a selected provider, and complete contact data.
+- Derived reachable decision nodes from the same policy and prevented invalid
+  transitions by routing to a safe clarification state while retaining an
+  invariant violation in the trace.
+- Added regression coverage for empty plans, established plans, shortlists,
+  dynamic schemas, dynamic states, tool prerequisites, and merged FAQ plus
+  user-action turns.
+
+**Decision:** Dynamic availability is the primary control boundary. The older
+no-plan close guard remains only as defense in depth for alternate runtimes and
+test doubles that do not execute the OpenAI structured-output schema.
+
+**Validation:** `npm run typecheck`, `npm run lint`, and the complete test suite
+passed with 47 test files and 313 tests. `npm run build` completed, and both the
+development runtime and provider-sync CloudFormation stacks deployed
+successfully.
+
 ### Suppress non-actionable campaign replies and improve missing-code support
 
 **Reason:** Recorded WhatsApp conversations showed three customer-facing

@@ -51,11 +51,16 @@ import {
 } from './structured-message';
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import {
-  extractionSchema,
+  createDynamicExtractionSchema,
   type OpenAiInformationRequest,
   type StructuredExtraction,
 } from './extraction-schemas';
 import { providerFitCriteriaSchema } from './provider-fit';
+import {
+  deriveDynamicAgentPolicy,
+  resolveDynamicTools,
+  type DynamicAgentPolicy,
+} from './dynamic-agent-policy';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -89,19 +94,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const bundle = await this.options.promptLoader.loadExtractorBundle();
+    const policy = deriveDynamicAgentPolicy(request.plan);
+    const outputSchema = createDynamicExtractionSchema({
+      allowedActionIntents: policy.allowedActionIntents,
+      allowClose: policy.capabilities.canClose,
+      allowPause: policy.capabilities.canPause,
+    });
     const extractor = new Agent({
       name: 'plan_extractor',
       model: this.options.extractorModel,
       instructions: bundle.instructions,
       inputGuardrails: [this.createJailbreakInputGuardrail()],
-      outputType: extractionSchema,
+      outputType: outputSchema,
       modelSettings: this.buildModelSettings({
         model: this.options.extractorModel,
         cacheKey: `extractor:${bundle.id}`,
       }),
     });
 
-    const input = this.composeExtractorInput(request);
+    const input = this.composeExtractorInput(request, policy);
 
     try {
       const result = await run(extractor, input);
@@ -171,9 +182,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const bundle = await this.options.promptLoader.loadNodeBundle(
       request.currentNode,
     );
-    const tools = this.createTools(request, bundle.allowedTools);
+    const allowedTools = resolveDynamicTools({
+      plan: request.plan,
+      maximumTools: bundle.allowedTools,
+      searchReady: request.searchReady,
+      providerResults: request.providerResults,
+    });
+    const tools = this.createTools(request, allowedTools);
 
-    request.toolUsage.considered.push(...bundle.allowedTools);
+    request.toolUsage.considered.push(...allowedTools);
 
     const outputSchema = this.resolveOutputSchema(request);
     const agent = new Agent<RuntimeContext, typeof outputSchema>({
@@ -492,7 +509,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return null;
   }
 
-  private composeExtractorInput(request: ExtractRequest): string {
+  private composeExtractorInput(
+    request: ExtractRequest,
+    policy: DynamicAgentPolicy,
+  ): string {
     const suggestedCategories = this.buildEventCategoryPromptContext(
       request.plan.event_type,
       'extractor',
@@ -500,6 +520,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return [
       `Mensaje del usuario: ${request.userMessage}`,
       `Plan base (JSON compacto): ${JSON.stringify(this.buildExtractorPlanSnapshot(request.plan))}`,
+      `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`,
       suggestedCategories,
       'Extrae solo cambios nuevos del turno. Si un dato no cambia, mantenlo como null/vacio para no sobreescribir sin evidencia.',
     ].join('\n');

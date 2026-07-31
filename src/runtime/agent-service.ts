@@ -67,6 +67,7 @@ import type {
   ToolUsage,
 } from './contracts';
 import type { TokenUsage } from './contracts';
+import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import {
   NoopAgentConversationGateway,
   type AgentConversationGateway,
@@ -786,7 +787,7 @@ export class AgentService {
         (op) => op.type === 'replace_provider',
       ),
     });
-    let turnDecision = this.decideNextTurn(decisionEvidence);
+    let turnDecision = this.decideNextTurn(decisionEvidence, mergedPlan);
 
     const nodePath: DecisionNode[] = existingPlan
       ? [previousNode, 'existe_plan_guardado', extractionNode]
@@ -2872,7 +2873,10 @@ export class AgentService {
     });
   }
 
-  private decideNextTurn(evidence: DecisionEvidence): TurnDecision {
+  private decideNextTurn(
+    evidence: DecisionEvidence,
+    plan: PersistedPlan,
+  ): TurnDecision {
     let decision: Omit<TurnDecision, 'invariantStatus' | 'invariantViolations'>;
 
     if (evidence.extractionIntent === 'pausar') {
@@ -3086,9 +3090,34 @@ export class AgentService {
       };
     }
 
+    const invariantResult = this.validateTurnDecisionInvariants(
+      evidence,
+      decision,
+      plan,
+    );
+    if (invariantResult.invariantStatus === 'invalid') {
+      const nextNode: DecisionNode = evidence.globalMissingFields.length > 0
+        ? 'aclarar_pedir_faltante'
+        : 'entrevista';
+      return turnDecisionSchema.parse({
+        nextNode,
+        routeKind: evidence.globalMissingFields.length > 0
+          ? 'clarify_missing_fields'
+          : 'ask_event_context',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: `dynamic_state_unavailable:${decision.nextNode}`,
+        persistReason: nextNode,
+        ...invariantResult,
+      });
+    }
+
     return turnDecisionSchema.parse({
       ...decision,
-      ...this.validateTurnDecisionInvariants(evidence, decision),
+      ...invariantResult,
     });
   }
 
@@ -3170,8 +3199,14 @@ export class AgentService {
   private validateTurnDecisionInvariants(
     evidence: DecisionEvidence,
     decision: Omit<TurnDecision, 'invariantStatus' | 'invariantViolations'>,
+    plan: PersistedPlan,
   ): Pick<TurnDecision, 'invariantStatus' | 'invariantViolations'> {
     const violations: string[] = [];
+    const policy = deriveDynamicAgentPolicy(plan);
+
+    if (!policy.allowedNextNodes.includes(decision.nextNode)) {
+      violations.push(`next_node_not_available:${decision.nextNode}`);
+    }
 
     if (
       evidence.extractionProviderQueryIntentCount > 1 &&
