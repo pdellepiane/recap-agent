@@ -132,7 +132,7 @@ function validateBundle(
   });
 }
 
-const extractorAuditProfiles: Array<{
+export const extractorAuditProfiles: Array<{
   name: string;
   capabilities: ExtractionCapabilityProfile;
 }> = [

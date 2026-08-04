@@ -2,6 +2,39 @@
 
 ## 2026-08-04
 
+### Prove historical-to-current prompt leanness
+
+- Added `audit:prompts:compare` to reconstruct the pre-refactor prompt bundles
+  from Git and compare them with current production prompt composition.
+- Added exact instruction bytes, serialized request bytes, normalized paragraph
+  duplication, file counts, and optional non-generative OpenAI input-token
+  counts for the classifier, four extractor profiles, and every reply route.
+- Added a dated analysis dossier with machine-readable results, per-route
+  findings, reproduction steps, and a review against current official OpenAI
+  model guidance.
+- Removed three remaining negative-rule duplicates from the common anti-patterns
+  file while preserving their single owning rules in output style/base behavior.
+- Confirmed that official OpenAI API documentation currently provides GPT-5.6,
+  not GPT-6, prompting guidance; no speculative GPT-6 rules were introduced.
+
+**Reason:** Structural prompt gates proved that current bundles were internally
+consistent, but they did not visibly demonstrate how much the assembled payload
+changed from the historical implementation. Current GPT-5.6 guidance also
+recommends lean prompts, single ownership, task-relevant tools, surgical edits,
+and representative evaluation.
+
+**Decision:** Compare both sides with the same Luna model field and request
+settings so the result isolates prompt construction. Keep the unchanged
+classifier visible as a control, and defer classifier slimming until live quality
+evaluation is available because a false suppression is more harmful than its
+current token overhead.
+
+**Validation:** The 32-shape comparison passed with every non-classifier route
+smaller. Serialized request bytes fell from 635,882 to 319,703 (49.72%), and
+OpenAI's non-generative input counter fell from 135,347 to 66,651 tokens (50.76%).
+No Response was created. Final live Luna promotion remains blocked by
+insufficient API credits.
+
 ### Migrate active GPT defaults to GPT-5.6 Luna
 
 **Reason:** The classifier, extractor, reply composer, and evaluation judges
