@@ -6,6 +6,7 @@ import type { PersistedPlan } from '../core/plan';
 import type { TokenUsage } from './contracts';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
 import type { PromptLoader } from './prompt-loader';
+import { executeWithOpenAiRetry } from './openai-retry';
 
 const classifierOutputSchema = z.object({
   action: z.enum([
@@ -124,7 +125,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       const bundle = await this.options.promptLoader.loadResponseClassifierBundle();
       promptBundleId = bundle.id;
       promptFilePaths = bundle.filePaths;
-      const response = await this.client.responses.parse({
+      const { value: response } = await executeWithOpenAiRetry(() =>
+        this.client.responses.parse({
         model: this.options.model,
         reasoning: { effort: 'none' },
         max_output_tokens: 128,
@@ -138,7 +140,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         text: {
           format: zodTextFormat(classifierOutputSchema, 'reply_delivery_decision'),
         },
-      });
+        }),
+      );
       const decision = response.output_parsed;
       if (!decision) {
         return this.fallback({

@@ -4,7 +4,6 @@ import {
   OpenAIProvider,
   OutputGuardrailTripwireTriggered,
   Runner,
-  retryPolicies,
   tool,
 } from '@openai/agents';
 import type {
@@ -58,6 +57,7 @@ import {
   type DynamicAgentPolicy,
 } from './dynamic-agent-policy';
 import { buildModelVisibleConversationHistory } from './turn-message-context';
+import { openAiRetryPolicy } from './openai-retry';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -659,7 +659,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     retry?: {
       maxRetries: number;
       backoff: { initialDelayMs: number; maxDelayMs: number; multiplier: number; jitter: boolean };
-      policy: ReturnType<typeof retryPolicies.any>;
+      policy: typeof openAiRetryPolicy;
     };
   } {
     const baseSettings: {
@@ -670,7 +670,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       retry?: {
         maxRetries: number;
         backoff: { initialDelayMs: number; maxDelayMs: number; multiplier: number; jitter: boolean };
-        policy: ReturnType<typeof retryPolicies.any>;
+        policy: typeof openAiRetryPolicy;
       };
     } = {
       promptCacheRetention:
@@ -683,10 +683,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       retry: {
         maxRetries: 3,
         backoff: { initialDelayMs: 1000, maxDelayMs: 30_000, multiplier: 2, jitter: true },
-        policy: retryPolicies.any(
-          retryPolicies.httpStatus([429]),
-          retryPolicies.networkError(),
-        ),
+        policy: openAiRetryPolicy,
       },
     };
 

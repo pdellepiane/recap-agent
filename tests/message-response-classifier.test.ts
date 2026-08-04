@@ -72,7 +72,7 @@ describe('OpenAiMessageResponseClassifier', () => {
 
   it('fails open when the API response cannot be parsed', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response('not-json', {
-      status: 502,
+      status: 200,
       headers: { 'content-type': 'text/plain' },
     })));
     const classifier = new OpenAiMessageResponseClassifier({
@@ -99,6 +99,82 @@ describe('OpenAiMessageResponseClassifier', () => {
       would_suppress: false,
     });
     expect(response.tokenUsage).toBeNull();
+  });
+
+  it('makes one HTTP request when OpenAI reports insufficient quota', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      error: {
+        message: 'You exceeded your current quota.',
+        type: 'insufficient_quota',
+        code: 'insufficient_quota',
+      },
+    }), {
+      status: 429,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.4-nano',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Necesito ayuda.',
+      plan: createEmptyPlan({
+        planId: 'classifier-quota',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [],
+      contextSource: 'local_plan',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(response.trace.reason).toBe('classifier_unavailable');
+  });
+
+  it('retries a transient rate limit and respects a zero retry delay', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        error: {
+          message: 'Rate limited.',
+          type: 'rate_limit_error',
+          code: 'rate_limit_exceeded',
+        },
+      }), {
+        status: 429,
+        headers: {
+          'content-type': 'application/json',
+          'retry-after-ms': '0',
+        },
+      }))
+      .mockResolvedValueOnce(responseForDecision({
+        action: 'respond',
+        reason: 'requires_response',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.4-nano',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Necesito ayuda.',
+      plan: createEmptyPlan({
+        planId: 'classifier-rate-limit',
+        channel: 'terminal_whatsapp',
+        externalUserId: '51991347878',
+      }),
+      messages: [],
+      contextSource: 'local_plan',
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(response.trace.reason).toBe('requires_response');
   });
 
   it('accepts high-confidence automated suppression without outbound context', async () => {

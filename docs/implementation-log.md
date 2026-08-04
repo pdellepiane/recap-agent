@@ -2,6 +2,33 @@
 
 ## 2026-08-04
 
+### Make OpenAI retries error-aware
+
+**Reason:** Classifier and Agents SDK calls either had no application retry or
+retried every HTTP 429, including permanent `insufficient_quota` failures. That
+made one unrecoverable turn create multiple identical requests.
+
+**Changes:**
+- Added one shared OpenAI error classifier for application and Agents SDK retry
+  paths, including nested error-code, status, network, timeout, and retry-header
+  handling.
+- Classified quota exhaustion, authentication, permission, validation, model,
+  billing, and other permanent 4xx failures as non-retryable.
+- Limited retries to transient rate limits, request timeouts, server errors, and
+  network failures with four total attempts and bounded exponential backoff.
+- Made the direct classifier honor `retry-after-ms` and `retry-after`; the Agents
+  SDK policy uses the same classification and its normalized retry delay.
+- Added unit, classifier HTTP, and Agents SDK transport tests proving
+  `insufficient_quota` produces exactly one request and transient rate limits
+  retry within the bound.
+
+**Decision:** The application owns retry semantics; the OpenAI SDK remains at
+zero hidden retries. Unknown errors fail without replay because safe replay is
+not established.
+
+**Validation:** `npm run check` and `npm run build` passed. Deployment remains
+deferred until the final integrated Luna baseline passes.
+
 ### Use capability-scoped extraction schemas
 
 **Reason:** The extractor always sent one universal output schema containing
