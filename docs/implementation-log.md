@@ -2,6 +2,37 @@
 
 ## 2026-08-04
 
+### Preserve complete decision evidence without duplicate reply projections
+
+**Reason:** Reply requests projected the same plan state through overlapping
+summaries while omitting the extractor's ambiguity evidence, persisted
+preferences, hard constraints, and provider discriminators. This caused the
+ambiguous `Si confirmo` turn to fall back to a welcome-shaped response and made
+references such as "the cheaper one" or "the one in Miraflores" unreliable.
+
+**Changes:**
+- Replaced the separate decision, extraction, plan, needs, missing-fields,
+  provider, and funnel blocks with one canonical typed turn-evidence object.
+- Preserved ambiguity status, interpretations, the clarification question,
+  preferences, hard constraints, provider references, fit criteria, contact
+  evidence, and the complete structured decision projection.
+- Included provider location, price, rating, rationale, promotion, highlights,
+  fit, and detail metadata once in the reply candidate list.
+- Removed `external_user_id` from extractor requests and enriched the remaining
+  provider context with the discriminators needed for reference resolution.
+- Forced ambiguous turns to use the generic clarification output contract
+  instead of the welcome contract.
+- Added regression coverage for `Si confirmo`, "the cheaper one", "the one in
+  Miraflores", sensitive-auth isolation, and single-projection composition.
+
+**Decision:** Treat the canonical evidence object as the sole source of factual
+reply context. Keep behavioral instructions outside it, and let deterministic
+code validate state without replacing structured LLM extraction.
+
+**Validation:** `npm run check` and `npm run build` passed, and both development
+CloudFormation stacks deployed successfully through the guarded `se-dev`
+profile in `us-east-1`.
+
 ### Lock the pre-optimization OpenAI request and cost baseline
 
 **Reason:** Prompt and model optimization needs a reproducible reference that

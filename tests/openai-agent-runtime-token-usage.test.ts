@@ -35,6 +35,74 @@ function extractTokenUsageFrom(runtime: OpenAiAgentRuntime, value: unknown): Tok
   ).extractTokenUsage(value);
 }
 
+function emptyFunnel(): {
+  available_candidates: number;
+  context_candidates: number;
+  context_candidate_ids: number[];
+  presentation_limit: number;
+} {
+  return {
+    available_candidates: 0,
+    context_candidates: 0,
+    context_candidate_ids: [],
+    presentation_limit: 0,
+  };
+}
+
+function readCanonicalEvidence(input: string): {
+  extraction: Record<string, unknown>;
+  plan: Record<string, unknown>;
+  provider_candidates: Array<Record<string, unknown>>;
+} {
+  const marker = 'Evidencia canónica del turno (JSON): ';
+  const start = input.indexOf(marker);
+  expect(start).toBeGreaterThanOrEqual(0);
+  const jsonStart = start + marker.length;
+  const separator = input.indexOf('\n\n', jsonStart);
+  const json = input.slice(jsonStart, separator === -1 ? undefined : separator);
+  return JSON.parse(json) as {
+    extraction: Record<string, unknown>;
+    plan: Record<string, unknown>;
+    provider_candidates: Array<Record<string, unknown>>;
+  };
+}
+
+function createProvider(
+  id: number,
+  title: string,
+  location: string,
+  priceLevel: 'mid' | 'high',
+  minPrice: string,
+): ComposeReplyRequest['providerResults'][number] {
+  return {
+    id,
+    title,
+    slug: null,
+    category: 'Locales',
+    location,
+    priceLevel,
+    rating: '4.8',
+    reason: 'Coincide con la ubicación y el presupuesto.',
+    detailUrl: `https://example.test/providers/${id}`,
+    websiteUrl: null,
+    minPrice,
+    maxPrice: null,
+    promoBadge: null,
+    promoSummary: null,
+    descriptionSnippet: 'Espacio para eventos sociales.',
+    serviceHighlights: ['terraza'],
+    termsHighlights: [],
+    providerNotes: [],
+    eventTypes: ['Boda'],
+    description: null,
+    fitScore: 90,
+    fitWarnings: [],
+    fitTags: ['ubicación'],
+    retrievalScore: 0.9,
+    retrievalSource: 'hybrid',
+  };
+}
+
 describe('OpenAiAgentRuntime token usage parsing', () => {
   it('extracts usage from SDK run state camelCase shape', () => {
     const runtime = createRuntimeForTokenUsageTests();
@@ -173,7 +241,7 @@ describe('OpenAiAgentRuntime capability context', () => {
     expect(extractionInput).toContain('Envié un código a sandra@example.com.');
     expect(extractionInput).toContain('Mensaje del usuario: No ha llegado nada');
     expect(replyInput).toContain('Envié un código a sandra@example.com.');
-    expect(replyInput).toContain('Mensaje del usuario: No ha llegado nada');
+    expect(replyInput).toContain('"user_message": "No ha llegado nada"');
   });
 
   it('includes both purchase lookup paths when purchase information is enabled', () => {
@@ -230,6 +298,142 @@ describe('OpenAiAgentRuntime capability context', () => {
       'presupuesto o cantidad aproximada de invitados',
     ]);
     expect(snapshot.provider_needs[0]?.missing_fields).toEqual(['ubicación']);
+  });
+
+  it('preserves extractor ambiguity evidence and forces a clarification-shaped reply', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('entrevista');
+    request.userMessage = 'Si confirmo';
+    request.extraction.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: '¿Confirmas el proveedor o deseas cerrar todo el plan?',
+      interpretations: ['confirmar un proveedor', 'cerrar el plan'],
+    };
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+      resolveOutputSchema: (replyRequest: ComposeReplyRequest) => {
+        safeParse: (value: unknown) => { success: boolean };
+      };
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+    const schema = typedRuntime.resolveOutputSchema(request);
+
+    expect(input).toContain('"status": "ambiguous"');
+    expect(input).toContain('¿Confirmas el proveedor o deseas cerrar todo el plan?');
+    expect(input).toContain('"interpretations"');
+    expect(input).toContain('no reinicies la conversación con una bienvenida genérica');
+    expect(schema.safeParse({
+      type: 'generic',
+      paragraphs_es: ['¿Confirmas el proveedor o deseas cerrar todo el plan?'],
+    }).success).toBe(true);
+  });
+
+  it.each([
+    ['the cheaper one', 'más económico'],
+    ['the one in Miraflores', 'Miraflores'],
+  ])('preserves provider discriminators for the reference %s', (userMessage, hint) => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('recomendar');
+    request.userMessage = userMessage;
+    request.plan.preferences = ['terraza'];
+    request.plan.hard_constraints = ['máximo S/ 4,000'];
+    request.extraction.selectedProviderHints = [hint];
+    request.extraction.selectedProviderReferences = [{
+      providerId: null,
+      providerTitle: null,
+      category: 'Locales',
+      hint,
+    }];
+    request.providerResults = [
+      createProvider(11, 'Casa Lima', 'Miraflores', 'mid', 'S/ 3,500'),
+      createProvider(12, 'Terraza Sur', 'Barranco', 'high', 'S/ 4,800'),
+    ];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: ReturnType<typeof emptyFunnel>,
+      ) => string;
+    };
+
+    const evidence = readCanonicalEvidence(
+      typedRuntime.composeConversationInput(request, {
+        available_candidates: 2,
+        context_candidates: 2,
+        context_candidate_ids: [11, 12],
+        presentation_limit: 2,
+      }),
+    );
+
+    expect(evidence.extraction).toMatchObject({
+      selected_provider_hints: [hint],
+      selected_provider_references: [{ category: 'Locales', hint }],
+    });
+    expect(evidence.plan).toMatchObject({
+      preferences: ['terraza'],
+      hard_constraints: ['máximo S/ 4,000'],
+    });
+    expect(evidence.provider_candidates).toEqual([
+      expect.objectContaining({
+        id: 11,
+        title: 'Casa Lima',
+        category: 'Locales',
+        location: 'Miraflores',
+        price_level: 'mid',
+        min_price: 'S/ 3,500',
+        reason: 'Coincide con la ubicación y el presupuesto.',
+      }),
+      expect.objectContaining({ id: 12, location: 'Barranco', price_level: 'high' }),
+    ]);
+  });
+
+  it('keeps one canonical reply evidence projection and omits external user IDs from extraction', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('entrevista');
+    request.plan.preferences = ['vegetariano'];
+    request.plan.hard_constraints = ['sin frutos secos'];
+    const typedRuntime = runtime as unknown as {
+      composeExtractorInput: (
+        extractionRequest: ExtractRequest,
+        policy: ReturnType<typeof deriveDynamicAgentPolicy>,
+      ) => string;
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: ReturnType<typeof emptyFunnel>,
+      ) => string;
+    };
+
+    const extractorInput = typedRuntime.composeExtractorInput(
+      {
+        userMessage: request.userMessage,
+        plan: request.plan,
+        messageContext: request.messageContext,
+      },
+      deriveDynamicAgentPolicy(request.plan),
+    );
+    const replyInput = typedRuntime.composeConversationInput(request, emptyFunnel());
+    const evidence = readCanonicalEvidence(replyInput);
+
+    expect(extractorInput).not.toContain('external_user_id');
+    expect(extractorInput).not.toContain('user-1');
+    expect(extractorInput).toContain('"preferences":["vegetariano"]');
+    expect(extractorInput).toContain('"hard_constraints":["sin frutos secos"]');
+    expect(replyInput.match(/Evidencia canónica del turno \(JSON\):/gu)).toHaveLength(1);
+    expect(replyInput).not.toContain('Plan resumido:');
+    expect(replyInput).not.toContain('Necesidades del plan:');
+    expect(replyInput).not.toContain('Resultados vigentes:');
+    expect(evidence.plan).toMatchObject({
+      preferences: ['vegetariano'],
+      hard_constraints: ['sin frutos secos'],
+    });
   });
 });
 
@@ -291,7 +495,8 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       presentation_limit: 0,
     });
 
-    expect(input).toContain('Resultados verificados de capacidades informativas');
+    expect(input).toContain('"information_results"');
+    expect(input).toContain('"kind": "associated_event"');
     expect(input).not.toContain('user_auth');
     expect(input).not.toContain('secret-token');
     expect(input).not.toContain('token_present');

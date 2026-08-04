@@ -16,11 +16,7 @@ import OpenAI from 'openai';
 import { z } from 'zod';
 
 import type { PersistedPlan } from '../core/plan';
-import {
-  getActiveNeed,
-  summarizeProviderNeeds,
-  summarizeRecommendedProviders,
-} from '../core/plan';
+import { getActiveNeed } from '../core/plan';
 import {
   prioritizedProviderCategoriesForEvent,
   starterProviderCategoriesForEvent,
@@ -67,6 +63,30 @@ const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
 type RuntimeContext = {
   toolUsage: ComposeReplyRequest['toolUsage'];
+};
+
+type ReplyTurnEvidence = {
+  nodes: {
+    previous: string;
+    current: string;
+  };
+  history: {
+    status: ComposeReplyRequest['messageContext']['historyStatus'];
+    recent_messages: ReturnType<typeof buildModelVisibleConversationHistory>;
+  };
+  user_message: string;
+  decision: Record<string, unknown> | null;
+  extraction: Record<string, unknown>;
+  plan: Record<string, unknown>;
+  information_results: unknown[];
+  turn_state: {
+    focus_need_category: PersistedPlan['active_need_category'];
+    missing_fields: string[];
+    search_ready: boolean;
+    missing_fields_instruction: string;
+  };
+  provider_candidates: Array<Record<string, unknown>>;
+  recommendation_funnel: RecommendationFunnelTrace | null;
 };
 
 export class OpenAiAgentRuntime implements AgentRuntime {
@@ -523,7 +543,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private buildExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
     return {
       current_node: plan.current_node,
-      external_user_id: plan.external_user_id,
       action_intent:
         plan.current_node === 'resolver_consultas_informativas'
           ? null
@@ -534,10 +553,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       location: plan.location,
       budget_signal: plan.budget_signal,
       guest_range: plan.guest_range,
+      preferences: plan.preferences,
+      hard_constraints: plan.hard_constraints,
       missing_fields: plan.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
       provider_needs: plan.provider_needs.map((need) => ({
         category: need.category,
         status: need.status,
+        preferences: need.preferences,
+        hard_constraints: need.hard_constraints,
         missing_fields: need.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
         selected_provider_ids: need.selected_provider_ids,
         selected_provider_hints: need.selected_provider_hints,
@@ -550,6 +573,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           rank: index + 1,
           id: provider.id,
           title: provider.title,
+          category: provider.category,
+          location: provider.location,
+          price_level: provider.priceLevel,
+          min_price: provider.minPrice,
+          max_price: provider.maxPrice,
+          reason: provider.reason,
+          promo_badge: provider.promoBadge,
         })),
       })),
       selected_provider_ids: plan.selected_provider_ids,
@@ -647,38 +677,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const focusNeedCategory =
       request.turnDecision?.focusNeedCategory ?? activeNeed?.category ?? null;
 
+    const evidence = this.buildReplyTurnEvidence({
+      request,
+      focusNeedCategory,
+      providerResults,
+      recommendationFunnel: stripProviders ? null : recommendationFunnel,
+    });
     const parts: Array<string | null> = [
-      `Nodo previo: ${this.modelVisibleNodeName(request.previousNode)}`,
-      `Nodo actual: ${this.modelVisibleNodeName(request.currentNode)}`,
-      `Estado del historial: ${request.messageContext.historyStatus}.`,
-      `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
-      `Mensaje del usuario: ${request.userMessage}`,
-      request.turnDecision
-        ? `Decisión determinística del estado: ${JSON.stringify({
-            route_kind: request.turnDecision.routeKind,
-            presentation_scope: request.turnDecision.presentationScope,
-            provider_search_mode: request.turnDecision.providerSearchMode,
-            focus_need_category: request.turnDecision.focusNeedCategory,
-            needs_to_present: request.turnDecision.needsToPresent,
-            stop_reason: request.turnDecision.stopReason,
-          }, null, 2)}`
-        : null,
-      `Extracción estructurada del turno: ${JSON.stringify(this.buildReplyExtractionSnapshot(request.extraction), null, 2)}`,
-      `Plan resumido: ${JSON.stringify(
-        this.buildPromptPlanSnapshot(request.plan, focusNeedCategory),
-        null,
-        2,
-      )}`,
-      request.informationResults && request.informationResults.length > 0
-        ? `Resultados verificados de capacidades informativas: ${JSON.stringify(request.informationResults, null, 2)}`
+      `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}`,
+      request.extraction.ambiguity?.status === 'ambiguous'
+        ? 'La extracción marcó ambigüedad. Formula la respuesta alrededor de ambiguity.clarification_question y no reinicies la conversación con una bienvenida genérica.'
         : null,
       this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
-      `Foco operativo del turno: ${focusNeedCategory ?? 'ninguno todavía'}`,
-      `Necesidades del plan:\n${summarizeProviderNeeds(request.plan.provider_needs)}`,
-      `Faltantes por necesidad: ${this.summarizeNeedMissingFields(request.plan)}`,
-      this.buildMissingFieldsInstruction(request),
-      `Faltantes: ${request.missingFields.join(', ') || 'ninguno'}`,
-      `Listo para buscar: ${request.searchReady ? 'sí' : 'no'}`,
       `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
     ];
 
@@ -688,14 +698,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     parts.push(`Herramientas autorizadas en este nodo: ${allowedTools}`);
 
-    if (!stripProviders) {
-      parts.push(`Resultados vigentes:\n${summarizeRecommendedProviders(providerResults)}`);
-      if (includeAllGroupedProviders) {
-        parts.push(`Resultados agrupados por necesidad:\n${this.summarizeGroupedProviderResults(request.plan)}`);
-      }
-      parts.push(`Embudo de recomendación: ${recommendationFunnel.available_candidates} candidatos disponibles; ${recommendationFunnel.context_candidates} enviados al modelo; objetivo de presentación final: ${recommendationFunnel.presentation_limit}.`);
-    }
-
     if (request.errorMessage) {
       parts.push(`Nota operativa: ${request.errorMessage}`);
     }
@@ -703,12 +705,52 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return parts.filter(Boolean).join('\n\n');
   }
 
-  private summarizeNeedMissingFields(plan: PersistedPlan): string {
-    const entries = plan.provider_needs
-      .filter((need) => need.missing_fields.length > 0)
-      .map((need) => `${need.category}: ${need.missing_fields.join(', ')}`);
+  private buildReplyTurnEvidence(args: {
+    request: ComposeReplyRequest;
+    focusNeedCategory: PersistedPlan['active_need_category'];
+    providerResults: ProviderSummary[];
+    recommendationFunnel: RecommendationFunnelTrace | null;
+  }): ReplyTurnEvidence {
+    const decision = args.request.turnDecision
+      ? {
+          route_kind: args.request.turnDecision.routeKind,
+          presentation_scope: args.request.turnDecision.presentationScope,
+          provider_search_mode: args.request.turnDecision.providerSearchMode,
+          focus_need_category: args.request.turnDecision.focusNeedCategory,
+          needs_to_present: args.request.turnDecision.needsToPresent,
+          stop_reason: args.request.turnDecision.stopReason,
+        }
+      : null;
 
-    return entries.length > 0 ? entries.join(' | ') : 'ninguno';
+    return {
+      nodes: {
+        previous: this.modelVisibleNodeName(args.request.previousNode),
+        current: this.modelVisibleNodeName(args.request.currentNode),
+      },
+      history: {
+        status: args.request.messageContext.historyStatus,
+        recent_messages: buildModelVisibleConversationHistory(args.request.messageContext),
+      },
+      user_message: args.request.userMessage,
+      decision,
+      extraction: this.buildReplyExtractionSnapshot(args.request.extraction),
+      plan: this.buildPromptPlanSnapshot(args.request.plan, args.focusNeedCategory),
+      information_results: (args.request.informationResults ?? []).map((result) =>
+        this.stripRawFields(result),
+      ),
+      turn_state: {
+        focus_need_category: args.focusNeedCategory,
+        missing_fields: args.request.missingFields.map((field) =>
+          this.userVisibleMissingFieldLabel(field),
+        ),
+        search_ready: args.request.searchReady,
+        missing_fields_instruction: this.buildMissingFieldsInstruction(args.request),
+      },
+      provider_candidates: args.providerResults.map((provider, index) =>
+        this.buildProviderEvidence(provider, index + 1),
+      ),
+      recommendation_funnel: args.recommendationFunnel,
+    };
   }
 
   private modelVisibleNodeName(node: ComposeReplyRequest['currentNode']): string {
@@ -722,7 +764,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     );
 
     if (hasPlanMissingFields || hasNeedMissingFields) {
-      return 'Solo menciona faltantes que aparezcan literalmente en "Faltantes" o "Faltantes por necesidad". No agregues otros.';
+      return 'Solo menciona faltantes presentes en turn_state.missing_fields o plan.provider_needs[].missing_fields. No agregues otros.';
     }
 
     return 'No hay faltantes registrados. No digas que faltan fecha, distrito, modalidad, restricciones, presupuesto, preferencias u otros datos.';
@@ -750,7 +792,36 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private buildReplyExtractionSnapshot(extraction: ComposeReplyRequest['extraction']): Record<string, unknown> {
     return {
       action_intent: extraction.actionIntent,
+      intent_confidence: extraction.intentConfidence,
+      ambiguity: extraction.ambiguity
+        ? {
+            status: extraction.ambiguity.status,
+            clarification_question: extraction.ambiguity.clarificationQuestion,
+            interpretations: extraction.ambiguity.interpretations ?? [],
+          }
+        : null,
       information_requests: extraction.informationRequests,
+      event_type: extraction.eventType,
+      vendor_category: extraction.vendorCategory,
+      vendor_categories: extraction.vendorCategories,
+      active_need_category: extraction.activeNeedCategory,
+      location: extraction.location,
+      budget_signal: extraction.budgetSignal,
+      guest_range: extraction.guestRange,
+      preferences: extraction.preferences,
+      hard_constraints: extraction.hardConstraints,
+      assumptions: extraction.assumptions,
+      conversation_summary: this.truncateText(extraction.conversationSummary, 300),
+      selected_provider_hints: extraction.selectedProviderHints,
+      selected_provider_references: extraction.selectedProviderReferences ?? [],
+      close_action: extraction.closeAction ?? null,
+      pause_requested: extraction.pauseRequested,
+      contact: {
+        name: extraction.contactName,
+        email: extraction.contactEmail,
+        phone: extraction.contactPhone,
+      },
+      provider_fit_criteria: extraction.providerFitCriteria ?? null,
       provider_explanation_request: extraction.providerExplanationRequest ?? null,
       provider_detail_request: extraction.providerDetailRequest ?? null,
       provider_plan_operations: extraction.providerPlanOperations ?? [],
@@ -769,7 +840,38 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     };
   }
 
+  private buildProviderEvidence(
+    provider: ProviderSummary,
+    rank: number,
+  ): Record<string, unknown> {
+    return {
+      rank,
+      id: provider.id,
+      title: provider.title,
+      category: provider.category,
+      location: provider.location,
+      price_level: provider.priceLevel,
+      min_price: provider.minPrice,
+      max_price: provider.maxPrice,
+      rating: provider.rating,
+      reason: provider.reason,
+      promo_badge: provider.promoBadge,
+      promo_summary: provider.promoSummary,
+      description_snippet: provider.descriptionSnippet,
+      service_highlights: provider.serviceHighlights,
+      terms_highlights: provider.termsHighlights,
+      fit_score: provider.fitScore,
+      fit_warnings: provider.fitWarnings ?? [],
+      fit_tags: provider.fitTags ?? [],
+      detail_url: provider.detailUrl,
+    };
+  }
+
   private resolveOutputSchema(request: ComposeReplyRequest) {
+    if (request.extraction.ambiguity?.status === 'ambiguous') {
+      return genericMessageSchema;
+    }
+
     const node = request.currentNode;
     if (node === 'contacto_inicial') {
       return welcomeMessageSchema;
@@ -1621,12 +1723,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       location: plan.location,
       budget_signal: plan.budget_signal,
       guest_range: plan.guest_range,
+      preferences: plan.preferences,
+      hard_constraints: plan.hard_constraints,
       missing_fields: plan.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
       provider_needs: plan.provider_needs.map((need) => ({
         category: need.category,
         status: need.status,
+        preferences: need.preferences,
+        hard_constraints: need.hard_constraints,
         missing_fields: need.missing_fields.map((field) => this.userVisibleMissingFieldLabel(field)),
         selected_provider_ids: need.selected_provider_ids,
+        selected_provider_hints: need.selected_provider_hints,
         selected_provider_titles: need.selected_provider_ids
           .map((selectedProviderId) =>
             need.recommended_providers.find((provider) => provider.id === selectedProviderId)?.title ?? null,
