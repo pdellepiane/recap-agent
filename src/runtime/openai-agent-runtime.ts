@@ -1,9 +1,10 @@
 import {
   Agent,
   InputGuardrailTripwireTriggered,
+  OpenAIProvider,
   OutputGuardrailTripwireTriggered,
+  Runner,
   retryPolicies,
-  run,
   tool,
 } from '@openai/agents';
 import type {
@@ -11,6 +12,7 @@ import type {
   InputGuardrail,
   OutputGuardrail,
 } from '@openai/agents';
+import OpenAI from 'openai';
 import { z } from 'zod';
 
 import type { PersistedPlan } from '../core/plan';
@@ -68,6 +70,8 @@ type RuntimeContext = {
 };
 
 export class OpenAiAgentRuntime implements AgentRuntime {
+  private readonly runner: Runner;
+
   constructor(
     private readonly options: {
       apiKey: string;
@@ -84,8 +88,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         vectorStoreId: string | null;
       };
       features?: AgentFeatureFlags;
+      openAIClient?: OpenAI;
     },
-  ) {}
+  ) {
+    const openAIClient = options.openAIClient ?? new OpenAI({
+      apiKey: options.apiKey,
+      maxRetries: 0,
+    });
+    this.runner = new Runner({
+      modelProvider: new OpenAIProvider({ openAIClient }),
+    });
+  }
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const bundle = await this.options.promptLoader.loadExtractorBundle();
@@ -110,7 +123,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const input = this.composeExtractorInput(request, policy);
 
     try {
-      const result = await run(extractor, input);
+      const result = await this.runner.run(extractor, input);
       return {
         extraction: this.normalizeExtraction(
           result.finalOutput as StructuredExtraction,
@@ -216,7 +229,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     let finalOutput: unknown;
     let runResult: unknown;
     try {
-      const result = await run(agent, input, {
+      const result = await this.runner.run(agent, input, {
         context: {
           toolUsage: request.toolUsage,
         },

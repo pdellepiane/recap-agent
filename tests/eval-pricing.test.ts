@@ -1,3 +1,6 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import { estimateTurnCost, pricingConfigSchema } from '../src/evals/pricing';
@@ -45,5 +48,74 @@ describe('evaluation pricing', () => {
     expect(cost.openaiUsd).toBeCloseTo(0.00075);
     expect(cost.lambdaUsd).toBeCloseTo(0.0000162);
     expect(cost.unpricedExternalCalls).toBe(1);
+  });
+
+  it('locks the legacy and Luna model-only full-turn cost baselines', () => {
+    const baseline = JSON.parse(fs.readFileSync(path.resolve(
+      process.cwd(),
+      'evals/baselines/openai-legacy-2026-08-04.json',
+    ), 'utf8')) as {
+      usage: Record<string, {
+        inputTokens: number;
+        cachedInputTokens: number;
+        outputTokens: number;
+      }>;
+      acceptance: {
+        legacyOpenAiUsdPerFullTurn: number;
+        lunaModelOnlyUsdPerFullTurn: number;
+        lunaModelOnlySavingsRate: number;
+      };
+    };
+    const pricing = pricingConfigSchema.parse(JSON.parse(fs.readFileSync(path.resolve(
+      process.cwd(),
+      'evals/studies/pricing-2026-08-04.json',
+    ), 'utf8')) as unknown);
+
+    const usage = (name: string) => {
+      const entry = baseline.usage[name];
+      if (!entry) {
+        throw new Error(`Missing baseline usage for ${name}.`);
+      }
+      return {
+        input_tokens: entry.inputTokens,
+        cached_input_tokens: entry.cachedInputTokens,
+        output_tokens: entry.outputTokens,
+        total_tokens: entry.inputTokens + entry.outputTokens,
+      };
+    };
+    const turn = {
+      latencyMs: 0,
+      trace: {
+        token_usage: {
+          classifier: usage('classifier'),
+          extraction: usage('extraction'),
+          reply: usage('reply'),
+        },
+        tools_called: [],
+      },
+    } as unknown as Parameters<typeof estimateTurnCost>[0];
+    const legacy = estimateTurnCost(turn, pricing, {
+      classifier: 'gpt-5.4-nano',
+      extractor: 'gpt-5.4-nano',
+      reply: 'gpt-5.4-mini',
+    }).openaiUsd;
+    const luna = estimateTurnCost(turn, pricing, {
+      classifier: 'gpt-5.6-luna',
+      extractor: 'gpt-5.6-luna',
+      reply: 'gpt-5.6-luna',
+    }).openaiUsd;
+
+    expect(legacy).toBeCloseTo(
+      baseline.acceptance.legacyOpenAiUsdPerFullTurn,
+      8,
+    );
+    expect(luna).toBeCloseTo(
+      baseline.acceptance.lunaModelOnlyUsdPerFullTurn,
+      8,
+    );
+    expect(1 - luna / legacy).toBeCloseTo(
+      baseline.acceptance.lunaModelOnlySavingsRate,
+      8,
+    );
   });
 });

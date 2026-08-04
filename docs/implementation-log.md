@@ -1,5 +1,32 @@
 # Implementation Log
 
+## 2026-08-04
+
+### Lock the pre-optimization OpenAI request and cost baseline
+
+**Reason:** Prompt and model optimization needs a reproducible reference that
+separates cached input, uncached input, and output costs. The runtime also
+needed an injectable OpenAI transport so tests can inspect the actual serialized
+Responses request without making network calls.
+
+**Changes:**
+- Added a dated ten-turn GPT-5.4 usage baseline and a versioned pricing catalog
+  containing the project-effective GPT-5.6 Luna rates for 2026-08-04.
+- Added cost regression coverage proving the legacy full-turn cost and the
+  model-only Luna savings independently.
+- Made the Agents SDK runtime and direct response classifier accept an injected
+  OpenAI client while keeping a production client as the default.
+- Disabled the OpenAI SDK's hidden transport retries so retry behavior remains
+  owned and observable by the application layer.
+
+**Decision:** Keep the legacy baseline immutable. Use mocked transports for
+wire-contract tests and price candidate workloads from measured token classes,
+not a single blended token rate.
+
+**Validation:** `npm run check` passed with 50 test files and 326 tests,
+`npm run build` completed, and both development CloudFormation stacks deployed
+successfully through the guarded `se-dev` profile in `us-east-1`.
+
 ## 2026-07-31
 
 ### Fail closed on the repository's AWS account and profile

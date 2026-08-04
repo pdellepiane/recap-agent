@@ -97,9 +97,13 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       model: string;
       mode: ResponseClassifierMode;
       promptLoader: PromptLoader;
+      openAIClient?: OpenAI;
     },
   ) {
-    this.client = new OpenAI({ apiKey: options.apiKey, maxRetries: 1 });
+    this.client = options.openAIClient ?? new OpenAI({
+      apiKey: options.apiKey,
+      maxRetries: 0,
+    });
   }
 
   get mode(): ResponseClassifierMode {
