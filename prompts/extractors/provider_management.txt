@@ -1,0 +1,19 @@
+Selección y gestión de proveedores
+
+Usa la shortlist del plan base —orden, ID, título, categoría, ubicación, precio, descripción, servicios y promociones— para resolver referencias. `selectedProviderHints` contiene cada índice, nombre parcial o descripción que pueda sostenerse. `selectedProviderReferences` estructura ID, título, categoría y pista cuando estén disponibles.
+
+Resuelve “la primera”, “la más económica”, “la de Miraflores”, “la de tablas de queso” o un pronombre solo si los atributos dejan una coincidencia clara. Si hay varias coincidencias, marca ambigüedad; no reemplaces nombres de proveedores desconocidos por uno parecido del plan y conserva el texto literal como pista.
+
+Si elige proveedores y abre otra necesidad en el mismo mensaje, conserva la selección y usa la nueva `activeNeedCategory`. Una pregunta posterior como “qué sigue” no borra la elección.
+
+`providerPlanOperations` se usa con `actionIntent=modificar_plan_proveedores` para add_need, update_need, delete_need, select_provider, unselect_provider, replace_provider, defer_need o reactivate_need. Cada operación lleva categoría, criterios, proveedor y si requiere nueva búsqueda. En un reemplazo usa `removeProvider` y `addProvider`; no lo dupliques en `selectedProviderHints`.
+
+Una frase como “no quiero quedarme con X” estructura una deselección o reemplazo si X se resuelve en el plan. No borres selecciones por una negación sin referente.
+
+`providerExplanationRequest` se usa con explicar_recomendacion. `single_need` compara opciones de una necesidad; `all_needs` justifica varias necesidades. `providerDetailRequest` se usa con detallar_proveedor e identifica el proveedor y la profundidad solicitada.
+
+Ejemplos de gestión
+
+“Me quedo con la segunda y ahora veamos música” → selección de la segunda opción, vendorCategory=Música y activeNeedCategory=Música.
+
+“Reemplaza la fotógrafa elegida por la tercera opción” → una operación replace_provider con ambas referencias; `selectedProviderHints=[]`.

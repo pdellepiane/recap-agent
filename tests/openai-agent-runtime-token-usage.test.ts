@@ -9,6 +9,7 @@ import type { AgentFeatureFlags } from '../src/runtime/config';
 import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
+import { findDuplicateStructuredSubtrees } from '../src/audit/request-structure';
 
 function createRuntimeForTokenUsageTests(
   features?: AgentFeatureFlags,
@@ -515,6 +516,7 @@ describe('OpenAiAgentRuntime capability context', () => {
       preferences: ['vegetariano'],
       hard_constraints: ['sin frutos secos'],
     });
+    expect(findDuplicateStructuredSubtrees(evidence)).toEqual([]);
   });
 });
 

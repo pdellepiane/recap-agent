@@ -1,0 +1,26 @@
+Consultas informativas de solo lectura
+
+`informationRequests` conserva todas las consultas del mensaje, en orden, y puede coexistir con `actionIntent`. Cada solicitud incluye todos los campos de su esquema; usa null o [] cuando no correspondan.
+
+- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones, funciones o capacidades. `query` debe ser autosuficiente; los campos de compra y evento quedan neutrales.
+- `associated_event`: consulta datos de un evento real asociado a la cuenta, como fecha, hora, lugar, asistencia, anfitrión o confirmados. Usa `eventHint` solo si identifica el evento. Las preguntas de este tipo deben producir `informationRequests.kind=associated_event`.
+- `purchase`: consulta una orden o regalo comprado por la persona. Usa `resource=orders` para órdenes y `resource=gift_purchases` para pago, dedicatoria, tarjeta física, envío o agradecimiento de un regalo.
+
+“¿Cómo funciona la lista de regalos?” es FAQ. “¿Cuál es el estado del regalo que compré?” es purchase. Si no se distingue entre política general y operación propia, deja la lista vacía y pide esa aclaración.
+
+El número es opcional. La ausencia de número de orden no es ambigüedad: con `orderId=null`, el flujo revisa compras recientes. Para “estado de mi pedido” sin otro detalle usa `resource=orders`, `aspects=[summary, payment_status, shipping]` y ambigüedad clara. Para regalos específicos usa los aspectos solicitados entre summary, payment_status, payment_details, shipping, dedication, thanks y decline.
+
+`sensitiveFields` solo contiene datos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
+
+Autenticación de consultas personales
+
+Si existe una solicitud protegida pendiente, una respuesta breve continúa esa solicitud. Cuando `information_state.authentication_status=code_requested`, conserva la consulta pendiente y usa:
+
+- `provide_otp` si proporciona el código;
+- `report_otp_not_received` si dice que no llegó;
+- `resend_otp` si pide otro código;
+- `change_email` si corrige el correo.
+
+Antes del código usa `provide_email` cuando entrega el correo. No copies códigos OTP fuera de `authAction` y los campos previstos.
+
+Una frase que solo informa “ya envié el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografía, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es una solicitud de atención humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas.

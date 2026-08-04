@@ -123,7 +123,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   async extract(request: ExtractRequest): Promise<ExtractResult> {
-    const bundle = await this.options.promptLoader.loadExtractorBundle();
     const policy = deriveDynamicAgentPolicy(request.plan);
     const features = this.resolveFeatureFlags();
     const informationEnabled =
@@ -135,21 +134,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       : policy.allowedActionIntents.filter(
           (actionIntent) => actionIntent === 'solicitar_humano',
         );
+    const extractionCapabilities = {
+      information: informationEnabled,
+      providerPlanning: features.providerPlanning,
+      providerOperations:
+        features.providerPlanning && policy.capabilities.hasActivePlan,
+      providerSelection:
+        features.providerPlanning && policy.capabilities.hasShortlist,
+      providerInspection:
+        features.providerPlanning && policy.capabilities.hasShortlist,
+      contact: informationEnabled || policy.capabilities.canClose,
+      close: features.providerPlanning && policy.capabilities.canClose,
+      pause: features.providerPlanning && policy.capabilities.canPause,
+    };
+    const bundle = await this.options.promptLoader.loadExtractorBundle(
+      extractionCapabilities,
+    );
     const outputSchema = createDynamicExtractionSchema({
       allowedActionIntents,
-      capabilities: {
-        information: informationEnabled,
-        providerPlanning: features.providerPlanning,
-        providerOperations:
-          features.providerPlanning && policy.capabilities.hasActivePlan,
-        providerSelection:
-          features.providerPlanning && policy.capabilities.hasShortlist,
-        providerInspection:
-          features.providerPlanning && policy.capabilities.hasShortlist,
-        contact: informationEnabled || policy.capabilities.canClose,
-        close: features.providerPlanning && policy.capabilities.canClose,
-        pause: features.providerPlanning && policy.capabilities.canPause,
-      },
+      capabilities: extractionCapabilities,
     });
     const extractor = new Agent({
       name: 'plan_extractor',

@@ -6,10 +6,12 @@ import type { DecisionNode } from '../core/decision-nodes';
 import {
   conversationPromptFilesForNode,
   extractorPromptFiles,
+  extractorPromptFilesForCapabilities,
   nodePromptManifest,
   promptRuleIdForFile,
   type ToolName,
 } from './prompt-manifest';
+import type { ExtractionCapabilityProfile } from './extraction-schemas';
 
 export type PromptBundle = {
   id: string;
@@ -28,8 +30,13 @@ export class PromptLoader {
     return this.load(relativePaths, config.allowedTools);
   }
 
-  async loadExtractorBundle(): Promise<PromptBundle> {
-    return this.load([...extractorPromptFiles], []);
+  async loadExtractorBundle(
+    capabilities?: ExtractionCapabilityProfile,
+  ): Promise<PromptBundle> {
+    const relativePaths = capabilities
+      ? extractorPromptFilesForCapabilities(capabilities)
+      : extractorPromptFiles;
+    return this.load([...relativePaths], []);
   }
 
   async loadResponseClassifierBundle(): Promise<PromptBundle> {

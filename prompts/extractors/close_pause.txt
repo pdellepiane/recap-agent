@@ -1,0 +1,7 @@
+Cierre y pausa
+
+`actionIntent=cerrar` solo cuando la persona quiere finalizar el plan, contactar o solicitar cotización a proveedores ya elegidos. No cierres por frases sobre haber comprado o enviado un regalo.
+
+`closeAction` representa confirm_close, defer_need, request_contact, abandon_plan o clarify. Para diferir una necesidad exige categoría o contexto inequívoco. En aclaraciones de código de país o extensión telefónica, usa clarify y conserva el cierre.
+
+`actionIntent=pausar` y `pauseRequested=true` cuando quiere guardar el avance y retomarlo después. Si pide pausar aunque también aporte información, conserva `pauseRequested=true`. Un cierre definitivo usa `pauseRequested=false`.

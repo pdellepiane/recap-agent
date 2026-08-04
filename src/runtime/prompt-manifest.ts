@@ -1,4 +1,5 @@
 import type { DecisionNode } from '../core/decision-nodes';
+import type { ExtractionCapabilityProfile } from './extraction-schemas';
 
 export const conversationSharedPromptFiles = [
   'shared/base_system.txt',
@@ -72,13 +73,32 @@ export function promptRuleIdForFile(relativePath: string): string {
 }
 
 export const extractorPromptFiles = [
-  'extractors/system.txt',
-  'extractors/field_definitions.txt',
-  'extractors/conflict_resolution.txt',
-  'extractors/domain_knowledge.txt',
-  'extractors/normalization_rules.txt',
-  'extractors/examples.md',
+  'extractors/base_system.txt',
+  'extractors/planning.txt',
+  'extractors/information.txt',
+  'extractors/provider_management.txt',
+  'extractors/contact.txt',
+  'extractors/close_pause.txt',
 ] as const;
+
+export function extractorPromptFilesForCapabilities(
+  capabilities: ExtractionCapabilityProfile,
+): readonly string[] {
+  return [
+    'extractors/base_system.txt',
+    ...(capabilities.providerPlanning ? ['extractors/planning.txt'] : []),
+    ...(capabilities.information ? ['extractors/information.txt'] : []),
+    ...(capabilities.providerOperations ||
+      capabilities.providerSelection ||
+      capabilities.providerInspection
+      ? ['extractors/provider_management.txt']
+      : []),
+    ...(capabilities.contact ? ['extractors/contact.txt'] : []),
+    ...(capabilities.close || capabilities.pause
+      ? ['extractors/close_pause.txt']
+      : []),
+  ];
+}
 
 export const toolNames = [
   'list_categories',

@@ -212,6 +212,14 @@ The command uses only `GET /responses/{id}` and paginated
 `GET /responses/{id}/input_items` requests. Conversation lookup is fail-closed
 to development account `684516060775` through profile `se-dev` in `us-east-1`.
 
+Prompt structure is audited locally, with an optional non-generative remote
+token count:
+
+```bash
+npm run audit:prompts
+npm run audit:prompts -- --remote-token-count
+```
+
 ## Lambda runtime env vars
 
 ```bash

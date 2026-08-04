@@ -2,6 +2,49 @@
 
 ## 2026-08-04
 
+### Add completeness and leanness gates
+
+**Reason:** Structural prompt checks covered reply modules but the extractor
+still loaded 47,563 serialized bytes of universal instructions on every turn,
+including fields its capability-scoped schema had removed. Token reduction was
+not safe unless completeness, ownership, and evidence preservation failed
+before size improvements could pass.
+
+**Changes:**
+- Added `npm run audit:prompts` with route/profile metrics for exact instruction
+  bytes, serialized candidate bytes, rule ownership, module relevance, maximum
+  tools, duplication, and required-file coverage.
+- Added `--remote-token-count`, implemented only through the non-generative
+  `/responses/input_tokens` endpoint and covered with a client test that exposes
+  no response-creation method.
+- Split the universal extractor prompt into capability-owned base, planning,
+  information, provider-management, contact, and close/pause files; runtime
+  composition now matches the exact capability-scoped output schema.
+- Added gates for duplicate structured context subtrees, repeated rule IDs,
+  repeated normalized paragraphs, unrelated modules, irrelevant schema fields,
+  irrelevant dynamic tools, redundant reply projections, and exact serialized
+  prompt sizes.
+- Preserved regression rules for ambiguity, provider references, purchase/event
+  authentication, negative answers, multi-need planning, contact, close, and
+  pause in their owning Spanish files.
+
+**Decision:** Completeness is a hard prerequisite and byte/token reduction is a
+secondary gate. Prompt modules and schema capabilities must change together so
+the model never receives rules for fields it cannot emit.
+
+**Measured result:** The worst-case extractor candidate fell from 47,563 to
+11,593 serialized bytes (75.63% lower); the initial planning/information profile
+is 8,748 bytes (81.61% lower), and conversation-only extraction is 2,269 bytes
+(95.23% lower). The live non-generative count returned 2,441, 1,856, and 453
+input tokens respectively. Representative reply prompt counts were 1,605 for
+welcome, 2,384 for recommendation, and 2,892 for information, with zero audit
+violations.
+
+**Validation:** `npm run check` passed with 55 files and 359 tests, `npm run
+build` passed, and `npm run audit:prompts -- --remote-token-count` completed
+against OpenAI without generating or storing a Response. Deployment remains
+deferred until the final integrated Luna baseline passes.
+
 ### Persist and retrieve OpenAI response references safely
 
 **Reason:** Performance and CloudWatch records had token totals but no

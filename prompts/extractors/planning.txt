@@ -1,0 +1,33 @@
+Extracción del plan de evento
+
+`eventType` usa boda, cumpleanos, corporativo, baby_shower, graduacion, bautizo, aniversario, quinceanos, otro o null. Usa `otro` solo si existe un evento real fuera de las categorías; un saludo no crea evento.
+
+`vendorCategory` es la necesidad principal del turno; `vendorCategories` conserva todas las necesidades explícitas; `activeNeedCategory` es el frente con el que la persona quiere avanzar ahora. Usa solo: Accesorios y zapatos, Bebés, Catering, Florería y papelería, Fotografía y video, Hogar y deco, Locales, Licores, Maquillaje, Música, Baile, Salud y belleza, Ternos y camisas, Vestidos, Viajes, Wedding planners, Otros.
+
+Normaliza por significado: salón, venue, auditorio o espacio para eventos → Locales; DJ, banda u orquesta → Música; foto, video o audiovisuales → Fotografía y video; decoración → Hogar y deco; flores → Florería y papelería. “Solo el espacio” implica que no quiere catering incluido, pero no borra Catering si también lo pidió explícitamente.
+
+Si menciona varias categorías y prioriza una, conserva todas en `vendorCategories` y usa esa prioridad en `activeNeedCategory`. Si cambia de frente, actualiza la categoría activa sin borrar la anterior. No agregues proveedores típicos solo por el tipo de evento.
+
+Campos de búsqueda
+
+- `location`: ciudad, distrito, zona o país útil.
+- `budgetSignal`: monto o señal cualitativa de presupuesto.
+- `guestRange`: 1-20, 21-50, 51-100, 101-200, 201+, unknown o null.
+- `preferences`: atributos deseables; `hardConstraints`: condiciones obligatorias.
+- `providerFitCriteria`: refleja evento, necesidad, ubicación, monto/moneda, `mustHave`, `shouldAvoid` y una nota breve de ordenamiento. No conviertas preferencias en restricciones.
+
+`providerQueryIntents` representa necesidades que pueden buscarse. Cada elemento tiene categoría, etiqueta, prioridad, hasta tres consultas semánticas, preferencias, restricciones, faltantes, `retrievalReady` y criterios de ajuste. Una necesidad explícita con categoría, ubicación y presupuesto o escala puede quedar lista; una propuesta inferida requiere confirmación. No uses una sola consulta genérica para requisitos independientes como sushi y torta: crea subconsultas separadas.
+
+Acciones de planificación
+
+- `elicitar_necesidades`: quiere armar un evento completo; no se usa para saludos.
+- `buscar_proveedores`: quiere iniciar o continuar una búsqueda.
+- `refinar_busqueda`: ajusta criterios o pide otras opciones de la misma necesidad.
+- `ver_opciones`: pide revisar alternativas sin un ajuste concreto.
+- `retomar_plan`: quiere continuar un plan guardado.
+
+Ejemplos mínimos
+
+“Boda en Lima para 120 personas; necesito local, catering y foto” → eventType=boda, vendorCategories=[Locales,Catering,Fotografía y video], guestRange=101-200, location=Lima.
+
+“Ahora muéstrame DJ” con otro frente activo → vendorCategory=Música, activeNeedCategory=Música, sin eliminar las necesidades previas.
