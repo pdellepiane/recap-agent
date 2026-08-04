@@ -123,10 +123,31 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const bundle = await this.options.promptLoader.loadExtractorBundle();
     const policy = deriveDynamicAgentPolicy(request.plan);
+    const features = this.resolveFeatureFlags();
+    const informationEnabled =
+      features.faq ||
+      features.invitedEventLookup ||
+      features.purchaseInformation;
+    const allowedActionIntents = features.providerPlanning
+      ? policy.allowedActionIntents
+      : policy.allowedActionIntents.filter(
+          (actionIntent) => actionIntent === 'solicitar_humano',
+        );
     const outputSchema = createDynamicExtractionSchema({
-      allowedActionIntents: policy.allowedActionIntents,
-      allowClose: policy.capabilities.canClose,
-      allowPause: policy.capabilities.canPause,
+      allowedActionIntents,
+      capabilities: {
+        information: informationEnabled,
+        providerPlanning: features.providerPlanning,
+        providerOperations:
+          features.providerPlanning && policy.capabilities.hasActivePlan,
+        providerSelection:
+          features.providerPlanning && policy.capabilities.hasShortlist,
+        providerInspection:
+          features.providerPlanning && policy.capabilities.hasShortlist,
+        contact: informationEnabled || policy.capabilities.canClose,
+        close: features.providerPlanning && policy.capabilities.canClose,
+        pause: features.providerPlanning && policy.capabilities.canPause,
+      },
     });
     const extractor = new Agent({
       name: 'plan_extractor',
@@ -162,13 +183,42 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private normalizeExtraction(
-    extraction: StructuredExtraction,
+    extraction: Partial<StructuredExtraction>,
   ): ExtractResult['extraction'] {
     return {
-      ...extraction,
-      informationRequests: extraction.informationRequests.flatMap((request) =>
+      actionIntent: extraction.actionIntent ?? null,
+      informationRequests: (extraction.informationRequests ?? []).flatMap((request) =>
         this.normalizeInformationRequest(request),
       ),
+      intentConfidence: extraction.intentConfidence ?? null,
+      ambiguity: extraction.ambiguity ?? {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
+      eventType: extraction.eventType ?? null,
+      vendorCategory: extraction.vendorCategory ?? null,
+      vendorCategories: extraction.vendorCategories ?? [],
+      activeNeedCategory: extraction.activeNeedCategory ?? null,
+      location: extraction.location ?? null,
+      budgetSignal: extraction.budgetSignal ?? null,
+      guestRange: extraction.guestRange ?? null,
+      preferences: extraction.preferences ?? [],
+      hardConstraints: extraction.hardConstraints ?? [],
+      assumptions: extraction.assumptions ?? [],
+      conversationSummary: extraction.conversationSummary ?? '',
+      selectedProviderHints: extraction.selectedProviderHints ?? [],
+      selectedProviderReferences: extraction.selectedProviderReferences ?? [],
+      closeAction: extraction.closeAction ?? null,
+      pauseRequested: extraction.pauseRequested ?? false,
+      contactName: extraction.contactName ?? null,
+      contactEmail: extraction.contactEmail ?? null,
+      contactPhone: extraction.contactPhone ?? null,
+      providerFitCriteria: extraction.providerFitCriteria ?? null,
+      providerQueryIntents: extraction.providerQueryIntents ?? [],
+      providerPlanOperations: extraction.providerPlanOperations ?? [],
+      providerExplanationRequest: extraction.providerExplanationRequest ?? null,
+      providerDetailRequest: extraction.providerDetailRequest ?? null,
     };
   }
 

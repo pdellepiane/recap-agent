@@ -6,6 +6,23 @@ import {
   resolveDynamicTools,
 } from '../src/runtime/dynamic-agent-policy';
 import { createDynamicExtractionSchema } from '../src/runtime/extraction-schemas';
+import type { ExtractionCapabilityProfile } from '../src/runtime/extraction-schemas';
+
+function extractionCapabilities(
+  overrides: Partial<ExtractionCapabilityProfile> = {},
+): ExtractionCapabilityProfile {
+  return {
+    information: true,
+    providerPlanning: true,
+    providerOperations: false,
+    providerSelection: false,
+    providerInspection: false,
+    contact: true,
+    close: false,
+    pause: false,
+    ...overrides,
+  };
+}
 
 function createNeed(overrides: Partial<ProviderNeed> = {}): ProviderNeed {
   return {
@@ -75,22 +92,20 @@ describe('dynamic agent policy', () => {
     const policy = deriveDynamicAgentPolicy(createPlan());
     const schema = createDynamicExtractionSchema({
       allowedActionIntents: policy.allowedActionIntents,
-      allowClose: policy.capabilities.canClose,
-      allowPause: policy.capabilities.canPause,
+      capabilities: extractionCapabilities(),
     });
 
     expect(schema.shape.actionIntent.safeParse('cerrar').success).toBe(false);
     expect(schema.shape.actionIntent.safeParse('buscar_proveedores').success).toBe(true);
-    expect(schema.shape.pauseRequested.safeParse(true).success).toBe(false);
-    expect(schema.shape.closeAction.safeParse({ type: 'confirm_close' }).success).toBe(false);
+    expect(schema.shape.pauseRequested).toBeUndefined();
+    expect(schema.shape.closeAction).toBeUndefined();
   });
 
   it('keeps FAQ and merged FAQ-plus-user-action extraction available in every plan state', () => {
     const policy = deriveDynamicAgentPolicy(createPlan());
     const schema = createDynamicExtractionSchema({
       allowedActionIntents: policy.allowedActionIntents,
-      allowClose: policy.capabilities.canClose,
-      allowPause: policy.capabilities.canPause,
+      capabilities: extractionCapabilities(),
     });
     const parsed = schema.parse({
       actionIntent: 'buscar_proveedores',

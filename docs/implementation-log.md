@@ -2,6 +2,36 @@
 
 ## 2026-08-04
 
+### Use capability-scoped extraction schemas
+
+**Reason:** The extractor always sent one universal output schema containing
+information, contact, provider-operation, selection, inspection, close, and
+pause fields even when the state machine made those capabilities impossible.
+Those irrelevant properties consumed request tokens and invited invalid state
+changes.
+
+**Changes:**
+- Added an explicit typed extraction-capability profile and now constructs the
+  Responses output schema from only the enabled capability groups.
+- Omitted plan operations until a plan exists, selection and provider
+  inspection until a shortlist exists, and close or pause until state-machine
+  evidence permits them.
+- Omitted information and contact fields when their product capabilities are
+  disabled, and removed provider-planning action intents when provider planning
+  itself is disabled.
+- Kept one complete downstream extraction contract by normalizing omitted
+  capability fields to typed neutral values after model output validation.
+- Added profile-by-profile required-field and irrelevant-field tests plus a
+  downstream normalization regression.
+
+**Decision:** The model-facing schema is capability-specific; the core runtime
+contract remains complete. Structured LLM extraction still supplies every
+conversational decision that a route is capable of making.
+
+**Validation:** `npm run check` and `npm run build` passed. Per the updated
+checkpoint workflow, deployment is deferred until the final integrated Luna
+baseline passes.
+
 ### Enforce route-scoped prompt composition
 
 **Reason:** Every reply route loaded all eight shared prompt modules, including

@@ -160,6 +160,46 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       cached_input_tokens: 300,
     });
   });
+
+  it('normalizes omitted capability fields to the complete downstream contract', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const typedRuntime = runtime as unknown as {
+      normalizeExtraction: (input: {
+        intentConfidence: number;
+        ambiguity: {
+          status: 'clear';
+          clarificationQuestion: null;
+          interpretations: string[];
+        };
+        assumptions: string[];
+        conversationSummary: string;
+      }) => ComposeReplyRequest['extraction'];
+    };
+
+    const normalized = typedRuntime.normalizeExtraction({
+      intentConfidence: 0.8,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
+      assumptions: [],
+      conversationSummary: 'Consulta general.',
+    });
+
+    expect(normalized).toMatchObject({
+      informationRequests: [],
+      eventType: null,
+      vendorCategories: [],
+      preferences: [],
+      selectedProviderReferences: [],
+      providerPlanOperations: [],
+      providerExplanationRequest: null,
+      closeAction: null,
+      pauseRequested: false,
+      contactEmail: null,
+    });
+  });
 });
 
 describe('OpenAiAgentRuntime capability context', () => {

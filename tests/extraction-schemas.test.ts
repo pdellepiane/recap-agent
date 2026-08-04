@@ -5,11 +5,14 @@ import {
   closeFlowResultSchema,
 } from '../src/runtime/close-flow-schemas';
 import {
+  createDynamicExtractionSchema,
   extractionSchema,
   providerExplanationRequestSchema,
   providerPlanOperationSchema,
   providerQueryIntentSchema,
 } from '../src/runtime/extraction-schemas';
+import type { ExtractionCapabilityProfile } from '../src/runtime/extraction-schemas';
+import { actionIntentValues } from '../src/core/plan';
 
 const fitCriteria = {
   eventType: 'boda',
@@ -23,6 +26,92 @@ const fitCriteria = {
 } as const;
 
 describe('structured extraction schemas', () => {
+  it.each([
+    {
+      name: 'conversation only',
+      capabilities: capabilityProfile(),
+      present: [],
+      absent: [
+        'informationRequests', 'eventType', 'contactEmail', 'providerPlanOperations',
+        'selectedProviderReferences', 'providerExplanationRequest', 'closeAction',
+        'pauseRequested',
+      ],
+    },
+    {
+      name: 'initial planning and information',
+      capabilities: capabilityProfile({
+        information: true,
+        providerPlanning: true,
+        contact: true,
+      }),
+      present: ['informationRequests', 'eventType', 'providerQueryIntents', 'contactEmail'],
+      absent: [
+        'providerPlanOperations', 'selectedProviderReferences',
+        'providerExplanationRequest', 'closeAction', 'pauseRequested',
+      ],
+    },
+    {
+      name: 'active plan before shortlist',
+      capabilities: capabilityProfile({
+        information: true,
+        providerPlanning: true,
+        providerOperations: true,
+        contact: true,
+        close: true,
+        pause: true,
+      }),
+      present: [
+        'informationRequests', 'eventType', 'providerPlanOperations', 'contactEmail',
+        'closeAction', 'pauseRequested',
+      ],
+      absent: [
+        'selectedProviderReferences', 'providerExplanationRequest',
+        'providerDetailRequest',
+      ],
+    },
+    {
+      name: 'shortlist selection and inspection',
+      capabilities: capabilityProfile({
+        information: true,
+        providerPlanning: true,
+        providerOperations: true,
+        providerSelection: true,
+        providerInspection: true,
+        contact: true,
+        close: true,
+        pause: true,
+      }),
+      present: [
+        'informationRequests', 'eventType', 'providerPlanOperations',
+        'selectedProviderReferences', 'providerExplanationRequest',
+        'providerDetailRequest', 'contactEmail', 'closeAction', 'pauseRequested',
+      ],
+      absent: [],
+    },
+  ])('includes complete relevant fields and excludes irrelevant fields for $name', ({
+    capabilities,
+    present,
+    absent,
+  }) => {
+    const schema = createDynamicExtractionSchema({
+      allowedActionIntents: actionIntentValues,
+      capabilities,
+    });
+    const properties = Object.keys(schema.shape);
+
+    expect(properties).toEqual(expect.arrayContaining([
+      'actionIntent',
+      'intentConfidence',
+      'ambiguity',
+      'assumptions',
+      'conversationSummary',
+      ...present,
+    ]));
+    for (const property of absent) {
+      expect(properties).not.toContain(property);
+    }
+  });
+
   it('parses provider query intents with canonical fields', () => {
     const parsed = providerQueryIntentSchema.parse({
       category: 'Catering',
@@ -247,3 +336,19 @@ describe('structured extraction schemas', () => {
     }
   });
 });
+
+function capabilityProfile(
+  overrides: Partial<ExtractionCapabilityProfile> = {},
+): ExtractionCapabilityProfile {
+  return {
+    information: false,
+    providerPlanning: false,
+    providerOperations: false,
+    providerSelection: false,
+    providerInspection: false,
+    contact: false,
+    close: false,
+    pause: false,
+    ...overrides,
+  };
+}

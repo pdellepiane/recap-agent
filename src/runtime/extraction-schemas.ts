@@ -137,21 +137,77 @@ export const extractionSchema = z.object({
 
 export type StructuredExtraction = z.infer<typeof extractionSchema>;
 
+export type ExtractionCapabilityProfile = {
+  information: boolean;
+  providerPlanning: boolean;
+  providerOperations: boolean;
+  providerSelection: boolean;
+  providerInspection: boolean;
+  contact: boolean;
+  close: boolean;
+  pause: boolean;
+};
+
 export function createDynamicExtractionSchema(args: {
   allowedActionIntents: readonly ActionIntent[];
-  allowClose: boolean;
-  allowPause: boolean;
+  capabilities: ExtractionCapabilityProfile;
 }) {
   const allowedActionIntents = args.allowedActionIntents as readonly [
     ActionIntent,
     ...ActionIntent[],
   ];
 
-  return extractionSchema.extend({
+  return z.object({
     actionIntent: z.enum(allowedActionIntents).nullable(),
-    closeAction: args.allowClose
-      ? closeActionSchema.nullable().default(null)
-      : z.null().default(null),
-    pauseRequested: args.allowPause ? z.boolean() : z.literal(false),
+    intentConfidence: extractionSchema.shape.intentConfidence,
+    ambiguity: extractionSchema.shape.ambiguity,
+    assumptions: extractionSchema.shape.assumptions,
+    conversationSummary: extractionSchema.shape.conversationSummary,
+    ...(args.capabilities.information
+      ? { informationRequests: extractionSchema.shape.informationRequests }
+      : {}),
+    ...(args.capabilities.providerPlanning
+      ? {
+          eventType: extractionSchema.shape.eventType,
+          vendorCategory: extractionSchema.shape.vendorCategory,
+          vendorCategories: extractionSchema.shape.vendorCategories,
+          activeNeedCategory: extractionSchema.shape.activeNeedCategory,
+          location: extractionSchema.shape.location,
+          budgetSignal: extractionSchema.shape.budgetSignal,
+          guestRange: extractionSchema.shape.guestRange,
+          preferences: extractionSchema.shape.preferences,
+          hardConstraints: extractionSchema.shape.hardConstraints,
+          providerFitCriteria: extractionSchema.shape.providerFitCriteria,
+          providerQueryIntents: extractionSchema.shape.providerQueryIntents,
+        }
+      : {}),
+    ...(args.capabilities.providerOperations
+      ? { providerPlanOperations: extractionSchema.shape.providerPlanOperations }
+      : {}),
+    ...(args.capabilities.providerSelection
+      ? {
+          selectedProviderHints: extractionSchema.shape.selectedProviderHints,
+          selectedProviderReferences: extractionSchema.shape.selectedProviderReferences,
+        }
+      : {}),
+    ...(args.capabilities.providerInspection
+      ? {
+          providerExplanationRequest: extractionSchema.shape.providerExplanationRequest,
+          providerDetailRequest: extractionSchema.shape.providerDetailRequest,
+        }
+      : {}),
+    ...(args.capabilities.contact
+      ? {
+          contactName: extractionSchema.shape.contactName,
+          contactEmail: extractionSchema.shape.contactEmail,
+          contactPhone: extractionSchema.shape.contactPhone,
+        }
+      : {}),
+    ...(args.capabilities.close
+      ? { closeAction: extractionSchema.shape.closeAction }
+      : {}),
+    ...(args.capabilities.pause
+      ? { pauseRequested: extractionSchema.shape.pauseRequested }
+      : {}),
   });
 }
