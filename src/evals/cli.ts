@@ -116,7 +116,7 @@ program
       evalsDir: path.resolve(process.cwd(), 'evals'),
       outputDir: path.resolve(process.cwd(), 'analysis/technical-evaluation-study/artifacts'),
       manifestPath: path.resolve(process.cwd(), 'evals/studies/technical-evaluation-50-v4.json'),
-      pricingPath: path.resolve(process.cwd(), 'evals/studies/pricing-2026-07-01.json'),
+      pricingPath: path.resolve(process.cwd(), 'evals/studies/pricing-2026-08-04.json'),
       dryRun: Boolean(options.dryRun),
     });
     process.stdout.write(`${JSON.stringify({ studyDir }, null, 2)}\n`);

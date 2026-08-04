@@ -20,6 +20,7 @@ import { computeBenchmarkMetrics } from './metrics';
 import { runSemanticJudge } from './scorers/semantic-judge';
 import { runLiveLambdaCase } from './targets/live-lambda';
 import { runOfflineCase } from './targets/offline';
+import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
 
 export type EvalRunnerOptions = {
   evalsDir: string;
@@ -366,7 +367,7 @@ async function evaluateScorers(
         const turn = selectTurn(context.turns, scorer.turnIndex);
         const judge = await runSemanticJudge({
           apiKey: process.env.OPENAI_API_KEY ?? null,
-          model: scorer.judgeModel ?? 'gpt-5.4-mini',
+          model: scorer.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
           rubric: scorer.rubric,
           candidateText: turn?.outputText ?? '',
         });
@@ -564,7 +565,7 @@ async function evaluateExpectation(
       const turn = selectTurn(context.turns, expectation.turnIndex);
       const judge = await runSemanticJudge({
         apiKey: process.env.OPENAI_API_KEY ?? null,
-        model: expectation.judgeModel ?? 'gpt-5.4-mini',
+        model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
         rubric: expectation.rubric,
         candidateText: turn?.outputText ?? '',
       });

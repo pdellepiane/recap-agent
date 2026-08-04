@@ -2249,6 +2249,10 @@ export class AgentService {
         (total, usage) => total + (usage?.cached_input_tokens ?? 0),
         0,
       ),
+      cache_write_input_tokens: usages.reduce(
+        (total, usage) => total + (usage?.cache_write_input_tokens ?? 0),
+        0,
+      ),
     };
   }
 

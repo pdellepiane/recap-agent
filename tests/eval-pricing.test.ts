@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { estimateTurnCost, pricingConfigSchema } from '../src/evals/pricing';
 
 describe('evaluation pricing', () => {
-  it('prices cached and uncached input separately', () => {
+  it('prices cached, cache-write, and uncached input separately', () => {
     const pricing = pricingConfigSchema.parse({
       version: 'test',
       effectiveDate: '2026-07-01',
@@ -15,6 +15,7 @@ describe('evaluation pricing', () => {
         extractor: {
           inputPerMillionUsd: 1,
           cachedInputPerMillionUsd: 0.1,
+          cacheWriteInputPerMillionUsd: 1.25,
           outputPerMillionUsd: 2,
         },
         reply: {
@@ -33,7 +34,8 @@ describe('evaluation pricing', () => {
             input_tokens: 1_000,
             output_tokens: 100,
             total_tokens: 1_100,
-            cached_input_tokens: 500,
+            cached_input_tokens: 300,
+            cache_write_input_tokens: 200,
           },
           reply: null,
         },
@@ -45,7 +47,7 @@ describe('evaluation pricing', () => {
       pricing,
       { extractor: 'extractor', reply: 'reply' },
     );
-    expect(cost.openaiUsd).toBeCloseTo(0.00075);
+    expect(cost.openaiUsd).toBeCloseTo(0.00098);
     expect(cost.lambdaUsd).toBeCloseTo(0.0000162);
     expect(cost.unpricedExternalCalls).toBe(1);
   });

@@ -207,7 +207,7 @@ describe('perf trace module', () => {
           extraction: {
             responseId: 'resp_extract_test',
             requestId: 'req_extract_test',
-            model: 'gpt-5.4-nano',
+            model: 'gpt-5.6-luna',
             attemptCount: 1,
             requestMetrics: {
               instructionBytes: 100,

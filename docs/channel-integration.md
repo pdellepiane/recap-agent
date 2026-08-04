@@ -796,11 +796,10 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 
 | Env var | Current value |
 | --- | --- |
-| `OPENAI_MODEL` | `gpt-5.4-mini` |
-| `OPENAI_EXTRACTOR_MODEL` | `gpt-5.4-nano` |
-| `OPENAI_RESPONSE_CLASSIFIER_MODEL` | `gpt-5.4-nano` |
+| `OPENAI_MODEL` | `gpt-5.6-luna` |
+| `OPENAI_EXTRACTOR_MODEL` | `gpt-5.6-luna` |
+| `OPENAI_RESPONSE_CLASSIFIER_MODEL` | `gpt-5.6-luna` |
 | `RESPONSE_CLASSIFIER_MODE` | `enforce` |
-| `OPENAI_PROMPT_CACHE_RETENTION` | `in-memory` |
 | `AWS_REGION` | `us-east-1` |
 | `PLANS_TABLE_NAME` | `recap-agent-runtime-plans` |
 | `PERF_TABLE_NAME` | `recap-agent-runtime-perf` |
@@ -811,6 +810,10 @@ The Lambda reads configuration through [src/runtime/config.ts](/Users/leonardoca
 | `SE_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/se-api-key` |
 | `CHANNEL_API_SECRET_ID` | Secrets Manager ARN for `recap-agent/channel-api-key` |
 | `LOG_RETENTION_DAYS` | `7` |
+
+All three GPT roles use `reasoning.effort: none`, low text verbosity, and
+GPT-5.6 implicit prompt caching with a `30m` TTL. Cache reads and billable
+cache writes are recorded separately in turn token usage.
 | `DEFAULT_INBOUND_CHANNEL` | `terminal_whatsapp` unless overridden |
 | `PROVIDER_SEARCH_LIMIT` | `15` |
 | `SEARCH_SUMMARY_WORD_LIMIT` | `5` |

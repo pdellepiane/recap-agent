@@ -27,9 +27,8 @@ describe('OpenAiAgentRuntime retry behavior', () => {
     vi.stubGlobal('fetch', fetchMock);
     const runtime = new OpenAiAgentRuntime({
       apiKey: 'test-key',
-      replyModel: 'gpt-5.4-mini',
-      extractorModel: 'gpt-5.4-nano',
-      promptCacheRetention: 'in-memory',
+      replyModel: 'gpt-5.6-luna',
+      extractorModel: 'gpt-5.6-luna',
       replyProviderLimit: 4,
       presentationProviderLimit: 5,
       providerDetailLookupLimit: 3,
@@ -52,7 +51,21 @@ describe('OpenAiAgentRuntime retry behavior', () => {
     expect(typeof body).toBe('string');
     const requestBody = JSON.parse(
       typeof body === 'string' ? body : '{}',
-    ) as { store?: boolean };
+    ) as {
+      model?: string;
+      store?: boolean;
+      prompt_cache_key?: string;
+      prompt_cache_options?: { mode?: string; ttl?: string };
+      prompt_cache_retention?: unknown;
+      reasoning?: { effort?: string };
+      text?: { verbosity?: string };
+    };
+    expect(requestBody.model).toBe('gpt-5.6-luna');
     expect(requestBody.store).toBe(true);
+    expect(requestBody.prompt_cache_key).toMatch(/^extractor:/u);
+    expect(requestBody.prompt_cache_options).toEqual({ mode: 'implicit', ttl: '30m' });
+    expect(requestBody).not.toHaveProperty('prompt_cache_retention');
+    expect(requestBody.reasoning).toEqual({ effort: 'none' });
+    expect(requestBody.text?.verbosity).toBe('low');
   });
 });

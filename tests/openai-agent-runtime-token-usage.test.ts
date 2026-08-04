@@ -16,9 +16,8 @@ function createRuntimeForTokenUsageTests(
 ): OpenAiAgentRuntime {
   return new OpenAiAgentRuntime({
     apiKey: 'test-key',
-    replyModel: 'gpt-5.4-mini',
-    extractorModel: 'gpt-5.4-nano',
-    promptCacheRetention: 'in-memory',
+    replyModel: 'gpt-5.6-luna',
+    extractorModel: 'gpt-5.6-luna',
     replyProviderLimit: 4,
     presentationProviderLimit: 5,
     providerDetailLookupLimit: 3,
@@ -105,6 +104,24 @@ function createProvider(
 }
 
 describe('OpenAiAgentRuntime token usage parsing', () => {
+  it('uses GPT-5.6 implicit cache options without deprecated retention', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const settings = (
+      runtime as unknown as {
+        buildModelSettings: (args: { model: string; cacheKey: string }) => Record<string, unknown>;
+      }
+    ).buildModelSettings({ model: 'gpt-5.6-luna', cacheKey: 'extractor:test' });
+
+    expect(settings).toMatchObject({
+      promptCacheOptions: { mode: 'implicit', ttl: '30m' },
+      providerData: { prompt_cache_key: 'extractor:test' },
+      reasoning: { effort: 'none' },
+      text: { verbosity: 'low' },
+      store: true,
+    });
+    expect(settings).not.toHaveProperty('promptCacheRetention');
+  });
+
   it('captures stored response and transport request references from an Agents SDK run', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const typedRuntime = runtime as unknown as {
@@ -127,7 +144,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
         requestId: 'req_agent_test',
       }],
       state: { usage: { requests: 2 } },
-    }, 'gpt-5.4-nano', {
+    }, 'gpt-5.6-luna', {
       instructionBytes: 100,
       inputBytes: 200,
       toolCount: 0,
@@ -135,7 +152,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
     })).toEqual({
       responseId: 'resp_agent_test',
       requestId: 'req_agent_test',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       attemptCount: 2,
       requestMetrics: {
         instructionBytes: 100,
@@ -154,7 +171,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
           inputTokens: 1200,
           outputTokens: 300,
           totalTokens: 1500,
-          inputTokensDetails: [{ cached_tokens: 480 }],
+          inputTokensDetails: [{ cached_tokens: 480, cache_write_tokens: 320 }],
         },
       },
     });
@@ -164,6 +181,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       output_tokens: 300,
       total_tokens: 1500,
       cached_input_tokens: 480,
+      cache_write_input_tokens: 320,
     });
   });
 
@@ -181,13 +199,13 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
                 inputTokens: 500,
                 outputTokens: 50,
                 totalTokens: 550,
-                inputTokensDetails: { cached_tokens: 200 },
+                inputTokensDetails: { cached_tokens: 200, cache_write_tokens: 50 },
               },
               {
                 inputTokens: 400,
                 outputTokens: 50,
                 totalTokens: 450,
-                inputTokensDetails: { cached_tokens: 100 },
+                inputTokensDetails: { cached_tokens: 100, cache_write_tokens: 25 },
               },
             ],
           },
@@ -200,6 +218,7 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       output_tokens: 100,
       total_tokens: 1000,
       cached_input_tokens: 300,
+      cache_write_input_tokens: 75,
     });
   });
 
@@ -739,9 +758,8 @@ function createComposeRequest(
 function createRuntimeWithKnowledgeBase(): OpenAiAgentRuntime {
   return new OpenAiAgentRuntime({
     apiKey: 'test-key',
-    replyModel: 'gpt-5.4-mini',
-    extractorModel: 'gpt-5.4-nano',
-    promptCacheRetention: 'in-memory',
+    replyModel: 'gpt-5.6-luna',
+    extractorModel: 'gpt-5.6-luna',
     replyProviderLimit: 4,
     presentationProviderLimit: 5,
     providerDetailLookupLimit: 3,

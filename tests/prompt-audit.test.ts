@@ -12,8 +12,8 @@ describe('prompt audit', () => {
   it('passes completeness, ownership, duplication, relevance, and size gates', async () => {
     const result = await auditPromptBundles({
       loader,
-      replyModel: 'gpt-5.4-mini',
-      extractorModel: 'gpt-5.4-nano',
+      replyModel: 'gpt-5.6-luna',
+      extractorModel: 'gpt-5.6-luna',
     });
 
     expect(result.violations).toEqual([]);
@@ -51,8 +51,8 @@ describe('prompt audit', () => {
 
     const result = await auditPromptBundles({
       loader,
-      replyModel: 'gpt-5.4-mini',
-      extractorModel: 'gpt-5.4-nano',
+      replyModel: 'gpt-5.6-luna',
+      extractorModel: 'gpt-5.6-luna',
       openAIClient,
     });
 

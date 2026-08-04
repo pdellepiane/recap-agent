@@ -60,6 +60,7 @@ import {
 } from './dynamic-agent-policy';
 import { buildModelVisibleConversationHistory } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
+import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -99,7 +100,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       apiKey: string;
       replyModel: string;
       extractorModel: string;
-      promptCacheRetention: 'in-memory' | '24h';
       replyProviderLimit: number;
       presentationProviderLimit: number;
       providerDetailLookupLimit: number;
@@ -558,12 +558,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ['total_tokens', 'totalTokenCount', 'totalTokens'],
     );
     const cachedInputTokens = this.resolveCachedInputTokens(usage);
+    const cacheWriteInputTokens = this.resolveCacheWriteInputTokens(usage);
 
     if (
       inputTokens === null &&
       outputTokens === null &&
       totalTokens === null &&
-      cachedInputTokens === null
+      cachedInputTokens === null &&
+      cacheWriteInputTokens === null
     ) {
       return null;
     }
@@ -577,6 +579,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       output_tokens: safeOutput,
       total_tokens: safeTotal,
       cached_input_tokens: cachedInputTokens ?? 0,
+      cache_write_input_tokens: cacheWriteInputTokens ?? 0,
     };
   }
 
@@ -595,10 +598,28 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private resolveCachedInputTokens(source: Record<string, unknown>): number | null {
+    return this.resolveInputDetailTokens(
+      source,
+      ['cached_tokens', 'cached_input_tokens', 'cachedInputTokens'],
+      ['cached_tokens', 'cachedTokens'],
+    );
+  }
+
+  private resolveCacheWriteInputTokens(source: Record<string, unknown>): number | null {
+    return this.resolveInputDetailTokens(
+      source,
+      ['cache_write_tokens', 'cache_write_input_tokens', 'cacheWriteInputTokens'],
+      ['cache_write_tokens', 'cacheWriteTokens'],
+    );
+  }
+
+  private resolveInputDetailTokens(
+    source: Record<string, unknown>,
+    topLevelKeys: string[],
+    detailKeys: string[],
+  ): number | null {
     const topLevel = this.readNumericField(source, [
-      'cached_tokens',
-      'cached_input_tokens',
-      'cachedInputTokens',
+      ...topLevelKeys,
     ]);
     if (topLevel !== null) {
       return topLevel;
@@ -612,9 +633,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       source.inputTokensDetails,
     ];
     for (const details of detailsCandidates) {
-      const cached = this.readCachedTokensFromDetails(details);
-      if (cached !== null) {
-        return cached;
+      const value = this.readInputTokensFromDetails(details, detailKeys);
+      if (value !== null) {
+        return value;
       }
     }
 
@@ -627,11 +648,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           continue;
         }
         const requestEntry = entry as Record<string, unknown>;
-        const requestCached = this.readCachedTokensFromDetails(
+        const requestValue = this.readInputTokensFromDetails(
           requestEntry.input_tokens_details ?? requestEntry.inputTokensDetails,
+          detailKeys,
         );
-        if (requestCached !== null) {
-          aggregateCachedTokens += requestCached;
+        if (requestValue !== null) {
+          aggregateCachedTokens += requestValue;
           foundCachedTokens = true;
         }
       }
@@ -643,7 +665,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return null;
   }
 
-  private readCachedTokensFromDetails(details: unknown): number | null {
+  private readInputTokensFromDetails(details: unknown, detailKeys: string[]): number | null {
     if (!details) {
       return null;
     }
@@ -656,7 +678,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           continue;
         }
         const nested = entry as Record<string, unknown>;
-        const cached = this.readNumericField(nested, ['cached_tokens', 'cachedTokens']);
+        const cached = this.readNumericField(nested, detailKeys);
         if (cached !== null) {
           aggregateCachedTokens += cached;
           foundCachedTokens = true;
@@ -667,7 +689,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
     if (typeof details === 'object') {
       const nested = details as Record<string, unknown>;
-      return this.readNumericField(nested, ['cached_tokens', 'cachedTokens']);
+      return this.readNumericField(nested, detailKeys);
     }
 
     return null;
@@ -754,8 +776,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     model: string;
     cacheKey: string;
   }): {
-    promptCacheRetention: 'in-memory' | '24h';
-    providerData: Record<string, string>;
+    promptCacheOptions: typeof DEFAULT_PROMPT_CACHE_OPTIONS;
+    providerData: Record<string, unknown>;
     store: true;
     reasoning?: { effort: 'none' };
     text?: { verbosity: 'low' };
@@ -766,8 +788,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     };
   } {
     const baseSettings: {
-      promptCacheRetention: 'in-memory' | '24h';
-      providerData: Record<string, string>;
+      promptCacheOptions: typeof DEFAULT_PROMPT_CACHE_OPTIONS;
+      providerData: Record<string, unknown>;
       store: true;
       reasoning?: { effort: 'none' };
       text?: { verbosity: 'low' };
@@ -777,10 +799,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         policy: typeof openAiRetryPolicy;
       };
     } = {
-      promptCacheRetention:
-        this.options.promptCacheRetention === 'in-memory'
-          ? ('in_memory' as unknown as 'in-memory')
-          : '24h',
+      promptCacheOptions: DEFAULT_PROMPT_CACHE_OPTIONS,
       providerData: {
         prompt_cache_key: args.cacheKey,
       },

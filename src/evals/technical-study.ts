@@ -8,6 +8,7 @@ import {
   type ProviderCategory,
 } from '../core/provider-category';
 import { providerHasEventServiceEvidence } from '../runtime/provider-sub-query-selection';
+import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
 import {
   evalReportSchema,
   type EvalCase,
@@ -336,9 +337,9 @@ function buildStudyRow(
   const grounding = result.turns.map(assessGrounding);
   const costs = result.turns.map((turn) =>
     estimateTurnCost(turn, pricing, {
-      classifier: 'gpt-5.4-nano',
-      extractor: 'gpt-5.4-nano',
-      reply: 'gpt-5.4-mini',
+      classifier: DEFAULT_GPT_TEXT_MODEL,
+      extractor: DEFAULT_GPT_TEXT_MODEL,
+      reply: DEFAULT_GPT_TEXT_MODEL,
     }),
   );
   const finalNode = result.turns.at(-1)?.trace.next_node ?? null;
@@ -502,11 +503,16 @@ async function writeStudyArtifacts(
     (sum, turn) => sum + (turn.trace.token_usage.total?.cached_input_tokens ?? 0),
     0,
   );
+  const cacheWriteInputTokens = allTurns.reduce(
+    (sum, turn) => sum + (turn.trace.token_usage.total?.cache_write_input_tokens ?? 0),
+    0,
+  );
   await fs.writeFile(
     path.join(studyDir, 'cache-use.svg'),
     renderBarChart({
       cached_input_tokens: cachedInputTokens,
-      uncached_input_tokens: totalInputTokens - cachedInputTokens,
+      cache_write_input_tokens: cacheWriteInputTokens,
+      uncached_input_tokens: totalInputTokens - cachedInputTokens - cacheWriteInputTokens,
     }, 'Prompt cache use'),
   );
   await fs.writeFile(
@@ -928,6 +934,7 @@ type TurnStudyTelemetry = {
   inputTokens: number;
   outputTokens: number;
   cachedInputTokens: number;
+  cacheWriteInputTokens: number;
   totalTokens: number;
   cacheHitRate: number;
   persisted: boolean;
@@ -940,12 +947,13 @@ function renderTurnTelemetry(results: EvalResult[]): string {
       const total = turn.trace.token_usage.total;
       const inputTokens = total?.input_tokens ?? 0;
       const cachedInputTokens = total?.cached_input_tokens ?? 0;
+      const cacheWriteInputTokens = total?.cache_write_input_tokens ?? 0;
       return {
         scenario: result.caseId,
         turn: turn.turnIndex,
-        classifierModel: 'gpt-5.4-nano',
-        extractorModel: 'gpt-5.4-nano',
-        replyModel: 'gpt-5.4-mini',
+        classifierModel: DEFAULT_GPT_TEXT_MODEL,
+        extractorModel: DEFAULT_GPT_TEXT_MODEL,
+        replyModel: DEFAULT_GPT_TEXT_MODEL,
         classifierLlmCalls: turn.trace.token_usage.classifier ? 1 : 0,
         extractionLlmCalls: turn.trace.token_usage.extraction ? 1 : 0,
         replyLlmCalls: turn.trace.token_usage.reply ? 1 : 0,
@@ -960,6 +968,7 @@ function renderTurnTelemetry(results: EvalResult[]): string {
         inputTokens,
         outputTokens: total?.output_tokens ?? 0,
         cachedInputTokens,
+        cacheWriteInputTokens,
         totalTokens: total?.total_tokens ?? 0,
         cacheHitRate: inputTokens === 0 ? 0 : cachedInputTokens / inputTokens,
         persisted: turn.trace.plan_persisted,

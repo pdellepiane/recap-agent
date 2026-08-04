@@ -5,6 +5,7 @@ import path from 'node:path';
 import OpenAI from 'openai';
 
 import { PromptLoader } from '../runtime/prompt-loader';
+import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
 import { auditPromptBundles } from './prompt-audit';
 
 async function main(): Promise<void> {
@@ -24,8 +25,8 @@ async function main(): Promise<void> {
     : undefined;
   const result = await auditPromptBundles({
     loader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
-    replyModel: process.env.OPENAI_MODEL ?? 'gpt-5.4-mini',
-    extractorModel: process.env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.4-nano',
+    replyModel: process.env.OPENAI_MODEL ?? DEFAULT_GPT_TEXT_MODEL,
+    extractorModel: process.env.OPENAI_EXTRACTOR_MODEL ?? DEFAULT_GPT_TEXT_MODEL,
     openAIClient,
   });
   process.stdout.write(`${JSON.stringify(result, null, 2)}\n`);

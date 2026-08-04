@@ -399,7 +399,6 @@ async function getRuntime(): Promise<{
         apiKey,
         replyModel: config.openAi.models.reply,
         extractorModel: config.openAi.models.extractor,
-        promptCacheRetention: config.openAi.promptCacheRetention,
         replyProviderLimit: config.recommendation.replyProviderLimit,
         presentationProviderLimit: config.recommendation.presentationProviderLimit,
         providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,

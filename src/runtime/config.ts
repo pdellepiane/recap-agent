@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { z } from 'zod';
 import type { ProviderSearchMode } from './provider-gateway';
+import { DEFAULT_GPT_TEXT_MODEL } from './openai-model-defaults';
 
 export type AppConfig = {
   channelAuth: {
@@ -10,7 +11,6 @@ export type AppConfig = {
   openAi: {
     apiKey: string | null;
     secretId: string | null;
-    promptCacheRetention: 'in-memory' | '24h';
     models: {
       reply: string;
       extractor: string;
@@ -89,10 +89,9 @@ const environmentSchema = z.object({
   CHANNEL_API_SECRET_ID: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
   OPENAI_SECRET_ID: z.string().min(1).optional(),
-  OPENAI_PROMPT_CACHE_RETENTION: z.enum(['in-memory', '24h']).default('in-memory'),
-  OPENAI_MODEL: z.string().min(1).default('gpt-5.4-mini'),
-  OPENAI_EXTRACTOR_MODEL: z.string().min(1).default('gpt-5.4-nano'),
-  OPENAI_RESPONSE_CLASSIFIER_MODEL: z.string().min(1).default('gpt-5.4-nano'),
+  OPENAI_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
+  OPENAI_EXTRACTOR_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
+  OPENAI_RESPONSE_CLASSIFIER_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
   RESPONSE_CLASSIFIER_MODE: z.enum(['observe', 'enforce']).default('enforce'),
   AWS_REGION: z.string().min(1).default('us-east-1'),
   PLANS_TABLE_NAME: z.string().min(1).default('recap-agent-plans'),
@@ -157,7 +156,6 @@ export function getConfig(): AppConfig {
     openAi: {
       apiKey: environment.OPENAI_API_KEY ?? null,
       secretId: environment.OPENAI_SECRET_ID ?? null,
-      promptCacheRetention: environment.OPENAI_PROMPT_CACHE_RETENTION,
       models: {
         reply: environment.OPENAI_MODEL,
         extractor:

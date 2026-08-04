@@ -22,7 +22,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     vi.stubGlobal('fetch', fetchMock);
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'observe',
       promptLoader,
     });
@@ -59,7 +59,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     expect(response.openAiCall).toMatchObject({
       responseId: 'resp_test',
       requestId: 'req_test',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       attemptCount: 1,
       requestMetrics: {
         toolCount: 0,
@@ -69,10 +69,17 @@ describe('OpenAiMessageResponseClassifier', () => {
     const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
     const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
       store: boolean;
-      text: { format: { type: string } };
+      prompt_cache_key: string;
+      prompt_cache_options: { mode: string; ttl: string };
+      reasoning: { effort: string };
+      text: { format: { type: string }; verbosity: string };
       input: Array<{ content: string }>;
     };
     expect(request.text.format.type).toBe('json_schema');
+    expect(request.text.verbosity).toBe('low');
+    expect(request.reasoning.effort).toBe('none');
+    expect(request.prompt_cache_key).toMatch(/^classifier:/u);
+    expect(request.prompt_cache_options).toEqual({ mode: 'implicit', ttl: '30m' });
     expect(request.store).toBe(true);
     const classifierInput = JSON.parse(request.input[1]?.content ?? '{}') as {
       inbound_message: string;
@@ -89,7 +96,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -127,7 +134,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     vi.stubGlobal('fetch', fetchMock);
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -169,7 +176,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     vi.stubGlobal('fetch', fetchMock);
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -196,7 +203,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -228,7 +235,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -259,7 +266,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -293,7 +300,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -337,7 +344,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -370,7 +377,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -409,7 +416,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -449,7 +456,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     vi.stubGlobal('fetch', fetchMock);
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -498,7 +505,7 @@ describe('OpenAiMessageResponseClassifier', () => {
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
-      model: 'gpt-5.4-nano',
+      model: 'gpt-5.6-luna',
       mode: 'enforce',
       promptLoader,
     });
@@ -598,7 +605,7 @@ function responseForDecision(decision: {
     object: 'response',
     created_at: 1,
     status: 'completed',
-    model: 'gpt-5.4-nano',
+    model: 'gpt-5.6-luna',
     output: [
       {
         id: 'msg_test',
@@ -618,7 +625,7 @@ function responseForDecision(decision: {
       input_tokens: 12,
       output_tokens: 5,
       total_tokens: 17,
-      input_tokens_details: { cached_tokens: 0 },
+      input_tokens_details: { cached_tokens: 0, cache_write_tokens: 0 },
       output_tokens_details: { reasoning_tokens: 0 },
     },
     parallel_tool_calls: true,

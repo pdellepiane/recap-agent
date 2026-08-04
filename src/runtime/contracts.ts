@@ -123,6 +123,7 @@ export type TokenUsage = {
   output_tokens: number;
   total_tokens: number;
   cached_input_tokens?: number;
+  cache_write_input_tokens?: number;
 };
 
 export type ExtractResult = {

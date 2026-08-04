@@ -2,6 +2,42 @@
 
 ## 2026-08-04
 
+### Migrate active GPT defaults to GPT-5.6 Luna
+
+**Reason:** The classifier, extractor, reply composer, and evaluation judges
+still defaulted to GPT-5.4 variants. GPT-5.6 also replaces the legacy prompt
+cache retention field and bills cache writes separately, so a model-only rename
+would have produced incomplete cost telemetry and a deprecated request shape.
+
+**Changes:**
+- Centralized `gpt-5.6-luna` as the default for all active GPT text roles and
+  updated runtime configuration, CloudFormation, deployment defaults, prompt
+  audits, evaluation judges, tests, and active documentation.
+- Upgraded the OpenAI Agents SDK to `0.14.2` and the compatible OpenAI SDK to
+  `6.49.0`, which provide typed GPT-5.6 prompt-cache options.
+- Removed `OPENAI_PROMPT_CACHE_RETENTION` and configured implicit caching with
+  `prompt_cache_options.mode=implicit` and a `30m` TTL while retaining stable
+  component prompt-cache keys. No explicit breakpoints were added before live
+  cache-write measurement.
+- Preserved `reasoning.effort=none`, added low verbosity to the direct
+  classifier, and kept stored Responses enabled for all three runtime roles.
+- Added cache-write token capture, aggregation, schemas, study telemetry, and
+  the Luna cache-write price of `$0.25 / 1M` (1.25 times uncached input).
+- Added `npm run eval:compare-models`, which runs deterministic behavioral gates
+  and route-scoped prompt audits, using `/responses/input_tokens` without
+  generation when an API key is available.
+
+**Decision:** Start with GPT-5.6 implicit caching and measure both
+`cached_tokens` and `cache_write_tokens` before introducing explicit cache
+breakpoints. Historical GPT-5.4 fixtures, prices, and analysis artifacts remain
+immutable comparison evidence.
+
+**Validation:** The comparison gate passed all 12 development regression cases
+with zero failures, zero prompt violations, and non-generative token counts for
+all 31 request-shape entries. `npm run check` passed with 56 files and 362 tests,
+`npm run build` passed, and the local prompt audit reported zero violations.
+Deployment remains deferred until the final optimized Luna promotion baseline.
+
 ### Add completeness and leanness gates
 
 **Reason:** Structural prompt checks covered reply modules but the extractor

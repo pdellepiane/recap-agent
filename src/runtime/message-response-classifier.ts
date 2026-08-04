@@ -6,6 +6,7 @@ import type { PersistedPlan } from '../core/plan';
 import type { OpenAiCallRef, TokenUsage } from './contracts';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
 import type { PromptLoader } from './prompt-loader';
+import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 import { executeWithOpenAiRetry } from './openai-retry';
 
 const classifierOutputSchema = z.object({
@@ -133,6 +134,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         reasoning: { effort: 'none' as const },
         max_output_tokens: 128,
         store: true,
+        prompt_cache_key: `classifier:${bundle.id}`,
+        prompt_cache_options: DEFAULT_PROMPT_CACHE_OPTIONS,
         input: [
           { role: 'system' as const, content: bundle.instructions },
           {
@@ -141,6 +144,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           },
         ],
         text: {
+          verbosity: 'low' as const,
           format: zodTextFormat(classifierOutputSchema, 'reply_delivery_decision'),
         },
       };
@@ -297,6 +301,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       output_tokens: usage.output_tokens,
       total_tokens: usage.total_tokens,
       cached_input_tokens: usage.input_tokens_details?.cached_tokens ?? 0,
+      cache_write_input_tokens: usage.input_tokens_details?.cache_write_tokens ?? 0,
     };
   }
 }

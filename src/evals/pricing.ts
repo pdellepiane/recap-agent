@@ -5,6 +5,7 @@ import type { EvalTurnResult } from './case-schema';
 const modelPriceSchema = z.object({
   inputPerMillionUsd: z.number().nonnegative(),
   cachedInputPerMillionUsd: z.number().nonnegative(),
+  cacheWriteInputPerMillionUsd: z.number().nonnegative().optional(),
   outputPerMillionUsd: z.number().nonnegative(),
 });
 
@@ -64,10 +65,15 @@ function estimateModelUsage(
     return 0;
   }
   const cached = Math.min(usage.input_tokens, usage.cached_input_tokens ?? 0);
-  const uncached = usage.input_tokens - cached;
+  const cacheWrite = Math.min(
+    usage.input_tokens - cached,
+    usage.cache_write_input_tokens ?? 0,
+  );
+  const uncached = usage.input_tokens - cached - cacheWrite;
   return (
     (uncached * price.inputPerMillionUsd +
       cached * price.cachedInputPerMillionUsd +
+      cacheWrite * (price.cacheWriteInputPerMillionUsd ?? price.inputPerMillionUsd) +
       usage.output_tokens * price.outputPerMillionUsd) /
     1_000_000
   );

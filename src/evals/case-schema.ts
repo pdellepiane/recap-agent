@@ -187,24 +187,28 @@ const turnTraceSchema = z.object({
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
       cached_input_tokens: z.number().nonnegative().optional(),
+      cache_write_input_tokens: z.number().nonnegative().optional(),
     }).nullable().optional(),
     extraction: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
       cached_input_tokens: z.number().nonnegative().optional(),
+      cache_write_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
     reply: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
       cached_input_tokens: z.number().nonnegative().optional(),
+      cache_write_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
     total: z.object({
       input_tokens: z.number().nonnegative(),
       output_tokens: z.number().nonnegative(),
       total_tokens: z.number().nonnegative(),
       cached_input_tokens: z.number().nonnegative().optional(),
+      cache_write_input_tokens: z.number().nonnegative().optional(),
     }).nullable(),
   }),
   response_classifier: z.object({

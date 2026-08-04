@@ -218,16 +218,21 @@ token count:
 ```bash
 npm run audit:prompts
 npm run audit:prompts -- --remote-token-count
+npm run eval:compare-models
 ```
+
+The comparison command runs the deterministic development regression suite,
+checks every prompt bundle, and uses the non-generative input-token endpoint
+when `OPENAI_API_KEY` is available. Live Luna promotion remains a separate
+post-deployment gate.
 
 ## Lambda runtime env vars
 
 ```bash
-OPENAI_MODEL=gpt-5.4-mini
-OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano
-OPENAI_RESPONSE_CLASSIFIER_MODEL=gpt-5.4-nano
+OPENAI_MODEL=gpt-5.6-luna
+OPENAI_EXTRACTOR_MODEL=gpt-5.6-luna
+OPENAI_RESPONSE_CLASSIFIER_MODEL=gpt-5.6-luna
 RESPONSE_CLASSIFIER_MODE=enforce
-OPENAI_PROMPT_CACHE_RETENTION=in-memory
 AWS_REGION=us-east-1
 PLANS_TABLE_NAME=recap-agent-runtime-plans
 PROMPTS_DIR=/var/task/prompts
@@ -284,7 +289,7 @@ The repo and deployed Lambda are aligned on Node 24 LTS.
 
 CloudFormation template:
 
-- [`infra/cloudformation/stack.yaml`](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/infra/cloudformation/stack.yaml)
+- `infra/cloudformation/stack.yaml`
 
 Deployment script:
 
@@ -293,8 +298,13 @@ Deployment script:
 The deploy script passes model parameter overrides to CloudFormation from `.env` or the shell when present:
 
 ```bash
-OPENAI_MODEL=gpt-5.4-mini OPENAI_EXTRACTOR_MODEL=gpt-5.4-nano OPENAI_PROMPT_CACHE_RETENTION=in-memory PERF_RETENTION_DAYS=30 node scripts/deploy.mjs
+AWS_PROFILE=se-dev AWS_REGION=us-east-1 node scripts/deploy.mjs
 ```
+
+GPT-5.6 calls use `reasoning.effort: none`, low text verbosity, stored
+Responses, and implicit prompt caching with a `30m` minimum TTL. Runtime
+telemetry records cache reads and cache writes separately before any explicit
+cache breakpoints are considered.
 
 Secret handling:
 
