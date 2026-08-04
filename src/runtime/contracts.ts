@@ -25,6 +25,21 @@ import type {
   ProviderReference,
 } from './extraction-schemas';
 
+export type OpenAiRequestMetrics = {
+  instructionBytes: number;
+  inputBytes: number;
+  toolCount: number;
+  schemaPropertyCount: number;
+};
+
+export type OpenAiCallRef = {
+  responseId: string;
+  requestId: string | null;
+  model: string;
+  attemptCount: number;
+  requestMetrics: OpenAiRequestMetrics;
+};
+
 export type ExtractionResult = {
   actionIntent: ActionIntent | null;
   informationRequests: ExtractedInformationRequest[];
@@ -93,6 +108,7 @@ export type ComposeReplyResult = {
     context_candidate_ids: number[];
     presentation_limit: number;
   };
+  openAiCall?: OpenAiCallRef | null;
 };
 
 export type ToolUsage = {
@@ -112,6 +128,7 @@ export type TokenUsage = {
 export type ExtractResult = {
   extraction: ExtractionResult;
   tokenUsage: TokenUsage | null;
+  openAiCall?: OpenAiCallRef | null;
 };
 
 export interface AgentRuntime {

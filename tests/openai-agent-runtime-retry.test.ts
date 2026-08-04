@@ -13,7 +13,8 @@ describe('OpenAiAgentRuntime retry behavior', () => {
   });
 
   it('makes exactly one Agents SDK request for insufficient quota', async () => {
-    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+    const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+      .mockResolvedValue(new Response(JSON.stringify({
       error: {
         message: 'You exceeded your current quota.',
         type: 'insufficient_quota',
@@ -47,5 +48,11 @@ describe('OpenAiAgentRuntime retry behavior', () => {
     })).rejects.toBeDefined();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = fetchMock.mock.calls[0]?.[1]?.body;
+    expect(typeof body).toBe('string');
+    const requestBody = JSON.parse(
+      typeof body === 'string' ? body : '{}',
+    ) as { store?: boolean };
+    expect(requestBody.store).toBe(true);
   });
 });

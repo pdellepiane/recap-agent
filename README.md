@@ -194,6 +194,24 @@ The framework is designed around layered expectations rather than transcript sna
 
 Full usage guidance is documented in [evaluation-framework.md](/Users/leonardocandio/Desktop/UTEC/2026-1/tesis/recap-agent/docs/evaluation-framework.md).
 
+## Stored OpenAI payload audit
+
+Successful classifier, extraction, and reply calls persist their OpenAI
+response and request IDs in the encrypted performance table. The table stores
+only a SHA-256 hash of the Sin Envolturas conversation ID. Raw payloads are
+downloaded only when explicitly requested and are written to the ignored
+`.openai-audits/` directory with file mode `0600`.
+
+```bash
+npm run audit:openai -- --response-id resp_...
+AWS_PROFILE=se-dev AWS_REGION=us-east-1 npm run audit:openai -- --conversation-id <id>
+AWS_PROFILE=se-dev AWS_REGION=us-east-1 npm run audit:openai -- --conversation-id <id> --trace-id <id>
+```
+
+The command uses only `GET /responses/{id}` and paginated
+`GET /responses/{id}/input_items` requests. Conversation lookup is fail-closed
+to development account `684516060775` through profile `se-dev` in `us-east-1`.
+
 ## Lambda runtime env vars
 
 ```bash

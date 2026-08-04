@@ -27,6 +27,8 @@ import type {
   ComposeReplyResult,
   ExtractResult,
   ExtractRequest,
+  OpenAiCallRef,
+  OpenAiRequestMetrics,
   TokenUsage,
 } from './contracts';
 import type { PromptLoader } from './prompt-loader';
@@ -162,6 +164,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     });
 
     const input = this.composeExtractorInput(request, policy);
+    const requestMetrics = this.buildRequestMetrics({
+      instructions: bundle.instructions,
+      input,
+      toolCount: 0,
+      schemaPropertyCount: Object.keys(outputSchema.shape).length,
+    });
 
     try {
       const result = await this.runner.run(extractor, input);
@@ -170,12 +178,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           result.finalOutput as StructuredExtraction,
         ),
         tokenUsage: this.extractTokenUsage(result),
+        openAiCall: this.extractOpenAiCallRef(
+          result,
+          this.options.extractorModel,
+          requestMetrics,
+        ),
       };
     } catch (error) {
       if (error instanceof InputGuardrailTripwireTriggered) {
         return {
           extraction: this.buildJailbreakExtraction(),
           tokenUsage: this.extractTokenUsage(error),
+          openAiCall: null,
         };
       }
       throw error;
@@ -295,6 +309,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     };
 
     const input = this.composeConversationInput(request, recommendationFunnel);
+    const requestMetrics = this.buildRequestMetrics({
+      instructions: bundle.instructions,
+      input,
+      toolCount: tools.length,
+      schemaPropertyCount: Object.keys(outputSchema.shape).length,
+    });
 
     let finalOutput: unknown;
     let runResult: unknown;
@@ -318,6 +338,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           },
           tokenUsage: this.extractTokenUsage(error),
           recommendationFunnel,
+          openAiCall: null,
         };
       }
       if (error instanceof OutputGuardrailTripwireTriggered) {
@@ -336,6 +357,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       structuredMessage: structured,
       tokenUsage: this.extractTokenUsage(runResult),
       recommendationFunnel,
+      openAiCall: this.extractOpenAiCallRef(
+        runResult,
+        this.options.replyModel,
+        requestMetrics,
+      ),
     };
   }
 
@@ -349,6 +375,79 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     return null;
+  }
+
+  private buildRequestMetrics(args: {
+    instructions: string;
+    input: string;
+    toolCount: number;
+    schemaPropertyCount: number;
+  }): OpenAiRequestMetrics {
+    return {
+      instructionBytes: Buffer.byteLength(args.instructions, 'utf8'),
+      inputBytes: Buffer.byteLength(args.input, 'utf8'),
+      toolCount: args.toolCount,
+      schemaPropertyCount: args.schemaPropertyCount,
+    };
+  }
+
+  private extractOpenAiCallRef(
+    value: unknown,
+    model: string,
+    requestMetrics: OpenAiRequestMetrics,
+  ): OpenAiCallRef | null {
+    if (!value || typeof value !== 'object') {
+      return null;
+    }
+    const root = value as Record<string, unknown>;
+    const responseId = typeof root.lastResponseId === 'string'
+      ? root.lastResponseId
+      : this.lastModelResponseField(root, 'responseId');
+    if (!responseId) {
+      return null;
+    }
+    const requestId = this.lastModelResponseField(root, 'requestId');
+    const state = root.state && typeof root.state === 'object'
+      ? root.state as Record<string, unknown>
+      : null;
+    const usage = state?.usage && typeof state.usage === 'object'
+      ? state.usage as Record<string, unknown>
+      : null;
+    const attempts = usage
+      ? this.readNumericField(usage, ['requests'])
+      : null;
+
+    return {
+      responseId,
+      requestId,
+      model,
+      attemptCount: Math.max(1, attempts ?? 1),
+      requestMetrics,
+    };
+  }
+
+  private lastModelResponseField(
+    root: Record<string, unknown>,
+    field: 'responseId' | 'requestId',
+  ): string | null {
+    const directResponses = this.toUnknownArray(root.rawResponses);
+    const state = root.state && typeof root.state === 'object'
+      ? root.state as Record<string, unknown>
+      : null;
+    const stateResponses = this.toUnknownArray(state?.rawResponses);
+    const responses = directResponses.length > 0
+      ? directResponses
+      : stateResponses;
+    const lastResponse = responses.at(-1);
+    if (!lastResponse || typeof lastResponse !== 'object') {
+      return null;
+    }
+    const candidate = (lastResponse as Record<string, unknown>)[field];
+    return typeof candidate === 'string' ? candidate : null;
+  }
+
+  private toUnknownArray(value: unknown): unknown[] {
+    return Array.isArray(value) ? value as unknown[] : [];
   }
 
   private collectUsageCandidates(value: unknown): unknown[] {
@@ -654,6 +753,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }): {
     promptCacheRetention: 'in-memory' | '24h';
     providerData: Record<string, string>;
+    store: true;
     reasoning?: { effort: 'none' };
     text?: { verbosity: 'low' };
     retry?: {
@@ -665,6 +765,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const baseSettings: {
       promptCacheRetention: 'in-memory' | '24h';
       providerData: Record<string, string>;
+      store: true;
       reasoning?: { effort: 'none' };
       text?: { verbosity: 'low' };
       retry?: {
@@ -680,6 +781,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       providerData: {
         prompt_cache_key: args.cacheKey,
       },
+      store: true,
       retry: {
         maxRetries: 3,
         backoff: { initialDelayMs: 1000, maxDelayMs: 30_000, multiplier: 2, jitter: true },

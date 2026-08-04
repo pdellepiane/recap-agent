@@ -2,6 +2,41 @@
 
 ## 2026-08-04
 
+### Persist and retrieve OpenAI response references safely
+
+**Reason:** Performance and CloudWatch records had token totals but no
+`resp_...` identifiers, so the exact request and response payloads could not be
+reconstructed. Performance records also stored the raw Sin Envolturas
+conversation ID.
+
+**Changes:**
+- Added typed per-component OpenAI call references with response ID, transport
+  request ID, model, attempt count, and instruction/input/tool/schema metrics.
+- Explicitly enabled `store: true` for classifier, extractor, and reply
+  Responses calls and propagated successful references through turn traces into
+  DynamoDB performance records.
+- Replaced raw performance `conversation_id` with `conversation_hash`; the
+  partition key now uses the same SHA-256 value while runtime state continues
+  using the original ID only in memory.
+- Added `npm run audit:openai` for direct response IDs or hashed
+  conversation/trace lookup. It retrieves response objects and every paginated
+  input item with GET requests only, then combines identifiers, instructions,
+  input, tools, schema, settings, output, and usage.
+- Added secret-safe errors, ignored local output, `0700` audit directories,
+  `0600` audit files, and fail-closed development AWS identity checks.
+- Added tests proving GET-only pagination, API-key redaction, private file
+  permissions, stored request flags, reference extraction, and hashed
+  persistence.
+
+**Decision:** Do not introduce OpenAI Conversations. Keep the three model roles
+isolated and use stored response retrieval only for explicit, time-bounded local
+audits. Existing raw-key performance rows will age out through TTL without a
+compatibility path.
+
+**Validation:** `npm run check` and `npm run build` passed. No model generation
+or OpenAI network access was used by audit tests. Deployment and scoped live
+retrieval remain deferred until the final integrated Luna baseline passes.
+
 ### Make OpenAI retries error-aware
 
 **Reason:** Classifier and Agents SDK calls either had no application retry or

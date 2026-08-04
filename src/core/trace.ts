@@ -3,6 +3,7 @@ import type { ProviderSummary } from './provider';
 import type { TurnDecision } from './turn-decision';
 import type { MessageResponseClassifierTrace } from '../runtime/message-response-classifier';
 import type { InformationExecutionSummary } from './information';
+import type { OpenAiCallRef } from '../runtime/contracts';
 
 export type ToolOutputTrace = {
   tool: string;
@@ -226,6 +227,11 @@ export type TurnTrace = {
       total_tokens: number;
       cached_input_tokens?: number;
     } | null;
+  };
+  openai_calls: {
+    classifier: OpenAiCallRef | null;
+    extraction: OpenAiCallRef | null;
+    reply: OpenAiCallRef | null;
   };
   response_classifier?: MessageResponseClassifierTrace;
   message_context: MessageContextTrace;

@@ -91,7 +91,7 @@ export type TurnPerfRecord = {
   captured_at: string;
   ttl_epoch_seconds: number;
   trace_id: string;
-  conversation_id: string | null;
+  conversation_hash: string;
   plan_id: string;
   channel: string;
   external_user_hash: string;
@@ -111,6 +111,7 @@ export type TurnPerfRecord = {
   runtime_latency_ms: number;
   timing_ms: TurnTrace['timing_ms'];
   token_usage: TurnTrace['token_usage'];
+  openai_calls: TurnTrace['openai_calls'];
   response_classifier?: TurnTrace['response_classifier'];
   message_context: TurnTrace['message_context'];
   previous_node: string;
@@ -158,7 +159,7 @@ export type TurnPerfRecord = {
 
 export type CliPerfSummary = {
   trace_id: string;
-  conversation_id: string | null;
+  conversation_hash: string;
   runtime_latency_ms: number;
   extraction_latency_ms: number;
   compose_latency_ms: number;
@@ -202,6 +203,7 @@ export function buildTurnPerfRecord(args: {
   const capturedAtIso = capturedAt.toISOString();
   const ttlEpochSeconds = Math.floor(capturedAt.getTime() / 1000) + (args.retentionDays * 24 * 60 * 60);
   const conversationKey = args.trace.conversation_id ?? args.trace.plan_id;
+  const conversationHash = sha256(conversationKey);
   const totalTokenUsage = args.trace.token_usage.total;
   const cachedInputTokens = totalTokenUsage?.cached_input_tokens ?? null;
   const cacheHitRate = totalTokenUsage && cachedInputTokens !== null && totalTokenUsage.input_tokens > 0
@@ -234,7 +236,7 @@ export function buildTurnPerfRecord(args: {
   });
 
   return {
-    pk: `CONVERSATION#${conversationKey}`,
+    pk: `CONVERSATION#${conversationHash}`,
     sk: `TURN#${capturedAtIso}#${args.trace.trace_id}`,
     gsi1pk: `CHANNEL_USER#${args.channel}#${sha256(args.externalUserId)}`,
     gsi1sk: `TURN#${capturedAtIso}#${args.trace.trace_id}`,
@@ -242,7 +244,7 @@ export function buildTurnPerfRecord(args: {
     captured_at: capturedAtIso,
     ttl_epoch_seconds: ttlEpochSeconds,
     trace_id: args.trace.trace_id,
-    conversation_id: args.trace.conversation_id,
+    conversation_hash: conversationHash,
     plan_id: args.trace.plan_id,
     channel: args.channel,
     external_user_hash: sha256(args.externalUserId),
@@ -266,6 +268,7 @@ export function buildTurnPerfRecord(args: {
     runtime_latency_ms: args.trace.timing_ms.total,
     timing_ms: args.trace.timing_ms,
     token_usage: args.trace.token_usage,
+    openai_calls: args.trace.openai_calls,
     response_classifier: args.trace.response_classifier,
     message_context: args.trace.message_context,
     previous_node: args.trace.previous_node,
@@ -532,7 +535,7 @@ export function toCliPerfSummary(
 ): CliPerfSummary {
   return {
     trace_id: record.trace_id,
-    conversation_id: record.conversation_id,
+    conversation_hash: record.conversation_hash,
     runtime_latency_ms: record.runtime_latency_ms,
     extraction_latency_ms: record.timing_ms.extraction,
     compose_latency_ms: record.timing_ms.compose_reply,

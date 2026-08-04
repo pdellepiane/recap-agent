@@ -56,12 +56,24 @@ describe('OpenAiMessageResponseClassifier', () => {
       fallback_used: false,
     });
     expect(response.tokenUsage).toMatchObject({ total_tokens: 17 });
+    expect(response.openAiCall).toMatchObject({
+      responseId: 'resp_test',
+      requestId: 'req_test',
+      model: 'gpt-5.4-nano',
+      attemptCount: 1,
+      requestMetrics: {
+        toolCount: 0,
+        schemaPropertyCount: 8,
+      },
+    });
     const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
     const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
+      store: boolean;
       text: { format: { type: string } };
       input: Array<{ content: string }>;
     };
     expect(request.text.format.type).toBe('json_schema');
+    expect(request.store).toBe(true);
     const classifierInput = JSON.parse(request.input[1]?.content ?? '{}') as {
       inbound_message: string;
       recent_messages: Array<{ body: string }>;
@@ -616,6 +628,9 @@ function responseForDecision(decision: {
     truncation: 'disabled',
   }), {
     status: 200,
-    headers: { 'content-type': 'application/json' },
+    headers: {
+      'content-type': 'application/json',
+      'x-request-id': 'req_test',
+    },
   });
 }

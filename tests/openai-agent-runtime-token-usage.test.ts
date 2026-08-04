@@ -104,6 +104,47 @@ function createProvider(
 }
 
 describe('OpenAiAgentRuntime token usage parsing', () => {
+  it('captures stored response and transport request references from an Agents SDK run', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const typedRuntime = runtime as unknown as {
+      extractOpenAiCallRef: (
+        value: unknown,
+        model: string,
+        metrics: {
+          instructionBytes: number;
+          inputBytes: number;
+          toolCount: number;
+          schemaPropertyCount: number;
+        },
+      ) => unknown;
+    };
+
+    expect(typedRuntime.extractOpenAiCallRef({
+      lastResponseId: 'resp_agent_test',
+      rawResponses: [{
+        responseId: 'resp_agent_test',
+        requestId: 'req_agent_test',
+      }],
+      state: { usage: { requests: 2 } },
+    }, 'gpt-5.4-nano', {
+      instructionBytes: 100,
+      inputBytes: 200,
+      toolCount: 0,
+      schemaPropertyCount: 12,
+    })).toEqual({
+      responseId: 'resp_agent_test',
+      requestId: 'req_agent_test',
+      model: 'gpt-5.4-nano',
+      attemptCount: 2,
+      requestMetrics: {
+        instructionBytes: 100,
+        inputBytes: 200,
+        toolCount: 0,
+        schemaPropertyCount: 12,
+      },
+    });
+  });
+
   it('extracts usage from SDK run state camelCase shape', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const parsed = extractTokenUsageFrom(runtime, {

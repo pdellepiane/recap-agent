@@ -3,7 +3,7 @@ import { zodTextFormat } from 'openai/helpers/zod';
 import { z } from 'zod';
 
 import type { PersistedPlan } from '../core/plan';
-import type { TokenUsage } from './contracts';
+import type { OpenAiCallRef, TokenUsage } from './contracts';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
 import type { PromptLoader } from './prompt-loader';
 import { executeWithOpenAiRetry } from './openai-retry';
@@ -77,6 +77,7 @@ export type MessageResponseClassifierTrace = {
 export type MessageResponseClassifierResult = {
   trace: MessageResponseClassifierTrace;
   tokenUsage: TokenUsage | null;
+  openAiCall?: OpenAiCallRef | null;
 };
 
 export interface MessageResponseClassifier {
@@ -125,22 +126,26 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       const bundle = await this.options.promptLoader.loadResponseClassifierBundle();
       promptBundleId = bundle.id;
       promptFilePaths = bundle.filePaths;
-      const { value: response } = await executeWithOpenAiRetry(() =>
-        this.client.responses.parse({
+      const modelInput = this.buildInput(args, hasPriorOutboundMessage);
+      const userInput = JSON.stringify(modelInput);
+      const request = {
         model: this.options.model,
-        reasoning: { effort: 'none' },
+        reasoning: { effort: 'none' as const },
         max_output_tokens: 128,
+        store: true,
         input: [
-          { role: 'system', content: bundle.instructions },
+          { role: 'system' as const, content: bundle.instructions },
           {
-            role: 'user',
-            content: JSON.stringify(this.buildInput(args, hasPriorOutboundMessage)),
+            role: 'user' as const,
+            content: userInput,
           },
         ],
         text: {
           format: zodTextFormat(classifierOutputSchema, 'reply_delivery_decision'),
         },
-        }),
+      };
+      const { value: response, attemptCount } = await executeWithOpenAiRetry(() =>
+        this.client.responses.parse(request),
       );
       const decision = response.output_parsed;
       if (!decision) {
@@ -205,6 +210,18 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           prompt_file_paths: bundle.filePaths,
         },
         tokenUsage: this.toTokenUsage(response.usage),
+        openAiCall: {
+          responseId: response.id,
+          requestId: response._request_id ?? null,
+          model: this.options.model,
+          attemptCount,
+          requestMetrics: {
+            instructionBytes: Buffer.byteLength(bundle.instructions, 'utf8'),
+            inputBytes: Buffer.byteLength(userInput, 'utf8'),
+            toolCount: 0,
+            schemaPropertyCount: Object.keys(classifierOutputSchema.shape).length,
+          },
+        },
       };
     } catch {
       return this.fallback({
@@ -267,6 +284,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         prompt_file_paths: args.promptFilePaths,
       },
       tokenUsage: null,
+      openAiCall: null,
     };
   }
 

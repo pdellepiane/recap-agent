@@ -68,6 +68,7 @@ import type {
   ToolUsage,
 } from './contracts';
 import type { TokenUsage } from './contracts';
+import type { OpenAiCallRef } from './contracts';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import {
   NoopAgentConversationGateway,
@@ -171,6 +172,11 @@ type TurnTokenUsage = {
   extraction: TokenUsage | null;
   reply: TokenUsage | null;
   total: TokenUsage | null;
+  openAiCalls: {
+    classifier: OpenAiCallRef | null;
+    extraction: OpenAiCallRef | null;
+    reply: OpenAiCallRef | null;
+  };
 };
 
 const MAX_BROADEN_SEARCH_PAGES = 5;
@@ -228,6 +234,11 @@ export class AgentService {
       extraction: null,
       reply: null,
       total: null,
+      openAiCalls: {
+        classifier: null,
+        extraction: null,
+        reply: null,
+      },
     };
     const agentConversationGateway =
       this.dependencies.agentConversationGateway ??
@@ -285,6 +296,7 @@ export class AgentService {
       });
       timingMs.response_classification += Date.now() - preflightStartedAt;
       tokenUsage.classifier = preflight.tokenUsage;
+      tokenUsage.openAiCalls.classifier = preflight.openAiCall ?? null;
       tokenUsage.total = this.sumTokenUsage(tokenUsage.classifier);
       responseClassifierTrace = preflight.trace;
     }
@@ -574,6 +586,10 @@ export class AgentService {
         'tokenUsage' in rawExtractionResult
           ? (rawExtractionResult.tokenUsage ?? null)
           : null;
+      tokenUsage.openAiCalls.extraction =
+        'openAiCall' in rawExtractionResult
+          ? (rawExtractionResult.openAiCall ?? null)
+          : null;
       timingMs.extraction += Date.now() - extractionStartedAt;
       finishedExtraction =
         this.normalizeInformationExtractionAmbiguity(finishedExtraction);
@@ -640,6 +656,7 @@ export class AgentService {
           composedReply,
         );
         tokenUsage.reply = reply.tokenUsage ?? null;
+        tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
         tokenUsage.total = this.sumTokenUsage(
           tokenUsage.classifier,
           tokenUsage.extraction,
@@ -712,6 +729,10 @@ export class AgentService {
     tokenUsage.extraction =
       'tokenUsage' in rawExtractionResult
         ? (rawExtractionResult.tokenUsage ?? null)
+        : null;
+    tokenUsage.openAiCalls.extraction =
+      'openAiCall' in rawExtractionResult
+        ? (rawExtractionResult.openAiCall ?? null)
         : null;
     timingMs.extraction += Date.now() - extractionStartedAt;
 
@@ -916,6 +937,7 @@ export class AgentService {
         toolUsage,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
+      tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
       tokenUsage.total = this.sumTokenUsage(
         tokenUsage.classifier,
         tokenUsage.extraction,
@@ -1029,6 +1051,7 @@ export class AgentService {
           toolUsage,
         });
         tokenUsage.reply = reply.tokenUsage ?? null;
+        tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
         tokenUsage.total = this.sumTokenUsage(
           tokenUsage.classifier,
           tokenUsage.extraction,
@@ -1101,6 +1124,7 @@ export class AgentService {
         toolUsage,
       });
       tokenUsage.reply = reply.tokenUsage ?? null;
+      tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
       tokenUsage.total = this.sumTokenUsage(
         tokenUsage.classifier,
         tokenUsage.extraction,
@@ -1455,6 +1479,7 @@ export class AgentService {
       composedReply,
     );
     tokenUsage.reply = reply.tokenUsage ?? null;
+    tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
       tokenUsage.total = this.sumTokenUsage(
         tokenUsage.classifier,
         tokenUsage.extraction,
@@ -1693,6 +1718,7 @@ export class AgentService {
     );
     const reply = ambiguitySafeReply;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
+    args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
       args.tokenUsage.classifier,
       args.tokenUsage.extraction,
@@ -2384,6 +2410,7 @@ export class AgentService {
   }): Promise<{
     trace: MessageResponseClassifierTrace;
     tokenUsage: TokenUsage | null;
+    openAiCall?: OpenAiCallRef | null;
   }> {
     const classifier = this.dependencies.responseClassifier;
     if (!classifier) {
@@ -3353,7 +3380,7 @@ export class AgentService {
     planPersisted: boolean;
     planPersistReason: string | null;
     timingMs: TurnTrace['timing_ms'];
-    tokenUsage: TurnTrace['token_usage'];
+    tokenUsage: TurnTokenUsage;
     responseClassifier?: MessageResponseClassifierTrace;
     messageContext: TurnMessageContext;
     searchStrategy: SearchStrategyTrace;
@@ -3407,7 +3434,17 @@ export class AgentService {
       plan_persisted: args.planPersisted,
       plan_persist_reason: args.planPersistReason,
       timing_ms: args.timingMs,
-      token_usage: args.tokenUsage,
+      token_usage: {
+        classifier: args.tokenUsage.classifier,
+        extraction: args.tokenUsage.extraction,
+        reply: args.tokenUsage.reply,
+        total: args.tokenUsage.total,
+      },
+      openai_calls: {
+        classifier: args.tokenUsage.openAiCalls.classifier,
+        extraction: args.tokenUsage.openAiCalls.extraction,
+        reply: args.tokenUsage.openAiCalls.reply,
+      },
       response_classifier: args.responseClassifier,
       message_context: {
         history_status: args.messageContext.historyStatus,

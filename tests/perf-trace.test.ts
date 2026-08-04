@@ -202,6 +202,22 @@ describe('perf trace module', () => {
             cached_input_tokens: 600,
           },
         },
+        openai_calls: {
+          classifier: null,
+          extraction: {
+            responseId: 'resp_extract_test',
+            requestId: 'req_extract_test',
+            model: 'gpt-5.4-nano',
+            attemptCount: 1,
+            requestMetrics: {
+              instructionBytes: 100,
+              inputBytes: 200,
+              toolCount: 0,
+              schemaPropertyCount: 12,
+            },
+          },
+          reply: null,
+        },
       },
       channel: 'terminal_whatsapp',
       externalUserId: 'user-1',
@@ -227,13 +243,16 @@ describe('perf trace module', () => {
       retentionDays: 30,
     });
 
-    expect(record.pk).toBe('CONVERSATION#conv-1');
+    expect(record.pk).toMatch(/^CONVERSATION#[a-f0-9]{64}$/u);
+    expect(record.conversation_hash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(JSON.stringify(record)).not.toContain('conv-1');
     expect(record.record_type).toBe('turn_perf_v1');
     expect(record.cache_hit_rate).toBe(0.3);
     expect(record.extraction_to_compose_ratio).toBe(0.6);
     expect(record.external_user_hash).toHaveLength(64);
     expect(record.user_message_hash).toHaveLength(64);
     expect(record.user_message_preview).toBe('hola');
+    expect(record.openai_calls.extraction?.responseId).toBe('resp_extract_test');
     expect(record.media_count).toBe(1);
     expect(record.media_kinds).toEqual(['image']);
     expect(record.media_mime_types).toEqual(['image/jpeg']);
@@ -319,7 +338,7 @@ describe('perf trace module', () => {
       captured_at: '2026-04-16T00:00:00.000Z',
       ttl_epoch_seconds: 1,
       trace_id: 'trace-1',
-      conversation_id: 'conv-1',
+      conversation_hash: 'conversation-hash',
       plan_id: 'plan-1',
       channel: 'terminal_whatsapp',
       external_user_hash: 'hash',
@@ -359,6 +378,11 @@ describe('perf trace module', () => {
           total_tokens: 1100,
           cached_input_tokens: 200,
         },
+      },
+      openai_calls: {
+        classifier: null,
+        extraction: null,
+        reply: null,
       },
       message_context: {
         history_status: 'empty',
