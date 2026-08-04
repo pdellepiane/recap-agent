@@ -11,6 +11,66 @@ export const conversationSharedPromptFiles = [
   'shared/common_anti_patterns.txt',
 ] as const;
 
+const conversationCorePromptFiles = [
+  'shared/base_system.txt',
+  'shared/agent_personality.txt',
+  'shared/output_style.txt',
+  'shared/common_anti_patterns.txt',
+] as const;
+
+const conversationPlanningPromptFiles = [
+  'shared/domain_scope.txt',
+  'shared/domain_knowledge.txt',
+  'shared/flow_discipline.txt',
+] as const;
+
+const planningNodes = new Set<DecisionNode>([
+  'existe_plan_guardado',
+  'entrevista',
+  'elicitacion_necesidades',
+  'minimos_para_buscar',
+  'aclarar_pedir_faltante',
+  'usuario_responde',
+  'buscar_proveedores',
+  'busqueda_exitosa',
+  'hay_resultados',
+  'recomendar',
+  'refinar_criterios',
+  'usuario_elige_proveedor',
+  'anadir_a_proveedores_recomendados',
+  'seguir_refinando_guardar_plan',
+  'continua',
+  'accion_final_exitosa',
+  'necesidad_cubierta',
+  'crear_lead_cerrar',
+  'guardar_seleccion_reintentar_luego',
+  'guardar_cerrar_temporalmente',
+  'reintentar',
+]);
+
+const questionStrategyNodes = new Set<DecisionNode>([
+  'entrevista',
+  'elicitacion_necesidades',
+  'minimos_para_buscar',
+  'aclarar_pedir_faltante',
+  'usuario_responde',
+  'refinar_criterios',
+]);
+
+export function conversationPromptFilesForNode(node: DecisionNode): readonly string[] {
+  return [
+    ...conversationCorePromptFiles,
+    ...(planningNodes.has(node) ? conversationPlanningPromptFiles : []),
+    ...(questionStrategyNodes.has(node) ? ['shared/question_strategy.txt'] : []),
+  ];
+}
+
+export function promptRuleIdForFile(relativePath: string): string {
+  return `prompt.${relativePath
+    .replace(/\.(txt|md)$/u, '')
+    .replaceAll('/', '.')}`;
+}
+
 export const extractorPromptFiles = [
   'extractors/system.txt',
   'extractors/field_definitions.txt',

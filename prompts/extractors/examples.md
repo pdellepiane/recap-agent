@@ -21,7 +21,6 @@ Ejemplos breves:
 - vendorCategory: Locales
 - activeNeedCategory: Locales
 - vendorCategories: [Locales]
-- activeNeedCategory: null
 - location: Lima
 - budgetSignal: null
 

@@ -6,7 +6,14 @@ import { describe, expect, it } from 'vitest';
 
 import { decisionNodes } from '../src/core/decision-nodes';
 import { PromptLoader } from '../src/runtime/prompt-loader';
-import { conversationSharedPromptFiles, extractorPromptFiles, nodePromptManifest, toolNames } from '../src/runtime/prompt-manifest';
+import {
+  conversationPromptFilesForNode,
+  conversationSharedPromptFiles,
+  extractorPromptFiles,
+  nodePromptManifest,
+  promptRuleIdForFile,
+  toolNames,
+} from '../src/runtime/prompt-manifest';
 
 describe('PromptLoader', () => {
   const promptsDir = path.resolve(process.cwd(), 'prompts');
@@ -19,16 +26,72 @@ describe('PromptLoader', () => {
 
       expect(first.id).toBe(second.id);
       expect(first.filePaths.length).toBe(
-        conversationSharedPromptFiles.length + 3,
+        conversationPromptFilesForNode(node).length + 3,
       );
+      expect(first.ruleIds).toHaveLength(first.filePaths.length);
+      expect(new Set(first.ruleIds).size).toBe(first.ruleIds.length);
       expect(first.filePaths).toContain('shared/agent_personality.txt');
       expect(first.filePaths.indexOf('shared/agent_personality.txt')).toBeLessThan(
         first.filePaths.indexOf('shared/output_style.txt'),
       );
       expect(first.instructions.length).toBeGreaterThan(0);
       expect(first.instructions).toContain('Personalidad del agente');
-      expect(first.instructions).toContain('Evita que el mensaje final termine con punto');
+      expect(first.instructions).toContain('evita que el mensaje final termine con punto');
       expect(first.filePaths.some((filePath) => filePath.includes(`nodes/${node}/`))).toBe(true);
+    }
+  });
+
+  it('assigns every prompt file one stable rule ID and one owner', () => {
+    const ownedFiles = [
+      ...conversationSharedPromptFiles,
+      ...extractorPromptFiles,
+      ...Object.values(nodePromptManifest).flatMap((config) => config.files),
+      'nodes/deteccion_intencion/response_classifier.txt',
+    ];
+    const uniqueFiles = new Set(ownedFiles);
+    const ruleIds = [...uniqueFiles].map(promptRuleIdForFile);
+
+    expect(uniqueFiles.size).toBe(ownedFiles.length);
+    expect(new Set(ruleIds).size).toBe(ruleIds.length);
+    expect(promptRuleIdForFile('shared/base_system.txt')).toBe(
+      'prompt.shared.base_system',
+    );
+  });
+
+  it('loads only shared policies relevant to the current route', async () => {
+    const welcome = await loader.loadNodeBundle('contacto_inicial');
+    const information = await loader.loadNodeBundle('resolver_consultas_informativas');
+    const interview = await loader.loadNodeBundle('entrevista');
+    const recommendation = await loader.loadNodeBundle('recomendar');
+
+    for (const bundle of [welcome, information]) {
+      expect(bundle.filePaths).not.toContain('shared/domain_knowledge.txt');
+      expect(bundle.filePaths).not.toContain('shared/flow_discipline.txt');
+      expect(bundle.filePaths).not.toContain('shared/question_strategy.txt');
+    }
+    expect(interview.filePaths).toContain('shared/domain_knowledge.txt');
+    expect(interview.filePaths).toContain('shared/flow_discipline.txt');
+    expect(interview.filePaths).toContain('shared/question_strategy.txt');
+    expect(recommendation.filePaths).toContain('shared/domain_knowledge.txt');
+    expect(recommendation.filePaths).not.toContain('shared/question_strategy.txt');
+  });
+
+  it('has no repeated normalized paragraphs inside any route bundle', async () => {
+    for (const node of decisionNodes) {
+      const bundle = await loader.loadNodeBundle(node);
+      const paragraphs = bundle.instructions
+        .split(/\n\s*\n/gu)
+        .map((paragraph) => paragraph
+          .replace(/^## .*\n/gu, '')
+          .replace(/\s+/gu, ' ')
+          .trim()
+          .toLocaleLowerCase('es'))
+        .filter(Boolean);
+      const duplicates = paragraphs.filter(
+        (paragraph, index) => paragraphs.indexOf(paragraph) !== index,
+      );
+
+      expect(duplicates, `duplicate prompt paragraphs for ${node}`).toEqual([]);
     }
   });
 

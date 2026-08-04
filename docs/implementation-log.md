@@ -2,6 +2,34 @@
 
 ## 2026-08-04
 
+### Enforce route-scoped prompt composition
+
+**Reason:** Every reply route loaded all eight shared prompt modules, including
+planning knowledge, flow rules, and question strategy that many routes could
+not use. The personality module also repeated style, domain, and situation
+guidance, while an extractor example assigned two contradictory values to
+`activeNeedCategory`.
+
+**Changes:**
+- Defined core, planning, and question-strategy prompt profiles and now compose
+  only the shared modules required by the current decision node.
+- Assigned each prompt file a deterministic stable rule ID and exposed those
+  IDs in loaded bundles for audits and ownership checks.
+- Reduced the shared personality file to its owned voice guidance, leaving
+  output, domain, flow, and node behavior in their dedicated files.
+- Removed the contradictory `activeNeedCategory: null` line from the auditorium
+  extractor example.
+- Added tests for stable one-file ownership, required route coverage, unrelated
+  module exclusion, and repeated normalized paragraphs.
+
+**Decision:** A prompt file is the atomic rule-ownership unit. Core voice and
+output rules apply everywhere; planning and question modules are opt-in route
+capabilities, while node files remain the exact behavioral owners.
+
+**Validation:** `npm run check` and `npm run build` passed, and both development
+CloudFormation stacks deployed successfully through the guarded `se-dev`
+profile in `us-east-1`.
+
 ### Preserve complete decision evidence without duplicate reply projections
 
 **Reason:** Reply requests projected the same plan state through overlapping

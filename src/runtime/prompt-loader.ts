@@ -4,15 +4,17 @@ import path from 'node:path';
 
 import type { DecisionNode } from '../core/decision-nodes';
 import {
-  conversationSharedPromptFiles,
+  conversationPromptFilesForNode,
   extractorPromptFiles,
   nodePromptManifest,
+  promptRuleIdForFile,
   type ToolName,
 } from './prompt-manifest';
 
 export type PromptBundle = {
   id: string;
   filePaths: string[];
+  ruleIds: string[];
   instructions: string;
   allowedTools: readonly ToolName[];
 };
@@ -22,7 +24,7 @@ export class PromptLoader {
 
   async loadNodeBundle(node: DecisionNode): Promise<PromptBundle> {
     const config = nodePromptManifest[node];
-    const relativePaths = [...conversationSharedPromptFiles, ...config.files];
+    const relativePaths = [...conversationPromptFilesForNode(node), ...config.files];
     return this.load(relativePaths, config.allowedTools);
   }
 
@@ -65,6 +67,7 @@ export class PromptLoader {
     return {
       id,
       filePaths: contents.map(({ relativePath }) => relativePath),
+      ruleIds: contents.map(({ relativePath }) => promptRuleIdForFile(relativePath)),
       instructions,
       allowedTools,
     };
