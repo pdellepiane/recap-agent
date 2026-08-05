@@ -5054,6 +5054,7 @@ production guest-auth base URL.
 - Added `npm run eval:behavior-live`; it requires an evaluator key and exits unsuccessfully for failed, errored, skipped, or missing cases.
 - Added `requireJudge` to semantic expectations so behavior gates cannot pass when evaluation was silently skipped.
 - Added repository rules requiring context-complete live cases and deterministic offline twins where feasible for every future interaction fix, and requiring the live gate after behavior-changing deployments.
+- Removed the legacy deterministic-temperature parameter from the semantic judge after the fail-closed gate exposed that GPT-5.6 Luna rejects `temperature: 0`; an injected-client request test now locks the compatible request shape.
 
 ### Consolidate the Spanish-only response contract
 

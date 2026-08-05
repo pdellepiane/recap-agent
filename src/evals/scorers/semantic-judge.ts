@@ -29,6 +29,7 @@ export async function runSemanticJudge(args: {
   model: string;
   rubric: string;
   candidateText: string;
+  client?: OpenAI;
 }): Promise<SemanticJudgeOutcome> {
   if (!args.apiKey) {
     return {
@@ -38,10 +39,9 @@ export async function runSemanticJudge(args: {
     };
   }
 
-  const client = new OpenAI({ apiKey: args.apiKey });
+  const client = args.client ?? new OpenAI({ apiKey: args.apiKey });
   const completion = await client.chat.completions.create({
     model: args.model,
-    temperature: 0,
     messages: [
       {
         role: 'system',
