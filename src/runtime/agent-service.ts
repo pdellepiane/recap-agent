@@ -744,6 +744,7 @@ export class AgentService {
       workingPlan,
       extraction,
     );
+    extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
     if (
       this.hasInformationWork(workingPlan, extraction) &&
       extraction.actionIntent !== 'pausar' &&
@@ -5328,6 +5329,20 @@ export class AgentService {
     };
   }
 
+  private preserveContactPhoneCandidate(
+    extraction: ExtractionResult,
+    userMessage: string,
+  ): ExtractionResult {
+    if (extraction.contactPhone !== null) {
+      return extraction;
+    }
+
+    const candidate = this.extractContactPhoneCandidate(userMessage);
+    return candidate === null
+      ? extraction
+      : { ...extraction, contactPhone: candidate };
+  }
+
   private isCloseContactFieldTurn(
     previousNode: DecisionNode | null,
     extraction: ExtractionResult,
@@ -5392,6 +5407,7 @@ export class AgentService {
     const patterns = [
       /\b\d[\d\s().-]{5,14}\d\b/u,
       /\b\d{6,15}\b/u,
+      /\b\d{1,5}\b/u,
     ];
     for (const pattern of patterns) {
       const match = text.match(pattern);

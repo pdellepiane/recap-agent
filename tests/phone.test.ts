@@ -26,6 +26,15 @@ describe('phone parsing', () => {
     });
   });
 
+  it('accepts a complete supported international number without a plus sign', () => {
+    expect(parseInternationalPhone('51954779071')).toEqual({
+      status: 'valid',
+      digits: '51954779071',
+      countryCode: '+51',
+      nationalNumber: '954779071',
+    });
+  });
+
   it('rejects local numbers without country code', () => {
     const result = parseInternationalPhone('954779067');
 

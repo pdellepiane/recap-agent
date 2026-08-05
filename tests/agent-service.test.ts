@@ -7070,7 +7070,7 @@ describe('AgentService', () => {
           pauseRequested: false,
           contactName: null,
           contactEmail: null,
-          contactPhone: '967',
+          contactPhone: null,
           providerFitCriteria: testProviderFitCriteria,
           closeAction: null,
           providerQueryIntents: [],
@@ -7142,7 +7142,7 @@ describe('AgentService', () => {
     const response = await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'user-invalid-close-phone',
-      text: '967',
+      text: 'mi teléfono es 967',
       messageId: 'msg-invalid-close-phone',
       receivedAt: new Date().toISOString(),
     });

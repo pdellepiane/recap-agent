@@ -48,14 +48,13 @@ export function parseInternationalPhone(value: string | null | undefined): Phone
     return { status: 'invalid', reason: 'invalid_characters' };
   }
 
-  if (!trimmed.startsWith('+')) {
-    return { status: 'invalid', reason: 'missing_country_code' };
-  }
-
   const digits = trimmed.replace(/\D/g, '');
   const matchedRule = COUNTRY_RULES.find((rule) =>
     digits.startsWith(rule.code.slice(1)),
   );
+  if (!trimmed.startsWith('+') && !matchedRule) {
+    return { status: 'invalid', reason: 'missing_country_code' };
+  }
   if (!matchedRule) {
     return { status: 'invalid', reason: 'unsupported_country_code' };
   }
