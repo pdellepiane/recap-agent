@@ -29,6 +29,7 @@ export async function runSemanticJudge(args: {
   model: string;
   rubric: string;
   candidateText: string;
+  context?: string;
   client?: OpenAI;
 }): Promise<SemanticJudgeOutcome> {
   if (!args.apiKey) {
@@ -50,7 +51,11 @@ export async function runSemanticJudge(args: {
       },
       {
         role: 'user',
-        content: `Rubric:\n${args.rubric}\n\nCandidate:\n${args.candidateText}`,
+        content: [
+          `Rubric:\n${args.rubric}`,
+          args.context ? `Interaction context:\n${args.context}` : null,
+          `Candidate response:\n${args.candidateText}`,
+        ].filter((section): section is string => section !== null).join('\n\n'),
       },
     ],
   });

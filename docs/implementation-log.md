@@ -5058,6 +5058,8 @@ production guest-auth base URL.
 - The first mandatory live run passed the Spanish-only case but exposed close-flow defects. Accepted complete supported international digits with or without a plus sign, and retained short phone candidates omitted by extraction long enough to validate them and keep the close node active.
 - Corrected the multifront interaction contract without weakening behavior: it now accepts an honest statement that retrieval found no exact live-music match instead of requiring the agent to imply a fabricated match.
 - Completed the live fixtures exposed by the second run: close flow now stops when `finish_plan` succeeds instead of sending a post-finish confirmation into a new plan; the correction fixture carries the selected provider evidence required by the finish tool; and the extractor explicitly maps “no quiero ninguna” for an unambiguous shortlisted category to `defer_need`, preventing the close flow from asking the same choice again.
+- Narrowed the Spanish-only semantic rubric after the third run reached 4/5: the judge must inspect retained plan evidence and cannot require the reply to restate an already retained event type or location. This keeps the no-English gate strict while avoiding redundant prompt/output behavior.
+- Changed semantic expectations from response-only judging to context-complete judging. The evaluator now receives the synthetic interaction history, node transitions, tools, retained event evidence, provider-need states, and contact-field presence through the selected turn, while raw contact values remain excluded.
 
 ### Consolidate the Spanish-only response contract
 

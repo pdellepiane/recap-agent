@@ -571,6 +571,7 @@ async function evaluateExpectation(
         model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
         rubric: expectation.rubric,
         candidateText: turn?.outputText ?? '',
+        context: buildSemanticJudgeContext(context.turns, expectation.turnIndex),
       });
       const verdict = evaluateSemanticJudgeOutcome({
         outcome: judge,
@@ -682,6 +683,41 @@ async function evaluateExpectation(
       return result;
     }
   }
+}
+
+function buildSemanticJudgeContext(
+  turns: EvalTurnResult[],
+  turnIndex: number | undefined,
+): string {
+  const selectedIndex = turnIndex ?? turns.length - 1;
+  return JSON.stringify(
+    turns
+      .filter((turn) => turn.turnIndex <= selectedIndex)
+      .map((turn) => ({
+        turnIndex: turn.turnIndex,
+        userInput: turn.input.text,
+        priorAssistantOutput:
+          turn.turnIndex < selectedIndex ? turn.outputText : undefined,
+        nodeTransition: `${turn.trace.previous_node}->${turn.trace.next_node}`,
+        toolsCalled: turn.trace.tools_called,
+        plan: {
+          eventType: turn.plan.event_type,
+          location: turn.plan.location,
+          guestRange: turn.plan.guest_range,
+          activeNeedCategory: turn.plan.active_need_category,
+          providerNeeds: turn.plan.provider_needs.map((need) => ({
+            category: need.category,
+            status: need.status,
+            selectedProviderIds: need.selected_provider_ids,
+          })),
+          contactFieldsPresent: {
+            name: turn.plan.contact_name !== null,
+            email: turn.plan.contact_email !== null,
+            phone: turn.plan.contact_phone !== null,
+          },
+        },
+      })),
+  );
 }
 
 function computeFinalScore(

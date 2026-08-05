@@ -63,11 +63,15 @@ describe('semantic judge expectation policy', () => {
         model: 'gpt-5.6-luna',
         rubric: 'La respuesta debe estar en español.',
         candidateText: '¿En qué distrito será el evento?',
+        context: '{"eventType":"boda","location":"Lima"}',
         client,
       }),
     ).resolves.toMatchObject({ skipped: false, score: 1 });
 
     const calls = create.mock.calls as unknown as Array<[Record<string, unknown>]>;
     expect(calls[0]?.[0]).not.toHaveProperty('temperature');
+    const request = calls[0]?.[0];
+    expect(JSON.stringify(request)).toContain('Interaction context');
+    expect(JSON.stringify(request)).toContain('\\"location\\":\\"Lima\\"');
   });
 });
