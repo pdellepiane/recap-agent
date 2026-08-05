@@ -126,7 +126,7 @@ describe('live lambda eval target', () => {
             },
             perf: {
               trace_id: 'trace-live',
-              conversation_id: 'conv-live',
+              conversation_hash: 'a'.repeat(64),
               runtime_latency_ms: 1200,
               extraction_latency_ms: 350,
               compose_latency_ms: 450,
@@ -269,7 +269,7 @@ describe('live lambda eval target', () => {
               },
               perf: {
                 trace_id: `trace-live-token-${turnIndex}`,
-                conversation_id: 'conv-live-token',
+                conversation_hash: 'b'.repeat(64),
                 runtime_latency_ms: 1000,
                 extraction_latency_ms: 300,
                 compose_latency_ms: 500,

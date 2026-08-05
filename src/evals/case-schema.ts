@@ -258,7 +258,7 @@ const turnTraceSchema = z.object({
 
 const cliPerfSummarySchema = z.object({
   trace_id: z.string(),
-  conversation_id: z.string().nullable(),
+  conversation_hash: z.string().regex(/^[a-f0-9]{64}$/u),
   runtime_latency_ms: z.number().nonnegative(),
   extraction_latency_ms: z.number().nonnegative(),
   compose_latency_ms: z.number().nonnegative(),

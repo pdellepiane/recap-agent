@@ -1,5 +1,24 @@
 # Implementation Log
 
+## 2026-08-05
+
+### Align live evaluation telemetry with hashed conversation keys
+
+- Replaced the stale `perf.conversation_id` expectation in the live-evaluation
+  response schema with the required 64-character `conversation_hash`.
+- Updated live-target fixtures to exercise the privacy-preserving performance
+  contract returned by the deployed Lambda.
+
+**Reason:** The first post-credit Luna smoke completed successfully in the
+development Lambda, but the local evaluation harness discarded the turn because
+its performance-summary schema still expected the raw conversation identifier
+removed by the OpenAI audit privacy checkpoint.
+
+**Decision:** Keep raw conversation identifiers in the runtime turn response and
+plan where operationally required, but require only the SHA-256 hash in persisted
+and CLI performance telemetry. Do not add a compatibility union for the removed
+performance field.
+
 ## 2026-08-04
 
 ### Prove historical-to-current prompt leanness
