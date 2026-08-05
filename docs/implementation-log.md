@@ -27,6 +27,26 @@ must not create an unbounded verification loop or imply that the user copied it
 incorrectly. After the second rejection, preserve the pending query and make
 human support the single actionable recovery path.
 
+### Gate the reported verification failure in the mandatory live suite
+
+- Added a context-complete three-turn live case seeded with the unresolved gift
+  purchase, protected-field scope, destination email, and active code challenge
+  recovered from the reported interaction.
+- Required exactly two verification attempts, no third verification call for a
+  prose follow-up, a persisted two-attempt boundary, retention of the purchase
+  query, removal of copy-blaming and inbox-loop language, and mandatory semantic
+  judging of both recovery replies.
+- Added the case to `live_behavior_regression`, so every future behavior change
+  must run it through `npm run eval:behavior-live`.
+
+**Reason:** Deterministic coverage proves state handling, but the regression also
+depends on live extraction and reply composition preserving the full interaction
+and rendering the intended Spanish recovery behavior.
+
+**Decision:** Validate the real rejected-code branch with a reserved `.invalid`
+email and a seeded challenge. This exercises the production verification error
+without issuing a new code or contacting a real user.
+
 ### Align live evaluation telemetry with hashed conversation keys
 
 - Replaced the stale `perf.conversation_id` expectation in the live-evaluation

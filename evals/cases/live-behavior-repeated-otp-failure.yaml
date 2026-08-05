@@ -1,0 +1,92 @@
+template: template.base-live
+id: live_behavior.repeated_otp_failure_preserves_gift_query
+suite: live_behavior_regression
+version: 1
+description: A second rejected, correctly formatted OTP must end the repetitive code loop while preserving the reported gift-deposit query.
+tags: [live, behavior, authentication, purchase, reported-interaction]
+inputs:
+  - text: "753994"
+    sessionId: live-behavior-repeated-otp-session
+  - text: "753994"
+    sessionId: live-behavior-repeated-otp-session
+  - text: Ese es el código que me llegó
+    sessionId: live-behavior-repeated-otp-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  contact_email: regression-otp@example.invalid
+  contact_phone: "51948920202"
+  user_auth:
+    status: code_requested
+    email: regression-otp@example.invalid
+    token: null
+    token_expires_at: null
+    last_error: null
+    requested_at: "2026-07-31T15:52:10.867Z"
+    failed_code_attempts: 0
+  information_state:
+    resume_node: deteccion_intencion
+    pending_requests:
+      - requestId: information-1
+        kind: purchase
+        resource: gift_purchases
+        query: Confirmar si el depósito del regalo llegó a los novios y revisar el estado del pago.
+        orderId: null
+        aspects: [payment_status, payment_details]
+        sensitiveFields: [transaction_status, gateway_message, payment_id, operation_code]
+        authAction: provide_otp
+    selection_candidates: []
+expectations:
+  - id: tokens-all-turns
+    type: token_usage_present
+    allTurns: true
+  - id: first-code-verified-once
+    type: tool_usage
+    turnIndex: 0
+    mustCall: [verify_user_login_code]
+  - id: second-code-verified-once
+    type: tool_usage
+    turnIndex: 1
+    mustCall: [verify_user_login_code]
+  - id: prose-follow-up-does-not-reverify
+    type: tool_usage
+    turnIndex: 2
+    mustNotCall: [verify_user_login_code]
+  - id: failed-attempts-are-bounded
+    type: plan_field_equals
+    path: user_auth.failed_code_attempts
+    expected: 2
+  - id: gift-query-remains-pending
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected:
+      - kind: purchase
+        resource: gift_purchases
+        query: Confirmar si el depósito del regalo llegó a los novios y revisar el estado del pago.
+  - id: no-copy-blame-or-email-loop-after-second-failure
+    type: text_not_contains
+    turnIndex: 1
+    phrases:
+      - cópialo completo
+      - sin espacios adicionales
+      - correo no deseado
+      - bandeja principal
+  - id: correct-repeated-code-recovery
+    type: text_semantic
+    turnIndex: 1
+    rubric: >-
+      The user entered the same correctly formatted six-digit code twice after it was rejected by the verification service. Pass only if the response acknowledges that verification failed again without blaming the user, does not ask for another code attempt or repeat inbox instructions, offers to request human support, and preserves the pending question about whether the gift deposit reached the couple. It must not claim that the payment succeeded or failed because no authenticated purchase result exists. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: follow-up-remains-actionable
+    type: text_semantic
+    turnIndex: 2
+    rubric: >-
+      After the user explains that this is the code they received, the response must not restart the code or inbox loop. It should acknowledge the failed verification, preserve the gift-deposit question, and offer human support as the actionable next step without inventing a payment status. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 450
