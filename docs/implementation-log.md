@@ -5065,3 +5065,4 @@ production guest-auth base URL.
 - Removed the duplicate language instruction from `shared/base_system.txt` and added a prompt-composition test that proves the stronger rule appears exactly once in every conversation bundle.
 - Added a mandatory live mixed-language regression that combines deterministic checks for known leaks with a semantic judge for arbitrary untranslated English.
 - Kept the stricter policy lean: representative serialized reply requests decreased by 25 bytes, from 7,304 to 7,279 for initial contact and from 13,543 to 13,518 for the information route.
+- Corrected grammatical agreement in deterministic vocabulary repair so `el baby shower` becomes `la celebración por la llegada del bebé`, rather than the malformed `el celebración` observed by the mandatory live judge.

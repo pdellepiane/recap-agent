@@ -1396,6 +1396,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       [/\bstreaming\b/giu, 'transmisión en vivo'],
       [/\bhost\b/giu, 'anfitrión'],
       [/\bbartenders?\b/giu, 'personal de barra'],
+      [/\bel baby shower\b/giu, 'la celebración por la llegada del bebé'],
       [/\bbaby shower\b/giu, 'celebración por la llegada del bebé'],
       [/\bcatering\b/giu, 'servicio de comida'],
       [/\bwedding planners?\b/giu, 'organización de bodas'],

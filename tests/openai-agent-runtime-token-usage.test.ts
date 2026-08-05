@@ -821,7 +821,7 @@ describe('OpenAiAgentRuntime guardrails', () => {
     expect(
       typedRuntime.normalizeSpanishVocabulary({
         type: 'multi_need_recommendation',
-        intro_es: 'Revisa el RSVP en la web o envía un screenshot del Excel por chat.',
+        intro_es: 'Revisa el RSVP en la web o envía un screenshot del Excel por chat para el baby shower.',
         needs: [{
           category: 'Catering',
           summary_es: 'El delivery del Shop se pagó con QR.',
@@ -830,7 +830,7 @@ describe('OpenAiAgentRuntime guardrails', () => {
       }),
     ).toEqual({
       type: 'multi_need_recommendation',
-      intro_es: 'Revisa la confirmación de asistencia en el sitio de internet o envía una captura de pantalla de la hoja de cálculo por conversación.',
+      intro_es: 'Revisa la confirmación de asistencia en el sitio de internet o envía una captura de pantalla de la hoja de cálculo por conversación para la celebración por la llegada del bebé.',
       needs: [{
         category: 'Catering',
         summary_es: 'La entrega de la tienda se pagó con código de pago.',
