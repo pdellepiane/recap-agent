@@ -137,6 +137,7 @@ export const planSchema = z.object({
     token_expires_at: null,
     last_error: null,
     requested_at: null,
+    failed_code_attempts: 0,
   }),
   information_state: informationStateSchema.default({
     resume_node: null,
@@ -267,6 +268,7 @@ export function createEmptyPlan(args: {
       token_expires_at: null,
       last_error: null,
       requested_at: null,
+      failed_code_attempts: 0,
     },
     information_state: {
       resume_node: null,

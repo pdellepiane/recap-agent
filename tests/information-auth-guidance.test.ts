@@ -43,4 +43,28 @@ describe('information authentication guidance', () => {
       ],
     });
   });
+
+  it('offers recovery after one invalid code and human support after a repeated failure', () => {
+    expect(
+      createInformationAuthGuidance('otp_invalid', 'person@example.com'),
+    ).toEqual({
+      reason: 'otp_invalid',
+      email: 'person@example.com',
+      requirements: [
+        'show_destination_email',
+        'offer_code_resend',
+        'offer_email_change',
+      ],
+    });
+    expect(
+      createInformationAuthGuidance(
+        'otp_repeated_failure',
+        'person@example.com',
+      ),
+    ).toEqual({
+      reason: 'otp_repeated_failure',
+      email: 'person@example.com',
+      requirements: ['show_destination_email', 'offer_human_support'],
+    });
+  });
 });

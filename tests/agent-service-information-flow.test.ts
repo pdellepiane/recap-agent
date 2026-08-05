@@ -327,6 +327,86 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
+  it('stops the repeated OTP loop from the reported gift-deposit interaction', async () => {
+    const purchase = purchaseRequest(null);
+    purchase.query =
+      'Confirmar si el depósito del regalo llegó a los novios y revisar el estado del pago.';
+    purchase.aspects = ['payment_status', 'payment_details'];
+    const codeAttempt = purchaseRequest(null);
+    codeAttempt.query = purchase.query;
+    codeAttempt.aspects = purchase.aspects;
+    codeAttempt.authAction = 'provide_otp';
+    const runtime = new InformationRuntime([
+      extraction([purchase]),
+      extraction([], null, 'jimmy.pilar@gmail.com'),
+      extraction([codeAttempt]),
+      extraction([codeAttempt]),
+      extraction([]),
+    ]);
+    const provider = providerGateway({
+      verificationResult: {
+        status: 'invalid_code',
+        error: 'Invalid or expired code',
+      },
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: provider,
+    });
+    const turn = async (text: string, index: number) =>
+      service.handleTurn({
+        channel: 'terminal_whatsapp',
+        externalUserId: 'whatsapp:+51948920202',
+        text,
+        messageId: `reported-otp-loop-${index}`,
+        receivedAt: new Date().toISOString(),
+      });
+
+    await turn(
+      'Hola buen día. Yo les deposité un monto de regalo. ¿Cómo saber que les llegó? Porque no recibí confirmación alguna.',
+      1,
+    );
+    await turn('jimmy.pilar@gmail.com', 2);
+    const firstFailure = await turn('753994', 3);
+    const secondFailure = await turn('753994', 4);
+    const followUp = await turn('Ese es el código que me llegó', 5);
+
+    expect(firstFailure.plan.user_auth.failed_code_attempts).toBe(1);
+    expect(secondFailure.plan.user_auth.failed_code_attempts).toBe(2);
+    expect(followUp.plan.user_auth.failed_code_attempts).toBe(2);
+    expect(provider.verifyCodeCalls).toBe(2);
+    expect(followUp.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: purchase.query,
+      }),
+    ]);
+
+    const guidanceByTurn = runtime.composeRequests.map((request) =>
+      request.informationResults?.find(
+        (result) => result.kind === 'purchase' && result.status === 'needs_input',
+      ),
+    );
+    expect(
+      guidanceByTurn[2]?.status === 'needs_input'
+        ? guidanceByTurn[2].guidance.reason
+        : null,
+    ).toBe('otp_invalid');
+    expect(
+      guidanceByTurn[3]?.status === 'needs_input'
+        ? guidanceByTurn[3].guidance.reason
+        : null,
+    ).toBe('otp_repeated_failure');
+    expect(
+      guidanceByTurn[4]?.status === 'needs_input'
+        ? guidanceByTurn[4].guidance.reason
+        : null,
+    ).toBe('otp_repeated_failure');
+  });
+
   it('uses a newly provided email instead of the previously stored address', async () => {
     const changedEmailRequest = purchaseRequest(null);
     changedEmailRequest.authAction = 'change_email';
@@ -477,6 +557,7 @@ describe('AgentService first-class information flow', () => {
             ).toISOString(),
             last_error: null,
             requested_at: new Date().toISOString(),
+            failed_code_attempts: 0,
           },
         },
       ),
@@ -726,7 +807,12 @@ function purchase(orderId: string): PurchaseInformation {
   };
 }
 
-function providerGateway(): {
+function providerGateway(options?: {
+  verificationResult?: {
+    status: 'invalid_code';
+    error: string;
+  };
+}): {
   gateway: ProviderGateway;
   requestCodeCalls: number;
   verifyCodeCalls: number;
@@ -744,6 +830,9 @@ function providerGateway(): {
     },
     async verifyUserLoginCode() {
       state.verifyCodeCalls += 1;
+      if (options?.verificationResult) {
+        return options.verificationResult;
+      }
       return {
         status: 'authenticated' as const,
         token: 'shared-jwt',

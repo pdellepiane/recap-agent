@@ -1941,7 +1941,11 @@ export class AgentService {
           guidance: createInformationAuthGuidance(
             purchaseAuthAction === 'report_otp_not_received'
               ? 'otp_not_received'
-              : 'otp_pending',
+              : planForEmail.user_auth.failed_code_attempts >= 2
+                ? 'otp_repeated_failure'
+                : planForEmail.user_auth.failed_code_attempts === 1
+                  ? 'otp_invalid'
+                  : 'otp_pending',
             email,
           ),
         },
@@ -1994,6 +1998,7 @@ export class AgentService {
             token_expires_at: null,
             last_error: null,
             requested_at: new Date().toISOString(),
+            failed_code_attempts: 0,
           },
         }),
         authBlock: {
@@ -2017,6 +2022,7 @@ export class AgentService {
             token_expires_at: null,
             last_error: result.error,
             requested_at: null,
+            failed_code_attempts: 0,
           },
         }),
         authBlock: {
@@ -2035,6 +2041,7 @@ export class AgentService {
           token_expires_at: null,
           last_error: result.error,
           requested_at: null,
+          failed_code_attempts: 0,
         },
       }),
       authBlock: {
@@ -2068,6 +2075,7 @@ export class AgentService {
     );
 
     if (result.status !== 'authenticated') {
+      const failedCodeAttempts = plan.user_auth.failed_code_attempts + 1;
       return {
         plan: mergePlan(plan, {
           user_auth: {
@@ -2076,12 +2084,16 @@ export class AgentService {
             token: null,
             token_expires_at: null,
             last_error: result.error,
+            failed_code_attempts: failedCodeAttempts,
           },
         }),
         authentication: null,
         authBlock: {
           nextInput: 'otp',
-          guidance: createInformationAuthGuidance('otp_invalid', email),
+          guidance: createInformationAuthGuidance(
+            failedCodeAttempts >= 2 ? 'otp_repeated_failure' : 'otp_invalid',
+            email,
+          ),
         },
       };
     }
@@ -2096,6 +2108,7 @@ export class AgentService {
           token_expires_at: result.tokenExpiresAt,
           last_error: null,
           requested_at: plan.user_auth.requested_at,
+          failed_code_attempts: 0,
         },
       }),
       authentication: {
@@ -2374,6 +2387,7 @@ export class AgentService {
         token_expires_at: null,
         last_error: lastError,
         requested_at: null,
+        failed_code_attempts: 0,
       },
     });
   }

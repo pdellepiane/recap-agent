@@ -128,6 +128,7 @@ export const userAuthStateSchema = z.object({
   token_expires_at: z.string().nullable(),
   last_error: z.string().nullable(),
   requested_at: z.string().nullable(),
+  failed_code_attempts: z.number().int().nonnegative().default(0),
 });
 
 export type UserAuthState = z.infer<typeof userAuthStateSchema>;
@@ -203,6 +204,7 @@ export const informationAuthReasonValues = [
   'email_not_found',
   'otp_send_failed',
   'otp_invalid',
+  'otp_repeated_failure',
 ] as const;
 
 export const informationAuthRequirementValues = [
@@ -214,6 +216,7 @@ export const informationAuthRequirementValues = [
   'check_junk_mail',
   'offer_code_resend',
   'offer_email_change',
+  'offer_human_support',
 ] as const;
 
 export type InformationAuthReason =
@@ -254,6 +257,12 @@ export function createInformationAuthGuidance(
   }
   if (reason === 'otp_not_received') {
     requirements.push('offer_code_resend', 'offer_email_change');
+  }
+  if (reason === 'otp_invalid') {
+    requirements.push('offer_code_resend', 'offer_email_change');
+  }
+  if (reason === 'otp_repeated_failure') {
+    requirements.push('offer_human_support');
   }
 
   return { reason, email, requirements };

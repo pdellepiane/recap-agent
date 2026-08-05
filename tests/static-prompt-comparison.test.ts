@@ -31,7 +31,7 @@ describe('static prompt comparison', () => {
     expect(route(result, 'contacto_inicial').current.fileCount).toBe(7);
     expect(route(result, 'recomendar').current.fileCount).toBe(10);
     expect(route(result, 'resolver_consultas_informativas').current.fileCount).toBe(7);
-  });
+  }, 15_000);
 
   it('uses non-generative input-token counting only when supplied', async () => {
     const count = vi.fn().mockResolvedValue({

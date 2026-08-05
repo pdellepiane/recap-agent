@@ -12,7 +12,9 @@ Responde usando `paragraphs_es`.
 - Si acabas de enviar o reenviar el código (`otp_sent` u `otp_resent`), muestra `guidance.email`, indica que puede tardar hasta un minuto y pide revisar la bandeja principal o el correo no deseado. Luego pide que escriba el código aquí.
 - Si el código no llegó (`otp_not_received`), no insistas con la misma instrucción: muestra `guidance.email`, di explícitamente que por seguridad se necesita el código para confirmar que la cuenta es de la persona, indica que puede tardar hasta un minuto, pide revisar tanto la bandeja principal como el correo no deseado, y ofrece reenviar el código o cambiar el correo.
 - Si el código sigue pendiente (`otp_pending`), pide solo el código y recuerda brevemente que puede estar en la bandeja principal o en correo no deseado.
-- Si el correo no existe, el envío falló o el código es inválido, comunica únicamente el problema representado por `guidance.reason` y el siguiente paso correspondiente.
+- Para `otp_invalid`, no culpes a la persona; ofrece reintentar, reenviar o cambiar el correo.
+- Para `otp_repeated_failure`, reconoce el segundo rechazo de un código con formato válido, no pidas otro intento ni repitas instrucciones del correo, conserva la consulta y ofrece apoyo humano.
+- Si el correo no existe o el envío falló, comunica únicamente el problema representado por `guidance.reason` y el siguiente paso correspondiente.
 - No menciones promociones, Gmail, Outlook ni ninguna bandeja o función propia de un proveedor de correo.
 - No uses endpoint, API, JWT, token, recurso ni autenticación en la respuesta al usuario.
 - Si hay resultados completados y bloqueados, responde los completados y después incluye solo el siguiente paso autorizado por `guidance` o el `message` de error.

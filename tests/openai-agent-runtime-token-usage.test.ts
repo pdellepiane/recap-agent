@@ -553,6 +553,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       token_expires_at: '2026-06-17T00:00:00.000Z',
       last_error: null,
       requested_at: '2026-06-16T00:00:00.000Z',
+      failed_code_attempts: 0,
     };
     request.informationResults = [
       {
@@ -664,6 +665,7 @@ function createComposeRequest(
         token_expires_at: null,
         last_error: null,
         requested_at: null,
+        failed_code_attempts: 0,
       },
       information_state: {
         resume_node: null,

@@ -2,6 +2,31 @@
 
 ## 2026-08-05
 
+### Stop repeated verification-code loops for protected purchase queries
+
+- Added a persisted count of rejected verification-code attempts and reset it
+  whenever the email challenge is restarted or authentication succeeds.
+- Kept the protected purchase request pending after a rejection, but changed
+  the first failure to offer retry, resend, or email correction without blaming
+  the user.
+- Changed the second rejection and later prose follow-ups to stop requesting
+  another code, avoid repeating inbox instructions, and offer human support
+  while explicitly retaining the unresolved purchase question.
+- Reconstructed the reported gift-deposit interaction in a deterministic test,
+  including the original question, email step, two identical six-digit code
+  attempts, and the user's explanation that the code came from the email.
+
+**Reason:** DynamoDB performance records showed that the protected gift query
+was classified correctly, but the verification service rejected the freshly
+issued code twice. The plan stayed at `code_requested`, so seven subsequent
+messages received substantially the same generic authentication response until
+the user became frustrated and requested a person.
+
+**Decision:** A correctly shaped code may be attempted twice, but the assistant
+must not create an unbounded verification loop or imply that the user copied it
+incorrectly. After the second rejection, preserve the pending query and make
+human support the single actionable recovery path.
+
 ### Align live evaluation telemetry with hashed conversation keys
 
 - Replaced the stale `perf.conversation_id` expectation in the live-evaluation
