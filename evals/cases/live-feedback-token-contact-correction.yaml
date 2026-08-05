@@ -25,7 +25,15 @@ seedPlan:
       hard_constraints: []
       missing_fields: []
       recommended_provider_ids: [90]
-      recommended_providers: []
+      recommended_providers:
+        - id: 90
+          title: Carlos Schult
+          category: Fotografía y video
+          location: Lima
+          priceLevel: null
+          reason: seleccionado
+          serviceHighlights: []
+          termsHighlights: []
       selected_provider_ids: [90]
       selected_provider_hints: [Carlos Schult]
 expectations:
@@ -46,6 +54,14 @@ expectations:
     turnIndex: 1
     rubric: >-
       After rejecting the incomplete phone number, the response must accept the corrected Peruvian number without asking for the same correction again, preserve the existing close-flow context, and request only genuinely missing contact information. The response must be clear and natural in Spanish.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
+  - id: correct-final-close-behavior
+    type: text_semantic
+    turnIndex: 2
+    rubric: >-
+      After the corrected phone number, name, and email address are all present, the response must complete or clearly continue submission for Carlos Schult without asking for any of those same fields again and without restarting provider search. It must communicate the outcome naturally in Spanish.
     minScore: 0.85
     requireJudge: true
     severity: hard
