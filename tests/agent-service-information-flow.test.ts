@@ -376,6 +376,10 @@ describe('AgentService first-class information flow', () => {
     expect(firstFailure.plan.user_auth.failed_code_attempts).toBe(1);
     expect(secondFailure.plan.user_auth.failed_code_attempts).toBe(2);
     expect(followUp.plan.user_auth.failed_code_attempts).toBe(2);
+    expect(secondFailure.outbound.text).toBe(
+      'El código volvió a ser rechazado aunque tiene el formato esperado. Para no pedirte más intentos, conservaré tu consulta pendiente y puedo solicitar apoyo humano para revisarla',
+    );
+    expect(followUp.outbound.text).toBe(secondFailure.outbound.text);
     expect(provider.verifyCodeCalls).toBe(2);
     expect(followUp.plan.information_state.pending_requests).toEqual([
       expect.objectContaining({

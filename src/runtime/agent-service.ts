@@ -368,6 +368,7 @@ export class AgentService {
           [],
           inbound.channel,
           planToSave.conversation_id,
+          planToSave,
         ),
         trace: this.buildTrace({
           plan: planToSave,
@@ -449,6 +450,7 @@ export class AgentService {
             [],
             inbound.channel,
             planToSave.conversation_id,
+            planToSave,
           ),
           trace: this.buildTrace({
             plan: planToSave,
@@ -495,6 +497,7 @@ export class AgentService {
             [],
             inbound.channel,
             planToSave.conversation_id,
+            planToSave,
           ),
           trace: this.buildTrace({
             plan: planToSave,
@@ -666,7 +669,13 @@ export class AgentService {
         timingMs.total = Date.now() - handleTurnStartedAt;
         return {
           plan: planForReply,
-          outbound: this.renderOutbound(reply, finishedProviders, inbound.channel, planForReply.conversation_id),
+          outbound: this.renderOutbound(
+            reply,
+            finishedProviders,
+            inbound.channel,
+            planForReply.conversation_id,
+            planForReply,
+          ),
           trace: this.buildTrace({
             plan: planForReply,
             previousNode: existingPlan.current_node,
@@ -878,6 +887,7 @@ export class AgentService {
         [],
         inbound.channel,
         planToSave.conversation_id,
+        planToSave,
       );
       return {
         plan: planToSave,
@@ -955,7 +965,13 @@ export class AgentService {
 
       return {
         plan: planToSave,
-        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
+        outbound: this.renderOutbound(
+          reply,
+          providerResults,
+          inbound.channel,
+          planToSave.conversation_id,
+          planToSave,
+        ),
         trace: this.buildTrace({
           plan: planToSave,
           previousNode,
@@ -1069,7 +1085,13 @@ export class AgentService {
 
         return {
           plan: planToSave,
-          outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
+          outbound: this.renderOutbound(
+            reply,
+            providerResults,
+            inbound.channel,
+            planToSave.conversation_id,
+            planToSave,
+          ),
           trace: this.buildTrace({
             plan: planToSave,
             previousNode,
@@ -1142,7 +1164,13 @@ export class AgentService {
 
       return {
         plan: planToSave,
-        outbound: this.renderOutbound(reply, providerResults, inbound.channel, planToSave.conversation_id),
+        outbound: this.renderOutbound(
+          reply,
+          providerResults,
+          inbound.channel,
+          planToSave.conversation_id,
+          planToSave,
+        ),
         trace: this.buildTrace({
           plan: planToSave,
           previousNode,
@@ -1474,10 +1502,14 @@ export class AgentService {
       toolUsage,
       turnDecision,
     });
-    const reply = this.enforceFaqAmbiguityReply(
+    const reply = this.enforceMissingFieldReply(
       currentNode,
-      extraction,
-      composedReply,
+      sufficiency.missingFields,
+      this.enforceFaqAmbiguityReply(
+        currentNode,
+        extraction,
+        composedReply,
+      ),
     );
     tokenUsage.reply = reply.tokenUsage ?? null;
     tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -1503,7 +1535,13 @@ export class AgentService {
 
     return {
       plan: planAfterFlow,
-      outbound: this.renderOutbound(reply, providerResults, inbound.channel, planAfterFlow.conversation_id),
+      outbound: this.renderOutbound(
+        reply,
+        providerResults,
+        inbound.channel,
+        planAfterFlow.conversation_id,
+        planAfterFlow,
+      ),
       trace: this.buildTrace({
         plan: planAfterFlow,
         previousNode,
@@ -1717,7 +1755,10 @@ export class AgentService {
       args.extraction,
       composedReply,
     );
-    const reply = ambiguitySafeReply;
+    const reply = this.enforceRepeatedOtpRecoveryReply(
+      informationResults,
+      ambiguitySafeReply,
+    );
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
@@ -1745,6 +1786,7 @@ export class AgentService {
         [],
         args.inbound.channel,
         planForInformation.conversation_id,
+        planForInformation,
       ),
       trace: this.buildTrace({
         plan: planForInformation,
@@ -2328,6 +2370,55 @@ export class AgentService {
       text: clarificationQuestion,
       structuredMessage: undefined,
       recommendationFunnel: undefined,
+    };
+  }
+
+  private enforceMissingFieldReply(
+    currentNode: DecisionNode,
+    missingFields: string[],
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    if (
+      currentNode !== 'aclarar_pedir_faltante' ||
+      !missingFields.includes('budget_or_guest_range')
+    ) {
+      return reply;
+    }
+
+    return {
+      ...reply,
+      text: '',
+      structuredMessage: {
+        type: 'generic',
+        paragraphs_es: [
+          'Para continuar con la búsqueda, ¿cuántos invitados esperas aproximadamente o qué presupuesto tienes?',
+        ],
+      },
+    };
+  }
+
+  private enforceRepeatedOtpRecoveryReply(
+    informationResults: InformationTaskResult[],
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    const hasRepeatedFailure = informationResults.some(
+      (result) =>
+        result.status === 'needs_input' &&
+        result.guidance.reason === 'otp_repeated_failure',
+    );
+    if (!hasRepeatedFailure) {
+      return reply;
+    }
+
+    return {
+      ...reply,
+      text: '',
+      structuredMessage: {
+        type: 'generic',
+        paragraphs_es: [
+          'El código volvió a ser rechazado aunque tiene el formato esperado. Para no pedirte más intentos, conservaré tu consulta pendiente y puedo solicitar apoyo humano para revisarla.',
+        ],
+      },
     };
   }
 
@@ -5524,15 +5615,20 @@ export class AgentService {
     providerResults: ProviderSummary[],
     channel: string,
     conversationId: string | null,
+    plan?: PlanSnapshot,
   ): NormalizedOutboundMessage {
-    const structuredMessageKind = reply.structuredMessage?.type ?? null;
-    if (reply.structuredMessage) {
+    const structuredMessage = this.enforceContactRequestFields(
+      reply.structuredMessage,
+      plan,
+    );
+    const structuredMessageKind = structuredMessage?.type ?? null;
+    if (structuredMessage) {
       const renderer = this.dependencies.renderers[channel]
         ?? this.dependencies.renderers['whatsapp'];
       if (renderer) {
         return {
           text: this.sanitizeAssistantOutput(renderer.render({
-            message: reply.structuredMessage,
+            message: structuredMessage,
             providerResults,
           })),
           conversationId,
@@ -5553,6 +5649,26 @@ export class AgentService {
         action: 'send',
         reason: 'reply_composed',
       },
+    };
+  }
+
+  private enforceContactRequestFields(
+    message: StructuredMessage | undefined,
+    plan: PlanSnapshot | undefined,
+  ): StructuredMessage | undefined {
+    if (!message || message.type !== 'contact_request' || !plan) {
+      return message;
+    }
+
+    const requestedFields = (message.requested_fields_es ?? []).filter(
+      (field) =>
+        (field === 'full_name' && !plan.contact_name) ||
+        (field === 'email' && !plan.contact_email) ||
+        (field === 'phone' && !plan.contact_phone),
+    );
+    return {
+      ...message,
+      requested_fields_es: requestedFields,
     };
   }
 

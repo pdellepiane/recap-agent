@@ -63,6 +63,29 @@ for not fulfilling an unsupported side request that the case rubric had called
 **Decision:** Judge the supported one-turn contract explicitly. Deferring an
 unsupported side request is acceptable; fabricating successful delivery is not.
 
+### Enforce reply invariants already established by structured state
+
+- Made the repeated-code recovery sentence deterministic after Luna completes
+  the classifier, extraction, and reply calls, preventing later prose follow-ups
+  from drifting back to email correction or another code attempt.
+- Made the `budget_or_guest_range` clarification deterministic when that typed
+  missing-field invariant is active, so an unsupported side request cannot
+  replace the decision-critical planning question.
+- Filtered structured contact-request fields against the persisted plan before
+  rendering, so a stored valid phone is never requested again.
+- Added deterministic regressions with deliberately contradictory model replies
+  for all three boundaries.
+
+**Reason:** A second live run showed that the structured plan was correct in all
+three cases, but generated prose could still contradict it: restart email
+recovery, ask for an unsupported link-delivery address, or list an already saved
+phone among missing contact fields.
+
+**Decision:** LLM extraction remains the source of conversational decisions.
+Deterministic code may enforce those already-established decisions at the final
+rendering boundary and must preserve the model-call telemetry used by live
+behavior tests.
+
 ### Align live evaluation telemetry with hashed conversation keys
 
 - Replaced the stale `perf.conversation_id` expectation in the live-evaluation

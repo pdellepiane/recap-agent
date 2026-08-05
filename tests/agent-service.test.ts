@@ -2203,6 +2203,21 @@ describe('AgentService', () => {
           providerPlanOperations: [updateOperation],
         };
       }
+
+      override async composeReply(
+        request: ComposeReplyRequest,
+      ): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'generic',
+            paragraphs_es: [
+              '¿Qué correo electrónico debo usar para enviarte el enlace?',
+            ],
+          },
+        };
+      }
     }
 
     const runtime = new IncompleteRefinementRuntime();
@@ -2259,6 +2274,9 @@ describe('AgentService', () => {
     expect(response.trace.route_kind).toBe('clarify_missing_fields');
     expect(response.trace.search_ready).toBe(false);
     expect(gateway.searchCalls).toBe(0);
+    expect(response.outbound.text).toBe(
+      'Para continuar con la búsqueda, ¿cuántos invitados esperas aproximadamente o qué presupuesto tienes?',
+    );
   });
 
   it('broadens the active shortlist when the user asks for more options', async () => {
@@ -7706,6 +7724,20 @@ describe('AgentService', () => {
           providerDetailRequest: null,
         };
       }
+
+      override async composeReply(
+        request: ComposeReplyRequest,
+      ): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'contact_request',
+            intro_es: 'Ya registré el teléfono. Solo necesito los datos pendientes',
+            requested_fields_es: ['full_name', 'email', 'phone'],
+          },
+        };
+      }
     }
 
     const planStore = new InMemoryPlanStore();
@@ -7722,8 +7754,8 @@ describe('AgentService', () => {
           event_type: 'boda',
           location: 'Lima',
           guest_range: '51-100',
-          contact_name: 'Carolina',
-          contact_email: 'carolina@example.com',
+          contact_name: null,
+          contact_email: null,
           contact_phone: null,
           provider_needs: [
             {
@@ -7761,6 +7793,8 @@ describe('AgentService', () => {
     expect(response.plan.contact_phone).toBe('51954779067');
     expect(response.trace.contact_validation_summary.status).toBe('valid');
     expect(response.trace.operational_note).toBeNull();
+    expect(response.outbound.text).toContain('nombre completo, correo electrónico');
+    expect(response.outbound.text).not.toContain('teléfono con código de país');
   });
 
   it('sanitizes file citation artifacts and avoids a final plain period', async () => {
