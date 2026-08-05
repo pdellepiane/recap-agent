@@ -47,6 +47,22 @@ and rendering the intended Spanish recovery behavior.
 email and a seeded challenge. This exercises the production verification error
 without issuing a new code or contacting a real user.
 
+### Keep the Spanish-only live judge scoped to supported behavior
+
+- Clarified that the language regression must not require the runtime to send or
+  discuss an unsupported confirmation-link email while it asks the single
+  decision-critical planning question.
+- Kept the hard requirements for retained event evidence, Spanish-only natural
+  language, and rejection of any false claim that a link was sent.
+
+**Reason:** The expanded live run correctly retained the celebration, location,
+and food-service need and used no English words, but the judge failed it solely
+for not fulfilling an unsupported side request that the case rubric had called
+“relevant” without defining whether it was required.
+
+**Decision:** Judge the supported one-turn contract explicitly. Deferring an
+unsupported side request is acceptable; fabricating successful delivery is not.
+
 ### Align live evaluation telemetry with hashed conversation keys
 
 - Replaced the stale `perf.conversation_id` expectation in the live-evaluation
