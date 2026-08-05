@@ -5060,6 +5060,7 @@ production guest-auth base URL.
 - Completed the live fixtures exposed by the second run: close flow now stops when `finish_plan` succeeds instead of sending a post-finish confirmation into a new plan; the correction fixture carries the selected provider evidence required by the finish tool; and the extractor explicitly maps “no quiero ninguna” for an unambiguous shortlisted category to `defer_need`, preventing the close flow from asking the same choice again.
 - Narrowed the Spanish-only semantic rubric after the third run reached 4/5: the judge must inspect retained plan evidence and cannot require the reply to restate an already retained event type or location. This keeps the no-English gate strict while avoiding redundant prompt/output behavior.
 - Changed semantic expectations from response-only judging to context-complete judging. The evaluator now receives the synthetic interaction history, node transitions, tools, retained event evidence, provider-need states, and contact-field presence through the selected turn, while raw contact values remain excluded.
+- Final validation passed against the deployed development Lambda: `eval-2026-08-05T15-47-50-196Z-8ad8bfe9` completed all five mandatory live behavior cases with five passes, zero failures, zero errors, and zero skips. `npm run check` passed 371 deterministic tests across 58 files. The Notion regression-suite item remains in progress by design, while the prompt-leanness item remains completed with the verified Spanish-only checkpoint.
 
 ### Consolidate the Spanish-only response contract
 
