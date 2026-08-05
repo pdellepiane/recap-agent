@@ -5056,6 +5056,7 @@ production guest-auth base URL.
 - Added repository rules requiring context-complete live cases and deterministic offline twins where feasible for every future interaction fix, and requiring the live gate after behavior-changing deployments.
 - Removed the legacy deterministic-temperature parameter from the semantic judge after the fail-closed gate exposed that GPT-5.6 Luna rejects `temperature: 0`; an injected-client request test now locks the compatible request shape.
 - The first mandatory live run passed the Spanish-only case but exposed close-flow defects. Accepted complete supported international digits with or without a plus sign, and retained short phone candidates omitted by extraction long enough to validate them and keep the close node active.
+- Corrected two interaction contracts without weakening behavior: the multifront case now accepts an honest statement that retrieval found no exact live-music match, and the declined-catering case asserts the recorded delete operation because the user explicitly removed that need rather than postponing it.
 
 ### Consolidate the Spanish-only response contract
 

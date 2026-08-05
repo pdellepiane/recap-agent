@@ -2,7 +2,7 @@ template: template.base-live
 id: live_feedback.token_seeded_selection_defer_close
 suite: live_feedback_token_regression
 version: 1
-description: Seeded multi-need plan should consume tokens while selecting one need, deferring another, and entering close flow.
+description: Seeded multi-need plan should consume tokens while selecting one need, removing a declined need, and entering close flow.
 tags: [live, feedback, token, seeded-plan, multi-need]
 inputs:
   - text: confirmo Carlos Schult para foto
@@ -65,17 +65,17 @@ expectations:
     expected:
       - category: Fotografía y video
         selected_provider_ids: [90]
-  - id: catering-deferred
-    type: plan_field_subset
-    path: provider_needs
+  - id: catering-removal-recorded
+    type: trace_field_subset
+    turnIndex: 1
+    path: selection_resolution_summary.provider_plan_operation_types
     expected:
-      - category: Catering
-        status: deferred
+      - delete_need
   - id: correct-selection-defer-close-behavior
     type: text_semantic
     turnIndex: 3
     rubric: >-
-      The response must preserve Carlos Schult as the selected photography provider, preserve catering as intentionally deferred, continue the close flow using the contact details just provided, and avoid relisting or re-searching providers. It must communicate the next close-flow step clearly in Spanish.
+      The response must preserve Carlos Schult as the selected photography provider, preserve that catering was intentionally removed after the user declined every option, and complete or continue the close flow using the contact details just provided. It must not restart provider search. A compact confirmation naming the selected provider is allowed; it must communicate the close-flow outcome clearly in Spanish.
     minScore: 0.85
     requireJudge: true
     severity: hard
