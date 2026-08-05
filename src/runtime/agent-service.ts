@@ -1757,6 +1757,7 @@ export class AgentService {
     );
     const reply = this.enforceRepeatedOtpRecoveryReply(
       informationResults,
+      planForInformation,
       ambiguitySafeReply,
     );
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -2399,6 +2400,7 @@ export class AgentService {
 
   private enforceRepeatedOtpRecoveryReply(
     informationResults: InformationTaskResult[],
+    plan: PlanSnapshot,
     reply: ComposeReplyResult,
   ): ComposeReplyResult {
     const hasRepeatedFailure = informationResults.some(
@@ -2410,13 +2412,23 @@ export class AgentService {
       return reply;
     }
 
+    const giftPaymentRequest = plan.information_state.pending_requests.find(
+      (request) =>
+        request.kind === 'purchase' &&
+        request.resource === 'gift_purchases' &&
+        request.aspects.includes('payment_details'),
+    );
+    const pendingQuery = giftPaymentRequest
+      ? 'tu consulta sobre si el pago del regalo llegó a sus destinatarios y sobre su estado'
+      : 'tu consulta pendiente';
+
     return {
       ...reply,
       text: '',
       structuredMessage: {
         type: 'generic',
         paragraphs_es: [
-          'El código volvió a ser rechazado aunque tiene el formato esperado. Para no pedirte más intentos, conservaré tu consulta pendiente y puedo solicitar apoyo humano para revisarla.',
+          `El código volvió a ser rechazado aunque tiene el formato esperado. Para no pedirte más intentos, conservaré ${pendingQuery}. Puedo solicitar apoyo humano para revisarla.`,
         ],
       },
     };
@@ -5656,7 +5668,26 @@ export class AgentService {
     message: StructuredMessage | undefined,
     plan: PlanSnapshot | undefined,
   ): StructuredMessage | undefined {
-    if (!message || message.type !== 'contact_request' || !plan) {
+    if (!message || !plan) {
+      return message;
+    }
+
+    const hasCompleteContact = Boolean(
+      plan.contact_name && plan.contact_email && plan.contact_phone,
+    );
+    if (hasCompleteContact && message.type === 'close_confirmation') {
+      return {
+        ...message,
+        summary_es: this.completeContactConfirmation(plan),
+      };
+    }
+    if (hasCompleteContact && message.type === 'contact_request') {
+      return {
+        type: 'generic',
+        paragraphs_es: [this.completeContactConfirmation(plan)],
+      };
+    }
+    if (message.type !== 'contact_request') {
       return message;
     }
 
@@ -5670,6 +5701,20 @@ export class AgentService {
       ...message,
       requested_fields_es: requestedFields,
     };
+  }
+
+  private completeContactConfirmation(plan: PlanSnapshot): string {
+    const selectedNames = plan.provider_needs.flatMap((need) => {
+      const titles = need.recommended_providers
+        .filter((provider) => need.selected_provider_ids.includes(provider.id))
+        .map((provider) => provider.title);
+      return titles.length > 0 ? titles : need.selected_provider_hints;
+    });
+    const uniqueNames = Array.from(new Set(selectedNames));
+    const destination = uniqueNames.length > 0
+      ? uniqueNames.join(', ')
+      : 'los proveedores seleccionados';
+    return `Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a ${destination}?`;
   }
 
   private suppressOutbound(

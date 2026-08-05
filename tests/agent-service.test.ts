@@ -7732,9 +7732,10 @@ describe('AgentService', () => {
         return {
           text: '',
           structuredMessage: {
-            type: 'contact_request',
-            intro_es: 'Ya registré el teléfono. Solo necesito los datos pendientes',
-            requested_fields_es: ['full_name', 'email', 'phone'],
+            type: 'close_confirmation',
+            summary_es: 'Todavía necesito tu teléfono con código de país',
+            selected_providers_es: ['Fotografía y video: Foto Uno'],
+            unselected_needs_es: [],
           },
         };
       }
@@ -7754,8 +7755,8 @@ describe('AgentService', () => {
           event_type: 'boda',
           location: 'Lima',
           guest_range: '51-100',
-          contact_name: null,
-          contact_email: null,
+          contact_name: 'Carolina',
+          contact_email: 'carolina@example.com',
           contact_phone: null,
           provider_needs: [
             {
@@ -7793,7 +7794,11 @@ describe('AgentService', () => {
     expect(response.plan.contact_phone).toBe('51954779067');
     expect(response.trace.contact_validation_summary.status).toBe('valid');
     expect(response.trace.operational_note).toBeNull();
-    expect(response.outbound.text).toContain('nombre completo, correo electrónico');
+    expect(response.outbound.text).toContain(
+      'Ya tengo tu nombre, correo electrónico y teléfono',
+    );
+    expect(response.outbound.text).not.toContain('Carlos Schult');
+    expect(response.outbound.text).toContain('Foto Uno');
     expect(response.outbound.text).not.toContain('teléfono con código de país');
   });
 
