@@ -18,6 +18,13 @@ expectations:
     type: trace_field_equals
     path: search_strategy
     expected: multi_need_query_intents
+  - id: correct-multifront-behavior
+    type: text_semantic
+    rubric: >-
+      The response must retain the request as one event plan with all five provider needs: food service with sushi, photography and video, elegant live music, white-and-green floral service, and a sophisticated nighttime venue. It must not collapse the request to only one provider category, and must respond naturally in Spanish.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 2200

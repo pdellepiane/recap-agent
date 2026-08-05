@@ -41,6 +41,14 @@ expectations:
     type: plan_field_equals
     path: contact_phone
     expected: "51954779071"
+  - id: correct-contact-correction-behavior
+    type: text_semantic
+    turnIndex: 1
+    rubric: >-
+      After rejecting the incomplete phone number, the response must accept the corrected Peruvian number without asking for the same correction again, preserve the existing close-flow context, and request only genuinely missing contact information. The response must be clear and natural in Spanish.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1400

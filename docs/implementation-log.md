@@ -5048,3 +5048,9 @@ expected `400 Invalid or expired code` from `/login-code`. `npm run check` passe
 with 42 test files and 259 tests. The development runtime and provider-sync
 stacks deployed successfully, and the active Lambda configuration reports the
 production guest-auth base URL.
+### Add fail-closed interaction behavior regressions
+
+- Added `live_behavior_regression` as the permanent suite for concrete user-reported interaction failures. Each reconstructed case carries structural assertions and a mandatory semantic contract for the correct response.
+- Added `npm run eval:behavior-live`; it requires an evaluator key and exits unsuccessfully for failed, errored, skipped, or missing cases.
+- Added `requireJudge` to semantic expectations so behavior gates cannot pass when evaluation was silently skipped.
+- Added repository rules requiring context-complete live cases and deterministic offline twins where feasible for every future interaction fix, and requiring the live gate after behavior-changing deployments.

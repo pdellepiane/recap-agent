@@ -17,7 +17,10 @@ import {
 import { EvalLoader } from './loader';
 import { writeEvalArtifacts } from './reporting';
 import { computeBenchmarkMetrics } from './metrics';
-import { runSemanticJudge } from './scorers/semantic-judge';
+import {
+  evaluateSemanticJudgeOutcome,
+  runSemanticJudge,
+} from './scorers/semantic-judge';
 import { runLiveLambdaCase } from './targets/live-lambda';
 import { runOfflineCase } from './targets/offline';
 import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
@@ -569,8 +572,13 @@ async function evaluateExpectation(
         rubric: expectation.rubric,
         candidateText: turn?.outputText ?? '',
       });
-      result.passed = judge.skipped ? true : judge.score >= expectation.minScore;
-      result.score = judge.skipped ? 1 : judge.score;
+      const verdict = evaluateSemanticJudgeOutcome({
+        outcome: judge,
+        minScore: expectation.minScore,
+        requireJudge: expectation.requireJudge,
+      });
+      result.passed = verdict.passed;
+      result.score = verdict.score;
       result.message = judge.message;
       return result;
     }

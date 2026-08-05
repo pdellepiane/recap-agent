@@ -56,8 +56,15 @@ expectations:
     mustNotCall:
       - search_providers_from_plan
       - search_providers_by_query_intent
+  - id: correct-close-behavior
+    type: text_semantic
+    turnIndex: 4
+    rubric: >-
+      The final response must correctly complete or confirm the close-flow submission after the user supplied a name, email address, valid phone number, and explicit confirmation. It must preserve the selected photography provider, avoid restarting provider search, and communicate the outcome clearly in Spanish.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
 budget:
   maxTurns: 5
   estimatedPromptTokensPerTurn: 1400
   estimatedCompletionTokensPerTurn: 400
-

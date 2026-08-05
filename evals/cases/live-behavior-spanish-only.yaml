@@ -1,0 +1,39 @@
+template: template.base-live
+id: live_behavior.spanish_only_mixed_language_request
+suite: live_behavior_regression
+version: 1
+description: A mixed-language request must be understood while every user-visible natural-language word in the reply remains Spanish.
+tags: [live, behavior, language, spanish-only]
+inputs:
+  - text: Necesito catering para un baby shower en Miraflores. Please send the RSVP link by email.
+    sessionId: live-behavior-spanish-only-session
+expectations:
+  - id: tokens-present
+    type: token_usage_present
+    allTurns: true
+  - id: no-known-english-product-terms
+    type: text_not_contains
+    phrases:
+      - RSVP
+      - email
+      - chat
+      - web
+      - link
+      - catering
+      - baby shower
+      - feedback
+      - marketplace
+      - delivery
+      - app
+      - login
+  - id: correct-behavior-and-spanish-only
+    type: text_semantic
+    rubric: >-
+      Pass only if the response understands that the user is organizing a celebration in Miraflores and needs a food service, advances or clarifies that request naturally, and uses Spanish for every user-visible natural-language word. Allow only official proper names, provider or brand names, literal URLs, email addresses, numbers, and copied codes to remain untranslated. Fail if any English common noun, verb, adjective, interface term, or untranslated product term appears, including words copied from the user.
+    minScore: 0.95
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 450

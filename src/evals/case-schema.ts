@@ -470,6 +470,7 @@ const textSemanticExpectationSchema = z.object({
   minScore: z.number().min(0).max(1).default(0.7),
   turnIndex: z.number().int().nonnegative().optional(),
   judgeModel: z.string().optional(),
+  requireJudge: z.boolean().default(false),
   severity: z.enum(['hard', 'soft']).default('soft'),
 });
 

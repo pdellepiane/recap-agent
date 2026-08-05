@@ -6,6 +6,24 @@ export type SemanticJudgeOutcome = {
   message: string;
 };
 
+export function evaluateSemanticJudgeOutcome(args: {
+  outcome: SemanticJudgeOutcome;
+  minScore: number;
+  requireJudge: boolean;
+}): { passed: boolean; score: number } {
+  if (args.outcome.skipped) {
+    return {
+      passed: !args.requireJudge,
+      score: args.requireJudge ? 0 : 1,
+    };
+  }
+
+  return {
+    passed: args.outcome.score >= args.minScore,
+    score: args.outcome.score,
+  };
+}
+
 export async function runSemanticJudge(args: {
   apiKey: string | null;
   model: string;
