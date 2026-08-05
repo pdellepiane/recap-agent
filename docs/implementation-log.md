@@ -5054,3 +5054,11 @@ production guest-auth base URL.
 - Added `npm run eval:behavior-live`; it requires an evaluator key and exits unsuccessfully for failed, errored, skipped, or missing cases.
 - Added `requireJudge` to semantic expectations so behavior gates cannot pass when evaluation was silently skipped.
 - Added repository rules requiring context-complete live cases and deterministic offline twins where feasible for every future interaction fix, and requiring the live gate after behavior-changing deployments.
+
+### Consolidate the Spanish-only response contract
+
+- Made `shared/output_style.txt` the single owner of the natural-language policy: every common word, verb, adjective, instruction, and interface term must be Spanish even when the user writes in English.
+- Limited exceptions to exact proper names, provider names, untranslated official brands, email addresses, URLs, numbers, and literal codes.
+- Removed the duplicate language instruction from `shared/base_system.txt` and added a prompt-composition test that proves the stronger rule appears exactly once in every conversation bundle.
+- Added a mandatory live mixed-language regression that combines deterministic checks for known leaks with a semantic judge for arbitrary untranslated English.
+- Kept the stricter policy lean: representative serialized reply requests decreased by 25 bytes, from 7,304 to 7,279 for initial contact and from 13,543 to 13,518 for the information route.

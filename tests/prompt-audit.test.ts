@@ -19,11 +19,11 @@ describe('prompt audit', () => {
     expect(result.violations).toEqual([]);
     expect(result.entries).toHaveLength(31);
     expect(entry(result, 'contacto_inicial')).toMatchObject({
-      serializedRequestBytes: 7304,
+      serializedRequestBytes: 7279,
       maximumToolCount: 0,
     });
     expect(entry(result, 'resolver_consultas_informativas')).toMatchObject({
-      serializedRequestBytes: 13543,
+      serializedRequestBytes: 13518,
       maximumToolCount: 0,
     });
     expect(entry(result, 'extractor:conversation_only').serializedRequestBytes)

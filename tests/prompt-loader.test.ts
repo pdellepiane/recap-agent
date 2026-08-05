@@ -41,6 +41,22 @@ describe('PromptLoader', () => {
     }
   });
 
+  it('owns one explicit Spanish-only contract in the output-style prompt', async () => {
+    const bundle = await loader.loadNodeBundle('contacto_inicial');
+    const spanishOnlyRule =
+      'escribe exclusivamente en español: traduce todo término común en inglés aunque lo use el usuario; no lo cites ni lo repitas';
+
+    expect(bundle.instructions).toContain(spanishOnlyRule);
+    expect(bundle.instructions).toContain(
+      'conserva solo nombres propios, proveedores, marcas sin traducción oficial',
+    );
+    expect(bundle.instructions).toContain(
+      'correos, URL, números y códigos literales',
+    );
+    expect(bundle.instructions.split(spanishOnlyRule)).toHaveLength(2);
+    expect(bundle.instructions).not.toContain('Debes responder siempre en español');
+  });
+
   it('assigns every prompt file one stable rule ID and one owner', () => {
     const ownedFiles = [
       ...conversationSharedPromptFiles,
