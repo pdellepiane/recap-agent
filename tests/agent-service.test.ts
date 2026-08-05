@@ -3826,11 +3826,20 @@ describe('AgentService', () => {
           lifecycle_state: 'finished',
           contact_name: 'Lin',
           contact_email: 'lin@example.com',
+          contact_phone: '51954779071',
           current_node: 'necesidad_cubierta',
           intent: 'cerrar',
         });
         Object.assign(request.plan, finished);
-        return { text: 'Plan finalizado.' };
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'close_confirmation',
+            summary_es: '¿Confirmas que envíe las solicitudes?',
+            selected_providers_es: [],
+            unselected_needs_es: [],
+          },
+        };
       }
     }
 
@@ -3844,7 +3853,7 @@ describe('AgentService', () => {
       renderers,
     });
 
-    await service.handleTurn({
+    const response = await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'user-finish-tool',
       text: 'listo, cierra el plan',
@@ -3855,6 +3864,8 @@ describe('AgentService', () => {
     expect(planStore.saves.every((save) => !('ttlEpochSeconds' in save))).toBe(true);
     expect(planStore.currentPlan?.lifecycle_state).toBe('finished');
     expect(planStore.currentPlan?.contact_email).toBe('lin@example.com');
+    expect(response.outbound.text).toContain('fueron enviadas');
+    expect(response.outbound.text).not.toContain('¿Confirmas');
   });
 
   it('rejects an invalid phone immediately and does not persist it', async () => {

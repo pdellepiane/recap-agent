@@ -5672,6 +5672,16 @@ export class AgentService {
       return message;
     }
 
+    if (plan.lifecycle_state === 'finished') {
+      const destination = this.selectedProviderDestination(plan);
+      return {
+        type: 'generic',
+        paragraphs_es: [
+          `Las solicitudes de cotización fueron enviadas a ${destination}. Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.`,
+        ],
+      };
+    }
+
     const hasCompleteContact = Boolean(
       plan.contact_name && plan.contact_email && plan.contact_phone,
     );
@@ -5704,6 +5714,11 @@ export class AgentService {
   }
 
   private completeContactConfirmation(plan: PlanSnapshot): string {
+    const destination = this.selectedProviderDestination(plan);
+    return `Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a ${destination}?`;
+  }
+
+  private selectedProviderDestination(plan: PlanSnapshot): string {
     const selectedNames = plan.provider_needs.flatMap((need) => {
       const titles = need.recommended_providers
         .filter((provider) => need.selected_provider_ids.includes(provider.id))
@@ -5714,7 +5729,7 @@ export class AgentService {
     const destination = uniqueNames.length > 0
       ? uniqueNames.join(', ')
       : 'los proveedores seleccionados';
-    return `Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a ${destination}?`;
+    return destination;
   }
 
   private suppressOutbound(

@@ -77,6 +77,8 @@ unsupported side request is acceptable; fabricating successful delivery is not.
   from typed request scope instead of referring to an unspecified pending query.
 - Replaced contradictory close-confirmation summaries once name, email, and
   phone are complete, using only provider selections already stored in the plan.
+- Made a finished lifecycle render a deterministic successful submission notice,
+  so generated prose cannot ask for confirmation after `finish_plan` succeeds.
 - Added deterministic regressions with deliberately contradictory model replies
   for all three boundaries.
 
@@ -86,6 +88,8 @@ recovery, ask for an unsupported link-delivery address, or list an already saved
 phone among missing contact fields. The next live run confirmed the deterministic
 boundaries but showed that semantic correctness also requires naming the retained
 gift-payment topic and replacing contradictory free-form close summaries.
+The following live run then proved `finish_plan` had succeeded while the model
+still rendered a confirmation question, requiring lifecycle-aware success copy.
 
 **Decision:** LLM extraction remains the source of conversational decisions.
 Deterministic code may enforce those already-established decisions at the final
