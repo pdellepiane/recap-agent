@@ -5164,3 +5164,12 @@ production guest-auth base URL.
 - Added a mandatory live mixed-language regression that combines deterministic checks for known leaks with a semantic judge for arbitrary untranslated English.
 - Kept the stricter policy lean: representative serialized reply requests decreased by 25 bytes, from 7,304 to 7,279 for initial contact and from 13,543 to 13,518 for the information route.
 - Corrected grammatical agreement in deterministic vocabulary repair so `el baby shower` becomes `la celebración por la llegada del bebé`, rather than the malformed `el celebración` observed by the mandatory live judge.
+
+### Validate the repeated verification recovery in development
+
+- Deployed the bounded verification-recovery and completed-submission rendering changes to both development stacks; `recap-agent-runtime` and `recap-agent-provider-sync-dev` reached `UPDATE_COMPLETE`.
+- Ran the mandatory deployed behavior suite as `eval-2026-08-05T16-46-43-197Z-e846609b`: all six cases passed, all six hard gates passed, and there were zero failures, errors, or skips.
+- The reconstructed payment-verification incident passed with a final score of `0.9223937471014739`. After two rejected codes, the reply retained the pending gift-payment delivery and status question, stopped requesting another code, offered human recovery, and contained no English leakage.
+- The mixed-language Spanish-only case scored `1.0`; the close, contact-correction, multi-need, and deferred-selection regressions also passed.
+
+**Decision:** Treat this run as the deployment acceptance checkpoint for the July 31 verification-loop fix. Future behavior changes must continue to execute the complete live suite, including this incident-derived case.
