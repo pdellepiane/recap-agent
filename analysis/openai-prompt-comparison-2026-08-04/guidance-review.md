@@ -24,7 +24,7 @@ Primary sources:
 | Control general response length with API parameters | Active requests use `text.verbosity: low`; Spanish prompt files keep only product-specific response requirements | Implemented |
 | Preserve the existing reasoning baseline during migration | All active GPT roles use `reasoning.effort: none` | Implemented |
 | Make prompt edits surgical and rerun representative evaluations | Historical-vs-current static comparison plus correctness and request-shape suites | Implemented locally |
-| Measure tokens, cache behavior, cost, and quality on the project's workload | Non-generative input counts are captured; production response IDs, cache usage, quality, and final cost require a successful live turn | Partially blocked by API credits |
+| Measure tokens, cache behavior, cost, and quality on the project's workload | Non-generative input counts plus a 3/3 development live suite, stored response retrieval, cache-write telemetry, and a promoted cost baseline | Implemented |
 
 OpenAI reports directional internal results where leaner prompts improved some
 evaluation scores while reducing tokens and cost, but explicitly advises teams

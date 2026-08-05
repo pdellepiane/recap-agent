@@ -47,9 +47,13 @@ would create avoidable suppression risk.
 See [findings.md](./findings.md) for every route and [comparison.json](./comparison.json)
 for the machine-readable evidence.
 
+The final development Lambda results are in
+[live-validation-2026-08-05.md](./live-validation-2026-08-05.md).
+
 ## Quality boundary
 
 Smaller is not sufficient by itself. Existing correctness, structured-output,
 state-machine, evidence-completeness, ambiguity, and provider-reference tests
-remain prerequisites. The final live Luna quality/cost promotion is still
-blocked by insufficient OpenAI API credits and is not claimed here.
+remain prerequisites. After credits were restored, the three-case live gate
+passed at 1.0 and promoted a measured Luna cost of `$0.00128448` per successful
+full turn.

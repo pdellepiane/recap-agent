@@ -19,6 +19,55 @@ plan where operationally required, but require only the SHA-256 hash in persiste
 and CLI performance telemetry. Do not add a compatibility union for the removed
 performance field.
 
+### Make the guest-boundary eval target-equivalent
+
+- Updated the 100-guest boundary case to include the boda and Lima evidence in
+  the user message for both offline and live targets.
+- Preserved the hard requirements that 100 maps to `51-100` and that a complete
+  provider request reaches recommendation.
+
+**Reason:** The restored-credit live smoke correctly asked for a missing
+location, while the case expected recommendation because its offline fixture
+silently injected Lima. The two targets were not evaluating the same evidence.
+
+**Decision:** Put decision-critical evidence in the shared user input rather
+than only in an offline extraction fixture. Do not relax the recommendation
+expectation or teach the runtime to search without a required location.
+
+### Promote the optimized Luna live baseline
+
+- Deployed the final prompt bundle to the development Lambda and ran the
+  three-case `live_smoke` suite across entry planning, the 100-guest boundary,
+  recommendation, and persisted provider selection.
+- Captured original-response token usage with cached, cache-write, uncached, and
+  output tokens priced separately at the project-effective Luna rates.
+- Added `openai-luna-optimized-2026-08-05.json` with trace-level evidence,
+  quality results, measured averages, and future monotonic gates.
+- Added a regression test that recomputes every turn's cost and requires the
+  promoted average to remain below both 22,411 input tokens and the `$0.00234584`
+  Luna model-only ceiling.
+- Updated `eval:compare-models` to load and report the promoted live baseline,
+  fail on its quality/performance regression, and clear the prior
+  `livePromotionRequired` flag.
+- Retrieved stored classifier, extractor, and reply Responses through the
+  GET-only audit path and verified `store: true`, Luna, no reasoning effort,
+  structured schemas, route-scoped tools, and mode-`0600` local files.
+
+**Reason:** The model migration and prompt audit were locally complete, but API
+credit exhaustion had prevented measured development quality, cache behavior,
+cost, and stored-response retrieval.
+
+**Decision:** Promote the representative three-case live average rather than a
+single warm-cache turn. Use usage captured on the original response as the cost
+source because it retains cache-write tokens, while stored GET retrieval remains
+the payload-audit source.
+
+**Validation:** `live_smoke` passed 3/3 with score 1.0. Average input fell from
+22,411 to 11,667.33 (-47.94%). Average OpenAI cost was `$0.00128448` per
+successful full turn, 71.95% below the `$0.00457957` legacy baseline and 45.24%
+below the `$0.00234584` Luna model-only ceiling. All three component response
+IDs were retrievable without generation.
+
 ## 2026-08-04
 
 ### Prove historical-to-current prompt leanness

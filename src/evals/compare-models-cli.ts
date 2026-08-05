@@ -27,10 +27,35 @@ const legacyBaselineSchema = z.object({
   }),
 });
 
+const optimizedBaselineSchema = z.object({
+  version: z.string(),
+  model: z.string(),
+  quality: z.object({
+    totalCases: z.number().int().positive(),
+    passedCases: z.number().int().nonnegative(),
+    failedCases: z.number().int().nonnegative(),
+    erroredCases: z.number().int().nonnegative(),
+    averageScore: z.number().min(0).max(1),
+  }),
+  averages: z.object({
+    inputTokens: z.number().positive(),
+    openAiUsdPerFullTurn: z.number().positive(),
+  }),
+  acceptance: z.object({
+    inputReductionRateVersusLegacy: z.number().min(0).max(1),
+    costSavingsRateVersusLegacy: z.number().min(0).max(1),
+    costSavingsRateVersusLunaModelOnly: z.number().min(0).max(1),
+  }),
+});
+
 async function main(): Promise<void> {
   const rootDir = process.cwd();
   const baseline = legacyBaselineSchema.parse(JSON.parse(await fs.readFile(
     path.resolve(rootDir, 'evals/baselines/openai-legacy-2026-08-04.json'),
+    'utf8',
+  )) as unknown);
+  const optimized = optimizedBaselineSchema.parse(JSON.parse(await fs.readFile(
+    path.resolve(rootDir, 'evals/baselines/openai-luna-optimized-2026-08-05.json'),
     'utf8',
   )) as unknown);
   const regression = await runEvaluation({
@@ -78,10 +103,33 @@ async function main(): Promise<void> {
         0,
       ),
     },
-    livePromotionRequired: true,
+    optimizedLunaBaseline: {
+      version: optimized.version,
+      model: optimized.model,
+      passedCases: optimized.quality.passedCases,
+      totalCases: optimized.quality.totalCases,
+      averageScore: optimized.quality.averageScore,
+      inputTokensPerFullTurn: optimized.averages.inputTokens,
+      openAiUsdPerFullTurn: optimized.averages.openAiUsdPerFullTurn,
+      inputReductionRateVersusLegacy:
+        optimized.acceptance.inputReductionRateVersusLegacy,
+      costSavingsRateVersusLegacy:
+        optimized.acceptance.costSavingsRateVersusLegacy,
+      costSavingsRateVersusLunaModelOnly:
+        optimized.acceptance.costSavingsRateVersusLunaModelOnly,
+    },
+    livePromotionRequired: false,
   }, null, 2)}\n`);
 
-  if (failedQualityCases > 0 || promptAudit.violations.length > 0) {
+  const optimizedQualityFailed = optimized.quality.passedCases !==
+    optimized.quality.totalCases || optimized.quality.failedCases > 0 ||
+    optimized.quality.erroredCases > 0;
+  const optimizedPerformanceFailed =
+    optimized.averages.inputTokens >= baseline.acceptance.legacyInputTokens ||
+    optimized.averages.openAiUsdPerFullTurn >=
+      baseline.acceptance.lunaModelOnlyUsdPerFullTurn;
+  if (failedQualityCases > 0 || promptAudit.violations.length > 0 ||
+    optimizedQualityFailed || optimizedPerformanceFailed) {
     process.exitCode = 1;
   }
 }
