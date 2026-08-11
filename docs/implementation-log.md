@@ -15,11 +15,11 @@
 ### Reject ungrounded provider confirmations
 
 - Added a typed selection-evidence invariant for confirmation turns with multiple shortlisted candidates.
-- A provider selection remains valid when the structured extraction contains a resolvable `select_provider` operation or when its extracted reference is grounded in the user message through retained provider or need discriminators.
-- If neither condition holds, the runtime clears the unsupported provider reference, preserves the shortlist, marks the selection ambiguous, and routes to one clarification without searching or choosing the first candidate.
+- A provider selection remains valid only when its extracted reference is grounded in the user message through retained provider or need discriminators. A model-produced `select_provider` operation cannot independently establish that evidence.
+- If the reference is not grounded, the runtime clears the unsupported provider reference and selection operation, preserves the shortlist, marks the selection ambiguous, and routes to one clarification without searching or choosing the first candidate.
 - Added a deterministic twin for the live `Sí confirmo` interaction while retaining existing name, ordinal, descriptive-service, comparative-price, and location-reference selection behavior.
 
-**Reason:** The newly promoted live case proved the deployed extractor could assign the first shortlisted provider to an underspecified confirmation even though two candidates existed.
+**Reason:** The newly promoted live case proved the deployed extractor could assign the first shortlisted provider to an underspecified confirmation even though two candidates existed. Its first rerun also showed that the extractor could fabricate a matching selection operation, so the invariant must validate all model-produced selection evidence against the user's message.
 
 **Decision:** Treat multi-candidate confirmation as an invariant-validation problem over structured extraction evidence. Do not use keyword matching to choose flow, and do not allow an ungrounded model reference to mutate the plan.
 

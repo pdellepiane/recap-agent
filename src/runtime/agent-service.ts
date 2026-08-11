@@ -3605,21 +3605,6 @@ export class AgentService {
       return { extraction, ambiguous: false };
     }
 
-    const hasGroundedSelectionOperation = (
-      extraction.providerPlanOperations ?? []
-    ).some((operation) =>
-      operation.type === 'select_provider' &&
-      operation.provider !== null &&
-      this.resolveProviderReference(
-        plan,
-        operation.provider,
-        operation.category,
-      ) !== null,
-    );
-    if (hasGroundedSelectionOperation) {
-      return { extraction, ambiguous: false };
-    }
-
     if (this.hasGroundedSelectionReference(plan, extraction, userMessage)) {
       return { extraction, ambiguous: false };
     }
@@ -3635,6 +3620,9 @@ export class AgentService {
         },
         selectedProviderHints: [],
         selectedProviderReferences: [],
+        providerPlanOperations: (
+          extraction.providerPlanOperations ?? []
+        ).filter((operation) => operation.type !== 'select_provider'),
       },
     };
   }

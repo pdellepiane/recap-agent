@@ -6465,7 +6465,22 @@ describe('AgentService', () => {
             category: 'Fotografía y video',
             hint: 'Carlos Schult',
           }],
-          providerPlanOperations: [],
+          providerPlanOperations: [{
+            type: 'select_provider',
+            category: 'Fotografía y video',
+            preferences: [],
+            hardConstraints: [],
+            queryIntent: null,
+            rerunSearch: false,
+            provider: {
+              providerId: 90,
+              providerTitle: 'Carlos Schult',
+              category: 'Fotografía y video',
+              hint: 'Carlos Schult',
+            },
+            removeProvider: null,
+            addProvider: null,
+          }],
         };
       }
     }
@@ -6543,6 +6558,7 @@ describe('AgentService', () => {
     expect(response.trace.next_node).toBe('aclarar_pedir_faltante');
     expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
     expect(response.trace.selection_resolution_summary.selected_provider_references).toEqual([]);
+    expect(response.trace.selection_resolution_summary.provider_plan_operation_types).toEqual([]);
     expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
       ambiguity: { status: 'ambiguous' },
       selectedProviderHints: [],
