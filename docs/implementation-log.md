@@ -5257,3 +5257,18 @@ production guest-auth base URL.
 - The mixed-language Spanish-only case scored `1.0`; the close, contact-correction, multi-need, and deferred-selection regressions also passed.
 
 **Decision:** Treat this run as the deployment acceptance checkpoint for the July 31 verification-loop fix. Future behavior changes must continue to execute the complete live suite, including this incident-derived case.
+
+## Guard payment destinations and nonphysical purchase language
+
+- Added a typed purchase-disclosure policy that exposes Yape or bank-transfer destinations only for an identified purchase whose normalized payment status is `pending`.
+- Removed shipping evidence from the information response projection unless the queried purchase has affirmative physical-fulfillment evidence.
+- Added deterministic policy and orchestration tests for approved nonphysical purchases and pending physical purchases.
+- Clarified the information extractor and response contract so payment destinations come from structured purchase evidence rather than FAQ content.
+- Added permanent live behavior cases for an unauthenticated payment-destination request and a nonphysical purchase query.
+- Reduced the information extractor prompt while preserving its required structured evidence; the initial information extractor remains below its 9,000-byte static budget, and the complete information route remains below the legacy request baseline.
+
+### Initial deployed live-gate diagnosis
+
+The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, completed six passes, two failures, and two fixture errors across ten cases. The new nonphysical-purchase case passed all hard gates. The payment-destination response safely disclosed no destination and requested the next authentication detail, but its judge rubric incorrectly required discussing purchase status before authentication. The contact-correction case passed both semantic gates but retained a stale assertion against a phone value intentionally removed from safe artifacts. Both phone-first cases stopped before their first turn because their documented environment fixtures were not supplied.
+
+**Decision:** Keep the runtime behavior unchanged. Align the payment rubric with the next-authentication-step contract, assert phone presence through redacted trace evidence, and rerun the complete live gate with both required phone fixtures explicitly configured.

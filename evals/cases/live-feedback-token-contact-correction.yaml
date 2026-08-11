@@ -46,9 +46,10 @@ expectations:
     path: contact_validation_summary.status
     expected: invalid
   - id: corrected-phone-final
-    type: plan_field_equals
-    path: contact_phone
-    expected: "51954779071"
+    type: trace_field_equals
+    turnIndex: 1
+    path: contact_validation_summary.plan_contact_fields_present.phone
+    expected: true
   - id: correct-contact-correction-behavior
     type: text_semantic
     turnIndex: 1
