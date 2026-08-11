@@ -69,11 +69,12 @@ export async function runLiveLambdaCase(args: {
         ),
         reason: 'eval-seed',
       });
-    } catch {
-      return {
-        turns: [],
-        status: 'skipped',
-      };
+    } catch (error) {
+      throw new Error(
+        `Unable to seed the live evaluation plan for ${args.currentCase.id}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
     }
   }
   const turns: EvalTurnResult[] = [];

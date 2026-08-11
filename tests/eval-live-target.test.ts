@@ -4,10 +4,17 @@ import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 vi.mock('../src/storage/dynamo-plan-store', () => {
   const savedPlans: unknown[] = [];
+  let saveError: Error | null = null;
   return {
     savedPlans,
+    setSaveError(error: Error | null) {
+      saveError = error;
+    },
     DynamoPlanStore: class {
       async save(input: unknown) {
+        if (saveError) {
+          throw saveError;
+        }
         savedPlans.push(input);
       }
 
@@ -49,6 +56,52 @@ describe('live lambda eval target', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
     vi.stubEnv('CHANNEL_API_KEY', 'test-channel-api-key');
+  });
+
+  it('fails loudly when a live seed plan cannot be persisted', async () => {
+    const storageModule = await import('../src/storage/dynamo-plan-store');
+    const setSaveError = (storageModule as unknown as {
+      setSaveError: (error: Error | null) => void;
+    }).setSaveError;
+    setSaveError(new Error('expired development credentials'));
+    const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
+
+    try {
+      await expect(runLiveLambdaCase({
+        currentCase: {
+          id: 'live.seed-failure',
+          suite: 'live_behavior_regression',
+          version: 1,
+          description: 'Seed failure must not look like an empty model response.',
+          imports: [],
+          tags: [],
+          priority: 'p1',
+          status: 'active',
+          targetModes: ['live_lambda'],
+          variables: {},
+          inputs: [{ text: 'Sí confirmo.' }],
+          seedPlan: { current_node: 'recomendar' },
+          expectations: [],
+          scorers: [],
+          notes: [],
+        },
+        config: {
+          label: 'live-dev-lambda',
+          target: 'live_lambda',
+          notes: [],
+          environmentOverrides: {},
+          liveLambda: {
+            functionUrl: 'https://example.test/lambda',
+            channel: 'terminal_whatsapp_eval',
+          },
+        },
+        artifactDir: '.eval-runs-test',
+      })).rejects.toThrow(
+        'Unable to seed the live evaluation plan for live.seed-failure: expired development credentials',
+      );
+    } finally {
+      setSaveError(null);
+    }
   });
 
   it('normalizes the lambda response and hydrates the persisted plan', async () => {
