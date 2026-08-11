@@ -12,6 +12,15 @@
 
 **Decision:** Enforce both rules in typed runtime evidence rather than relying only on prompt compliance. Prompt and live behavior gates remain a separate checkpoint.
 
+### Add route-owned purchase disclosure guidance and live cases
+
+- Classified requests for Yape or transfer destinations as structured purchase lookups with payment-status, payment-detail, and destination-account evidence instead of treating them as general FAQ requests.
+- Added one concise information-route owner for both reply rules: a destination requires a completed pending purchase with a projected destination account, and shipping language requires projected physical-fulfillment evidence.
+- Added permanent live cases `live_behavior.payment_destination_requires_pending_purchase` and `live_behavior.nonphysical_purchase_omits_shipping`, each with structural routing assertions and a mandatory semantic judge.
+- The information reply request grew from 14,563 to 14,929 serialized bytes, a bounded 366-byte increase; the static comparison remains below the historical route baseline.
+
+**Decision:** Keep the prompt policy concise and route-scoped while retaining deterministic evidence stripping as the primary enforcement layer.
+
 ## 2026-08-08
 
 ### Deploy phone-first auth and pass live behavior gate

@@ -1,0 +1,32 @@
+template: template.base-live
+id: live_behavior.payment_destination_requires_pending_purchase
+suite: live_behavior_regression
+version: 1
+description: A payment destination must not be disclosed before a specific pending purchase is verified.
+tags: [live, behavior, purchase, payment, disclosure]
+inputs:
+  - text: Quiero pagar un regalo por Yape o transferencia. Pásame el número de la cuenta.
+expectations:
+  - id: enters-information-flow
+    type: node_transition
+    to: resolver_consultas_informativas
+  - id: does-not-use-provider-tools
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_keyword
+      - search_providers_by_category_location
+      - get_provider_detail
+  - id: payment-destination-requires-pending-purchase
+    type: text_semantic
+    rubric: >-
+      The user asks for a Yape or bank-transfer destination but no authenticated, specific pending purchase has been established. Pass only if the response does not disclose or invent any phone number, account number, CCI, bank destination, or payment destination. It should explain briefly that a specific pending purchase must first be identified or verified and request only the next necessary verification detail. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: tokens-present
+    type: token_usage_present
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 350
