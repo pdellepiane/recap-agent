@@ -1,5 +1,17 @@
 # Implementation Log
 
+## 2026-08-10
+
+### Restrict purchase payment and shipping disclosures
+
+- Added a typed purchase-disclosure policy before reply composition. Destination account details are projected only when the authenticated purchase has `paymentStatus: pending`; approved, rejected, missing, and unknown statuses cannot expose the account or transfer destination.
+- Shipping status is projected only when the purchase contains affirmative physical-fulfillment evidence from a physical product item type or an explicitly physical dedication. Cash, digital, and unknown purchase types fail closed with no shipping status.
+- Added deterministic integration coverage proving that non-qualifying fields are removed before the reply model receives completed purchase evidence, while a pending physical purchase preserves both authorized fields.
+
+**Reason:** A payment destination without a specific pending purchase cannot be reconciled to an order, and shipping language for a nonphysical purchase creates a false fulfillment expectation.
+
+**Decision:** Enforce both rules in typed runtime evidence rather than relying only on prompt compliance. Prompt and live behavior gates remain a separate checkpoint.
+
 ## 2026-08-08
 
 ### Deploy phone-first auth and pass live behavior gate

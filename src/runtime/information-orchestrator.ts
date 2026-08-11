@@ -13,6 +13,10 @@ import type {
 } from './agent-conversation-gateway';
 import type { KnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
+import {
+  canDisclosePaymentDestination,
+  hasPhysicalFulfillment,
+} from './purchase-disclosure-policy';
 
 type PurchaseRequest = Extract<
   PendingInformationRequest,
@@ -320,6 +324,7 @@ export class InformationOrchestrator {
     const aspectSet = new Set(request.aspects);
     const sensitive = new Set<SensitivePurchaseField>(request.sensitiveFields);
     const includePayment = aspectSet.has('payment_details');
+    const physicalFulfillment = hasPhysicalFulfillment(purchase);
 
     return {
       orderId: purchase.orderId,
@@ -328,7 +333,8 @@ export class InformationOrchestrator {
           ? purchase.paymentStatus
           : null,
       shippingStatus:
-        aspectSet.has('summary') || aspectSet.has('shipping')
+        physicalFulfillment &&
+        (aspectSet.has('summary') || aspectSet.has('shipping'))
           ? purchase.shippingStatus
           : null,
       grandTotal: aspectSet.has('summary') || includePayment ? purchase.grandTotal : null,
@@ -361,7 +367,8 @@ export class InformationOrchestrator {
                   ...(sensitive.has('origin_bank')
                     ? { originBank: purchase.payment.originBank ?? null }
                     : {}),
-                  ...(sensitive.has('destination_account')
+                  ...(sensitive.has('destination_account') &&
+                  canDisclosePaymentDestination(purchase)
                     ? {
                         destinationAccount:
                           purchase.payment.destinationAccount ?? null,
@@ -381,7 +388,16 @@ export class InformationOrchestrator {
           }
         : {}),
       ...(aspectSet.has('dedication')
-        ? { dedication: purchase.dedication ?? null }
+        ? {
+            dedication: purchase.dedication
+              ? {
+                  ...purchase.dedication,
+                  physicalStatus: physicalFulfillment
+                    ? purchase.dedication.physicalStatus
+                    : null,
+                }
+              : null,
+          }
         : {}),
       ...(aspectSet.has('thanks')
         ? {
