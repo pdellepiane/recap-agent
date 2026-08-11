@@ -1,0 +1,67 @@
+template: template.base-live
+id: live_behavior.ambiguous_confirmation_clarifies
+suite: live_behavior_regression
+version: 1
+description: An underspecified confirmation over a multi-option shortlist must ask what is being confirmed instead of restarting or choosing arbitrarily.
+tags: [live, behavior, ambiguity, clarification, reported-interaction]
+inputs:
+  - text: Sí confirmo.
+    sessionId: live-behavior-ambiguous-confirmation-session
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Fotografía y video
+  vendor_category: Fotografía y video
+  provider_needs:
+    - category: Fotografía y video
+      status: shortlisted
+      preferences: [estilo natural]
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90, 91]
+      recommended_providers:
+        - id: 90
+          title: Carlos Schult
+          category: Fotografía y video
+          location: Lima
+          priceLevel: null
+          reason: primera opción presentada
+          serviceHighlights: []
+          termsHighlights: []
+        - id: 91
+          title: Fotografía Alternativa
+          category: Fotografía y video
+          location: Lima
+          priceLevel: null
+          reason: segunda opción presentada
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+expectations:
+  - id: no-provider-selected-without-reference
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Fotografía y video
+        status: shortlisted
+        selected_provider_ids: []
+  - id: no-search-on-ambiguous-confirmation
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+      - get_provider_detail
+  - id: ambiguity-response-is-a-focused-clarification
+    type: text_semantic
+    rubric: >-
+      The user says only "Sí confirmo" while two photography providers remain shortlisted and neither has been identified. Pass only if the response asks one concise Spanish clarification about which provider or what action the user is confirming. It must not choose either provider, close the plan, restart with a welcome, repeat the whole shortlist, or invent missing intent.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 350

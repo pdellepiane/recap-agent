@@ -1,0 +1,41 @@
+version: 1
+behaviorChanges:
+  - id: preserve-ambiguous-confirmation-evidence
+    implementedBy: 112015f
+    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+  - id: resolve-provider-price-references
+    implementedBy: 112015f
+    liveCaseIds: [live_behavior.provider_reference_cheaper_option]
+  - id: resolve-provider-location-references
+    implementedBy: 112015f
+    liveCaseIds: [live_behavior.provider_reference_miraflores_option]
+  - id: enforce-spanish-only-output
+    implementedBy: dab4c2b
+    liveCaseIds: [live_behavior.spanish_only_mixed_language_request]
+  - id: preserve-close-phone-correction-context
+    implementedBy: b4fe8f1
+    liveCaseIds: [live_feedback.token_seeded_contact_correction]
+  - id: preserve-multi-need-event-plans
+    implementedBy: 3063ebe
+    liveCaseIds: [live_feedback.token_fresh_multifront_stays_multi_need]
+  - id: preserve-deferred-provider-needs-at-close
+    implementedBy: cf43147
+    liveCaseIds: [live_feedback.token_seeded_selection_defer_close]
+  - id: stop-repeated-verification-loops
+    implementedBy: 82be35d
+    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+  - id: render-completed-submissions-as-final
+    implementedBy: 26893ff
+    liveCaseIds: [live_feedback.token_seeded_close_flow]
+  - id: authenticate-protected-information-by-phone-first
+    implementedBy: 67e978d
+    liveCaseIds: [live_behavior.phone_first_auth_success]
+  - id: fall-back-from-unregistered-phone-to-email-otp
+    implementedBy: 67e978d
+    liveCaseIds: [live_behavior.phone_first_auth_fallback]
+  - id: withhold-payment-destination-without-pending-purchase
+    implementedBy: d08aac3
+    liveCaseIds: [live_behavior.payment_destination_requires_pending_purchase]
+  - id: omit-shipping-for-nonphysical-purchases
+    implementedBy: d08aac3
+    liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]

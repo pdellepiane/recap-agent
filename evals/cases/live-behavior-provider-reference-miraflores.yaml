@@ -1,0 +1,71 @@
+template: template.base-live
+id: live_behavior.provider_reference_miraflores_option
+suite: live_behavior_regression
+version: 1
+description: A location reference to the Miraflores shortlisted provider must resolve from retained provider evidence.
+tags: [live, behavior, provider-selection, reference, location]
+inputs:
+  - text: Quiero la opción que está en Miraflores.
+    sessionId: live-behavior-provider-miraflores-session
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Catering
+  vendor_category: Catering
+  preferences: [comida japonesa]
+  hard_constraints: []
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: [comida japonesa]
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [90, 109]
+      recommended_providers:
+        - id: 90
+          title: Opción Esencial
+          category: Catering
+          location: Miraflores
+          priceLevel: low
+          reason: alternativa ubicada en Miraflores
+          serviceHighlights: []
+          termsHighlights: []
+        - id: 109
+          title: EDO Sushi Bar
+          category: Catering
+          location: Barranco
+          priceLevel: high
+          reason: alternativa ubicada en Barranco
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+expectations:
+  - id: miraflores-provider-selected
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        selected_provider_ids: [90]
+  - id: location-selection-operation-recorded
+    type: trace_field_subset
+    path: selection_resolution_summary.provider_plan_operation_types
+    expected: [select_provider]
+  - id: no-new-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+  - id: miraflores-reference-response
+    type: text_semantic
+    rubric: >-
+      The retained shortlist shows Opción Esencial in Miraflores and EDO Sushi Bar in Barranco. Pass only if the response selects or clearly confirms Opción Esencial from the location reference, preserves the catering need, and does not ask which provider is in Miraflores, run a new search, or select the Barranco provider. The response must be natural and entirely in Spanish except for proper names, literal values, URLs, addresses, numbers, and codes.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 350

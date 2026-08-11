@@ -1,0 +1,71 @@
+template: template.base-live
+id: live_behavior.provider_reference_cheaper_option
+suite: live_behavior_regression
+version: 1
+description: A comparative reference to the cheaper shortlisted provider must resolve from retained provider evidence.
+tags: [live, behavior, provider-selection, reference, price]
+inputs:
+  - text: Quiero la opción más económica.
+    sessionId: live-behavior-provider-cheaper-session
+seedPlan:
+  current_node: recomendar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  active_need_category: Catering
+  vendor_category: Catering
+  preferences: [comida japonesa]
+  hard_constraints: ["presupuesto máximo de S/ 4,000"]
+  provider_needs:
+    - category: Catering
+      status: shortlisted
+      preferences: [comida japonesa]
+      hard_constraints: ["presupuesto máximo de S/ 4,000"]
+      missing_fields: []
+      recommended_provider_ids: [90, 109]
+      recommended_providers:
+        - id: 90
+          title: Opción Esencial
+          category: Catering
+          location: Miraflores
+          priceLevel: low
+          reason: alternativa de menor precio dentro del presupuesto
+          serviceHighlights: ["menú desde S/ 3,500"]
+          termsHighlights: []
+        - id: 109
+          title: EDO Sushi Bar
+          category: Catering
+          location: Barranco
+          priceLevel: high
+          reason: alternativa de mayor precio
+          serviceHighlights: ["menú desde S/ 4,800"]
+          termsHighlights: []
+      selected_provider_ids: []
+      selected_provider_hints: []
+expectations:
+  - id: cheaper-provider-selected
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        selected_provider_ids: [90]
+  - id: selection-operation-recorded
+    type: trace_field_subset
+    path: selection_resolution_summary.provider_plan_operation_types
+    expected: [select_provider]
+  - id: no-new-provider-search
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+  - id: cheaper-reference-response
+    type: text_semantic
+    rubric: >-
+      The retained shortlist shows Opción Esencial as cheaper than EDO Sushi Bar. Pass only if the response selects or clearly confirms Opción Esencial from that evidence, preserves the catering need and the user's budget criteria, and does not ask which option is cheaper, run a new search, or select the more expensive provider. The response must be natural and entirely in Spanish except for proper names, literal values, URLs, addresses, numbers, and codes.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 350
