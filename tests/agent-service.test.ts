@@ -6559,6 +6559,7 @@ describe('AgentService', () => {
     expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
     expect(response.trace.selection_resolution_summary.selected_provider_references).toEqual([]);
     expect(response.trace.selection_resolution_summary.provider_plan_operation_types).toEqual([]);
+    expect(response.outbound.text).toBe('¿Qué proveedor o acción estás confirmando?');
     expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
       ambiguity: { status: 'ambiguous' },
       selectedProviderHints: [],

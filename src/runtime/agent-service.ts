@@ -1539,13 +1539,16 @@ export class AgentService {
       toolUsage,
       turnDecision,
     });
-    const reply = this.enforceMissingFieldReply(
-      currentNode,
-      sufficiency.missingFields,
-      this.enforceFaqAmbiguityReply(
+    const reply = this.enforceAmbiguousProviderConfirmationReply(
+      providerConfirmationGuard.ambiguous,
+      this.enforceMissingFieldReply(
         currentNode,
-        extraction,
-        composedReply,
+        sufficiency.missingFields,
+        this.enforceFaqAmbiguityReply(
+          currentNode,
+          extraction,
+          composedReply,
+        ),
       ),
     );
     tokenUsage.reply = reply.tokenUsage ?? null;
@@ -2669,6 +2672,22 @@ export class AgentService {
           'Para continuar con la búsqueda, ¿cuántos invitados esperas aproximadamente o qué presupuesto tienes?',
         ],
       },
+    };
+  }
+
+  private enforceAmbiguousProviderConfirmationReply(
+    isAmbiguousConfirmation: boolean,
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    if (!isAmbiguousConfirmation) {
+      return reply;
+    }
+
+    return {
+      ...reply,
+      text: '¿Qué proveedor o acción estás confirmando?',
+      structuredMessage: undefined,
+      recommendationFunnel: undefined,
     };
   }
 
