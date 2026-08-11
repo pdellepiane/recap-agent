@@ -1,7 +1,19 @@
 version: 1
 behaviorChanges:
+  - id: route-faq-from-active-planning-nodes
+    implementedBy: 4e45fcb
+    liveCaseIds: [live.faq_from_recommendation_node]
   - id: preserve-ambiguous-confirmation-evidence
     implementedBy: 112015f
+    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+  - id: reject-ungrounded-multi-candidate-confirmations
+    implementedBy: f99d6a2
+    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+  - id: reject-ungrounded-provider-selection-operations
+    implementedBy: 20cbb0e
+    liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
+  - id: render-neutral-provider-confirmation-clarification
+    implementedBy: 9284b0e
     liveCaseIds: [live_behavior.ambiguous_confirmation_clarifies]
   - id: resolve-provider-price-references
     implementedBy: 112015f

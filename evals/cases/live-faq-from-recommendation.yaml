@@ -1,6 +1,6 @@
 template: template.base-live
 id: live.faq_from_recommendation_node
-suite: live_comprehensive
+suite: live_behavior_regression
 version: 1
 description: A user in a recommendation flow should be able to ask a FAQ and force KB retrieval instead of provider search.
 tags:
@@ -38,12 +38,12 @@ expectations:
     type: provider_result_count
     max: 0
   - id: commission-answer
-    type: text_contains
-    anyOf:
-      - comisión
-      - tarjeta
-      - transferencia
-      - regalos
+    type: text_semantic
+    rubric: >-
+      The user asks in Spanish what commission Sin Envolturas charges for gifts while an unrelated provider recommendation is active. Pass only if the response answers the commission question from retrieved knowledge, remains entirely in natural Spanish except for proper names, numbers, URLs, or literal technical identifiers, and does not continue the provider-selection flow or invent unsupported fees. A concise explanation of the relevant card or transfer fee distinction is acceptable.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
   - id: no-missing-kb-fallback
     type: text_not_contains
     phrases:

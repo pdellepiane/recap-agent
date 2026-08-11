@@ -2,6 +2,15 @@
 
 ## 2026-08-11
 
+### Promote FAQ retrieval to the mandatory live gate
+
+- Revalidated the FAQ path with 46 focused deterministic tests covering information routing, orchestration, knowledge retrieval, prompt ownership, authentication guidance, and purchase disclosure.
+- Promoted the existing recommendation-to-FAQ Lambda case into `live_behavior_regression` and replaced its text-fragment check with a hard semantic expectation requiring a grounded Spanish answer from retrieved knowledge.
+- Added FAQ routing from active planning nodes to the behavior coverage registry so future behavioral changes cannot pass without exercising the knowledge-base path.
+- Strengthened `AGENTS.md`: every future behavior-changing feature or fix needs its own coverage-registry entry, even when it reuses a prior live case. Registered each of today's three provider-confirmation corrections separately.
+
+**Reason:** FAQ correctness is a primary release gate and must not rely only on offline routing tests or a non-mandatory live suite.
+
 ### Reconcile live behavior coverage with implemented fixes
 
 - Added a git-tracked behavior coverage registry that maps each behavior-changing fix since the mandatory live-gate policy to one or more permanent live case IDs.
