@@ -1692,6 +1692,16 @@ export class AgentService {
     const hasAmbiguity =
       args.extraction.ambiguity?.status === 'ambiguous' &&
       !isRetiredPhoneConfirmationRecovery;
+    const informationExtraction = isRetiredPhoneConfirmationRecovery
+      ? {
+          ...args.extraction,
+          ambiguity: {
+            status: 'clear' as const,
+            clarificationQuestion: null,
+            interpretations: [],
+          },
+        }
+      : args.extraction;
     let informationResults: InformationTaskResult[] = [];
     let informationSummaries: InformationExecutionSummary[] = [];
     let operationalNote: string | null = null;
@@ -1789,7 +1799,7 @@ export class AgentService {
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planForInformation,
-      extraction: args.extraction,
+      extraction: informationExtraction,
       missingFields: [],
       searchReady: false,
       providerResults: [],
@@ -1804,7 +1814,7 @@ export class AgentService {
     });
     const ambiguitySafeReply = this.enforceFaqAmbiguityReply(
       currentNode,
-      args.extraction,
+      informationExtraction,
       composedReply,
     );
     const missingOtpReply = this.enforceMissingOtpRecoveryReply(
