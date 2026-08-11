@@ -2769,7 +2769,7 @@ export class AgentService {
     }
 
     const message =
-      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” o “no”; si respondes “no”, te pediré el correo registrado.';
+      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” si lo está o “no” si usas otro número; si respondes “no”, te pediré el correo registrado.';
     return {
       ...reply,
       text: message,

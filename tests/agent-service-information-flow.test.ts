@@ -223,7 +223,7 @@ describe('AgentService first-class information flow', () => {
     expect(first.plan.contact_phone_number).toBe('973296571');
     expect(first.plan.information_state.pending_requests).toHaveLength(1);
     expect(first.outbound.text).toBe(
-      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” o “no”; si respondes “no”, te pediré el correo registrado',
+      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” si lo está o “no” si usas otro número; si respondes “no”, te pediré el correo registrado',
     );
 
     const second = await service.handleTurn({

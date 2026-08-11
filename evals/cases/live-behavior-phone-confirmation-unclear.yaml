@@ -50,7 +50,7 @@ expectations:
   - id: asks-for-explicit-yes-or-no
     type: text_semantic
     rubric: >-
-      The user answered only “Este” after being asked whether the current WhatsApp number is registered. Pass only if the response briefly clarifies in natural Spanish that the user must answer “sí” when the current number is registered or “no” when another number is used. It must not ask for an email or code, authenticate the phone, or claim success. The pending event question is verified structurally and does not need to be repeated in this one-question clarification.
+      The user answered only “Este” after being asked whether the current WhatsApp number is registered. Pass only if the response briefly clarifies in natural Spanish that the user must answer “sí” when the current number is registered or “no” when another number is used. It may explain that an explicit “no” will lead to asking for the registered email, but it must not request the email or a code in this message, authenticate the phone, or claim success. The pending event question is verified structurally and does not need to be repeated in this one-question clarification.
     minScore: 0.9
     requireJudge: true
     severity: hard
