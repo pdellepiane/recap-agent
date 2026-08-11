@@ -783,6 +783,12 @@ export class AgentService {
       extraction,
     );
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
+    const providerConfirmationGuard = this.guardAmbiguousProviderConfirmation(
+      workingPlan,
+      extraction,
+      inbound.text,
+    );
+    extraction = providerConfirmationGuard.extraction;
     if (
       this.hasInformationWork(workingPlan, extraction) &&
       extraction.actionIntent !== 'pausar' &&
@@ -830,12 +836,14 @@ export class AgentService {
     const shouldResolveProviderSelection =
       !this.isCloseContactFieldTurn(previousNode, extraction, validationError);
     const preliminarySelectionResolution: SelectionResolution = shouldResolveProviderSelection
-      ? this.tryResolveSelection(
+      ? providerConfirmationGuard.ambiguous
+        ? { resolved: false }
+        : this.tryResolveSelection(
           mergedPlan,
           extraction.selectedProviderReferences ?? [],
           effectiveSelectionHints,
           extraction.actionIntent,
-      )
+        )
       : { resolved: false };
     const selectionShouldStop =
       preliminarySelectionResolution.resolved &&
@@ -854,7 +862,7 @@ export class AgentService {
       sufficiency,
       sufficiencyByNeed,
       hasResolvedSelection: selectionShouldStop,
-      hasAmbiguousSelection: false,
+      hasAmbiguousSelection: providerConfirmationGuard.ambiguous,
       hasReplaceProviderOperation: operationResult.appliedOperations.some(
         (op) => op.type === 'replace_provider',
       ),
@@ -3374,6 +3382,20 @@ export class AgentService {
         stopReason: 'no_provider_need_identified',
         persistReason: 'entrevista',
       };
+    } else if (evidence.hasAmbiguousSelection) {
+      decision = {
+        nextNode: 'aclarar_pedir_faltante',
+        routeKind: 'clarify_missing_fields',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: evidence.focusedNeedCategory,
+        needsToSearch: [],
+        needsToPresent: evidence.sufficiencyByNeed
+          .filter((need) => need.hasShortlist)
+          .map((need) => need.category),
+        stopReason: 'provider_selection_ambiguous',
+        persistReason: 'aclarar_pedir_faltante',
+      };
     } else if (
       evidence.hasResolvedSelection &&
       !evidence.hasReplaceProviderOperation
@@ -3563,6 +3585,141 @@ export class AgentService {
     return turnDecisionSchema.parse({
       ...decision,
       ...invariantResult,
+    });
+  }
+
+  private guardAmbiguousProviderConfirmation(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+    userMessage: string,
+  ): { extraction: ExtractionResult; ambiguous: boolean } {
+    if (extraction.actionIntent !== 'confirmar_proveedor') {
+      return { extraction, ambiguous: false };
+    }
+
+    const candidateCount = plan.provider_needs.reduce(
+      (total, need) => total + need.recommended_providers.length,
+      0,
+    );
+    if (candidateCount <= 1) {
+      return { extraction, ambiguous: false };
+    }
+
+    const hasGroundedSelectionOperation = (
+      extraction.providerPlanOperations ?? []
+    ).some((operation) =>
+      operation.type === 'select_provider' &&
+      operation.provider !== null &&
+      this.resolveProviderReference(
+        plan,
+        operation.provider,
+        operation.category,
+      ) !== null,
+    );
+    if (hasGroundedSelectionOperation) {
+      return { extraction, ambiguous: false };
+    }
+
+    if (this.hasGroundedSelectionReference(plan, extraction, userMessage)) {
+      return { extraction, ambiguous: false };
+    }
+
+    return {
+      ambiguous: true,
+      extraction: {
+        ...extraction,
+        ambiguity: {
+          status: 'ambiguous',
+          clarificationQuestion: null,
+          interpretations: [],
+        },
+        selectedProviderHints: [],
+        selectedProviderReferences: [],
+      },
+    };
+  }
+
+  private hasGroundedSelectionReference(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+    userMessage: string,
+  ): boolean {
+    const normalizedMessage = this.normalizeSelectionText(userMessage);
+    const messageTokens = new Set(
+      normalizedMessage.split(/\s+/u).filter((token) => token.length >= 4),
+    );
+    const evidenceValues = [
+      ...extraction.selectedProviderHints,
+      ...(extraction.selectedProviderReferences ?? []).flatMap((reference) => [
+        reference.providerTitle,
+        reference.hint,
+      ]),
+    ].filter((value): value is string => Boolean(value?.trim()));
+
+    const matchesGroundingText = (value: string): boolean => {
+      const normalizedEvidence = this.normalizeSelectionText(value);
+      if (
+        normalizedEvidence.length >= 3 &&
+        normalizedMessage.includes(normalizedEvidence)
+      ) {
+        return true;
+      }
+      const sharedTokens = new Set(
+        normalizedEvidence
+          .split(/\s+/u)
+          .filter((token) => token.length >= 4 && messageTokens.has(token)),
+      );
+      return sharedTokens.size >= 2;
+    };
+    if (evidenceValues.some(matchesGroundingText)) {
+      return true;
+    }
+
+    const activeNeed = getActiveNeed(plan);
+    const needsWithProviders = [
+      ...(activeNeed?.recommended_providers.length ? [activeNeed] : []),
+      ...plan.provider_needs.filter(
+        (need) =>
+          need.category !== activeNeed?.category &&
+          need.recommended_providers.length > 0,
+      ),
+    ];
+    const providersFromReferences = (
+      extraction.selectedProviderReferences ?? []
+    ).flatMap((reference) => {
+      const resolved = this.resolveProviderReference(
+        plan,
+        reference,
+        reference.category,
+      );
+      return resolved ? [resolved.provider] : [];
+    });
+    const providersFromHints = extraction.selectedProviderHints.flatMap((hint) =>
+      this.resolveProviderSelections(needsWithProviders, activeNeed, hint)
+        .map((selection) => selection.selectedProvider),
+    );
+    const referencedProviders = new Map(
+      [...providersFromReferences, ...providersFromHints]
+        .map((provider) => [provider.id, provider]),
+    );
+
+    return Array.from(referencedProviders.values()).some((provider) => {
+      const owningNeed = plan.provider_needs.find((need) =>
+        need.recommended_provider_ids.includes(provider.id),
+      );
+      return [
+        provider.title,
+        provider.location,
+        provider.reason,
+        provider.descriptionSnippet,
+        provider.promoSummary,
+        ...provider.serviceHighlights,
+        ...provider.termsHighlights,
+        ...(owningNeed?.preferences ?? []),
+        ...(owningNeed?.hard_constraints ?? []),
+      ]
+        .filter((value): value is string => Boolean(value?.trim()))
+        .some(matchesGroundingText);
     });
   }
 

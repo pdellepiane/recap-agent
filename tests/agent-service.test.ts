@@ -6444,6 +6444,112 @@ describe('AgentService', () => {
     ]);
   });
 
+  it('rejects an ungrounded provider reference when a confirmation has multiple candidates', async () => {
+    class AmbiguousConfirmationRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        const base = await super.extract(request);
+        return {
+          ...base,
+          actionIntent: 'confirmar_proveedor',
+          ambiguity: {
+            status: 'clear',
+            clarificationQuestion: null,
+            interpretations: [],
+          },
+          activeNeedCategory: 'Fotografía y video',
+          vendorCategory: 'Fotografía y video',
+          selectedProviderHints: ['Carlos Schult'],
+          selectedProviderReferences: [{
+            providerId: 90,
+            providerTitle: 'Carlos Schult',
+            category: 'Fotografía y video',
+            hint: 'Carlos Schult',
+          }],
+          providerPlanOperations: [],
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-ambiguous-confirmation',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-ambiguous-confirmation',
+        }),
+        {
+          current_node: 'recomendar',
+          event_type: 'boda',
+          location: 'Lima',
+          guest_range: '51-100',
+          active_need_category: 'Fotografía y video',
+          provider_needs: [{
+            category: 'Fotografía y video',
+            status: 'shortlisted',
+            preferences: ['estilo natural'],
+            hard_constraints: [],
+            missing_fields: [],
+            recommended_provider_ids: [90, 91],
+            recommended_providers: [
+              {
+                id: 90,
+                title: 'Carlos Schult',
+                category: 'Fotografía y video',
+                location: 'Lima',
+                priceLevel: null,
+                reason: 'primera opción',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+              {
+                id: 91,
+                title: 'Fotografía Alternativa',
+                category: 'Fotografía y video',
+                location: 'Lima',
+                priceLevel: null,
+                reason: 'segunda opción',
+                serviceHighlights: [],
+                termsHighlights: [],
+              },
+            ],
+            selected_provider_ids: [],
+            selected_provider_hints: [],
+          }],
+        },
+      ),
+    });
+    const runtime = new AmbiguousConfirmationRuntime();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-ambiguous-confirmation',
+      text: 'Sí confirmo.',
+      messageId: 'msg-ambiguous-confirmation',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(response.plan.provider_needs[0]?.status).toBe('shortlisted');
+    expect(response.plan.provider_needs[0]?.selected_provider_ids).toEqual([]);
+    expect(response.trace.next_node).toBe('aclarar_pedir_faltante');
+    expect(response.trace.extraction_summary.ambiguity_status).toBe('ambiguous');
+    expect(response.trace.selection_resolution_summary.selected_provider_references).toEqual([]);
+    expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
+      ambiguity: { status: 'ambiguous' },
+      selectedProviderHints: [],
+      selectedProviderReferences: [],
+    });
+  });
+
   it('applies structured plan operations without keyword fallback', async () => {
     class OperationRuntime extends FakeRuntime {
       override async extract(request: ExtractRequest): Promise<ExtractionResult> {

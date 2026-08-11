@@ -1,5 +1,28 @@
 # Implementation Log
 
+## 2026-08-11
+
+### Reconcile live behavior coverage with implemented fixes
+
+- Added a git-tracked behavior coverage registry that maps each behavior-changing fix since the mandatory live-gate policy to one or more permanent live case IDs.
+- Added a deterministic gate proving every mapped case exists, belongs to `live_behavior_regression`, targets the live Lambda, has a hard structural assertion, and has a hard semantic expectation with `requireJudge: true`.
+- Corrected the owning suite metadata for the four original interaction-derived feedback cases.
+- Promoted the exact `Sí confirmo` ambiguity, “the cheaper one,” and “the one in Miraflores” decision-evidence regressions from request-shape-only tests to live Lambda cases.
+- Made live seed-plan persistence fail loudly instead of returning an empty skipped result; this exposed an expired AWS login rather than misreporting three empty model responses.
+
+**Reason:** The Roadmap described decision-evidence fixes as complete, but their exact interactions were not all members of the mandatory live suite. The existing evaluator could also hide a Dynamo seed failure as an empty case, weakening the fail-closed contract.
+
+### Reject ungrounded provider confirmations
+
+- Added a typed selection-evidence invariant for confirmation turns with multiple shortlisted candidates.
+- A provider selection remains valid when the structured extraction contains a resolvable `select_provider` operation or when its extracted reference is grounded in the user message through retained provider or need discriminators.
+- If neither condition holds, the runtime clears the unsupported provider reference, preserves the shortlist, marks the selection ambiguous, and routes to one clarification without searching or choosing the first candidate.
+- Added a deterministic twin for the live `Sí confirmo` interaction while retaining existing name, ordinal, descriptive-service, comparative-price, and location-reference selection behavior.
+
+**Reason:** The newly promoted live case proved the deployed extractor could assign the first shortlisted provider to an underspecified confirmation even though two candidates existed.
+
+**Decision:** Treat multi-candidate confirmation as an invariant-validation problem over structured extraction evidence. Do not use keyword matching to choose flow, and do not allow an ungrounded model reference to mutate the plan.
+
 ## 2026-08-10
 
 ### Restrict purchase payment and shipping disclosures
