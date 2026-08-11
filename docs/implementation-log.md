@@ -2,6 +2,19 @@
 
 ## 2026-08-11
 
+### Make phone confirmation explicit and preserve missing-code reports
+
+- Reconstructed the reported WhatsApp interaction from the channel request logs, DynamoDB plan/performance records, and stored OpenAI Responses payloads.
+- The Agent API returned `user_not_found` for phone-first authentication and `sent` for the email-code request. No verification call occurred, so this incident did not contain a rejected code.
+- The final Lambda turn contained the batched message “Ok Ok”; the response classifier returned `suppress_acknowledgement`, and the runtime intentionally made no extractor or reply call. The visible later message “No me ha llegado” has no Lambda request, Dynamo performance turn, or OpenAI response ID, placing that delivery failure upstream of this runtime.
+- Reworded the phone confirmation to explicitly request “sí” for the registered current number or “no” when another number is used.
+- Tightened structured extraction guidance so an imprecise demonstrative answer such as “este” remains `unclear` instead of triggering email fallback.
+- Added permanent live cases for the exact “Este” response and for “No me ha llegado” during an active code challenge, plus an offline twin for the unclear confirmation.
+
+**Decision:** Preserve the existing structured `phoneConfirmation` decision boundary. Improve the eliciting question and model-owned extraction semantics rather than introducing deterministic keyword routing.
+
+**Trace evidence:** Plan `01KZHNYYA53Z02HB1203K85B4S`; suppressed-turn trace `01KZHP44TBDJH0Q1BQ6JRTRWNT`; classifier response `resp_08dbb4b049864931006a77a66a3ec481948b8e127e3b959a29`; local GET-only audit `.openai-audits/openai-audit-2026-08-11T16-57-12-375Z.json` (mode `0600`, ignored by Git).
+
 ### Promote FAQ retrieval to the mandatory live gate
 
 - Revalidated the FAQ path with 46 focused deterministic tests covering information routing, orchestration, knowledge retrieval, prompt ownership, authentication guidance, and purchase disclosure.

@@ -2736,7 +2736,7 @@ export class AgentService {
     }
 
     const message =
-      '¿El número desde el que escribes por WhatsApp está registrado en tu cuenta?';
+      'Para verificar tu cuenta con este número de WhatsApp, responde “sí” si está registrado en tu cuenta o “no” si usas otro número.';
     return {
       ...reply,
       text: message,

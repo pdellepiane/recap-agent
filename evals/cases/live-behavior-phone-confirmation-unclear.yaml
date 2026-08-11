@@ -1,0 +1,53 @@
+template: template.base-live
+id: live_behavior.phone_confirmation_unclear_requires_yes_or_no
+suite: live_behavior_regression
+version: 1
+description: An imprecise demonstrative answer must not be treated as permission to authenticate or fall back to email.
+tags: [live, behavior, authentication, phone-first, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Este
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: phone-confirmation-unclear-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  user_auth:
+    status: none
+    email: null
+    token: null
+    token_expires_at: null
+    last_error: null
+    requested_at: null
+    failed_code_attempts: 0
+    awaiting_phone_confirmation: true
+    auth_method: null
+  information_state:
+    resume_node: entrevista
+    pending_requests:
+      - requestId: information-1
+        kind: associated_event
+        query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
+        eventHint: Karem y Alfredo
+    selection_candidates: []
+expectations:
+  - id: confirmation-remains-pending
+    type: plan_field_equals
+    path: user_auth.awaiting_phone_confirmation
+    expected: true
+    severity: hard
+  - id: ambiguous-answer-does-not-authenticate
+    type: tool_usage
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: asks-for-explicit-yes-or-no
+    type: text_semantic
+    rubric: >-
+      The user answered only “Este” after being asked whether the current WhatsApp number is registered. Pass only if the response briefly clarifies in natural Spanish that the user must answer “sí” when the current number is registered or “no” when another number is used. It must preserve the pending event question and must not ask for an email or code, authenticate the phone, or claim success.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 350
