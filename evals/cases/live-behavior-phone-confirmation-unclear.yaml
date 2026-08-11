@@ -2,13 +2,13 @@ template: template.base-live
 id: live_behavior.phone_confirmation_unclear_requires_yes_or_no
 suite: live_behavior_regression
 version: 1
-description: An imprecise demonstrative answer must not be treated as permission to authenticate or fall back to email.
+description: A stale imprecise answer after the retired confirmation prompt must use the current phone automatically instead of asking again.
 tags: [live, behavior, authentication, phone-first, reported-interaction]
 targetModes: [live_lambda]
 inputs:
   - text: Este
     channel: whatsapp
-    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    contactPhone: "$TERMINAL_CONTACT_PHONE"
     sessionId: phone-confirmation-unclear-session
 seedPlan:
   current_node: resolver_consultas_informativas
@@ -31,26 +31,25 @@ seedPlan:
         eventHint: Karem y Alfredo
     selection_candidates: []
 expectations:
-  - id: confirmation-remains-pending
+  - id: stale-confirmation-is-cleared
     type: plan_field_equals
     path: user_auth.awaiting_phone_confirmation
-    expected: true
+    expected: false
     severity: hard
-  - id: ambiguous-answer-does-not-authenticate
+  - id: current-phone-is-authenticated-automatically
     type: tool_usage
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: [auth_by_phone]
+    mustNotCall: [request_user_login_code, verify_user_login_code]
     severity: hard
-  - id: protected-event-question-remains-pending
-    type: plan_field_subset
-    path: information_state.pending_requests
-    expected:
-      - kind: associated_event
-        query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
+  - id: phone-auth-method-persists
+    type: plan_field_equals
+    path: user_auth.auth_method
+    expected: phone
     severity: hard
-  - id: asks-for-explicit-yes-or-no
+  - id: does-not-repeat-retired-confirmation
     type: text_semantic
     rubric: >-
-      The user answered only “Este” after being asked whether the current WhatsApp number is registered. Pass only if the response briefly clarifies in natural Spanish that the user must answer “sí” when the current number is registered or “no” when another number is used. It may explain that an explicit “no” will lead to asking for the registered email, but it must not request the email or a code in this message, authenticate the phone, or claim success. The pending event question is verified structurally and does not need to be repeated in this one-question clarification.
+      The user answered only “Este” in a conversation seeded from the retired phone-confirmation flow. The response must recover by using the current WhatsApp number automatically and continue in natural Spanish. It must not ask for another yes/no confirmation or request an email or one-time code after successful phone authentication.
     minScore: 0.9
     requireJudge: true
     severity: hard

@@ -15,7 +15,7 @@ El número es opcional. La ausencia de número de orden no es ambigüedad: `orde
 
 Autenticación de consultas personales
 
-Primero se intenta el número actual de WhatsApp; correo y código son respaldo. Clasifica `phoneConfirmation` como `yes`, `no` o `unclear` sin inventarlo. Usa `yes` solo cuando la persona confirme que el número actual está registrado y `no` solo cuando niegue que lo esté. Una referencia imprecisa como “este”, “ese” o “el de aquí”, sin afirmar ni negar el registro, es `unclear`.
+Primero se intenta automáticamente el número actual de WhatsApp; correo y código son respaldo. Clasifica `phoneConfirmation` como `no` solo cuando la persona diga explícitamente que ese número o la cuenta encontrada no le pertenece, no corresponde o no debe usarse. No infieras rechazo de respuestas imprecisas. Usa `yes` únicamente si existe una confirmación explícita y `unclear` para cualquier referencia ambigua.
 
 Una respuesta breve continúa la solicitud protegida pendiente. Con `information_state.authentication_status=code_requested`, consérvala y usa:
 

@@ -201,6 +201,7 @@ export type PurchaseInformation = {
 
 export const informationAuthReasonValues = [
   'phone_confirmation_required',
+  'phone_auth_failed',
   'email_required',
   'email_change_required',
   'otp_sent',
@@ -243,6 +244,9 @@ export function createInformationAuthGuidance(
 
   if (reason === 'phone_confirmation_required') {
     requirements.push('confirm_current_whatsapp_phone');
+  }
+  if (reason === 'phone_auth_failed') {
+    requirements.push('offer_human_support');
   }
 
   if (reason === 'email_required' || reason === 'email_change_required') {
@@ -304,7 +308,7 @@ export type InformationTaskResult =
       requestId: string;
       kind: 'associated_event' | 'purchase';
       status: 'needs_input';
-      nextInput: 'email' | 'otp' | 'phone_confirmation';
+      nextInput: 'email' | 'otp' | 'phone_confirmation' | 'retry';
       guidance: InformationAuthGuidance;
     }
   | {

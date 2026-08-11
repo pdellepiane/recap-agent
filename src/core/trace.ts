@@ -15,6 +15,17 @@ export type ToolInputTrace = {
   input: string;
 };
 
+export type AuthenticationExecutionTrace = {
+  operation: 'auth_by_phone' | 'request_user_login_code' | 'verify_user_login_code';
+  status: string;
+  auth_method: 'phone' | 'email_otp' | null;
+  failure_kind: string | null;
+  retryable: boolean | null;
+  error_preview: string | null;
+  http_status: number | null;
+  request_id: string | null;
+};
+
 export type RecommendationFunnelTrace = {
   available_candidates: number;
   context_candidates: number;
@@ -185,6 +196,7 @@ export type TurnTrace = {
   contact_validation_summary: ContactValidationDebugSummary;
   provider_candidate_audit: ProviderCandidateAuditEntry[];
   information_execution_summary: InformationExecutionSummary[];
+  authentication_execution_summary: AuthenticationExecutionTrace[];
   plan_persisted: boolean;
   plan_persist_reason: string | null;
   timing_ms: {

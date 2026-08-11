@@ -1176,6 +1176,18 @@ describe('AgentService', () => {
     ).toBe(false);
     expect(response.trace.tools_called).toContain('request_user_login_code');
     expect(response.trace.tools_called).not.toContain('verify_user_login_code');
+    expect(response.trace.authentication_execution_summary).toEqual([
+      {
+        operation: 'request_user_login_code',
+        status: 'email_not_found',
+        auth_method: 'email_otp',
+        failure_kind: 'email_not_found',
+        retryable: null,
+        error_preview: 'email not found',
+        http_status: null,
+        request_id: null,
+      },
+    ]);
   });
 
   it('requests one login code for known user auth emails', async () => {
@@ -1330,6 +1342,18 @@ describe('AgentService', () => {
     expect(gateway.verifyCodeCalls).toBe(1);
     expect(gateway.lastVerifiedCode).toBe('000000');
     expect(gateway.authenticatedLookupCalls).toBe(0);
+    expect(response.trace.authentication_execution_summary).toEqual([
+      {
+        operation: 'verify_user_login_code',
+        status: 'invalid_code',
+        auth_method: 'email_otp',
+        failure_kind: 'invalid_code',
+        retryable: null,
+        error_preview: 'invalid code',
+        http_status: null,
+        request_id: null,
+      },
+    ]);
     expect(
       runtime.composeRequests
         .at(-1)

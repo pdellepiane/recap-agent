@@ -2,7 +2,7 @@ template: template.base-live
 id: live_behavior.phone_first_auth_fallback
 suite: live_behavior_regression
 version: 1
-description: A protected WhatsApp request confirms phone authentication with a separate development fixture, receives a phone user-not-found response, and falls back to email OTP verification.
+description: A protected WhatsApp request automatically receives phone user-not-found and then falls back to email OTP verification.
 tags: [live, behavior, authentication, phone-first, email-fallback, protected-information]
 targetModes: [live_lambda]
 inputs:
@@ -10,15 +10,24 @@ inputs:
     channel: whatsapp
     contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
     sessionId: phone-first-fallback-session
-  - text: Sí, ese número está registrado en mi cuenta. Mi correo es fallback@example.invalid.
+  - text: Mi correo registrado es fallback@example.invalid.
     channel: whatsapp
     contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
     sessionId: phone-first-fallback-session
 expectations:
-  - id: first-turn-does-not-authenticate
+  - id: first-turn-checks-phone-before-email
     type: tool_usage
     turnIndex: 0
-    mustNotCall: [auth_by_phone, request_user_login_code]
+    mustCall: [auth_by_phone]
+    mustNotCall: [request_user_login_code]
+    severity: hard
+  - id: phone-not-found-asks-for-email
+    type: text_semantic
+    turnIndex: 0
+    rubric: >-
+      After automatic phone lookup finds no account, the response must ask in natural Spanish for the registered Sin Envolturas email. It must not ask the user to confirm the WhatsApp number.
+    minScore: 0.9
+    requireJudge: true
     severity: hard
   - id: phone-auth-fails-and-email-fallback-starts
     type: tool_usage
@@ -40,7 +49,7 @@ expectations:
     type: text_semantic
     turnIndex: 1
     rubric: >-
-      After phone authentication returns a documented user-not-found response and the user provides an email, the response must clearly explain in Spanish that a one-time code was sent to that email and prompt the user to provide it. It must not claim phone authentication succeeded or ask the user to confirm the WhatsApp number again.
+      After automatic phone authentication returns user-not-found and the user provides an email, the response must clearly explain in Spanish that a one-time code was sent to that email and prompt the user to provide it. It must not claim phone authentication succeeded or ask the user to confirm the WhatsApp number.
     minScore: 0.9
     requireJudge: true
     severity: hard

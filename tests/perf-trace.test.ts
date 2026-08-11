@@ -167,6 +167,7 @@ describe('perf trace module', () => {
           },
         ],
         information_execution_summary: [],
+        authentication_execution_summary: [],
         message_context: {
           history_status: 'available',
           context_source: 'agent_api',
@@ -497,6 +498,7 @@ describe('perf trace module', () => {
       },
       provider_candidate_audit: [],
       information_execution_summary: [],
+      authentication_execution_summary: [],
       provider_results_count: 2,
       provider_result_ids: [1, 2],
       provider_result_summaries: [

@@ -51,6 +51,7 @@ import type {
   RecommendationFunnelTrace,
   SearchStrategyTrace,
   SelectionResolutionDebugSummary,
+  ToolOutputTrace,
   TurnTrace,
 } from '../core/trace';
 import {
@@ -1797,13 +1798,9 @@ export class AgentService {
       args.extraction,
       composedReply,
     );
-    const phoneConfirmationReply = this.enforcePhoneConfirmationReply(
-      planForInformation,
-      ambiguitySafeReply,
-    );
     const missingOtpReply = this.enforceMissingOtpRecoveryReply(
       informationResults,
-      phoneConfirmationReply,
+      ambiguitySafeReply,
     );
     const reply = this.enforceRepeatedOtpRecoveryReply(
       informationResults,
@@ -1968,83 +1965,68 @@ export class AgentService {
     }
 
     const trustedPhoneParts = splitInternationalPhone(args.trustedContactPhone);
-    if (args.plan.user_auth.status !== 'code_requested' && trustedPhoneParts) {
-      if (args.plan.user_auth.awaiting_phone_confirmation) {
-        if (args.phoneConfirmation === 'unclear' || args.phoneConfirmation === null) {
-          return this.phoneConfirmationRequired(args.plan);
+    const phoneAccountRejected = args.phoneConfirmation === 'no';
+    if (phoneAccountRejected) {
+      return this.resolveEmailAuthentication({
+        ...args,
+        plan: this.clearPhoneAuthentication(args.plan, 'Current phone account rejected by user.'),
+      });
+    }
+
+    if (
+      args.plan.user_auth.status !== 'code_requested' &&
+      trustedPhoneParts &&
+      !this.hasValidUserAuthToken(args.plan)
+    ) {
+      const phoneAuthentication = await this.authenticateByPhone(
+        trustedPhoneParts,
+        args.toolUsage,
+      );
+      if (phoneAuthentication.status === 'authenticated') {
+        if (
+          !phoneAuthentication.token.trim() ||
+          !this.isValidEmail(phoneAuthentication.email) ||
+          !isFutureIsoTimestamp(phoneAuthentication.tokenExpiresAtIso)
+        ) {
+          return this.phoneAuthenticationFailure(
+            args.plan,
+            'Phone authentication returned incomplete credentials.',
+          );
         }
 
-        const planWithoutPhoneConfirmation = mergePlan(args.plan, {
+        const authenticatedPlan = mergePlan(args.plan, {
+          contact_email: phoneAuthentication.email,
           user_auth: {
             ...args.plan.user_auth,
+            status: 'authenticated',
+            email: phoneAuthentication.email,
+            token: phoneAuthentication.token,
+            token_expires_at: phoneAuthentication.tokenExpiresAtIso,
+            last_error: null,
+            requested_at: null,
+            failed_code_attempts: 0,
+            auth_method: 'phone',
             awaiting_phone_confirmation: false,
           },
         });
-        if (args.phoneConfirmation === 'yes') {
-          const phoneAuthentication = await this.authenticateByPhone(
-            trustedPhoneParts,
-            args.toolUsage,
-          );
-          if (phoneAuthentication.status === 'authenticated') {
-            if (
-              !phoneAuthentication.token.trim() ||
-              !this.isValidEmail(phoneAuthentication.email) ||
-              !isFutureIsoTimestamp(phoneAuthentication.tokenExpiresAtIso)
-            ) {
-              return this.resolveEmailAuthentication({
-                ...args,
-                plan: this.clearPhoneAuthentication(
-                  planWithoutPhoneConfirmation,
-                  'Phone authentication returned incomplete credentials.',
-                ),
-              });
-            }
-
-            const authenticatedPlan = mergePlan(planWithoutPhoneConfirmation, {
-              contact_email: phoneAuthentication.email,
-              user_auth: {
-                ...planWithoutPhoneConfirmation.user_auth,
-                status: 'authenticated',
-                email: phoneAuthentication.email,
-                token: phoneAuthentication.token,
-                token_expires_at: phoneAuthentication.tokenExpiresAtIso,
-                last_error: null,
-                requested_at: null,
-                failed_code_attempts: 0,
-                auth_method: 'phone',
-                awaiting_phone_confirmation: false,
-              },
-            });
-            return {
-              plan: authenticatedPlan,
-              authentication: {
-                token: phoneAuthentication.token,
-                email: phoneAuthentication.email,
-              },
-              authBlock: null,
-            };
-          }
-        }
-
-        return this.resolveEmailAuthentication({
-          ...args,
-          plan: this.clearPhoneAuthentication(
-            planWithoutPhoneConfirmation,
-            null,
-          ),
-        });
+        return {
+          plan: authenticatedPlan,
+          authentication: {
+            token: phoneAuthentication.token,
+            email: phoneAuthentication.email,
+          },
+          authBlock: null,
+        };
       }
 
-      if (!this.hasValidUserAuthToken(args.plan)) {
-        return this.phoneConfirmationRequired(
-          mergePlan(args.plan, {
-            user_auth: {
-              ...args.plan.user_auth,
-              awaiting_phone_confirmation: true,
-            },
-          }),
-        );
+      if (phoneAuthentication.status === 'failed') {
+        return this.phoneAuthenticationFailure(args.plan, phoneAuthentication.error);
       }
+
+      return this.resolveEmailAuthentication({
+        ...args,
+        plan: this.clearPhoneAuthentication(args.plan, 'No account found for current phone.'),
+      });
     }
 
     return this.resolveEmailAuthentication({
@@ -2056,18 +2038,18 @@ export class AgentService {
     });
   }
 
-  private phoneConfirmationRequired(plan: PlanSnapshot): {
+  private phoneAuthenticationFailure(plan: PlanSnapshot, error: string): {
     plan: PlanSnapshot;
     authentication: InformationAuthentication | null;
     authBlock: InformationAuthBlock;
   } {
     return {
-      plan,
+      plan: this.clearPhoneAuthentication(plan, error),
       authentication: null,
       authBlock: {
-        nextInput: 'phone_confirmation',
+        nextInput: 'retry',
         guidance: createInformationAuthGuidance(
-          'phone_confirmation_required',
+          'phone_auth_failed',
           null,
         ),
       },
@@ -2114,13 +2096,20 @@ export class AgentService {
     }
     this.recordDeterministicToolOutput(toolUsage, 'auth_by_phone', {
       status: result.status,
+      auth_method: 'phone',
       ...(result.status === 'authenticated'
         ? {
             token: '[redacted]',
             email_present: result.email.trim().length > 0,
             expiry_present: result.tokenExpiresAtIso.trim().length > 0,
           }
-        : {}),
+        : result.status === 'failed'
+          ? {
+              retryable: result.retryable,
+              failure_kind: result.retryable ? 'transient_failure' : 'permanent_failure',
+              error_preview: this.safeAuthErrorPreview(result.error),
+            }
+          : { failure_kind: 'user_not_found' }),
     });
     return result;
   }
@@ -2255,7 +2244,18 @@ export class AgentService {
     this.recordDeterministicToolOutput(
       toolUsage,
       'request_user_login_code',
-      { status: result.status },
+      {
+        status: result.status,
+        auth_method: 'email_otp',
+        http_status: result.httpStatus ?? null,
+        request_id: result.requestId ?? null,
+        ...(result.status === 'sent'
+          ? {}
+          : {
+              failure_kind: result.status,
+              error_preview: this.safeAuthErrorPreview(result.error),
+            }),
+      },
     );
 
     if (result.status === 'sent') {
@@ -2349,7 +2349,19 @@ export class AgentService {
     this.recordDeterministicToolOutput(
       toolUsage,
       'verify_user_login_code',
-      { status: result.status, token: '[redacted]' },
+      {
+        status: result.status,
+        auth_method: 'email_otp',
+        token: '[redacted]',
+        http_status: result.httpStatus ?? null,
+        request_id: result.requestId ?? null,
+        ...(result.status === 'authenticated'
+          ? {}
+          : {
+              failure_kind: result.status,
+              error_preview: this.safeAuthErrorPreview(result.error),
+            }),
+      },
     );
 
     if (result.status !== 'authenticated') {
@@ -2760,24 +2772,8 @@ export class AgentService {
     };
   }
 
-  private enforcePhoneConfirmationReply(
-    plan: PlanSnapshot,
-    reply: ComposeReplyResult,
-  ): ComposeReplyResult {
-    if (!plan.user_auth.awaiting_phone_confirmation) {
-      return reply;
-    }
-
-    const message =
-      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” si lo está o “no” si usas otro número; si respondes “no”, te pediré el correo registrado.';
-    return {
-      ...reply,
-      text: message,
-      structuredMessage: {
-        type: 'generic',
-        paragraphs_es: [message],
-      },
-    };
+  private safeAuthErrorPreview(error: string): string {
+    return error.replace(/[A-Za-z0-9_-]{20,}/gu, '[redacted]').slice(0, 240);
   }
 
   private resolveUserAuthEmail(plan: PlanSnapshot, userMessage: string): string | null {
@@ -4032,6 +4028,9 @@ export class AgentService {
       contact_validation_summary: contactValidationSummary,
       provider_candidate_audit: this.summarizeProviderCandidateAudit(args.providerResults),
       information_execution_summary: args.informationExecution ?? [],
+      authentication_execution_summary: this.summarizeAuthenticationExecution(
+        args.toolUsage.outputs,
+      ),
       plan_persisted: args.planPersisted,
       plan_persist_reason: args.planPersistReason,
       timing_ms: args.timingMs,
@@ -4261,6 +4260,52 @@ export class AgentService {
       retrieval_score: provider.retrievalScore ?? null,
       fit_score: provider.fitScore ?? null,
     }));
+  }
+
+  private summarizeAuthenticationExecution(
+    outputs: ToolOutputTrace[],
+  ): TurnTrace['authentication_execution_summary'] {
+    const authOperations = new Set([
+      'auth_by_phone',
+      'request_user_login_code',
+      'verify_user_login_code',
+    ]);
+    return outputs.flatMap((entry) => {
+      if (!authOperations.has(entry.tool)) {
+        return [];
+      }
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(entry.output) as unknown;
+      } catch {
+        return [];
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        return [];
+      }
+      const record = parsed as Record<string, unknown>;
+      const operation = entry.tool as
+        | 'auth_by_phone'
+        | 'request_user_login_code'
+        | 'verify_user_login_code';
+      return [{
+        operation,
+        status: typeof record.status === 'string' ? record.status : 'unknown',
+        auth_method:
+          record.auth_method === 'phone' || record.auth_method === 'email_otp'
+            ? record.auth_method
+            : null,
+        failure_kind:
+          typeof record.failure_kind === 'string' ? record.failure_kind : null,
+        retryable: typeof record.retryable === 'boolean' ? record.retryable : null,
+        error_preview:
+          typeof record.error_preview === 'string' ? record.error_preview : null,
+        http_status:
+          typeof record.http_status === 'number' ? record.http_status : null,
+        request_id:
+          typeof record.request_id === 'string' ? record.request_id : null,
+      }];
+    });
   }
 
   private resolveExtractionNode(

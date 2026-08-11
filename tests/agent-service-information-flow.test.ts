@@ -180,11 +180,8 @@ describe('AgentService first-class information flow', () => {
     ).toEqual(createInformationAuthGuidance('email_required', null));
   });
 
-  it('asks for phone confirmation before making any protected authentication call', async () => {
-    const runtime = new InformationRuntime([
-      extraction([purchaseRequest(null)]),
-      extraction([], null, null, 'yes'),
-    ]);
+  it('authenticates a protected request with the current WhatsApp number automatically', async () => {
+    const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = {
       status: 'authenticated',
@@ -199,38 +196,11 @@ describe('AgentService first-class information flow', () => {
       providerGateway: providerGateway(),
     });
 
-    const first = await service.handleTurn({
+    const response = await service.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'external-id-must-not-authenticate',
       text: 'Quiero revisar mi regalo.',
       messageId: 'phone-first-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(first.plan.user_auth.awaiting_phone_confirmation).toBe(true);
-    expect(
-      runtime.composeRequests.at(-1)?.informationResults?.[0],
-    ).toEqual(
-      expect.objectContaining({
-        status: 'needs_input',
-        nextInput: 'phone_confirmation',
-      }),
-    );
-    expect(first.plan.contact_phone).toBe('51973296571');
-    expect(first.plan.contact_phone_extension).toBe('+51');
-    expect(first.plan.contact_phone_number).toBe('973296571');
-    expect(first.plan.information_state.pending_requests).toHaveLength(1);
-    expect(first.outbound.text).toBe(
-      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” si lo está o “no” si usas otro número; si respondes “no”, te pediré el correo registrado',
-    );
-
-    const second = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'external-id-must-not-authenticate',
-      text: 'Sí',
-      messageId: 'phone-first-2',
       receivedAt: new Date().toISOString(),
       contactPhone: '+51973296571',
     });
@@ -240,19 +210,30 @@ describe('AgentService first-class information flow', () => {
       phone_extension: '+51',
       phone_number: '973296571',
     });
-    expect(second.plan.user_auth).toMatchObject({
+    expect(response.plan.user_auth).toMatchObject({
       status: 'authenticated',
       token: 'phone-jwt',
       token_expires_at: '2026-12-01T00:00:00.000Z',
       auth_method: 'phone',
       email: 'registered@example.com',
     });
+    expect(response.trace.authentication_execution_summary).toEqual([
+      {
+        operation: 'auth_by_phone',
+        status: 'authenticated',
+        auth_method: 'phone',
+        failure_kind: null,
+        retryable: null,
+        error_preview: null,
+        http_status: null,
+        request_id: null,
+      },
+    ]);
   });
 
-  it('routes a structured no answer to email OTP without phone authentication', async () => {
+  it('routes an explicit wrong-account statement to email OTP without phone authentication', async () => {
     const runtime = new InformationRuntime([
-      extraction([purchaseRequest(null)]),
-      extraction([], null, 'fallback@example.com', 'no'),
+      extraction([purchaseRequest(null)], null, 'fallback@example.com', 'no'),
     ]);
     const gateway = new FakePurchaseGateway();
     const provider = providerGateway();
@@ -263,68 +244,99 @@ describe('AgentService first-class information flow', () => {
       providerGateway: provider,
     });
 
-    await service.handleTurn({
+    const response = await service.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'phone-no-user',
-      text: 'Quiero revisar mi regalo.',
+      text: 'Ese número no corresponde a mi cuenta; mi correo es fallback@example.com',
       messageId: 'phone-no-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-    const second = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'phone-no-user',
-      text: 'No, mi correo es fallback@example.com',
-      messageId: 'phone-no-2',
       receivedAt: new Date().toISOString(),
       contactPhone: '+51973296571',
     });
 
     expect(gateway.authByPhoneCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(1);
-    expect(second.plan.user_auth).toMatchObject({
+    expect(response.plan.user_auth).toMatchObject({
       status: 'code_requested',
       auth_method: null,
       awaiting_phone_confirmation: false,
     });
   });
 
-  it('repeats the confirmation for a structured unclear answer and preserves state', async () => {
-    const runtime = new InformationRuntime([
-      extraction([purchaseRequest(null)]),
-      extraction([], null, null, 'unclear'),
-    ]);
+  it('asks for the registered email only after the current phone is not found', async () => {
+    const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    const provider = providerGateway();
     const service = createService({
       runtime,
       knowledgeGateway: new FakeKnowledgeGateway(),
       purchaseGateway: gateway,
-      providerGateway: providerGateway(),
+      providerGateway: provider,
     });
 
-    const first = await service.handleTurn({
+    const response = await service.handleTurn({
       channel: 'whatsapp',
-      externalUserId: 'phone-unclear-user',
-      text: 'Quiero saber de mi compra.',
-      messageId: 'phone-unclear-1',
-      receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
-    });
-    const second = await service.handleTurn({
-      channel: 'whatsapp',
-      externalUserId: 'phone-unclear-user',
-      text: 'Este',
-      messageId: 'phone-unclear-2',
+      externalUserId: 'phone-not-found-user',
+      text: 'Quiero saber de mi compra',
+      messageId: 'phone-not-found-1',
       receivedAt: new Date().toISOString(),
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(0);
-    expect(second.plan.user_auth.awaiting_phone_confirmation).toBe(true);
-    expect(second.plan.information_state.pending_requests).toEqual(
-      first.plan.information_state.pending_requests,
+    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(
+      runtime.composeRequests.at(-1)?.informationResults?.[0],
+    ).toEqual(
+      expect.objectContaining({
+        status: 'needs_input',
+        nextInput: 'email',
+      }),
     );
-    expect(second.outbound.text).toBe(first.outbound.text);
+  });
+
+  it('does not ask for email when automatic phone authentication fails technically', async () => {
+    const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = {
+      status: 'failed',
+      error: 'Agent auth endpoint timed out',
+      retryable: true,
+    };
+    const provider = providerGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: provider,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'phone-auth-failure-user',
+      text: 'Quiero revisar mi compra',
+      messageId: 'phone-auth-failure-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(
+      runtime.composeRequests.at(-1)?.informationResults?.[0],
+    ).toEqual(expect.objectContaining({ status: 'needs_input', nextInput: 'retry' }));
+    expect(response.trace.authentication_execution_summary).toEqual([
+      {
+        operation: 'auth_by_phone',
+        status: 'failed',
+        auth_method: 'phone',
+        failure_kind: 'transient_failure',
+        retryable: true,
+        error_preview: 'Agent auth endpoint timed out',
+        http_status: null,
+        request_id: null,
+      },
+    ]);
   });
 
   it('uses email OTP immediately when the trusted phone is absent', async () => {

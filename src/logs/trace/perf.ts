@@ -140,6 +140,7 @@ export type TurnPerfRecord = {
   contact_validation_summary: TurnTrace['contact_validation_summary'];
   provider_candidate_audit: TurnTrace['provider_candidate_audit'];
   information_execution_summary: TurnTrace['information_execution_summary'];
+  authentication_execution_summary: TurnTrace['authentication_execution_summary'];
   provider_results_count: number;
   provider_result_ids: number[];
   provider_result_summaries: ProviderResultPerfSummary[];
@@ -179,6 +180,7 @@ export type CliPerfSummary = {
   conversation_health_status: string | null;
   conversation_health_reason: string | null;
   human_help_response: string | null;
+  authentication_execution_summary: TurnTrace['authentication_execution_summary'];
   feedback_signals: FeedbackSignalsV1;
 };
 
@@ -301,6 +303,7 @@ export function buildTurnPerfRecord(args: {
     contact_validation_summary: args.trace.contact_validation_summary,
     provider_candidate_audit: args.trace.provider_candidate_audit,
     information_execution_summary: args.trace.information_execution_summary,
+    authentication_execution_summary: args.trace.authentication_execution_summary,
     provider_results_count: args.trace.provider_results.length,
     provider_result_ids: args.trace.provider_results.map((provider) => provider.id),
     provider_result_summaries: args.trace.provider_results.map((provider) => ({
@@ -555,6 +558,7 @@ export function toCliPerfSummary(
     conversation_health_status: record.response_classifier?.conversation_health ?? null,
     conversation_health_reason: record.response_classifier?.health_reason ?? null,
     human_help_response: record.response_classifier?.human_help_response ?? null,
+    authentication_execution_summary: record.authentication_execution_summary,
     feedback_signals: record.feedback_signals,
   };
 }

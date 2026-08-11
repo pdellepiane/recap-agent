@@ -1,0 +1,60 @@
+template: template.base-live
+id: live_behavior.phone_account_rejection_requests_email
+suite: live_behavior_regression
+version: 1
+description: An explicit rejection of the current phone account clears phone authentication and requests the registered email.
+tags: [live, behavior, authentication, phone-first, email-fallback]
+targetModes: [live_lambda]
+inputs:
+  - text: Esa no es mi cuenta ni el número que tengo registrado.
+    channel: whatsapp
+    contactPhone: "$TERMINAL_CONTACT_PHONE"
+    sessionId: phone-account-rejected-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  user_auth:
+    status: authenticated
+    email: prior-account@example.invalid
+    token: seeded-phone-token
+    token_expires_at: "2026-12-01T00:00:00.000Z"
+    last_error: null
+    requested_at: null
+    failed_code_attempts: 0
+    awaiting_phone_confirmation: false
+    auth_method: phone
+  information_state:
+    resume_node: entrevista
+    pending_requests:
+      - requestId: information-1
+        kind: associated_event
+        query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
+        eventHint: Karem y Alfredo
+    selection_candidates: []
+expectations:
+  - id: rejected-phone-is-not-retried
+    type: tool_usage
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: phone-authentication-is-cleared
+    type: plan_field_equals
+    path: user_auth.status
+    expected: none
+    severity: hard
+  - id: protected-question-remains-pending
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected:
+      - kind: associated_event
+        query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
+    severity: hard
+  - id: requests-registered-email-after-rejection
+    type: text_semantic
+    rubric: >-
+      The user explicitly says the current phone/account is not theirs. The response must ask in natural Spanish for the email registered in Sin Envolturas so the protected event question can continue. It must not retry phone authentication, send a code before receiving an email, or claim authentication succeeded.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 350

@@ -154,7 +154,6 @@ describe('EvalLoader', () => {
 
     expect(success?.inputs.map((input) => input.contactPhone)).toEqual([
       '$TERMINAL_CONTACT_PHONE',
-      '$TERMINAL_CONTACT_PHONE',
     ]);
     expect(fallback?.inputs.map((input) => input.contactPhone)).toEqual([
       '$PHONE_FIRST_FALLBACK_CONTACT_PHONE',

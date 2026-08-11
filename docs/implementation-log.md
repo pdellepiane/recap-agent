@@ -2,6 +2,18 @@
 
 ## 2026-08-11
 
+### Authenticate protected requests with the current WhatsApp number automatically
+
+- Removed the pre-authentication yes/no confirmation turn. Protected event and purchase requests now call phone authentication immediately when a trusted WhatsApp number is available.
+- Email OTP is now entered only when phone authentication returns `user_not_found`, when no trusted phone exists, or when structured extraction records an explicit rejection of the current phone/account.
+- A technical phone-authentication failure no longer silently falls back to email. It preserves the protected request, records the failure, and offers retry or human support.
+- Reworked the phone-first success, phone-not-found fallback, and stale “Este” live cases around the automatic-auth contract. Added a new live case for explicit account rejection and deterministic twins for success, not-found fallback, explicit rejection, and technical failure.
+- Added `authentication_execution_summary` to turn traces, Dynamo performance records, and CLI summaries. Each phone auth, OTP request, and OTP verification records its sanitized operation, method, outcome, failure class, retryability, error preview, HTTP status, and upstream request ID when supplied. Codes and tokens remain redacted.
+
+**Decision:** The WhatsApp adapter supplies a trusted channel number, so the runtime treats it as the default account lookup key. User confirmation is required only to reject a discovered account, not before lookup.
+
+**Static prompt audit:** The information reply request is 15,296 serialized bytes with zero prompt-audit violations; the automatic-auth rule replaced the confirmation policy without adding model tools.
+
 ### Make phone confirmation explicit and preserve missing-code reports
 
 - Reconstructed the reported WhatsApp interaction from the channel request logs, DynamoDB plan/performance records, and stored OpenAI Responses payloads.

@@ -201,6 +201,11 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
       status: 200,
+      headers: {
+        get(name: string) {
+          return name === 'x-request-id' ? 'auth-request-1' : null;
+        },
+      },
       async json() {
         return {
           status: true,
@@ -231,7 +236,11 @@ describe('SinEnvolturasGateway strict search mapping', () => {
         body: JSON.stringify({ email: 'maria@example.com' }),
       },
     );
-    expect(result).toEqual({ status: 'sent' });
+    expect(result).toEqual({
+      status: 'sent',
+      httpStatus: 200,
+      requestId: 'auth-request-1',
+    });
   });
 
   it('maps missing guest emails without treating them as code challenges', async () => {
@@ -258,6 +267,8 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     await expect(gateway.requestUserLoginCode('missing@example.com')).resolves.toEqual({
       status: 'email_not_found',
       error: 'email not found',
+      httpStatus: 404,
+      requestId: null,
     });
   });
 
@@ -296,6 +307,8 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result.status).toBe('authenticated');
     if (result.status === 'authenticated') {
       expect(result.token).toBe('token-123');
+      expect(result.httpStatus).toBe(200);
+      expect(result.requestId).toBeNull();
       const expiresAt = Date.parse(result.tokenExpiresAt);
       expect(expiresAt).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000 - 1000);
       expect(expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000 + 1000);
@@ -326,6 +339,8 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     await expect(gateway.verifyUserLoginCode('maria@example.com', '000000')).resolves.toEqual({
       status: 'invalid_code',
       error: 'Invalid or expired code',
+      httpStatus: 400,
+      requestId: null,
     });
   });
 

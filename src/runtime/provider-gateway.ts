@@ -162,10 +162,14 @@ export type UserEventLookupResult = {
 export type UserLoginCodeRequestResult =
   | {
       status: 'sent';
+      httpStatus?: number;
+      requestId?: string | null;
     }
   | {
       status: 'email_not_found' | 'failed';
       error: string;
+      httpStatus?: number;
+      requestId?: string | null;
     };
 
 export type UserLoginCodeVerificationResult =
@@ -173,10 +177,14 @@ export type UserLoginCodeVerificationResult =
       status: 'authenticated';
       token: string;
       tokenExpiresAt: string;
+      httpStatus?: number;
+      requestId?: string | null;
     }
   | {
       status: 'invalid_code' | 'failed';
       error: string;
+      httpStatus?: number;
+      requestId?: string | null;
     };
 
 export interface ProviderGateway {

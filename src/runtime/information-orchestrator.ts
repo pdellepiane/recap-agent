@@ -29,7 +29,7 @@ export type InformationAuthentication = {
 };
 
 export type InformationAuthBlock = {
-  nextInput: 'email' | 'otp' | 'phone_confirmation';
+  nextInput: 'email' | 'otp' | 'phone_confirmation' | 'retry';
   guidance: InformationAuthGuidance;
 };
 

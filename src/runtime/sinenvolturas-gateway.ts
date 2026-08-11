@@ -516,17 +516,25 @@ export class SinEnvolturasGateway implements ProviderGateway {
       return {
         status: response.status === 404 ? 'email_not_found' : 'failed',
         error: this.authErrorMessage(response.body) ?? `User auth request failed with ${response.status}`,
+        httpStatus: response.status,
+        requestId: response.requestId,
       };
     }
 
     const body = response.body;
     if (body.status === true) {
-      return { status: 'sent' };
+      return {
+        status: 'sent',
+        httpStatus: response.status,
+        requestId: response.requestId,
+      };
     }
 
     return {
       status: this.isEmailNotFoundAuthError(body) ? 'email_not_found' : 'failed',
       error: this.authErrorMessage(body) ?? 'No se pudo enviar el código.',
+      httpStatus: response.status,
+      requestId: response.requestId,
     };
   }
 
@@ -550,6 +558,8 @@ export class SinEnvolturasGateway implements ProviderGateway {
               ? 'invalid_code'
               : 'failed',
         error: authError ?? `User login failed with ${response.status}`,
+        httpStatus: response.status,
+        requestId: response.requestId,
       };
     }
 
@@ -560,12 +570,16 @@ export class SinEnvolturasGateway implements ProviderGateway {
         status: 'authenticated',
         token,
         tokenExpiresAt: this.defaultUserTokenExpiry(),
+        httpStatus: response.status,
+        requestId: response.requestId,
       };
     }
 
     return {
       status: this.isInvalidCodeAuthError(body) ? 'invalid_code' : 'failed',
       error: this.authErrorMessage(body) ?? 'El código no pudo validarse.',
+      httpStatus: response.status,
+      requestId: response.requestId,
     };
   }
 
@@ -960,7 +974,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     pathname: string,
     body: Record<string, unknown>,
     options?: { throwOnHttpError?: boolean },
-  ): Promise<{ ok: boolean; status: number; body: T }> {
+  ): Promise<{ ok: boolean; status: number; body: T; requestId: string | null }> {
     const baseUrl = this.options.userAuthBaseUrl ?? 'https://api.sinenvolturas.com/api-web/user';
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: 'POST',
@@ -979,6 +993,10 @@ export class SinEnvolturasGateway implements ProviderGateway {
       ok: response.ok,
       status: response.status,
       body: parsedBody,
+      requestId:
+        response.headers?.get('x-request-id') ??
+        response.headers?.get('x-amzn-requestid') ??
+        null,
     };
   }
 
