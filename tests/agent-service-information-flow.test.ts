@@ -223,7 +223,7 @@ describe('AgentService first-class information flow', () => {
     expect(first.plan.contact_phone_number).toBe('973296571');
     expect(first.plan.information_state.pending_requests).toHaveLength(1);
     expect(first.outbound.text).toBe(
-      'Para verificar tu cuenta con este número de WhatsApp, responde “sí” si está registrado en tu cuenta o “no” si usas otro número',
+      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” o “no”; si respondes “no”, te pediré el correo registrado',
     );
 
     const second = await service.handleTurn({
@@ -673,7 +673,7 @@ describe('AgentService first-class information flow', () => {
       messageId: 'missing-code-1',
       receivedAt: new Date().toISOString(),
     });
-    await service.handleTurn({
+    const missingCodeResponse = await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'missing-code-user',
       text: 'No ha llegado nada',
@@ -694,6 +694,9 @@ describe('AgentService first-class information flow', () => {
         'otp_not_received',
         'sandra.lopez.aguilar@gmail.com',
       ),
+    );
+    expect(missingCodeResponse.outbound.text).toBe(
+      'El código puede tardar hasta un minuto en llegar a sandra.lopez.aguilar@gmail.com. Revisa la bandeja principal y el correo no deseado; por seguridad, necesitamos ese código para confirmar que la cuenta es tuya. ¿Quieres que lo reenvíe al mismo correo o prefieres usar otro correo?',
     );
 
     await service.handleTurn({

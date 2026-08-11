@@ -1801,10 +1801,14 @@ export class AgentService {
       planForInformation,
       ambiguitySafeReply,
     );
+    const missingOtpReply = this.enforceMissingOtpRecoveryReply(
+      informationResults,
+      phoneConfirmationReply,
+    );
     const reply = this.enforceRepeatedOtpRecoveryReply(
       informationResults,
       planForInformation,
-      phoneConfirmationReply,
+      missingOtpReply,
     );
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -2727,6 +2731,35 @@ export class AgentService {
     };
   }
 
+  private enforceMissingOtpRecoveryReply(
+    informationResults: InformationTaskResult[],
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    const missingCodeResult = informationResults.find(
+      (result) =>
+        result.status === 'needs_input' &&
+        result.guidance.reason === 'otp_not_received',
+    );
+    if (!missingCodeResult || missingCodeResult.status !== 'needs_input') {
+      return reply;
+    }
+
+    const destination = missingCodeResult.guidance.email ?? 'tu correo registrado';
+    const message =
+      `El código puede tardar hasta un minuto en llegar a ${destination}. ` +
+      'Revisa la bandeja principal y el correo no deseado; por seguridad, necesitamos ese código para confirmar que la cuenta es tuya. ' +
+      '¿Quieres que lo reenvíe al mismo correo o prefieres usar otro correo?';
+
+    return {
+      ...reply,
+      text: message,
+      structuredMessage: {
+        type: 'generic',
+        paragraphs_es: [message],
+      },
+    };
+  }
+
   private enforcePhoneConfirmationReply(
     plan: PlanSnapshot,
     reply: ComposeReplyResult,
@@ -2736,7 +2769,7 @@ export class AgentService {
     }
 
     const message =
-      'Para verificar tu cuenta con este número de WhatsApp, responde “sí” si está registrado en tu cuenta o “no” si usas otro número.';
+      '¿Este número de WhatsApp está registrado en tu cuenta? Responde “sí” o “no”; si respondes “no”, te pediré el correo registrado.';
     return {
       ...reply,
       text: message,

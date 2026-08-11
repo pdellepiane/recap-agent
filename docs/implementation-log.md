@@ -19,6 +19,8 @@
 
 **Prompt audit:** The information reply request increased by 36 serialized bytes, from 14,929 to 14,965, while retaining zero model tools and no structural audit violations. The initial planning/information extractor remains below its 9,000-byte gate at 8,956 bytes.
 
+**Full-gate follow-up:** Run `eval-2026-08-11T17-05-46-170Z-677101d7` completed all 16 cases with 12 passes, 4 hard failures, 0 errors, and 0 skips. It confirmed the two new structural paths but exposed that the first confirmation wording was an instruction rather than a natural question and that one model reply omitted the required resend/change-email choices. The confirmation now asks a direct yes/no question and explains the consequence of “no.” Missing-code recovery is deterministically rendered from typed `otp_not_received` guidance so all required recovery choices remain present even if reply composition omits one. The information reply request is now 15,072 serialized bytes, with no prompt-audit violations; the extractor remains 8,956 bytes.
+
 ### Promote FAQ retrieval to the mandatory live gate
 
 - Revalidated the FAQ path with 46 focused deterministic tests covering information routing, orchestration, knowledge retrieval, prompt ownership, authentication guidance, and purchase disclosure.
