@@ -45,6 +45,15 @@ behaviorChanges:
   - id: fall-back-from-unregistered-phone-to-email-otp
     implementedBy: 67e978d
     liveCaseIds: [live_behavior.phone_first_auth_fallback]
+  - id: authenticate-current-whatsapp-phone-without-confirmation
+    implementedBy: 14e0e65
+    liveCaseIds: [live_behavior.phone_first_auth_success, live_behavior.phone_confirmation_unclear_requires_yes_or_no]
+  - id: fall-back-after-explicit-phone-account-rejection
+    implementedBy: 14e0e65
+    liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
+  - id: persist-sanitized-authentication-execution-diagnostics
+    implementedBy: 14e0e65
+    liveCaseIds: [live_behavior.phone_first_auth_success, live_behavior.repeated_otp_failure_preserves_gift_query]
   - id: clarify-imprecise-phone-confirmation-answers
     implementedBy: de67a04
     liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
