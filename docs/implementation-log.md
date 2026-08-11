@@ -5272,3 +5272,12 @@ production guest-auth base URL.
 The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, completed six passes, two failures, and two fixture errors across ten cases. The new nonphysical-purchase case passed all hard gates. The payment-destination response safely disclosed no destination and requested the next authentication detail, but its judge rubric incorrectly required discussing purchase status before authentication. The contact-correction case passed both semantic gates but retained a stale assertion against a phone value intentionally removed from safe artifacts. Both phone-first cases stopped before their first turn because their documented environment fixtures were not supplied.
 
 **Decision:** Keep the runtime behavior unchanged. Align the payment rubric with the next-authentication-step contract, assert phone presence through redacted trace evidence, and rerun the complete live gate with both required phone fixtures explicitly configured.
+
+### Final deployed acceptance
+
+- The development stack reached `UPDATE_COMPLETE` at `2026-08-11T01:58:57.863Z`; the active Lambda uses `https://api.sinenvolturas.com/api/agent` with message logging disabled.
+- Mandatory run `eval-2026-08-11T02-07-01-378Z-761162d7` passed all 10 cases and all hard gates, with zero failures, errors, or skips.
+- Both new purchase cases scored `1.0`. Phone-first success and email fallback each scored `0.95`; the existing repeated-verification, Spanish-only, multifront, close, contact-correction, and deferred-selection cases also passed.
+- The Roadmap now has a completed purchase-disclosure item, the phone-first authentication item is consistently marked completed/done, and the continuously growing regression-suite item records this checkpoint while remaining in progress by design.
+
+**Decision:** Accept the deployed purchase-disclosure safeguards and the committed phone-first authentication work as complete. Keep `live_behavior_regression` as the mandatory fail-closed gate for future behavior changes.
