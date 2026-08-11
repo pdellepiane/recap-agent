@@ -1,4 +1,4 @@
-import type { EvalTurnResult } from './case-schema';
+import type { EvalArtifactTurnResult } from './case-schema';
 
 export type TurnClass =
   | 'recommendation'
@@ -16,7 +16,7 @@ export type GroundingAssessment = {
   attributeMismatches: number;
 };
 
-export function assessGrounding(turn: EvalTurnResult): GroundingAssessment {
+export function assessGrounding(turn: EvalArtifactTurnResult): GroundingAssessment {
   const turnClass = classifyTurn(turn);
   if (turnClass === 'recommendation') {
     const evidenceById = new Map(
@@ -85,7 +85,7 @@ export function assessGrounding(turn: EvalTurnResult): GroundingAssessment {
   };
 }
 
-function classifyTurn(turn: EvalTurnResult): TurnClass {
+function classifyTurn(turn: EvalArtifactTurnResult): TurnClass {
   if (
     turn.trace.provider_results.length > 0 ||
     turn.trace.next_node === 'recomendar'

@@ -1,7 +1,7 @@
 import { ulid } from 'ulid';
 
 import { AgentService } from '../../runtime/agent-service';
-import { createEmptyPlan, mergePlan } from '../../core/plan';
+import { createEmptyPlan, mergePlan, planSchema } from '../../core/plan';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -27,8 +27,15 @@ import type {
 } from '../../runtime/provider-gateway';
 import { InMemoryPlanStore } from '../../storage/in-memory-plan-store';
 import type { EvalCase, EvalRunConfig, EvalTurnResult, OfflineFixture } from '../case-schema';
+import { lambdaTurnResponseSchema } from '../case-schema';
 import type { ProviderDetail, ProviderSummary } from '../../core/provider';
 import { WhatsAppMessageRenderer } from '../../runtime/message-renderer';
+import {
+  projectSafePlan,
+  projectSafeTrace,
+  redactArtifactText,
+} from '../../runtime/artifact-redaction';
+import { attachEvaluationState } from '../evaluation-state';
 
 export async function runOfflineCase(args: {
   currentCase: EvalCase;
@@ -74,23 +81,39 @@ export async function runOfflineCase(args: {
       receivedAt: input.receivedAt ?? new Date().toISOString(),
       sessionId: input.sessionId ?? args.currentCase.id,
     });
-    turns.push({
+    const typedTrace = lambdaTurnResponseSchema.shape.trace.parse(response.trace);
+    const typedPlan = planSchema.parse(response.plan);
+    const turn: EvalTurnResult = {
       turnIndex,
+      input: redactOfflineInput(input),
+      outputText: redactArtifactText(response.outbound.text ?? ''),
+      currentNode: response.plan.current_node,
+      trace: projectSafeTrace(typedTrace) as EvalTurnResult['trace'],
+      plan: projectSafePlan(typedPlan),
+      latencyMs: Date.now() - startedAt,
+    };
+    attachEvaluationState(turn, {
+      plan: response.plan,
       input,
       outputText: response.outbound.text ?? '',
-      currentNode: response.plan.current_node,
-      trace: response.trace,
-      plan: response.plan,
-      latencyMs: Date.now() - startedAt,
-      rawTargetResponse: {
-        outbound: response.outbound,
-      },
     });
+    turns.push(turn);
   }
 
   return {
     turns,
     status: 'passed',
+  };
+}
+
+function redactOfflineInput(input: EvalTurnResult['input']): EvalTurnResult['input'] {
+  return {
+    ...input,
+    text: redactArtifactText(input.text),
+    ...(input.externalUserId
+      ? { externalUserId: input.externalUserId }
+      : {}),
+    ...(input.contactPhone !== undefined ? { contactPhone: null } : {}),
   };
 }
 

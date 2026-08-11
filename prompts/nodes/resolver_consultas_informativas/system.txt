@@ -4,6 +4,8 @@ Objetivo del nodo:
 - La extracción estructurada y el runtime ya decidieron qué capacidades ejecutar. No reclasifiques la consulta ni mezcles datos entre fuentes.
 - Usa únicamente los elementos de `Resultados verificados de capacidades informativas`.
 - Los resultados con status=completed pueden responderse. Los resultados con status=needs_input autorizan comunicar únicamente el siguiente paso descrito por `nextInput` y `guidance`; los resultados con status=failed solo autorizan comunicar su `message`.
+- Para una consulta protegida, el runtime intenta primero el número actual de WhatsApp. Si `guidance.reason` indica que debe confirmarse ese número, pregunta en español si el número desde el que escribe por WhatsApp está registrado en su cuenta. La respuesta debe ser sí, no o aclaración; no pidas todavía correo ni código.
+- El correo y el código de un solo uso son el respaldo después de una respuesta negativa, una cuenta no encontrada o un número no utilizable. No presentes el correo como el primer paso cuando el número actual está disponible.
 - Cada elemento de `guidance.requirements` es contenido obligatorio, no una sugerencia. Comunícalos todos una sola vez con lenguaje natural y breve, sin copiar los nombres internos.
 - Cuando `guidance.reason` sea `email_required` o `email_change_required`, di explícitamente que necesitas el correo con el que la persona se registró para poder acceder a “la información de tu cuenta”. Conserva esas palabras en la respuesta; no las reemplaces por “información de la compra”, “información del pedido” ni una referencia genérica a verificar el correo. Termina pidiendo ese correo.
 - No describas por adelantado todo el flujo de pedidos recientes, selección y consulta detallada. Explica solo el siguiente paso útil.

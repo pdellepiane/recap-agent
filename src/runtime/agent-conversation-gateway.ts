@@ -39,6 +39,7 @@ type HttpRequestFailure = Extract<AgentGatewayResult, { status: 'failed' }> & {
   httpStatus: number | null;
   responseFormat: 'json' | 'non_json' | null;
   errorEnvelope: boolean;
+  errorCode?: string | null;
 };
 
 export type AgentMessageLogInput = {
@@ -79,6 +80,40 @@ export type AgentPurchaseLookupResult =
       error: string;
     };
 
+export type AgentAuthByPhoneInput = {
+  phone_extension: string;
+  phone_number: string;
+};
+
+export type AgentAuthByPhoneResult =
+  | {
+      status: 'authenticated';
+      token: string;
+      tokenExpiresAtIso: string;
+      email: string;
+    }
+  | {
+      status: 'user_not_found';
+    }
+  | {
+      status: 'failed';
+      error: string;
+      retryable: boolean;
+    };
+
+export type AgentUpdatePhoneResult =
+  | {
+      status: 'success';
+    }
+  | {
+      status: 'phone_linked_to_other_account';
+    }
+  | {
+      status: 'failed';
+      error: string;
+      retryable: boolean;
+    };
+
 export interface AgentConversationGateway {
   logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult>;
   getRecentMessages(phoneNumber: string): Promise<
@@ -94,6 +129,8 @@ export interface AgentConversationGateway {
     token: string;
     orderId?: string | null;
   }): Promise<AgentPurchaseLookupResult>;
+  authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult>;
+  updatePhone(args: AgentAuthByPhoneInput & { token: string }): Promise<AgentUpdatePhoneResult>;
 }
 
 export class NoopAgentConversationGateway implements AgentConversationGateway {
@@ -132,6 +169,26 @@ export class NoopAgentConversationGateway implements AgentConversationGateway {
     return this.unavailablePurchaseResult('gift_purchases');
   }
 
+  async authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult> {
+    void input;
+    return {
+      status: 'failed',
+      error: 'Agent API phone authentication is not configured.',
+      retryable: false,
+    };
+  }
+
+  async updatePhone(
+    args: AgentAuthByPhoneInput & { token: string },
+  ): Promise<AgentUpdatePhoneResult> {
+    void args;
+    return {
+      status: 'failed',
+      error: 'Agent API phone update is not configured.',
+      retryable: false,
+    };
+  }
+
   private unavailablePurchaseResult(
     resource: PurchaseResource,
   ): AgentPurchaseLookupResult {
@@ -157,7 +214,19 @@ const envelopeSchema = z.object({
   status: z.boolean(),
   data: z.unknown().nullable().optional(),
   errors: z.unknown().nullable().optional(),
-  error: z.string().nullable().optional(),
+  error: z.union([z.string(), z.record(z.string(), z.unknown())]).nullable().optional(),
+});
+
+const authByPhoneDataSchema = z.object({
+  credentials: z.object({
+    access_token: z.string().trim().min(1),
+    expires_in: z.number().int().min(1_000_000_000),
+  }),
+  user: z.object({
+    id: z.number().optional(),
+    name: z.string().optional(),
+    email: z.string().email(),
+  }),
 });
 
 const messageSchema = z.object({
@@ -493,6 +562,92 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     };
   }
 
+  async authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult> {
+    const response = await this.request('/auth-by-phone', {
+      method: 'POST',
+      body: {
+        phone_extension: input.phone_extension,
+        phone_number: input.phone_number,
+      },
+    });
+
+    if (response.status !== 'success') {
+      if (response.httpStatus === 404 && response.errorCode === 'user_not_found') {
+        return { status: 'user_not_found' };
+      }
+      return {
+        status: 'failed',
+        error: response.error,
+        retryable: response.retryable,
+      };
+    }
+
+    const parsed = authByPhoneDataSchema.safeParse(response.data);
+    if (!parsed.success) {
+      return {
+        status: 'failed',
+        error: 'Agent API phone authentication response had an unexpected shape.',
+        retryable: false,
+      };
+    }
+
+    const expiryMilliseconds = parsed.data.credentials.expires_in * 1_000;
+    const expiryDate = new Date(expiryMilliseconds);
+    if (
+      !Number.isSafeInteger(expiryMilliseconds) ||
+      Number.isNaN(expiryDate.getTime())
+    ) {
+      return {
+        status: 'failed',
+        error: 'Agent API phone authentication response had an invalid expiry.',
+        retryable: false,
+      };
+    }
+    if (expiryDate.getTime() <= Date.now()) {
+      return {
+        status: 'failed',
+        error: 'Agent API phone authentication response had an expired expiry.',
+        retryable: false,
+      };
+    }
+    const tokenExpiresAtIso = expiryDate.toISOString();
+
+    return {
+      status: 'authenticated',
+      token: parsed.data.credentials.access_token,
+      tokenExpiresAtIso,
+      email: parsed.data.user.email,
+    };
+  }
+
+  async updatePhone(
+    args: AgentAuthByPhoneInput & { token: string },
+  ): Promise<AgentUpdatePhoneResult> {
+    const response = await this.request('/user/update-phone', {
+      method: 'POST',
+      authorizationToken: args.token,
+      body: {
+        phone_extension: args.phone_extension,
+        phone_number: args.phone_number,
+      },
+    });
+
+    if (response.status === 'success') {
+      return { status: 'success' };
+    }
+    if (
+      response.httpStatus === 409 &&
+      response.errorCode === 'phone_linked_to_other_account'
+    ) {
+      return { status: 'phone_linked_to_other_account' };
+    }
+    return {
+      status: 'failed',
+      error: response.error,
+      retryable: response.retryable,
+    };
+  }
+
   private async requestPurchase(
     resource: PurchaseResource,
     token: string,
@@ -597,6 +752,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
               ? 'json'
               : 'non_json',
             errorEnvelope: envelopeSchema.safeParse(parsedBody).success,
+            errorCode: this.errorCode(parsedBody),
           };
         }
 
@@ -609,16 +765,20 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
             httpStatus: response.status,
             responseFormat: 'json',
             errorEnvelope: false,
+            errorCode: this.errorCode(parsedBody),
           };
         }
         if (!envelope.data.status) {
           return {
             status: 'failed',
-            error: envelope.data.error ?? 'Agent API returned status=false.',
+            error:
+              this.errorMessage(envelope.data.error) ??
+              'Agent API returned status=false.',
             retryable: false,
             httpStatus: response.status,
             responseFormat: 'json',
             errorEnvelope: true,
+            errorCode: this.errorCode(parsedBody),
           };
         }
 
@@ -640,6 +800,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           httpStatus: null,
           responseFormat: null,
           errorEnvelope: false,
+          errorCode: null,
         };
       }
     }
@@ -651,6 +812,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       httpStatus: null,
       responseFormat: null,
       errorEnvelope: false,
+      errorCode: null,
     };
   }
 
@@ -681,10 +843,66 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
 
   private httpError(status: number, body: unknown): string {
     const parsed = envelopeSchema.safeParse(body);
-    if (parsed.success && parsed.data.error) {
-      return `Agent API request failed with ${status}: ${parsed.data.error}`;
+    if (parsed.success) {
+      const message = this.errorMessage(parsed.data.error);
+      if (message) {
+        return `Agent API request failed with ${status}: ${message}`;
+      }
     }
     return `Agent API request failed with ${status}.`;
+  }
+
+  private errorMessage(value: unknown): string | null {
+    if (typeof value === 'string' && value.trim()) {
+      return value;
+    }
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      return null;
+    }
+    const record = value as Record<string, unknown>;
+    for (const key of ['message', 'detail', 'error']) {
+      const candidate = record[key];
+      if (typeof candidate === 'string' && candidate.trim()) {
+        return candidate;
+      }
+    }
+    return null;
+  }
+
+  private errorCode(body: unknown): string | null {
+    if (!body || typeof body !== 'object' || Array.isArray(body)) {
+      return null;
+    }
+    const record = body as Record<string, unknown>;
+    const directCode = this.readErrorCode(record);
+    if (directCode) {
+      return directCode;
+    }
+    for (const key of ['error', 'errors', 'data']) {
+      const nested = this.errorCode(record[key]);
+      if (nested) {
+        return nested;
+      }
+    }
+    if (Array.isArray(record.errors)) {
+      for (const entry of record.errors) {
+        const nested = this.errorCode(entry);
+        if (nested) {
+          return nested;
+        }
+      }
+    }
+    return null;
+  }
+
+  private readErrorCode(value: Record<string, unknown>): string | null {
+    for (const key of ['code', 'error_code', 'errorCode']) {
+      const code = value[key];
+      if (typeof code === 'string' && code.trim()) {
+        return code;
+      }
+    }
+    return null;
   }
 
   private isRetryableStatus(status: number): boolean {

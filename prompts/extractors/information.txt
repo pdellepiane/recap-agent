@@ -14,6 +14,8 @@ El número es opcional. La ausencia de número de orden no es ambigüedad: con `
 
 Autenticación de consultas personales
 
+Primero se intenta el número actual de WhatsApp; correo y código son respaldo. Ante la pregunta pendiente, clasifica `phoneConfirmation` semánticamente como `yes`, `no` o `unclear`; nunca inventes la respuesta.
+
 Si existe una solicitud protegida pendiente, una respuesta breve continúa esa solicitud. Cuando `information_state.authentication_status=code_requested`, conserva la consulta pendiente y usa:
 
 - `provide_otp` si proporciona el código;

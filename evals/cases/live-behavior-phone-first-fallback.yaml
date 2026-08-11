@@ -1,0 +1,52 @@
+template: template.base-live
+id: live_behavior.phone_first_auth_fallback
+suite: live_behavior_regression
+version: 1
+description: A protected WhatsApp request confirms phone authentication with a separate development fixture, receives a phone user-not-found response, and falls back to email OTP verification.
+tags: [live, behavior, authentication, phone-first, email-fallback, protected-information]
+targetModes: [live_lambda]
+inputs:
+  - text: Quiero revisar la información de mi regalo.
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: phone-first-fallback-session
+  - text: Sí, ese número está registrado en mi cuenta. Mi correo es fallback@example.invalid.
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: phone-first-fallback-session
+expectations:
+  - id: first-turn-does-not-authenticate
+    type: tool_usage
+    turnIndex: 0
+    mustNotCall: [auth_by_phone, request_user_login_code]
+    severity: hard
+  - id: phone-auth-fails-and-email-fallback-starts
+    type: tool_usage
+    turnIndex: 1
+    mustCall: [auth_by_phone, request_user_login_code]
+    severity: hard
+  - id: email-fallback-reports-code-requested
+    type: plan_field_equals
+    turnIndex: 1
+    path: user_auth.status
+    expected: code_requested
+    severity: hard
+  - id: phone-failure-does-not-claim-success
+    type: text_not_contains
+    turnIndex: 1
+    phrases: ["autenticación por teléfono exitosa", "teléfono autenticado"]
+    severity: hard
+  - id: phone-fallback-language
+    type: text_semantic
+    turnIndex: 1
+    rubric: >-
+      After phone authentication returns a documented user-not-found response and the user provides an email, the response must clearly explain in Spanish that a one-time code was sent to that email and prompt the user to provide it. It must not claim phone authentication succeeded or ask the user to confirm the WhatsApp number again.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 450
+notes:
+  - Set PHONE_FIRST_FALLBACK_CONTACT_PHONE to a separate development phone fixture that is known to return user_not_found; no phone, token, or OTP is stored in this case file.

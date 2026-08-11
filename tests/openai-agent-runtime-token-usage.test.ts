@@ -554,6 +554,8 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       last_error: null,
       requested_at: '2026-06-16T00:00:00.000Z',
       failed_code_attempts: 0,
+      auth_method: 'email',
+      awaiting_phone_confirmation: false,
     };
     request.informationResults = [
       {
@@ -658,6 +660,8 @@ function createComposeRequest(
       contact_name: null,
       contact_email: null,
       contact_phone: null,
+      contact_phone_extension: null,
+      contact_phone_number: null,
       user_auth: {
         status: 'none',
         email: null,
@@ -666,6 +670,8 @@ function createComposeRequest(
         last_error: null,
         requested_at: null,
         failed_code_attempts: 0,
+        auth_method: null,
+        awaiting_phone_confirmation: false,
       },
       information_state: {
         resume_node: null,

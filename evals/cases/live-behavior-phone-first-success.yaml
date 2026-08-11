@@ -1,0 +1,62 @@
+template: template.base-live
+id: live_behavior.phone_first_auth_success
+suite: live_behavior_regression
+version: 1
+description: A protected WhatsApp request asks for confirmation first, then authenticates with the configured current phone.
+tags: [live, behavior, authentication, phone-first, protected-information]
+targetModes: [live_lambda]
+inputs:
+  - text: Quiero revisar la información de mi regalo.
+    channel: whatsapp
+    contactPhone: "$TERMINAL_CONTACT_PHONE"
+    sessionId: phone-first-success-session
+  - text: Sí, ese número está registrado en mi cuenta.
+    channel: whatsapp
+    contactPhone: "$TERMINAL_CONTACT_PHONE"
+    sessionId: phone-first-success-session
+expectations:
+  - id: first-turn-does-not-authenticate
+    type: tool_usage
+    turnIndex: 0
+    mustNotCall: [auth_by_phone, request_user_login_code]
+    severity: hard
+  - id: first-turn-persists-confirmation
+    type: plan_field_equals
+    turnIndex: 0
+    path: user_auth.awaiting_phone_confirmation
+    expected: true
+    severity: hard
+  - id: second-turn-authenticates-by-phone
+    type: tool_usage
+    turnIndex: 1
+    mustCall: [auth_by_phone]
+    mustNotCall: [request_user_login_code]
+    severity: hard
+  - id: phone-auth-method-persists
+    type: plan_field_equals
+    turnIndex: 1
+    path: user_auth.auth_method
+    expected: phone
+    severity: hard
+  - id: phone-first-confirmation-language
+    type: text_semantic
+    turnIndex: 0
+    rubric: >-
+      The response must be a brief natural Spanish question asking whether the current WhatsApp number is registered in the user's account. It must not ask for email or a one-time code yet, and it must not claim that authentication already succeeded.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: phone-first-success-language
+    type: text_semantic
+    turnIndex: 1
+    rubric: >-
+      After the user confirms the current WhatsApp number, the response must continue the protected gift-information request using the phone-first authenticated state, without asking for an email or one-time code as the first fallback.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 450
+notes:
+  - Set TERMINAL_CONTACT_PHONE to the normalized Peru success fixture before running the live gate; the phone is supplied through the environment and is not stored in this case file.

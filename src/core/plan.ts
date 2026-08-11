@@ -130,6 +130,8 @@ export const planSchema = z.object({
   contact_name: z.string().nullable().default(null),
   contact_email: z.string().nullable().default(null),
   contact_phone: z.string().nullable().default(null),
+  contact_phone_extension: z.string().nullable().default(null),
+  contact_phone_number: z.string().nullable().default(null),
   user_auth: userAuthStateSchema.default({
     status: 'none',
     email: null,
@@ -138,6 +140,8 @@ export const planSchema = z.object({
     last_error: null,
     requested_at: null,
     failed_code_attempts: 0,
+    auth_method: null,
+    awaiting_phone_confirmation: false,
   }),
   information_state: informationStateSchema.default({
     resume_node: null,
@@ -187,8 +191,10 @@ export type PersistedPlan = z.infer<typeof planSchema>;
 export type PlanSnapshot = PersistedPlan & { current_node: DecisionNode };
 
 export type PlanUpdate = Partial<
-  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id'>
->;
+  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth'>
+> & {
+  user_auth?: Partial<UserAuthState>;
+};
 
 export function normalizeRawPlan(raw: unknown): unknown {
   if (!raw || typeof raw !== 'object') {
@@ -261,6 +267,8 @@ export function createEmptyPlan(args: {
     contact_name: null,
     contact_email: null,
     contact_phone: null,
+    contact_phone_extension: null,
+    contact_phone_number: null,
     user_auth: {
       status: 'none',
       email: null,
@@ -269,6 +277,8 @@ export function createEmptyPlan(args: {
       last_error: null,
       requested_at: null,
       failed_code_attempts: 0,
+      auth_method: null,
+      awaiting_phone_confirmation: false,
     },
     information_state: {
       resume_node: null,
@@ -610,6 +620,10 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
   const merged: PersistedPlan = {
     ...plan,
     ...update,
+    user_auth: {
+      ...plan.user_auth,
+      ...(update.user_auth ?? {}),
+    },
     preferences: uniqueStrings([...(plan.preferences ?? []), ...(update.preferences ?? [])]),
     hard_constraints: uniqueStrings([
       ...(plan.hard_constraints ?? []),

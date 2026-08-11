@@ -275,6 +275,44 @@ describe('InformationOrchestrator', () => {
     expect(agentGateway.giftCalls).toBe(0);
   });
 
+  it.each([
+    ['email', createInformationAuthGuidance('email_required', null)],
+    ['otp', createInformationAuthGuidance('otp_pending', 'user@example.com')],
+    [
+      'phone_confirmation',
+      createInformationAuthGuidance('phone_confirmation_required', null),
+    ],
+  ] as const)('preserves the typed authentication next input: %s', async (nextInput, guidance) => {
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: {
+        async search() {
+          return {
+            status: 'failed' as const,
+            reason: 'not_configured' as const,
+            retryable: false,
+            error: 'not configured',
+          };
+        },
+      },
+      providerGateway: {} as ProviderGateway,
+      agentGateway: new FakeAgentGateway(),
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [purchaseRequest('typed-next-input', [])],
+      authentication: null,
+      authBlock: { nextInput, guidance },
+    });
+
+    expect(execution.results[0]).toEqual(
+      expect.objectContaining({
+        status: 'needs_input',
+        nextInput,
+        guidance,
+      }),
+    );
+  });
+
   it('uses the exact-order lookup automatically when recent orders contain one match', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.ordersResult = {
@@ -405,6 +443,18 @@ class FakeAgentGateway implements AgentConversationGateway {
 
   async requestHumanTakeover(): Promise<AgentGatewayResult> {
     return { status: 'skipped', reason: 'disabled', message: 'disabled' };
+  }
+
+  async authByPhone(): Promise<{
+    status: 'failed';
+    error: string;
+    retryable: boolean;
+  }> {
+    return { status: 'failed', error: 'not configured in test', retryable: false };
+  }
+
+  async updatePhone(): Promise<{ status: 'success' }> {
+    return { status: 'success' };
   }
 
   async getOrders(args: {

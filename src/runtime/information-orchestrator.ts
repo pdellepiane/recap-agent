@@ -25,7 +25,7 @@ export type InformationAuthentication = {
 };
 
 export type InformationAuthBlock = {
-  nextInput: 'email' | 'otp';
+  nextInput: 'email' | 'otp' | 'phone_confirmation';
   guidance: InformationAuthGuidance;
 };
 

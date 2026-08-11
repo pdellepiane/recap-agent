@@ -141,4 +141,27 @@ describe('EvalLoader', () => {
     const loader = new EvalLoader(tempDir);
     await expect(loader.loadCatalog()).rejects.toThrow();
   });
+
+  it('keeps phone-first live cases on distinct environment fixtures', async () => {
+    const loader = new EvalLoader(path.resolve(process.cwd(), 'evals'));
+    const catalog = await loader.loadCatalog();
+    const success = catalog.cases.find(
+      (currentCase) => currentCase.id === 'live_behavior.phone_first_auth_success',
+    );
+    const fallback = catalog.cases.find(
+      (currentCase) => currentCase.id === 'live_behavior.phone_first_auth_fallback',
+    );
+
+    expect(success?.inputs.map((input) => input.contactPhone)).toEqual([
+      '$TERMINAL_CONTACT_PHONE',
+      '$TERMINAL_CONTACT_PHONE',
+    ]);
+    expect(fallback?.inputs.map((input) => input.contactPhone)).toEqual([
+      '$PHONE_FIRST_FALLBACK_CONTACT_PHONE',
+      '$PHONE_FIRST_FALLBACK_CONTACT_PHONE',
+    ]);
+    expect(success?.inputs[0]?.contactPhone).not.toBe(
+      fallback?.inputs[0]?.contactPhone,
+    );
+  });
 });

@@ -3,12 +3,22 @@ import path from 'node:path';
 
 import {
   type BenchmarkSummary,
+  evalArtifactResultSchema,
+  evalArtifactTurnResultSchema,
   evalReportSchema,
   type EvalAggregateSummary,
+  type EvalArtifactResult,
+  type EvalArtifactTurnResult,
+  type EvalTurnResult,
   type EvalFlakyCandidate,
   type EvalReport,
   type EvalResult,
 } from './case-schema';
+import {
+  projectSafeRecord,
+  projectSafeTrace,
+  redactArtifactText,
+} from '../runtime/artifact-redaction';
 
 export async function writeEvalArtifacts(args: {
   outputDir: string;
@@ -18,10 +28,11 @@ export async function writeEvalArtifacts(args: {
   const runDir = path.join(args.outputDir, args.runId);
   await fs.mkdir(runDir, { recursive: true });
 
+  const safeResults = args.results.map(redactEvalResultForArtifact);
   const report = buildEvalReport(args.runId, args.results);
   await fs.writeFile(
     path.join(runDir, 'results.jsonl'),
-    args.results.map((result) => JSON.stringify(result)).join('\n'),
+    safeResults.map((result) => JSON.stringify(result)).join('\n'),
     'utf8',
   );
   await fs.writeFile(
@@ -35,19 +46,20 @@ export async function writeEvalArtifacts(args: {
 }
 
 export function buildEvalReport(runId: string, results: EvalResult[]): EvalReport {
-  const totalCases = results.length;
-  const passedCases = results.filter((result) => result.status === 'passed').length;
-  const failedCases = results.filter((result) => result.status === 'failed').length;
-  const erroredCases = results.filter((result) => result.status === 'errored').length;
-  const skippedCases = results.filter((result) => result.status === 'skipped').length;
+  const safeResults = results.map(redactEvalResultForArtifact);
+  const totalCases = safeResults.length;
+  const passedCases = safeResults.filter((result) => result.status === 'passed').length;
+  const failedCases = safeResults.filter((result) => result.status === 'failed').length;
+  const erroredCases = safeResults.filter((result) => result.status === 'errored').length;
+  const skippedCases = safeResults.filter((result) => result.status === 'skipped').length;
   const averageScore =
     totalCases === 0
       ? 0
-      : results.reduce((sum, result) => sum + result.finalScore, 0) / totalCases;
+      : safeResults.reduce((sum, result) => sum + result.finalScore, 0) / totalCases;
   const averageLatencyMs =
     totalCases === 0
       ? 0
-      : results.reduce((sum, result) => sum + result.totalLatencyMs, 0) / totalCases;
+      : safeResults.reduce((sum, result) => sum + result.totalLatencyMs, 0) / totalCases;
 
   return evalReportSchema.parse({
     runId,
@@ -59,16 +71,99 @@ export function buildEvalReport(runId: string, results: EvalResult[]): EvalRepor
     skippedCases,
     averageScore,
     averageLatencyMs,
-    suiteSummaries: summarizeBy(results, (result) => result.suite),
-    configSummaries: summarizeBy(results, (result) => result.configLabel),
-    targetSummaries: summarizeBy(results, (result) => result.target),
-    flakyCandidates: collectFlakyCandidates(results),
-    benchmarkSummary: buildBenchmarkSummary(results),
-    results,
+    suiteSummaries: summarizeBy(safeResults, (result) => result.suite),
+    configSummaries: summarizeBy(safeResults, (result) => result.configLabel),
+    targetSummaries: summarizeBy(safeResults, (result) => result.target),
+    flakyCandidates: collectFlakyCandidates(safeResults),
+    benchmarkSummary: buildBenchmarkSummary(safeResults),
+    results: safeResults,
   });
 }
 
-function buildBenchmarkSummary(results: EvalResult[]): BenchmarkSummary | undefined {
+export function redactEvalResultForArtifact(result: EvalResult): EvalArtifactResult {
+  const safeResult = {
+    runId: result.runId,
+    caseId: result.caseId,
+    suite: result.suite,
+    target: result.target,
+    configLabel: result.configLabel,
+    status: result.status,
+    hardGatePassed: result.hardGatePassed,
+    finalScore: result.finalScore,
+    totalLatencyMs: result.totalLatencyMs,
+    totalToolCalls: result.totalToolCalls,
+    nodeTransitions: [...result.nodeTransitions],
+    planDiffSummary: [...result.planDiffSummary],
+    artifactPaths: { caseResult: result.artifactPaths.caseResult },
+    expectationResults: result.expectationResults.map((entry) => ({ ...entry })),
+    scorerResults: result.scorerResults.map((entry) => ({ ...entry })),
+    ...(result.benchmarkMetrics ? { benchmarkMetrics: { ...result.benchmarkMetrics } } : {}),
+    turns: result.turns.map(projectEvalTurnForArtifact),
+    startedAt: result.startedAt,
+    completedAt: result.completedAt,
+  } satisfies Omit<EvalArtifactResult, 'benchmarkMetrics'> & {
+    benchmarkMetrics?: EvalArtifactResult['benchmarkMetrics'];
+  };
+
+  return evalArtifactResultSchema.parse(safeResult);
+}
+
+function projectEvalTurnForArtifact(turn: EvalTurnResult): EvalArtifactTurnResult {
+  const projected = {
+    turnIndex: turn.turnIndex,
+    input: {
+      ...turn.input,
+      text: redactArtifactText(turn.input.text),
+      ...(turn.input.externalUserId
+        ? { externalUserId: turn.input.externalUserId }
+        : {}),
+      ...(turn.input.contactPhone !== undefined ? { contactPhone: null } : {}),
+    },
+    outputText: redactArtifactText(turn.outputText),
+    currentNode: turn.currentNode,
+    trace: projectSafeTrace(turn.trace),
+    perf:
+      turn.perf === undefined || turn.perf === null
+        ? turn.perf
+        : projectSafeRecord(turn.perf),
+    plan_summary: {
+      current_node: turn.plan.current_node,
+      lifecycle_state: turn.plan.lifecycle_state,
+      event_type: turn.plan.event_type,
+      vendor_category: turn.plan.vendor_category,
+      active_need_category: turn.plan.active_need_category,
+      location: turn.plan.location,
+      budget_signal: turn.plan.budget_signal,
+      guest_range: turn.plan.guest_range,
+      provider_needs: turn.plan.provider_needs.map((need) => ({
+        category: need.category,
+        status: need.status,
+        recommended_provider_ids: [...need.recommended_provider_ids],
+        selected_provider_ids: [...need.selected_provider_ids],
+      })),
+      selected_provider_ids: [...turn.plan.selected_provider_ids],
+      missing_fields: [...turn.plan.missing_fields],
+    },
+    auth_evidence: {
+      status: turn.plan.user_auth.status,
+      auth_method: turn.plan.user_auth.auth_method,
+      awaiting_phone_confirmation: turn.plan.user_auth.awaiting_phone_confirmation,
+      phone_confirmation: turn.plan.user_auth.awaiting_phone_confirmation
+        ? 'awaiting' as const
+        : 'not_awaiting' as const,
+      contact_fields_present: {
+        name: turn.trace.contact_validation_summary.plan_contact_fields_present.name,
+        email: turn.trace.contact_validation_summary.plan_contact_fields_present.email,
+        phone: turn.trace.contact_validation_summary.plan_contact_fields_present.phone,
+      },
+    },
+    latencyMs: turn.latencyMs,
+  };
+
+  return evalArtifactTurnResultSchema.parse(projected);
+}
+
+function buildBenchmarkSummary(results: EvalArtifactResult[]): BenchmarkSummary | undefined {
   const metrics = results
     .map((result) => result.benchmarkMetrics)
     .filter((entry): entry is NonNullable<EvalResult['benchmarkMetrics']> => entry !== undefined);
@@ -138,10 +233,10 @@ export function renderMarkdownReport(report: EvalReport): string {
 }
 
 function summarizeBy(
-  results: EvalResult[],
-  keySelector: (result: EvalResult) => string,
+  results: EvalArtifactResult[],
+  keySelector: (result: EvalArtifactResult) => string,
 ): EvalAggregateSummary[] {
-  const groups = new Map<string, EvalResult[]>();
+  const groups = new Map<string, EvalArtifactResult[]>();
 
   for (const result of results) {
     const key = keySelector(result);
@@ -155,7 +250,7 @@ function summarizeBy(
     .sort((left, right) => left.key.localeCompare(right.key));
 }
 
-function buildAggregateSummary(key: string, results: EvalResult[]): EvalAggregateSummary {
+function buildAggregateSummary(key: string, results: EvalArtifactResult[]): EvalAggregateSummary {
   const totalCases = results.length;
   const passedCases = results.filter((result) => result.status === 'passed').length;
   const failedCases = results.filter((result) => result.status === 'failed').length;
@@ -182,8 +277,8 @@ function buildAggregateSummary(key: string, results: EvalResult[]): EvalAggregat
   };
 }
 
-function collectFlakyCandidates(results: EvalResult[]): EvalFlakyCandidate[] {
-  const groups = new Map<string, EvalResult[]>();
+function collectFlakyCandidates(results: EvalArtifactResult[]): EvalFlakyCandidate[] {
+  const groups = new Map<string, EvalArtifactResult[]>();
 
   for (const result of results) {
     const entries = groups.get(result.caseId) ?? [];

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   parseInternationalPhone,
   phoneParseResultSchema,
+  splitInternationalPhone,
 } from '../src/runtime/phone';
 
 describe('phone parsing', () => {
@@ -52,5 +53,12 @@ describe('phone parsing', () => {
       expect(result.countryCode).toBe('+52');
       expect(result.nationalNumber).toBe('5512345678');
     }
+  });
+
+  it('splits the webhook Peru fixture at the Agent API boundary', () => {
+    expect(splitInternationalPhone('+51973296571')).toEqual({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    });
   });
 });

@@ -44,7 +44,7 @@ describe('structured extraction schemas', () => {
         providerPlanning: true,
         contact: true,
       }),
-      present: ['informationRequests', 'eventType', 'providerQueryIntents', 'contactEmail'],
+       present: ['informationRequests', 'phoneConfirmation', 'eventType', 'providerQueryIntents', 'contactEmail'],
       absent: [
         'providerPlanOperations', 'selectedProviderReferences',
         'providerExplanationRequest', 'closeAction', 'pauseRequested',
@@ -61,7 +61,7 @@ describe('structured extraction schemas', () => {
         pause: true,
       }),
       present: [
-        'informationRequests', 'eventType', 'providerPlanOperations', 'contactEmail',
+         'informationRequests', 'phoneConfirmation', 'eventType', 'providerPlanOperations', 'contactEmail',
         'closeAction', 'pauseRequested',
       ],
       absent: [
@@ -82,7 +82,7 @@ describe('structured extraction schemas', () => {
         pause: true,
       }),
       present: [
-        'informationRequests', 'eventType', 'providerPlanOperations',
+         'informationRequests', 'phoneConfirmation', 'eventType', 'providerPlanOperations',
         'selectedProviderReferences', 'providerExplanationRequest',
         'providerDetailRequest', 'contactEmail', 'closeAction', 'pauseRequested',
       ],
@@ -229,8 +229,46 @@ describe('structured extraction schemas', () => {
     expect(parsed.providerPlanOperations).toEqual([]);
     expect(parsed.providerExplanationRequest).toBeNull();
     expect(parsed.providerDetailRequest).toBeNull();
+    expect(parsed.phoneConfirmation).toBeNull();
     expect(parsed.selectedProviderReferences).toEqual([]);
     expect(parsed.closeAction).toBeNull();
+  });
+
+  it('accepts only the typed phone confirmation outcomes', () => {
+    const parsed = extractionSchema.parse({
+      actionIntent: null,
+      informationRequests: [],
+      phoneConfirmation: 'yes',
+      intentConfidence: null,
+      ambiguity: {
+        status: 'clear',
+        clarificationQuestion: null,
+        interpretations: [],
+      },
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: '',
+      selectedProviderHints: [],
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: fitCriteria,
+    });
+
+    expect(parsed.phoneConfirmation).toBe('yes');
+    expect(() => extractionSchema.parse({
+      ...parsed,
+      phoneConfirmation: 'maybe',
+    })).toThrow();
   });
 
   it('parses all-needs provider explanation requests', () => {

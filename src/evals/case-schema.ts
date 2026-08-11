@@ -41,6 +41,7 @@ const providerDetailSchema = providerSummarySchema.extend({
 const extractionResultSchema = z.object({
   actionIntent: z.enum(actionIntentValues).nullable(),
   informationRequests: z.array(extractedInformationRequestSchema).default([]),
+  phoneConfirmation: z.enum(['yes', 'no', 'unclear']).nullable().default(null),
   intentConfidence: z.number().min(0).max(1).nullable(),
   eventType: eventTypeSchema.nullable(),
   vendorCategory: providerCategorySchema.nullable(),
@@ -353,6 +354,7 @@ const planFieldExpectationSchema = z.object({
   path: z.string().min(1),
   expected: jsonValueSchema,
   severity: z.enum(['hard', 'soft']).default('hard'),
+  turnIndex: z.number().int().nonnegative().optional(),
 });
 
 const planFieldSubsetExpectationSchema = z.object({
@@ -361,6 +363,7 @@ const planFieldSubsetExpectationSchema = z.object({
   path: z.string().min(1),
   expected: jsonValueSchema,
   severity: z.enum(['hard', 'soft']).default('hard'),
+  turnIndex: z.number().int().nonnegative().optional(),
 });
 
 const nodeTransitionExpectationSchema = z.object({
@@ -644,9 +647,48 @@ export const evalTurnResultSchema = z.object({
   perf: cliPerfSummarySchema.nullable().optional(),
   plan: planSchema,
   latencyMs: z.number().nonnegative(),
-  rawTargetResponse: z.record(z.string(), jsonValueSchema).optional(),
 });
 export type EvalTurnResult = z.infer<typeof evalTurnResultSchema>;
+
+const evalArtifactPlanSummarySchema = z.object({
+  current_node: z.string(),
+  lifecycle_state: z.string(),
+  event_type: z.string().nullable(),
+  vendor_category: z.string().nullable(),
+  active_need_category: z.string().nullable(),
+  location: z.string().nullable(),
+  budget_signal: z.string().nullable(),
+  guest_range: z.string().nullable(),
+  provider_needs: z.array(z.object({
+    category: z.string(),
+    status: z.string(),
+    recommended_provider_ids: z.array(z.number()),
+    selected_provider_ids: z.array(z.number()),
+  })),
+  selected_provider_ids: z.array(z.number()),
+  missing_fields: z.array(z.string()),
+});
+
+const evalArtifactAuthEvidenceSchema = z.object({
+  status: z.string(),
+  auth_method: z.string().nullable(),
+  awaiting_phone_confirmation: z.boolean(),
+  phone_confirmation: z.enum(['awaiting', 'not_awaiting']),
+  contact_fields_present: contactFieldPresenceSchema,
+});
+
+export const evalArtifactTurnResultSchema = z.object({
+  turnIndex: z.number().int().nonnegative(),
+  input: turnInputSchema,
+  outputText: z.string(),
+  currentNode: z.string(),
+  trace: turnTraceSchema,
+  perf: cliPerfSummarySchema.nullable().optional(),
+  plan_summary: evalArtifactPlanSummarySchema,
+  auth_evidence: evalArtifactAuthEvidenceSchema,
+  latencyMs: z.number().nonnegative(),
+});
+export type EvalArtifactTurnResult = z.infer<typeof evalArtifactTurnResultSchema>;
 
 export const expectationResultSchema = z.object({
   id: z.string(),
@@ -746,6 +788,30 @@ const benchmarkSummarySchema = z.object({
 });
 export type BenchmarkSummary = z.infer<typeof benchmarkSummarySchema>;
 
+export const evalArtifactResultSchema = z.object({
+  runId: z.string(),
+  caseId: z.string(),
+  suite: z.string(),
+  target: evalTargetModeSchema,
+  configLabel: z.string(),
+  status: z.enum(['passed', 'failed', 'errored', 'skipped']),
+  hardGatePassed: z.boolean(),
+  finalScore: z.number().min(0).max(1),
+  totalLatencyMs: z.number().nonnegative(),
+  totalToolCalls: z.number().int().nonnegative(),
+  nodeTransitions: z.array(z.string()),
+  planDiffSummary: z.array(z.string()),
+  artifactPaths: z.object({
+    caseResult: z.string(),
+  }),
+  expectationResults: z.array(expectationResultSchema),
+  scorerResults: z.array(scorerResultSchema),
+  benchmarkMetrics: benchmarkMetricsSchema.optional(),
+  turns: z.array(evalArtifactTurnResultSchema),
+  startedAt: z.string(),
+  completedAt: z.string(),
+});
+
 export const evalReportSchema = z.object({
   runId: z.string(),
   generatedAt: z.string(),
@@ -761,8 +827,9 @@ export const evalReportSchema = z.object({
   targetSummaries: z.array(evalAggregateSummarySchema),
   flakyCandidates: z.array(flakyCandidateSchema),
   benchmarkSummary: benchmarkSummarySchema.optional(),
-  results: z.array(evalResultSchema),
+  results: z.array(evalArtifactResultSchema),
 });
+export type EvalArtifactResult = z.infer<typeof evalArtifactResultSchema>;
 export type EvalReport = z.infer<typeof evalReportSchema>;
 
 export type PartialPlanSeed = z.infer<ReturnType<typeof planSchema.partial>>;

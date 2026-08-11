@@ -40,6 +40,10 @@ describe('plan lifecycle', () => {
     expect(parsed.lifecycle_state).toBe('active');
     expect(parsed.contact_name).toBeNull();
     expect(parsed.contact_email).toBeNull();
+    expect(parsed.contact_phone_extension).toBeNull();
+    expect(parsed.contact_phone_number).toBeNull();
+    expect(parsed.user_auth.auth_method).toBeNull();
+    expect(parsed.user_auth.awaiting_phone_confirmation).toBe(false);
   });
 
   it('records finish contact fields and finished state', () => {

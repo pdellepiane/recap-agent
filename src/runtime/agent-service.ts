@@ -74,6 +74,7 @@ import {
   NoopAgentConversationGateway,
   type AgentConversationGateway,
   type AgentGatewayResult,
+  type AgentAuthByPhoneResult,
   type AgentMessageLogInput,
   type AgentConversationMessage,
 } from './agent-conversation-gateway';
@@ -95,7 +96,7 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
-import { parseInternationalPhone } from './phone';
+import { parseInternationalPhone, splitInternationalPhone } from './phone';
 import type { PromptLoader } from './prompt-loader';
 import type { ProviderGateway } from './provider-gateway';
 import type { StructuredMessage } from './structured-message';
@@ -184,6 +185,27 @@ const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 const MAX_STARTER_NEEDS = 5;
 const MAX_DETAILED_ELICITATION_NEEDS = 5;
 const MAX_PROVIDER_QUERIES_PER_NEED = 3;
+
+const isoDateTimePattern = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$/u;
+
+export function isFutureIsoTimestamp(value: string | null): boolean {
+  if (!value || !isoDateTimePattern.test(value)) {
+    return false;
+  }
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) && timestamp > Date.now();
+}
+
+export function hasValidUserAuthToken(
+  plan: Pick<PlanSnapshot, 'user_auth'>,
+): boolean {
+  return (
+    plan.user_auth.status === 'authenticated' &&
+    Boolean(plan.user_auth.token) &&
+    isFutureIsoTimestamp(plan.user_auth.token_expires_at)
+  );
+}
+
 export class AgentService {
   constructor(
     private readonly dependencies: {
@@ -265,8 +287,15 @@ export class AgentService {
     });
     const normalizedChannelPhone = this.normalizePhone(inbound.contactPhone);
     if (normalizedChannelPhone) {
+      const channelPhoneParts = splitInternationalPhone(inbound.contactPhone);
       classifierPlan = mergePlan(classifierPlan, {
         contact_phone: normalizedChannelPhone,
+        ...(channelPhoneParts
+          ? {
+              contact_phone_extension: channelPhoneParts.phone_extension,
+              contact_phone_number: channelPhoneParts.phone_number,
+            }
+          : {}),
       });
       if (existingPlan) {
         existingPlan = classifierPlan;
@@ -1665,6 +1694,8 @@ export class AgentService {
         userMessage: args.inbound.text,
         requests,
         toolUsage: args.toolUsage,
+        trustedContactPhone: args.inbound.contactPhone ?? null,
+        phoneConfirmation: args.extraction.phoneConfirmation ?? null,
       });
       planForInformation = authResolution.plan;
 
@@ -1755,10 +1786,14 @@ export class AgentService {
       args.extraction,
       composedReply,
     );
+    const phoneConfirmationReply = this.enforcePhoneConfirmationReply(
+      planForInformation,
+      ambiguitySafeReply,
+    );
     const reply = this.enforceRepeatedOtpRecoveryReply(
       informationResults,
       planForInformation,
-      ambiguitySafeReply,
+      phoneConfirmationReply,
     );
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -1898,6 +1933,8 @@ export class AgentService {
     userMessage: string;
     requests: PendingInformationRequest[];
     toolUsage: ToolUsage;
+    trustedContactPhone: string | null;
+    phoneConfirmation: 'yes' | 'no' | 'unclear' | null;
   }): Promise<{
     plan: PlanSnapshot;
     authentication: InformationAuthentication | null;
@@ -1914,6 +1951,181 @@ export class AgentService {
         authBlock: null,
       };
     }
+
+    const trustedPhoneParts = splitInternationalPhone(args.trustedContactPhone);
+    if (args.plan.user_auth.status !== 'code_requested' && trustedPhoneParts) {
+      if (args.plan.user_auth.awaiting_phone_confirmation) {
+        if (args.phoneConfirmation === 'unclear' || args.phoneConfirmation === null) {
+          return this.phoneConfirmationRequired(args.plan);
+        }
+
+        const planWithoutPhoneConfirmation = mergePlan(args.plan, {
+          user_auth: {
+            ...args.plan.user_auth,
+            awaiting_phone_confirmation: false,
+          },
+        });
+        if (args.phoneConfirmation === 'yes') {
+          const phoneAuthentication = await this.authenticateByPhone(
+            trustedPhoneParts,
+            args.toolUsage,
+          );
+          if (phoneAuthentication.status === 'authenticated') {
+            if (
+              !phoneAuthentication.token.trim() ||
+              !this.isValidEmail(phoneAuthentication.email) ||
+              !isFutureIsoTimestamp(phoneAuthentication.tokenExpiresAtIso)
+            ) {
+              return this.resolveEmailAuthentication({
+                ...args,
+                plan: this.clearPhoneAuthentication(
+                  planWithoutPhoneConfirmation,
+                  'Phone authentication returned incomplete credentials.',
+                ),
+              });
+            }
+
+            const authenticatedPlan = mergePlan(planWithoutPhoneConfirmation, {
+              contact_email: phoneAuthentication.email,
+              user_auth: {
+                ...planWithoutPhoneConfirmation.user_auth,
+                status: 'authenticated',
+                email: phoneAuthentication.email,
+                token: phoneAuthentication.token,
+                token_expires_at: phoneAuthentication.tokenExpiresAtIso,
+                last_error: null,
+                requested_at: null,
+                failed_code_attempts: 0,
+                auth_method: 'phone',
+                awaiting_phone_confirmation: false,
+              },
+            });
+            return {
+              plan: authenticatedPlan,
+              authentication: {
+                token: phoneAuthentication.token,
+                email: phoneAuthentication.email,
+              },
+              authBlock: null,
+            };
+          }
+        }
+
+        return this.resolveEmailAuthentication({
+          ...args,
+          plan: this.clearPhoneAuthentication(
+            planWithoutPhoneConfirmation,
+            null,
+          ),
+        });
+      }
+
+      if (!this.hasValidUserAuthToken(args.plan)) {
+        return this.phoneConfirmationRequired(
+          mergePlan(args.plan, {
+            user_auth: {
+              ...args.plan.user_auth,
+              awaiting_phone_confirmation: true,
+            },
+          }),
+        );
+      }
+    }
+
+    return this.resolveEmailAuthentication({
+      ...args,
+      plan:
+        args.plan.user_auth.awaiting_phone_confirmation
+          ? this.clearPhoneAuthentication(args.plan, null)
+          : args.plan,
+    });
+  }
+
+  private phoneConfirmationRequired(plan: PlanSnapshot): {
+    plan: PlanSnapshot;
+    authentication: InformationAuthentication | null;
+    authBlock: InformationAuthBlock;
+  } {
+    return {
+      plan,
+      authentication: null,
+      authBlock: {
+        nextInput: 'phone_confirmation',
+        guidance: createInformationAuthGuidance(
+          'phone_confirmation_required',
+          null,
+        ),
+      },
+    };
+  }
+
+  private clearPhoneAuthentication(
+    plan: PlanSnapshot,
+    lastError: string | null,
+  ): PlanSnapshot {
+    return mergePlan(plan, {
+      user_auth: {
+        ...plan.user_auth,
+        status: 'none',
+        token: null,
+        token_expires_at: null,
+        last_error: lastError,
+        auth_method: null,
+        awaiting_phone_confirmation: false,
+      },
+    });
+  }
+
+  private async authenticateByPhone(
+    phone: { phone_extension: string; phone_number: string },
+    toolUsage: ToolUsage,
+  ): Promise<AgentAuthByPhoneResult> {
+    this.recordDeterministicToolInput(toolUsage, 'auth_by_phone', {
+      phone_parts_present: true,
+      auth: 'X-Agent-Key [redacted]',
+    });
+    let result: AgentAuthByPhoneResult;
+    try {
+      result = await (
+        this.dependencies.agentConversationGateway ??
+        new NoopAgentConversationGateway('not_configured')
+      ).authByPhone(phone);
+    } catch (error) {
+      result = {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Phone authentication failed.',
+        retryable: true,
+      };
+    }
+    this.recordDeterministicToolOutput(toolUsage, 'auth_by_phone', {
+      status: result.status,
+      ...(result.status === 'authenticated'
+        ? {
+            token: '[redacted]',
+            email_present: result.email.trim().length > 0,
+            expiry_present: result.tokenExpiresAtIso.trim().length > 0,
+          }
+        : {}),
+    });
+    return result;
+  }
+
+  private async resolveEmailAuthentication(args: {
+    plan: PlanSnapshot;
+    userMessage: string;
+    requests: PendingInformationRequest[];
+    toolUsage: ToolUsage;
+    trustedContactPhone: string | null;
+    phoneConfirmation: 'yes' | 'no' | 'unclear' | null;
+  }): Promise<{
+    plan: PlanSnapshot;
+    authentication: InformationAuthentication | null;
+    authBlock: InformationAuthBlock | null;
+  }> {
+    const protectedRequests = args.requests.filter(
+      (request) =>
+        request.kind === 'associated_event' || request.kind === 'purchase',
+    );
 
     const purchaseAuthAction = protectedRequests.find(
       (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
@@ -1968,6 +2180,7 @@ export class AgentService {
         email,
         code,
         args.toolUsage,
+        splitInternationalPhone(args.trustedContactPhone),
       );
       return verification;
     }
@@ -2042,6 +2255,8 @@ export class AgentService {
             last_error: null,
             requested_at: new Date().toISOString(),
             failed_code_attempts: 0,
+            auth_method: null,
+            awaiting_phone_confirmation: false,
           },
         }),
         authBlock: {
@@ -2066,6 +2281,8 @@ export class AgentService {
             last_error: result.error,
             requested_at: null,
             failed_code_attempts: 0,
+            auth_method: null,
+            awaiting_phone_confirmation: false,
           },
         }),
         authBlock: {
@@ -2085,6 +2302,8 @@ export class AgentService {
           last_error: result.error,
           requested_at: null,
           failed_code_attempts: 0,
+          auth_method: null,
+          awaiting_phone_confirmation: false,
         },
       }),
       authBlock: {
@@ -2099,6 +2318,7 @@ export class AgentService {
     email: string,
     code: string,
     toolUsage: ToolUsage,
+    trustedPhone: { phone_extension: string; phone_number: string } | null,
   ): Promise<{
     plan: PlanSnapshot;
     authentication: InformationAuthentication | null;
@@ -2141,8 +2361,7 @@ export class AgentService {
       };
     }
 
-    return {
-      plan: mergePlan(plan, {
+    const authenticatedPlan = mergePlan(plan, {
         contact_email: email,
         user_auth: {
           status: 'authenticated',
@@ -2152,14 +2371,61 @@ export class AgentService {
           last_error: null,
           requested_at: plan.user_auth.requested_at,
           failed_code_attempts: 0,
+          auth_method: 'email',
+          awaiting_phone_confirmation: false,
         },
-      }),
+      });
+    if (trustedPhone) {
+      await this.updatePhoneAfterEmailAuthentication(
+        authenticatedPlan,
+        trustedPhone,
+        toolUsage,
+      );
+    }
+
+    return {
+      plan: authenticatedPlan,
       authentication: {
         token: result.token,
         email,
       },
       authBlock: null,
     };
+  }
+
+  private async updatePhoneAfterEmailAuthentication(
+    plan: PlanSnapshot,
+    phone: { phone_extension: string; phone_number: string },
+    toolUsage: ToolUsage,
+  ): Promise<void> {
+    const token = plan.user_auth.token?.trim() ?? '';
+    if (!token) {
+      return;
+    }
+    this.recordDeterministicToolInput(toolUsage, 'update_phone', {
+      phone_parts_present: true,
+      auth: 'X-Agent-Key + Bearer JWT [redacted]',
+    });
+    let result: Awaited<ReturnType<AgentConversationGateway['updatePhone']>>;
+    try {
+      result = await (
+        this.dependencies.agentConversationGateway ??
+        new NoopAgentConversationGateway('not_configured')
+      ).updatePhone({
+        token,
+        phone_extension: phone.phone_extension,
+        phone_number: phone.phone_number,
+      });
+    } catch (error) {
+      result = {
+        status: 'failed',
+        error: error instanceof Error ? error.message : 'Phone update failed.',
+        retryable: true,
+      };
+    }
+    this.recordDeterministicToolOutput(toolUsage, 'update_phone', {
+      status: result.status,
+    });
   }
 
   private reduceInformationState(
@@ -2434,6 +2700,26 @@ export class AgentService {
     };
   }
 
+  private enforcePhoneConfirmationReply(
+    plan: PlanSnapshot,
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    if (!plan.user_auth.awaiting_phone_confirmation) {
+      return reply;
+    }
+
+    const message =
+      '¿El número desde el que escribes por WhatsApp está registrado en tu cuenta?';
+    return {
+      ...reply,
+      text: message,
+      structuredMessage: {
+        type: 'generic',
+        paragraphs_es: [message],
+      },
+    };
+  }
+
   private resolveUserAuthEmail(plan: PlanSnapshot, userMessage: string): string | null {
     const contactEmail = this.normalizeUserEmailSpacing(plan.contact_email);
     const messageEmail = this.extractEmailFromText(userMessage);
@@ -2468,13 +2754,7 @@ export class AgentService {
   }
 
   private hasValidUserAuthToken(plan: PlanSnapshot): boolean {
-    if (plan.user_auth.status !== 'authenticated' || !plan.user_auth.token) {
-      return false;
-    }
-    if (!plan.user_auth.token_expires_at) {
-      return true;
-    }
-    return Date.parse(plan.user_auth.token_expires_at) > Date.now();
+    return hasValidUserAuthToken(plan);
   }
 
   private resetUserAuth(
@@ -2491,6 +2771,8 @@ export class AgentService {
         last_error: lastError,
         requested_at: null,
         failed_code_attempts: 0,
+        auth_method: null,
+        awaiting_phone_confirmation: false,
       },
     });
   }
@@ -3848,6 +4130,7 @@ export class AgentService {
       inferredPhone ??
       normalizedChannelPhone ??
       plan.contact_phone;
+    const nextPhoneParts = splitInternationalPhone(nextPhone);
     const phoneValidationError =
       normalizedExtractorPhone || inferredPhone || normalizedChannelPhone
         ? null
@@ -3878,6 +4161,12 @@ export class AgentService {
       contact_name: nextName,
       contact_email: nextEmail,
       contact_phone: nextPhone,
+      ...(nextPhoneParts
+        ? {
+            contact_phone_extension: nextPhoneParts.phone_extension,
+            contact_phone_number: nextPhoneParts.phone_number,
+          }
+        : {}),
       provider_needs: this.buildNeedUpdates(plan, guardedExtraction),
       last_user_goal: guardedExtraction.actionIntent ?? plan.last_user_goal,
     });
@@ -3894,6 +4183,12 @@ export class AgentService {
         contact_phone: phoneValidationError
           ? plan.contact_phone
           : merged.contact_phone,
+        ...(phoneValidationError
+          ? {
+              contact_phone_extension: plan.contact_phone_extension,
+              contact_phone_number: plan.contact_phone_number,
+            }
+          : {}),
         contact_email: guardedExtraction.contactEmail !== null && !this.isValidEmail(guardedExtraction.contactEmail)
           ? plan.contact_email
           : merged.contact_email,

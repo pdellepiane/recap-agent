@@ -1,0 +1,1118 @@
+# ═══════════════════════════════════════════════════════════════════════════
+# PLAN METADATA
+# ═══════════════════════════════════════════════════════════════════════════
+plan_id: 20260807-phone-first-auth-integration
+objective: >
+  Integrate the SinEnvolturas Agent API endpoints into the WhatsApp conversational agent, headlined by
+  PHONE-FIRST authentication: POST /auth-by-phone with the WhatsApp sender number before any email OTP,
+  falling back to OTP only on 404 user_not_found, then persisting the phone via POST /user/update-phone
+  after successful OTP so future sessions skip OTP. Also: switch associated_event reads to GET /user-events,
+  greenfield POST /guest/rsvp conversational flow with disambiguation, and outbound message logging.
+created_at: '2026-08-07T00:00:00Z'
+created_by: gem-planner
+status: pending
+tldr: |
+  12 tasks / 8 waves. Wave 1 builds foundations in parallel (Agent API gateway methods, core schema
+  extensions, dev env check). Wave 2 wires phone-first auth into resolveInformationAuthentication,
+  switches the orchestrator to /user-events, and rewrites Spanish prompts. Waves 3-4 serialize
+  agent-service.ts work (RSVP greenfield node, then outbound logging). Wave 5 offline tests, wave 6
+  dev Lambda redeploy (se-dev, AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent), wave 7 live
+  behavior regression cases + mandatory eval:behavior-live gate, wave 8 implementation-log/docs.
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PLAN-LEVEL METRICS
+# ═══════════════════════════════════════════════════════════════════════════
+plan_metrics:
+  wave_1_task_count: 3
+  total_dependencies: 15
+  risk_score: medium
+quality_score:
+  overall: 0.92
+  breakdown:
+    prd_coverage: 0.85
+    target_files_verified: 0.95
+    contracts_complete: 1.0
+    wave_assignment_valid: 1.0
+  blocking_issues: 0
+  warnings: 2
+  reviewer_focus:
+    - prd_coverage
+
+# ═══════════════════════════════════════════════════════════════════════════
+# PLANNING ANALYSIS (HIGH complexity)
+# ═══════════════════════════════════════════════════════════════════════════
+open_questions:
+  - question: Does GET /user-events authorize purely via Bearer token, or does it also require a phone/email query param?
+    context: Agent API is dual-auth (X-Agent-Key + user JWT). Existing getOrders/getGiftPurchases pass token only; assume /user-events matches.
+    type: research
+    affects: [T01-agent-gateway-methods, T05-orchestrator-user-events-switch]
+  - question: "Exact response envelope fields for /auth-by-phone (beyond credentials.access_token + expires_in), /user/update-phone, /guest/rsvp (candidate fields: guest_id, event name/date) and the multiple_pending payload shape."
+    context: Dev base URL https://se-v2-api-dev.jnq.io/api/agent is reachable; implementer probes dev API during T01 and encodes zod schemas from observed payloads.
+    type: research
+    affects: [T01-agent-gateway-methods, T07-rsvp-flow-greenfield]
+  - question: After RSVP completes (or errors), which node does the conversation resume at?
+    context: "Information flow uses information_state.resume_node. Default decision: mirror that pattern; RSVP sets resume to the node that was active when the RSVP intent was extracted."
+    type: nice_to_know
+    affects: [T07-rsvp-flow-greenfield]
+  - question: Enable AGENT_MESSAGE_LOGGING_ENABLED=true on the dev stack to validate outbound logging end-to-end?
+    context: CFN default is 'false' (stack.yaml). Dev validation of the outbound-logging gap requires the gate on. Recommend 'true' in dev only.
+    type: decision_blocker
+    affects: [T08-outbound-message-logging, T10-dev-lambda-redeploy, T11-live-eval-regression-cases]
+gaps:
+  - description: No docs/PRD.yaml exists in the repo; acceptance criteria were derived from the objective and AGENTS.md conventions instead of a PRD.
+    refinement_requests:
+      - query: SinEnvolturas Agent API endpoint reference (auth-by-phone, user-events, update-phone, guest/rsvp) — request/response schemas and error codes
+        source_hint: Agent API maintainers / dev environment https://se-v2-api-dev.jnq.io/api/agent
+  - description: RSVP candidate payload (guest_id, event metadata) for multiple_pending disambiguation is unspecified.
+    refinement_requests:
+      - query: POST /guest/rsvp multiple_pending response body example
+        source_hint: dev API probe during T01; mirror informationSelectionCandidateSchema shape in src/core/information.ts
+pre_mortem:
+  overall_risk_level: medium
+  critical_failure_modes:
+    - scenario: Phone split is wrong for a supported country (extension vs national number), causing auth-by-phone to 404 for real users — silent permanent OTP fallback with no error surface.
+      likelihood: medium
+      impact: high
+      mitigation: Persist the parseInternationalPhone split (countryCode/nationalNumber) at ingestion; unit-test the +51/+52/+1 COUNTRY_RULES matrix; live case asserts requestUserLoginCode is NOT called when phone auth succeeds.
+    - scenario: auth-by-phone expires_in (epoch seconds, e.g. 1787843661) is misread as a duration. Dead extractTokenExpiry (sinenvolturas-gateway.ts:1060) already treats expires_in as duration — reusing it would produce year-2076 expiry and accept stale tokens.
+      likelihood: medium
+      impact: high
+      mitigation: New gateway method converts epoch seconds -> ISO explicitly (value > 1e9 treated as epoch); unit test with 1787843661; hasValidUserAuthToken (Date.parse) compatibility asserted.
+    - scenario: OTP/phone-auth race — user has an in-flight OTP (status code_requested) and a phone-auth attempt clobbers or is clobbered by that state.
+      likelihood: medium
+      impact: medium
+      mitigation: "Hard guard: phone-first pre-step is skipped when plan.user_auth.status === 'code_requested'; unit test asserts state preservation."
+    - scenario: Terminal channel has no sender phone (TERMINAL_CONTACT_PHONE unset, src/terminal/client.ts:132) — phone-first silently skipped locally, divergence between local validation and WhatsApp behavior.
+      likelihood: high
+      impact: low
+      mitigation: Document the env in eval fixtures; live cases seed plan.contact_phone; fallback chain inbound.contactPhone -> plan.contact_phone -> externalUserId is reused, not reinvented.
+    - scenario: Outbound logMessage POST on every reply adds latency/failure surface and doubles /messages write volume.
+      likelihood: medium
+      impact: medium
+      mitigation: Logging stays behind AGENT_MESSAGE_LOGGING_ENABLED and Noop gateway; call sites treat logging failure as non-fatal (reply still sent); unit test asserts reply succeeds when logging fails.
+    - scenario: RSVP intent mis-extraction (keyword matching is banned; extraction must come from LLM schemas) — phrases like "sí, ahí voy" misrouted.
+      likelihood: medium
+      impact: medium
+      mitigation: New actionIntentValues entry + extractor prompt examples (Spanish); judged live cases for attending/declining; no regex-based routing permitted.
+    - scenario: multiple_pending disambiguation loop — user never produces a valid selection.
+      likelihood: low
+      impact: medium
+      mitigation: Mirror selection_candidates pattern with bounded retries and human-escalation fallback; typed already_responded/no_pending/phone_mismatch results end the loop deterministically.
+    - scenario: 409 phone-linked-to-other-account from /user/update-phone treated as fatal and the freshly verified OTP token is discarded.
+      likelihood: low
+      impact: high
+      mitigation: "Spec'd non-fatal: token stays valid, auth_method 'email' recorded, warning logged; unit test asserts token retained on 409."
+  assumptions:
+    - Agent API dual-auth = X-Agent-Key header on every call + Bearer user JWT on user-scoped reads, same as existing getOrders/getGiftPurchases.
+    - resolveInformationAuthentication (agent-service.ts:1896) is the single auth gate for associated_event + purchase requests; phone-first plugs in there, not in the orchestrator.
+    - Dev stack deploys via scripts/deploy.mjs which already accepts AGENT_API_BASE_URL (deploy.mjs:95); no CFN template change is required, only the parameter value.
+    - Spanish is mandatory only in conversational prompts; all code/tests/docs in English.
+implementation_specification:
+  code_structure: >
+    All new HTTP surface goes into HttpAgentConversationGateway (src/runtime/agent-conversation-gateway.ts)
+    following the existing zod-envelope + X-Agent-Key + retry(429/5xx) + AbortController-timeout pattern.
+    Core state extensions go into src/core/plan.ts (contact phone split, new RSVP action intent, rsvp_state),
+    src/core/information.ts (userAuthStateSchema.auth_method), src/core/decision-nodes.ts (new node
+    'responder_invitacion'). Auth orchestration stays in src/runtime/agent-service.ts
+    (resolveInformationAuthentication pre-step, verifyUserCodeForInformation post-step updatePhone,
+    renderOutbound call sites for outbound logging). RSVP extraction wiring goes into
+    src/runtime/extraction-schemas.ts; RSVP prompts into prompts/nodes/responder_invitacion/*.txt registered
+    in src/runtime/prompt-manifest.ts.
+  affected_areas:
+    - src/runtime/agent-conversation-gateway.ts
+    - src/runtime/agent-service.ts
+    - src/runtime/information-orchestrator.ts
+    - src/runtime/sinenvolturas-gateway.ts
+    - src/runtime/provider-gateway.ts
+    - src/runtime/extraction-schemas.ts
+    - src/runtime/openai-agent-runtime.ts
+    - src/core/plan.ts
+    - src/core/information.ts
+    - src/core/decision-nodes.ts
+    - src/runtime/phone.ts
+    - src/runtime/prompt-manifest.ts
+    - prompts/extractors/information.txt
+    - prompts/nodes/resolver_consultas_informativas/
+    - prompts/nodes/responder_invitacion/ (new)
+    - prompts/nodes/solicitar_agente_humano/ + prompts/nodes/ofrecer_agente_humano/ (outbound-logging touchpoints)
+    - evals/cases/ + evals/suites/live_behavior_regression.yaml
+    - infra/cloudformation/stack.yaml (parameter values only, no template change expected)
+    - docs/implementation-log.md
+  component_details:
+    - component: HttpAgentConversationGateway
+      responsibility: New typed methods getUserEvents, authByPhone, updatePhone, guestRsvp; epoch-seconds expiry conversion; RSVP error-code mapping (multiple_pending, already_responded, 404 no_pending, 403 phone_mismatch, 409 phone_linked_to_other_account).
+      interfaces: [AgentConversationGateway]
+      dependencies:
+        - component: src/runtime/config.ts agentApi options
+          relationship: consumes baseUrl/apiKey/timeout/retries
+      integration_points: [src/runtime/agent-service.ts, src/runtime/information-orchestrator.ts]
+    - component: agent-service auth state machine
+      responsibility: Phone-first pre-step in resolveInformationAuthentication before the email path; code_requested guard; token + auth_method + ISO expiry persistence; updatePhone after OTP verify (409 non-fatal).
+      interfaces: [PlanSnapshot.user_auth, AgentConversationGateway.authByPhone/updatePhone, ProviderGateway.requestUserLoginCode/verifyUserLoginCode]
+      dependencies:
+        - component: HttpAgentConversationGateway
+          relationship: calls new auth methods
+        - component: userAuthStateSchema
+          relationship: extended with auth_method
+      integration_points: [src/core/information.ts, src/core/plan.ts]
+    - component: InformationOrchestrator
+      responsibility: associated_event branch consumes agentGateway.getUserEvents; financial-data stripping projection removePurchaseDataFromEventResult preserved unchanged.
+      interfaces: [AgentConversationGateway.getUserEvents]
+      dependencies:
+        - component: HttpAgentConversationGateway
+          relationship: replaces providerGateway.lookupAuthenticatedUserEvents
+      integration_points: [src/runtime/provider-gateway.ts]
+    - component: RSVP flow (responder_invitacion)
+      responsibility: New extraction intent + decision node + rsvp_state disambiguation (mirror selection_candidates); Spanish prompts; typed terminal results.
+      interfaces: [actionIntentValues, extraction-schemas, prompt-manifest, AgentConversationGateway.guestRsvp]
+      dependencies:
+        - component: core schema extensions
+          relationship: requires new intent value, node enum entry, rsvp_state
+      integration_points: [prompts/nodes/responder_invitacion/, src/runtime/prompt-manifest.ts]
+contracts:
+  - from_task: T01-agent-gateway-methods
+    to_task: T04-phone-first-auth-state-machine
+    interface: authByPhone({phone_extension, phone_number}) -> {status:'authenticated', token, tokenExpiresAtIso} | {status:'user_not_found'} | {status:'failed', retryable, error}; updatePhone({token, phone_extension, phone_number}) -> {status:'success'} | {status:'phone_linked_to_other_account'} | {status:'failed', retryable, error}
+    format: TypeScript discriminated unions in agent-conversation-gateway.ts; expires_in epoch seconds converted to ISO inside the gateway
+  - from_task: T01-agent-gateway-methods
+    to_task: T05-orchestrator-user-events-switch
+    interface: "getUserEvents({token}) -> {status:'success', events: UserEvent[]} | {status:'unauthorized'} | {status:'failed', retryable, error}"
+    format: UserEvent shape compatible with removePurchaseDataFromEventResult projection input
+  - from_task: T01-agent-gateway-methods
+    to_task: T07-rsvp-flow-greenfield
+    interface: "guestRsvp({phone_extension, phone_number, action:'attending'|'declining', guest_id?}) -> {status:'responded'} | {status:'multiple_pending', candidates: RsvpCandidate[]} | {status:'already_responded'} | {status:'no_pending'} | {status:'phone_mismatch'} | {status:'failed', retryable, error}"
+    format: TypeScript discriminated union; RsvpCandidate = {guest_id, event_name, event_date|null}
+  - from_task: T02-core-schema-extensions
+    to_task: T04-phone-first-auth-state-machine
+    interface: "userAuthStateSchema + auth_method: 'phone'|'email'|null; plan contact_phone_extension/contact_phone_number nullable strings"
+    format: zod schemas in src/core/information.ts + src/core/plan.ts
+  - from_task: T02-core-schema-extensions
+    to_task: T07-rsvp-flow-greenfield
+    interface: actionIntentValues + 'responder_invitacion'; decisionNodes + 'responder_invitacion'; plan.rsvp_state {status:'none'|'awaiting_event_selection', pending_action, candidates[], requested_at}
+    format: zod schemas in src/core/plan.ts + src/core/decision-nodes.ts
+  - from_task: T09-offline-tests
+    to_task: T10-dev-lambda-redeploy
+    interface: npm run test && npm run typecheck && npm run lint all exit 0
+    format: CLI exit codes
+  - from_task: T10-dev-lambda-redeploy
+    to_task: T11-live-eval-regression-cases
+    interface: dev Lambda URL live with AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent
+    format: deployed CloudFormation stack outputs
+
+# ═══════════════════════════════════════════════════════════════════════════
+# TASKS
+# ═══════════════════════════════════════════════════════════════════════════
+tasks:
+  # ── WAVE 1 ────────────────────────────────────────────────────────────────
+  - id: T01-agent-gateway-methods
+    title: Add Agent API gateway methods (user-events, auth-by-phone, update-phone, guest/rsvp)
+    description: >
+      Extend HttpAgentConversationGateway with four typed methods following the existing zod-envelope,
+      X-Agent-Key, retry(429/5xx), AbortController-timeout pattern: (1) getUserEvents(token) — dual-auth
+      GET /user-events; (2) authByPhone({phone_extension, phone_number}) — POST /auth-by-phone, map 404
+      user_not_found to a typed result, convert expires_in EPOCH SECONDS to ISO for tokenExpiresAtIso;
+      (3) updatePhone({token, phone_extension, phone_number}) — POST /user/update-phone, map 409
+      phone-linked-to-other-account to a typed non-fatal result; (4) guestRsvp({phone_extension,
+      phone_number, action, guest_id?}) — POST /guest/rsvp mapping multiple_pending (with candidates),
+      already_responded, 404 no_pending, 403 phone_mismatch to typed results. Probe the dev API to confirm
+      envelopes before locking zod schemas. Also extend the AgentConversationGateway interface and
+      NoopAgentConversationGateway with skipped/unavailable stubs. No agent-service changes in this task.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [user-events, auth-by-phone, update-phone, guest-rsvp, typed-results]
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: src/runtime/agent-conversation-gateway.ts
+        description: Existing gateway; envelopeSchema L156, request() L551, requestPurchase() L496 show the pattern to follow.
+      - path: src/runtime/config.ts
+        description: agentApi config block L44-49, env zod L111-118, messageLoggingEnabled L195.
+      - path: tests/agent-conversation-gateway.test.ts
+        description: Existing gateway test harness with mocked fetch to extend.
+    estimated_effort: large
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - All four methods exist on the AgentConversationGateway interface with typed discriminated-union results.
+      - authByPhone maps 404 user_not_found distinctly from generic failures; token extracted from credentials.access_token.
+      - expires_in epoch seconds (e.g. 1787843661) converts to a correct ISO tokenExpiresAtIso.
+      - updatePhone 409 yields a typed phone_linked_to_other_account result, not an exception.
+      - guestRsvp yields typed results for responded, multiple_pending (candidates with guest_id), already_responded, no_pending (404), phone_mismatch (403).
+      - Noop gateway returns skipped/unavailable stubs for all four methods.
+      - No `any`; strict zod parsing of every response.
+    success_criteria:
+      - tests/agent-conversation-gateway.test.ts covers all new methods and passes
+      - npm run typecheck exits 0
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: Dev API envelope differs from objective description
+        likelihood: medium
+        impact: medium
+        mitigation: Probe dev API first; encode observed shape in zod; record discrepancies for T04/T07 handoff.
+      - scenario: Epoch-seconds expiry misconverted
+        likelihood: medium
+        impact: high
+        mitigation: Explicit epoch detection + unit test with 1787843661.
+    tech_stack: [TypeScript, zod, vitest, fetch]
+    test_coverage: tests/agent-conversation-gateway.test.ts
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: true
+    handoff:
+      do_not_reinvestigate:
+        - Existing gateway envelope/retry/timeout pattern (agent-conversation-gateway.ts L156-697)
+        - X-Agent-Key + Bearer dual-auth mechanics (request() authorizationToken param)
+      required_test_first: tests/agent-conversation-gateway.test.ts
+      target_files:
+        - src/runtime/agent-conversation-gateway.ts
+        - tests/agent-conversation-gateway.test.ts
+      minimal_change: Additive methods + interface extension only; do not touch agent-service or orchestrator.
+      acceptance_checks:
+        - npm run test -- agent-conversation-gateway
+        - npm run typecheck
+
+  - id: T02-core-schema-extensions
+    title: Core schema extensions (phone split, auth_method, RSVP intent/node/state)
+    description: >
+      (1) src/core/plan.ts: persist the phone split next to contact_phone — add contact_phone_extension
+      (e.g. '+51') and contact_phone_number (e.g. '987654321') nullable fields; add 'responder_invitacion'
+      to actionIntentValues; add plan.rsvp_state zod schema {status: 'none'|'awaiting_event_selection',
+      pending_action: 'attending'|'declining'|null, candidates: [{guest_id, event_name, event_date}],
+      requested_at} with defaults in the plan factory. (2) src/core/information.ts: extend
+      userAuthStateSchema with auth_method: z.enum(['phone','email']).nullable().default(null). (3)
+      src/core/decision-nodes.ts: add 'responder_invitacion' to decisionNodes. (4) src/runtime/phone.ts:
+      add a helper exposing the parseInternationalPhone split for persistence (countryCode -> extension,
+      nationalNumber -> number); keep digits-only contact_phone for existing consumers
+      (resolveEscalationPhone, message logging). Update any plan-merge/reset sites that construct
+      user_auth or contact fields to include the new keys.
+    wave: 1
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [phone-split, auth-method-schema, rsvp-intent, rsvp-node-enum, rsvp-state]
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: src/core/plan.ts
+        description: actionIntentValues L19-32, contact_phone L132 + default L263, userAuthStateSchema import L13-17.
+      - path: src/core/information.ts
+        description: userAuthStateSchema L124-132; informationSelectionCandidateSchema L104 is the disambiguation mirror.
+      - path: src/core/decision-nodes.ts
+        description: decisionNodes enum L3-31.
+      - path: src/runtime/phone.ts
+        description: parseInternationalPhone L41 returns countryCode/nationalNumber; COUNTRY_RULES L35-39 (+52/+51/+1).
+      - path: tests/phone.test.ts
+        description: Existing phone parsing tests.
+    estimated_effort: medium
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - contact_phone_extension + contact_phone_number persisted on plan with null defaults; existing stored plans still parse (nullable defaults).
+      - user_auth.auth_method accepts 'phone'|'email'|null and defaults null.
+      - "'responder_invitacion' present in actionIntentValues and decisionNodes."
+      - rsvp_state schema with the specified shape and 'none' default.
+      - No keyword/regex flow logic introduced anywhere (schema-only task).
+    success_criteria:
+      - npm run typecheck exits 0
+      - npm run test exits 0 (existing suites unaffected)
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: Stored plans from earlier sessions fail zod parse after schema change
+        likelihood: low
+        impact: high
+        mitigation: All new fields nullable with defaults; add a deserialization test with a legacy-shaped plan.
+      - scenario: A plan-merge/reset site drops the new fields
+        likelihood: medium
+        impact: medium
+        mitigation: grep every user_auth/contact_phone construction site (agent-service resetUserAuth L2480) and update.
+    tech_stack: [TypeScript, zod, vitest]
+    test_coverage: tests/phone.test.ts; plan schema coverage in tests/agent-service.test.ts
+    requires_review: false
+    review_depth: lightweight
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - parseInternationalPhone already returns the split; only persistence is missing
+        - COUNTRY_RULES limited to +52/+51/+1
+      required_test_first: tests/phone.test.ts
+      target_files:
+        - src/core/plan.ts
+        - src/core/information.ts
+        - src/core/decision-nodes.ts
+        - src/runtime/phone.ts
+      minimal_change: Schema + helper additions only; no call-site wiring beyond construction/reset sites.
+      acceptance_checks:
+        - npm run typecheck
+        - npm run test
+
+  - id: T03-dev-env-config-check
+    title: Verify dev Agent API base URL + logging gate wiring (no template change expected)
+    description: >
+      Confirm the dev deploy path targets the dev Agent API: scripts/deploy.mjs:95 already parameterizes
+      AgentApiBaseUrl from AGENT_API_BASE_URL env; stack.yaml defines AgentApiBaseUrl (prod default),
+      AgentMessageLoggingEnabled ('false' default) and maps both into Lambda env (stack.yaml L282-302).
+      Task: document the required dev invocation values (AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent,
+      AGENT_MESSAGE_LOGGING_ENABLED=true for outbound-logging validation) in the plan handoff and verify
+      aws-profile.mjs enforces se-dev/us-east-1/account 684516060775 fail-closed. Change template or deploy
+      script ONLY if a real gap is found; otherwise this is a verification + handoff note.
+    wave: 1
+    agent: gem-devops
+    prototype: false
+    priority: medium
+    status: pending
+    covers: [dev-base-url, logging-gate, deploy-config]
+    dependencies: []
+    conflicts_with: []
+    context_files:
+      - path: infra/cloudformation/stack.yaml
+        description: Parameters L17-60 (AgentApiBaseUrl, AgentMessageLoggingEnabled), Lambda env L282-302.
+      - path: scripts/deploy.mjs
+        description: AgentApiBaseUrl parameter override L95; aws-profile fail-closed import L6.
+      - path: scripts/aws-profile.mjs
+        description: se-dev profile enforcement.
+    estimated_effort: small
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - Written confirmation (handoff note) that dev deploy sets AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent.
+      - Decision recorded: AGENT_MESSAGE_LOGGING_ENABLED=true on dev for T08/T11 validation.
+      - Any template/script change is minimal, atomic, and noted for the implementation log.
+    success_criteria:
+      - Deploy parameter path verified against scripts/deploy.mjs
+      - Handoff note with exact dev env values produced
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - stack.yaml already declares AgentApiBaseUrl + AgentMessageLoggingEnabled params
+        - deploy.mjs already forwards AGENT_API_BASE_URL
+      required_test_first: ''
+      target_files:
+        - infra/cloudformation/stack.yaml
+        - scripts/deploy.mjs
+      minimal_change: Verify-only unless a concrete gap is found.
+      acceptance_checks:
+        - rg AgentApiBaseUrl scripts/deploy.mjs infra/cloudformation/stack.yaml
+
+  # ── WAVE 2 ────────────────────────────────────────────────────────────────
+  - id: T04-phone-first-auth-state-machine
+    title: Phone-first auth in resolveInformationAuthentication + update-phone after OTP
+    description: >
+      In src/runtime/agent-service.ts: (1) add a phone-first pre-step inside resolveInformationAuthentication
+      (L1896) BEFORE the email path — resolve the sender phone via the existing chain (inbound.contactPhone
+      -> plan.contact_phone -> externalUserId, cf. resolveEscalationPhone L2765), re-parse with
+      parseInternationalPhone to obtain the {phone_extension, phone_number} split (prefer persisted split
+      fields from T02), and call agentGateway.authByPhone. (2) Guard: skip the phone-first attempt entirely
+      when plan.user_auth.status === 'code_requested' to avoid clobbering an in-flight OTP. (3) On
+      authenticated: persist token, token_expires_at (ISO from gateway), auth_method 'phone', email unchanged
+      or null per existing reset semantics. (4) On user_not_found: continue into the existing email OTP flow
+      unchanged (OTP becomes fallback-only). (5) After a successful verifyUserCodeForInformation
+      (L2097/L2113), when plan.contact_phone is known, call agentGateway.updatePhone; 409
+      phone_linked_to_other_account is non-fatal — token remains valid, auth_method 'email' recorded,
+      warning logged. (6) Keep hasValidUserAuthToken (L2470) as the single validity check — the ISO expiry
+      must satisfy Date.parse. (7) No keyword/regex flow decisions; auth routing stays structured.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [phone-first-auth, otp-fallback, update-phone, auth-method, code-requested-guard]
+    dependencies: [T01-agent-gateway-methods, T02-core-schema-extensions]
+    conflicts_with: [T07-rsvp-flow-greenfield, T08-outbound-message-logging]
+    context_files:
+      - path: src/runtime/agent-service.ts
+        description: resolveInformationAuthentication L1896-2010, requestUserCodeForInformation L2012, verifyUserCodeForInformation L2097, hasValidUserAuthToken L2470, resetUserAuth L2480, resolveEscalationPhone L2765.
+      - path: src/runtime/sinenvolturas-gateway.ts
+        description: requestUserLoginCode L508, verifyUserLoginCode L533 (fallback-only after this task).
+      - path: src/core/information.ts
+        description: userAuthStatusValues L116-122 (email_not_found exists; reuse for phone 404->email path).
+      - path: tests/agent-service-information-flow.test.ts
+        description: Existing auth-flow test harness.
+    estimated_effort: large
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - With a known phone and no in-flight OTP, auth-by-phone is attempted BEFORE any email prompt or OTP request.
+      - OTP (requestUserLoginCode) fires only after authByPhone returns user_not_found or no phone is resolvable.
+      - status === 'code_requested' is never reset by the phone-first path.
+      - Successful phone auth persists token + ISO expiry + auth_method 'phone'; hasValidUserAuthToken accepts it on later turns.
+      - After OTP verify with known contact_phone, updatePhone is called; 409 leaves the session authenticated.
+      - Terminal channel without TERMINAL_CONTACT_PHONE degrades to the email OTP path without errors.
+    success_criteria:
+      - tests/agent-service-information-flow.test.ts new cases pass (phone-first success, 404->OTP, guard, 409 non-fatal)
+      - npm run typecheck exits 0
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: Phone-first path resets code_requested state
+        likelihood: medium
+        impact: high
+        mitigation: Explicit guard unit test; read-modify-write via mergePlan only.
+      - scenario: Expiry stored raw (epoch) breaks Date.parse in hasValidUserAuthToken
+        likelihood: medium
+        impact: high
+        mitigation: Gateway returns ISO (T01 contract); unit test round-trip.
+      - scenario: updatePhone failure surfaces to the user
+        likelihood: low
+        impact: medium
+        mitigation: All updatePhone outcomes non-fatal; only token-bearing results influence flow.
+    tech_stack: [TypeScript, zod, vitest]
+    test_coverage: tests/agent-service-information-flow.test.ts
+    requires_review: true
+    review_depth: full
+    review_security_sensitive: true
+    handoff:
+      do_not_reinvestigate:
+        - resolveInformationAuthentication is the single auth gate (digest alias ensureInformationAuthentication is stale)
+        - hasValidUserAuthToken uses Date.parse on token_expires_at
+        - extractTokenExpiry (sinenvolturas-gateway.ts:1060) is dead and treats expires_in as duration — do NOT reuse it
+      required_test_first: tests/agent-service-information-flow.test.ts
+      target_files:
+        - src/runtime/agent-service.ts
+        - tests/agent-service-information-flow.test.ts
+      minimal_change: Insert pre-step + post-verify hook; do not restructure the email OTP path.
+      acceptance_checks:
+        - npm run test -- agent-service-information-flow
+        - npm run typecheck
+
+  - id: T05-orchestrator-user-events-switch
+    title: Switch associated_event reads to GET /user-events; remove superseded guest-service code
+    description: >
+      In src/runtime/information-orchestrator.ts (executeRequest associated_event branch L152-188): replace
+      providerGateway.lookupAuthenticatedUserEvents with agentGateway.getUserEvents, preserving the
+      financial-data stripping projection removePurchaseDataFromEventResult (L297) exactly. Per the
+      no-compat rule, remove the superseded surface: lookupAuthenticatedUserEvents implementation +
+      guest-service /user-lookup fetch in sinenvolturas-gateway.ts, the provider-gateway.ts interface entries
+      (lookupAuthenticatedUserEvents L215; lookupUserEventContext L209 ONLY if no other consumer — verify
+      before removal), and the dead extractTokenExpiry (sinenvolturas-gateway.ts:1060). Keep guest-service
+      config (SinEnvolturasGuestServiceBaseUrl) since src/lambda/handler.ts and src/evals/targets/offline.ts
+      still reference it. Update evals/targets/offline.ts stubs if they mock the removed methods.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [user-events-consumption, projection-preservation, dead-code-cleanup]
+    dependencies: [T01-agent-gateway-methods]
+    conflicts_with: []
+    context_files:
+      - path: src/runtime/information-orchestrator.ts
+        description: associated_event branch L152-188, removePurchaseDataFromEventResult L297, associated_event_api source tag L401-414.
+      - path: src/runtime/provider-gateway.ts
+        description: lookupUserEventContext L209, lookupAuthenticatedUserEvents L215 interface entries.
+      - path: src/runtime/sinenvolturas-gateway.ts
+        description: lookupAuthenticatedUserEvents + /user-lookup consumption, dead extractTokenExpiry L1060-1081, defaultUserTokenExpiry L1128.
+      - path: tests/information-orchestrator.test.ts
+        description: Existing orchestrator test harness.
+    estimated_effort: medium
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - associated_event branch reads from Agent API /user-events only.
+      - removePurchaseDataFromEventResult output unchanged for equivalent input (no financial fields leak).
+      - No reference to lookupAuthenticatedUserEvents or extractTokenExpiry remains; lookupUserEventContext removed only if consumer-free.
+      - Unauthorized (401) from /user-events maps to the existing re-auth path.
+    success_criteria:
+      - tests/information-orchestrator.test.ts passes with /user-events mocks
+      - rg lookupAuthenticatedUserEvents src/ returns no matches
+      - npm run typecheck exits 0
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: lookupUserEventContext has a hidden consumer (evals, handler)
+        likelihood: medium
+        impact: low
+        mitigation: rg all consumers before removal; keep if any consumer remains.
+      - scenario: /user-events payload shape differs from guest-service user-lookup and projection breaks
+        likelihood: medium
+        impact: medium
+        mitigation: Map gateway output into the existing projection input shape inside the orchestrator.
+    tech_stack: [TypeScript, zod, vitest]
+    test_coverage: tests/information-orchestrator.test.ts
+    requires_review: false
+    review_depth: standard
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - lookupAuthenticatedUserEvents sole consumer is information-orchestrator.ts:154
+        - guest-service base URL is still referenced by handler.ts + evals/targets/offline.ts — keep config
+      required_test_first: tests/information-orchestrator.test.ts
+      target_files:
+        - src/runtime/information-orchestrator.ts
+        - src/runtime/provider-gateway.ts
+        - src/runtime/sinenvolturas-gateway.ts
+        - tests/information-orchestrator.test.ts
+      minimal_change: Swap one call site; delete dead code; preserve projection byte-for-byte behavior.
+      acceptance_checks:
+        - npm run test -- information-orchestrator
+        - npm run typecheck
+
+  - id: T06-phone-first-prompts
+    title: Phone-first prompt updates (extractor, resolver node, capability line)
+    description: >
+      Update Spanish conversational prompts for phone-first auth (all conversational content stays Spanish;
+      comments/docs English): (1) prompts/extractors/information.txt — authAction semantics remain, but
+      wording must stop assuming email-first (L22-24 reference change_email/provide_email; keep actions,
+      reframe context: phone is tried automatically, email only when phone unknown). (2)
+      prompts/nodes/resolver_consultas_informativas/system.txt L8-15 + response_contract.txt +
+      tool_policy.txt — describe phone-first identity verification and OTP-as-fallback. (3)
+      src/runtime/openai-agent-runtime.ts L1104 capability line: replace "después de verificar tu correo"
+      with phone-first wording. Do NOT create the RSVP node prompts here (T07 owns those). Run the static
+      prompt comparison/audit tests after edits.
+    wave: 2
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [prompts-phone-first, capability-line]
+    dependencies: [T02-core-schema-extensions]
+    conflicts_with: []
+    context_files:
+      - path: prompts/extractors/information.txt
+        description: authAction semantics L22-24.
+      - path: prompts/nodes/resolver_consultas_informativas/system.txt
+        description: Auth guidance wording L8-15.
+      - path: src/runtime/openai-agent-runtime.ts
+        description: Capability line L1104.
+      - path: tests/static-prompt-comparison.test.ts
+        description: Prompt regression harness.
+    estimated_effort: medium
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - No user-facing prompt claims email verification is the primary path.
+      - authAction values and extraction fields unchanged (semantics, not schema).
+      - Capability line reflects phone-first identity.
+      - Prompt files remain git-tracked .txt mapped to their nodes; Spanish only in conversational content.
+    success_criteria:
+      - tests/static-prompt-comparison.test.ts and tests/prompt-audit.test.ts pass
+      - npm run test exits 0
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: Prompt edit contradicts implemented auth behavior (prompts land before/independent of T04)
+        likelihood: low
+        impact: medium
+        mitigation: Contract fixed by this plan; T11 live judge cases catch residual contradiction.
+    tech_stack: [TypeScript, prompt-engineering, vitest]
+    test_coverage: tests/static-prompt-comparison.test.ts; tests/prompt-audit.test.ts
+    requires_review: false
+    review_depth: lightweight
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - prompt-manifest.ts mapping for resolver_consultas_informativas (prompt-manifest.ts L263-266)
+      required_test_first: tests/static-prompt-comparison.test.ts
+      target_files:
+        - prompts/extractors/information.txt
+        - prompts/nodes/resolver_consultas_informativas/system.txt
+        - prompts/nodes/resolver_consultas_informativas/response_contract.txt
+        - prompts/nodes/resolver_consultas_informativas/tool_policy.txt
+        - src/runtime/openai-agent-runtime.ts
+      minimal_change: Wording-only edits; no extraction schema changes.
+      acceptance_checks:
+        - npm run test -- static-prompt-comparison
+        - npm run test -- prompt-audit
+
+  # ── WAVE 3 ────────────────────────────────────────────────────────────────
+  - id: T07-rsvp-flow-greenfield
+    title: RSVP greenfield — extraction intent, responder_invitacion node, disambiguation state
+    description: >
+      Build the guest RSVP conversational flow end-to-end with NO keyword matching (all routing via
+      extraction schemas/actionIntentValues): (1) src/runtime/extraction-schemas.ts — wire the new
+      'responder_invitacion' intent (from T02) into extraction so attending/declining utterances and
+      event-selection replies are captured structurally. (2) agent-service.ts — handle the intent: resolve
+      phone split (persisted fields from T02), call agentGateway.guestRsvp; on multiple_pending persist
+      rsvp_state {status 'awaiting_event_selection', pending_action, candidates} and have the agent ask
+      "¿A cuál evento querés responder?"; on the follow-up turn re-call guestRsvp with the chosen guest_id
+      (mirror the information selection_candidates disambiguation pattern, information.ts L104-112);
+      already_responded, no_pending (404), phone_mismatch (403) map to typed outcomes with Spanish user
+      messaging; terminal success confirms attendance/decline. (3) New prompts
+      prompts/nodes/responder_invitacion/{system,response_contract,tool_policy,transition_policy}.txt in
+      Spanish, registered in src/runtime/prompt-manifest.ts (nodePromptManifest + planning/question-strategy
+      sets as appropriate). (4) RSVP must not require user_auth (guest identity is phone-based). Sequenced
+      after T04 to keep agent-service.ts merges linear.
+    wave: 3
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [rsvp-intent, rsvp-node, rsvp-disambiguation, rsvp-prompts]
+    dependencies: [T01-agent-gateway-methods, T02-core-schema-extensions, T04-phone-first-auth-state-machine]
+    conflicts_with: [T04-phone-first-auth-state-machine, T08-outbound-message-logging]
+    context_files:
+      - path: src/runtime/extraction-schemas.ts
+        description: actionIntent usage L109; information request kinds L94.
+      - path: src/core/information.ts
+        description: informationSelectionCandidateSchema L104-112 — the disambiguation mirror.
+      - path: src/runtime/prompt-manifest.ts
+        description: nodePromptManifest L140-267; planningNodes/questionStrategyNodes sets L28-59.
+      - path: prompts/nodes/resolver_consultas_informativas/system.txt
+        description: Style reference for new node prompts.
+      - path: tests/extraction-schemas.test.ts
+        description: Extraction schema test harness.
+    estimated_effort: large
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - Attending/declining utterances route to responder_invitacion purely via extraction (no regex/keyword gates).
+      - multiple_pending produces the disambiguation question and persists rsvp_state; a valid selection re-calls guestRsvp with guest_id.
+      - already_responded / no_pending / phone_mismatch each produce deterministic Spanish messaging and close the flow.
+      - RSVP works without plan.user_auth authentication.
+      - New node registered in decisionNodes + prompt-manifest with all four prompt files git-tracked.
+    success_criteria:
+      - New vitest coverage for RSVP state machine passes (attending, declining, multiple_pending->selection, already_responded, 403, 404)
+      - npm run typecheck exits 0
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: Disambiguation loop never terminates
+        likelihood: low
+        impact: medium
+        mitigation: Bounded retries mirroring selection_candidates; fall back to human-escalation offer.
+      - scenario: RSVP intent collides with existing information/planning intents in extraction
+        likelihood: medium
+        impact: medium
+        mitigation: Extractor prompt disambiguation examples; extraction-schemas tests for boundary utterances.
+    tech_stack: [TypeScript, zod, prompt-engineering, vitest]
+    test_coverage: tests/extraction-schemas.test.ts; new RSVP state-machine tests
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - selection_candidates disambiguation pattern (information.ts L104-112)
+        - nodePromptManifest registration mechanics (prompt-manifest.ts L140-267)
+      required_test_first: tests/extraction-schemas.test.ts
+      target_files:
+        - src/runtime/extraction-schemas.ts
+        - src/runtime/agent-service.ts
+        - src/runtime/prompt-manifest.ts
+        - prompts/nodes/responder_invitacion/system.txt
+        - prompts/nodes/responder_invitacion/response_contract.txt
+        - prompts/nodes/responder_invitacion/tool_policy.txt
+        - prompts/nodes/responder_invitacion/transition_policy.txt
+      minimal_change: Additive node + intent + state; do not alter existing intent semantics.
+      acceptance_checks:
+        - npm run test -- extraction-schemas
+        - npm run typecheck
+
+  # ── WAVE 4 ────────────────────────────────────────────────────────────────
+  - id: T08-outbound-message-logging
+    title: Outbound message logging at renderOutbound call sites
+    description: >
+      Close the outbound logging gap: at every renderOutbound call site in agent-service.ts (L366, 448, 495,
+      672, 885, 968, 1088, 1167, 1538, 1785 — verify the final list), emit logMessage({direction:
+      'outbound', phoneNumber, body: rendered text, sentAt}) using the existing AgentConversationGateway
+      (the AGENT_MESSAGE_LOGGING_ENABLED gate and Noop behavior already live inside the gateway). Logging
+      must be non-blocking for the reply path: a logging failure is recorded (trace/log warning) and never
+      changes the outbound message. Reuse the resolveEscalationPhone-style chain for the phone number; skip
+      (relying on gateway 'skipped' result) when no phone is resolvable. Sequenced after T07 to keep
+      agent-service.ts merges linear.
+    wave: 4
+    agent: gem-implementer
+    prototype: false
+    priority: medium
+    status: pending
+    covers: [outbound-logging, message-logging-gap]
+    dependencies: [T07-rsvp-flow-greenfield]
+    conflicts_with: [T04-phone-first-auth-state-machine, T07-rsvp-flow-greenfield]
+    context_files:
+      - path: src/runtime/agent-service.ts
+        description: renderOutbound definition L5625-5665 and call sites L366-1785.
+      - path: src/runtime/agent-conversation-gateway.ts
+        description: logMessage L278-309 with messageLoggingEnabled gate L279.
+      - path: tests/agent-service.test.ts
+        description: Service-level test harness for logging assertions.
+    estimated_effort: medium
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - Every renderOutbound call site triggers exactly one outbound logMessage attempt with the rendered body.
+      - Logging failure or disabled gate never alters the reply text/delivery.
+      - No outbound log is attempted when the gateway reports not_configured/disabled (skipped result tolerated).
+    success_criteria:
+      - tests/agent-service.test.ts outbound-logging cases pass (enabled, disabled, failure-non-fatal)
+      - npm run typecheck exits 0
+      - test_results.failed === 0
+    failure_modes:
+      - scenario: Write volume doubles Agent API /messages load
+        likelihood: medium
+        impact: low
+        mitigation: Gate stays param-controlled; fire-and-forget semantics; no retry storms (gateway caps retries).
+    tech_stack: [TypeScript, vitest]
+    test_coverage: tests/agent-service.test.ts
+    requires_review: false
+    review_depth: lightweight
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - logMessage already gates on messageLoggingEnabled and returns skipped when disabled
+      required_test_first: tests/agent-service.test.ts
+      target_files:
+        - src/runtime/agent-service.ts
+        - tests/agent-service.test.ts
+      minimal_change: Add logging emission at call sites only; renderOutbound internals unchanged.
+      acceptance_checks:
+        - npm run test -- agent-service
+        - npm run typecheck
+
+  # ── WAVE 5 ────────────────────────────────────────────────────────────────
+  - id: T09-offline-tests
+    title: Consolidated offline test pass (unit + integration, deterministic eval twins)
+    description: >
+      Consolidate and complete offline coverage across the feature: gateway typed results (all four methods,
+      epoch expiry 1787843661, RSVP error-code mapping), phone split persistence round-trip incl. legacy
+      plan deserialization, auth state machine (phone-first success, user_not_found->OTP, code_requested
+      guard, updatePhone 409 non-fatal, token expiry round-trip through hasValidUserAuthToken), orchestrator
+      /user-events switch with projection preservation, RSVP state machine incl. multiple_pending
+      disambiguation, outbound logging gate/failure semantics. Add deterministic offline eval twins (no
+      model) for the new behaviors where verifiable without a judge, per AGENTS.md. Full gate: npm run test,
+      npm run typecheck, npm run lint — all green.
+    wave: 5
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [unit-tests, integration-tests, offline-eval-twins, full-gate]
+    dependencies: [T04-phone-first-auth-state-machine, T05-orchestrator-user-events-switch, T07-rsvp-flow-greenfield, T08-outbound-message-logging]
+    conflicts_with: []
+    context_files:
+      - path: tests/agent-conversation-gateway.test.ts
+        description: Gateway tests from T01.
+      - path: tests/agent-service-information-flow.test.ts
+        description: Auth flow tests from T04.
+      - path: tests/information-orchestrator.test.ts
+        description: Orchestrator tests from T05.
+      - path: evals/cases/live-behavior-repeated-otp-failure.yaml
+        description: Reference case structure (expectations + text_semantic requireJudge) for twins.
+    estimated_effort: large
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - Every acceptance criterion from T01-T08 has at least one automated check.
+      - Deterministic offline twins exist for phone-first success, 404->OTP->update-phone, RSVP attending/declining, RSVP multiple_pending.
+      - npm run test, npm run typecheck, npm run lint all exit 0.
+    success_criteria:
+      - test_results.failed === 0
+      - typecheck exit code === 0
+      - lint exit code === 0
+    failure_modes:
+      - scenario: Coverage gaps discovered late (untested RSVP branch)
+        likelihood: low
+        impact: medium
+        mitigation: Checklist derived from T01-T08 acceptance criteria; reviewer focus on prd_coverage.
+    tech_stack: [TypeScript, vitest]
+    test_coverage: tests/ (multiple files); evals offline targets
+    requires_review: false
+    review_depth: standard
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - Test harnesses per area already exist (tests/*.test.ts)
+      required_test_first: ''
+      target_files:
+        - tests/agent-conversation-gateway.test.ts
+        - tests/agent-service-information-flow.test.ts
+        - tests/information-orchestrator.test.ts
+        - tests/phone.test.ts
+        - tests/extraction-schemas.test.ts
+        - tests/agent-service.test.ts
+      minimal_change: Fill coverage gaps only; do not refactor existing tests.
+      acceptance_checks:
+        - npm run test
+        - npm run typecheck
+        - npm run lint
+
+  # ── WAVE 6 ────────────────────────────────────────────────────────────────
+  - id: T10-dev-lambda-redeploy
+    title: Redeploy dev Lambda with Agent API integration
+    description: >
+      Build and redeploy the development Lambda per AGENTS.md (every Lambda-impacting change requires dev
+      redeploy): npm run build, then npm run deploy with the se-dev profile in us-east-1 (STS must confirm
+      account 684516060775 — fail closed otherwise), AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent,
+      AGENT_MESSAGE_LOGGING_ENABLED=true (per T03 decision). Verify stack outputs / function URL respond.
+      Record the deployed artifact identifier for the implementation log.
+    wave: 6
+    agent: gem-devops
+    prototype: false
+    priority: high
+    status: pending
+    covers: [dev-redeploy, lambda-deploy]
+    dependencies: [T09-offline-tests]
+    conflicts_with: []
+    context_files:
+      - path: scripts/deploy.mjs
+        description: Deploy entry; AgentApiBaseUrl override L95.
+      - path: scripts/aws-profile.mjs
+        description: se-dev enforcement.
+      - path: infra/cloudformation/stack.yaml
+        description: Stack template.
+    estimated_effort: medium
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - Deploy exits 0 with se-dev profile against account 684516060775 in us-east-1.
+      - Lambda env reflects AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent and AGENT_MESSAGE_LOGGING_ENABLED=true.
+      - Deployed artifact identifier captured for docs.
+    success_criteria:
+      - deploy exit code === 0
+      - Stack outputs show updated function URL/timestamp
+    environment: development
+    requires_approval: false
+    devops_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - deploy.mjs parameterization and profile enforcement (T03 verified)
+      required_test_first: ''
+      target_files:
+        - scripts/deploy.mjs
+        - infra/cloudformation/stack.yaml
+      minimal_change: Deploy only; template changes only if T03 found a gap.
+      acceptance_checks:
+        - npm run deploy (se-dev)
+        - aws lambda get-function-configuration --profile se-dev --region us-east-1
+
+  # ── WAVE 7 ────────────────────────────────────────────────────────────────
+  - id: T11-live-eval-regression-cases
+    title: Live behavior regression cases + mandatory eval:behavior-live gate
+    description: >
+      Per AGENTS.md, every interaction-affecting change gets a git-tracked live Lambda evaluation case
+      reconstructing full context with hard structural assertions plus a hard text_semantic expectation with
+      requireJudge: true. Create cases: (1) phone-first auth success (OTP never requested); (2) phone 404
+      user_not_found -> OTP fallback -> update-phone persistence; (3) RSVP attending; (4) RSVP declining;
+      (5) RSVP multiple_pending disambiguation ("¿A cuál evento querés responder?" then selection); (6)
+      RSVP already_responded. Rework or add a phone-first sibling to
+      evals/cases/live-behavior-repeated-otp-failure.yaml. Register all in
+      evals/suites/live_behavior_regression.yaml (live_behavior_regression suite, mandatory-judge tag).
+      Live cases must seed contact_phone (terminal channel phone source: TERMINAL_CONTACT_PHONE,
+      src/terminal/client.ts:132). Run npm run eval:behavior-live against the REDEPLOYED dev Lambda — a
+      missing judge key, skipped case, evaluator error, or failed hard expectation is a failed gate.
+    wave: 7
+    agent: gem-implementer
+    prototype: false
+    priority: high
+    status: pending
+    covers: [live-evals, behavior-gate, regression-cases]
+    dependencies: [T10-dev-lambda-redeploy]
+    conflicts_with: []
+    context_files:
+      - path: evals/suites/live_behavior_regression.yaml
+        description: Suite registration (caseIds list L3-9).
+      - path: evals/cases/live-behavior-repeated-otp-failure.yaml
+        description: Reference live case with expectations + text_semantic requireJudge:true (L38-87).
+      - path: evals/templates/base-live.yaml
+        description: Live case template.
+      - path: src/terminal/client.ts
+        description: TERMINAL_CONTACT_PHONE L132 — terminal phone source for live runs.
+    estimated_effort: large
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - Six new live cases exist with hard structural assertions + text_semantic requireJudge:true each.
+      - live-behavior-repeated-otp-failure has a phone-first sibling or rework consistent with fallback-only OTP.
+      - All new caseIds registered in live_behavior_regression suite.
+      - npm run eval:behavior-live completes green against the redeployed dev Lambda; run artifact captured.
+    success_criteria:
+      - eval hard expectations all pass
+      - no skipped cases, no evaluator errors
+      - eval:behavior-live exit code === 0
+    failure_modes:
+      - scenario: Live case flakes due to model variance despite judge
+        likelihood: medium
+        impact: medium
+        mitigation: Hard structural assertions on state/tool evidence (not just text); semantic expectation describes behavior, not phrasing.
+      - scenario: Dev fixture data (a real phone-linked account / pending RSVP guest) does not exist
+        likelihood: medium
+        impact: high
+        mitigation: Coordinate fixture prerequisites before the run; document fixture setup in the case file.
+    tech_stack: [TypeScript, yaml, evals]
+    test_coverage: evals/cases/ (live), evals/suites/live_behavior_regression.yaml
+    requires_review: true
+    review_depth: standard
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - Live case schema (expectations/text_semantic/requireJudge) from live-behavior-repeated-otp-failure.yaml
+        - Suite gate semantics: missing judge key / skipped case / evaluator error = failed gate
+      required_test_first: ''
+      target_files:
+        - evals/cases/live-behavior-phone-first-auth-success.yaml
+        - evals/cases/live-behavior-phone-404-otp-fallback-update-phone.yaml
+        - evals/cases/live-behavior-rsvp-attending.yaml
+        - evals/cases/live-behavior-rsvp-declining.yaml
+        - evals/cases/live-behavior-rsvp-multiple-pending.yaml
+        - evals/cases/live-behavior-rsvp-already-responded.yaml
+        - evals/cases/live-behavior-repeated-otp-failure.yaml
+        - evals/suites/live_behavior_regression.yaml
+      minimal_change: Additive cases + suite registration; rework only the OTP-failure case.
+      acceptance_checks:
+        - npm run eval:behavior-live
+
+  # ── WAVE 8 ────────────────────────────────────────────────────────────────
+  - id: T12-docs-implementation-log
+    title: Implementation log + docs updates
+    description: >
+      Per AGENTS.md maintain docs/implementation-log.md: one entry per code/prompt change with reason and
+      decision, including the eval:behavior-live run artifact reference and the deployed Lambda artifact
+      identifier from T10. Update flow docs that describe authentication: docs/information-flow.md and
+      docs/channel-integration.md (phone-first sequence, OTP as fallback, update-phone persistence,
+      /user-events source switch, RSVP node, outbound logging). All docs in English; quote Spanish prompt
+      fragments only where needed.
+    wave: 8
+    agent: gem-documentation-writer
+    prototype: false
+    priority: medium
+    status: pending
+    covers: [implementation-log, docs]
+    dependencies: [T11-live-eval-regression-cases]
+    conflicts_with: []
+    context_files:
+      - path: docs/implementation-log.md
+        description: Append-target, existing format.
+      - path: docs/information-flow.md
+        description: Auth flow documentation to update.
+      - path: docs/channel-integration.md
+        description: Channel integration documentation to update.
+    estimated_effort: medium
+    focus_area: null
+    flags:
+      flaky: false
+      retries_used: 0
+      requires_design_validation: false
+    diag: null
+    planning_pass: 1
+    planning_history:
+      - pass: 1
+        reason: initial planning
+        timestamp: '2026-08-07T00:00:00Z'
+    acceptance_criteria:
+      - implementation-log.md covers every merged change with reason + decision + eval artifact reference.
+      - information-flow.md and channel-integration.md describe phone-first auth, OTP fallback, update-phone, RSVP, outbound logging.
+      - English docs; no backward-compat shims documented.
+    success_criteria:
+      - Docs committed atomically alongside referenced changes
+    task_type: documentation
+    audience: developers
+    coverage_matrix:
+      - phone-first-auth
+      - otp-fallback
+      - update-phone
+      - user-events-switch
+      - rsvp-flow
+      - outbound-logging
+      - live-eval-gate
+    requires_review: false
+    review_depth: lightweight
+    review_security_sensitive: false
+    handoff:
+      do_not_reinvestigate:
+        - implementation-log.md existing entry format
+      required_test_first: ''
+      target_files:
+        - docs/implementation-log.md
+        - docs/information-flow.md
+        - docs/channel-integration.md
+      minimal_change: Append/update; no restructuring of unrelated docs.
+      acceptance_checks:
+        - rg phone-first docs/implementation-log.md

@@ -1,0 +1,365 @@
+{
+  "context_envelope": {
+    "meta": {
+      "plan_id": "20260807-phone-first-auth-integration",
+      "created_at": "2026-08-07T00:00:00Z",
+      "last_updated": "2026-08-07T00:00:00Z",
+      "version": 1,
+      "previous_version_fields_changed": [],
+      "source": ["gem-researcher digest (user-supplied)", "planner ground-truth verification 2026-08-07"]
+    },
+    "scope": {
+      "purpose": [
+        "Reusable implementation context for the phone-first SinEnvolturas Agent API integration.",
+        "Helps agents avoid re-discovery of auth flow, gateway patterns, eval gate, and deploy mechanics."
+      ],
+      "applies_to": ["20260807-phone-first-auth-integration"],
+      "non_goals": [
+        "Notion roadmap updates (handled by orchestrator via MCP)",
+        "prod deploy (dev only in this plan)",
+        "Streaming responses (WhatsApp does not support them)"
+      ]
+    },
+    "project_summary": {
+      "business_domain": "Sin Envolturas event-gifting platform; WhatsApp conversational agent for event planning, provider search, gift/order information, guest services",
+      "primary_users": ["WhatsApp end users (event guests/hosts)", "Sin Envolturas operations"],
+      "key_features": ["event plan-first conversation", "provider search/recommendation", "authenticated order & gift-purchase info", "associated event lookup", "human escalation", "NEW: phone-first auth, guest RSVP, outbound message logging"],
+      "current_phase": "active development; no backward-compat shims permitted"
+    },
+    "tech_stack": [
+      { "name": "TypeScript", "version": "strict (no explicit any)", "usage_context": "all source, tests, scripts", "config_files": ["tsconfig.json"] },
+      { "name": "zod", "version": "repo-pinned", "usage_context": "schema validation for plans, gateways, config, extraction", "config_files": [] },
+      { "name": "vitest", "version": "repo-pinned", "usage_context": "npm run test", "config_files": ["package.json"] },
+      { "name": "OpenAI Agents SDK", "version": "latest adopted line", "usage_context": "extraction + conversation runtime", "config_files": ["src/runtime/openai-agent-runtime.ts"] },
+      { "name": "AWS Lambda + CloudFormation", "version": "nodejs24.x", "usage_context": "serverless deploy via scripts/deploy.mjs, se-dev profile, us-east-1, account 684516060775", "config_files": ["infra/cloudformation/stack.yaml", "scripts/deploy.mjs", "scripts/aws-profile.mjs"] }
+    ],
+    "conventions": [
+      "English for code/comments/docs; Spanish ONLY in conversational prompts",
+      "Prompts are git-tracked .txt under prompts/ mapped to nodes in src/runtime/prompt-manifest.ts",
+      "No keyword/regex flow decisions — structured LLM extraction + typed state machine only",
+      "No backward-compat shims; clean breaks preferred",
+      "Every Lambda-impacting change -> dev redeploy before validation",
+      "Every conversational-behavior change -> npm run eval:behavior-live gate + docs/implementation-log.md entry",
+      "Token redaction in traces; atomic single-responsibility commits",
+      "AWS CLI/SDK only via se-dev profile in us-east-1; mutating scripts fail closed unless STS confirms 684516060775"
+    ],
+    "constraints": {
+      "hard": [
+        "auth-by-phone expires_in is EPOCH SECONDS (e.g. 1787843661) — convert to ISO for token_expires_at (hasValidUserAuthToken uses Date.parse)",
+        "Never attempt phone-first auth while plan.user_auth.status === 'code_requested'",
+        "OTP (requestUserLoginCode/verifyUserLoginCode) becomes fallback-only: fires after 404 user_not_found or unresolvable phone",
+        "RSVP routing must flow through extraction schemas/actionIntentValues — no keyword matching",
+        "eval:behavior-live must run against the REDEPLOYED dev Lambda; missing judge key/skipped case/evaluator error = failed gate"
+      ],
+      "soft": [
+        "Keep contact_phone digits-only for existing consumers; add split fields alongside",
+        "updatePhone 409 phone-linked-to-other-account is non-fatal",
+        "Outbound logging failures must never alter the reply"
+      ],
+      "compatibility": [
+        "Legacy stored plans must still parse — all new schema fields nullable with defaults",
+        "COUNTRY_RULES support +52/+51/+1 only (phone.ts L35-39)"
+      ],
+      "security_requirements": [
+        "X-Agent-Key header on every Agent API call; Bearer user JWT on user-scoped endpoints",
+        "Token redaction in traces and eval artifacts",
+        "Secrets via Secrets Manager ARNs (SeApiSecretArn); never in code"
+      ]
+    },
+    "architecture_snapshot": {
+      "key_dirs": {
+        "src/core": ["plan.ts (plan schema, actionIntentValues L19-32, contact_phone L132)", "information.ts (userAuthStateSchema L124, selection candidates L104-112)", "decision-nodes.ts (node enum L3-31)"],
+        "src/runtime": ["agent-conversation-gateway.ts (Agent API client)", "sinenvolturas-gateway.ts (OTP + vendor/guest clients)", "agent-service.ts (state machine, 5759 lines)", "information-orchestrator.ts", "provider-gateway.ts", "extraction-schemas.ts", "prompt-manifest.ts", "phone.ts", "openai-agent-runtime.ts", "config.ts"],
+        "prompts": ["extractors/*.txt", "nodes/<node>/{system,response_contract,tool_policy,transition_policy}.txt", "shared/*.txt"],
+        "evals": ["cases/*.yaml", "suites/live_behavior_regression.yaml", "templates/base-live.yaml", "targets/offline.ts"],
+        "tests": ["per-area vitest files, e.g. agent-conversation-gateway.test.ts, agent-service-information-flow.test.ts, information-orchestrator.test.ts, phone.test.ts"],
+        "infra/cloudformation": ["stack.yaml"],
+        "scripts": ["deploy.mjs", "aws-profile.mjs", "build.mjs"]
+      },
+      "patterns": [
+        "Gateway: zod envelope {status,data,errors,error} + X-Agent-Key + retry on 429/5xx + AbortController timeout (agent-conversation-gateway.ts L156-697)",
+        "Discriminated-union typed results per gateway method (AgentGatewayResult, AgentPurchaseLookupResult)",
+        "Plan state via mergePlan; zod schemas with nullable defaults for forward compat",
+        "Disambiguation via selection_candidates pattern (information.ts L104-112) — mirror for RSVP multiple_pending",
+        "Decision-node prompts registered in nodePromptManifest (prompt-manifest.ts L140-267)"
+      ],
+      "key_components": [
+        { "name": "HttpAgentConversationGateway", "location": "src/runtime/agent-conversation-gateway.ts", "responsibility": ["Agent API HTTP client: logMessage, getRecentMessages, requestHumanTakeover, getOrders, getGiftPurchases; new methods getUserEvents/authByPhone/updatePhone/guestRsvp go here"], "confidence": 1.0 },
+        { "name": "resolveInformationAuthentication", "location": "src/runtime/agent-service.ts:1896-2010", "responsibility": ["single auth gate for associated_event + purchase requests; phone-first pre-step plugs in before email path"], "confidence": 1.0 },
+        { "name": "SinEnvolturasGateway OTP pair", "location": "src/runtime/sinenvolturas-gateway.ts:508,533", "responsibility": ["requestUserLoginCode/verifyUserLoginCode via postUserAuthJson (SINENVOLTURAS_USER_AUTH_BASE_URL); fallback-only after this plan"], "confidence": 1.0 },
+        { "name": "InformationOrchestrator", "location": "src/runtime/information-orchestrator.ts:152-188", "responsibility": ["associated_event branch consumes user events; removePurchaseDataFromEventResult L297 strips financial data"], "confidence": 1.0 },
+        { "name": "renderOutbound", "location": "src/runtime/agent-service.ts:5625", "responsibility": ["outbound render; call sites L366,448,495,672,885,968,1088,1167,1538,1785 get outbound logMessage"], "confidence": 1.0 }
+      ]
+    },
+    "research_digest": {
+      "relevant_files": [
+        {
+          "path": "src/runtime/agent-conversation-gateway.ts",
+          "purpose": ["Agent API client to extend"],
+          "why_relevant": ["All four new endpoints belong here; existing envelope/retry/timeout pattern to reuse"],
+          "key_elements": [
+            { "element": "HttpAgentConversationGateway.request", "type": "function", "location": "agent-conversation-gateway.ts:551", "description": "fetch + X-Agent-Key + optional Bearer + retry(429/5xx) + AbortController timeout" },
+            { "element": "envelopeSchema", "type": "variable", "location": "agent-conversation-gateway.ts:156", "description": "zod envelope {status:boolean,data,errors,error}" },
+            { "element": "logMessage gate", "type": "pattern", "location": "agent-conversation-gateway.ts:279", "description": "messageLoggingEnabled skip — outbound logging reuses this" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/runtime/agent-service.ts",
+          "purpose": ["Auth state machine + outbound render"],
+          "why_relevant": ["Phone-first wiring, OTP fallback, update-phone hook, outbound logging call sites — hotspot file"],
+          "key_elements": [
+            { "element": "resolveInformationAuthentication", "type": "function", "location": "agent-service.ts:1896-2010", "description": "auth gate; digest name 'ensureInformationAuthentication' is STALE — use this" },
+            { "element": "requestUserCodeForInformation / verifyUserCodeForInformation", "type": "function", "location": "agent-service.ts:2012,2097", "description": "OTP request/verify; verify calls providerGateway.verifyUserLoginCode at L2113" },
+            { "element": "hasValidUserAuthToken", "type": "function", "location": "agent-service.ts:2470", "description": "Date.parse(token_expires_at) > Date.now() — requires ISO expiry" },
+            { "element": "resetUserAuth", "type": "function", "location": "agent-service.ts:2480", "description": "user_auth construction site — must include new auth_method field" },
+            { "element": "resolveEscalationPhone", "type": "function", "location": "agent-service.ts:2765", "description": "phone resolution chain: inbound.contactPhone -> plan.contact_phone -> externalUserId" },
+            { "element": "renderOutbound", "type": "function", "location": "agent-service.ts:5625", "description": "definition; call sites L366,448,495,672,885,968,1088,1167,1538,1785" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/runtime/sinenvolturas-gateway.ts",
+          "purpose": ["OTP client + dead code to remove"],
+          "why_relevant": ["OTP pair becomes fallback-only; extractTokenExpiry is dead and mishandles expires_in as duration"],
+          "key_elements": [
+            { "element": "requestUserLoginCode", "type": "function", "location": "sinenvolturas-gateway.ts:508", "description": "POST /api-web/user/request-login-code" },
+            { "element": "verifyUserLoginCode", "type": "function", "location": "sinenvolturas-gateway.ts:533", "description": "POST /login-code; uses defaultUserTokenExpiry() (24h), NOT extractTokenExpiry" },
+            { "element": "extractTokenExpiry", "type": "function", "location": "sinenvolturas-gateway.ts:1060", "description": "DEAD CODE; treats expires_in as duration (Date.now()+expiresIn*1000) — do not reuse for epoch-seconds API" },
+            { "element": "lookupAuthenticatedUserEvents", "type": "function", "location": "sinenvolturas-gateway.ts:573", "description": "guest-service /user-lookup consumer — removed by T05" },
+            { "element": "postUserAuthJson", "type": "function", "location": "sinenvolturas-gateway.ts:959", "description": "user-auth base: userAuthBaseUrl ?? https://api.sinenvolturas.com/api-web/user" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/core/plan.ts",
+          "purpose": ["Plan schema"],
+          "why_relevant": ["actionIntentValues L19-32 (+responder_invitacion), contact_phone L132 (digits-only) + split fields, rsvp_state"],
+          "key_elements": [
+            { "element": "actionIntentValues", "type": "variable", "location": "plan.ts:19-32", "description": "12 intents; add responder_invitacion" },
+            { "element": "contact_phone", "type": "variable", "location": "plan.ts:132", "description": "z.string().nullable().default(null); default factory L263" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/core/information.ts",
+          "purpose": ["user_auth + information state schemas"],
+          "why_relevant": ["userAuthStateSchema L124-132 gains auth_method; selection candidates L104-112 are RSVP disambiguation mirror"],
+          "key_elements": [
+            { "element": "userAuthStateSchema", "type": "variable", "location": "information.ts:124", "description": "status/email/token/token_expires_at/last_error/requested_at/failed_code_attempts" },
+            { "element": "userAuthStatusValues", "type": "variable", "location": "information.ts:116-122", "description": "none|code_requested|authenticated|email_not_found|failed" },
+            { "element": "informationSelectionCandidateSchema", "type": "variable", "location": "information.ts:104-112", "description": "disambiguation pattern to mirror" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/runtime/phone.ts",
+          "purpose": ["Phone parsing"],
+          "why_relevant": ["parseInternationalPhone returns countryCode+nationalNumber; auth-by-phone and RSVP need split {phone_extension, phone_number}"],
+          "key_elements": [
+            { "element": "parseInternationalPhone", "type": "function", "location": "phone.ts:41", "description": "returns {status:'valid',digits,countryCode,nationalNumber}" },
+            { "element": "COUNTRY_RULES", "type": "variable", "location": "phone.ts:35-39", "description": "+52(10), +51(9), +1(10) only" }
+          ],
+          "security_sensitivity": "none",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/runtime/information-orchestrator.ts",
+          "purpose": ["Information request execution"],
+          "why_relevant": ["associated_event branch L152-188 swaps to /user-events; projection L297 preserved"],
+          "key_elements": [
+            { "element": "executeRequest associated_event", "type": "pattern", "location": "information-orchestrator.ts:152-188", "description": "currently providerGateway.lookupAuthenticatedUserEvents" },
+            { "element": "removePurchaseDataFromEventResult", "type": "function", "location": "information-orchestrator.ts:297", "description": "financial-data stripping projection — preserve unchanged" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "src/runtime/extraction-schemas.ts",
+          "purpose": ["LLM extraction schemas"],
+          "why_relevant": ["actionIntent z.enum(actionIntentValues) L109 — RSVP intent wiring; no keyword routing allowed"],
+          "key_elements": [
+            { "element": "actionIntent", "type": "variable", "location": "extraction-schemas.ts:109", "description": "z.enum(actionIntentValues).nullable()" }
+          ],
+          "security_sensitivity": "none",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "evals/suites/live_behavior_regression.yaml",
+          "purpose": ["Mandatory live gate suite"],
+          "why_relevant": ["New caseIds register here; npm run eval:behavior-live executes it"],
+          "key_elements": [
+            { "element": "caseIds", "type": "variable", "location": "live_behavior_regression.yaml:3-9", "description": "6 existing cases incl. live_behavior.repeated_otp_failure_preserves_gift_query" }
+          ],
+          "security_sensitivity": "none",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        },
+        {
+          "path": "infra/cloudformation/stack.yaml",
+          "purpose": ["Lambda infra"],
+          "why_relevant": ["AgentApiBaseUrl + AgentMessageLoggingEnabled params exist (L17-60); Lambda env maps them (L282-302); no template change expected"],
+          "key_elements": [
+            { "element": "AgentApiBaseUrl param", "type": "variable", "location": "stack.yaml", "description": "prod default https://api.sinenvolturas.com/api/agent; dev override https://se-v2-api-dev.jnq.io/api/agent via deploy.mjs:95" }
+          ],
+          "security_sensitivity": "internal",
+          "contains_secrets": false,
+          "reliability": "codebase",
+          "confidence": 1.0
+        }
+      ],
+      "patterns_found": [
+        { "name": "typed-gateway-results", "category": "error-handling", "confidence": 1.0, "source": "codebase_analysis", "example_location": ["src/runtime/agent-conversation-gateway.ts:21-80"] },
+        { "name": "selection-candidates-disambiguation", "category": "state-machine", "confidence": 1.0, "source": "codebase_analysis", "example_location": ["src/core/information.ts:104-112"] },
+        { "name": "phone-resolution-chain", "category": "state-machine", "confidence": 1.0, "source": "codebase_analysis", "example_location": ["src/runtime/agent-service.ts:2765"] },
+        { "name": "prompt-per-node-manifest", "category": "prompting", "confidence": 1.0, "source": "codebase_analysis", "example_location": ["src/runtime/prompt-manifest.ts:140-267"] }
+      ],
+      "dependencies": {
+        "internal": ["src/core/*", "src/runtime/*", "prompts/*", "evals/*", "scripts/deploy.mjs"],
+        "external": ["SinEnvolturas Agent API (dev https://se-v2-api-dev.jnq.io/api/agent, prod https://api.sinenvolturas.com/api/agent)", "OpenAI API", "AWS (Lambda, CFN, Secrets Manager, DynamoDB plans table)"]
+      },
+      "gotchas": [
+        { "text": "Digest called the auth gate 'ensureInformationAuthentication' — actual method is resolveInformationAuthentication (agent-service.ts:1896)", "confidence": 1.0 },
+        { "text": "extractTokenExpiry (sinenvolturas-gateway.ts:1060) treats expires_in as DURATION; auth-by-phone returns EPOCH SECONDS — reusing it yields year-2076 expiry", "confidence": 1.0 },
+        { "text": "verifyUserLoginCode currently stores defaultUserTokenExpiry() (24h), ignoring server expiry", "confidence": 1.0 },
+        { "text": "normalizePhone keeps digits-only; auth-by-phone + RSVP need the split — re-parse or persist split fields", "confidence": 1.0 },
+        { "text": "Terminal channel phone comes from TERMINAL_CONTACT_PHONE env (src/terminal/client.ts:132); unset -> phone-first silently skipped", "confidence": 1.0 },
+        { "text": "lookupUserEventContext (provider-gateway.ts:209) appears consumer-free; verify with rg before removal", "confidence": 0.9 },
+        { "text": "guest-service base URL still referenced by src/lambda/handler.ts and src/evals/targets/offline.ts — keep config even after /user-lookup removal", "confidence": 1.0 },
+        { "text": "agent-service.ts is 5759 lines and touched by T04/T07/T08 — waves serialize those tasks; conflicts_with marked", "confidence": 1.0 }
+      ],
+      "domain_context": {
+        "security_considerations": [
+          { "area": "Agent API auth", "location": "agent-conversation-gateway.ts request()", "concern": "X-Agent-Key + Bearer JWT; never log tokens" },
+          { "area": "financial data", "location": "information-orchestrator.ts:297", "concern": "removePurchaseDataFromEventResult must keep stripping purchase/payment fields from event results" },
+          { "area": "traces/evals", "location": "evals + perf traces", "concern": "token redaction mandatory in artifacts" }
+        ],
+        "testing_patterns": {
+          "framework": "vitest (npm run test) + tsx eval CLI (npm run eval:behavior-live -> src/evals/live-behavior-cli.ts)",
+          "coverage_areas": ["gateways", "state machine", "extraction schemas", "prompts (static comparison + audit)", "orchestrator"],
+          "test_organization": "tests/*.test.ts per area; evals/cases/*.yaml + evals/suites/*.yaml",
+          "mock_patterns": ["mocked fetch for gateways", "Noop gateways for unconfigured paths", "offline eval target stubs in src/evals/targets/offline.ts"]
+        },
+        "error_handling": "discriminated-union results (status: success|skipped|failed|...), retryable flags, never throw across flow boundaries",
+        "data_flow": "inbound WhatsApp -> extraction (LLM schemas) -> decision node -> orchestrator/gateway calls -> plan merge (zod) -> renderOutbound -> (NEW) outbound logMessage"
+      },
+      "open_questions": [
+        { "question": "GET /user-events auth: Bearer-only or also query param?", "context": "Assume Bearer-only like getOrders/getGiftPurchases", "type": "research", "affects": ["T01-agent-gateway-methods", "T05-orchestrator-user-events-switch"] },
+        { "question": "Exact envelopes for /auth-by-phone, /user/update-phone, /guest/rsvp incl. multiple_pending candidate fields", "context": "Probe dev API during T01", "type": "research", "affects": ["T01-agent-gateway-methods", "T07-rsvp-flow-greenfield"] },
+        { "question": "AGENT_MESSAGE_LOGGING_ENABLED=true on dev for validation?", "context": "CFN default false; recommended true in dev", "type": "decision_blocker", "affects": ["T08-outbound-message-logging", "T10-dev-lambda-redeploy", "T11-live-eval-regression-cases"] }
+      ]
+    },
+    "prior_decisions": [
+      {
+        "decision": "Phone-first auth plugs into resolveInformationAuthentication, not the orchestrator or extraction layer",
+        "rationale": ["single existing auth gate for protected requests", "orchestrator stays auth-agnostic (token consumer only)"],
+        "evidence": ["src/runtime/agent-service.ts:1896-2010"],
+        "confidence": 1.0,
+        "linked_constraints": ["OTP fallback-only"],
+        "linked_patterns": ["phone-resolution-chain"]
+      },
+      {
+        "decision": "New Agent API methods live in HttpAgentConversationGateway (not sinenvolturas-gateway)",
+        "rationale": ["Agent API base URL + X-Agent-Key already encapsulated there", "OTP client stays in sinenvolturas-gateway (api-web/user host)"],
+        "evidence": ["src/runtime/agent-conversation-gateway.ts:267", "src/runtime/sinenvolturas-gateway.ts:959-964"],
+        "confidence": 1.0,
+        "linked_constraints": ["X-Agent-Key on all Agent API calls"],
+        "linked_patterns": ["typed-gateway-results"]
+      },
+      {
+        "decision": "Persist phone split fields alongside digits-only contact_phone",
+        "rationale": ["existing consumers (escalation, logging) keep working", "API calls need {phone_extension, phone_number}"],
+        "evidence": ["src/core/plan.ts:132", "src/runtime/phone.ts:41"],
+        "confidence": 0.95,
+        "linked_constraints": ["COUNTRY_RULES +52/+51/+1"],
+        "linked_patterns": ["phone-resolution-chain"]
+      },
+      {
+        "decision": "T04/T07/T08 serialize agent-service.ts edits across waves 2-4",
+        "rationale": ["5759-line hotspot; parallel edits risk merge conflicts"],
+        "evidence": ["src/runtime/agent-service.ts"],
+        "confidence": 1.0,
+        "linked_constraints": [],
+        "linked_patterns": []
+      },
+      {
+        "decision": "No docs/PRD.yaml exists — acceptance criteria derived from objective + AGENTS.md; prd_update_recommended=false",
+        "rationale": ["verified absence (ls docs/)"],
+        "evidence": ["docs/"],
+        "confidence": 1.0,
+        "linked_constraints": [],
+        "linked_patterns": []
+      }
+    ],
+    "evidence_map": [
+      { "claim": "Auth gate location and shape", "evidence_paths": ["src/runtime/agent-service.ts:1896-2010"] },
+      { "claim": "Token validity uses Date.parse on ISO string", "evidence_paths": ["src/runtime/agent-service.ts:2470-2478"] },
+      { "claim": "extractTokenExpiry dead + duration-based", "evidence_paths": ["src/runtime/sinenvolturas-gateway.ts:1060-1081", "src/runtime/sinenvolturas-gateway.ts:556 (defaultUserTokenExpiry usage)"] },
+      { "claim": "lookupAuthenticatedUserEvents sole consumer", "evidence_paths": ["src/runtime/information-orchestrator.ts:154"] },
+      { "claim": "Dev deploy parameterizes AgentApiBaseUrl", "evidence_paths": ["scripts/deploy.mjs:95", "infra/cloudformation/stack.yaml (AgentApiBaseUrl param)"] },
+      { "claim": "Live gate suite + case structure", "evidence_paths": ["evals/suites/live_behavior_regression.yaml", "evals/cases/live-behavior-repeated-otp-failure.yaml"] },
+      { "claim": "Terminal phone env", "evidence_paths": ["src/terminal/client.ts:132"] },
+      { "claim": "Capability line email-first wording", "evidence_paths": ["src/runtime/openai-agent-runtime.ts:1104"] }
+    ],
+    "reuse_notes": {
+      "do_not_re_read": [
+        "src/runtime/agent-conversation-gateway.ts (fully mapped in research_digest)",
+        "src/runtime/phone.ts (74 lines, fully verified)",
+        "src/core/decision-nodes.ts (48 lines, fully verified)",
+        "src/runtime/prompt-manifest.ts (267 lines, fully verified)",
+        "evals/suites/live_behavior_regression.yaml (14 lines, fully verified)"
+      ],
+      "safe_to_assume": [
+        "Gateway envelope/retry/timeout pattern applies to new methods unchanged",
+        "resolveEscalationPhone chain is the canonical phone source",
+        "deploy.mjs enforces se-dev/us-east-1/account 684516060775 fail-closed",
+        "userAuthStatusValues already includes email_not_found for the OTP fallback path"
+      ],
+      "verify_before_use": [
+        "Agent API endpoint envelopes (probe dev during T01)",
+        "lookupUserEventContext consumer-free before removal (T05)",
+        "Final renderOutbound call-site list before T08 (line numbers drift after T04/T07 merges)",
+        "TERMINAL_CONTACT_PHONE availability in the live eval environment"
+      ]
+    },
+    "plan_summary": {
+      "tldr": "12 tasks / 8 waves: foundations (gateway, schemas, env) -> phone-first auth + orchestrator switch + prompts -> RSVP greenfield -> outbound logging -> offline tests -> dev redeploy -> live eval gate -> docs.",
+      "complexity": "complex",
+      "risk_level": "medium",
+      "key_assumptions": [
+        "Agent API dual-auth matches existing getOrders/getGiftPurchases mechanics",
+        "resolveInformationAuthentication is the single auth gate",
+        "No CFN template change needed; only parameter values",
+        "Legacy plans parse after nullable schema additions"
+      ],
+      "critical_risks": [
+        "Phone split mismatch -> silent permanent OTP fallback",
+        "expires_in epoch-seconds misread as duration (dead extractTokenExpiry trap)",
+        "OTP/phone-auth race on code_requested state",
+        "Live eval fixture prerequisites (phone-linked account, pending RSVP guest) may not exist on dev"
+      ]
+    }
+  }
+}

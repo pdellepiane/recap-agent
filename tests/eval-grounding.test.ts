@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import type { EvalTurnResult } from '../src/evals/case-schema';
+import type { EvalArtifactTurnResult } from '../src/evals/case-schema';
 import { assessGrounding } from '../src/evals/grounding';
 
 function recommendationTurn(args: {
@@ -8,7 +8,7 @@ function recommendationTurn(args: {
   evidenceProviderId?: number;
   category?: string;
   evidenceCategory?: string;
-}): EvalTurnResult {
+  }): EvalArtifactTurnResult {
   return {
     trace: {
       provider_results: [{
@@ -29,7 +29,7 @@ function recommendationTurn(args: {
       information_execution_summary: [],
       close_action_summary: { type: null, category: null, reason_preview: null },
     },
-  } as unknown as EvalTurnResult;
+  } as unknown as EvalArtifactTurnResult;
 }
 
 describe('deterministic grounding assessment', () => {
@@ -77,7 +77,7 @@ describe('deterministic grounding assessment', () => {
           reason_preview: null,
         },
       },
-    } as unknown as EvalTurnResult;
+    } as unknown as EvalArtifactTurnResult;
 
     expect(assessGrounding(turn)).toMatchObject({
       turnClass: 'factual_faq',

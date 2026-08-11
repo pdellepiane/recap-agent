@@ -25,6 +25,15 @@ export const phoneParseResultSchema = z.discriminatedUnion('status', [
 
 export type PhoneParseResult = z.infer<typeof phoneParseResultSchema>;
 
+export const internationalPhonePartsSchema = z.object({
+  phone_extension: z.string().regex(/^\+\d{1,3}$/),
+  phone_number: z.string().regex(/^\d+$/),
+});
+
+export type InternationalPhoneParts = z.infer<
+  typeof internationalPhonePartsSchema
+>;
+
 const PHONE_ALLOWED_CHARS_REGEX = /^\+?[\d\s().-]+$/;
 
 type CountryRule = {
@@ -70,5 +79,19 @@ export function parseInternationalPhone(value: string | null | undefined): Phone
     digits,
     countryCode: matchedRule.code,
     nationalNumber,
+  };
+}
+
+export function splitInternationalPhone(
+  value: string | null | undefined,
+): InternationalPhoneParts | null {
+  const parsed = parseInternationalPhone(value);
+  if (parsed.status !== 'valid') {
+    return null;
+  }
+
+  return {
+    phone_extension: parsed.countryCode,
+    phone_number: parsed.nationalNumber,
   };
 }

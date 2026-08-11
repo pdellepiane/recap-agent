@@ -74,4 +74,35 @@ describe('semantic judge expectation policy', () => {
     expect(JSON.stringify(request)).toContain('Interaction context');
     expect(JSON.stringify(request)).toContain('\\"location\\":\\"Lima\\"');
   });
+
+  it('receives an explicit safe context without re-redacting structural values', async () => {
+    const create = vi.fn().mockResolvedValue({
+      choices: [{ message: { content: '{"score":1,"reason":"Seguro."}' } }],
+    });
+    const client = {
+      chat: { completions: { create } },
+    } as unknown as OpenAI;
+    const conversationHash = 'deadbeef0123456789abcdef0123456789abcdef0123456789abcdef01234567';
+    const safeContext = JSON.stringify({
+      conversation_hash: conversationHash,
+      auth_evidence: {
+        status: 'authenticated',
+        auth_method: 'phone',
+        contact_fields_present: { email: true, phone: true },
+      },
+    });
+
+    await runSemanticJudge({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      rubric: 'Evalúa la respuesta sin exponer secretos.',
+      candidateText: 'La respuesta confirma el siguiente paso.',
+      context: safeContext,
+      client,
+    });
+
+    const serializedRequest = JSON.stringify(create.mock.calls[0]);
+    expect(serializedRequest).toContain(conversationHash);
+    expect(serializedRequest).toContain('auth_evidence');
+  });
 });

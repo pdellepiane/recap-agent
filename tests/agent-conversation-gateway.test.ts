@@ -18,6 +18,14 @@ describe('AgentConversationGateway', () => {
       reason: 'not_configured',
       message: 'Agent API human takeover is not configured.',
     });
+    await expect(gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '987654321',
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API phone authentication is not configured.',
+      retryable: false,
+    });
   });
 
   it('sends X-Agent-Key when requesting human takeover', async () => {
@@ -389,6 +397,202 @@ describe('AgentConversationGateway', () => {
       resource: 'orders',
       retryable: false,
     });
+  });
+
+  it('authenticates by phone using the strict envelope and epoch expiry', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        credentials: {
+          access_token: 'phone-jwt',
+          expires_in: 1787843661,
+        },
+        user: {
+          email: 'registered@example.com',
+        },
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toEqual({
+      status: 'authenticated',
+      token: 'phone-jwt',
+      tokenExpiresAtIso: '2026-08-27T15:14:21.000Z',
+      email: 'registered@example.com',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/auth-by-phone',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'X-Agent-Key': 'secret-key',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone_extension: '+51',
+          phone_number: '973296571',
+        }),
+      }),
+    );
+  });
+
+  it('maps structured phone user-not-found and generic failures', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(404, {
+        status: false,
+        data: null,
+        errors: { code: 'user_not_found' },
+        error: 'No user',
+      }))
+      .mockResolvedValueOnce(jsonResponse(503, {
+        status: false,
+        data: null,
+        errors: null,
+        error: 'temporary',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toEqual({ status: 'user_not_found' });
+    await expect(gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toMatchObject({
+      status: 'failed',
+      retryable: true,
+    });
+  });
+
+  it('fails closed when phone authentication omits the backend email', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        credentials: {
+          access_token: 'phone-jwt',
+          expires_in: 1787843661,
+        },
+        user: {},
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API phone authentication response had an unexpected shape.',
+      retryable: false,
+    });
+  });
+
+  it('rejects an auth-by-phone expiry that is already in the past', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        credentials: {
+          access_token: 'phone-jwt-past-expiry',
+          expires_in: 1_000_000_000,
+        },
+        user: {
+          email: 'registered@example.com',
+        },
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API phone authentication response had an expired expiry.',
+      retryable: false,
+    });
+  });
+
+  it('updates a phone with both Agent API authentication headers and maps a nonfatal conflict', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
+        data: { updated: true },
+        errors: null,
+        error: null,
+      }))
+      .mockResolvedValueOnce(jsonResponse(409, {
+        status: false,
+        data: null,
+        errors: { code: 'phone_linked_to_other_account' },
+        error: 'Phone linked',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.updatePhone({
+      token: 'verified-jwt',
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toEqual({ status: 'success' });
+    await expect(gateway.updatePhone({
+      token: 'verified-jwt',
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toEqual({ status: 'phone_linked_to_other_account' });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://api.example.test/api/agent/user/update-phone',
+      expect.objectContaining({
+        headers: {
+          'X-Agent-Key': 'secret-key',
+          Authorization: 'Bearer verified-jwt',
+          'content-type': 'application/json',
+        },
+      }),
+    );
   });
 });
 

@@ -121,14 +121,19 @@ export const userAuthStatusValues = [
   'failed',
 ] as const;
 
+export const phoneConfirmationValues = ['yes', 'no', 'unclear'] as const;
+export type PhoneConfirmation = (typeof phoneConfirmationValues)[number];
+
 export const userAuthStateSchema = z.object({
   status: z.enum(userAuthStatusValues),
-  email: z.string().nullable(),
-  token: z.string().nullable(),
-  token_expires_at: z.string().nullable(),
-  last_error: z.string().nullable(),
-  requested_at: z.string().nullable(),
+  email: z.string().nullable().default(null),
+  token: z.string().nullable().default(null),
+  token_expires_at: z.string().nullable().default(null),
+  last_error: z.string().nullable().default(null),
+  requested_at: z.string().nullable().default(null),
   failed_code_attempts: z.number().int().nonnegative().default(0),
+  auth_method: z.enum(['phone', 'email']).nullable().default(null),
+  awaiting_phone_confirmation: z.boolean().default(false),
 });
 
 export type UserAuthState = z.infer<typeof userAuthStateSchema>;
@@ -195,6 +200,7 @@ export type PurchaseInformation = {
 };
 
 export const informationAuthReasonValues = [
+  'phone_confirmation_required',
   'email_required',
   'email_change_required',
   'otp_sent',
@@ -208,6 +214,7 @@ export const informationAuthReasonValues = [
 ] as const;
 
 export const informationAuthRequirementValues = [
+  'confirm_current_whatsapp_phone',
   'explain_account_information_access',
   'explain_account_ownership_security',
   'show_destination_email',
@@ -233,6 +240,10 @@ export function createInformationAuthGuidance(
   email: string | null,
 ): InformationAuthGuidance {
   const requirements: InformationAuthGuidance['requirements'] = [];
+
+  if (reason === 'phone_confirmation_required') {
+    requirements.push('confirm_current_whatsapp_phone');
+  }
 
   if (reason === 'email_required' || reason === 'email_change_required') {
     requirements.push('explain_account_information_access');
@@ -293,7 +304,7 @@ export type InformationTaskResult =
       requestId: string;
       kind: 'associated_event' | 'purchase';
       status: 'needs_input';
-      nextInput: 'email' | 'otp';
+      nextInput: 'email' | 'otp' | 'phone_confirmation';
       guidance: InformationAuthGuidance;
     }
   | {

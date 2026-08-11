@@ -15,7 +15,7 @@ import {
   type ScorerResult,
 } from './case-schema';
 import { EvalLoader } from './loader';
-import { writeEvalArtifacts } from './reporting';
+import { redactEvalResultForArtifact, writeEvalArtifacts } from './reporting';
 import { computeBenchmarkMetrics } from './metrics';
 import {
   evaluateSemanticJudgeOutcome,
@@ -24,6 +24,12 @@ import {
 import { runLiveLambdaCase } from './targets/live-lambda';
 import { runOfflineCase } from './targets/offline';
 import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
+import { redactArtifactText } from '../runtime/artifact-redaction';
+import {
+  getEvaluationInput,
+  getEvaluationOutputText,
+  getEvaluationPlan,
+} from './evaluation-state';
 
 export type EvalRunnerOptions = {
   evalsDir: string;
@@ -304,7 +310,11 @@ async function finalizeResult(args: {
     completedAt: new Date().toISOString(),
   };
 
-  await fs.writeFile(artifactPath, JSON.stringify(caseResult, null, 2), 'utf8');
+  await fs.writeFile(
+    artifactPath,
+    JSON.stringify(redactEvalResultForArtifact(caseResult), null, 2),
+    'utf8',
+  );
   return caseResult;
 }
 
@@ -372,7 +382,7 @@ async function evaluateScorers(
           apiKey: process.env.OPENAI_API_KEY ?? null,
           model: scorer.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
           rubric: scorer.rubric,
-          candidateText: turn?.outputText ?? '',
+          candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
         });
         results.push({
           id: scorer.id,
@@ -443,7 +453,10 @@ async function evaluateExpectation(
       return result;
     }
     case 'plan_field_equals': {
-      const actual = getValueAtPath(finalPlan(context.turns), expectation.path);
+      const turn = expectation.turnIndex !== undefined
+        ? selectTurn(context.turns, expectation.turnIndex)
+        : context.turns.at(-1);
+      const actual = getValueAtPath(turn ? getEvaluationPlan(turn) : null, expectation.path);
       result.passed = deepEqual(actual, expectation.expected);
       result.score = result.passed ? 1 : 0;
       result.message = result.passed
@@ -452,7 +465,10 @@ async function evaluateExpectation(
       return result;
     }
     case 'plan_field_subset': {
-      const actual = getValueAtPath(finalPlan(context.turns), expectation.path);
+      const turn = expectation.turnIndex !== undefined
+        ? selectTurn(context.turns, expectation.turnIndex)
+        : context.turns.at(-1);
+      const actual = getValueAtPath(turn ? getEvaluationPlan(turn) : null, expectation.path);
       result.passed = isSubset(actual, expectation.expected);
       result.score = result.passed ? 1 : 0;
       result.message = result.passed
@@ -538,7 +554,7 @@ async function evaluateExpectation(
     }
     case 'text_contains': {
       const turn = selectTurn(context.turns, expectation.turnIndex);
-      const text = turn?.outputText ?? '';
+       const text = turn ? getEvaluationOutputText(turn) : '';
       const allOfPassed = expectation.allOf.every((phrase) => text.includes(phrase));
       const anyOfPassed =
         expectation.anyOf.length === 0 ||
@@ -555,7 +571,7 @@ async function evaluateExpectation(
     }
     case 'text_not_contains': {
       const turn = selectTurn(context.turns, expectation.turnIndex);
-      const text = turn?.outputText ?? '';
+       const text = turn ? getEvaluationOutputText(turn) : '';
       const present = expectation.phrases.filter((phrase) => text.includes(phrase));
       result.passed = present.length === 0;
       result.score = result.passed ? 1 : 0;
@@ -570,7 +586,7 @@ async function evaluateExpectation(
         apiKey: process.env.OPENAI_API_KEY ?? null,
         model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
         rubric: expectation.rubric,
-        candidateText: turn?.outputText ?? '',
+        candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
         context: buildSemanticJudgeContext(context.turns, expectation.turnIndex),
       });
       const verdict = evaluateSemanticJudgeOutcome({
@@ -584,7 +600,9 @@ async function evaluateExpectation(
       return result;
     }
     case 'trajectory_invariants': {
-      const messages = context.turns.map((turn) => turn.outputText.toLowerCase());
+       const messages = context.turns.map((turn) =>
+         getEvaluationOutputText(turn).toLowerCase(),
+       );
       const failures: string[] = [];
       if (expectation.noRepeatedQuestion && hasRepeatedQuestion(messages)) {
         failures.push('repeated question detected');
@@ -685,7 +703,7 @@ async function evaluateExpectation(
   }
 }
 
-function buildSemanticJudgeContext(
+export function buildSemanticJudgeContext(
   turns: EvalTurnResult[],
   turnIndex: number | undefined,
 ): string {
@@ -693,30 +711,40 @@ function buildSemanticJudgeContext(
   return JSON.stringify(
     turns
       .filter((turn) => turn.turnIndex <= selectedIndex)
-      .map((turn) => ({
-        turnIndex: turn.turnIndex,
-        userInput: turn.input.text,
-        priorAssistantOutput:
-          turn.turnIndex < selectedIndex ? turn.outputText : undefined,
-        nodeTransition: `${turn.trace.previous_node}->${turn.trace.next_node}`,
-        toolsCalled: turn.trace.tools_called,
-        plan: {
-          eventType: turn.plan.event_type,
-          location: turn.plan.location,
-          guestRange: turn.plan.guest_range,
-          activeNeedCategory: turn.plan.active_need_category,
-          providerNeeds: turn.plan.provider_needs.map((need) => ({
-            category: need.category,
-            status: need.status,
-            selectedProviderIds: need.selected_provider_ids,
-          })),
-          contactFieldsPresent: {
-            name: turn.plan.contact_name !== null,
-            email: turn.plan.contact_email !== null,
-            phone: turn.plan.contact_phone !== null,
+      .map((turn) => {
+        const plan = getEvaluationPlan(turn);
+        return {
+          turnIndex: turn.turnIndex,
+          userInput: redactArtifactText(getEvaluationInput(turn).text),
+          priorAssistantOutput:
+            turn.turnIndex < selectedIndex
+              ? redactArtifactText(getEvaluationOutputText(turn))
+              : undefined,
+          nodeTransition: `${turn.trace.previous_node}->${turn.trace.next_node}`,
+          toolsCalled: [...turn.trace.tools_called],
+          plan: {
+            eventType: plan.event_type,
+            location: plan.location,
+            guestRange: plan.guest_range,
+            activeNeedCategory: plan.active_need_category,
+            providerNeeds: plan.provider_needs.map((need) => ({
+              category: need.category,
+              status: need.status,
+              selectedProviderIds: [...need.selected_provider_ids],
+            })),
+            authEvidence: {
+              status: plan.user_auth.status,
+              authMethod: plan.user_auth.auth_method,
+              awaitingPhoneConfirmation: plan.user_auth.awaiting_phone_confirmation,
+              contactFieldsPresent: {
+                name: turn.trace.contact_validation_summary.plan_contact_fields_present.name,
+                email: turn.trace.contact_validation_summary.plan_contact_fields_present.email,
+                phone: turn.trace.contact_validation_summary.plan_contact_fields_present.phone,
+              },
+            },
           },
-        },
-      })),
+        };
+      }),
   );
 }
 
@@ -753,8 +781,8 @@ function summarizePlanDiff(turns: EvalTurnResult[]): string[] {
 
   const initial = createEmptyPlan({
     planId: 'seed',
-    channel: turns[0].plan.channel,
-    externalUserId: turns[0].plan.external_user_id,
+    channel: getEvaluationPlan(turns[0]).channel,
+    externalUserId: getEvaluationPlan(turns[0]).external_user_id,
   });
   const final = finalPlan(turns);
   if (!final) {
@@ -792,7 +820,8 @@ function summarizePlanDiff(turns: EvalTurnResult[]): string[] {
 }
 
 function finalPlan(turns: EvalTurnResult[]) {
-  return turns.at(-1)?.plan ?? null;
+  const turn = turns.at(-1);
+  return turn ? getEvaluationPlan(turn) : null;
 }
 
 function selectTurn(turns: EvalTurnResult[], turnIndex?: number) {

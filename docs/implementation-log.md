@@ -1,5 +1,68 @@
 # Implementation Log
 
+## 2026-08-08
+
+### Deploy phone-first auth and pass live behavior gate
+
+- **Live gate passed** for phone-first authentication: `live_behavior.phone_first_auth_success` and `live_behavior.phone_first_auth_fallback` both pass against the redeployed dev Lambda pointing at the production Agent API (`https://api.sinenvolturas.com/api/agent`).
+- The WhatsApp fixture `+51 973296571` is a registered account on prod and authenticates successfully via `POST /auth-by-phone` → returns JWT + user email → `auth_method: phone` persisted.
+- Fallback case uses a separate unregistered fixture `+51 911111111` which returns `user_not_found`; agent falls back to email OTP flow (`request_user_login_code`) → `user_auth.status: code_requested`.
+- Token expiry converted from epoch seconds to ISO; `hasValidUserAuthToken` fails closed on missing/expired expiry.
+- Artifact redaction preserves structural hashes/identifiers while removing JWT/OTP/raw phone.
+- Evaluation `plan_field_equals` now respects `turnIndex` for turn-specific plan assertions.
+- Deployment used `se-dev` profile, account `684516060775`, `us-east-1`, with `AGENT_MESSAGE_LOGGING_ENABLED=false` and provider-sync skipped.
+
+**Reason:** The dev Agent API endpoint lacked `/auth-by-phone` (HTTP 405); the production endpoint supports it and the provided Peru phone is a real registered account there.
+
+**Decision:** Deploy the dev Lambda against the production Agent API base URL so phone-first auth actually functions. The dev endpoint is suitable only for routes that exist on both hosts (`/messages`, `/conversations/messages`, `/conversations/request-human`, `/orders`, `/gift-purchases`).
+
+**Verification:** `npm run check` passed (typecheck + lint + 402 tests); `npm run build` succeeded; Lambda `recap-agent-runtime` deployed (UPDATE_COMPLETE, Active, LastUpdateStatus Successful); live behavior gate run `eval-2026-08-08T04-16-00-659Z-aed40588` passed both phone-first cases.
+
+---
+
+## 2026-08-07
+
+## 2026-08-07
+
+### Apply phone-first release blockers
+
+- Added typed artifact redaction for CLI responses and evaluation storage. JWTs, access tokens, OTPs, and raw phone values are removed while authentication statuses, methods, and field-presence evidence remain available to assertions.
+- Extended information authentication guidance with `phone_confirmation`, made token validity require a future ISO expiry, and rejected expired phone-auth epoch timestamps.
+- Corrected the live phone-fallback case to assert the documented phone user-not-found and email-not-found path, and added regression coverage for trusted inbound phone routing and unavailable-phone email fallback.
+
+**Reason:** Release validation found sensitive eval/CLI serialization, an incorrect typed next-input value, a misleading live fallback expectation, fail-open session expiry handling, and insufficient proof that phone API calls use only the validated inbound identity.
+
+**Decision:** Keep full state available only to in-process evaluation assertions; serialize redacted projections for CLI and eval artifacts. Do not broaden the phone-first slice into RSVP, outbound logging, or migration work.
+
+**Verification:** `npm run check` and `npm test` passed with 399 tests; `npm run build` and the targeted authentication/evaluation tests passed. Deployment and the live behavior evaluation remain pending because this task explicitly forbids deployment.
+
+**Safe dev deployment command (not run):**
+
+```sh
+AWS_PROFILE=se-dev AWS_REGION=us-east-1 \
+AGENT_API_BASE_URL=https://se-v2-api-dev.jnq.io/api/agent \
+AGENT_MESSAGE_LOGGING_ENABLED=false \
+DEPLOY_PROVIDER_SYNC=false npm run deploy
+```
+
+The command is explicitly scoped to the guarded development profile and skips the unrelated provider-sync stack. `scripts/deploy.mjs` keeps the broad provider-sync deployment as the default path, but its runtime-only opt-out and development Agent API default prevent this validation command from touching that stack or production by omission.
+
+## 2026-08-07
+
+### Add phone-first authentication for protected information requests
+
+- Used the validated inbound channel phone as the only phone-authentication source and retained the existing digits-only `contact_phone` alongside nullable split fields for the Agent API boundary.
+- Added a typed `phoneConfirmation` extraction outcome (`yes`, `no`, or `unclear`) and durable `awaiting_phone_confirmation` state. The first protected request asks for confirmation without calling either authentication endpoint; a yes tries `/auth-by-phone`, while no, unclear, missing phone, and typed phone-auth failures preserve the request and use the existing email OTP fallback.
+- Added typed `/auth-by-phone` and `/user/update-phone` gateway methods with strict credential parsing, X-Agent-Key/Bearer handling, structured failure mapping, and epoch-seconds-to-ISO expiry conversion. Tokens and phone values remain redacted from deterministic traces.
+- Successful phone authentication persists the backend email, token, ISO expiry, and `auth_method: phone`. Successful email OTP persists `auth_method: email` and attempts the current trusted inbound phone update non-fatally, including the phone-linked conflict.
+- Added deterministic unit coverage, legacy-plan parsing coverage, and two live regression cases. The success case resolves `TERMINAL_CONTACT_PHONE`; the fallback case requires a separate `PHONE_FIRST_FALLBACK_CONTACT_PHONE` development fixture. Neither case contains a phone, token, OTP, or API secret.
+
+**Reason:** Protected event and purchase requests must use the WhatsApp webhook identity before requesting email, while terminal turns and unresolvable phone identities must continue to work through email OTP.
+
+**Decision:** Keep the auth gate in `AgentService`, keep event lookup/orchestrator behavior unchanged, require structured confirmation rather than text matching, and merge nested auth state explicitly so an in-flight OTP cannot be replaced by phone-first state.
+
+**Verification:** `npm run check` passed with 388 tests and `npm run build` passed. Development Lambda deployment and `npm run eval:behavior-live` were intentionally not run per task instruction; the next DevOps step must deploy first and then run the mandatory live suite with the configured fixture.
+
 ## 2026-08-05
 
 ### Stop repeated verification-code loops for protected purchase queries

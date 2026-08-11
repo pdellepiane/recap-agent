@@ -9,6 +9,7 @@ import type { TurnDecision } from '../core/turn-decision';
 import type {
   ExtractedInformationRequest,
   InformationTaskResult,
+  PhoneConfirmation,
 } from '../core/information';
 
 import type { StructuredMessage } from './structured-message';
@@ -43,6 +44,7 @@ export type OpenAiCallRef = {
 export type ExtractionResult = {
   actionIntent: ActionIntent | null;
   informationRequests: ExtractedInformationRequest[];
+  phoneConfirmation?: PhoneConfirmation | null;
   intentConfidence: number | null;
   ambiguity?: {
     status: 'clear' | 'ambiguous';

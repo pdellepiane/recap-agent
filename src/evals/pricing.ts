@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-import type { EvalTurnResult } from './case-schema';
+import type { EvalArtifactTurnResult } from './case-schema';
 
 const modelPriceSchema = z.object({
   inputPerMillionUsd: z.number().nonnegative(),
@@ -31,7 +31,7 @@ export type CostEstimate = {
 };
 
 export function estimateTurnCost(
-  turn: EvalTurnResult,
+  turn: EvalArtifactTurnResult,
   pricing: PricingConfig,
   models: { classifier?: string; extractor: string; reply: string },
 ): CostEstimate {
@@ -58,7 +58,7 @@ export function estimateTurnCost(
 }
 
 function estimateModelUsage(
-  usage: EvalTurnResult['trace']['token_usage']['extraction'],
+  usage: EvalArtifactTurnResult['trace']['token_usage']['extraction'],
   price: z.infer<typeof modelPriceSchema> | undefined,
 ): number {
   if (!usage || !price) {

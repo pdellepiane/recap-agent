@@ -16,6 +16,7 @@ import {
 } from '../runtime/agent-conversation-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
+import type { HandleTurnResponse } from '../runtime/agent-service';
 import { AgentParticipationService } from '../runtime/agent-participation-service';
 import { OpenAiMessageResponseClassifier } from '../runtime/message-response-classifier';
 import {
@@ -28,6 +29,13 @@ import { resolveChannelApiKeys, resolveOpenAiApiKey, resolveSeApiKey } from '../
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
 import { NoopPerfStore, type PerfStore } from '../storage/perf-store';
+import {
+  projectSafePlan,
+  projectSafeRecord,
+  projectSafeTrace,
+  redactArtifactText,
+  type ArtifactJsonValue,
+} from '../runtime/artifact-redaction';
 import { bearerTokenMatchesAny, readBearerAuthorization } from './bearer-auth';
 import {
   agentParticipationRequestSchema,
@@ -296,20 +304,11 @@ export async function handler(
 
     const includeDiagnostics = body.client_mode === 'cli';
 
-    return respond(200, {
-      message: response.outbound.text,
-      delivery: response.outbound.delivery,
-      conversation_id: response.outbound.conversationId,
-      plan_id: response.plan.plan_id,
-      current_node: response.plan.current_node,
-      ...(includeDiagnostics
-        ? {
-            trace: response.trace,
-            perf: perf ?? null,
-            plan: response.plan,
-          }
-        : {}),
-    }, 'success', {
+    return respond(200, buildCliResponseBody({
+      response,
+      perf,
+      includeDiagnostics,
+    }), 'success', {
       deliveryAction: response.outbound.delivery.action,
       currentNode: response.plan.current_node,
       feedbackSignalVersion: perfRecord.feedback_signals.schema_version,
@@ -325,6 +324,33 @@ export async function handler(
       error: error instanceof Error ? error.message : 'Unknown server error.',
     }, 'internal_error', { error });
   }
+}
+
+export function buildCliResponseBody(args: {
+  response: HandleTurnResponse;
+  perf: CliPerfSummary | null | undefined;
+  includeDiagnostics: boolean;
+}): Record<string, ArtifactJsonValue> {
+  const body = {
+    message: args.response.outbound.text,
+    delivery: args.response.outbound.delivery,
+    conversation_id: args.response.outbound.conversationId,
+    plan_id: args.response.plan.plan_id,
+    current_node: args.response.plan.current_node,
+  };
+  if (!args.includeDiagnostics) {
+    return body;
+  }
+
+  return {
+    ...body,
+    message: redactArtifactText(args.response.outbound.text ?? ''),
+    trace: projectSafeTrace(args.response.trace),
+    perf: args.perf === null || args.perf === undefined
+      ? null
+      : projectSafeRecord(args.perf),
+    plan: projectSafePlan(args.response.plan),
+  };
 }
 
 async function getChannelApiKeys(): Promise<string[]> {

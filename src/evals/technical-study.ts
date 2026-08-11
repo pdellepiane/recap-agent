@@ -12,8 +12,8 @@ import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
 import {
   evalReportSchema,
   type EvalCase,
+  type EvalArtifactResult,
   type EvalReport,
-  type EvalResult,
 } from './case-schema';
 import { assessGrounding } from './grounding';
 import { mean, median, percentile, wilsonInterval } from './metrics';
@@ -104,7 +104,7 @@ type StudyRow = {
   routeFamily: StudyScenario['routeFamily'];
   repetition: number;
   outcome: StudyOutcome;
-  status: EvalResult['status'];
+  status: EvalArtifactResult['status'];
   turns: number;
   latencyMs: number;
   tokens: number;
@@ -326,7 +326,7 @@ function toEvalCase(scenario: StudyScenario): EvalCase {
 }
 
 function buildStudyRow(
-  result: EvalResult,
+  result: EvalArtifactResult,
   scenario: StudyScenario | undefined,
   repetition: number,
   pricing: ReturnType<typeof pricingConfigSchema.parse>,
@@ -553,7 +553,7 @@ async function writeStudyArtifacts(
 }
 
 function buildRecommendationQualitySummary(
-  results: EvalResult[],
+  results: EvalArtifactResult[],
   scenarios: StudyScenario[],
 ) {
   let displayedProviders = 0;
@@ -574,7 +574,7 @@ function buildRecommendationQualitySummary(
   const shortlistSizes: number[] = [];
 
   for (const result of results) {
-    const finalPlan = result.turns.at(-1)?.plan;
+    const finalPlan = result.turns.at(-1)?.plan_summary;
     const scenario = scenarios.find((candidate) => candidate.id === result.caseId);
     if (finalPlan) {
       needsObserved += finalPlan.provider_needs.length;
@@ -602,10 +602,10 @@ function buildRecommendationQualitySummary(
       for (const provider of providers) {
         displayedProviders += 1;
         providerExposure.set(provider.id, (providerExposure.get(provider.id) ?? 0) + 1);
-        if (turn.plan.location) {
+        if (turn.plan_summary.location) {
           locationApplicable += 1;
           const compatibility = classifyLocationCompatibility(
-            turn.plan.location,
+            turn.plan_summary.location,
             provider.location,
           );
           if (compatibility === 'exact' || compatibility === 'compatible') {
@@ -616,13 +616,13 @@ function buildRecommendationQualitySummary(
             locationMismatch += 1;
           }
         }
-        const owningNeed = turn.plan.provider_needs.find((need) =>
+        const owningNeed = turn.plan_summary.provider_needs.find((need) =>
           need.recommended_provider_ids.includes(provider.id),
         );
         const expectedCategory = normalizeToProviderCategory(
           owningNeed?.category ??
-            turn.plan.active_need_category ??
-            turn.plan.vendor_category,
+            turn.plan_summary.active_need_category ??
+            turn.plan_summary.vendor_category,
         );
         if (expectedCategory) {
           categoryApplicable += 1;
@@ -630,7 +630,7 @@ function buildRecommendationQualitySummary(
             categorySatisfied += 1;
           }
         }
-        if (turn.plan.budget_signal) {
+        if (turn.plan_summary.budget_signal) {
           budgetApplicable += 1;
           if (!(provider.fitTags ?? []).includes('budget_risk')) {
             budgetCompatible += 1;
@@ -785,7 +785,7 @@ function pathTransitions(nodes: string[]): string[] {
   return normalized.slice(1).map((node, index) => `${normalized[index]}->${node}`);
 }
 
-function expectationPassRates(results: EvalResult[]): Record<string, {
+function expectationPassRates(results: EvalArtifactResult[]): Record<string, {
   passed: number;
   total: number;
   rate: number;
@@ -834,7 +834,7 @@ function repeatabilitySummary(rows: StudyRow[]) {
   };
 }
 
-function nodeLatencySummary(turns: EvalResult['turns']): Record<string, {
+function nodeLatencySummary(turns: EvalArtifactResult['turns']): Record<string, {
   visits: number;
   meanMs: number;
   p95Ms: number;
@@ -873,7 +873,7 @@ function csvCell(value: unknown): string {
   return /[",\n]/u.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
 }
 
-function renderNodeVisits(turns: EvalResult['turns']): string {
+function renderNodeVisits(turns: EvalArtifactResult['turns']): string {
   const counts = countBy(
     turns.flatMap((turn) => turn.trace.node_path),
     (node) => node,
@@ -884,7 +884,7 @@ function renderNodeVisits(turns: EvalResult['turns']): string {
     .join('\n')}\n`;
 }
 
-function renderRoutes(results: EvalResult[]): string {
+function renderRoutes(results: EvalArtifactResult[]): string {
   const counts = countBy(results, (result) => result.nodeTransitions.join('|'));
   return `route,count\n${Object.entries(counts)
     .sort((left, right) => right[1] - left[1])
@@ -892,7 +892,7 @@ function renderRoutes(results: EvalResult[]): string {
     .join('\n')}\n`;
 }
 
-function renderGrounding(results: EvalResult[]): string {
+function renderGrounding(results: EvalArtifactResult[]): string {
   const rows = results.flatMap((result) =>
     result.turns.map((turn) => ({
       scenario: result.caseId,
@@ -941,7 +941,7 @@ type TurnStudyTelemetry = {
   errors: string;
 };
 
-function renderTurnTelemetry(results: EvalResult[]): string {
+function renderTurnTelemetry(results: EvalArtifactResult[]): string {
   const rows: TurnStudyTelemetry[] = results.flatMap((result) =>
     result.turns.map((turn) => {
       const total = turn.trace.token_usage.total;
@@ -982,7 +982,7 @@ function renderTurnTelemetry(results: EvalResult[]): string {
 }
 
 function renderManualAuditSample(
-  results: EvalResult[],
+  results: EvalArtifactResult[],
   manifest: TechnicalStudyManifest,
 ): string {
   const eligible = results.flatMap((result) =>

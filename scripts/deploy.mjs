@@ -92,7 +92,7 @@ run(
     `KbVectorStoreId=${process.env.KB_VECTOR_STORE_ID ?? env.KB_VECTOR_STORE_ID ?? ''}`,
     `KbMaxResults=${process.env.KB_MAX_RESULTS ?? env.KB_MAX_RESULTS ?? '6'}`,
     `KbScoreThreshold=${process.env.KB_SCORE_THRESHOLD ?? env.KB_SCORE_THRESHOLD ?? '0'}`,
-    `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://api.sinenvolturas.com/api/agent'}`,
+    `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://se-v2-api-dev.jnq.io/api/agent'}`,
     `AgentApiTimeoutMs=${process.env.AGENT_API_TIMEOUT_MS ?? env.AGENT_API_TIMEOUT_MS ?? '5000'}`,
     `AgentApiMaxRetries=${process.env.AGENT_API_MAX_RETRIES ?? env.AGENT_API_MAX_RETRIES ?? '2'}`,
     `AgentMessageLoggingEnabled=${process.env.AGENT_MESSAGE_LOGGING_ENABLED ?? env.AGENT_MESSAGE_LOGGING_ENABLED ?? 'false'}`,
@@ -126,31 +126,35 @@ const functionUrl = execFileSync(
 console.log(`Deployed stack: ${stackName}`);
 console.log(`Function URL: ${functionUrl}`);
 
-const providerSyncStackName = process.env.PROVIDER_SYNC_STACK_NAME ?? 'recap-agent-provider-sync-dev';
-run(
-  'aws',
-  [
-    'cloudformation',
-    'deploy',
-    '--stack-name',
-    providerSyncStackName,
-    '--template-file',
-    'infra/provider-sync.yml',
-    '--capabilities',
-    'CAPABILITY_NAMED_IAM',
-    '--parameter-overrides',
-    `Environment=${process.env.ENVIRONMENT ?? 'dev'}`,
-    `OpenAiSecretArn=${secretArn}`,
-    `SinEnvolturasBaseUrl=${process.env.SINENVOLTURAS_BASE_URL ?? env.SINENVOLTURAS_BASE_URL ?? 'https://api.sinenvolturas.com/api-web/vendor'}`,
-    `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
-    `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,
-    `CodeS3Bucket=${artifactBucket}`,
-    `CodeS3Key=${artifactKey}`,
-  ],
-  { env: awsEnv },
-);
+if (process.env.DEPLOY_PROVIDER_SYNC !== 'false') {
+  const providerSyncStackName = process.env.PROVIDER_SYNC_STACK_NAME ?? 'recap-agent-provider-sync-dev';
+  run(
+    'aws',
+    [
+      'cloudformation',
+      'deploy',
+      '--stack-name',
+      providerSyncStackName,
+      '--template-file',
+      'infra/provider-sync.yml',
+      '--capabilities',
+      'CAPABILITY_NAMED_IAM',
+      '--parameter-overrides',
+      `Environment=${process.env.ENVIRONMENT ?? 'dev'}`,
+      `OpenAiSecretArn=${secretArn}`,
+      `SinEnvolturasBaseUrl=${process.env.SINENVOLTURAS_BASE_URL ?? env.SINENVOLTURAS_BASE_URL ?? 'https://api.sinenvolturas.com/api-web/vendor'}`,
+      `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
+      `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,
+      `CodeS3Bucket=${artifactBucket}`,
+      `CodeS3Key=${artifactKey}`,
+    ],
+    { env: awsEnv },
+  );
 
-console.log(`Deployed provider sync stack: ${providerSyncStackName}`);
+  console.log(`Deployed provider sync stack: ${providerSyncStackName}`);
+} else {
+  console.log('Skipped provider sync stack deployment.');
+}
 
 function loadDotEnv(filePath) {
   if (!fs.existsSync(filePath)) {

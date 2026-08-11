@@ -207,6 +207,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       informationRequests: (extraction.informationRequests ?? []).flatMap((request) =>
         this.normalizeInformationRequest(request),
       ),
+      phoneConfirmation: extraction.phoneConfirmation ?? null,
       intentConfidence: extraction.intentConfidence ?? null,
       ambiguity: extraction.ambiguity ?? {
         status: 'clear',
@@ -972,6 +973,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           }
         : null,
       information_requests: extraction.informationRequests,
+      phone_confirmation: extraction.phoneConfirmation ?? null,
       event_type: extraction.eventType,
       vendor_category: extraction.vendorCategory,
       vendor_categories: extraction.vendorCategories,
@@ -1101,7 +1103,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       lines.push('Consultar información de eventos asociados al usuario, como confirmación de asistencia, relación con el evento y anfitriones.');
     }
     if (capabilities.purchaseInformation) {
-      lines.push('Consultar tus pedidos recientes o buscar uno directamente por su número después de verificar tu correo.');
+      lines.push('Consultar tus pedidos recientes o buscar uno directamente por su número después de verificar primero tu número actual de WhatsApp; si no es posible, se usa el correo con un código de un solo uso.');
       lines.push('Consultar detalles de regalos comprados, como pago, dedicatoria, tarjeta física, envío y agradecimiento, cuando estén disponibles.');
     }
 
@@ -1257,6 +1259,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return {
       actionIntent: null,
       informationRequests: [],
+      phoneConfirmation: null,
       intentConfidence: 1,
       ambiguity: {
         status: 'clear',

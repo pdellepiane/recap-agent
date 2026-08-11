@@ -1,6 +1,6 @@
 import { mergePlan, type PersistedPlan, type PlanSnapshot } from '../core/plan';
 import type { ProviderGateway } from './provider-gateway';
-import { parseInternationalPhone } from './phone';
+import { splitInternationalPhone } from './phone';
 
 export type FinishPlanToolResult = {
   status: 'success' | 'partial' | 'failed';
@@ -19,17 +19,6 @@ export type FinishPlanToolErrorResult = {
 };
 
 export type FinishPlanToolOutput = FinishPlanToolResult | FinishPlanToolErrorResult;
-
-function splitPhoneExtension(digits: string): { phone: string; phoneExtension: string } | null {
-  const parsed = parseInternationalPhone(`+${digits.replace(/\D/g, '')}`);
-  if (parsed.status !== 'valid') {
-    return null;
-  }
-  return {
-    phone: parsed.nationalNumber,
-    phoneExtension: parsed.countryCode,
-  };
-}
 
 export async function executeFinishPlanTool(args: {
   plan: PersistedPlan;
@@ -70,7 +59,13 @@ export async function executeFinishPlanTool(args: {
     : fallbackDescription;
 
   const contactedProviders: FinishPlanToolResult['contacted_providers'] = [];
-  const phoneParts = splitPhoneExtension(plan.contact_phone);
+  const parsedPhone = splitInternationalPhone(plan.contact_phone);
+  const phoneParts = parsedPhone
+    ? {
+        phone: parsedPhone.phone_number,
+        phoneExtension: parsedPhone.phone_extension,
+      }
+    : null;
   if (!phoneParts) {
     return {
       status: 'failed',

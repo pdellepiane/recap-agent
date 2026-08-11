@@ -8,6 +8,13 @@ import { getConfig } from '../../runtime/config';
 import { DynamoPlanStore } from '../../storage/dynamo-plan-store';
 import type { EvalCase, EvalRunConfig, EvalTurnResult, LambdaTurnResponse } from '../case-schema';
 import { lambdaTurnResponseSchema } from '../case-schema';
+import {
+  redactArtifactText,
+  projectSafePlan,
+  projectSafeRecord,
+  projectSafeTrace,
+} from '../../runtime/artifact-redaction';
+import { attachEvaluationState } from '../evaluation-state';
 
 export async function runLiveLambdaCase(args: {
   currentCase: EvalCase;
@@ -86,7 +93,7 @@ export async function runLiveLambdaCase(args: {
         message_id: `${args.currentCase.id}-${turnIndex}`,
         received_at: input.receivedAt ?? new Date().toISOString(),
         session_id: input.sessionId ?? args.currentCase.id,
-        contact_phone: input.contactPhone,
+        contact_phone: resolveConfiguredContactPhone(input.contactPhone),
         client_mode: 'cli',
       }),
       signal: AbortSignal.timeout(95_000),
@@ -99,9 +106,13 @@ export async function runLiveLambdaCase(args: {
       );
     }
 
-    const raw = (await response.json()) as LambdaTurnResponse;
+    const raw = await response.json();
     const parsed = lambdaTurnResponseSchema.parse(raw);
-    let turnPlan = parsed.plan ?? null;
+    const typedTrace = lambdaTurnResponseSchema.shape.trace.parse(parsed.trace);
+    const typedPerf = parsed.perf === undefined || parsed.perf === null
+      ? parsed.perf
+      : lambdaTurnResponseSchema.shape.perf.parse(parsed.perf);
+    let turnPlan = parsed.plan ? planSchema.parse(parsed.plan) : null;
     if (!turnPlan) {
       try {
         turnPlan = await planStore.getByExternalUser(
@@ -112,34 +123,68 @@ export async function runLiveLambdaCase(args: {
         turnPlan = null;
       }
     }
-    turns.push({
+    const evaluationPlan = turnPlan ??
+      planSchema.parse(
+        normalizeRawPlan({
+          ...seedPlanFallback(input.channel ?? channel, input.externalUserId ?? externalUserId),
+          ...normalizePlanFromTrace(
+            parsed,
+            input.channel ?? channel,
+            input.externalUserId ?? externalUserId,
+          ),
+        }),
+      );
+    const turn: EvalTurnResult = {
       turnIndex,
+      input: redactLiveInput(input),
+      outputText: redactArtifactText(parsed.message ?? ''),
+      currentNode: parsed.current_node,
+      trace: projectSafeTrace(typedTrace) as LambdaTurnResponse['trace'],
+      perf:
+        typedPerf === undefined || typedPerf === null
+          ? typedPerf
+          : projectSafeRecord(typedPerf),
+      plan: projectSafePlan(evaluationPlan),
+      latencyMs: Date.now() - startedAt,
+    };
+    attachEvaluationState(turn, {
+      plan: evaluationPlan,
       input,
       outputText: parsed.message ?? '',
-      currentNode: parsed.current_node,
-      trace: parsed.trace,
-      perf: parsed.perf ?? null,
-      plan:
-        turnPlan ??
-        planSchema.parse(
-          normalizeRawPlan({
-            ...seedPlanFallback(input.channel ?? channel, input.externalUserId ?? externalUserId),
-            ...normalizePlanFromTrace(
-              parsed,
-              input.channel ?? channel,
-              input.externalUserId ?? externalUserId,
-            ),
-          }),
-        ),
-      latencyMs: Date.now() - startedAt,
-      rawTargetResponse: parsed as unknown as Record<string, unknown>,
     });
+    turns.push(turn);
   }
 
   return {
     turns,
     status: 'passed',
   };
+}
+
+function redactLiveInput(input: EvalTurnResult['input']): EvalTurnResult['input'] {
+  return {
+    ...input,
+    text: redactArtifactText(input.text),
+    ...(input.externalUserId
+      ? { externalUserId: input.externalUserId }
+      : {}),
+    ...(input.contactPhone !== undefined ? { contactPhone: null } : {}),
+  };
+}
+
+function resolveConfiguredContactPhone(value: string | null | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+  if (!value.startsWith('$')) {
+    return value;
+  }
+  const variableName = value.slice(1);
+  const configured = process.env[variableName];
+  if (!configured) {
+    throw new Error(`${variableName} is required for this live phone-auth case.`);
+  }
+  return configured;
 }
 
 async function resolveLiveLambdaDefaults(args: {

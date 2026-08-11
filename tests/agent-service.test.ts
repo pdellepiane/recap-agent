@@ -320,6 +320,18 @@ class FakeAgentConversationGateway implements AgentConversationGateway {
     this.requestedPhones.push(phoneNumber);
     return this.result;
   }
+
+  async authByPhone(): Promise<{
+    status: 'failed';
+    error: string;
+    retryable: boolean;
+  }> {
+    return { status: 'failed', error: 'not configured in test', retryable: false };
+  }
+
+  async updatePhone(): Promise<{ status: 'success' }> {
+    return { status: 'success' };
+  }
 }
 
 class TrackingAgentConversationGateway implements AgentConversationGateway {
@@ -342,6 +354,18 @@ class TrackingAgentConversationGateway implements AgentConversationGateway {
   async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
     this.operations.push(`takeover:${phoneNumber}`);
     return { status: 'success', message: 'Human takeover requested.' };
+  }
+
+  async authByPhone(): Promise<{
+    status: 'failed';
+    error: string;
+    retryable: boolean;
+  }> {
+    return { status: 'failed', error: 'not configured in test', retryable: false };
+  }
+
+  async updatePhone(): Promise<{ status: 'success' }> {
+    return { status: 'success' };
   }
 }
 
@@ -8300,6 +8324,18 @@ describe('AgentService', () => {
 
       async requestHumanTakeover(): Promise<AgentGatewayResult> {
         return { status: 'success', message: 'Human takeover requested.' };
+      }
+
+      async authByPhone(): Promise<{
+        status: 'failed';
+        error: string;
+        retryable: boolean;
+      }> {
+        return { status: 'failed', error: 'not configured in test', retryable: false };
+      }
+
+      async updatePhone(): Promise<{ status: 'success' }> {
+        return { status: 'success' };
       }
     }
 

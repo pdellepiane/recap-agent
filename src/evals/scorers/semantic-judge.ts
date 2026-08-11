@@ -1,5 +1,7 @@
 import OpenAI from 'openai';
 
+import { redactArtifactText } from '../../runtime/artifact-redaction';
+
 export type SemanticJudgeOutcome = {
   skipped: boolean;
   score: number;
@@ -53,8 +55,10 @@ export async function runSemanticJudge(args: {
         role: 'user',
         content: [
           `Rubric:\n${args.rubric}`,
-          args.context ? `Interaction context:\n${args.context}` : null,
-          `Candidate response:\n${args.candidateText}`,
+          args.context
+            ? `Interaction context:\n${args.context}`
+            : null,
+          `Candidate response:\n${redactArtifactText(args.candidateText)}`,
         ].filter((section): section is string => section !== null).join('\n\n'),
       },
     ],

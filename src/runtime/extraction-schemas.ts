@@ -11,6 +11,7 @@ import {
   purchaseAuthActionValues,
   purchaseResourceValues,
   sensitivePurchaseFieldValues,
+  phoneConfirmationValues,
 } from '../core/information';
 
 export const providerReferenceSchema = z.object({
@@ -108,6 +109,7 @@ export type OpenAiInformationRequest = z.infer<
 export const extractionSchema = z.object({
   actionIntent: z.enum(actionIntentValues).nullable(),
   informationRequests: z.array(openAiInformationRequestSchema).default([]),
+  phoneConfirmation: z.enum(phoneConfirmationValues).nullable().default(null),
   intentConfidence: z.number().min(0).max(1).nullable(),
   ambiguity: ambiguityEvidenceSchema,
   eventType: eventTypeSchema.nullable(),
@@ -164,7 +166,10 @@ export function createDynamicExtractionSchema(args: {
     assumptions: extractionSchema.shape.assumptions,
     conversationSummary: extractionSchema.shape.conversationSummary,
     ...(args.capabilities.information
-      ? { informationRequests: extractionSchema.shape.informationRequests }
+      ? {
+          informationRequests: extractionSchema.shape.informationRequests,
+          phoneConfirmation: extractionSchema.shape.phoneConfirmation,
+        }
       : {}),
     ...(args.capabilities.providerPlanning
       ? {

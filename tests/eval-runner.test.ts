@@ -1,3 +1,4 @@
+import fs from 'node:fs/promises';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -49,5 +50,11 @@ describe('eval runner', () => {
         'provider_needs=Catering:selected',
       ]),
     );
+
+    const artifact = JSON.parse(
+      await fs.readFile(path.resolve(process.cwd(), firstResult?.artifactPaths.caseResult ?? ''), 'utf8'),
+    ) as { turns: Array<Record<string, unknown>> };
+    expect(artifact.turns[0]).not.toHaveProperty('plan');
+    expect(artifact.turns[0]).not.toHaveProperty('rawTargetResponse');
   });
 });

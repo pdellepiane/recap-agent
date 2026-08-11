@@ -1,5 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { createEmptyPlan, mergePlan } from '../src/core/plan';
+
 vi.mock('../src/storage/dynamo-plan-store', () => {
   const savedPlans: unknown[] = [];
   return {
@@ -79,7 +81,7 @@ describe('live lambda eval target', () => {
               tool_outputs: [
                 {
                   tool: 'search_providers_from_plan',
-                  output: '{"providers":[{"id":33,"title":"Spotlight Studio"}]}',
+                  output: '{"providers":[{"id":33,"title":"Spotlight Studio"}],"code":"847261","access_token":"access-token-canary"}',
                 },
               ],
               provider_results: [
@@ -138,6 +140,7 @@ describe('live lambda eval target', () => {
               extraction_to_compose_ratio: 0.7777777778,
               captured_at: new Date().toISOString(),
             },
+            plan: sensitiveLivePlan(),
           };
         },
       }),
@@ -155,7 +158,7 @@ describe('live lambda eval target', () => {
         status: 'active',
         targetModes: ['live_lambda'],
         variables: {},
-        inputs: [{ text: 'quiero fotografos en lima' }],
+        inputs: [{ text: 'quiero fotografos en lima', contactPhone: '+51973296571' }],
         expectations: [],
         scorers: [],
         notes: [],
@@ -176,7 +179,22 @@ describe('live lambda eval target', () => {
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0]?.trace.tools_called).toEqual(['search_providers_from_plan']);
     expect(result.turns[0]?.perf?.runtime_latency_ms).toBe(1200);
+    expect(result.turns[0]?.perf?.conversation_hash).toBe('a'.repeat(64));
     expect(result.turns[0]?.plan.event_type).toBe('boda');
+    const serialized = JSON.stringify(result);
+    expect(serialized).not.toContain('access-token-canary');
+    expect(serialized).not.toContain('eyJhbGciOiJIUzI1NiJ9.live.signature');
+    expect(serialized).not.toContain('+51973296571');
+    expect(serialized).not.toContain('847261');
+    expect(result.turns[0]?.plan).toMatchObject({
+      contact_phone: null,
+      user_auth: {
+        status: 'authenticated',
+        auth_method: 'phone',
+        token: null,
+      },
+    });
+    expect(result.turns[0]).not.toHaveProperty('rawTargetResponse');
   }, 15_000);
 
   it('passes seed plans, session ids, and preserves live token usage across multiple turns', async () => {
@@ -339,3 +357,29 @@ describe('live lambda eval target', () => {
     expect(result.turns.every((turn) => (turn.perf?.total_tokens ?? 0) > 0)).toBe(true);
   }, 15_000);
 });
+
+function sensitiveLivePlan() {
+  return mergePlan(
+    createEmptyPlan({
+      planId: 'sensitive-live-plan',
+      channel: 'whatsapp',
+      externalUserId: 'sensitive-live-user',
+    }),
+    {
+      event_type: 'boda',
+      contact_phone: '51973296571',
+      human_escalation: {
+        status: 'none',
+        requested_at: null,
+        phone_number: '51973296571',
+        last_error: null,
+      },
+      user_auth: {
+        status: 'authenticated',
+        token: 'eyJhbGciOiJIUzI1NiJ9.live.signature',
+        token_expires_at: new Date(Date.now() + 60_000).toISOString(),
+        auth_method: 'phone',
+      },
+    },
+  );
+}
