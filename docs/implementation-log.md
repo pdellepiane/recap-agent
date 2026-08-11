@@ -17,6 +17,8 @@
 
 **Targeted live verification:** `live_behavior.phone_confirmation_unclear_requires_yes_or_no` passed in run `eval-2026-08-11T17-03-38-678Z-862b5944`; `live_behavior.otp_not_received_requires_response` passed in run `eval-2026-08-11T17-03-51-858Z-3d41f3f9`. Both scored 1 with zero failures, errors, or skips against the redeployed development Lambda.
 
+**Prompt audit:** The information reply request increased by 36 serialized bytes, from 14,929 to 14,965, while retaining zero model tools and no structural audit violations. The initial planning/information extractor remains below its 9,000-byte gate at 8,956 bytes.
+
 ### Promote FAQ retrieval to the mandatory live gate
 
 - Revalidated the FAQ path with 46 focused deterministic tests covering information routing, orchestration, knowledge retrieval, prompt ownership, authentication guidance, and purchase disclosure.
