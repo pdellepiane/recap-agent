@@ -1682,7 +1682,16 @@ export class AgentService {
     const hasActionConflict =
       args.extraction.actionIntent !== null &&
       requests.length > 0;
-    const hasAmbiguity = args.extraction.ambiguity?.status === 'ambiguous';
+    const isRetiredPhoneConfirmationRecovery =
+      planForInformation.user_auth.awaiting_phone_confirmation &&
+      Boolean(args.inbound.contactPhone) &&
+      requests.some(
+        (request) =>
+          request.kind === 'associated_event' || request.kind === 'purchase',
+      );
+    const hasAmbiguity =
+      args.extraction.ambiguity?.status === 'ambiguous' &&
+      !isRetiredPhoneConfirmationRecovery;
     let informationResults: InformationTaskResult[] = [];
     let informationSummaries: InformationExecutionSummary[] = [];
     let operationalNote: string | null = null;

@@ -262,6 +262,64 @@ describe('AgentService first-class information flow', () => {
     });
   });
 
+  it('recovers a persisted retired confirmation turn by authenticating automatically', async () => {
+    const runtime = new InformationRuntime([
+      extraction([], null, null, 'unclear'),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = {
+      status: 'authenticated',
+      token: 'phone-jwt',
+      tokenExpiresAtIso: '2026-12-01T00:00:00.000Z',
+      email: 'registered@example.com',
+    };
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'retired-confirmation-plan',
+          channel: 'whatsapp',
+          externalUserId: 'retired-confirmation-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          user_auth: { awaiting_phone_confirmation: true },
+          information_state: {
+            resume_node: 'entrevista',
+            pending_requests: [
+              { ...purchaseRequest(null), requestId: 'information-1' },
+            ],
+            selection_candidates: [],
+          },
+        },
+      ),
+      reason: 'test-seed',
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'retired-confirmation-user',
+      text: 'Este',
+      messageId: 'retired-confirmation-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(response.plan.user_auth).toMatchObject({
+      status: 'authenticated',
+      auth_method: 'phone',
+      awaiting_phone_confirmation: false,
+    });
+  });
+
   it('asks for the registered email only after the current phone is not found', async () => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
