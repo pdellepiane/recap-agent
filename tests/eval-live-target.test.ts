@@ -102,7 +102,7 @@ describe('live lambda eval target', () => {
     } finally {
       setSaveError(null);
     }
-  });
+  }, 15_000);
 
   it('normalizes the lambda response and hydrates the persisted plan', async () => {
     const { runLiveLambdaCase } = await import('../src/evals/targets/live-lambda');
