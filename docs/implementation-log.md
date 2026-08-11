@@ -15,6 +15,8 @@
 
 **Trace evidence:** Plan `01KZHNYYA53Z02HB1203K85B4S`; suppressed-turn trace `01KZHP44TBDJH0Q1BQ6JRTRWNT`; classifier response `resp_08dbb4b049864931006a77a66a3ec481948b8e127e3b959a29`; local GET-only audit `.openai-audits/openai-audit-2026-08-11T16-57-12-375Z.json` (mode `0600`, ignored by Git).
 
+**Targeted live verification:** `live_behavior.phone_confirmation_unclear_requires_yes_or_no` passed in run `eval-2026-08-11T17-03-38-678Z-862b5944`; `live_behavior.otp_not_received_requires_response` passed in run `eval-2026-08-11T17-03-51-858Z-3d41f3f9`. Both scored 1 with zero failures, errors, or skips against the redeployed development Lambda.
+
 ### Promote FAQ retrieval to the mandatory live gate
 
 - Revalidated the FAQ path with 46 focused deterministic tests covering information routing, orchestration, knowledge retrieval, prompt ownership, authentication guidance, and purchase disclosure.

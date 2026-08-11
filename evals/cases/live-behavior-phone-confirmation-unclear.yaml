@@ -40,10 +40,17 @@ expectations:
     type: tool_usage
     mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
     severity: hard
+  - id: protected-event-question-remains-pending
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected:
+      - kind: associated_event
+        query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
+    severity: hard
   - id: asks-for-explicit-yes-or-no
     type: text_semantic
     rubric: >-
-      The user answered only “Este” after being asked whether the current WhatsApp number is registered. Pass only if the response briefly clarifies in natural Spanish that the user must answer “sí” when the current number is registered or “no” when another number is used. It must preserve the pending event question and must not ask for an email or code, authenticate the phone, or claim success.
+      The user answered only “Este” after being asked whether the current WhatsApp number is registered. Pass only if the response briefly clarifies in natural Spanish that the user must answer “sí” when the current number is registered or “no” when another number is used. It must not ask for an email or code, authenticate the phone, or claim success. The pending event question is verified structurally and does not need to be repeated in this one-question clarification.
     minScore: 0.9
     requireJudge: true
     severity: hard
