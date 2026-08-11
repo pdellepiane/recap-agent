@@ -11,6 +11,8 @@
 
 **Reason:** FAQ correctness is a primary release gate and must not rely only on offline routing tests or a non-mandatory live suite.
 
+**Verification:** The focused FAQ surface passed 46/46 deterministic tests. Offline support-boundary run `eval-2026-08-11T15-33-19-289Z-b24b30c4` passed. The deployed knowledge-base FAQ passed before and after promotion; the required-judge run `eval-2026-08-11T15-34-17-416Z-bab50bc7` passed, and confirmation run `eval-2026-08-11T15-45-10-415Z-b784a857` also passed. The expanded mandatory run `eval-2026-08-11T15-35-28-613Z-4f9fe6e2` is recorded as failed rather than promoted: 11/14 passed, one mixed-intent behavior case failed, and two Lambda invocations reached the 90-second platform timeout. The independent FAQ rerun passed, isolating FAQ from those remaining gate failures.
+
 ### Reconcile live behavior coverage with implemented fixes
 
 - Added a git-tracked behavior coverage registry that maps each behavior-changing fix since the mandatory live-gate policy to one or more permanent live case IDs.
