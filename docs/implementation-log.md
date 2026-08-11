@@ -5362,3 +5362,12 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - Added deterministic tests for abort propagation, sanitized timeout telemetry, runtime defaults, CloudFormation environment wiring, and the signal passed through classifier, Agents SDK, and knowledge retrieval requests.
 
 **Validation before deployment:** `npm run check` passed 416 tests across 64 files. Development deployment and the mandatory live behavior run are recorded in the next validation checkpoint.
+
+### Development latency validation
+
+- Deployed only `recap-agent-runtime`; the stack reached `UPDATE_COMPLETE` with Lambda modified at `2026-08-11T22:27:52Z`. The active function retains its 90-second ceiling and reports the expected 16,000/35,000/22,000/8,000 ms classifier/extractor/reply/retrieval settings.
+- Post-deployment run `eval-2026-08-11T22-28-34-464Z-30b7137c` executed all cases that did not require local phone fixtures: 12 passed, zero behavior assertions failed, and zero Lambda or stage timeouts occurred. The multi-need regression that had previously disappeared behind a 90-second timeout completed in 26,301 ms with a 22,246 ms traced runtime; the deployed FAQ regression completed in 11,085 ms with a 7,571 ms traced runtime.
+- Five phone-auth cases failed closed before invoking Lambda because `TERMINAL_CONTACT_PHONE` and `PHONE_FIRST_FALLBACK_CONTACT_PHONE` were absent from the shell. This is a fixture gate failure, not a runtime or behavior failure, so this run is not recorded as a complete mandatory-suite pass.
+- A complete rerun with the phone fixtures was started, then intentionally stopped after the user requested only the tests needed for this latency change. The successful targeted latency evidence above and the 416-test deterministic gate are the acceptance evidence for this operational change; the next behavior-changing update must still produce a fully passing `npm run eval:behavior-live` artifact.
+
+**Decision:** Keep the bounded deadlines and stage telemetry. Do not raise the Lambda timeout or introduce asynchronous WhatsApp processing based on test-only overlapping load. Avoid overlapping full live-evaluation runs against the shared development Lambda.
