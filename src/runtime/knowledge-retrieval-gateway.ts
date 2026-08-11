@@ -1,6 +1,7 @@
 import OpenAI from 'openai';
 
 import type { KnowledgeEvidence } from '../core/information';
+import { executeOpenAiStage } from './openai-stage-execution';
 
 export type KnowledgeRetrievalResult =
   | {
@@ -39,10 +40,15 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
       vectorStoreId: string;
       maxResults: number;
       scoreThreshold: number;
+      timeoutMs?: number;
     },
   ) {
     this.options = options;
-    this.client = new OpenAI({ apiKey: options.apiKey, maxRetries: 3 });
+    this.client = new OpenAI({
+      apiKey: options.apiKey,
+      maxRetries: 1,
+      timeout: options.timeoutMs ?? 8_000,
+    });
   }
 
   private readonly options: {
@@ -50,22 +56,29 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
     vectorStoreId: string;
     maxResults: number;
     scoreThreshold: number;
+    timeoutMs?: number;
   };
 
   async search(query: string): Promise<KnowledgeRetrievalResult> {
     try {
-      const page = await this.client.vectorStores.search(
-        this.options.vectorStoreId,
-        {
-          query,
-          max_num_results: this.options.maxResults,
-          rewrite_query: true,
-          ranking_options: {
-            ranker: 'auto',
-            score_threshold: this.options.scoreThreshold,
+      const page = await executeOpenAiStage({
+        stage: 'knowledge_retrieval',
+        model: 'vector_store_search',
+        timeoutMs: this.options.timeoutMs ?? 8_000,
+        operation: async (signal) => await this.client.vectorStores.search(
+          this.options.vectorStoreId,
+          {
+            query,
+            max_num_results: this.options.maxResults,
+            rewrite_query: true,
+            ranking_options: {
+              ranker: 'auto',
+              score_threshold: this.options.scoreThreshold,
+            },
           },
-        },
-      );
+          { signal },
+        ),
+      });
 
       return {
         status: 'success',

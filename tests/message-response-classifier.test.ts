@@ -66,7 +66,11 @@ describe('OpenAiMessageResponseClassifier', () => {
         schemaPropertyCount: 8,
       },
     });
-    const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
+    const calls = fetchMock.mock.calls as unknown as Array<[
+      string,
+      { body?: unknown; signal?: AbortSignal },
+    ]>;
+    expect(calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
     const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
       store: boolean;
       prompt_cache_key: string;

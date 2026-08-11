@@ -389,6 +389,7 @@ async function getRuntime(): Promise<{
               vectorStoreId: config.providerApi.vectorStoreId,
               maxResults: config.providerApi.vectorMaxResults,
               scoreThreshold: config.providerApi.vectorScoreThreshold,
+              timeoutMs: config.openAi.timeoutsMs.retrieval,
             })
           : null;
       const providerGateway = new SinEnvolturasGateway({
@@ -414,6 +415,7 @@ async function getRuntime(): Promise<{
               vectorStoreId: config.knowledgeBase.vectorStoreId,
               maxResults: config.knowledgeBase.maxResults,
               scoreThreshold: config.knowledgeBase.scoreThreshold,
+              timeoutMs: config.openAi.timeoutsMs.retrieval,
             })
           : new NoopKnowledgeRetrievalGateway();
       const informationOrchestrator = new InformationOrchestrator({
@@ -425,6 +427,8 @@ async function getRuntime(): Promise<{
         apiKey,
         replyModel: config.openAi.models.reply,
         extractorModel: config.openAi.models.extractor,
+        extractorTimeoutMs: config.openAi.timeoutsMs.extractor,
+        replyTimeoutMs: config.openAi.timeoutsMs.reply,
         replyProviderLimit: config.recommendation.replyProviderLimit,
         presentationProviderLimit: config.recommendation.presentationProviderLimit,
         providerDetailLookupLimit: config.recommendation.providerDetailLookupLimit,
@@ -437,6 +441,7 @@ async function getRuntime(): Promise<{
         model: config.openAi.models.responseClassifier,
         mode: config.responseClassifier.mode,
         promptLoader,
+        timeoutMs: config.openAi.timeoutsMs.responseClassifier,
       });
       const runtimePlanStore = getPlanStore();
       const perfStore = config.performance.tableName

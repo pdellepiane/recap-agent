@@ -47,6 +47,7 @@ describe('OpenAiAgentRuntime retry behavior', () => {
     })).rejects.toBeDefined();
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
+    expect(fetchMock.mock.calls[0]?.[1]?.signal).toBeInstanceOf(AbortSignal);
     const body = fetchMock.mock.calls[0]?.[1]?.body;
     expect(typeof body).toBe('string');
     const requestBody = JSON.parse(

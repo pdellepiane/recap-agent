@@ -60,6 +60,7 @@ import {
 } from './dynamic-agent-policy';
 import { buildModelVisibleConversationHistory } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
+import { executeOpenAiStage } from './openai-stage-execution';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
@@ -100,6 +101,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       apiKey: string;
       replyModel: string;
       extractorModel: string;
+      extractorTimeoutMs?: number;
+      replyTimeoutMs?: number;
       replyProviderLimit: number;
       presentationProviderLimit: number;
       providerDetailLookupLimit: number;
@@ -175,7 +178,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     });
 
     try {
-      const result = await this.runner.run(extractor, input);
+      const result = await executeOpenAiStage({
+        stage: 'extraction',
+        model: this.options.extractorModel,
+        timeoutMs: this.options.extractorTimeoutMs ?? 35_000,
+        operation: async (signal) => await this.runner.run(extractor, input, { signal }),
+      });
       return {
         extraction: this.normalizeExtraction(
           result.finalOutput as StructuredExtraction,
@@ -323,10 +331,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     let finalOutput: unknown;
     let runResult: unknown;
     try {
-      const result = await this.runner.run(agent, input, {
-        context: {
-          toolUsage: request.toolUsage,
-        },
+      const result = await executeOpenAiStage({
+        stage: 'reply',
+        model: this.options.replyModel,
+        timeoutMs: this.options.replyTimeoutMs ?? 22_000,
+        operation: async (signal) => await this.runner.run(agent, input, {
+          context: {
+            toolUsage: request.toolUsage,
+          },
+          signal,
+        }),
       });
       finalOutput = result.finalOutput;
       runResult = result;

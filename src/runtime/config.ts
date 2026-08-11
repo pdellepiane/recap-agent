@@ -16,6 +16,12 @@ export type AppConfig = {
       extractor: string;
       responseClassifier: string;
     };
+    timeoutsMs: {
+      responseClassifier: number;
+      extractor: number;
+      reply: number;
+      retrieval: number;
+    };
   };
   responseClassifier: {
     mode: 'observe' | 'enforce';
@@ -92,6 +98,10 @@ const environmentSchema = z.object({
   OPENAI_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
   OPENAI_EXTRACTOR_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
   OPENAI_RESPONSE_CLASSIFIER_MODEL: z.string().min(1).default(DEFAULT_GPT_TEXT_MODEL),
+  OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(16_000),
+  OPENAI_EXTRACTOR_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(35_000),
+  OPENAI_REPLY_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(22_000),
+  OPENAI_RETRIEVAL_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(60_000).default(8_000),
   RESPONSE_CLASSIFIER_MODE: z.enum(['observe', 'enforce']).default('enforce'),
   AWS_REGION: z.string().min(1).default('us-east-1'),
   PLANS_TABLE_NAME: z.string().min(1).default('recap-agent-plans'),
@@ -161,6 +171,12 @@ export function getConfig(): AppConfig {
         extractor:
           environment.OPENAI_EXTRACTOR_MODEL ?? environment.OPENAI_MODEL,
         responseClassifier: environment.OPENAI_RESPONSE_CLASSIFIER_MODEL,
+      },
+      timeoutsMs: {
+        responseClassifier: environment.OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS,
+        extractor: environment.OPENAI_EXTRACTOR_TIMEOUT_MS,
+        reply: environment.OPENAI_REPLY_TIMEOUT_MS,
+        retrieval: environment.OPENAI_RETRIEVAL_TIMEOUT_MS,
       },
     },
     responseClassifier: {

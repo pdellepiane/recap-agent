@@ -29,6 +29,26 @@ Parameters:
   OpenAIResponseClassifierModel:
     Type: String
     Default: gpt-5.6-luna
+  OpenAIResponseClassifierTimeoutMs:
+    Type: Number
+    Default: 16000
+    MinValue: 1000
+    MaxValue: 60000
+  OpenAIExtractorTimeoutMs:
+    Type: Number
+    Default: 35000
+    MinValue: 1000
+    MaxValue: 60000
+  OpenAIReplyTimeoutMs:
+    Type: Number
+    Default: 22000
+    MinValue: 1000
+    MaxValue: 60000
+  OpenAIRetrievalTimeoutMs:
+    Type: Number
+    Default: 8000
+    MinValue: 1000
+    MaxValue: 60000
   ResponseClassifierMode:
     Type: String
     Default: enforce
@@ -287,6 +307,10 @@ Resources:
           OPENAI_MODEL: !Ref OpenAIModel
           OPENAI_EXTRACTOR_MODEL: !Ref OpenAIExtractorModel
           OPENAI_RESPONSE_CLASSIFIER_MODEL: !Ref OpenAIResponseClassifierModel
+          OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS: !Ref OpenAIResponseClassifierTimeoutMs
+          OPENAI_EXTRACTOR_TIMEOUT_MS: !Ref OpenAIExtractorTimeoutMs
+          OPENAI_REPLY_TIMEOUT_MS: !Ref OpenAIReplyTimeoutMs
+          OPENAI_RETRIEVAL_TIMEOUT_MS: !Ref OpenAIRetrievalTimeoutMs
           RESPONSE_CLASSIFIER_MODE: !Ref ResponseClassifierMode
           PLANS_TABLE_NAME: !Ref PlansTable
           PERF_TABLE_NAME: !Ref PerfTable

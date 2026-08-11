@@ -39,4 +39,27 @@ describe('OpenAI model defaults', () => {
     expect(template).not.toContain('OpenAIPromptCacheRetention');
     expect(template).not.toContain('OPENAI_PROMPT_CACHE_RETENTION');
   });
+
+  it('keeps every OpenAI runtime stage below the Lambda timeout', () => {
+    delete process.env.OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS;
+    delete process.env.OPENAI_EXTRACTOR_TIMEOUT_MS;
+    delete process.env.OPENAI_REPLY_TIMEOUT_MS;
+    delete process.env.OPENAI_RETRIEVAL_TIMEOUT_MS;
+
+    expect(getConfig().openAi.timeoutsMs).toEqual({
+      responseClassifier: 16_000,
+      extractor: 35_000,
+      reply: 22_000,
+      retrieval: 8_000,
+    });
+
+    const template = fs.readFileSync(
+      path.resolve(process.cwd(), 'infra/cloudformation/stack.yaml'),
+      'utf8',
+    );
+    expect(template).toContain('OPENAI_RESPONSE_CLASSIFIER_TIMEOUT_MS');
+    expect(template).toContain('OPENAI_EXTRACTOR_TIMEOUT_MS');
+    expect(template).toContain('OPENAI_REPLY_TIMEOUT_MS');
+    expect(template).toContain('OPENAI_RETRIEVAL_TIMEOUT_MS');
+  });
 });

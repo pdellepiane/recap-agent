@@ -4,17 +4,24 @@ import { OpenAiKnowledgeRetrievalGateway } from '../src/runtime/knowledge-retrie
 
 describe('OpenAiKnowledgeRetrievalGateway', () => {
   it('searches the configured vector store with the complete semantic query', async () => {
-    const search = vi.fn().mockResolvedValue({
-      data: [
-        {
-          file_id: 'file-1',
-          filename: 'faq.md',
-          score: 0.91,
-          content: [
-            { type: 'text', text: 'La comisión depende del producto.' },
-          ],
-        },
-      ],
+    const search = vi.fn(async (...args: [
+      string,
+      Record<string, unknown>,
+      { signal?: AbortSignal }?,
+    ]) => {
+      void args;
+      return {
+        data: [
+          {
+            file_id: 'file-1',
+            filename: 'faq.md',
+            score: 0.91,
+            content: [
+              { type: 'text', text: 'La comisión depende del producto.' },
+            ],
+          },
+        ],
+      };
     });
     const gateway = new OpenAiKnowledgeRetrievalGateway({
       apiKey: 'test-key',
@@ -41,7 +48,9 @@ describe('OpenAiKnowledgeRetrievalGateway', () => {
       '¿Cuánto cobra Sin Envolturas por una lista de regalos?',
     );
 
-    expect(search).toHaveBeenCalledWith('vs_faq', {
+    const call = search.mock.calls[0];
+    expect(call?.[0]).toBe('vs_faq');
+    expect(call?.[1]).toEqual({
       query: '¿Cuánto cobra Sin Envolturas por una lista de regalos?',
       max_num_results: 4,
       rewrite_query: true,
@@ -50,6 +59,7 @@ describe('OpenAiKnowledgeRetrievalGateway', () => {
         score_threshold: 0.2,
       },
     });
+    expect(call?.[2]?.signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({
       status: 'success',
       evidence: [

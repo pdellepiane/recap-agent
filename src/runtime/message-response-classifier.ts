@@ -8,6 +8,7 @@ import type { AgentConversationMessage } from './agent-conversation-gateway';
 import type { PromptLoader } from './prompt-loader';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 import { executeWithOpenAiRetry } from './openai-retry';
+import { executeOpenAiStage } from './openai-stage-execution';
 
 const classifierOutputSchema = z.object({
   action: z.enum([
@@ -100,6 +101,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       model: string;
       mode: ResponseClassifierMode;
       promptLoader: PromptLoader;
+      timeoutMs?: number;
       openAIClient?: OpenAI;
     },
   ) {
@@ -148,9 +150,14 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           format: zodTextFormat(classifierOutputSchema, 'reply_delivery_decision'),
         },
       };
-      const { value: response, attemptCount } = await executeWithOpenAiRetry(() =>
-        this.client.responses.parse(request),
-      );
+      const { value: response, attemptCount } = await executeOpenAiStage({
+        stage: 'classifier',
+        model: this.options.model,
+        timeoutMs: this.options.timeoutMs ?? 16_000,
+        operation: async (signal) => await executeWithOpenAiRetry(
+          async () => await this.client.responses.parse(request, { signal }),
+        ),
+      });
       const decision = response.output_parsed;
       if (!decision) {
         return this.fallback({

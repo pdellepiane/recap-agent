@@ -5,6 +5,7 @@ import type { PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
 import { resolveSearchCategories } from '../core/provider-category';
 import type { QueryIntentProviderSearchInput } from './provider-gateway';
+import { executeOpenAiStage } from './openai-stage-execution';
 
 export type ProviderVectorSearchResult = {
   providerId: number;
@@ -19,6 +20,7 @@ export type ProviderVectorSearchOptions = {
   vectorStoreId: string;
   maxResults: number;
   scoreThreshold: number;
+  timeoutMs?: number;
 };
 
 export type RawProviderVectorSearchResult = {
@@ -162,7 +164,11 @@ export class ProviderVectorSearchGateway {
   private readonly client: OpenAI;
 
   constructor(private readonly options: ProviderVectorSearchOptions) {
-    this.client = new OpenAI({ apiKey: options.apiKey, maxRetries: 3 });
+    this.client = new OpenAI({
+      apiKey: options.apiKey,
+      maxRetries: 1,
+      timeout: options.timeoutMs ?? 8_000,
+    });
   }
 
   async search(plan: PersistedPlan): Promise<ProviderVectorSearchResult[]> {
@@ -179,19 +185,16 @@ export class ProviderVectorSearchGateway {
       const filters = buildProviderVectorSearchFilters(categories, plan.location ?? null);
       console.log('[search-funnel] single-category filter:', filters ? JSON.stringify(filters) : 'none');
 
-      const response = await this.client.vectorStores.search(
-        this.options.vectorStoreId,
-        {
-          query: queries,
-          max_num_results: this.options.maxResults,
-          rewrite_query: true,
-          ...(filters ? { filters } : {}),
-          ranking_options: {
-            ranker: 'auto',
-            score_threshold: this.options.scoreThreshold,
-          },
+      const response = await this.searchVectorStore({
+        query: queries,
+        max_num_results: this.options.maxResults,
+        rewrite_query: true,
+        ...(filters ? { filters } : {}),
+        ranking_options: {
+          ranker: 'auto',
+          score_threshold: this.options.scoreThreshold,
         },
-      );
+      });
 
       const seen = new Set<number>();
       const results = response.data.flatMap((item) => {
@@ -224,19 +227,16 @@ export class ProviderVectorSearchGateway {
         ? { type: 'and', filters: [categoryFilter, locationFilter] }
         : categoryFilter;
 
-      const response = await this.client.vectorStores.search(
-        this.options.vectorStoreId,
-        {
-          query: queries,
-          max_num_results: this.options.maxResults,
-          rewrite_query: true,
-          filters,
-          ranking_options: {
-            ranker: 'auto',
-            score_threshold: this.options.scoreThreshold,
-          },
+      const response = await this.searchVectorStore({
+        query: queries,
+        max_num_results: this.options.maxResults,
+        rewrite_query: true,
+        filters,
+        ranking_options: {
+          ranker: 'auto',
+          score_threshold: this.options.scoreThreshold,
         },
-      );
+      });
 
       const seen = new Set<number>();
       const results = response.data.flatMap((item) => {
@@ -273,6 +273,21 @@ export class ProviderVectorSearchGateway {
     return merged;
   }
 
+  private async searchVectorStore(
+    body: Parameters<OpenAI['vectorStores']['search']>[1],
+  ) {
+    return await executeOpenAiStage({
+      stage: 'provider_vector_search',
+      model: 'vector_store_search',
+      timeoutMs: this.options.timeoutMs ?? 8_000,
+      operation: async (signal) => await this.client.vectorStores.search(
+        this.options.vectorStoreId,
+        body,
+        { signal },
+      ),
+    });
+  }
+
   async searchQueryIntent(
     input: QueryIntentProviderSearchInput,
   ): Promise<ProviderVectorSearchResult[]> {
@@ -280,19 +295,16 @@ export class ProviderVectorSearchGateway {
     const filters = buildProviderVectorSearchFilters(categories, input.location);
     const queries = Array.from(new Set(input.queryStrings.filter((query) => query.trim().length > 0)));
 
-    const response = await this.client.vectorStores.search(
-      this.options.vectorStoreId,
-      {
-        query: queries,
-        max_num_results: this.options.maxResults,
-        rewrite_query: true,
-        ...(filters ? { filters } : {}),
-        ranking_options: {
-          ranker: 'auto',
-          score_threshold: this.options.scoreThreshold,
-        },
+    const response = await this.searchVectorStore({
+      query: queries,
+      max_num_results: this.options.maxResults,
+      rewrite_query: true,
+      ...(filters ? { filters } : {}),
+      ranking_options: {
+        ranker: 'auto',
+        score_threshold: this.options.scoreThreshold,
       },
-    );
+    });
 
     const seen = new Set<number>();
     return response.data.flatMap((item) => {

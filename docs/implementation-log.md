@@ -5350,3 +5350,15 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - The Roadmap now has a completed purchase-disclosure item, the phone-first authentication item is consistently marked completed/done, and the continuously growing regression-suite item records this checkpoint while remaining in progress by design.
 
 **Decision:** Accept the deployed purchase-disclosure safeguards and the committed phone-first authentication work as complete. Keep `live_behavior_regression` as the mandatory fail-closed gate for future behavior changes.
+
+## Bound OpenAI stage latency below the Lambda ceiling
+
+- Audited 929 completed development turns from the performance table. Runtime latency was 6,309 ms at p50, 14,411 ms at p95, 23,682 ms at p99, and 34,203 ms at maximum. Component maxima were 14,560 ms for classification, 30,379 ms for extraction, 18,356 ms for reply composition, and 3,943 ms for information execution.
+- Found four 90,000 ms Lambda timeouts in retained CloudWatch logs. All four occurred during overlapping live-evaluation runs on 2026-08-11; the failed invocations ended before a performance record could be persisted.
+- Identified the architectural gap: OpenAI SDK clients otherwise retained a ten-minute request timeout, so Lambda's 90-second ceiling could terminate a hung model or vector-store request before the application recorded its failing stage.
+- Added sanitized `openai_stage_started`, `openai_stage_completed`, and `openai_stage_failed` records for classification, extraction, reply composition, FAQ retrieval, and provider vector search. These records contain stage, model class, deadline, duration, and sanitized error metadata, but no prompt, user content, credentials, or authorization headers.
+- Added configurable stage deadlines of 16 seconds for classification, 35 seconds for extraction, 22 seconds for reply composition, and 8 seconds for vector-store retrieval. The observed component maxima remain below those bounds, while the ordinary classifier/extractor/retrieval/reply critical path now has an 81-second upper model-and-retrieval budget inside the 90-second Lambda ceiling.
+- Reduced vector-store SDK retries from three to one and placed all attempts under the same stage abort signal. Existing application-level failure behavior remains intact: classifier failure is fail-open, FAQ retrieval returns a retryable result, and hybrid provider search can use its existing API fallback.
+- Added deterministic tests for abort propagation, sanitized timeout telemetry, runtime defaults, CloudFormation environment wiring, and the signal passed through classifier, Agents SDK, and knowledge retrieval requests.
+
+**Validation before deployment:** `npm run check` passed 416 tests across 64 files. Development deployment and the mandatory live behavior run are recorded in the next validation checkpoint.
