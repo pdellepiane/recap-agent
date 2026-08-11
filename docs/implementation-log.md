@@ -15,6 +15,8 @@
 
 **Static prompt audit:** The information reply request is 15,296 serialized bytes with zero prompt-audit violations; the automatic-auth rule replaced the confirmation policy without adding model tools.
 
+**Verification:** `npm run check` passed 412/412 tests before deployment; the final stale-state recovery added one deterministic case for a 413-test total. Development stack `recap-agent-runtime` reached `UPDATE_COMPLETE` at `2026-08-11T21:52:35.988Z`. Targeted live runs passed for automatic phone success (`eval-2026-08-11T21-43-14-098Z-89f55d7f`), phone-not-found fallback (`eval-2026-08-11T21-43-41-019Z-354ddfce`), explicit account rejection (`eval-2026-08-11T21-44-10-075Z-51cd660d`), and stale “Este” recovery (`eval-2026-08-11T21-53-15-765Z-6d484763`). The complete mandatory run `eval-2026-08-11T21-53-45-278Z-d7b9d306` passed all 17/17 cases with zero failures, errors, or skips.
+
 ### Make phone confirmation explicit and preserve missing-code reports
 
 - Reconstructed the reported WhatsApp interaction from the channel request logs, DynamoDB plan/performance records, and stored OpenAI Responses payloads.
