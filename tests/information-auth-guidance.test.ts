@@ -22,6 +22,22 @@ describe('information authentication guidance', () => {
         'wait_up_to_one_minute',
         'check_main_inbox',
         'check_junk_mail',
+        'explain_images_not_supported',
+        'enter_code_as_text',
+      ],
+    });
+    expect(
+      createInformationAuthGuidance('otp_resent', 'person@example.com'),
+    ).toEqual({
+      reason: 'otp_resent',
+      email: 'person@example.com',
+      requirements: [
+        'show_destination_email',
+        'wait_up_to_one_minute',
+        'check_main_inbox',
+        'check_junk_mail',
+        'explain_images_not_supported',
+        'enter_code_as_text',
       ],
     });
   });

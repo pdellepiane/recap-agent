@@ -153,6 +153,12 @@ describe('PromptLoader', () => {
       'bandeja principal o el correo no deseado',
     );
     expect(informationBundle.instructions).toContain(
+      'no puedes leer imágenes ni capturas',
+    );
+    expect(informationBundle.instructions).toContain(
+      'escriba el código como texto',
+    );
+    expect(informationBundle.instructions).toContain(
       'Nunca menciones una bandeja de promociones',
     );
     expect(informationBundle.instructions).toContain(

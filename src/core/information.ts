@@ -222,6 +222,8 @@ export const informationAuthRequirementValues = [
   'wait_up_to_one_minute',
   'check_main_inbox',
   'check_junk_mail',
+  'explain_images_not_supported',
+  'enter_code_as_text',
   'offer_code_resend',
   'offer_email_change',
   'offer_human_support',
@@ -268,6 +270,12 @@ export function createInformationAuthGuidance(
       'wait_up_to_one_minute',
       'check_main_inbox',
       'check_junk_mail',
+    );
+  }
+  if (reason === 'otp_sent' || reason === 'otp_resent') {
+    requirements.push(
+      'explain_images_not_supported',
+      'enter_code_as_text',
     );
   }
   if (reason === 'otp_not_received') {

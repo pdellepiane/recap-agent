@@ -5371,3 +5371,12 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - A complete rerun with the phone fixtures was started, then intentionally stopped after the user requested only the tests needed for this latency change. The successful targeted latency evidence above and the 416-test deterministic gate are the acceptance evidence for this operational change; the next behavior-changing update must still produce a fully passing `npm run eval:behavior-live` artifact.
 
 **Decision:** Keep the bounded deadlines and stage telemetry. Do not raise the Lambda timeout or introduce asynchronous WhatsApp processing based on test-only overlapping load. Avoid overlapping full live-evaluation runs against the shared development Lambda.
+
+## Explain image limitations after sending an email code
+
+- Added two structured response requirements for `otp_sent` and `otp_resent`: explain that the assistant cannot read images or screenshots, and ask the person to type the code as text in the conversation.
+- Updated the information-node system prompt and response contract so the model expresses those requirements naturally in Spanish. No deterministic reply override or exact canned message was introduced.
+- Strengthened the existing phone-not-found to email-OTP live regression: its mandatory semantic judge now requires both the image limitation and the request to enter the code as text.
+- Added offline coverage for both newly sent and resent codes, plus prompt-composition assertions that prove the rules reach the model.
+
+**Decision:** Keep wording model-generated while making the two facts mandatory through typed guidance and node-scoped prompt rules.
