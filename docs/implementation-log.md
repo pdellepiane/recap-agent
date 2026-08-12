@@ -5380,3 +5380,12 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - Added offline coverage for both newly sent and resent codes, plus prompt-composition assertions that prove the rules reach the model.
 
 **Decision:** Keep wording model-generated while making the two facts mandatory through typed guidance and node-scoped prompt rules.
+
+### Deployed validation
+
+- `npm run check` passed all 416 deterministic tests across 64 files. The prompt audit explicitly accepted the information-route request increase from 15,296 to 15,429 serialized bytes.
+- Deployed only `recap-agent-runtime`; CloudFormation reached `UPDATE_COMPLETE` at `2026-08-12T13:37:12.889Z`.
+- Added the dedicated permanent live case `live_behavior.otp_sent_explains_image_limitation` so validation does not depend on first manufacturing a phone lookup result.
+- Targeted deployed run `eval-2026-08-12T13-39-37-478Z-4de840cc` passed with score `1.0`, zero failures, errors, or skips. The generated Spanish response reported the code destination and delivery delay, mentioned the main and junk inboxes, explicitly stated that images and screenshots cannot be read, and asked for the code as text.
+
+**Decision:** Accept the model-generated OTP image guidance as deployed. Keep the dedicated case in `live_behavior_regression` for every future behavior-changing run.
