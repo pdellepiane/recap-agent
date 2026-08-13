@@ -2,6 +2,13 @@
 
 ## 2026-08-13
 
+### Remove the deprecated Agent API deployment endpoint
+
+- Changed the deployment fallback for `AGENT_API_BASE_URL` from the deprecated `se-v2-api-dev.jnq.io` host to `https://api.sinenvolturas.com/api/agent`.
+- Added a regression test proving every active deployment and runtime configuration file is free of the deprecated host and that all Sin Envolturas service defaults point to production API paths.
+
+**Reason:** The development Lambda can remain the validation environment, but the deprecated backend host no longer exposes `/guest/rsvp` and must not be selected implicitly by the deploy script.
+
 ### Define the phone-based guest RSVP contract
 
 - Added a typed, unauthenticated Agent API client for `POST /guest/rsvp` using the trusted channel phone, the structured `attending` or `declining` action, and an optional validated guest ID.

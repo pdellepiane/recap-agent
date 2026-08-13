@@ -92,7 +92,7 @@ run(
     `KbVectorStoreId=${process.env.KB_VECTOR_STORE_ID ?? env.KB_VECTOR_STORE_ID ?? ''}`,
     `KbMaxResults=${process.env.KB_MAX_RESULTS ?? env.KB_MAX_RESULTS ?? '6'}`,
     `KbScoreThreshold=${process.env.KB_SCORE_THRESHOLD ?? env.KB_SCORE_THRESHOLD ?? '0'}`,
-    `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://se-v2-api-dev.jnq.io/api/agent'}`,
+    `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://api.sinenvolturas.com/api/agent'}`,
     `AgentApiTimeoutMs=${process.env.AGENT_API_TIMEOUT_MS ?? env.AGENT_API_TIMEOUT_MS ?? '5000'}`,
     `AgentApiMaxRetries=${process.env.AGENT_API_MAX_RETRIES ?? env.AGENT_API_MAX_RETRIES ?? '2'}`,
     `AgentMessageLoggingEnabled=${process.env.AGENT_MESSAGE_LOGGING_ENABLED ?? env.AGENT_MESSAGE_LOGGING_ENABLED ?? 'false'}`,
