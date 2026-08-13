@@ -49,7 +49,7 @@ expectations:
   - id: does-not-repeat-retired-confirmation
     type: text_semantic
     rubric: >-
-      The user answered only “Este” in a conversation seeded from the retired phone-confirmation flow. The response must recover by using the current WhatsApp number automatically and continue in natural Spanish. It must not ask for another yes/no confirmation or request an email or one-time code after successful phone authentication.
+      The user answered only “Este” in a conversation seeded from the retired phone-confirmation flow. Pass if the response continues the preserved event question naturally in Spanish after the structurally asserted successful phone authentication. It must not ask for another yes/no confirmation, ask the user to repeat the known question, or request an email or one-time code. Do not require the user-facing answer to explain the internal automatic-phone mechanism.
     minScore: 0.9
     requireJudge: true
     severity: hard
