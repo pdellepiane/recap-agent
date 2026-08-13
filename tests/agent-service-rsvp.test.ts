@@ -1,0 +1,320 @@
+import path from 'node:path';
+
+import { describe, expect, it } from 'vitest';
+
+import { createEmptyPlan, mergePlan } from '../src/core/plan';
+import type {
+  AgentConversationGateway,
+  AgentGatewayResult,
+  AgentGuestRsvpInput,
+  AgentGuestRsvpResult,
+  AgentMessageLogInput,
+} from '../src/runtime/agent-conversation-gateway';
+import { AgentService } from '../src/runtime/agent-service';
+import type {
+  AgentRuntime,
+  ComposeReplyRequest,
+  ComposeReplyResult,
+  ExtractRequest,
+  ExtractionResult,
+} from '../src/runtime/contracts';
+import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
+import { PromptLoader } from '../src/runtime/prompt-loader';
+import type { ProviderGateway } from '../src/runtime/provider-gateway';
+import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+
+describe('AgentService RSVP flow', () => {
+  it.each([
+    ['attending', 'confirmó que la asistencia quedó registrada'],
+    ['declining', 'confirmó que la inasistencia quedó registrada'],
+  ] as const)('records an explicit %s response using only the trusted channel phone', async (
+    action,
+    expectedNote,
+  ) => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action })]);
+    const gateway = new RsvpGateway([{
+      status: 'responded',
+      action,
+      guestId: 41,
+      eventName: 'Matrimonio de Ana y Luis',
+      eventDate: '2026-09-12',
+    }]);
+    const service = createService(runtime, gateway);
+
+    const result = await service.handleTurn(inbound('Confirmo mi respuesta'));
+
+    expect(gateway.inputs).toEqual([{
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action,
+    }]);
+    expect(result.plan.current_node).toBe('responder_invitacion');
+    expect(result.plan.rsvp_state.status).toBe('none');
+    expect(result.plan.user_auth.status).toBe('none');
+    expect(result.trace.route_kind).toBe('rsvp');
+    expect(result.trace.tools_called).toContain('guest_rsvp');
+    expect(result.trace.timing_ms.rsvp_execution).toBeTypeOf('number');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(expectedNote);
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain('correo');
+  });
+
+  it('persists multiple pending candidates and re-calls with only a validated selection', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({ action: 'attending' }),
+      rsvpExtraction({
+        action: null,
+        candidateGuestId: 42,
+        eventReference: 'Cumpleaños de Marta',
+      }),
+    ]);
+    const gateway = new RsvpGateway([
+      {
+        status: 'multiple_pending',
+        candidates: [
+          {
+            guestId: 41,
+            eventName: 'Matrimonio de Ana y Luis',
+            eventDate: '2026-09-12',
+          },
+          {
+            guestId: 42,
+            eventName: 'Cumpleaños de Marta',
+            eventDate: null,
+          },
+        ],
+      },
+      {
+        status: 'responded',
+        action: 'attending',
+        guestId: 42,
+        eventName: 'Cumpleaños de Marta',
+        eventDate: null,
+      },
+    ]);
+    const store = new InMemoryPlanStore();
+    const service = createService(runtime, gateway, store);
+
+    const first = await service.handleTurn(inbound('Sí, asistiré'));
+    const second = await service.handleTurn(inbound('Al cumpleaños de Marta'));
+
+    expect(first.plan.rsvp_state).toMatchObject({
+      status: 'awaiting_event_selection',
+      pending_action: 'attending',
+      selection_attempts: 0,
+    });
+    expect(first.plan.rsvp_state.candidates).toHaveLength(2);
+    expect(gateway.inputs[1]).toEqual({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 42,
+    });
+    expect(second.plan.rsvp_state.status).toBe('none');
+    expect(runtime.composeRequests[0]?.plan.rsvp_state.candidates).toHaveLength(2);
+  });
+
+  it('never calls the mutation when the extracted guest id is not a stored candidate', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({
+      action: null,
+      candidateGuestId: 999,
+      eventReference: 'Ese evento',
+    })]);
+    const gateway = new RsvpGateway([]);
+    const store = new InMemoryPlanStore();
+    await store.save({
+      reason: 'seed-rsvp',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'plan-rsvp-seeded',
+        channel: 'whatsapp',
+        externalUserId: 'user-rsvp',
+      }), {
+        contact_phone: '51973296571',
+        contact_phone_extension: '+51',
+        contact_phone_number: '973296571',
+        current_node: 'responder_invitacion',
+        rsvp_state: {
+          status: 'awaiting_event_selection',
+          pending_action: 'declining',
+          candidates: [
+            {
+              guest_id: 41,
+              event_name: 'Matrimonio de Ana y Luis',
+              event_date: '2026-09-12',
+            },
+            {
+              guest_id: 42,
+              event_name: 'Cumpleaños de Marta',
+              event_date: null,
+            },
+          ],
+          requested_at: '2026-08-13T15:00:00.000Z',
+          selection_attempts: 0,
+        },
+      }),
+    });
+    const service = createService(runtime, gateway, store);
+
+    const result = await service.handleTurn(inbound('Ese evento'));
+
+    expect(gateway.inputs).toEqual([]);
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(result.plan.rsvp_state.selection_attempts).toBe(1);
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'no identifica un único candidato',
+    );
+  });
+
+  it.each([
+    [{ status: 'already_responded' }, 'ya tenía una respuesta registrada'],
+    [{ status: 'no_pending' }, 'no encontró invitaciones pendientes'],
+    [{ status: 'phone_mismatch' }, 'no corresponde al número confiable'],
+    [{ status: 'failed', error: 'timeout', retryable: true }, 'falló temporalmente'],
+  ] satisfies Array<[AgentGuestRsvpResult, string]>)('reports %o without inventing success', async (
+    gatewayResult,
+    expectedNote,
+  ) => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })]);
+    const gateway = new RsvpGateway([gatewayResult]);
+    const service = createService(runtime, gateway);
+
+    const result = await service.handleTurn(inbound('Sí asistiré'));
+
+    expect(result.plan.rsvp_state.status).toBe('none');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(expectedNote);
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
+      'quedó registrada',
+    );
+  });
+});
+
+class RsvpRuntime implements AgentRuntime {
+  readonly composeRequests: ComposeReplyRequest[] = [];
+
+  constructor(private readonly extractions: ExtractionResult[]) {}
+
+  async extract(request: ExtractRequest): Promise<ExtractionResult> {
+    void request;
+    const extraction = this.extractions.shift();
+    if (!extraction) {
+      throw new Error('No RSVP extraction queued.');
+    }
+    return extraction;
+  }
+
+  async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
+    this.composeRequests.push(request);
+    return { text: request.errorMessage ?? 'Respuesta de asistencia' };
+  }
+}
+
+class RsvpGateway implements AgentConversationGateway {
+  readonly inputs: AgentGuestRsvpInput[] = [];
+
+  constructor(private readonly results: AgentGuestRsvpResult[]) {}
+
+  async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
+    void input;
+    return { status: 'skipped', reason: 'disabled', message: 'Disabled.' };
+  }
+
+  async getRecentMessages(): Promise<{
+    status: 'success';
+    messages: [];
+  }> {
+    return { status: 'success', messages: [] };
+  }
+
+  async requestHumanTakeover(): Promise<AgentGatewayResult> {
+    return { status: 'success', message: 'Requested.' };
+  }
+
+  async authByPhone(): Promise<{
+    status: 'failed';
+    error: string;
+    retryable: false;
+  }> {
+    return { status: 'failed', error: 'Unused.', retryable: false };
+  }
+
+  async updatePhone(): Promise<{ status: 'success' }> {
+    return { status: 'success' };
+  }
+
+  async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {
+    this.inputs.push(input);
+    const result = this.results.shift();
+    if (!result) {
+      throw new Error('No RSVP gateway result queued.');
+    }
+    return result;
+  }
+}
+
+function rsvpExtraction(args: {
+  action: 'attending' | 'declining' | null;
+  candidateGuestId?: number | null;
+  eventReference?: string | null;
+}): ExtractionResult {
+  return {
+    actionIntent: 'responder_invitacion',
+    informationRequests: [],
+    rsvpAction: args.action,
+    rsvpCandidateGuestId: args.candidateGuestId ?? null,
+    rsvpEventReference: args.eventReference ?? null,
+    intentConfidence: 0.98,
+    ambiguity: {
+      status: 'clear',
+      clarificationQuestion: null,
+      interpretations: [],
+    },
+    eventType: null,
+    vendorCategory: null,
+    vendorCategories: [],
+    activeNeedCategory: null,
+    location: null,
+    budgetSignal: null,
+    guestRange: null,
+    preferences: [],
+    hardConstraints: [],
+    assumptions: [],
+    conversationSummary: 'La persona responde una invitación.',
+    selectedProviderHints: [],
+    selectedProviderReferences: [],
+    closeAction: null,
+    pauseRequested: false,
+    contactName: null,
+    contactEmail: null,
+    contactPhone: null,
+    providerFitCriteria: null,
+    providerQueryIntents: [],
+    providerPlanOperations: [],
+    providerExplanationRequest: null,
+    providerDetailRequest: null,
+  };
+}
+
+function createService(
+  runtime: AgentRuntime,
+  gateway: AgentConversationGateway,
+  store = new InMemoryPlanStore(),
+): AgentService {
+  return new AgentService({
+    planStore: store,
+    runtime,
+    providerGateway: {} as ProviderGateway,
+    agentConversationGateway: gateway,
+    promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+    renderers: { whatsapp: new WhatsAppMessageRenderer() },
+  });
+}
+
+function inbound(text: string) {
+  return {
+    channel: 'whatsapp',
+    externalUserId: 'user-rsvp',
+    text,
+    messageId: `message-${text}`,
+    receivedAt: '2026-08-13T15:00:00.000Z',
+    contactPhone: '+51973296571',
+  };
+}

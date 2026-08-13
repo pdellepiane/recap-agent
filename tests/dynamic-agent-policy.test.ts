@@ -13,6 +13,7 @@ function extractionCapabilities(
 ): ExtractionCapabilityProfile {
   return {
     information: true,
+    rsvp: true,
     providerPlanning: true,
     providerOperations: false,
     providerSelection: false,

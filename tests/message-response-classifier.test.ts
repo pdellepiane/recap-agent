@@ -263,6 +263,45 @@ describe('OpenAiMessageResponseClassifier', () => {
     });
   });
 
+  it('never suppresses a reply while an RSVP decision is pending', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+    })));
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+    const plan = createEmptyPlan({
+      planId: 'classifier-rsvp-pending',
+      channel: 'terminal_whatsapp',
+      externalUserId: '51991347878',
+    });
+    plan.current_node = 'responder_invitacion';
+    plan.rsvp_state = {
+      status: 'awaiting_action',
+      pending_action: null,
+      candidates: [],
+      requested_at: '2026-08-13T15:00:00.000Z',
+      selection_attempts: 0,
+    };
+
+    const response = await classifier.classify({
+      inboundText: 'Sí, asistiré',
+      plan,
+      messages: [],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'respond',
+      would_suppress: false,
+      fallback_used: true,
+    });
+  });
+
   it('suppresses an emoji-only reaction even when outbound history is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_reaction',

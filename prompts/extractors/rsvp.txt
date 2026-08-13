@@ -1,0 +1,7 @@
+## Confirmación de asistencia
+
+- Usa `actionIntent = responder_invitacion` cuando la persona quiera registrar, cambiar o precisar si asistirá a un evento al que fue invitada. No lo uses para una pregunta meramente informativa sobre fecha, lugar, vestimenta u otros datos del evento.
+- Define `rsvpAction = attending` solo cuando la persona confirme claramente que asistirá. Define `rsvpAction = declining` solo cuando confirme claramente que no asistirá. Si solo pide confirmar asistencia sin indicar cuál de las dos decisiones desea registrar, deja `rsvpAction = null`.
+- Si `plan.rsvp_state.status` es `awaiting_event_selection`, interpreta la respuesta usando exclusivamente los candidatos visibles. Copia en `rsvpCandidateGuestId` el `guest_id` del candidato claramente elegido y conserva la acción pendiente. Si la referencia puede corresponder a más de un candidato, deja el identificador en null y marca la ambigüedad.
+- `rsvpEventReference` resume la referencia expresada por la persona, por ejemplo el nombre o la fecha del evento. No inventes identificadores ni selecciones ausentes del mensaje y del estado.
+- La intención conversacional no prueba que el registro se haya realizado. La confirmación final depende del resultado tipado del servicio.

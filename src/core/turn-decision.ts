@@ -60,6 +60,7 @@ export const routeKindValues = [
   'human_help_offer',
   'human_escalation',
   'information_batch',
+  'rsvp',
   'error',
 ] as const;
 
@@ -83,6 +84,7 @@ export const presentationScopeValues = [
   'human_help_offer',
   'human_escalation',
   'information_batch',
+  'rsvp',
 ] as const;
 
 export type PresentationScope = (typeof presentationScopeValues)[number];

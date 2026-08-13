@@ -141,6 +141,10 @@ export const extractorAuditProfiles: Array<{
     capabilities: extractionCapabilities(),
   },
   {
+    name: 'rsvp',
+    capabilities: extractionCapabilities({ rsvp: true }),
+  },
+  {
     name: 'initial_planning_information',
     capabilities: extractionCapabilities({
       information: true,
@@ -179,6 +183,7 @@ function extractionCapabilities(
 ): ExtractionCapabilityProfile {
   return {
     information: false,
+    rsvp: false,
     providerPlanning: false,
     providerOperations: false,
     providerSelection: false,

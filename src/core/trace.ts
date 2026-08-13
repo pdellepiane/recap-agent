@@ -55,6 +55,9 @@ export type ExtractionDebugSummary = {
   provider_plan_operations_count: number;
   provider_explanation_requested: boolean;
   provider_detail_requested: boolean;
+  rsvp_action: 'attending' | 'declining' | null;
+  rsvp_candidate_guest_id_present: boolean;
+  rsvp_event_reference_present: boolean;
   conversation_summary_preview: string;
   pause_requested: boolean;
   contact_fields_present: {
@@ -94,6 +97,8 @@ export type PlanDebugSummary = {
   contact_validation_error: string | null;
   user_auth_status: string;
   pending_information_request_count: number;
+  rsvp_status: 'none' | 'awaiting_action' | 'awaiting_event_selection';
+  rsvp_candidate_count: number;
 };
 
 export type CloseActionDebugSummary = {
@@ -208,6 +213,7 @@ export type TurnTrace = {
     apply_extraction: number;
     compute_sufficiency: number;
     information_execution?: number;
+    rsvp_execution?: number;
     provider_search: number;
     provider_enrichment: number;
     prompt_bundle_load: number;

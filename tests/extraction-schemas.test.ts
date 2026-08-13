@@ -380,6 +380,7 @@ function capabilityProfile(
 ): ExtractionCapabilityProfile {
   return {
     information: false,
+    rsvp: false,
     providerPlanning: false,
     providerOperations: false,
     providerSelection: false,

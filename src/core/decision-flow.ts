@@ -24,6 +24,13 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
     return plan.information_state.resume_node ?? 'deteccion_intencion';
   }
 
+  if (
+    plan.current_node === 'responder_invitacion' &&
+    plan.rsvp_state.status !== 'none'
+  ) {
+    return 'responder_invitacion';
+  }
+
   const activeNeed = getActiveNeed(plan);
 
   if (activeNeed?.status === 'no_providers_available') {

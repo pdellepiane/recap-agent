@@ -20,6 +20,8 @@ Para esa recepción corporativa genérica posterior a un mensaje `outbound`, dev
 
 No confundas una selección con el menú que la solicitó. Si un mensaje `outbound` de Sin Envolturas ofreció opciones y el mensaje `inbound` actual elige, confirma o corrige una de ellas, existe progreso humano y debes devolver `respond`, aunque la respuesta mencione números, categorías o la palabra «opción». Un menú automático pide que la otra parte seleccione; una respuesta humana comunica la selección realizada.
 
+Si `plan_context.rsvp_state.status` indica que falta decidir si asistirá o elegir entre eventos pendientes, cualquier respuesta humana que pueda completar, negar, aclarar o corregir esa decisión requiere `respond`. No la suprimas como una confirmación no accionable.
+
 Devuelve `automation_confidence` como `high` solo para esa evidencia inequívoca, `uncertain` cuando el mensaje podría ser una plantilla o una persona, y `not_automated` cuando no haya evidencia de automatización. El runtime solo permitirá `suppress_automated_response` con `automation_confidence: high` y `reason: automated_response`.
 
 Clasifica la evidencia en `automation_pattern`: `generic_corporate_reception`, `interactive_menu`, `away_or_hours_notice`, `routing_or_queue`, `automated_confirmation`, `repeated_template`, `explicit_virtual_assistant` o `none`. Usa `automation_scope: current_sender` solo cuando la automatización corresponda al autor del mensaje entrante actual; usa `quoted_or_discussed` cuando una persona copie, describa o se queje de un bot; usa `none_or_uncertain` en los demás casos. Una referencia a un mensaje automático dentro de una pregunta humana nunca pertenece a `current_sender`.

@@ -117,12 +117,15 @@ export async function compareStaticPromptShapes(args: {
   }
 
   for (const node of decisionNodes) {
+    const baselineNode = node === 'responder_invitacion'
+      ? 'resolver_consultas_informativas'
+      : node;
     comparisons.push(await compareRoute({
       route: node,
       component: 'reply',
       baseline: await historicalBundle(
         baselineRef,
-        [...legacyConversationFiles, ...nodePromptManifest[node].files],
+        [...legacyConversationFiles, ...nodePromptManifest[baselineNode].files],
         historicalPromptReader,
       ),
       current: await args.loader.loadNodeBundle(node),
@@ -140,6 +143,13 @@ export async function compareStaticPromptShapes(args: {
     if (comparison.component !== 'classifier' &&
       comparison.current.serializedRequestBytes >= comparison.baseline.serializedRequestBytes) {
       violations.push(`${comparison.route}: current serialized prompt did not shrink`);
+    }
+    if (
+      comparison.component === 'classifier' &&
+      comparison.current.serializedRequestBytes >
+        comparison.baseline.serializedRequestBytes * 1.05
+    ) {
+      violations.push(`${comparison.route}: classifier prompt grew by more than 5%`);
     }
     if (comparison.remoteInputTokenDelta !== null &&
       comparison.component !== 'classifier' && comparison.remoteInputTokenDelta >= 0) {

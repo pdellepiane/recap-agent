@@ -20,17 +20,20 @@ describe('static prompt comparison', () => {
     });
 
     expect(result.baselineRef).toBe(legacyPromptBaselineRef);
-    expect(result.comparisons).toHaveLength(32);
+    expect(result.comparisons).toHaveLength(34);
     expect(result.violations).toEqual([]);
     expect(result.summary.currentSerializedRequestBytes)
       .toBeLessThan(result.summary.baselineSerializedRequestBytes);
     expect(result.summary.serializedRequestByteReductionPercent).toBeGreaterThan(20);
-    expect(route(result, 'classifier').serializedRequestByteReductionPercent).toBe(0);
+    expect(route(result, 'classifier').serializedRequestByteReductionPercent)
+      .toBeGreaterThan(-5);
     expect(route(result, 'extractor:conversation_only').current.fileCount).toBe(1);
     expect(route(result, 'extractor:shortlist').current.fileCount).toBe(6);
+    expect(route(result, 'extractor:rsvp').current.fileCount).toBe(2);
     expect(route(result, 'contacto_inicial').current.fileCount).toBe(7);
     expect(route(result, 'recomendar').current.fileCount).toBe(10);
     expect(route(result, 'resolver_consultas_informativas').current.fileCount).toBe(7);
+    expect(route(result, 'responder_invitacion').current.fileCount).toBe(7);
   }, 15_000);
 
   it('uses non-generative input-token counting only when supplied', async () => {

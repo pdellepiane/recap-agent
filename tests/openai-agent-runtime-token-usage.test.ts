@@ -272,6 +272,7 @@ describe('OpenAiAgentRuntime capability context', () => {
       faq: true,
       invitedEventLookup: false,
       purchaseInformation: false,
+      rsvp: false,
     });
     const typedRuntime = runtime as unknown as {
       summarizeEnabledCapabilities: () => string;
@@ -353,6 +354,7 @@ describe('OpenAiAgentRuntime capability context', () => {
       faq: false,
       invitedEventLookup: false,
       purchaseInformation: true,
+      rsvp: false,
     });
     const typedRuntime = runtime as unknown as {
       summarizeEnabledCapabilities: () => string;
@@ -677,6 +679,13 @@ function createComposeRequest(
         resume_node: null,
         pending_requests: [],
         selection_candidates: [],
+      },
+      rsvp_state: {
+        status: 'none',
+        pending_action: null,
+        candidates: [],
+        requested_at: null,
+        selection_attempts: 0,
       },
     human_escalation: {
       status: 'none',

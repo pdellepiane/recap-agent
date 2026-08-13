@@ -78,6 +78,7 @@ import {
   type AgentAuthByPhoneResult,
   type AgentMessageLogInput,
   type AgentConversationMessage,
+  type AgentGuestRsvpResult,
 } from './agent-conversation-gateway';
 import type {
   MessageResponseClassifier,
@@ -162,6 +163,7 @@ type TurnTiming = {
   apply_extraction: number;
   compute_sufficiency: number;
   information_execution: number;
+  rsvp_execution: number;
   provider_search: number;
   provider_enrichment: number;
   prompt_bundle_load: number;
@@ -246,6 +248,7 @@ export class AgentService {
       apply_extraction: 0,
       compute_sufficiency: 0,
       information_execution: 0,
+      rsvp_execution: 0,
       provider_search: 0,
       provider_enrichment: 0,
       prompt_bundle_load: 0,
@@ -627,6 +630,22 @@ export class AgentService {
       finishedExtraction =
         this.normalizeInformationExtractionAmbiguity(finishedExtraction);
 
+      if (this.hasRsvpWork(existingPlan, finishedExtraction)) {
+        return await this.handleRsvpFlow({
+          inbound,
+          previousNode: existingPlan.current_node,
+          workingPlan: existingPlan,
+          extraction: finishedExtraction,
+          toolUsage,
+          timingMs,
+          tokenUsage,
+          responseClassifierTrace,
+          messageContext,
+          handleTurnStartedAt,
+          gateway: agentConversationGateway,
+        });
+      }
+
       if (this.hasInformationWork(existingPlan, finishedExtraction)) {
         return await this.handleInformationFlow({
           inbound,
@@ -790,6 +809,25 @@ export class AgentService {
       inbound.text,
     );
     extraction = providerConfirmationGuard.extraction;
+    if (
+      this.hasRsvpWork(workingPlan, extraction) &&
+      extraction.actionIntent !== 'pausar' &&
+      extraction.actionIntent !== 'solicitar_humano'
+    ) {
+      return await this.handleRsvpFlow({
+        inbound,
+        previousNode,
+        workingPlan,
+        extraction,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        responseClassifierTrace,
+        messageContext,
+        handleTurnStartedAt,
+        gateway: agentConversationGateway,
+      });
+    }
     if (
       this.hasInformationWork(workingPlan, extraction) &&
       extraction.actionIntent !== 'pausar' &&
@@ -1609,6 +1647,281 @@ export class AgentService {
         operationalNote: errorMessage,
       }),
     };
+  }
+
+  private hasRsvpWork(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): boolean {
+    return (
+      plan.rsvp_state.status !== 'none' ||
+      extraction.actionIntent === 'responder_invitacion' ||
+      (extraction.rsvpAction !== null && extraction.rsvpAction !== undefined) ||
+      (extraction.rsvpCandidateGuestId !== null &&
+        extraction.rsvpCandidateGuestId !== undefined) ||
+      (extraction.rsvpEventReference !== null &&
+        extraction.rsvpEventReference !== undefined)
+    );
+  }
+
+  private async handleRsvpFlow(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    workingPlan: PlanSnapshot;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+    gateway: AgentConversationGateway;
+  }): Promise<HandleTurnResponse> {
+    const currentNode: DecisionNode = 'responder_invitacion';
+    const pendingState = args.workingPlan.rsvp_state;
+    const action = args.extraction.rsvpAction ?? pendingState.pending_action;
+    const knownCandidate = pendingState.status === 'awaiting_event_selection'
+      ? pendingState.candidates.find(
+          (candidate) => candidate.guest_id === args.extraction.rsvpCandidateGuestId,
+        ) ?? null
+      : null;
+    const needsCandidate = pendingState.status === 'awaiting_event_selection';
+    let result: AgentGuestRsvpResult | null = null;
+    let operationalNote: string;
+    let nextRsvpState = pendingState;
+
+    args.toolUsage.considered.push('guest_rsvp');
+
+    if (!action) {
+      nextRsvpState = {
+        status: 'awaiting_action',
+        pending_action: null,
+        candidates: [],
+        requested_at: new Date().toISOString(),
+        selection_attempts: 0,
+      };
+      operationalNote =
+        'La persona quiere responder una invitación, pero aún no indicó si asistirá. Pregunta si asistirá o no asistirá. No afirmes que se registró una respuesta.';
+    } else if (needsCandidate && !knownCandidate) {
+      const attempts = pendingState.selection_attempts + 1;
+      nextRsvpState = {
+        ...pendingState,
+        pending_action: action,
+        selection_attempts: attempts,
+      };
+      operationalNote = attempts >= 2
+        ? 'La referencia del evento sigue sin identificar un único candidato. Presenta solo los eventos pendientes y pregunta una vez más cuál desea elegir; ofrece apoyo humano como alternativa. No llames al servicio ni afirmes que se registró una respuesta.'
+        : 'La referencia del evento no identifica un único candidato. Presenta solo los eventos pendientes y pregunta a cuál desea responder. No llames al servicio ni afirmes que se registró una respuesta.';
+    } else {
+      const phoneExtension = args.workingPlan.contact_phone_extension;
+      const phoneNumber = args.workingPlan.contact_phone_number;
+      if (!phoneExtension || !phoneNumber) {
+        result = {
+          status: 'failed',
+          error: 'Trusted channel phone is unavailable for RSVP.',
+          retryable: false,
+        };
+      } else if (!args.gateway.guestRsvp) {
+        result = {
+          status: 'failed',
+          error: 'Agent API RSVP is not configured.',
+          retryable: false,
+        };
+      } else {
+        const executionStartedAt = Date.now();
+        args.toolUsage.called.push('guest_rsvp');
+        args.toolUsage.inputs.push({
+          tool: 'guest_rsvp',
+          input: JSON.stringify({
+            action,
+            guest_id: knownCandidate?.guest_id ?? null,
+            trusted_phone_present: true,
+          }),
+        });
+        result = await args.gateway.guestRsvp({
+          phone_extension: phoneExtension,
+          phone_number: phoneNumber,
+          action,
+          ...(knownCandidate ? { guest_id: knownCandidate.guest_id } : {}),
+        });
+        args.timingMs.rsvp_execution += Date.now() - executionStartedAt;
+        args.toolUsage.outputs.push({
+          tool: 'guest_rsvp',
+          output: JSON.stringify(this.summarizeRsvpResult(result)),
+        });
+      }
+
+      operationalNote = this.rsvpOperationalNote(result, action, knownCandidate);
+      nextRsvpState = result.status === 'multiple_pending'
+        ? {
+            status: 'awaiting_event_selection',
+            pending_action: action,
+            candidates: result.candidates.map((candidate) => ({
+              guest_id: candidate.guestId,
+              event_name: candidate.eventName,
+              event_date: candidate.eventDate,
+            })),
+            requested_at: new Date().toISOString(),
+            selection_attempts: 0,
+          }
+        : {
+            status: 'none',
+            pending_action: null,
+            candidates: [],
+            requested_at: null,
+            selection_attempts: 0,
+          };
+    }
+
+    const planToSave = mergePlan(args.workingPlan, {
+      current_node: currentNode,
+      intent: 'responder_invitacion',
+      intent_confidence: args.extraction.intentConfidence,
+      rsvp_state: nextRsvpState,
+    });
+    const promptStartedAt = Date.now();
+    const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+    args.timingMs.prompt_bundle_load += Date.now() - promptStartedAt;
+    const composeStartedAt = Date.now();
+    const reply = await this.dependencies.runtime.composeReply({
+      currentNode,
+      previousNode: args.previousNode,
+      userMessage: args.inbound.text,
+      messageContext: args.messageContext,
+      plan: planToSave,
+      extraction: args.extraction,
+      missingFields: [],
+      searchReady: false,
+      providerResults: [],
+      turnDecision: this.rsvpTurnDecision(result?.status ?? 'needs_input'),
+      errorMessage: operationalNote,
+      promptBundleId: bundle.id,
+      promptFilePaths: bundle.filePaths,
+      toolUsage: args.toolUsage,
+    });
+    args.timingMs.compose_reply += Date.now() - composeStartedAt;
+    args.tokenUsage.reply = reply.tokenUsage ?? null;
+    args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+      args.tokenUsage.reply,
+    );
+    const saveStartedAt = Date.now();
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: currentNode,
+    });
+    args.timingMs.save_plan += Date.now() - saveStartedAt;
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+
+    return {
+      plan: planToSave,
+      outbound: this.renderOutbound(
+        reply,
+        [],
+        args.inbound.channel,
+        planToSave.conversation_id,
+        planToSave,
+      ),
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.previousNode,
+        currentNode,
+        nodePath: args.previousNode === currentNode
+          ? [currentNode]
+          : [args.previousNode, currentNode],
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: currentNode,
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        responseClassifier: args.responseClassifierTrace,
+        messageContext: args.messageContext,
+        searchStrategy: 'none',
+        turnDecision: this.rsvpTurnDecision(result?.status ?? 'needs_input'),
+        operationalNote,
+      }),
+    };
+  }
+
+  private summarizeRsvpResult(result: AgentGuestRsvpResult): Record<string, unknown> {
+    if (result.status === 'responded') {
+      return {
+        status: result.status,
+        action: result.action,
+        guest_id: result.guestId,
+        event_name: result.eventName,
+        event_date: result.eventDate,
+      };
+    }
+    if (result.status === 'multiple_pending') {
+      return {
+        status: result.status,
+        candidates: result.candidates.map((candidate) => ({
+          guest_id: candidate.guestId,
+          event_name: candidate.eventName,
+          event_date: candidate.eventDate,
+        })),
+      };
+    }
+    return {
+      status: result.status,
+      ...(result.status === 'failed'
+        ? { retryable: result.retryable, error: result.error }
+        : {}),
+    };
+  }
+
+  private rsvpOperationalNote(
+    result: AgentGuestRsvpResult,
+    action: 'attending' | 'declining',
+    selectedCandidate: PlanSnapshot['rsvp_state']['candidates'][number] | null,
+  ): string {
+    if (result.status === 'responded') {
+      const eventName = result.eventName ?? selectedCandidate?.event_name ?? null;
+      return action === 'attending'
+        ? `El servicio confirmó que la asistencia quedó registrada${eventName ? ` para ${eventName}` : ''}. Comunica el éxito sin pedir otra confirmación.`
+        : `El servicio confirmó que la inasistencia quedó registrada${eventName ? ` para ${eventName}` : ''}. Comunica el éxito sin pedir otra confirmación.`;
+    }
+    if (result.status === 'multiple_pending') {
+      return 'El servicio encontró varias invitaciones pendientes. Presenta únicamente los candidatos visibles en rsvp_state y pregunta a cuál evento desea responder. No afirmes que ya se registró una respuesta.';
+    }
+    if (result.status === 'already_responded') {
+      return 'El servicio indicó que esa invitación ya tenía una respuesta registrada. No afirmes que se realizó una nueva actualización.';
+    }
+    if (result.status === 'no_pending') {
+      return 'El servicio no encontró invitaciones pendientes para el número confiable del canal. Dilo directamente y ofrece apoyo humano si la persona considera que falta una invitación.';
+    }
+    if (result.status === 'phone_mismatch') {
+      return 'El servicio indicó que la invitación elegida no corresponde al número confiable del canal. No pidas correo ni código; ofrece apoyo humano para revisar la invitación.';
+    }
+    return result.retryable
+      ? 'El servicio de asistencia falló temporalmente y no confirmó ninguna actualización. Pide reintentar más tarde u ofrece apoyo humano.'
+      : 'No fue posible registrar la respuesta y el servicio no confirmó ninguna actualización. Ofrece apoyo humano.';
+  }
+
+  private rsvpTurnDecision(reason: string): TurnDecision {
+    return turnDecisionSchema.parse({
+      nextNode: 'responder_invitacion',
+      routeKind: 'rsvp',
+      providerSearchMode: 'none',
+      presentationScope: 'rsvp',
+      focusNeedCategory: null,
+      needsToSearch: [],
+      needsToPresent: [],
+      stopReason: null,
+      persistReason: reason,
+      invariantStatus: 'valid',
+      invariantViolations: [],
+    });
   }
 
   private hasInformationWork(
@@ -4114,6 +4427,11 @@ export class AgentService {
       provider_plan_operations_count: extraction.providerPlanOperations?.length ?? 0,
       provider_explanation_requested: Boolean(extraction.providerExplanationRequest),
       provider_detail_requested: Boolean(extraction.providerDetailRequest),
+      rsvp_action: extraction.rsvpAction ?? null,
+      rsvp_candidate_guest_id_present:
+        extraction.rsvpCandidateGuestId !== null &&
+        extraction.rsvpCandidateGuestId !== undefined,
+      rsvp_event_reference_present: Boolean(extraction.rsvpEventReference),
       conversation_summary_preview: this.truncateDebugText(extraction.conversationSummary, 160),
       pause_requested: extraction.pauseRequested,
       contact_fields_present: {
@@ -4159,6 +4477,8 @@ export class AgentService {
       user_auth_status: plan.user_auth.status,
       pending_information_request_count:
         plan.information_state.pending_requests.length,
+      rsvp_status: plan.rsvp_state.status,
+      rsvp_candidate_count: plan.rsvp_state.candidates.length,
     };
   }
 

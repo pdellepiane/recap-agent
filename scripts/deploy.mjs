@@ -104,6 +104,7 @@ run(
     `AgentFeatureFaq=${process.env.AGENT_FEATURE_FAQ ?? env.AGENT_FEATURE_FAQ ?? 'true'}`,
     `AgentFeatureInvitedEventLookup=${process.env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? 'true'}`,
     `AgentFeaturePurchaseInformation=${process.env.AGENT_FEATURE_PURCHASE_INFORMATION ?? env.AGENT_FEATURE_PURCHASE_INFORMATION ?? 'true'}`,
+    `AgentFeatureRsvp=${process.env.AGENT_FEATURE_RSVP ?? env.AGENT_FEATURE_RSVP ?? 'true'}`,
   ],
   { env: awsEnv },
 );

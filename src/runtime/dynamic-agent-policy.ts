@@ -24,6 +24,7 @@ const baseActionIntents = [
   'elicitar_necesidades',
   'buscar_proveedores',
   'solicitar_humano',
+  'responder_invitacion',
 ] as const satisfies readonly ActionIntent[];
 
 const baseNextNodes = [
@@ -40,6 +41,7 @@ const baseNextNodes = [
   'informar_error_reintento',
   'reintentar',
   'resolver_consultas_informativas',
+  'responder_invitacion',
 ] as const satisfies readonly DecisionNode[];
 
 export function derivePlanCapabilities(plan: PersistedPlan): PlanCapabilities {

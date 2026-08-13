@@ -15,6 +15,7 @@ import {
   userAuthStateSchema,
   type UserAuthState,
 } from './information';
+import { rsvpStateSchema, type RsvpState } from './rsvp';
 
 export const actionIntentValues = [
   'elicitar_necesidades',
@@ -29,6 +30,7 @@ export const actionIntentValues = [
   'cerrar',
   'pausar',
   'solicitar_humano',
+  'responder_invitacion',
 ] as const;
 
 export type ActionIntent = (typeof actionIntentValues)[number];
@@ -148,6 +150,13 @@ export const planSchema = z.object({
     pending_requests: [],
     selection_candidates: [],
   }),
+  rsvp_state: rsvpStateSchema.default({
+    status: 'none',
+    pending_action: null,
+    candidates: [],
+    requested_at: null,
+    selection_attempts: 0,
+  }),
   human_escalation: humanEscalationStateSchema.default({
     status: 'none',
     requested_at: null,
@@ -191,9 +200,10 @@ export type PersistedPlan = z.infer<typeof planSchema>;
 export type PlanSnapshot = PersistedPlan & { current_node: DecisionNode };
 
 export type PlanUpdate = Partial<
-  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth'>
+  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth' | 'rsvp_state'>
 > & {
   user_auth?: Partial<UserAuthState>;
+  rsvp_state?: Partial<RsvpState>;
 };
 
 export function normalizeRawPlan(raw: unknown): unknown {
@@ -284,6 +294,13 @@ export function createEmptyPlan(args: {
       resume_node: null,
       pending_requests: [],
       selection_candidates: [],
+    },
+    rsvp_state: {
+      status: 'none',
+      pending_action: null,
+      candidates: [],
+      requested_at: null,
+      selection_attempts: 0,
     },
     human_escalation: {
       status: 'none',
@@ -623,6 +640,10 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     user_auth: {
       ...plan.user_auth,
       ...(update.user_auth ?? {}),
+    },
+    rsvp_state: {
+      ...plan.rsvp_state,
+      ...(update.rsvp_state ?? {}),
     },
     preferences: uniqueStrings([...(plan.preferences ?? []), ...(update.preferences ?? [])]),
     hard_constraints: uniqueStrings([

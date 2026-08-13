@@ -189,6 +189,12 @@ Parameters:
     AllowedValues:
       - 'true'
       - 'false'
+  AgentFeatureRsvp:
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
 
 Resources:
   RuntimeLogGroup:
@@ -339,6 +345,7 @@ Resources:
           AGENT_FEATURE_FAQ: !Ref AgentFeatureFaq
           AGENT_FEATURE_INVITED_EVENT_LOOKUP: !Ref AgentFeatureInvitedEventLookup
           AGENT_FEATURE_PURCHASE_INFORMATION: !Ref AgentFeaturePurchaseInformation
+          AGENT_FEATURE_RSVP: !Ref AgentFeatureRsvp
 
   RuntimeFunctionUrl:
     Type: AWS::Lambda::Url

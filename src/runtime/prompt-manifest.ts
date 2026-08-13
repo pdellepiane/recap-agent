@@ -88,6 +88,7 @@ export function extractorPromptFilesForCapabilities(
     'extractors/base_system.txt',
     ...(capabilities.providerPlanning ? ['extractors/planning.txt'] : []),
     ...(capabilities.information ? ['extractors/information.txt'] : []),
+    ...(capabilities.rsvp ? ['extractors/rsvp.txt'] : []),
     ...(capabilities.providerOperations ||
       capabilities.providerSelection ||
       capabilities.providerInspection
@@ -262,6 +263,10 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
   },
   resolver_consultas_informativas: {
     files: buildNodeFiles('resolver_consultas_informativas'),
+    allowedTools: [],
+  },
+  responder_invitacion: {
+    files: buildNodeFiles('responder_invitacion'),
     allowedTools: [],
   },
 };

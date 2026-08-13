@@ -12,6 +12,20 @@
 
 **Verification:** The focused Agent API gateway suite passed 19/19 tests, including request shape, multiple-invitation parsing, and malformed-response handling.
 
+### Add the structured RSVP conversation flow
+
+- Added the `responder_invitacion` decision node, capability-scoped structured extraction, persisted RSVP state, and a route-owned Spanish reply bundle.
+- Clear attendance or nonattendance decisions use the trusted channel phone directly. RSVP never asks for email, OTP, or user-account authentication.
+- Multiple pending invitations persist only backend-provided candidate IDs. A follow-up mutation is allowed only when structured extraction resolves one of those stored candidates; invented or ambiguous IDs never reach the backend.
+- Pending RSVP follow-ups cannot be discarded as acknowledgements or reactions. Traces now include RSVP extraction evidence, state, candidate count, backend outcome, and stage timing.
+- Added a typed feature flag and CloudFormation/deployment wiring, defaulting the development runtime to the enabled capability.
+
+**Decision:** Structured extraction owns intent, action, and event-reference interpretation. Deterministic runtime code only validates stored candidate evidence, performs the mutation once per actionable turn, and prevents an unconfirmed service result from being rendered as success.
+
+**Prompt leanness:** The route-scoped RSVP extractor serializes to 3,558 bytes and the reply request to 7,690 bytes, both with zero model tools and no prompt-audit violations. Across the full static comparison catalog, current serialized prompt bytes remain 52.26% below the historical baseline (336,965 versus 705,769).
+
+**Verification:** `npm run check` passed 431/431 tests. Focused RSVP, extraction, classifier, trace, and prompt suites passed 71/71 tests. `npm run audit:prompts` reported 33 entries with zero violations, and `npm run audit:prompts:compare` passed its monotonic structural gates.
+
 ## 2026-08-11
 
 ### Authenticate protected requests with the current WhatsApp number automatically

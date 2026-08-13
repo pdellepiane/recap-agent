@@ -88,6 +88,7 @@ export type AgentFeatureFlags = {
   faq: boolean;
   invitedEventLookup: boolean;
   purchaseInformation: boolean;
+  rsvp: boolean;
 };
 
 const environmentSchema = z.object({
@@ -153,6 +154,7 @@ const environmentSchema = z.object({
   AGENT_FEATURE_FAQ: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_INVITED_EVENT_LOOKUP: z.enum(['true', 'false']).default('true'),
   AGENT_FEATURE_PURCHASE_INFORMATION: z.enum(['true', 'false']).default('true'),
+  AGENT_FEATURE_RSVP: z.enum(['true', 'false']).default('true'),
 });
 
 export function getConfig(): AppConfig {
@@ -242,6 +244,7 @@ export function getConfig(): AppConfig {
       invitedEventLookup: environment.AGENT_FEATURE_INVITED_EVENT_LOOKUP === 'true',
       purchaseInformation:
         environment.AGENT_FEATURE_PURCHASE_INFORMATION === 'true',
+      rsvp: environment.AGENT_FEATURE_RSVP === 'true',
     },
   };
 }

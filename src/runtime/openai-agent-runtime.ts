@@ -14,7 +14,7 @@ import type {
 import OpenAI from 'openai';
 import { z } from 'zod';
 
-import type { PersistedPlan } from '../core/plan';
+import type { ActionIntent, PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
 import {
   prioritizedProviderCategoriesForEvent,
@@ -132,13 +132,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       features.faq ||
       features.invitedEventLookup ||
       features.purchaseInformation;
-    const allowedActionIntents = features.providerPlanning
-      ? policy.allowedActionIntents
-      : policy.allowedActionIntents.filter(
-          (actionIntent) => actionIntent === 'solicitar_humano',
-        );
+    const allowedActionIntents = policy.allowedActionIntents.filter(
+      (actionIntent) =>
+        (features.providerPlanning || !this.isProviderPlanningIntent(actionIntent)) &&
+        (features.rsvp || actionIntent !== 'responder_invitacion'),
+    );
     const extractionCapabilities = {
       information: informationEnabled,
+      rsvp: features.rsvp,
       providerPlanning: features.providerPlanning,
       providerOperations:
         features.providerPlanning && policy.capabilities.hasActivePlan,
@@ -216,6 +217,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         this.normalizeInformationRequest(request),
       ),
       phoneConfirmation: extraction.phoneConfirmation ?? null,
+      rsvpAction: extraction.rsvpAction ?? null,
+      rsvpCandidateGuestId: extraction.rsvpCandidateGuestId ?? null,
+      rsvpEventReference: extraction.rsvpEventReference ?? null,
       intentConfidence: extraction.intentConfidence ?? null,
       ambiguity: extraction.ambiguity ?? {
         status: 'clear',
@@ -784,6 +788,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         authentication_status: plan.user_auth.status,
         authenticated_email: plan.user_auth.email,
       },
+      rsvp_state: plan.rsvp_state,
     };
   }
 
@@ -988,6 +993,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         : null,
       information_requests: extraction.informationRequests,
       phone_confirmation: extraction.phoneConfirmation ?? null,
+      rsvp_action: extraction.rsvpAction ?? null,
+      rsvp_candidate_guest_id: extraction.rsvpCandidateGuestId ?? null,
+      rsvp_event_reference: extraction.rsvpEventReference ?? null,
       event_type: extraction.eventType,
       vendor_category: extraction.vendorCategory,
       vendor_categories: extraction.vendorCategories,
@@ -1116,6 +1124,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     if (capabilities.invitedEventLookup) {
       lines.push('Consultar información de eventos asociados al usuario, como confirmación de asistencia, relación con el evento y anfitriones.');
     }
+    if (capabilities.rsvp) {
+      lines.push('Registrar la asistencia o inasistencia de una persona invitada usando el número del canal y la confirmación explícita de la persona.');
+    }
     if (capabilities.purchaseInformation) {
       lines.push('Consultar tus pedidos recientes o buscar uno directamente por su número después de verificar primero tu número actual de WhatsApp; si no es posible, se usa el correo con un código de un solo uso.');
       lines.push('Consultar detalles de regalos comprados, como pago, dedicatoria, tarjeta física, envío y agradecimiento, cuando estén disponibles.');
@@ -1134,8 +1145,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       faq: true,
       invitedEventLookup: true,
       purchaseInformation: true,
+      rsvp: true,
       ...this.options.features,
     };
+  }
+
+  private isProviderPlanningIntent(actionIntent: ActionIntent): boolean {
+    return actionIntent !== 'solicitar_humano' && actionIntent !== 'responder_invitacion';
   }
 
   private hasShortlistedProviderNeeds(plan: PersistedPlan): boolean {
@@ -1906,6 +1922,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         pending_requests: plan.information_state.pending_requests,
         selection_candidates: plan.information_state.selection_candidates,
       },
+      rsvp_state: plan.rsvp_state,
       event_type: plan.event_type,
       focus_need_category: focusNeedCategory,
       vendor_category: plan.vendor_category,

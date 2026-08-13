@@ -184,7 +184,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         isHighConfidenceAutomatedResponse && !hasOutstandingHelpOffer;
       const validContextualSuppression =
         (isNonActionableAcknowledgement || isNonActionableReaction) &&
-        !hasOutstandingHelpOffer;
+        !hasOutstandingHelpOffer &&
+        args.plan.rsvp_state.status === 'none';
       const action = shouldSuppressAutomation
         ? 'suppress_automated_response'
         : decision.action === 'respond'
@@ -259,6 +260,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         active_need_category: args.plan.active_need_category,
         human_escalation_status: args.plan.human_escalation.status,
         conversation_health: args.plan.conversation_health,
+        rsvp_state: args.plan.rsvp_state,
         conversation_summary: truncatePreservingEnds(args.plan.conversation_summary, 600),
       },
       has_prior_outbound_message: hasPriorOutboundMessage,

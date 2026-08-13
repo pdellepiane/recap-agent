@@ -17,7 +17,7 @@ describe('prompt audit', () => {
     });
 
     expect(result.violations).toEqual([]);
-    expect(result.entries).toHaveLength(31);
+    expect(result.entries).toHaveLength(33);
     expect(entry(result, 'contacto_inicial')).toMatchObject({
       serializedRequestBytes: 7279,
       maximumToolCount: 0,
@@ -26,6 +26,11 @@ describe('prompt audit', () => {
       serializedRequestBytes: 15429,
       maximumToolCount: 0,
     });
+    expect(entry(result, 'responder_invitacion')).toMatchObject({
+      maximumToolCount: 0,
+    });
+    expect(entry(result, 'extractor:rsvp').serializedRequestBytes)
+      .toBeLessThan(4_500);
     expect(entry(result, 'extractor:conversation_only').serializedRequestBytes)
       .toBeLessThan(2_500);
     expect(entry(result, 'extractor:initial_planning_information').serializedRequestBytes)
