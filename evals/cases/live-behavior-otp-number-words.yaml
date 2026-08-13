@@ -1,0 +1,59 @@
+template: template.base-live
+id: live_behavior.otp_number_words_are_verified
+suite: live_behavior_regression
+version: 1
+description: An OTP written as unambiguous Spanish digit words must be normalized and submitted instead of rejected as prose.
+tags: [live, behavior, authentication, otp, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Uno cuatro siete cinco uno cinco
+    channel: whatsapp
+    contactPhone: "+51959307414"
+    sessionId: live-behavior-otp-number-words-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  contact_email: stefany_ljsv4@hotmail.com
+  contact_phone: "51959307414"
+  user_auth:
+    status: code_requested
+    email: stefany_ljsv4@hotmail.com
+    token: null
+    token_expires_at: null
+    last_error: null
+    requested_at: "2026-08-13T21:55:52.166Z"
+    failed_code_attempts: 0
+  information_state:
+    resume_node: deteccion_intencion
+    pending_requests:
+      - requestId: information-1
+        kind: purchase
+        resource: gift_purchases
+        query: Confirmar la compra realizada el 13 de mayo.
+        orderId: null
+        aspects: [summary, payment_status]
+        sensitiveFields: []
+        authAction: provide_otp
+    selection_candidates: []
+expectations:
+  - id: word-code-is-submitted
+    type: tool_usage
+    mustCall: [verify_user_login_code]
+    severity: hard
+  - id: word-code-is-not-rejected-for-format
+    type: text_not_contains
+    phrases:
+      - escríbelo como números
+      - sin palabras
+      - no pude leer el código
+    severity: hard
+  - id: word-code-receives-correct-outcome
+    type: text_semantic
+    rubric: >-
+      The user supplied a six-digit one-time code as an unambiguous sequence of Spanish digit words. Pass only if the agent treats it as a code and attempts verification. The response may report the backend verification result, but it must not ask the user to rewrite the same code using digits or claim that number words are unreadable. It must preserve the pending request to confirm the May 13 purchase and remain entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 450

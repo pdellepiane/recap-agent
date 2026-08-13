@@ -70,6 +70,7 @@ import type {
 } from './contracts';
 import type { TokenUsage } from './contracts';
 import type { OpenAiCallRef } from './contracts';
+import { extractOtpCode } from './otp-normalization';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import {
   NoopAgentConversationGateway,
@@ -3137,8 +3138,7 @@ export class AgentService {
   }
 
   private extractUserLoginCode(text: string): string | null {
-    const matches = text.match(/\b[A-Za-z0-9]{4,8}\b/gu) ?? [];
-    return matches.find((match) => /\d/u.test(match)) ?? null;
+    return extractOtpCode(text);
   }
 
   private hasValidUserAuthToken(plan: PlanSnapshot): boolean {

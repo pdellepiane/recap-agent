@@ -5481,3 +5481,9 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Decision:** Require the native WhatsApp `message_id` at the runtime boundary; return the Lambda request ID and runtime trace ID to the adapter; emit one standardized completion record containing authentication path/reason, typed information outcomes, and classifier/extractor/reply request and response references. Enrich information summaries with stable outcome codes, retryability, query fingerprints, and bounded FAQ evidence references so retrieval distinguishes results, empty results, configuration failures, and transient failures. Add OpenAI request/response identifiers to successful stage logs while retaining sanitized failed-stage logs.
 
 **Operations:** Added the personal `audit-recap-message` skill with a fail-closed `se-dev`/`us-east-1` audit script. It reconstructs Agent API history, DynamoDB performance evidence, and Lambda logs without exposing credentials, and classifies stored inbound messages with no runtime evidence as pre-runtime dispatch failures.
+
+## 2026-08-13 — Accept OTPs expressed as Spanish digit words
+
+**Reason:** In the reported purchase-verification interaction, “Uno cuatro siete cinco uno cinco” unambiguously represented the six-digit OTP `147515`, but the runtime asked the user to rewrite it with numerals.
+
+**Decision:** Normalize only an all-digit-word Spanish sequence of four to eight tokens while an OTP is pending; ordinary prose remains invalid. Add the complete purchase-verification state as a mandatory live regression plus a deterministic normalization twin.
