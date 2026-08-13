@@ -5489,3 +5489,9 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Decision:** Normalize only an all-digit-word Spanish sequence of four to eight tokens while an OTP is pending; ordinary prose remains invalid. Add the complete purchase-verification state as a mandatory live regression plus a deterministic normalization twin.
 
 **Live-gate follow-up:** The first complete deployed run proved that the word-form code invoked `verify_user_login_code` and was not rejected for formatting. It also exposed that a recovered pending information query was removed from the reply input after successful capability execution. Preserve the canonical pending requests in the reply extraction so terse legacy confirmation responses such as “Este” can continue the already-known question rather than asking the user to repeat it.
+
+## 2026-08-13 — State retrieved numeric FAQ answers explicitly
+
+**Reason:** Deployed run `eval-2026-08-13T23-05-15-817Z-4aaffce9` routed the commission question correctly, retrieved six grounded FAQ records, and avoided provider search, but its answer made the user infer the 5% rate from a US$100 example. The mandatory semantic gate therefore failed at 0.88.
+
+**Decision:** When retrieved FAQ evidence contains the requested fee, rate, deadline, limit, or other numeric value, state it directly rather than only illustrating it. Keep the existing grounding constraint: values absent from retrieved evidence must not be invented.
