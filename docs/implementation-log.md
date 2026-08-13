@@ -17,6 +17,14 @@
 
 **Reason:** The first mandatory RSVP run proved correct state and tool behavior, but its `route_kind` disappeared during evaluation parsing and the year 2026 was replaced as though it were an OTP. Both defects produced false-negative evaluation results and reduced diagnostic fidelity.
 
+### Load local live-evaluation phone fixtures
+
+- Configured the ignored `.env.local` file with the established-phone fixture and the phone-not-found fixture supplied for development evaluation.
+- Updated both evaluation entry points to load `.env.local` before `.env`, keeping fixture phones out of Git while preventing mandatory cases from failing because shell variables were omitted.
+- Added a regression test for the environment-file precedence in both entry points.
+
+**Decision:** Live fixture phone numbers are local operational configuration, not repository test data. Case files continue to reference environment variable names and evaluation artifacts continue to redact phone values.
+
 ### Define the phone-based guest RSVP contract
 
 - Added a typed, unauthenticated Agent API client for `POST /guest/rsvp` using the trusted channel phone, the structured `attending` or `declining` action, and an optional validated guest ID.

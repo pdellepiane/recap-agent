@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 
 import { runEvaluation } from './runner';
 
-dotenv.config({ quiet: true });
+dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
 async function main(): Promise<void> {
   if (!process.env.OPENAI_API_KEY) {

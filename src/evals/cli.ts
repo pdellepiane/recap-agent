@@ -11,7 +11,7 @@ import { listEvaluationAssets, runEvaluation } from './runner';
 import { renderMarkdownReport } from './reporting';
 import { runTechnicalStudy } from './technical-study';
 
-dotenv.config({ quiet: true });
+dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
 type RunCommandOptions = {
   suite?: string;
