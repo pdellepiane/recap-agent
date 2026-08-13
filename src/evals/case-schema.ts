@@ -181,7 +181,7 @@ const turnTraceSchema = z.object({
     prompt_bundle_load: z.number().nonnegative(),
     compose_reply: z.number().nonnegative(),
     save_plan: z.number().nonnegative(),
-  }),
+  }).passthrough(),
   token_usage: z.object({
     classifier: z.object({
       input_tokens: z.number().nonnegative(),
@@ -255,7 +255,7 @@ const turnTraceSchema = z.object({
     prompt_bundle_id: z.string().nullable(),
     prompt_file_paths: z.array(z.string()),
   }).optional(),
-});
+}).passthrough();
 
 const cliPerfSummarySchema = z.object({
   trace_id: z.string(),

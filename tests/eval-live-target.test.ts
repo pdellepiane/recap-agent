@@ -158,6 +158,8 @@ describe('live lambda eval target', () => {
                   termsHighlights: [],
                 },
               ],
+              route_kind: 'single_need_search',
+              operational_note: 'Safe trace detail.',
               plan_persisted: true,
               plan_persist_reason: 'recomendar',
               timing_ms: {
@@ -167,6 +169,7 @@ describe('live lambda eval target', () => {
                 extraction: 350,
                 apply_extraction: 10,
                 compute_sufficiency: 5,
+                rsvp_execution: 17,
                 provider_search: 200,
                 provider_enrichment: 120,
                 prompt_bundle_load: 10,
@@ -231,6 +234,9 @@ describe('live lambda eval target', () => {
 
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0]?.trace.tools_called).toEqual(['search_providers_from_plan']);
+    expect(result.turns[0]?.trace.route_kind).toBe('single_need_search');
+    expect(result.turns[0]?.trace.operational_note).toBe('Safe trace detail.');
+    expect(result.turns[0]?.trace.timing_ms.rsvp_execution).toBe(17);
     expect(result.turns[0]?.perf?.runtime_latency_ms).toBe(1200);
     expect(result.turns[0]?.perf?.conversation_hash).toBe('a'.repeat(64));
     expect(result.turns[0]?.plan.event_type).toBe('boda');

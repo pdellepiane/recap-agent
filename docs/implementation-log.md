@@ -9,6 +9,14 @@
 
 **Reason:** The development Lambda can remain the validation environment, but the deprecated backend host no longer exposes `/guest/rsvp` and must not be selected implicitly by the deploy script.
 
+### Preserve complete live-evaluation traces and calendar dates
+
+- Made the live Lambda trace parser forward-compatible so newly added trace fields are retained instead of silently stripped before structural expectations and artifacts are produced.
+- Preserved stage-specific timing fields such as `rsvp_execution` while continuing to validate the stable timing contract.
+- Corrected contextual redaction so ordinary calendar years from 1900 through 2099 remain available to the semantic judge while standalone four-to-eight-digit codes continue to be redacted.
+
+**Reason:** The first mandatory RSVP run proved correct state and tool behavior, but its `route_kind` disappeared during evaluation parsing and the year 2026 was replaced as though it were an OTP. Both defects produced false-negative evaluation results and reduced diagnostic fidelity.
+
 ### Define the phone-based guest RSVP contract
 
 - Added a typed, unauthenticated Agent API client for `POST /guest/rsvp` using the trusted channel phone, the structured `attending` or `declining` action, and an optional validated guest ID.

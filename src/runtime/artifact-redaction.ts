@@ -34,7 +34,7 @@ export function redactArtifactText(value: string): string {
     .replace(/(["']?(?:otp|passcode|verification[_-]?code|code)["']?\s*[:=]\s*["']?)[^\s,"'}]+/giu, '$1[redacted-code]')
     .replace(/\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/giu, '[redacted-email]')
     .replace(/(?<![\d-])\+?(?!\d{4}-\d{2}-\d{2}(?:T|\b))\d[\d\s().-]{7,}\d/gu, '[redacted-phone]')
-    .replace(/(?<![-\d])\d{4,8}(?![-\d])/gu, '[redacted-code]');
+    .replace(/(?<![-\d])(?!(?:19|20)\d{2}(?!\d))\d{4,8}(?![-\d])/gu, '[redacted-code]');
 }
 
 /**

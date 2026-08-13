@@ -148,6 +148,14 @@ describe('sensitive artifact redaction', () => {
     expect(redactArtifactRecord({ conversation_hash: text }).conversation_hash).toBe(text);
   });
 
+  it('preserves calendar years while redacting standalone one-time codes', () => {
+    const text = 'El evento será el 12 de septiembre de 2026. El código es 753994.';
+
+    expect(redactArtifactText(text)).toContain('septiembre de 2026');
+    expect(redactArtifactText(text)).not.toContain('753994');
+    expect(redactArtifactText(text)).toContain('[redacted-code]');
+  });
+
   it('returns a schema-valid redacted handler response', () => {
     const plan = createEmptyPlan({
       planId: 'handler-plan',
