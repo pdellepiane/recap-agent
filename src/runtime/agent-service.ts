@@ -6550,10 +6550,22 @@ export class AgentService {
 
     if (plan.lifecycle_state === 'finished') {
       const destination = this.selectedProviderDestination(plan);
+      const selectedProviderCount = new Set(
+        plan.provider_needs.flatMap((need) => need.selected_provider_ids),
+      ).size;
+      const deferredCategories = plan.provider_needs
+        .filter((need) => need.status === 'deferred')
+        .map((need) => need.category);
+      const submissionSummary = selectedProviderCount === 1
+        ? `La solicitud de cotización fue enviada a ${destination}. Este proveedor se pondrá en contacto contigo por correo electrónico o teléfono.`
+        : `Las solicitudes de cotización fueron enviadas a ${destination}. Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.`;
+      const deferredSummary = deferredCategories.length > 0
+        ? ` ${this.formatSpanishList(deferredCategories)} quedó fuera del envío y sin proveedor seleccionado.`
+        : '';
       return {
         type: 'generic',
         paragraphs_es: [
-          `Las solicitudes de cotización fueron enviadas a ${destination}. Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.`,
+          `${submissionSummary}${deferredSummary}`,
         ],
       };
     }
@@ -6606,6 +6618,13 @@ export class AgentService {
       ? uniqueNames.join(', ')
       : 'los proveedores seleccionados';
     return destination;
+  }
+
+  private formatSpanishList(values: readonly string[]): string {
+    if (values.length <= 1) {
+      return values[0] ?? '';
+    }
+    return `${values.slice(0, -1).join(', ')} y ${values.at(-1)}`;
   }
 
   private suppressOutbound(

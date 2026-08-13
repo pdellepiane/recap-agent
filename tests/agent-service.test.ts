@@ -3877,6 +3877,41 @@ describe('AgentService', () => {
           contact_phone: '51954779071',
           current_node: 'necesidad_cubierta',
           intent: 'cerrar',
+          provider_needs: [
+            {
+              category: 'Fotografía y video',
+              status: 'selected',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [90],
+              recommended_providers: [
+                {
+                  id: 90,
+                  title: 'Carlos Schult',
+                  category: 'Fotografía y video',
+                  location: 'Lima',
+                  priceLevel: null,
+                  reason: 'opción seleccionada',
+                  serviceHighlights: [],
+                  termsHighlights: [],
+                },
+              ],
+              selected_provider_ids: [90],
+              selected_provider_hints: ['Carlos Schult'],
+            },
+            {
+              category: 'Catering',
+              status: 'deferred',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: [],
+              recommended_provider_ids: [],
+              recommended_providers: [],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
         });
         Object.assign(request.plan, finished);
         return {
@@ -3912,7 +3947,13 @@ describe('AgentService', () => {
     expect(planStore.saves.every((save) => !('ttlEpochSeconds' in save))).toBe(true);
     expect(planStore.currentPlan?.lifecycle_state).toBe('finished');
     expect(planStore.currentPlan?.contact_email).toBe('lin@example.com');
-    expect(response.outbound.text).toContain('fueron enviadas');
+    expect(response.outbound.text).toContain(
+      'La solicitud de cotización fue enviada a Carlos Schult',
+    );
+    expect(response.outbound.text).toContain(
+      'Catering quedó fuera del envío y sin proveedor seleccionado',
+    );
+    expect(response.outbound.text).not.toContain('Los proveedores');
     expect(response.outbound.text).not.toContain('¿Confirmas');
   });
 

@@ -25,6 +25,14 @@
 
 **Decision:** Live fixture phone numbers are local operational configuration, not repository test data. Case files continue to reference environment variable names and evaluation artifacts continue to redact phone values.
 
+### Render close outcomes from selected and deferred needs
+
+- Made the finished-plan renderer use singular wording when exactly one provider received a quote request and plural wording only for multiple selected providers.
+- Added an explicit sentence listing deferred categories as outside the submission and without a selected provider.
+- Extended the deterministic finished-plan test with one selected photography provider and deferred catering evidence.
+
+**Reason:** The mandatory live case correctly persisted Carlos Schult as the only selected provider and catering as deferred, but the final deterministic renderer said “solicitudes” and “proveedores” in plural and omitted the deferred need. That wording could falsely imply a catering provider was contacted.
+
 ### Define the phone-based guest RSVP contract
 
 - Added a typed, unauthenticated Agent API client for `POST /guest/rsvp` using the trusted channel phone, the structured `attending` or `declining` action, and an optional validated guest ID.
