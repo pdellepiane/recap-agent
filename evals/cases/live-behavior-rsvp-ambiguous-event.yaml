@@ -1,0 +1,57 @@
+template: template.base-live
+id: live_behavior.rsvp_ambiguous_event_requires_grounded_selection
+suite: live_behavior_regression
+version: 1
+description: An underspecified event reference cannot select or mutate one of several persisted RSVP candidates.
+tags: [live, behavior, rsvp, attendance, ambiguity, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Ese.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-ambiguous-event-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: awaiting_event_selection
+    pending_action: attending
+    candidates:
+      - guest_id: 41001
+        event_name: Matrimonio de Ana y Luis
+        event_date: "2026-09-12"
+      - guest_id: 41002
+        event_name: Cumpleaños de Marta
+        event_date: "2026-09-19"
+    requested_at: "2026-08-13T15:00:00.000Z"
+    selection_attempts: 0
+expectations:
+  - id: remains-in-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: preserves-event-selection-state
+    type: plan_field_equals
+    path: rsvp_state.status
+    expected: awaiting_event_selection
+    severity: hard
+  - id: records-one-ambiguous-attempt
+    type: plan_field_equals
+    path: rsvp_state.selection_attempts
+    expected: 1
+    severity: hard
+  - id: does-not-mutate-an-ungrounded-candidate
+    type: tool_usage
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: asks-which-persisted-event
+    type: text_semantic
+    rubric: >-
+      The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events in natural Spanish and ask which one the guest means, without requesting email or an authentication code.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 300

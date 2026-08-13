@@ -1,0 +1,38 @@
+template: template.base-live
+id: live_behavior.rsvp_trusted_phone_reports_no_pending
+suite: live_behavior_regression
+version: 1
+description: A clear RSVP decision uses the trusted channel phone and reports the real no-pending backend outcome without account authentication.
+tags: [live, behavior, rsvp, attendance, trusted-phone, agent-api]
+targetModes: [live_lambda]
+inputs:
+  - text: Sí, confirmo que asistiré a la invitación pendiente.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-trusted-phone-session
+expectations:
+  - id: enters-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: calls-rsvp-only
+    type: tool_usage
+    mustCall: [guest_rsvp]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: records-rsvp-route
+    type: trace_field_equals
+    path: route_kind
+    expected: rsvp
+    severity: hard
+  - id: reports-real-no-pending-outcome
+    type: text_semantic
+    rubric: >-
+      This case uses a reserved synthetic phone number for which the backend has no pending invitation. The response must say naturally and entirely in Spanish that no pending invitation was found for the current channel number. It may offer human help if the guest believes an invitation is missing. It must not request email or a one-time code, expose internal values, or claim that attendance was registered.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1400
+  estimatedCompletionTokensPerTurn: 250

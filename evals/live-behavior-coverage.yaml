@@ -75,3 +75,24 @@ behaviorChanges:
   - id: omit-shipping-for-nonphysical-purchases
     implementedBy: d08aac3
     liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
+  - id: route-rsvp-through-structured-extraction
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+  - id: require-explicit-rsvp-action-before-mutation
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
+  - id: use-trusted-channel-phone-for-rsvp-without-account-auth
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+  - id: report-only-backend-confirmed-rsvp-outcomes
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+  - id: persist-multiple-pending-rsvp-candidates
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+  - id: reject-ungrounded-rsvp-event-selection
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+  - id: keep-pending-rsvp-followups-unsuppressed
+    implementedBy: 5dd22c4
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]

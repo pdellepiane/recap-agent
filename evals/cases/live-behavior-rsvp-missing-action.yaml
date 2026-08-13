@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.rsvp_missing_action_requires_explicit_decision
+suite: live_behavior_regression
+version: 1
+description: An RSVP request without an attendance decision must ask whether the guest will attend before any mutation.
+tags: [live, behavior, rsvp, attendance, explicit-decision]
+targetModes: [live_lambda]
+inputs:
+  - text: Quiero responder mi invitación.
+    channel: whatsapp
+    contactPhone: "+12025550100"
+    sessionId: live-rsvp-missing-action-session
+expectations:
+  - id: enters-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: preserves-awaiting-action-state
+    type: plan_field_equals
+    path: rsvp_state.status
+    expected: awaiting_action
+    severity: hard
+  - id: does-not-mutate-without-decision
+    type: tool_usage
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: asks-for-explicit-rsvp-decision
+    type: text_semantic
+    rubric: >-
+      The guest wants to answer an invitation but has not said whether they will attend. The response must ask one clear, natural Spanish question that distinguishes attending from not attending. It must not ask for email, an authentication code, or another account detail, and it must not claim that any attendance response was registered.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1400
+  estimatedCompletionTokensPerTurn: 250

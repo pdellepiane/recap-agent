@@ -26,6 +26,14 @@
 
 **Verification:** `npm run check` passed 431/431 tests. Focused RSVP, extraction, classifier, trace, and prompt suites passed 71/71 tests. `npm run audit:prompts` reported 33 entries with zero violations, and `npm run audit:prompts:compare` passed its monotonic structural gates.
 
+### Make RSVP behavior a mandatory live regression gate
+
+- Added separate behavior-coverage entries for structured RSVP routing, explicit action confirmation, trusted-phone execution without account authentication, backend-confirmed outcome reporting, multiple-candidate persistence, grounded event selection, and suppression protection.
+- Added three mandatory development-Lambda cases: a request missing its attendance decision, a clear confirmation against the real endpoint using a reserved synthetic phone, and the complete persisted-state interaction where “Ese” cannot choose between two events.
+- Every case has hard state or tool assertions and a hard semantic expectation with a required judge. Deterministic gateway, state-machine, classifier, and orchestration tests remain their offline twins.
+
+**Verification:** `tests/live-behavior-coverage.test.ts` and the evaluation catalog loader passed 5/5 tests before deployment.
+
 ## 2026-08-11
 
 ### Authenticate protected requests with the current WhatsApp number automatically
