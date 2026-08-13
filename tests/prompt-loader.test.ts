@@ -86,7 +86,10 @@ describe('PromptLoader', () => {
       expect(bundle.filePaths).not.toContain('shared/question_strategy.txt');
     }
     expect(information.instructions).toContain(
-      'indica directamente el valor exacto presente en la evidencia',
+      'indica directamente todos los valores aplicables presentes en la evidencia',
+    );
+    expect(information.instructions).toContain(
+      'Nunca sustituyas los valores disponibles por frases vagas',
     );
     expect(interview.filePaths).toContain('shared/domain_knowledge.txt');
     expect(interview.filePaths).toContain('shared/flow_discipline.txt');
