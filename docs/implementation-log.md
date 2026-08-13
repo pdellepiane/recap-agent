@@ -5487,3 +5487,5 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Reason:** In the reported purchase-verification interaction, “Uno cuatro siete cinco uno cinco” unambiguously represented the six-digit OTP `147515`, but the runtime asked the user to rewrite it with numerals.
 
 **Decision:** Normalize only an all-digit-word Spanish sequence of four to eight tokens while an OTP is pending; ordinary prose remains invalid. Add the complete purchase-verification state as a mandatory live regression plus a deterministic normalization twin.
+
+**Live-gate follow-up:** The first complete deployed run proved that the word-form code invoked `verify_user_login_code` and was not rejected for formatting. It also exposed that a recovered pending information query was removed from the reply input after successful capability execution. Preserve the canonical pending requests in the reply extraction so terse legacy confirmation responses such as “Este” can continue the already-known question rather than asking the user to repeat it.

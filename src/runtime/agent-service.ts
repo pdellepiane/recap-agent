@@ -2107,13 +2107,17 @@ export class AgentService {
     const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
     args.timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
     const composeReplyStartedAt = Date.now();
+    const replyExtraction: ExtractionResult = {
+      ...informationExtraction,
+      informationRequests: requests,
+    };
     const composedReply = await this.dependencies.runtime.composeReply({
       currentNode,
       previousNode: args.previousNode,
       userMessage: args.inbound.text,
       messageContext: args.messageContext,
       plan: planForInformation,
-      extraction: informationExtraction,
+      extraction: replyExtraction,
       missingFields: [],
       searchReady: false,
       providerResults: [],
@@ -2128,7 +2132,7 @@ export class AgentService {
     });
     const ambiguitySafeReply = this.enforceFaqAmbiguityReply(
       currentNode,
-      informationExtraction,
+      replyExtraction,
       composedReply,
     );
     const missingOtpReply = this.enforceMissingOtpRecoveryReply(

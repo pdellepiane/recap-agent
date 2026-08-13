@@ -260,6 +260,12 @@ describe('AgentService first-class information flow', () => {
       auth_method: null,
       awaiting_phone_confirmation: false,
     });
+    expect(runtime.composeRequests.at(-1)?.extraction.informationRequests).toEqual([
+      expect.objectContaining({
+        kind: 'purchase',
+        query: 'Estado del regalo comprado.',
+      }),
+    ]);
   });
 
   it('recovers a persisted retired confirmation turn by authenticating automatically', async () => {

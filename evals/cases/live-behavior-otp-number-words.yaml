@@ -49,7 +49,7 @@ expectations:
   - id: word-code-receives-correct-outcome
     type: text_semantic
     rubric: >-
-      The user supplied a six-digit one-time code as an unambiguous sequence of Spanish digit words. Pass only if the agent treats it as a code and attempts verification. The response may report the backend verification result, but it must not ask the user to rewrite the same code using digits or claim that number words are unreadable. It must preserve the pending request to confirm the May 13 purchase and remain entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
+      The user supplied a six-digit one-time code as an unambiguous sequence of Spanish digit words. Pass only if the agent treats it as a code and attempts verification. The response may report the backend verification result, but it must not ask the user to rewrite the same code using digits or claim that number words are unreadable. It must not invent a purchase result before authentication succeeds, and it must remain entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
     minScore: 0.9
     requireJudge: true
     severity: hard
