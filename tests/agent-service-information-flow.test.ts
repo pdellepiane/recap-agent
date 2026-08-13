@@ -324,17 +324,20 @@ describe('AgentService first-class information flow', () => {
       auth_method: 'phone',
       awaiting_phone_confirmation: false,
     });
-    expect(runtime.composeRequests.at(-1)?.extraction).toMatchObject({
+    const recoveryExtraction = runtime.composeRequests.at(-1)?.extraction;
+    expect(recoveryExtraction).toMatchObject({
       ambiguity: {
         status: 'clear',
         clarificationQuestion: null,
         interpretations: [],
       },
-      conversationSummary: expect.stringContaining('Estado del regalo comprado.'),
-      informationRequests: [
-        expect.objectContaining({ query: 'Estado del regalo comprado.' }),
-      ],
     });
+    expect(recoveryExtraction?.conversationSummary).toContain(
+      'Estado del regalo comprado.',
+    );
+    expect(recoveryExtraction?.informationRequests[0]?.query).toBe(
+      'Estado del regalo comprado.',
+    );
   });
 
   it('asks for the registered email only after the current phone is not found', async () => {
