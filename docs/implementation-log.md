@@ -5503,3 +5503,14 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Reason:** Targeted deployed validation authenticated the current WhatsApp number and completed associated-event retrieval, but the reply still asked the user to complete “Este.” The reply evidence had cleared the ambiguity status while retaining the extractor's contradictory summary that the message was incomplete.
 
 **Decision:** For this narrowly identified legacy recovery state, replace the stale summary with the canonical pending information queries already persisted in the plan. This preserves decision evidence and lets the model answer the completed lookup without keyword routing or a deterministic user-facing response.
+
+### Deployed validation and external gate condition
+
+- `npm run check` passed all 439 deterministic tests across 69 files.
+- The runtime stack deployed successfully with the final Lambda-impacting changes.
+- Targeted deployed run `eval-2026-08-13T23-43-06-194Z-4437f38c` passed the strengthened FAQ case with score `0.9973`; the response included grounded method-specific monetary values and did not resume provider selection.
+- Targeted deployed run `eval-2026-08-13T23-43-06-194Z-c95c6248` passed the retired-phone-confirmation recovery case with score `0.98`; phone authentication and associated-event lookup completed without asking the user to repeat the known question.
+- Complete mandatory runs `eval-2026-08-13T23-14-45-276Z-a7dc728c` and `eval-2026-08-13T23-29-53-656Z-38d47607` reached every case with zero evaluator errors or skips. The OTP sender returned HTTP 429 (`Too many requests. Try again later.`) for both code-send fixtures, so those external-success assertions correctly failed closed. The traces identify `request_user_login_code`, `email_otp`, HTTP 429, and the terminal failure reason; rerunning after a short cooldown produced the same dependency response.
+- A deployed `channel_request_completed` record was verified to correlate the Lambda request ID, runtime trace ID, hashed native WhatsApp message ID, authentication path/reason, typed FAQ outcome and hashed evidence references, and successful classifier/extractor/reply OpenAI response and request IDs.
+
+**Decision:** Accept the changed FAQ and recovery behaviors based on their passing deployed cases and keep the full-suite OTP failures visible rather than weakening the gate or misclassifying an external HTTP 429 as a Lambda/LLM regression.
