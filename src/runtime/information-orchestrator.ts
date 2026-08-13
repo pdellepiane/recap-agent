@@ -1,3 +1,5 @@
+import crypto from 'node:crypto';
+
 import {
   createInformationAuthGuidance,
   type InformationAuthGuidance,
@@ -67,6 +69,10 @@ export class InformationOrchestrator {
             kind: request.kind,
             status: result.status,
             source: this.sourceFor(request),
+            outcomeCode: this.outcomeCode(result),
+            retryable: result.status === 'failed' ? result.retryable : null,
+            queryHash: this.hash(request.query),
+            evidence: this.evidenceReferences(result),
             resultCount: this.resultCount(result),
             durationMs: Date.now() - startedAt,
           } satisfies InformationExecutionSummary,
@@ -104,6 +110,10 @@ export class InformationOrchestrator {
         kind: request.kind,
         status: 'failed',
         source: this.sourceFor(request),
+        outcomeCode: 'request_failed',
+        retryable: true,
+        queryHash: this.hash(request.query),
+        evidence: [],
         resultCount: 0,
         durationMs: 0,
       });
@@ -431,5 +441,35 @@ export class InformationOrchestrator {
       return result.result.events.length;
     }
     return result.purchases.length;
+  }
+
+  private outcomeCode(
+    result: InformationTaskResult,
+  ): InformationExecutionSummary['outcomeCode'] {
+    if (result.status === 'needs_input') {
+      return 'awaiting_authentication';
+    }
+    if (result.status === 'failed') {
+      return result.failureKind;
+    }
+    return this.resultCount(result) > 0
+      ? 'completed_with_results'
+      : 'completed_without_results';
+  }
+
+  private evidenceReferences(
+    result: InformationTaskResult,
+  ): InformationExecutionSummary['evidence'] {
+    if (result.status !== 'completed' || result.kind !== 'faq') return [];
+    return result.evidence.map((entry) => ({
+      fileId: entry.fileId,
+      filename: entry.filename,
+      score: entry.score,
+      contentHash: this.hash(entry.text),
+    }));
+  }
+
+  private hash(value: string): string {
+    return crypto.createHash('sha256').update(value).digest('hex');
   }
 }

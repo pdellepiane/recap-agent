@@ -5474,3 +5474,10 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - Targeted deployed run `eval-2026-08-12T13-39-37-478Z-4de840cc` passed with score `1.0`, zero failures, errors, or skips. The generated Spanish response reported the code destination and delivery delay, mentioned the main and junk inboxes, explicitly stated that images and screenshots cannot be read, and asked for the code as text.
 
 **Decision:** Accept the model-generated OTP image guidance as deployed. Keep the dedicated case in `live_behavior_regression` for every future behavior-changing run.
+## 2026-08-13 — Standardize cross-boundary turn and FAQ observability
+
+**Reason:** Production support could establish that some inbound WhatsApp messages were stored but never dispatched, yet the pre-runtime boundary did not preserve a native message identifier or a shared correlation result. FAQ/tool outcomes were generic counts, successful OpenAI stages were split from their response identifiers, and the authentication trace required manual reconstruction.
+
+**Decision:** Require the native WhatsApp `message_id` at the runtime boundary; return the Lambda request ID and runtime trace ID to the adapter; emit one standardized completion record containing authentication path/reason, typed information outcomes, and classifier/extractor/reply request and response references. Enrich information summaries with stable outcome codes, retryability, query fingerprints, and bounded FAQ evidence references so retrieval distinguishes results, empty results, configuration failures, and transient failures. Add OpenAI request/response identifiers to successful stage logs while retaining sanitized failed-stage logs.
+
+**Operations:** Added the personal `audit-recap-message` skill with a fail-closed `se-dev`/`us-east-1` audit script. It reconstructs Agent API history, DynamoDB performance evidence, and Lambda logs without exposing credentials, and classifies stored inbound messages with no runtime evidence as pre-runtime dispatch failures.

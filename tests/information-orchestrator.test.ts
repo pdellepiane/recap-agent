@@ -92,6 +92,29 @@ describe('InformationOrchestrator', () => {
       'completed',
       'completed',
     ]);
+    expect(execution.summaries).toEqual([
+      expect.objectContaining({
+        requestId: 'information-1',
+        kind: 'faq',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        resultCount: 1,
+        evidence: [expect.objectContaining({
+          fileId: 'file-1',
+          filename: 'faq.md',
+          score: 0.9,
+        })],
+      }),
+      expect.objectContaining({
+        requestId: 'information-2',
+        kind: 'associated_event',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        evidence: [],
+      }),
+    ]);
+    expect(execution.summaries[0]?.queryHash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(execution.summaries[0]?.evidence[0]?.contentHash).toMatch(/^[a-f0-9]{64}$/u);
   });
 
   it('keeps successful FAQ evidence when a production purchase route is unavailable', async () => {
@@ -147,6 +170,20 @@ describe('InformationOrchestrator', () => {
         requestId: 'purchase-1',
         status: 'failed',
         failureKind: 'route_unavailable',
+      }),
+    ]);
+    expect(execution.summaries).toEqual([
+      expect.objectContaining({
+        requestId: 'faq-1',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        evidence: [expect.objectContaining({ fileId: 'file-1' })],
+      }),
+      expect.objectContaining({
+        requestId: 'purchase-1',
+        outcomeCode: 'route_unavailable',
+        retryable: false,
+        evidence: [],
       }),
     ]);
   });

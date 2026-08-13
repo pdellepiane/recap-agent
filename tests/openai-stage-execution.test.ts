@@ -60,4 +60,25 @@ describe('executeOpenAiStage', () => {
     });
     expect(records.at(-1)?.error_message).not.toContain(secret);
   });
+
+  it('records OpenAI response correlation on successful calls', async () => {
+    const records: OpenAiStageLog[] = [];
+
+    await executeOpenAiStage({
+      stage: 'classifier',
+      model: 'gpt-5.6-luna',
+      timeoutMs: 1_000,
+      operation: async () => ({
+        id: 'resp_test',
+        _request_id: 'req_test',
+      }),
+      log: (record) => records.push(record),
+    });
+
+    expect(records.at(-1)).toMatchObject({
+      event: 'openai_stage_completed',
+      response_id: 'resp_test',
+      request_id: 'req_test',
+    });
+  });
 });

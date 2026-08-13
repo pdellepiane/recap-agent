@@ -86,6 +86,10 @@ export async function handler(
       validationIssues?: ChannelRequestValidationIssue[];
       deliveryAction?: string;
       currentNode?: string;
+      traceId?: string;
+      authenticationExecution?: HandleTurnResponse['trace']['authentication_execution_summary'];
+      informationOutcomes?: HandleTurnResponse['trace']['information_execution_summary'];
+      openAiCalls?: HandleTurnResponse['trace']['openai_calls'];
       participationStatus?: 'resumed' | 'already_active' | 'overtaken' | 'already_overtaken';
       planId?: string;
       humanEscalationStatus?: 'none' | 'requested';
@@ -128,6 +132,10 @@ export async function handler(
       validationIssues: diagnostics?.validationIssues,
       deliveryAction: diagnostics?.deliveryAction,
       currentNode: diagnostics?.currentNode,
+      traceId: diagnostics?.traceId,
+      authenticationExecution: diagnostics?.authenticationExecution,
+      informationOutcomes: diagnostics?.informationOutcomes,
+      openAiCalls: diagnostics?.openAiCalls,
       error: diagnostics?.error,
     });
     if (statusCode >= 500) {
@@ -135,7 +143,10 @@ export async function handler(
     } else {
       console.info(record);
     }
-    return json(statusCode, body, diagnostics?.responseHeaders);
+    return json(statusCode, body, {
+      'x-recap-request-id': requestId,
+      ...diagnostics?.responseHeaders,
+    });
   };
 
   try {
@@ -311,6 +322,10 @@ export async function handler(
     }), 'success', {
       deliveryAction: response.outbound.delivery.action,
       currentNode: response.plan.current_node,
+      traceId: response.trace.trace_id,
+      authenticationExecution: response.trace.authentication_execution_summary,
+      informationOutcomes: response.trace.information_execution_summary,
+      openAiCalls: response.trace.openai_calls,
       feedbackSignalVersion: perfRecord.feedback_signals.schema_version,
       decisionSource: perfRecord.feedback_signals.routing.decision_source,
       ambiguityStatus: perfRecord.feedback_signals.routing.ambiguity_status,
@@ -337,6 +352,7 @@ export function buildCliResponseBody(args: {
     conversation_id: args.response.outbound.conversationId,
     plan_id: args.response.plan.plan_id,
     current_node: args.response.plan.current_node,
+    trace_id: args.response.trace.trace_id,
   };
   if (!args.includeDiagnostics) {
     return body;

@@ -82,6 +82,7 @@ describe('Lambda channel request contract', () => {
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '+51999999999',
+      message_id: 'wamid.captioned-image-123',
       media: [
         {
           type: 'image',

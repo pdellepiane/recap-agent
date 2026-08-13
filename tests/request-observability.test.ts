@@ -109,6 +109,89 @@ describe('Lambda channel request observability', () => {
     expect(JSON.stringify(record)).not.toContain('2754859441498128');
   });
 
+  it('summarizes authentication, FAQ outcomes, and every model stage', () => {
+    const record = buildChannelRequestLog({
+      requestId: 'request-standard-trace',
+      method: 'POST',
+      requestPath: '/',
+      requestRoute: 'message',
+      requestBodyPresent: true,
+      statusCode: 200,
+      outcome: 'success',
+      durationMs: 42,
+      authorizationHeaderPresent: true,
+      bearerTokenPresent: true,
+      traceId: 'trace-standard',
+      authenticationExecution: [
+        {
+          operation: 'auth_by_phone',
+          status: 'user_not_found',
+          auth_method: 'phone',
+          failure_kind: 'user_not_found',
+        },
+        {
+          operation: 'request_user_login_code',
+          status: 'sent',
+          auth_method: 'email_otp',
+          failure_kind: null,
+        },
+      ],
+      informationOutcomes: [{
+        requestId: 'information-1',
+        kind: 'faq',
+        status: 'completed',
+        source: 'knowledge_base',
+        outcomeCode: 'completed_with_results',
+        retryable: null,
+        queryHash: 'a'.repeat(64),
+        evidence: [{
+          fileId: 'file-faq',
+          filename: 'faq.md',
+          score: 0.91,
+          contentHash: 'b'.repeat(64),
+        }],
+        resultCount: 2,
+        durationMs: 18,
+      }],
+      openAiCalls: {
+        classifier: {
+          responseId: 'resp_classifier',
+          requestId: 'req_classifier',
+          model: 'gpt-5.6-luna',
+          attemptCount: 1,
+          requestMetrics: {
+            instructionBytes: 10,
+            inputBytes: 20,
+            toolCount: 0,
+            schemaPropertyCount: 8,
+          },
+        },
+        extraction: null,
+        reply: null,
+      },
+    });
+
+    expect(record).toMatchObject({
+      trace_id: 'trace-standard',
+      authentication_path: 'phone_to_email_otp',
+      authentication_reason: 'user_not_found',
+      information_outcomes: [{
+        kind: 'faq',
+        outcomeCode: 'completed_with_results',
+        resultCount: 2,
+      }],
+      openai_calls: {
+        classifier: {
+          status: 'completed',
+          response_id: 'resp_classifier',
+          request_id: 'req_classifier',
+        },
+        extraction: { status: 'not_called' },
+        reply: { status: 'not_called' },
+      },
+    });
+  });
+
   it('records safe ownership correlation and resulting plan state', () => {
     const record = buildChannelRequestLog({
       requestId: 'request-3',

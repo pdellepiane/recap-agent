@@ -1,6 +1,8 @@
 import crypto from 'node:crypto';
 
 import type { RuntimeRequestRoute } from './request-route';
+import type { InformationExecutionSummary } from '../core/information';
+import type { OpenAiCallRef } from '../runtime/contracts';
 
 export type ChannelRequestOutcome =
   | 'success'
@@ -55,6 +57,20 @@ export type ChannelRequestLog = {
   validation_issues?: ChannelRequestValidationIssue[];
   delivery_action?: string;
   current_node?: string;
+  trace_id?: string;
+  authentication_path?: string;
+  authentication_reason?: string;
+  information_outcomes?: Array<Pick<
+    InformationExecutionSummary,
+    'kind' | 'status' | 'source' | 'outcomeCode' | 'retryable' | 'queryHash' | 'evidence' | 'resultCount' | 'durationMs'
+  >>;
+  openai_calls?: Record<'classifier' | 'extraction' | 'reply', {
+    status: 'completed' | 'not_called';
+    response_id: string | null;
+    request_id: string | null;
+    model: string | null;
+    attempt_count: number;
+  }>;
   error_name?: string;
   error_message_redacted?: string;
 };
@@ -88,6 +104,15 @@ export function buildChannelRequestLog(args: {
   validationIssues?: ChannelRequestValidationIssue[];
   deliveryAction?: string;
   currentNode?: string;
+  traceId?: string;
+  authenticationExecution?: Array<{
+    operation: string;
+    status: string;
+    auth_method: string | null;
+    failure_kind: string | null;
+  }>;
+  informationOutcomes?: InformationExecutionSummary[];
+  openAiCalls?: Record<'classifier' | 'extraction' | 'reply', OpenAiCallRef | null>;
   error?: unknown;
 }): ChannelRequestLog {
   const error = describeError(args.error);
@@ -143,8 +168,83 @@ export function buildChannelRequestLog(args: {
       : {}),
     ...(args.deliveryAction ? { delivery_action: args.deliveryAction } : {}),
     ...(args.currentNode ? { current_node: args.currentNode } : {}),
+    ...(args.traceId ? { trace_id: args.traceId } : {}),
+    ...describeAuthenticationPath(args.authenticationExecution),
+    ...(args.informationOutcomes && args.informationOutcomes.length > 0
+      ? {
+          information_outcomes: args.informationOutcomes.map((summary) => ({
+            kind: summary.kind,
+            status: summary.status,
+            source: summary.source,
+            outcomeCode: summary.outcomeCode,
+            retryable: summary.retryable,
+            queryHash: summary.queryHash,
+            evidence: summary.evidence,
+            resultCount: summary.resultCount,
+            durationMs: summary.durationMs,
+          })),
+        }
+      : {}),
+    ...(args.openAiCalls ? { openai_calls: summarizeOpenAiCalls(args.openAiCalls) } : {}),
     ...error,
   };
+}
+
+function describeAuthenticationPath(
+  records: Array<{
+    operation: string;
+    status: string;
+    auth_method: string | null;
+    failure_kind: string | null;
+  }> | undefined,
+): Pick<ChannelRequestLog, 'authentication_path' | 'authentication_reason'> {
+  if (!records || records.length === 0) return {};
+  const phone = records.find((record) => record.operation === 'auth_by_phone');
+  const email = records.find((record) => record.auth_method === 'email_otp');
+  if (phone?.status === 'authenticated') {
+    return { authentication_path: 'phone', authentication_reason: 'phone_authenticated' };
+  }
+  if (phone && email) {
+    return {
+      authentication_path: 'phone_to_email_otp',
+      authentication_reason: phone.failure_kind ?? phone.status,
+    };
+  }
+  if (phone) {
+    return {
+      authentication_path: 'phone',
+      authentication_reason: phone.failure_kind ?? phone.status,
+    };
+  }
+  return {
+    authentication_path: 'email_otp',
+    authentication_reason: email?.failure_kind ?? email?.status ?? 'email_otp',
+  };
+}
+
+function summarizeOpenAiCalls(
+  calls: Record<'classifier' | 'extraction' | 'reply', OpenAiCallRef | null>,
+): NonNullable<ChannelRequestLog['openai_calls']> {
+  return Object.fromEntries(
+    (['classifier', 'extraction', 'reply'] as const).map((stage) => {
+      const call = calls[stage];
+      return [stage, call
+        ? {
+            status: 'completed' as const,
+            response_id: call.responseId,
+            request_id: call.requestId,
+            model: call.model,
+            attempt_count: call.attemptCount,
+          }
+        : {
+            status: 'not_called' as const,
+            response_id: null,
+            request_id: null,
+            model: null,
+            attempt_count: 0,
+          }];
+    }),
+  ) as NonNullable<ChannelRequestLog['openai_calls']>;
 }
 
 function ownershipOperation(

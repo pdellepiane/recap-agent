@@ -339,6 +339,24 @@ export type InformationExecutionSummary = {
   kind: InformationTaskResult['kind'];
   status: InformationTaskResult['status'];
   source: 'knowledge_base' | 'associated_event_api' | 'agent_api';
+  outcomeCode:
+    | 'completed_with_results'
+    | 'completed_without_results'
+    | 'awaiting_authentication'
+    | 'not_configured'
+    | 'not_found'
+    | 'unauthorized'
+    | 'route_unavailable'
+    | 'invalid_response'
+    | 'request_failed';
+  retryable: boolean | null;
+  queryHash: string;
+  evidence: Array<{
+    fileId: string;
+    filename: string;
+    score: number;
+    contentHash: string;
+  }>;
   resultCount: number;
   durationMs: number;
 };

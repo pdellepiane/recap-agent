@@ -31,6 +31,9 @@ describe('Lambda handler request observability', () => {
     }));
 
     expect(response.statusCode).toBe(401);
+    expect(response.headers).toMatchObject({
+      'x-recap-request-id': 'lambda-request-1',
+    });
     expect(info).toHaveBeenCalledOnce();
     expect(info.mock.calls[0]?.[0] satisfies ChannelRequestLog).toMatchObject({
       outcome: 'unauthorized',
