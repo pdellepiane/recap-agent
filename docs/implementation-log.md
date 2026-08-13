@@ -45,6 +45,24 @@
 
 **Verification:** The focused Agent API gateway suite passed 19/19 tests, including request shape, multiple-invitation parsing, and malformed-response handling.
 
+### Deploy and validate RSVP against the production Agent API
+
+- Deployed the development Lambda with all active Sin Envolturas clients pointing to `api.sinenvolturas.com`; the deprecated test host is no longer an implicit deploy fallback.
+- Confirmed the active Lambda configuration for Agent API, guest service, user auth, and marketplace paths.
+- Focused live RSVP cases passed for a missing attendance action, trusted-phone execution with a real no-pending backend response, and an ambiguous persisted two-event selection that must not mutate.
+- The static RSVP extractor remains 3,558 serialized bytes and the reply request 7,690 bytes with no model tools or prompt-audit violations.
+
+**Focused live evidence:** `eval-2026-08-13T15-55-31-806Z-f4f20c5f`, `eval-2026-08-13T15-55-09-365Z-d4351757`, and `eval-2026-08-13T15-58-11-112Z-607ba159` each passed with zero failures, errors, or skips. The corrected deferred-close live case passed in `eval-2026-08-13T16-10-42-317Z-0f80b39c`.
+
+**Full-gate evidence:** Run `eval-2026-08-13T15-59-21-973Z-02d7e237` executed all 21 mandatory cases after local phone fixtures were configured: 19 passed, 2 failed, 0 errored, and 0 skipped. After the close-output correction, run `eval-2026-08-13T16-11-23-200Z-6a05573b` reached 20/21 with only the pre-existing mixed-language planning case varying; its immediate focused rerun `eval-2026-08-13T16-18-06-095Z-605f088b` passed. A third complete run `eval-2026-08-13T16-18-37-450Z-5255a68f` reached 16/21 with zero errors or skips and varying failures in five legacy cases. RSVP passed in all final runs. The complete gate is recorded as not yet stable rather than misreported as green.
+
+### Reconcile the Notion roadmap with repository evidence
+
+- Kept the attendance-confirmation item `3b1d5d10-94a6-81d6-8e0f-fe2a400fe159` in progress and added implementation, deployment, prompt-size, deterministic-test, and live-run evidence.
+- Marked the stale backlog entries “Evaluar el prototipo inicial,” “Implementar el flujo end-to-end inicial,” and “Integrar los endpoints del marketplace” complete with repository-backed evidence comments.
+
+**Decision:** RSVP is not marked complete until a safe real pending-invitation fixture proves a successful mutation and the multiple-pending production envelope, and until the complete mandatory live gate is stable. Historical work that is demonstrably implemented is no longer left as not started.
+
 ### Add the structured RSVP conversation flow
 
 - Added the `responder_invitacion` decision node, capability-scoped structured extraction, persisted RSVP state, and a route-owned Spanish reply bundle.
