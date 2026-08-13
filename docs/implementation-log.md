@@ -5497,3 +5497,9 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Decision:** When retrieved FAQ evidence contains the requested fee, rate, deadline, limit, or other numeric value, state it directly rather than only illustrating it. Keep the existing grounding constraint: values absent from retrieved evidence must not be invented.
 
 **Validation follow-up:** The first deployed attempt passed the FAQ semantic gate at 0.98. A second complete run exposed response variance: the answer replaced available values with “depende del método de pago.” Strengthen the same route-owned rule to include every applicable retrieved value, preserve exact monetary examples, and prohibit vague replacement language. The run also showed that the retired-phone-confirmation judge was evaluating whether the response explained an internal mechanism already covered by hard tool and state assertions; narrow that semantic rubric to the observable conversation contract.
+
+## 2026-08-13 — Remove stale ambiguity from retired phone-confirmation recovery
+
+**Reason:** Targeted deployed validation authenticated the current WhatsApp number and completed associated-event retrieval, but the reply still asked the user to complete “Este.” The reply evidence had cleared the ambiguity status while retaining the extractor's contradictory summary that the message was incomplete.
+
+**Decision:** For this narrowly identified legacy recovery state, replace the stale summary with the canonical pending information queries already persisted in the plan. This preserves decision evidence and lets the model answer the completed lookup without keyword routing or a deterministic user-facing response.

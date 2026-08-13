@@ -2009,6 +2009,9 @@ export class AgentService {
     const informationExtraction = isRetiredPhoneConfirmationRecovery
       ? {
           ...args.extraction,
+          conversationSummary: `Consulta pendiente recuperada: ${requests
+            .map((request) => request.query)
+            .join(' | ')}`,
           ambiguity: {
             status: 'clear' as const,
             clarificationQuestion: null,
