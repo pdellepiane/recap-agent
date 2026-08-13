@@ -33,6 +33,8 @@
 
 **Reason:** The mandatory live case correctly persisted Carlos Schult as the only selected provider and catering as deferred, but the final deterministic renderer said “solicitudes” and “proveedores” in plural and omitted the deferred need. That wording could falsely imply a catering provider was contacted.
 
+**Coverage:** Registered the correction as a distinct behavior change backed by `live_feedback.token_seeded_selection_defer_close`, which asserts both the persisted deferred state and the final required-judge response.
+
 ### Define the phone-based guest RSVP contract
 
 - Added a typed, unauthenticated Agent API client for `POST /guest/rsvp` using the trusted channel phone, the structured `attending` or `declining` action, and an optional validated guest ID.
