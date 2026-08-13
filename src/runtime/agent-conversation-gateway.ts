@@ -4,6 +4,7 @@ import type {
   PurchaseInformation,
   PurchaseResource,
 } from '../core/information';
+import { rsvpActionValues, type RsvpAction } from '../core/rsvp';
 
 export type AgentMessageDirection = 'inbound' | 'outbound';
 
@@ -40,6 +41,7 @@ type HttpRequestFailure = Extract<AgentGatewayResult, { status: 'failed' }> & {
   responseFormat: 'json' | 'non_json' | null;
   errorEnvelope: boolean;
   errorCode?: string | null;
+  data?: unknown;
 };
 
 export type AgentMessageLogInput = {
@@ -114,6 +116,38 @@ export type AgentUpdatePhoneResult =
       retryable: boolean;
     };
 
+export type RsvpCandidate = {
+  guestId: number;
+  eventName: string | null;
+  eventDate: string | null;
+};
+
+export type AgentGuestRsvpInput = AgentAuthByPhoneInput & {
+  action: RsvpAction;
+  guest_id?: number;
+};
+
+export type AgentGuestRsvpResult =
+  | {
+      status: 'responded';
+      action: RsvpAction;
+      guestId: number | null;
+      eventName: string | null;
+      eventDate: string | null;
+    }
+  | {
+      status: 'multiple_pending';
+      candidates: RsvpCandidate[];
+    }
+  | { status: 'already_responded' }
+  | { status: 'no_pending' }
+  | { status: 'phone_mismatch' }
+  | {
+      status: 'failed';
+      error: string;
+      retryable: boolean;
+    };
+
 export interface AgentConversationGateway {
   logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult>;
   getRecentMessages(phoneNumber: string): Promise<
@@ -131,6 +165,7 @@ export interface AgentConversationGateway {
   }): Promise<AgentPurchaseLookupResult>;
   authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult>;
   updatePhone(args: AgentAuthByPhoneInput & { token: string }): Promise<AgentUpdatePhoneResult>;
+  guestRsvp?(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult>;
 }
 
 export class NoopAgentConversationGateway implements AgentConversationGateway {
@@ -189,6 +224,15 @@ export class NoopAgentConversationGateway implements AgentConversationGateway {
     };
   }
 
+  async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {
+    void input;
+    return {
+      status: 'failed',
+      error: 'Agent API RSVP is not configured.',
+      retryable: false,
+    };
+  }
+
   private unavailablePurchaseResult(
     resource: PurchaseResource,
   ): AgentPurchaseLookupResult {
@@ -228,6 +272,37 @@ const authByPhoneDataSchema = z.object({
     email: z.string().email(),
   }),
 });
+
+const rsvpEventSchema = z.object({
+  name: z.string().trim().min(1).nullable().optional(),
+  title: z.string().trim().min(1).nullable().optional(),
+  date: z.string().trim().min(1).nullable().optional(),
+  event_date: z.string().trim().min(1).nullable().optional(),
+}).passthrough();
+
+const rsvpResponseDataSchema = z.object({
+  guest_id: z.number().int().positive().nullable().optional(),
+  action: z.enum(rsvpActionValues).optional(),
+  event_name: z.string().trim().min(1).nullable().optional(),
+  event_date: z.string().trim().min(1).nullable().optional(),
+  event: rsvpEventSchema.nullable().optional(),
+}).passthrough();
+
+const rsvpCandidateSchema = z.object({
+  guest_id: z.number().int().positive(),
+  event_name: z.string().trim().min(1).nullable().optional(),
+  event_date: z.string().trim().min(1).nullable().optional(),
+  event: rsvpEventSchema.nullable().optional(),
+}).passthrough();
+
+type RsvpCandidateWire = z.infer<typeof rsvpCandidateSchema>;
+
+const rsvpCandidateEnvelopeSchema = z.union([
+  z.object({ candidates: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
+  z.object({ pending: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
+  z.object({ invitations: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
+  z.array(rsvpCandidateSchema).min(2),
+]);
 
 const messageSchema = z.object({
   id: z.number(),
@@ -648,6 +723,100 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     };
   }
 
+  async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {
+    const response = await this.request('/guest/rsvp', {
+      method: 'POST',
+      body: {
+        phone_extension: input.phone_extension,
+        phone_number: input.phone_number,
+        action: input.action,
+        ...(input.guest_id !== undefined ? { guest_id: input.guest_id } : {}),
+      },
+    });
+
+    if (response.status === 'success') {
+      const parsed = rsvpResponseDataSchema.safeParse(response.data);
+      if (!parsed.success) {
+        return {
+          status: 'failed',
+          error: 'Agent API RSVP response had an unexpected shape.',
+          retryable: false,
+        };
+      }
+      return {
+        status: 'responded',
+        action: parsed.data.action ?? input.action,
+        guestId: parsed.data.guest_id ?? input.guest_id ?? null,
+        eventName:
+          parsed.data.event_name ??
+          parsed.data.event?.name ??
+          parsed.data.event?.title ??
+          null,
+        eventDate:
+          parsed.data.event_date ??
+          parsed.data.event?.date ??
+          parsed.data.event?.event_date ??
+          null,
+      };
+    }
+
+    const candidates = this.parseRsvpCandidates(response.data);
+    if (candidates) {
+      return {
+        status: 'multiple_pending',
+        candidates,
+      };
+    }
+    if (response.errorCode === 'multiple_pending') {
+      return {
+        status: 'failed',
+        error: 'Agent API RSVP multiple-pending response had an unexpected shape.',
+        retryable: false,
+      };
+    }
+    if (response.httpStatus === 404) {
+      return { status: 'no_pending' };
+    }
+    if (response.httpStatus === 403 || response.errorCode === 'phone_mismatch') {
+      return { status: 'phone_mismatch' };
+    }
+    if (response.errorCode === 'already_responded') {
+      return { status: 'already_responded' };
+    }
+    return {
+      status: 'failed',
+      error: response.error,
+      retryable: response.retryable,
+    };
+  }
+
+  private parseRsvpCandidates(data: unknown): RsvpCandidate[] | null {
+    const parsed = rsvpCandidateEnvelopeSchema.safeParse(data);
+    if (!parsed.success) {
+      return null;
+    }
+    const candidateData: RsvpCandidateWire[] = Array.isArray(parsed.data)
+      ? parsed.data
+      : 'candidates' in parsed.data
+        ? parsed.data.candidates as RsvpCandidateWire[]
+        : 'pending' in parsed.data
+          ? parsed.data.pending as RsvpCandidateWire[]
+          : parsed.data.invitations;
+    return candidateData.map((candidate) => ({
+      guestId: candidate.guest_id,
+      eventName:
+        candidate.event_name ??
+        candidate.event?.name ??
+        candidate.event?.title ??
+        null,
+      eventDate:
+        candidate.event_date ??
+        candidate.event?.date ??
+        candidate.event?.event_date ??
+        null,
+    }));
+  }
+
   private async requestPurchase(
     resource: PurchaseResource,
     token: string,
@@ -753,6 +922,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
               : 'non_json',
             errorEnvelope: envelopeSchema.safeParse(parsedBody).success,
             errorCode: this.errorCode(parsedBody),
+            data: this.envelopeData(parsedBody),
           };
         }
 
@@ -779,6 +949,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
             responseFormat: 'json',
             errorEnvelope: true,
             errorCode: this.errorCode(parsedBody),
+            data: envelope.data.data ?? null,
           };
         }
 
@@ -867,6 +1038,11 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       }
     }
     return null;
+  }
+
+  private envelopeData(body: unknown): unknown {
+    const parsed = envelopeSchema.safeParse(body);
+    return parsed.success ? (parsed.data.data ?? null) : null;
   }
 
   private errorCode(body: unknown): string | null {

@@ -1,5 +1,17 @@
 # Implementation Log
 
+## 2026-08-13
+
+### Define the phone-based guest RSVP contract
+
+- Added a typed, unauthenticated Agent API client for `POST /guest/rsvp` using the trusted channel phone, the structured `attending` or `declining` action, and an optional validated guest ID.
+- Modeled successful responses, multiple pending invitations, missing invitations, phone mismatches, already-answered invitations, transient failures, and malformed upstream envelopes as explicit fail-closed outcomes.
+- Preserved upstream response data for typed error-envelope parsing without exposing credentials or authorization headers.
+
+**Decision:** RSVP is scoped to the invitation attached to the trusted channel phone and does not enter user-account email or OTP authentication. A guest ID may be sent only after it has been returned by the API and persisted as a candidate.
+
+**Verification:** The focused Agent API gateway suite passed 19/19 tests, including request shape, multiple-invitation parsing, and malformed-response handling.
+
 ## 2026-08-11
 
 ### Authenticate protected requests with the current WhatsApp number automatically

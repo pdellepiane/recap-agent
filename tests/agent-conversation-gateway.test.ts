@@ -26,6 +26,15 @@ describe('AgentConversationGateway', () => {
       error: 'Agent API phone authentication is not configured.',
       retryable: false,
     });
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '987654321',
+      action: 'attending',
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API RSVP is not configured.',
+      retryable: false,
+    });
   });
 
   it('sends X-Agent-Key when requesting human takeover', async () => {
@@ -593,6 +602,172 @@ describe('AgentConversationGateway', () => {
         },
       }),
     );
+  });
+
+  it('records an RSVP using the phone identity and optional guest id', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        guest_id: 481,
+        action: 'attending',
+        event: {
+          name: 'Matrimonio de Ana y Luis',
+          date: '2026-09-12',
+        },
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 481,
+    })).resolves.toEqual({
+      status: 'responded',
+      action: 'attending',
+      guestId: 481,
+      eventName: 'Matrimonio de Ana y Luis',
+      eventDate: '2026-09-12',
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/guest/rsvp',
+      expect.objectContaining({
+        method: 'POST',
+        headers: {
+          'X-Agent-Key': 'secret-key',
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+          phone_extension: '+51',
+          phone_number: '973296571',
+          action: 'attending',
+          guest_id: 481,
+        }),
+      }),
+    );
+  });
+
+  it('maps multiple pending RSVP candidates and terminal failures', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(409, {
+        status: false,
+        data: {
+          candidates: [
+            {
+              guest_id: 481,
+              event_name: 'Matrimonio de Ana y Luis',
+              event_date: '2026-09-12',
+            },
+            {
+              guest_id: 482,
+              event: {
+                name: 'Cumpleaños de Marta',
+                date: null,
+              },
+            },
+          ],
+        },
+        errors: { code: 'multiple_pending' },
+        error: 'Hay varias invitaciones pendientes.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(404, {
+        status: false,
+        data: [],
+        errors: null,
+        error: 'No se encontraron respuestas de asistencia pendientes para este número.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(403, {
+        status: false,
+        data: null,
+        errors: { code: 'phone_mismatch' },
+        error: 'El invitado no corresponde al teléfono.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(409, {
+        status: false,
+        data: { guest_id: 481 },
+        errors: { code: 'already_responded' },
+        error: 'La invitación ya fue respondida.',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+    const input = {
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'declining' as const,
+    };
+
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({
+      status: 'multiple_pending',
+      candidates: [
+        {
+          guestId: 481,
+          eventName: 'Matrimonio de Ana y Luis',
+          eventDate: '2026-09-12',
+        },
+        {
+          guestId: 482,
+          eventName: 'Cumpleaños de Marta',
+          eventDate: null,
+        },
+      ],
+    });
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({ status: 'no_pending' });
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({ status: 'phone_mismatch' });
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({ status: 'already_responded' });
+  });
+
+  it('fails closed for malformed RSVP success and candidate envelopes', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
+        data: { action: 'unexpected' },
+        errors: null,
+        error: null,
+      }))
+      .mockResolvedValueOnce(jsonResponse(409, {
+        status: false,
+        data: { candidates: [{ guest_id: 'not-an-integer' }] },
+        errors: { code: 'multiple_pending' },
+        error: 'Hay varias invitaciones pendientes.',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+    const input = {
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending' as const,
+    };
+
+    await expect(gateway.guestRsvp(input)).resolves.toMatchObject({
+      status: 'failed',
+      retryable: false,
+    });
+    await expect(gateway.guestRsvp(input)).resolves.toMatchObject({
+      status: 'failed',
+      retryable: false,
+    });
   });
 });
 
