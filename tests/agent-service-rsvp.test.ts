@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import type {
+  AgentConversationMessage,
   AgentConversationGateway,
   AgentGatewayResult,
   AgentGuestRsvpInput,
@@ -185,6 +186,36 @@ describe('AgentService RSVP flow', () => {
       'quedó registrada',
     );
   });
+
+  it('does not report a campaign-grounded invitation as missing when the mutation endpoint has no pending response', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({
+        action: 'attending',
+        eventReference: 'Gia Antonella',
+      }),
+    ]);
+    const gateway = new RsvpGateway(
+      [{ status: 'no_pending' }],
+      [campaignMessage('Gia Antonella')],
+    );
+    const service = createService(runtime, gateway);
+
+    const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
+
+    const request = runtime.composeRequests[0];
+    expect(request?.errorMessage).toContain(
+      'la invitación de Gia Antonella sí está asociada',
+    );
+    expect(request?.errorMessage).toContain('ya no está pendiente');
+    expect(request?.errorMessage).not.toContain(
+      'no encontró invitaciones pendientes para el número',
+    );
+    expect(request?.errorMessage).not.toContain('quedó registrada');
+    expect(request?.turnDecision?.persistReason).toBe(
+      'referenced_invitation_not_pending',
+    );
+    expect(result.trace.tools_called).toContain('guest_rsvp');
+  });
 });
 
 class RsvpRuntime implements AgentRuntime {
@@ -210,7 +241,10 @@ class RsvpRuntime implements AgentRuntime {
 class RsvpGateway implements AgentConversationGateway {
   readonly inputs: AgentGuestRsvpInput[] = [];
 
-  constructor(private readonly results: AgentGuestRsvpResult[]) {}
+  constructor(
+    private readonly results: AgentGuestRsvpResult[],
+    private readonly messages: AgentConversationMessage[] = [],
+  ) {}
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
     void input;
@@ -219,9 +253,9 @@ class RsvpGateway implements AgentConversationGateway {
 
   async getRecentMessages(): Promise<{
     status: 'success';
-    messages: [];
+    messages: AgentConversationMessage[];
   }> {
-    return { status: 'success', messages: [] };
+    return { status: 'success', messages: this.messages };
   }
 
   async requestHumanTakeover(): Promise<AgentGatewayResult> {
@@ -248,6 +282,19 @@ class RsvpGateway implements AgentConversationGateway {
     }
     return result;
   }
+}
+
+function campaignMessage(eventName: string): AgentConversationMessage {
+  return {
+    id: 1,
+    direction: 'outbound',
+    source: 'admin_campaign',
+    body: `Este es un recordatorio del evento: ${eventName}`,
+    status: 'delivered',
+    whatsappMessageId: null,
+    sentAt: '2026-08-13T14:00:00.000Z',
+    createdAt: '2026-08-13T14:00:00.000Z',
+  };
 }
 
 function rsvpExtraction(args: {

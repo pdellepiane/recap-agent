@@ -1752,7 +1752,16 @@ export class AgentService {
         });
       }
 
-      operationalNote = this.rsvpOperationalNote(result, action, knownCandidate);
+      const groundedCampaignEvent = this.groundedRsvpCampaignEvent(
+        args.extraction.rsvpEventReference,
+        args.messageContext,
+      );
+      operationalNote = this.rsvpOperationalNote(
+        result,
+        action,
+        knownCandidate,
+        groundedCampaignEvent,
+      );
       nextRsvpState = result.status === 'multiple_pending'
         ? {
             status: 'awaiting_event_selection',
@@ -1794,7 +1803,9 @@ export class AgentService {
       missingFields: [],
       searchReady: false,
       providerResults: [],
-      turnDecision: this.rsvpTurnDecision(result?.status ?? 'needs_input'),
+      turnDecision: this.rsvpTurnDecision(
+        this.rsvpOutcomeReason(result, args.extraction.rsvpEventReference, args.messageContext),
+      ),
       errorMessage: operationalNote,
       promptBundleId: bundle.id,
       promptFilePaths: bundle.filePaths,
@@ -1847,7 +1858,9 @@ export class AgentService {
         responseClassifier: args.responseClassifierTrace,
         messageContext: args.messageContext,
         searchStrategy: 'none',
-        turnDecision: this.rsvpTurnDecision(result?.status ?? 'needs_input'),
+        turnDecision: this.rsvpTurnDecision(
+          this.rsvpOutcomeReason(result, args.extraction.rsvpEventReference, args.messageContext),
+        ),
         operationalNote,
       }),
     };
@@ -1885,6 +1898,7 @@ export class AgentService {
     result: AgentGuestRsvpResult,
     action: 'attending' | 'declining',
     selectedCandidate: PlanSnapshot['rsvp_state']['candidates'][number] | null,
+    groundedCampaignEvent: string | null,
   ): string {
     if (result.status === 'responded') {
       const eventName = result.eventName ?? selectedCandidate?.event_name ?? null;
@@ -1899,6 +1913,9 @@ export class AgentService {
       return 'El servicio indicó que esa invitación ya tenía una respuesta registrada. No afirmes que se realizó una nueva actualización.';
     }
     if (result.status === 'no_pending') {
+      if (groundedCampaignEvent) {
+        return `El historial de campaña confirma que la invitación de ${groundedCampaignEvent} sí está asociada al número confiable del canal, pero el servicio indicó que ya no tiene una respuesta pendiente. Comunica que no se realizó una nueva actualización y que la invitación ya no está pendiente. No digas que la invitación no existe ni afirmes si la respuesta registrada es asistencia o inasistencia, porque el servicio no devolvió ese estado. Ofrece apoyo humano solo si la persona quiere revisar o cambiar la respuesta.`;
+      }
       return 'El servicio no encontró invitaciones pendientes para el número confiable del canal. Dilo directamente y ofrece apoyo humano si la persona considera que falta una invitación.';
     }
     if (result.status === 'phone_mismatch') {
@@ -1907,6 +1924,44 @@ export class AgentService {
     return result.retryable
       ? 'El servicio de asistencia falló temporalmente y no confirmó ninguna actualización. Pide reintentar más tarde u ofrece apoyo humano.'
       : 'No fue posible registrar la respuesta y el servicio no confirmó ninguna actualización. Ofrece apoyo humano.';
+  }
+
+  private rsvpOutcomeReason(
+    result: AgentGuestRsvpResult | null,
+    eventReference: string | null | undefined,
+    messageContext: TurnMessageContext,
+  ): string {
+    if (!result) {
+      return 'needs_input';
+    }
+    if (
+      result.status === 'no_pending' &&
+      this.groundedRsvpCampaignEvent(eventReference, messageContext)
+    ) {
+      return 'referenced_invitation_not_pending';
+    }
+    return result.status;
+  }
+
+  private groundedRsvpCampaignEvent(
+    eventReference: string | null | undefined,
+    messageContext: TurnMessageContext,
+  ): string | null {
+    if (!eventReference) {
+      return null;
+    }
+    const normalizedReference = this.normalizeSelectionText(eventReference);
+    if (!normalizedReference) {
+      return null;
+    }
+    const isGrounded = messageContext.recentMessages.some((message) => {
+      if (message.source !== 'admin_campaign') {
+        return false;
+      }
+      const normalizedBody = this.normalizeSelectionText(message.body);
+      return this.normalizedTextContainsAlias(normalizedBody, normalizedReference);
+    });
+    return isGrounded ? eventReference.trim() : null;
   }
 
   private rsvpTurnDecision(reason: string): TurnDecision {

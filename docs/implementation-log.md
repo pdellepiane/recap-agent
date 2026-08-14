@@ -5520,3 +5520,11 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Reason:** The observability checkpoint accidentally made `message_id` mandatory for WhatsApp even though the documented channel contract historically allowed it to be omitted. Audits of three retained production conversations found seven inbound records and zero stored native WhatsApp message IDs. Enforcing the new requirement before the upstream team adopted it could reject otherwise valid messages at the Lambda boundary.
 
 **Decision:** Restore `message_id` as optional. Continue using a generated UUID internally when it is absent, and label completion telemetry with `message_id_source=native|generated` so support can distinguish genuine cross-system correlation from a runtime-only identifier. Keep the documented recommendation that the upstream adapter should eventually provide a stable native `wamid`.
+
+## 2026-08-14 — Preserve campaign-grounded RSVP context when no mutation is pending
+
+**Reason:** Two production interactions were correctly extracted as attendance confirmations for named events and called `guest_rsvp`, but the pending-only endpoint returned `no_pending`. The reply then incorrectly implied that no invitation was associated with the phone even though the recent campaign message established the invitation and event name.
+
+**Decision:** Treat the structured `rsvpEventReference` as grounded only when it is present in a recent `admin_campaign` message. When the endpoint then returns `no_pending`, report that the known invitation is no longer pending and that no new update was made. Do not claim that the invitation is missing, and do not invent whether the existing response is attending or declining because the endpoint does not return that state. Preserve the raw `guest_rsvp` result and record `referenced_invitation_not_pending` as the turn outcome.
+
+**Regression coverage:** Added one deterministic full-context test and two separate mandatory live cases for the José/Gia Antonella and Cinthya/Julisabeth y Andrés interactions. Both retain hard tool assertions and hard semantic judges.
