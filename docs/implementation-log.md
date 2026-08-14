@@ -5540,3 +5540,13 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Reliability follow-up:** A targeted deployed run passed, but the subsequent complete suite reproduced acknowledgement suppression for the same Cinthya interaction. Treat a recent `admin_campaign` source as established invitation context: if the classifier proposes acknowledgement suppression, normalize it to `respond` with reason `campaign_context_requires_extraction` so structured extraction—not keyword routing—decides the conversational flow. Emoji-only reactions and high-confidence automated responses retain their existing suppression behavior.
 
 **Prompt leanness follow-up:** Consolidated the overlapping pending-state and first-turn RSVP classifier paragraphs into one rule. The static comparison returned to zero violations while retaining the same actionable-decision requirements.
+
+### Final deployed validation
+
+- `npm run check` passed all 443 tests across 69 files, including the static prompt comparison with zero violations.
+- The runtime stack reached `UPDATE_COMPLETE` at `2026-08-14T15:41:48.914Z` using the required `se-dev` profile and account guard.
+- `bun run terminal` completed automatic trusted-phone authentication and associated-event lookup without email OTP (trace `01M00CT680NGHVTHPYSTYBM5X4`). A separate terminal RSVP turn entered `responder_invitacion`, called `guest_rsvp` without account-authentication tools, retained Gia Antonella, and safely reported the pending-only limitation (trace `01M00CXANFXAK465P0EB8CTFPT`).
+- Final mandatory run `eval-2026-08-14T15-43-14-976Z-5412326d` passed all five RSVP cases. Cinthya passed at `1.0` with classifier action `respond` and trace `01M00F81E6JYVTKMW6Z9KF62G1`; José passed at `0.9947` with trace `01M00F8AR7X4PQ8WZ6EFWNVYZZ`.
+- The complete suite finished 21/24 with zero evaluator errors or skips. The three unrelated failures remain visible: two email-code cases received backend send failures instead of the expected successful code-send state, and the cheaper-provider case produced the correct Spanish selection text but omitted the expected operation type from its trace projection. None of the RSVP, FAQ, automatic phone-auth success, OTP word-code, purchase-disclosure, or Spanish-only gates regressed.
+
+**Decision:** Accept the RSVP fix as deployed and deterministic. Keep the roadmap item in progress because the backend still cannot distinguish an existing attending response from an existing declining response. Do not weaken the unrelated failing gates.
