@@ -74,6 +74,7 @@ export async function handler(
     channel?: string;
     externalUserId?: string;
     messageId?: string;
+    messageIdSource?: 'native' | 'generated';
     ownershipRequestId?: string;
     mediaKinds?: string[];
     providerMediaIds?: string[];
@@ -117,6 +118,7 @@ export async function handler(
       channel: requestIdentity.channel,
       externalUserId: requestIdentity.externalUserId,
       messageId: requestIdentity.messageId,
+      messageIdSource: requestIdentity.messageIdSource,
       ownershipRequestId: requestIdentity.ownershipRequestId,
       mediaKinds: requestIdentity.mediaKinds,
       providerMediaIds: requestIdentity.providerMediaIds,
@@ -252,6 +254,7 @@ export async function handler(
       channel,
       externalUserId: body.user_id,
       messageId,
+      messageIdSource: body.message_id ? 'native' : 'generated',
       mediaKinds: body.media.map((item) => item.type),
       providerMediaIds: body.media.map((item) => item.id),
     };

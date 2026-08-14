@@ -40,6 +40,7 @@ export type ChannelRequestLog = {
   channel?: string;
   external_user_hash?: string;
   message_id_hash?: string;
+  message_id_source?: 'native' | 'generated';
   media_count?: number;
   media_kinds?: string[];
   provider_media_id_hashes?: string[];
@@ -89,6 +90,7 @@ export function buildChannelRequestLog(args: {
   channel?: string;
   externalUserId?: string;
   messageId?: string;
+  messageIdSource?: 'native' | 'generated';
   mediaKinds?: string[];
   providerMediaIds?: string[];
   ownershipRequestId?: string;
@@ -133,6 +135,7 @@ export function buildChannelRequestLog(args: {
       ? { external_user_hash: sha256(args.externalUserId) }
       : {}),
     ...(args.messageId ? { message_id_hash: sha256(args.messageId) } : {}),
+    ...(args.messageIdSource ? { message_id_source: args.messageIdSource } : {}),
     ...(args.mediaKinds
       ? {
           media_count: args.mediaKinds.length,

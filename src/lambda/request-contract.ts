@@ -55,13 +55,6 @@ export const channelRequestSchema = z.object({
     });
     return;
   }
-  if (whatsAppChannels.has(value.channel) && !value.message_id) {
-    context.addIssue({
-      code: 'custom',
-      path: ['message_id'],
-      message: 'message_id is required for WhatsApp channels and must contain the native wamid.',
-    });
-  }
   if (value.contact_phone && parseInternationalPhone(value.contact_phone).status === 'invalid') {
     context.addIssue({
       code: 'custom',

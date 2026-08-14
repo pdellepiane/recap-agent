@@ -18,6 +18,7 @@ describe('Lambda channel request observability', () => {
       channel: 'whatsapp',
       externalUserId: 'whatsapp:51991347878',
       messageId: 'wamid.secret-value',
+      messageIdSource: 'native',
       validationIssues: [
         {
           path: 'contact_phone',
@@ -38,6 +39,7 @@ describe('Lambda channel request observability', () => {
       authorization_header_present: true,
       bearer_token_present: true,
       channel: 'whatsapp',
+      message_id_source: 'native',
       validation_issues: [
         {
           path: 'contact_phone',
@@ -49,6 +51,27 @@ describe('Lambda channel request observability', () => {
     expect(record.message_id_hash).toMatch(/^[a-f0-9]{64}$/u);
     expect(JSON.stringify(record)).not.toContain('51991347878');
     expect(JSON.stringify(record)).not.toContain('wamid.secret-value');
+  });
+
+  it('marks an internally generated message id without presenting it as native', () => {
+    const record = buildChannelRequestLog({
+      requestId: 'request-generated-id',
+      method: 'POST',
+      requestPath: '/',
+      requestRoute: 'message',
+      requestBodyPresent: true,
+      statusCode: 200,
+      outcome: 'success',
+      durationMs: 10,
+      authorizationHeaderPresent: true,
+      bearerTokenPresent: true,
+      channel: 'whatsapp',
+      messageId: 'generated-uuid',
+      messageIdSource: 'generated',
+    });
+
+    expect(record.message_id_hash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(record.message_id_source).toBe('generated');
   });
 
   it('redacts sensitive values from unexpected error messages', () => {

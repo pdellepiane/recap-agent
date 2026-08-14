@@ -32,13 +32,12 @@ describe('Lambda channel request contract', () => {
     ]);
   });
 
-  it('keeps the existing text-only WhatsApp request valid without a media field', () => {
+  it('keeps the historical text-only WhatsApp request valid without media or message_id', () => {
     const result = channelRequestSchema.safeParse({
       text: 'Necesito catering',
       user_id: 'whatsapp:51999999999',
       channel: 'whatsapp',
       contact_phone: '+51999999999',
-      message_id: 'wamid.123',
       received_at: '2026-07-14T15:00:00.000Z',
       client_mode: 'channel',
     });
@@ -46,6 +45,7 @@ describe('Lambda channel request contract', () => {
     if (result.success) {
       expect(result.data.media).toEqual([]);
       expect(result.data.text).toBe('Necesito catering');
+      expect(result.data.message_id).toBeUndefined();
     }
   });
 

@@ -5514,3 +5514,9 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - A deployed `channel_request_completed` record was verified to correlate the Lambda request ID, runtime trace ID, hashed native WhatsApp message ID, authentication path/reason, typed FAQ outcome and hashed evidence references, and successful classifier/extractor/reply OpenAI response and request IDs.
 
 **Decision:** Accept the changed FAQ and recovery behaviors based on their passing deployed cases and keep the full-suite OTP failures visible rather than weakening the gate or misclassifying an external HTTP 429 as a Lambda/LLM regression.
+
+## 2026-08-13 — Restore optional channel message IDs
+
+**Reason:** The observability checkpoint accidentally made `message_id` mandatory for WhatsApp even though the documented channel contract historically allowed it to be omitted. Audits of three retained production conversations found seven inbound records and zero stored native WhatsApp message IDs. Enforcing the new requirement before the upstream team adopted it could reject otherwise valid messages at the Lambda boundary.
+
+**Decision:** Restore `message_id` as optional. Continue using a generated UUID internally when it is absent, and label completion telemetry with `message_id_source=native|generated` so support can distinguish genuine cross-system correlation from a runtime-only identifier. Keep the documented recommendation that the upstream adapter should eventually provide a stable native `wamid`.
