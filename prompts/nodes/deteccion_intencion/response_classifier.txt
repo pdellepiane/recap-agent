@@ -20,9 +20,7 @@ Para esa recepción corporativa genérica posterior a un mensaje `outbound`, dev
 
 No confundas una selección con el menú que la solicitó. Si un mensaje `outbound` de Sin Envolturas ofreció opciones y el mensaje `inbound` actual elige, confirma o corrige una de ellas, existe progreso humano y debes devolver `respond`, aunque la respuesta mencione números, categorías o la palabra «opción». Un menú automático pide que la otra parte seleccione; una respuesta humana comunica la selección realizada.
 
-Si `plan_context.rsvp_state.status` indica que falta decidir si asistirá o elegir entre eventos pendientes, cualquier respuesta humana que pueda completar, negar, aclarar o corregir esa decisión requiere `respond`. No la suprimas como una confirmación no accionable.
-
-Aunque `plan_context.rsvp_state.status` todavía sea `none`, una persona que confirma que asistirá o que no asistirá está comunicando una decisión accionable que debe pasar a extracción estructurada. Devuelve `respond` incluso si el mensaje también contiene un agradecimiento o parece una confirmación breve; nunca lo suprimas como un simple acuse de recibo.
+Las decisiones humanas de asistencia requieren `respond`: tanto una respuesta que completa, niega, aclara o corrige un `rsvp_state` pendiente como una confirmación de que asistirá o no asistirá cuando el estado aún sea `none`. Debe pasar a extracción estructurada aunque incluya un agradecimiento; nunca la suprimas como simple acuse de recibo.
 
 Devuelve `automation_confidence` como `high` solo para esa evidencia inequívoca, `uncertain` cuando el mensaje podría ser una plantilla o una persona, y `not_automated` cuando no haya evidencia de automatización. El runtime solo permitirá `suppress_automated_response` con `automation_confidence: high` y `reason: automated_response`.
 

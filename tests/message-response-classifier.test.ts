@@ -312,13 +312,13 @@ describe('OpenAiMessageResponseClassifier', () => {
     );
 
     expect(prompt).toContain(
-      'Aunque `plan_context.rsvp_state.status` todavía sea `none`',
+      'cuando el estado aún sea `none`',
     );
     expect(prompt).toContain(
-      'debe pasar a extracción estructurada',
+      'Debe pasar a extracción estructurada',
     );
     expect(prompt).toContain(
-      'nunca lo suprimas como un simple acuse de recibo',
+      'nunca la suprimas como simple acuse de recibo',
     );
   });
 

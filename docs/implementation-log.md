@@ -5538,3 +5538,5 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Regression coverage:** Reuse the permanent Cinthya campaign interaction as the mandatory deployed semantic case and add a static prompt-composition assertion proving that first-turn RSVP decisions cannot be treated as simple acknowledgements.
 
 **Reliability follow-up:** A targeted deployed run passed, but the subsequent complete suite reproduced acknowledgement suppression for the same Cinthya interaction. Treat a recent `admin_campaign` source as established invitation context: if the classifier proposes acknowledgement suppression, normalize it to `respond` with reason `campaign_context_requires_extraction` so structured extraction—not keyword routing—decides the conversational flow. Emoji-only reactions and high-confidence automated responses retain their existing suppression behavior.
+
+**Prompt leanness follow-up:** Consolidated the overlapping pending-state and first-turn RSVP classifier paragraphs into one rule. The static comparison returned to zero violations while retaining the same actionable-decision requirements.
