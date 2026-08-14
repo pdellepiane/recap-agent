@@ -61,6 +61,7 @@ export type MessageResponseClassifierTrace = {
     | 'conversation_context_unavailable'
     | 'missing_outbound_context'
     | 'automation_confidence_insufficient'
+    | 'campaign_context_requires_extraction'
     | 'help_offer_response_requires_reply';
   would_suppress: boolean;
   context_source: 'agent_api' | 'local_plan';
@@ -180,11 +181,17 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         decision.action === 'suppress_acknowledgement';
       const isNonActionableReaction =
         decision.action === 'suppress_reaction';
+      const hasCampaignInvitationContext = args.messages.some(
+        (message) => message.source === 'admin_campaign',
+      );
+      const campaignAcknowledgementRequiresExtraction =
+        isNonActionableAcknowledgement && hasCampaignInvitationContext;
       const shouldSuppressAutomation =
         isHighConfidenceAutomatedResponse && !hasOutstandingHelpOffer;
       const validContextualSuppression =
         (isNonActionableAcknowledgement || isNonActionableReaction) &&
         !hasOutstandingHelpOffer &&
+        !campaignAcknowledgementRequiresExtraction &&
         args.plan.rsvp_state.status === 'none';
       const action = shouldSuppressAutomation
         ? 'suppress_automated_response'
@@ -199,6 +206,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           ? decision.reason
           : hasOutstandingHelpOffer && decision.action !== 'respond'
             ? 'help_offer_response_requires_reply'
+            : campaignAcknowledgementRequiresExtraction
+              ? 'campaign_context_requires_extraction'
             : decision.action === 'suppress_automated_response'
               ? 'automation_confidence_insufficient'
               : decision.reason;

@@ -322,6 +322,47 @@ describe('OpenAiMessageResponseClassifier', () => {
     );
   });
 
+  it('passes campaign acknowledgements to structured extraction before RSVP state exists', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+    })));
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Gracias, confirmo asistencia',
+      plan: createEmptyPlan({
+        planId: 'classifier-campaign-rsvp',
+        channel: 'whatsapp',
+        externalUserId: '51904523314',
+      }),
+      messages: [
+        {
+          id: 1,
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Este es un recordatorio del evento: Julisabeth y Andrés.',
+          status: 'sent',
+          sentAt: null,
+          createdAt: null,
+        },
+      ],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'respond',
+      reason: 'campaign_context_requires_extraction',
+      would_suppress: false,
+      fallback_used: true,
+    });
+  });
+
   it('suppresses an emoji-only reaction even when outbound history is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_reaction',
