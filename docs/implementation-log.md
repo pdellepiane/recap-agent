@@ -5528,3 +5528,11 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 **Decision:** Treat the structured `rsvpEventReference` as grounded only when it is present in a recent `admin_campaign` message. When the endpoint then returns `no_pending`, report that the known invitation is no longer pending and that no new update was made. Do not claim that the invitation is missing, and do not invent whether the existing response is attending or declining because the endpoint does not return that state. Preserve the raw `guest_rsvp` result and record `referenced_invitation_not_pending` as the turn outcome.
 
 **Regression coverage:** Added one deterministic full-context test and two separate mandatory live cases for the José/Gia Antonella and Cinthya/Julisabeth y Andrés interactions. Both retain hard tool assertions and hard semantic judges.
+
+## 2026-08-14 — Keep first-turn attendance decisions actionable
+
+**Reason:** The complete live suite showed that “Gracias, confirmo asistencia” could be classified as a non-actionable acknowledgement when no RSVP state had been created yet. That stopped the turn before structured extraction and the RSVP endpoint, even though the campaign history grounded the invitation.
+
+**Decision:** Explicit attendance and non-attendance decisions must always receive `respond`, including when the RSVP state is still `none` and the message also contains thanks. Keep the decision model-based and pass the turn to structured extraction; do not add keyword routing or a deterministic conversational response.
+
+**Regression coverage:** Reuse the permanent Cinthya campaign interaction as the mandatory deployed semantic case and add a static prompt-composition assertion proving that first-turn RSVP decisions cannot be treated as simple acknowledgements.

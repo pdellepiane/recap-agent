@@ -302,6 +302,26 @@ describe('OpenAiMessageResponseClassifier', () => {
     });
   });
 
+  it('instructs the model to preserve actionable RSVP decisions before RSVP state exists', () => {
+    const prompt = fs.readFileSync(
+      path.resolve(
+        process.cwd(),
+        'prompts/nodes/deteccion_intencion/response_classifier.txt',
+      ),
+      'utf8',
+    );
+
+    expect(prompt).toContain(
+      'Aunque `plan_context.rsvp_state.status` todavía sea `none`',
+    );
+    expect(prompt).toContain(
+      'debe pasar a extracción estructurada',
+    );
+    expect(prompt).toContain(
+      'nunca lo suprimas como un simple acuse de recibo',
+    );
+  });
+
   it('suppresses an emoji-only reaction even when outbound history is unavailable', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_reaction',
