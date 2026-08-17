@@ -18,6 +18,10 @@
 
 **Live coverage:** Added mandatory Lambda cases for reporting an existing confirmation, reporting a declined state and offering one change confirmation, and attempting that confirmed change without claiming false success when the production endpoint refuses it. Updated the no-invitation, campaign-context, missing-action, and email-code cases to assert the new state-first and copy-and-paste contracts. The coverage registry, evaluation catalog, RSVP service, prompt audit, and static comparison suites passed 22/22 tests.
 
+**First deployed gate:** `eval-2026-08-17T16-17-36-841Z-63289420` ran all 27 mandatory cases with 21 passing, 6 failing, 0 errors, and 0 skips. All three new state-aware RSVP cases and the revised copy-and-paste code case passed. Four older RSVP fixtures exposed that a user-lookup HTTP 404 was still being rendered as a technical lookup failure, which also prevented persisted ambiguity and campaign evidence from being used. Two unrelated authentication cases varied.
+
+**Follow-up correction:** A parsed user-level not-found response now means zero associated invitations, while thrown transport failures remain technical failures. Persisted RSVP candidates remain available when a fresh lookup has no records, and any recent `admin_campaign` context is preserved even when extraction does not repeat the event name. Focused service, catalog, coverage, type, and lint gates passed after the correction.
+
 ### Make email-code delivery instructions direct
 
 - Replaced the internal `enter_code_as_text` requirement with `copy_and_paste_code_here`.

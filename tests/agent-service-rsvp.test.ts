@@ -177,6 +177,22 @@ describe('AgentService RSVP flow', () => {
     expect(runtime.composeRequests[0]?.errorMessage).toContain('confirmes su asistencia');
   });
 
+  it('distinguishes a user-level not-found result from a lookup failure', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })]);
+    const gateway = new RsvpGateway([]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), null);
+
+    await service.handleTurn(inbound('Sí, confirmo que asistiré'));
+
+    expect(gateway.inputs).toEqual([]);
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'no encontró ninguna invitación asociada',
+    );
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
+      'No fue posible consultar',
+    );
+  });
+
   it('reports an already-confirmed invitation naturally without another mutation', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
     const gateway = new RsvpGateway([]);
@@ -453,13 +469,16 @@ function createService(
   runtime: AgentRuntime,
   gateway: AgentConversationGateway,
   store = new InMemoryPlanStore(),
-  invitations: UserEventLookupResult['events'] = [rsvpLookupInvitation({})],
+  invitations: UserEventLookupResult['events'] | null = [rsvpLookupInvitation({})],
 ): AgentService {
   return new AgentService({
     planStore: store,
     runtime,
     providerGateway: {
-      async lookupUserEventContext(): Promise<UserEventLookupResult> {
+      async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
+        if (invitations === null) {
+          return null;
+        }
         return {
           lookup: { email: null, phone: '973296571' },
           user: null,

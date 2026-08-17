@@ -1728,8 +1728,11 @@ export class AgentService {
         args.extraction.rsvpEventReference,
         args.messageContext,
       );
-      operationalNote = groundedCampaignEvent
-        ? `El historial de campaña confirma una invitación de ${groundedCampaignEvent} asociada a esta conversación, pero la consulta actual de usuario no devolvió su registro ni su estado. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.`
+      const hasCampaignInvitationContext = args.messageContext.recentMessages.some(
+        (message) => message.source === 'admin_campaign',
+      );
+      operationalNote = groundedCampaignEvent || hasCampaignInvitationContext
+        ? `El historial de campaña confirma contexto de una invitación${groundedCampaignEvent ? ` de ${groundedCampaignEvent}` : ''} asociada a esta conversación, pero la consulta actual de usuario no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.`
         : 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation) {
@@ -1961,7 +1964,7 @@ export class AgentService {
             event.guestStatus?.hasResponded ?? null,
             event.guestStatus?.willAttend ?? null,
           ),
-        })) ?? null;
+        })) ?? [];
       toolUsage.outputs.push({
         tool: 'lookup_rsvp_invitations',
         output: JSON.stringify({
