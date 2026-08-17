@@ -24,6 +24,8 @@
 
 **Second deployed gate:** `eval-2026-08-17T16-28-45-351Z-78e05df0` ran 27 cases with 20 passing, 7 failing, 0 errors, and 0 skips. The three new RSVP state cases, the missing-action state case, and both email-code behaviors were functionally correct. The remaining RSVP failures proved the guest-service client throws on HTTP 404 before orchestration can classify it as no associated user record. Replaced generic 404 throwing with a typed guest-service HTTP error and mapped only lookup 404 to `null`; transport and other HTTP failures still throw. Updated the older phone-fallback semantic rubric to the new copy-and-paste contract. Focused mapping, RSVP, live registry, catalog, type, and lint gates passed 32/32 tests.
 
+**Third deployed gate:** `eval-2026-08-17T16-39-50-794Z-f81cd9bb` ran 27 cases with 26 passing, 1 failing, 0 errors, and 0 skips. Every RSVP case and both copy-and-paste code cases passed. The sole failure was an older repeated-code judge interpreting the explicit offer “Puedo solicitar apoyo humano para revisarla” as insufficient because it was not phrased as a question, although the registered contract requires an offer rather than a submitted action. Clarified the rubric to accept an explicit offer without weakening its no-loop, preserved-query, and no-invented-payment requirements.
+
 ### Make email-code delivery instructions direct
 
 - Replaced the internal `enter_code_as_text` requirement with `copy_and_paste_code_here`.
