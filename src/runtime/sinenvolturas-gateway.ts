@@ -40,6 +40,13 @@ type ApiEnvelope<T> = {
   error: string;
 };
 
+class GuestServiceHttpError extends Error {
+  constructor(readonly status: number) {
+    super(`Guest service API request failed with ${status}`);
+    this.name = 'GuestServiceHttpError';
+  }
+}
+
 type CategoryApiItem = {
   id?: number | null;
   slug?: string | null;
@@ -494,9 +501,17 @@ export class SinEnvolturasGateway implements ProviderGateway {
       searchParams.set('phone', input.phone);
     }
 
-    const response = await this.fetchGuestServiceJson<ApiEnvelope<Record<string, unknown>>>(
-      `/user-lookup?${searchParams.toString()}`,
-    );
+    let response: ApiEnvelope<Record<string, unknown>>;
+    try {
+      response = await this.fetchGuestServiceJson<ApiEnvelope<Record<string, unknown>>>(
+        `/user-lookup?${searchParams.toString()}`,
+      );
+    } catch (error) {
+      if (error instanceof GuestServiceHttpError && error.status === 404) {
+        return null;
+      }
+      throw error;
+    }
 
     if (!response.status || !response.data) {
       return null;
@@ -964,7 +979,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       : await fetch(`${baseUrl}${pathname}`);
 
     if (!response.ok) {
-      throw new Error(`Guest service API request failed with ${response.status}`);
+      throw new GuestServiceHttpError(response.status);
     }
 
     return (await response.json()) as T;

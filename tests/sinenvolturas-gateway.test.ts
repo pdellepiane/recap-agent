@@ -200,6 +200,30 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result?.user?.fullPhone).toBe('+51 987654321');
   });
 
+  it('maps a missing phone-level user record to no event context', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({
+      status: false,
+      data: [],
+      errors: null,
+      error: 'User not found',
+    }), {
+      status: 404,
+      headers: { 'content-type': 'application/json' },
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      guestServiceBaseUrl: 'https://api.example.test/guest-service',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    await expect(gateway.lookupUserEventContext({
+      email: null,
+      phone: '2025550100',
+    })).resolves.toBeNull();
+  });
+
   it('requests guest login codes through the auth endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

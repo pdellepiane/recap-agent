@@ -22,6 +22,8 @@
 
 **Follow-up correction:** A parsed user-level not-found response now means zero associated invitations, while thrown transport failures remain technical failures. Persisted RSVP candidates remain available when a fresh lookup has no records, and any recent `admin_campaign` context is preserved even when extraction does not repeat the event name. Focused service, catalog, coverage, type, and lint gates passed after the correction.
 
+**Second deployed gate:** `eval-2026-08-17T16-28-45-351Z-78e05df0` ran 27 cases with 20 passing, 7 failing, 0 errors, and 0 skips. The three new RSVP state cases, the missing-action state case, and both email-code behaviors were functionally correct. The remaining RSVP failures proved the guest-service client throws on HTTP 404 before orchestration can classify it as no associated user record. Replaced generic 404 throwing with a typed guest-service HTTP error and mapped only lookup 404 to `null`; transport and other HTTP failures still throw. Updated the older phone-fallback semantic rubric to the new copy-and-paste contract. Focused mapping, RSVP, live registry, catalog, type, and lint gates passed 32/32 tests.
+
 ### Make email-code delivery instructions direct
 
 - Replaced the internal `enter_code_as_text` requirement with `copy_and_paste_code_here`.
