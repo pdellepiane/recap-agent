@@ -15,15 +15,15 @@ expectations:
     type: node_transition
     to: responder_invitacion
     severity: hard
-  - id: uses-rsvp-without-account-auth
+  - id: reads-user-level-state-without-account-auth
     type: tool_usage
-    mustCall: [guest_rsvp]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
     severity: hard
   - id: preserves-campaign-grounded-invitation
     type: text_semantic
     rubric: >-
-      The recent campaign history establishes that Gia Antonella is an invitation associated with this channel number. The RSVP mutation endpoint reports that there is no pending response to update. The answer must remain entirely in Spanish, must not say or imply that the invitation is missing or unassociated with the number, and must not claim that a new attendance update succeeded. It should explain naturally that the invitation is no longer pending and may offer help reviewing or changing the existing response.
+      The recent campaign history establishes an invitation for Gia Antonella in this conversation, while the current user-level lookup does not return a record or current attendance state. The answer must remain entirely in Spanish, must not say that the invitation never existed or merely that there are no pending invitations, and must not claim that an attendance update succeeded. It should explain the current lookup mismatch naturally and offer human help to review the link and state.
     minScore: 0.9
     requireJudge: true
     severity: hard

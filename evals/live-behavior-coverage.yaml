@@ -129,3 +129,21 @@ behaviorChanges:
   - id: render-selected-and-deferred-close-outcomes-accurately
     implementedBy: b82d28e
     liveCaseIds: [live_feedback.token_seeded_selection_defer_close]
+  - id: read-complete-user-level-rsvp-state-before-mutation
+    implementedBy: c132b28
+    liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported, live_behavior.rsvp_declined_state_offers_one_change]
+  - id: report-confirmed-rsvp-state-without-redundant-mutation
+    implementedBy: c132b28
+    liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported]
+  - id: require-one-confirmation-before-reversing-rsvp-state
+    implementedBy: c132b28
+    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
+  - id: reject-false-rsvp-success-from-already-responded-envelope
+    implementedBy: c132b28
+    liveCaseIds: [live_behavior.rsvp_declined_change_never_claims_false_success]
+  - id: distinguish-no-associated-invitations-from-no-pending-invitations
+    implementedBy: c132b28
+    liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
+  - id: request-email-code-by-copy-and-paste-without-text-wording
+    implementedBy: c132b28
+    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]

@@ -1697,9 +1697,17 @@ export class AgentService {
     args.toolUsage.considered.push('lookup_rsvp_invitations', 'guest_rsvp');
     const phoneExtension = args.workingPlan.contact_phone_extension;
     const phoneNumber = args.workingPlan.contact_phone_number;
-    const invitations = phoneNumber
+    const lookedUpInvitations = phoneNumber
       ? await this.lookupRsvpInvitations(phoneNumber, args.toolUsage, args.timingMs)
       : null;
+    const invitations = lookedUpInvitations?.length === 0 && pendingState.candidates.length > 0
+      ? pendingState.candidates.map((candidate) => ({
+          guestId: candidate.guest_id,
+          eventName: candidate.event_name,
+          eventDate: candidate.event_date,
+          state: 'unknown' as const,
+        }))
+      : lookedUpInvitations;
     const selectedInvitation = invitations
       ? this.selectRsvpInvitation({
           invitations,
@@ -1716,7 +1724,13 @@ export class AgentService {
       operationalNote = 'No fue posible consultar las invitaciones asociadas al número confiable del canal. No afirmes que no existen ni que se actualizó una respuesta; ofrece reintentar o pedir apoyo humano.';
       nextRsvpState = this.emptyRsvpState();
     } else if (invitations.length === 0) {
-      operationalNote = 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
+      const groundedCampaignEvent = this.groundedRsvpCampaignEvent(
+        args.extraction.rsvpEventReference,
+        args.messageContext,
+      );
+      operationalNote = groundedCampaignEvent
+        ? `El historial de campaña confirma una invitación de ${groundedCampaignEvent} asociada a esta conversación, pero la consulta actual de usuario no devolvió su registro ni su estado. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.`
+        : 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation) {
       const attempts = pendingState.status === 'awaiting_event_selection'

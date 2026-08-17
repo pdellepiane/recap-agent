@@ -1,0 +1,45 @@
+template: template.base-live
+id: live_behavior.rsvp_declined_change_never_claims_false_success
+suite: live_behavior_regression
+version: 1
+description: An affirmative follow-up attempts the selected change once and reports the unchanged backend state honestly.
+tags: [live, behavior, rsvp, attendance, backend-contract, false-success]
+targetModes: [live_lambda]
+inputs:
+  - text: Sí, cámbiala para confirmar que asistiré.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-declined-change-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: awaiting_action
+    pending_action: attending
+    candidates:
+      - guest_id: 584353
+        event_name: Otra celebración prueba
+        event_date: "2026-08-19 05:00:00"
+    requested_at: "2026-08-17T15:00:00.000Z"
+    selection_attempts: 0
+expectations:
+  - id: remains-in-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: reads-and-attempts-selected-change-once
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations, guest_rsvp]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: reports-unchanged-declined-state
+    type: text_semantic
+    rubric: >-
+      The user confirms the pending request to change guest 584353 from not attending to attending. The production RSVP endpoint reports that this invitation was already answered and remains not attending. The response must be natural and entirely in Spanish, clearly say that the requested change was not completed or that the invitation still says the guest will not attend, and offer a useful next step such as human support. It must never claim that attendance was confirmed or changed successfully, ask for email or a code, or expose internal fields.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

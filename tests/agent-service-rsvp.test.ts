@@ -300,34 +300,30 @@ describe('AgentService RSVP flow', () => {
     );
   });
 
-  it('does not report a campaign-grounded invitation as missing when the mutation endpoint has no pending response', async () => {
+  it('does not erase a campaign-grounded invitation when the user lookup has no current record', async () => {
     const runtime = new RsvpRuntime([
       rsvpExtraction({
         action: 'attending',
         eventReference: 'Gia Antonella',
       }),
     ]);
-    const gateway = new RsvpGateway(
-      [{ status: 'no_pending' }],
-      [campaignMessage('Gia Antonella')],
-    );
-    const service = createService(runtime, gateway, new InMemoryPlanStore(), [
-      rsvpLookupInvitation({ guestId: 41, eventName: 'Gia Antonella' }),
-    ]);
+    const gateway = new RsvpGateway([], [campaignMessage('Gia Antonella')]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
 
     const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
 
     const request = runtime.composeRequests[0];
-    expect(request?.errorMessage).toContain('la invitación de Gia Antonella');
-    expect(request?.errorMessage).toContain('no confirmó ninguna actualización');
+    expect(request?.errorMessage).toContain('invitación de Gia Antonella');
+    expect(request?.errorMessage).toContain('no devolvió su registro ni su estado');
     expect(request?.errorMessage).not.toContain(
       'no encontró invitaciones pendientes para el número',
     );
     expect(request?.errorMessage).not.toContain('quedó registrada');
     expect(request?.turnDecision?.persistReason).toBe(
-      'referenced_invitation_not_pending',
+      'needs_input',
     );
-    expect(result.trace.tools_called).toContain('guest_rsvp');
+    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
   });
 });
 

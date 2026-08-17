@@ -2,7 +2,7 @@ template: template.base-live
 id: live_behavior.otp_sent_explains_image_limitation
 suite: live_behavior_regression
 version: 1
-description: After sending an email code, the assistant explains that images cannot be read and asks for the code as text.
+description: After sending an email code, the assistant asks the user to copy and paste it without the confusing word text.
 tags: [live, behavior, authentication, otp, image-limitation]
 targetModes: [live_lambda]
 inputs:
@@ -33,7 +33,7 @@ expectations:
   - id: post-send-image-guidance
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds naturally in Spanish that a one-time code was sent to the provided email, says it may take up to one minute and mentions checking the main inbox or junk mail, explicitly explains that it cannot read images or screenshots, and asks the user to type the code as text in the conversation. It must not ask for the WhatsApp number or claim that the protected event question has already been answered.
+      Pass only if the assistant responds naturally and entirely in Spanish that a one-time code was sent to the provided email, explicitly explains that it cannot read images or screenshots, and directly asks the user to copy and paste the code here. It must not use the word “texto” as an instruction, ask for the WhatsApp number, or claim that the protected event question has already been answered.
     minScore: 0.9
     requireJudge: true
     severity: hard

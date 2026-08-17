@@ -16,6 +16,8 @@
 
 **Verification:** Focused TypeScript compilation passed. The RSVP gateway, RSVP orchestration, guest-service mapping, authentication guidance, and prompt-loader suites passed 59/59 tests. Offline RSVP coverage includes pending, already attending, already declining, a one-confirmation reversal, an affirmative follow-up, and a backend refusal that must never be rendered as success.
 
+**Live coverage:** Added mandatory Lambda cases for reporting an existing confirmation, reporting a declined state and offering one change confirmation, and attempting that confirmed change without claiming false success when the production endpoint refuses it. Updated the no-invitation, campaign-context, missing-action, and email-code cases to assert the new state-first and copy-and-paste contracts. The coverage registry, evaluation catalog, RSVP service, prompt audit, and static comparison suites passed 22/22 tests.
+
 ### Make email-code delivery instructions direct
 
 - Replaced the internal `enter_code_as_text` requirement with `copy_and_paste_code_here`.

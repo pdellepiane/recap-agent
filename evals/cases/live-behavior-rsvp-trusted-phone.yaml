@@ -2,7 +2,7 @@ template: template.base-live
 id: live_behavior.rsvp_trusted_phone_reports_no_pending
 suite: live_behavior_regression
 version: 1
-description: A clear RSVP decision uses the trusted channel phone and reports the real no-pending backend outcome without account authentication.
+description: A clear RSVP decision uses the trusted channel phone and distinguishes no associated invitations from no pending invitations.
 tags: [live, behavior, rsvp, attendance, trusted-phone, agent-api]
 targetModes: [live_lambda]
 inputs:
@@ -15,20 +15,20 @@ expectations:
     type: node_transition
     to: responder_invitacion
     severity: hard
-  - id: calls-rsvp-only
+  - id: reads-user-level-invitations-without-auth
     type: tool_usage
-    mustCall: [guest_rsvp]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
     severity: hard
   - id: records-rsvp-route
     type: trace_field_equals
     path: route_kind
     expected: rsvp
     severity: hard
-  - id: reports-real-no-pending-outcome
+  - id: reports-no-associated-invitation-outcome
     type: text_semantic
     rubric: >-
-      This case uses a reserved synthetic phone number for which the backend has no pending invitation. The response must say naturally and entirely in Spanish that no pending invitation was found for the current channel number. It may offer human help if the guest believes an invitation is missing. It must not request email or a one-time code, expose internal values, or claim that attendance was registered.
+      This case uses a reserved synthetic phone number for which the user-level lookup has no associated invitations at all. The response must say naturally and entirely in Spanish that no invitation is associated with the current number. It must not use the misleading statement that there are merely no pending invitations, request email or a one-time code, expose internal values, or claim that attendance was registered. It may offer human help if the guest expected an invitation.
     minScore: 0.9
     requireJudge: true
     severity: hard

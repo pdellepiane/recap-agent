@@ -1,0 +1,50 @@
+template: template.base-live
+id: live_behavior.rsvp_confirmed_state_is_reported
+suite: live_behavior_regression
+version: 1
+description: A user-level invitation that already has attendance confirmed is reported naturally without another mutation.
+tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
+targetModes: [live_lambda]
+inputs:
+  - text: ¿Mi asistencia a Otra celebración prueba ya está confirmada?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-confirmed-state-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: awaiting_action
+    pending_action: attending
+    candidates:
+      - guest_id: 584352
+        event_name: Otra celebración prueba
+        event_date: "2026-08-19 05:00:00"
+    requested_at: "2026-08-17T15:00:00.000Z"
+    selection_attempts: 0
+expectations:
+  - id: remains-in-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: reads-user-level-invitation-state
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: clears-completed-rsvp-state
+    type: plan_field_equals
+    path: rsvp_state.status
+    expected: none
+    severity: hard
+  - id: reports-existing-confirmation-naturally
+    type: text_semantic
+    rubric: >-
+      The user-level invitation for Otra celebración prueba already says the guest will attend. The answer must be natural and entirely in Spanish, clearly say that attendance is already confirmed, and may wish the guest a good event. It must not imply that a new change was made, ask for email or a code, or mention internal states or tools.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 250

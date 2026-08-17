@@ -1,0 +1,55 @@
+template: template.base-live
+id: live_behavior.rsvp_declined_state_offers_one_change
+suite: live_behavior_regression
+version: 1
+description: A declined invitation reports its current state and offers one clear confirmation to change it to attending.
+tags: [live, behavior, rsvp, attendance, current-state, confirmation]
+targetModes: [live_lambda]
+inputs:
+  - text: ¿Cómo figura mi asistencia a Otra celebración prueba?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-declined-state-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: awaiting_action
+    pending_action: null
+    candidates:
+      - guest_id: 584353
+        event_name: Otra celebración prueba
+        event_date: "2026-08-19 05:00:00"
+    requested_at: "2026-08-17T15:00:00.000Z"
+    selection_attempts: 0
+expectations:
+  - id: remains-in-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: reads-state-without-premature-mutation
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: waits-for-one-change-confirmation
+    type: plan_field_equals
+    path: rsvp_state.status
+    expected: awaiting_action
+    severity: hard
+  - id: preserves-attending-change
+    type: plan_field_equals
+    path: rsvp_state.pending_action
+    expected: attending
+    severity: hard
+  - id: reports-decline-and-offers-change
+    type: text_semantic
+    rubric: >-
+      The selected invitation currently says the guest will not attend. The answer must be natural and entirely in Spanish, clearly report that current state, and ask one concise question offering to change it so attendance is confirmed. It must not claim that a change already succeeded, ask for email or a code, or expose internal fields.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 300
