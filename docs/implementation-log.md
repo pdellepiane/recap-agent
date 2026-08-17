@@ -26,6 +26,8 @@
 
 **Third deployed gate:** `eval-2026-08-17T16-39-50-794Z-f81cd9bb` ran 27 cases with 26 passing, 1 failing, 0 errors, and 0 skips. Every RSVP case and both copy-and-paste code cases passed. The sole failure was an older repeated-code judge interpreting the explicit offer “Puedo solicitar apoyo humano para revisarla” as insufficient because it was not phrased as a question, although the registered contract requires an offer rather than a submitted action. Clarified the rubric to accept an explicit offer without weakening its no-loop, preserved-query, and no-invented-payment requirements.
 
+**Final repeated gate:** `eval-2026-08-17T16-47-50-855Z-3581f431` ran 27 cases with 25 passing, 2 failing, 0 errors, and 0 skips. All RSVP cases passed again, as did the clarified repeated-code case. The two failures were the positive OTP-send fixtures: repeated full-suite execution exhausted the external email-code request limit, so the runtime correctly persisted `user_auth.status=failed` and did not falsely say a code was sent. The immediately preceding deployed run proves both copy-and-paste cases pass when the external service accepts the request. Their positive expectations remain strict rather than accepting a rate-limited send as success.
+
 ### Make email-code delivery instructions direct
 
 - Replaced the internal `enter_code_as_text` requirement with `copy_and_paste_code_here`.
