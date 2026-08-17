@@ -729,7 +729,49 @@ describe('AgentConversationGateway', () => {
     });
     await expect(gateway.guestRsvp(input)).resolves.toEqual({ status: 'no_pending' });
     await expect(gateway.guestRsvp(input)).resolves.toEqual({ status: 'phone_mismatch' });
-    await expect(gateway.guestRsvp(input)).resolves.toEqual({ status: 'already_responded' });
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({
+      status: 'already_responded',
+      currentAction: null,
+      requestedAction: 'declining',
+      guestId: null,
+      eventName: null,
+      eventDate: null,
+    });
+  });
+
+  it('preserves the real current RSVP state from a successful already-responded envelope', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        already_responded: true,
+        will_attend: false,
+        event_name: 'Otra celebración prueba',
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 584353,
+    })).resolves.toEqual({
+      status: 'already_responded',
+      currentAction: 'declining',
+      requestedAction: 'attending',
+      guestId: 584353,
+      eventName: 'Otra celebración prueba',
+      eventDate: null,
+    });
   });
 
   it('fails closed for malformed RSVP success and candidate envelopes', async () => {

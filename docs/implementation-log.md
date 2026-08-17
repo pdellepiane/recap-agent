@@ -1,5 +1,29 @@
 # Implementation Log
 
+## 2026-08-17
+
+### Read complete invitation state before handling attendance
+
+- Changed RSVP orchestration to query the user-level guest-event record by the trusted channel phone before deciding whether to mutate an invitation.
+- Preserved each guest record ID and normalized numeric or boolean `has_responded` and `will_attend` values into pending, attending, declining, or unknown states.
+- Pending invitations can be confirmed in the same turn when the user already expressed the decision; state-only questions report the current state and ask at most one useful follow-up.
+- Existing confirmations are reported naturally without another mutation. Reversing an existing response requires one explicit confirmation, and the selected guest ID and desired action survive a short affirmative follow-up.
+- Multiple invitations now expose all returned event states for one grounded selection question. A user-level result with no guest records is described as no associated invitations, never as the ambiguous “no pending invitations.”
+- Added sanitized `lookup_rsvp_invitations` tool input/output evidence so traces show the guest IDs, event labels, and normalized current states used by the decision.
+- Corrected the Agent API client to recognize HTTP 200 envelopes with `already_responded=true` and preserve `will_attend` instead of falsely treating the requested action as a successful update.
+
+**Production contract finding:** A direct production probe with the reserved test phone and guest ID `584353` returned HTTP 200 with `already_responded=true` and `will_attend=false`; a follow-up user lookup confirmed the value remained false. The current backend therefore reports an existing response but does not change it. The agent now reports that unchanged state honestly and offers support. The state-machine path is ready to confirm the change when the endpoint returns a real successful mutation.
+
+**Verification:** Focused TypeScript compilation passed. The RSVP gateway, RSVP orchestration, guest-service mapping, authentication guidance, and prompt-loader suites passed 59/59 tests. Offline RSVP coverage includes pending, already attending, already declining, a one-confirmation reversal, an affirmative follow-up, and a backend refusal that must never be rendered as success.
+
+### Make email-code delivery instructions direct
+
+- Replaced the internal `enter_code_as_text` requirement with `copy_and_paste_code_here`.
+- Changed the Spanish response contract to say that the code was sent to the exact email and ask the user to copy and paste it in the conversation.
+- Kept the image limitation but explicitly prohibited using the word “texto” as a delivery instruction.
+
+**Reason:** “Código como texto” confused users into spelling digits as words. Copy-and-paste language is shorter, concrete, and compatible with numeric or word-normalized codes.
+
 ## 2026-08-13
 
 ### Remove the deprecated Agent API deployment endpoint

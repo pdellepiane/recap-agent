@@ -23,7 +23,7 @@ describe('information authentication guidance', () => {
         'check_main_inbox',
         'check_junk_mail',
         'explain_images_not_supported',
-        'enter_code_as_text',
+        'copy_and_paste_code_here',
       ],
     });
     expect(
@@ -37,7 +37,7 @@ describe('information authentication guidance', () => {
         'check_main_inbox',
         'check_junk_mail',
         'explain_images_not_supported',
-        'enter_code_as_text',
+        'copy_and_paste_code_here',
       ],
     });
   });

@@ -139,7 +139,14 @@ export type AgentGuestRsvpResult =
       status: 'multiple_pending';
       candidates: RsvpCandidate[];
     }
-  | { status: 'already_responded' }
+  | {
+      status: 'already_responded';
+      currentAction: RsvpAction | null;
+      requestedAction: RsvpAction;
+      guestId: number | null;
+      eventName: string | null;
+      eventDate: string | null;
+    }
   | { status: 'no_pending' }
   | { status: 'phone_mismatch' }
   | {
@@ -283,6 +290,8 @@ const rsvpEventSchema = z.object({
 const rsvpResponseDataSchema = z.object({
   guest_id: z.number().int().positive().nullable().optional(),
   action: z.enum(rsvpActionValues).optional(),
+  already_responded: z.boolean().optional(),
+  will_attend: z.union([z.boolean(), z.literal(0), z.literal(1)]).nullable().optional(),
   event_name: z.string().trim().min(1).nullable().optional(),
   event_date: z.string().trim().min(1).nullable().optional(),
   event: rsvpEventSchema.nullable().optional(),
@@ -743,6 +752,29 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           retryable: false,
         };
       }
+      if (parsed.data.already_responded === true) {
+        const willAttend = parsed.data.will_attend;
+        return {
+          status: 'already_responded',
+          currentAction: willAttend === true || willAttend === 1
+            ? 'attending'
+            : willAttend === false || willAttend === 0
+              ? 'declining'
+              : null,
+          requestedAction: input.action,
+          guestId: parsed.data.guest_id ?? input.guest_id ?? null,
+          eventName:
+            parsed.data.event_name ??
+            parsed.data.event?.name ??
+            parsed.data.event?.title ??
+            null,
+          eventDate:
+            parsed.data.event_date ??
+            parsed.data.event?.date ??
+            parsed.data.event?.event_date ??
+            null,
+        };
+      }
       return {
         status: 'responded',
         action: parsed.data.action ?? input.action,
@@ -781,7 +813,14 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return { status: 'phone_mismatch' };
     }
     if (response.errorCode === 'already_responded') {
-      return { status: 'already_responded' };
+      return {
+        status: 'already_responded',
+        currentAction: null,
+        requestedAction: input.action,
+        guestId: input.guest_id ?? null,
+        eventName: null,
+        eventDate: null,
+      };
     }
     return {
       status: 'failed',

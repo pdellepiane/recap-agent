@@ -153,16 +153,13 @@ describe('PromptLoader', () => {
       'No describas por adelantado todo el flujo',
     );
     expect(informationBundle.instructions).toContain(
-      'puede tardar hasta un minuto',
-    );
-    expect(informationBundle.instructions).toContain(
-      'bandeja principal o el correo no deseado',
+      'No uses la palabra “texto”',
     );
     expect(informationBundle.instructions).toContain(
       'no puedes leer imágenes ni capturas',
     );
     expect(informationBundle.instructions).toContain(
-      'escriba el código como texto',
+      'Cópialo y pégalo aquí',
     );
     expect(informationBundle.instructions).toContain(
       'Nunca menciones una bandeja de promociones',

@@ -105,7 +105,8 @@ describe('SinEnvolturasGateway strict search mapping', () => {
             guest_in_events: [
               {
                 id: 312,
-                will_attend: true,
+                has_responded: 1,
+                will_attend: 1,
                 event: {
                   id: 205,
                   slug: 'cumple-ana-2026',
@@ -144,12 +145,14 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result?.events).toHaveLength(1);
     const event = result?.events[0];
     expect(event?.relation).toBe('guest');
+    expect(event?.guestId).toBe(312);
     expect(event?.eventId).toBe(205);
     expect(event?.name).toBe('Cumpleaños de Ana');
     expect(event?.url).toBe('https://sinenvolturas.com/cumple-ana-2026');
     expect(event?.place).toBe('Perú');
     expect(event?.datetime).toBe('2026-06-15T19:00:00Z');
     expect(event?.guestStatus?.willAttend).toBe(true);
+    expect(event?.guestStatus?.hasResponded).toBe(true);
     expect(result?.counts.guestEvents).toBe(1);
     expect(result).not.toHaveProperty('raw');
     expect(result).not.toHaveProperty('guest_in_events');

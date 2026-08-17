@@ -589,6 +589,7 @@ function eventLookup(): UserEventLookupResult {
     events: [
       {
         relation: 'owner',
+        guestId: null,
         eventId: 88,
         slug: 'boda',
         url: 'https://sinenvolturas.com/boda',

@@ -116,6 +116,7 @@ export type UserEventOrderSummary = {
 
 export type UserEventSummary = {
   relation: UserEventRelation;
+  guestId: number | null;
   eventId: number | null;
   slug: string | null;
   url: string | null;

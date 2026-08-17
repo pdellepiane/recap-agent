@@ -155,6 +155,15 @@ type ProviderSearchExecutionResult = {
   strategy: SearchStrategyTrace;
 };
 
+type RsvpInvitationState = 'pending' | 'attending' | 'declining' | 'unknown';
+
+type RsvpInvitation = {
+  guestId: number;
+  eventName: string | null;
+  eventDate: string | null;
+  state: RsvpInvitationState;
+};
+
 type TurnTiming = {
   total: number;
   load_plan: number;
@@ -1681,53 +1690,79 @@ export class AgentService {
     const currentNode: DecisionNode = 'responder_invitacion';
     const pendingState = args.workingPlan.rsvp_state;
     const action = args.extraction.rsvpAction ?? pendingState.pending_action;
-    const knownCandidate = pendingState.status === 'awaiting_event_selection'
-      ? pendingState.candidates.find(
-          (candidate) => candidate.guest_id === args.extraction.rsvpCandidateGuestId,
-        ) ?? null
-      : null;
-    const needsCandidate = pendingState.status === 'awaiting_event_selection';
     let result: AgentGuestRsvpResult | null = null;
     let operationalNote: string;
     let nextRsvpState = pendingState;
 
-    args.toolUsage.considered.push('guest_rsvp');
+    args.toolUsage.considered.push('lookup_rsvp_invitations', 'guest_rsvp');
+    const phoneExtension = args.workingPlan.contact_phone_extension;
+    const phoneNumber = args.workingPlan.contact_phone_number;
+    const invitations = phoneNumber
+      ? await this.lookupRsvpInvitations(phoneNumber, args.toolUsage, args.timingMs)
+      : null;
+    const selectedInvitation = invitations
+      ? this.selectRsvpInvitation({
+          invitations,
+          pendingState,
+          extractedGuestId: args.extraction.rsvpCandidateGuestId,
+          eventReference: args.extraction.rsvpEventReference,
+        })
+      : null;
 
-    if (!action) {
+    if (!phoneExtension || !phoneNumber) {
+      operationalNote = 'No está disponible el número confiable del canal. No solicites correo ni código; ofrece apoyo humano para revisar la invitación.';
+      nextRsvpState = this.emptyRsvpState();
+    } else if (!invitations) {
+      operationalNote = 'No fue posible consultar las invitaciones asociadas al número confiable del canal. No afirmes que no existen ni que se actualizó una respuesta; ofrece reintentar o pedir apoyo humano.';
+      nextRsvpState = this.emptyRsvpState();
+    } else if (invitations.length === 0) {
+      operationalNote = 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
+      nextRsvpState = this.emptyRsvpState();
+    } else if (!selectedInvitation) {
+      const attempts = pendingState.status === 'awaiting_event_selection'
+        ? pendingState.selection_attempts + 1
+        : 0;
       nextRsvpState = {
-        status: 'awaiting_action',
-        pending_action: null,
-        candidates: [],
-        requested_at: new Date().toISOString(),
-        selection_attempts: 0,
-      };
-      operationalNote =
-        'La persona quiere responder una invitación, pero aún no indicó si asistirá. Pregunta si asistirá o no asistirá. No afirmes que se registró una respuesta.';
-    } else if (needsCandidate && !knownCandidate) {
-      const attempts = pendingState.selection_attempts + 1;
-      nextRsvpState = {
-        ...pendingState,
+        status: 'awaiting_event_selection',
         pending_action: action,
+        candidates: invitations.map((invitation) => ({
+          guest_id: invitation.guestId,
+          event_name: invitation.eventName,
+          event_date: invitation.eventDate,
+        })),
+        requested_at: new Date().toISOString(),
         selection_attempts: attempts,
       };
-      operationalNote = attempts >= 2
-        ? 'La referencia del evento sigue sin identificar un único candidato. Presenta solo los eventos pendientes y pregunta una vez más cuál desea elegir; ofrece apoyo humano como alternativa. No llames al servicio ni afirmes que se registró una respuesta.'
-        : 'La referencia del evento no identifica un único candidato. Presenta solo los eventos pendientes y pregunta a cuál desea responder. No llames al servicio ni afirmes que se registró una respuesta.';
+      operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
     } else {
-      const phoneExtension = args.workingPlan.contact_phone_extension;
-      const phoneNumber = args.workingPlan.contact_phone_number;
-      if (!phoneExtension || !phoneNumber) {
-        result = {
-          status: 'failed',
-          error: 'Trusted channel phone is unavailable for RSVP.',
-          retryable: false,
-        };
+      const confirmedRequestedChange = pendingState.status === 'awaiting_action'
+        && pendingState.pending_action === action
+        && pendingState.candidates.some(
+          (candidate) => candidate.guest_id === selectedInvitation.guestId,
+        );
+      const currentAction = selectedInvitation.state === 'attending'
+        ? 'attending'
+        : selectedInvitation.state === 'declining'
+          ? 'declining'
+          : null;
+      const reversesExistingResponse = Boolean(
+        action && currentAction && action !== currentAction,
+      );
+
+      if (!action) {
+        operationalNote = this.rsvpCurrentStateNote(selectedInvitation, true);
+        nextRsvpState = selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining'
+          ? this.awaitingRsvpActionState(selectedInvitation, 'attending')
+          : this.emptyRsvpState();
+      } else if (currentAction === action) {
+        operationalNote = this.rsvpCurrentStateNote(selectedInvitation, false);
+        nextRsvpState = this.emptyRsvpState();
+      } else if (reversesExistingResponse && !confirmedRequestedChange) {
+        operationalNote = this.rsvpChangeConfirmationNote(selectedInvitation, action);
+        nextRsvpState = this.awaitingRsvpActionState(selectedInvitation, action);
       } else if (!args.gateway.guestRsvp) {
-        result = {
-          status: 'failed',
-          error: 'Agent API RSVP is not configured.',
-          retryable: false,
-        };
+        operationalNote = 'El servicio de actualización de asistencia no está configurado. No afirmes que se cambió la respuesta; ofrece apoyo humano.';
+        nextRsvpState = this.emptyRsvpState();
       } else {
         const executionStartedAt = Date.now();
         args.toolUsage.called.push('guest_rsvp');
@@ -1735,52 +1770,34 @@ export class AgentService {
           tool: 'guest_rsvp',
           input: JSON.stringify({
             action,
-            guest_id: knownCandidate?.guest_id ?? null,
+            guest_id: selectedInvitation.guestId,
             trusted_phone_present: true,
+            previous_state: selectedInvitation.state,
           }),
         });
         result = await args.gateway.guestRsvp({
           phone_extension: phoneExtension,
           phone_number: phoneNumber,
           action,
-          ...(knownCandidate ? { guest_id: knownCandidate.guest_id } : {}),
+          guest_id: selectedInvitation.guestId,
         });
         args.timingMs.rsvp_execution += Date.now() - executionStartedAt;
         args.toolUsage.outputs.push({
           tool: 'guest_rsvp',
           output: JSON.stringify(this.summarizeRsvpResult(result)),
         });
+        operationalNote = this.rsvpOperationalNote(
+          result,
+          action,
+          {
+            guest_id: selectedInvitation.guestId,
+            event_name: selectedInvitation.eventName,
+            event_date: selectedInvitation.eventDate,
+          },
+          null,
+        );
+        nextRsvpState = this.emptyRsvpState();
       }
-
-      const groundedCampaignEvent = this.groundedRsvpCampaignEvent(
-        args.extraction.rsvpEventReference,
-        args.messageContext,
-      );
-      operationalNote = this.rsvpOperationalNote(
-        result,
-        action,
-        knownCandidate,
-        groundedCampaignEvent,
-      );
-      nextRsvpState = result.status === 'multiple_pending'
-        ? {
-            status: 'awaiting_event_selection',
-            pending_action: action,
-            candidates: result.candidates.map((candidate) => ({
-              guest_id: candidate.guestId,
-              event_name: candidate.eventName,
-              event_date: candidate.eventDate,
-            })),
-            requested_at: new Date().toISOString(),
-            selection_attempts: 0,
-          }
-        : {
-            status: 'none',
-            pending_action: null,
-            candidates: [],
-            requested_at: null,
-            selection_attempts: 0,
-          };
     }
 
     const planToSave = mergePlan(args.workingPlan, {
@@ -1886,12 +1903,202 @@ export class AgentService {
         })),
       };
     }
+    if (result.status === 'already_responded') {
+      return {
+        status: result.status,
+        current_action: result.currentAction,
+        requested_action: result.requestedAction,
+        guest_id: result.guestId,
+        event_name: result.eventName,
+        event_date: result.eventDate,
+      };
+    }
     return {
       status: result.status,
       ...(result.status === 'failed'
         ? { retryable: result.retryable, error: result.error }
         : {}),
     };
+  }
+
+  private async lookupRsvpInvitations(
+    phoneNumber: string,
+    toolUsage: ToolUsage,
+    timingMs: TurnTiming,
+  ): Promise<RsvpInvitation[] | null> {
+    const startedAt = Date.now();
+    toolUsage.called.push('lookup_rsvp_invitations');
+    toolUsage.inputs.push({
+      tool: 'lookup_rsvp_invitations',
+      input: JSON.stringify({ trusted_phone_present: true }),
+    });
+    try {
+      const result = await this.dependencies.providerGateway.lookupUserEventContext({
+        email: null,
+        phone: phoneNumber,
+      });
+      const invitations = result?.events
+        .filter((event) => event.relation === 'guest' && event.guestId !== null)
+        .map((event) => ({
+          guestId: event.guestId as number,
+          eventName: event.name,
+          eventDate: event.datetime,
+          state: this.rsvpInvitationState(
+            event.guestStatus?.hasResponded ?? null,
+            event.guestStatus?.willAttend ?? null,
+          ),
+        })) ?? null;
+      toolUsage.outputs.push({
+        tool: 'lookup_rsvp_invitations',
+        output: JSON.stringify({
+          status: result ? 'success' : 'not_found',
+          invitations: invitations?.map((invitation) => ({
+            guest_id: invitation.guestId,
+            event_name: invitation.eventName,
+            event_date: invitation.eventDate,
+            current_state: invitation.state,
+          })) ?? [],
+        }),
+      });
+      return invitations;
+    } catch (error) {
+      toolUsage.outputs.push({
+        tool: 'lookup_rsvp_invitations',
+        output: JSON.stringify({
+          status: 'failed',
+          error: error instanceof Error ? error.message : 'Unknown invitation lookup failure.',
+        }),
+      });
+      return null;
+    } finally {
+      timingMs.rsvp_execution += Date.now() - startedAt;
+    }
+  }
+
+  private rsvpInvitationState(
+    hasResponded: boolean | null,
+    willAttend: boolean | null,
+  ): RsvpInvitationState {
+    if (hasResponded === false) {
+      return 'pending';
+    }
+    if (hasResponded === true && willAttend === true) {
+      return 'attending';
+    }
+    if (hasResponded === true && willAttend === false) {
+      return 'declining';
+    }
+    return 'unknown';
+  }
+
+  private selectRsvpInvitation(args: {
+    invitations: RsvpInvitation[];
+    pendingState: PlanSnapshot['rsvp_state'];
+    extractedGuestId: number | null | undefined;
+    eventReference: string | null | undefined;
+  }): RsvpInvitation | null {
+    if (args.extractedGuestId) {
+      const extracted = args.invitations.find(
+        (invitation) => invitation.guestId === args.extractedGuestId,
+      );
+      if (extracted) {
+        return extracted;
+      }
+    }
+    if (
+      args.pendingState.status === 'awaiting_action' &&
+      args.pendingState.candidates.length === 1
+    ) {
+      const storedId = args.pendingState.candidates[0]?.guest_id;
+      const stored = args.invitations.find(
+        (invitation) => invitation.guestId === storedId,
+      );
+      if (stored) {
+        return stored;
+      }
+    }
+    if (args.eventReference) {
+      const reference = this.normalizeSelectionText(args.eventReference);
+      const matches = args.invitations.filter((invitation) => {
+        const name = this.normalizeSelectionText(invitation.eventName ?? '');
+        return this.normalizedTextContainsAlias(name, reference)
+          || this.normalizedTextContainsAlias(reference, name);
+      });
+      if (matches.length === 1) {
+        return matches[0] ?? null;
+      }
+    }
+    return args.invitations.length === 1 ? args.invitations[0] ?? null : null;
+  }
+
+  private awaitingRsvpActionState(
+    invitation: RsvpInvitation,
+    action: 'attending' | 'declining',
+  ): PlanSnapshot['rsvp_state'] {
+    return {
+      status: 'awaiting_action',
+      pending_action: action,
+      candidates: [{
+        guest_id: invitation.guestId,
+        event_name: invitation.eventName,
+        event_date: invitation.eventDate,
+      }],
+      requested_at: new Date().toISOString(),
+      selection_attempts: 0,
+    };
+  }
+
+  private emptyRsvpState(): PlanSnapshot['rsvp_state'] {
+    return {
+      status: 'none',
+      pending_action: null,
+      candidates: [],
+      requested_at: null,
+      selection_attempts: 0,
+    };
+  }
+
+  private rsvpCurrentStateNote(
+    invitation: RsvpInvitation,
+    offerAction: boolean,
+  ): string {
+    const event = invitation.eventName ? ` para ${invitation.eventName}` : '';
+    if (invitation.state === 'pending') {
+      return `La invitación${event} está pendiente de respuesta. ${offerAction ? 'Pregunta de forma natural si desea que confirmes su asistencia.' : 'No afirmes que se registró una respuesta.'}`;
+    }
+    if (invitation.state === 'attending') {
+      return `La asistencia ya figura confirmada${event}. Comunícalo con naturalidad y desea que disfrute el evento; no ejecutes otra actualización.`;
+    }
+    if (invitation.state === 'declining') {
+      return `La invitación${event} figura actualmente como que no asistirá. ${offerAction ? 'Pregunta si desea cambiarla para confirmar que sí asistirá.' : 'No afirmes que se cambió.'}`;
+    }
+    return `La invitación${event} existe, pero la consulta no devolvió un estado de asistencia interpretable. No inventes el estado ni afirmes una actualización; ofrece apoyo humano.`;
+  }
+
+  private rsvpChangeConfirmationNote(
+    invitation: RsvpInvitation,
+    action: 'attending' | 'declining',
+  ): string {
+    const event = invitation.eventName ? ` para ${invitation.eventName}` : '';
+    return action === 'attending'
+      ? `La invitación${event} figura actualmente como que no asistirá. Pregunta una sola vez si desea cambiarla para confirmar que sí asistirá. No ejecutes ni afirmes el cambio todavía.`
+      : `La asistencia${event} ya figura confirmada. Pregunta una sola vez si desea cambiarla para indicar que no asistirá. No ejecutes ni afirmes el cambio todavía.`;
+  }
+
+  private multipleRsvpInvitationsNote(
+    invitations: RsvpInvitation[],
+    action: 'attending' | 'declining' | null,
+    attempts: number,
+  ): string {
+    const states = invitations.map((invitation) => ({
+      event_name: invitation.eventName,
+      event_date: invitation.eventDate,
+      current_state: invitation.state,
+    }));
+    const nextStep = action
+      ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta.'
+      : 'Informa brevemente el estado actual de cada invitación y pregunta cuál desea gestionar.';
+    return `La consulta encontró varias invitaciones: ${JSON.stringify(states)}. ${nextStep} ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
   }
 
   private rsvpOperationalNote(
@@ -1910,9 +2117,23 @@ export class AgentService {
       return 'El servicio encontró varias invitaciones pendientes. Presenta únicamente los candidatos visibles en rsvp_state y pregunta a cuál evento desea responder. No afirmes que ya se registró una respuesta.';
     }
     if (result.status === 'already_responded') {
-      return 'El servicio indicó que esa invitación ya tenía una respuesta registrada. No afirmes que se realizó una nueva actualización.';
+      const eventName = result.eventName ?? selectedCandidate?.event_name ?? null;
+      const event = eventName ? ` para ${eventName}` : '';
+      if (result.currentAction === 'attending') {
+        return `El servicio no realizó una nueva actualización porque la asistencia ya figura confirmada${event}. Comunica el estado real con naturalidad.`;
+      }
+      if (result.currentAction === 'declining') {
+        return `El servicio no realizó el cambio solicitado: la invitación${event} sigue figurando como que no asistirá. No afirmes éxito; explica que el estado no cambió y ofrece apoyo humano para modificarlo.`;
+      }
+      return 'El servicio indicó que esa invitación ya tenía una respuesta registrada, pero no devolvió si era asistencia o inasistencia. No afirmes que se realizó una nueva actualización.';
     }
     if (result.status === 'no_pending') {
+      if (selectedCandidate) {
+        const eventName = selectedCandidate.event_name
+          ? ` de ${selectedCandidate.event_name}`
+          : '';
+        return `La consulta de usuario sí encontró la invitación${eventName}, pero el servicio de actualización indicó que no estaba pendiente y no confirmó ninguna actualización. No digas que la invitación no existe ni afirmes que el estado cambió; ofrece apoyo humano si la persona desea modificarla.`;
+      }
       if (groundedCampaignEvent) {
         return `El historial de campaña confirma que la invitación de ${groundedCampaignEvent} sí está asociada al número confiable del canal, pero el servicio indicó que ya no tiene una respuesta pendiente. Comunica que no se realizó una nueva actualización y que la invitación ya no está pendiente. No digas que la invitación no existe ni afirmes si la respuesta registrada es asistencia o inasistencia, porque el servicio no devolvió ese estado. Ofrece apoyo humano solo si la persona quiere revisar o cambiar la respuesta.`;
       }

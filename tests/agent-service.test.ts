@@ -673,6 +673,7 @@ class FakeGateway implements ProviderGateway {
       events: [
         {
           relation: 'guest',
+          guestId: 1,
           eventId: 205,
           slug: 'cumple-ana-2026',
           url: 'https://sinenvolturas.com/cumple-ana-2026',
@@ -749,6 +750,7 @@ class FakeGateway implements ProviderGateway {
       events: [
         {
           relation: 'guest',
+          guestId: 1,
           eventId: 205,
           slug: 'cumple-ana-2026',
           url: 'https://sinenvolturas.com/cumple-ana-2026',
@@ -834,6 +836,7 @@ class AuthScenarioGateway extends FakeGateway {
     events: [
       {
         relation: 'guest',
+        guestId: 1,
         eventId: 205,
         slug: 'cumple-ana-2026',
         url: 'https://sinenvolturas.com/cumple-ana-2026',

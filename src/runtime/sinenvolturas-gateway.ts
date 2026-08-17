@@ -1252,6 +1252,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     const country = this.recordOrNull(event?.country ?? source.country);
     return {
       relation,
+      guestId: relation === 'guest' ? this.numberField(source, 'id') : null,
       eventId,
       slug: event ? this.stringField(event, 'slug') : null,
       url: event ? this.buildEventUrl(this.stringField(event, 'slug')) : null,
@@ -1383,7 +1384,16 @@ export class SinEnvolturasGateway implements ProviderGateway {
 
   private booleanField(source: Record<string, unknown>, key: string): boolean | null {
     const value = source[key];
-    return typeof value === 'boolean' ? value : null;
+    if (typeof value === 'boolean') {
+      return value;
+    }
+    if (value === 1 || value === '1') {
+      return true;
+    }
+    if (value === 0 || value === '0') {
+      return false;
+    }
+    return null;
   }
 
   private findWebsiteUrl(

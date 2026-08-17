@@ -223,7 +223,7 @@ export const informationAuthRequirementValues = [
   'check_main_inbox',
   'check_junk_mail',
   'explain_images_not_supported',
-  'enter_code_as_text',
+  'copy_and_paste_code_here',
   'offer_code_resend',
   'offer_email_change',
   'offer_human_support',
@@ -275,7 +275,7 @@ export function createInformationAuthGuidance(
   if (reason === 'otp_sent' || reason === 'otp_resent') {
     requirements.push(
       'explain_images_not_supported',
-      'enter_code_as_text',
+      'copy_and_paste_code_here',
     );
   }
   if (reason === 'otp_not_received') {
