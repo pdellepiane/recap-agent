@@ -1,5 +1,16 @@
 # Implementation Log
 
+## 2026-08-20
+
+### Isolate authentication-only reply evidence
+
+- Audited the sole failing hard live case and confirmed that the purchase lookup returned `needs_input` with no purchase results or shipping evidence. The reply model nevertheless received the user's shipping wording through the raw message, extraction query, pending request, capability summary, and tool summary.
+- Added a branch-specific reply projection used only when every information result is blocked on authentication. It retains the typed `needs_input` result and authentication guidance while omitting the user message, recent message text, extraction request, pending plan request, capability summary, tool summary, and operational note.
+- Preserved the complete pending request in the internal plan so the information lookup can resume after authentication. Completed, failed, and mixed-result information replies and every other route are unchanged.
+- Added a deterministic regression and registered `withhold-blocked-information-intent-from-authentication-replies` against the existing mandatory hard live case.
+
+**Verification:** The focused offline regression passed 1/1. The development Lambda deployed successfully. Focused live run `eval-2026-08-20T20-25-18-649Z-fd714a15` passed 1/1 with semantic score 1.0 and trace `01M0GDKB7Q5X9MKD1R2A30S49M`. The reply asked only for the registered email to access account information. GET-only retrieval of the stored OpenAI reply confirmed that its input contained `needs_input`, `email_required`, and `explain_account_information_access`, with no shipping wording, pending query, capability summary, or tool summary. Reply input size fell from 3,259 bytes in the failing trace to 1,246 bytes in the passing trace.
+
 ## 2026-08-17
 
 ### Read complete invitation state before handling attendance
