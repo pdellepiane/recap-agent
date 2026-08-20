@@ -643,6 +643,64 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('consultar_evento_invitado');
     expect(input).not.toContain('invited_event_lookup');
   });
+
+  it('discloses only authentication guidance when every information result needs input', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.userMessage = 'Compré un regalo digital. ¿Cuándo lo despachan y en qué fecha llega?';
+    request.extraction.informationRequests = [{
+      kind: 'purchase',
+      query: '¿Cuándo despachan el regalo digital y cuándo llega?',
+      eventHint: null,
+      resource: 'gift_purchases',
+      orderId: null,
+      aspects: ['shipping'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
+    request.plan.information_state.pending_requests = [{
+      requestId: 'information-1',
+      kind: 'purchase',
+      resource: 'gift_purchases',
+      query: '¿Cuándo despachan el regalo digital y cuándo llega?',
+      orderId: null,
+      aspects: ['shipping'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }];
+    request.informationResults = [{
+      requestId: 'information-1',
+      kind: 'purchase',
+      status: 'needs_input',
+      nextInput: 'email',
+      guidance: {
+        reason: 'email_required',
+        email: null,
+        requirements: ['explain_account_information_access'],
+      },
+    }];
+    request.errorMessage = 'Revisar el despacho y la fecha de llegada';
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        composeRequest: ComposeReplyRequest,
+        recommendationFunnel: ReturnType<typeof emptyFunnel>,
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+
+    expect(input).toContain('"status": "needs_input"');
+    expect(input).toContain('"reason": "email_required"');
+    expect(input).toContain('explain_account_information_access');
+    expect(input).not.toContain('regalo digital');
+    expect(input).not.toContain('despach');
+    expect(input).not.toContain('fecha llega');
+    expect(input).not.toContain('shipping');
+    expect(input).not.toContain('pending_requests');
+    expect(input).not.toContain('information_requests');
+    expect(input).not.toContain('Capacidades habilitadas');
+    expect(input).not.toContain('Herramientas autorizadas');
+  });
 });
 
 function createComposeRequest(

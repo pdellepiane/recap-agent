@@ -78,7 +78,7 @@ type ReplyTurnEvidence = {
     status: ComposeReplyRequest['messageContext']['historyStatus'];
     recent_messages: ReturnType<typeof buildModelVisibleConversationHistory>;
   };
-  user_message: string;
+  user_message: string | null;
   decision: Record<string, unknown> | null;
   extraction: Record<string, unknown>;
   plan: Record<string, unknown>;
@@ -850,6 +850,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     request: ComposeReplyRequest,
     recommendationFunnel: RecommendationFunnelTrace,
   ): string {
+    const authenticationOnlyReply =
+      this.isAuthenticationOnlyInformationReply(request);
     const allowedTools =
       request.toolUsage.considered.length > 0
         ? request.toolUsage.considered.join(', ')
@@ -873,23 +875,30 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       focusNeedCategory,
       providerResults,
       recommendationFunnel: stripProviders ? null : recommendationFunnel,
+      authenticationOnlyReply,
     });
     const parts: Array<string | null> = [
       `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}`,
       request.extraction.ambiguity?.status === 'ambiguous'
         ? 'La extracción marcó ambigüedad. Formula la respuesta alrededor de ambiguity.clarification_question y no reinicies la conversación con una bienvenida genérica.'
         : null,
-      this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
-      `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
+      authenticationOnlyReply
+        ? null
+        : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
+      authenticationOnlyReply
+        ? null
+        : `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
     ];
 
     if (request.currentNode === 'entrevista') {
       parts.push(`Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}. No inventar categorías fuera de esta lista.`);
     }
 
-    parts.push(`Herramientas autorizadas en este nodo: ${allowedTools}`);
+    if (!authenticationOnlyReply) {
+      parts.push(`Herramientas autorizadas en este nodo: ${allowedTools}`);
+    }
 
-    if (request.errorMessage) {
+    if (request.errorMessage && !authenticationOnlyReply) {
       parts.push(`Nota operativa: ${request.errorMessage}`);
     }
 
@@ -901,6 +910,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     focusNeedCategory: PersistedPlan['active_need_category'];
     providerResults: ProviderSummary[];
     recommendationFunnel: RecommendationFunnelTrace | null;
+    authenticationOnlyReply: boolean;
   }): ReplyTurnEvidence {
     const decision = args.request.turnDecision
       ? {
@@ -920,12 +930,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       },
       history: {
         status: args.request.messageContext.historyStatus,
-        recent_messages: buildModelVisibleConversationHistory(args.request.messageContext),
+        recent_messages: args.authenticationOnlyReply
+          ? []
+          : buildModelVisibleConversationHistory(args.request.messageContext),
       },
-      user_message: args.request.userMessage,
+      user_message: args.authenticationOnlyReply ? null : args.request.userMessage,
       decision,
-      extraction: this.buildReplyExtractionSnapshot(args.request.extraction),
-      plan: this.buildPromptPlanSnapshot(args.request.plan, args.focusNeedCategory),
+      extraction: args.authenticationOnlyReply
+        ? {}
+        : this.buildReplyExtractionSnapshot(args.request.extraction),
+      plan: args.authenticationOnlyReply
+        ? { current_node: args.request.plan.current_node }
+        : this.buildPromptPlanSnapshot(args.request.plan, args.focusNeedCategory),
       information_results: (args.request.informationResults ?? []).map((result) =>
         this.stripRawFields(result),
       ),
@@ -942,6 +958,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ),
       recommendation_funnel: args.recommendationFunnel,
     };
+  }
+
+  private isAuthenticationOnlyInformationReply(
+    request: ComposeReplyRequest,
+  ): boolean {
+    const results = request.informationResults ?? [];
+    return request.currentNode === 'resolver_consultas_informativas' &&
+      results.length > 0 &&
+      results.every((result) => result.status === 'needs_input');
   }
 
   private modelVisibleNodeName(node: ComposeReplyRequest['currentNode']): string {
