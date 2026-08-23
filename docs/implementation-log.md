@@ -11,7 +11,63 @@
 
 **Verification:** The focused offline regression passed 1/1. The development Lambda deployed successfully. Focused live run `eval-2026-08-20T20-25-18-649Z-fd714a15` passed 1/1 with semantic score 1.0 and trace `01M0GDKB7Q5X9MKD1R2A30S49M`. The reply asked only for the registered email to access account information. GET-only retrieval of the stored OpenAI reply confirmed that its input contained `needs_input`, `email_required`, and `explain_account_information_access`, with no shipping wording, pending query, capability summary, or tool summary. Reply input size fell from 3,259 bytes in the failing trace to 1,246 bytes in the passing trace.
 
+### Accept backend-confirmed RSVP state reversals
+
+- Rechecked the production guest-service lookup for reserved phone `+51973296571`: guest `584353` was declined and guest `584352` was attending for `Otra celebración prueba`.
+- Rechecked `POST /api/agent/guest/rsvp` with guest `584353`. The updated production contract returned HTTP 200 with `already_responded=false`, `will_attend=true`, `guest_id=584353`, and the event name. A follow-up user lookup confirmed that the stored state changed from declined to attending on `2026-08-20`.
+- Verified the deployed Lambda after resetting the reserved fixture to declined. Run `eval-2026-08-20T15-36-31-505Z-d0b5f2d7` called `lookup_rsvp_invitations` and `guest_rsvp`, then answered `Listo, quedó registrada tu asistencia a Otra celebración prueba`. The only failure was the stale semantic expectation that still required the old backend refusal.
+- Updated the contract regression to use the exact production success shape, where `action` is omitted and the resulting `will_attend` state is authoritative.
+- Replaced the obsolete live refusal expectation with a repeatable final-state expectation: an explicit attendance request must end in a truthful confirmed response whether the backend changes a previous decline or reports an already-confirmed state on a repeated run.
+- Registered `accept-backend-confirmed-rsvp-state-reversal` as its own behavior change, with hard route/tool assertions and a mandatory semantic judge.
+- Focused deterministic gates passed 36/36 across the RSVP gateway, RSVP orchestration, and live-behavior coverage registry. Updated live run `eval-2026-08-20T15-44-09-966Z-531b7cd5` passed 1/1 with score 1.0 and trace `01M0FXGH5VCVY3P7K6RH7AAAN1`; the idempotent repeated request answered `Tu asistencia ya está confirmada para Otra celebración prueba. ¡Que disfrutes mucho el evento!` without authentication or an unnecessary mutation.
+
+**Decision:** The backend limitation recorded on 2026-08-14 is resolved for the reserved production fixture. The runtime continues to fail closed unless the endpoint explicitly returns a `will_attend` value matching the requested action.
+
+### Preserve OTP non-delivery intent with minimum disclosure
+
+- Audited live trace `01M0FXTF795ADEYHX1MC887GZS` and retrieved the stored OpenAI extractor and reply Responses with GET-only audit tooling. Extraction correctly returned `authAction=report_otp_not_received`, but normalization discarded that field for `associated_event`; the resulting reply payload incorrectly contained `guidance.reason=otp_pending`.
+- Extended the typed associated-event request with the same authentication-recovery action already used by protected purchase requests, preserved it through OpenAI normalization and pending-request merging, and selected the first non-neutral action across all protected requests.
+- Kept disclosure minimal: the reply receives only `otp_not_received` guidance, which requires the destination, a wait of up to one minute, the main inbox, correo no deseado, and the two actionable choices to resend or change email. No unrelated OTP failure modules are included.
+- Added deterministic normalization and complete associated-event flow regressions plus the mandatory live behavior coverage entry `preserve-associated-event-otp-nondelivery-action`.
+
+**Verification:** `npm run check` passed 458/458 tests across 69 files. The development Lambda was deployed successfully. Live case `live_behavior.otp_not_received_requires_response` passed 1/1 with score 1.0 in run `eval-2026-08-20T16-51-27-570Z-9756788b`, trace `01M0G1BRPECEA4JDSBM2G6AW1C`.
+
+**Mandatory full gate:** Run `eval-2026-08-20T16-55-18-243Z-1be7bd9a` completed 27 cases with 26 passes, 1 hard failure, 0 evaluator errors, and 0 skips. Every RSVP and OTP case passed. The sole remaining failure was `live_behavior.nonphysical_purchase_omits_shipping`, whose pre-authentication reply mentioned dispatch and arrival for a digital gift; the corresponding Notion item was reopened rather than hiding the regression.
+
 ## 2026-08-17
+
+### Separate OTP failure classes and fail closed on unverified RSVP success
+
+- Classified email-code request failures into email-not-found, rate-limited, unavailable, and other failures; classified verification failures into invalid-code, rate-limited, unavailable, and other failures.
+- Only an invalid/expired code increments the failed-code counter. Rate limits and transport/service failures preserve the counter and tell the user what happened at an appropriate level, without exposing provider internals.
+- Added route guidance and Spanish response rules for each new class, including a distinct next step for rate limits versus service outages.
+- RSVP HTTP 200 responses now require an explicit `will_attend` value matching the requested action. A response that only says `status=true` or returns a contradictory state is treated as an unsuccessful mutation and cannot be rendered as confirmation.
+
+**Production certainty:** The existing probe remains evidence for guest `584353` only: `/guest/rsvp` returned `already_responded=true`, `will_attend=false`, and a follow-up user lookup still returned false. That does not prove a universal negative for every invitation. The runtime therefore makes no claim unless the endpoint explicitly returns the requested resulting state; a safe pending-invitation fixture and post-mutation read-back are still required before declaring the Notion attendance item complete.
+
+**Verification:** Focused OTP, RSVP, gateway, and orchestration tests passed 71/71; TypeScript typecheck passed. Added coverage-registry entries for both behavior changes.
+
+### Enforce minimum prompt disclosure from typed turn state
+
+- Added a prominent project directive requiring every model call to receive only the typed state, evidence, policies, fields, failure modes, and tools relevant to the current route and outcome.
+- Added deterministic prompt-section projection for authentication outcomes. OTP guidance sections are selected from `informationResults[].guidance.reason`; irrelevant instructions are removed before the bundle hash and request are built.
+- Reduced reply evidence for information and RSVP routes to their route-owned extraction and plan fields, removed provider/event-category context from those routes, and limited capability descriptions to the active node.
+- Added regressions proving irrelevant OTP guidance is absent and recorded the new information-route serialized baseline.
+
+**Reason:** A state machine that already knows the active branch should not send a prompt containing every possible result type or conflicting conditional rule. Smaller relevant requests reduce latency and usage while making the model contract less ambiguous.
+
+**Latest deployed validation before this change:** `eval-2026-08-18T14-40-23-869Z-97906c1c` completed 27 cases with 19 passes, 2 failures, 6 evaluator errors, and 0 skips. This is not a green gate and remains open for follow-up.
+
+**Post-change deployment validation:** `eval-2026-08-18T14-59-36-322Z-d555534d` completed 27 cases with 25 passes, 2 failures, 0 evaluator errors, and 0 skips. All RSVP cases passed. The remaining failures were `nonphysical_purchase_omits_shipping` and the existing `otp_not_received_requires_response` semantic case; neither is hidden or downgraded.
+
+### Omit cash-gift shipping evidence from reply prompts
+
+- Added a reply-model projection that recognizes a purchase as cash-only when every returned item has normalized `type: "cash"`.
+- Cash-only purchases omit `shippingStatus`, `sendPhysical`, and `physicalStatus` from the model-facing evidence. The persisted typed purchase result remains unchanged for internal state and audit use.
+- Mixed or unknown item types do not receive this projection; shipping evidence remains governed by the existing affirmative physical-fulfillment policy.
+- Added a deterministic regression using the production-shaped `ORD-000880` cash envelope from the reported response.
+
+**Reason:** Cash gifts are digital contributions and do not have physical shipping. Sending null or contradictory shipping fields to the reply model creates an unnecessary opportunity for invented dispatch or arrival language.
 
 ### Read complete invitation state before handling attendance
 
@@ -5597,3 +5653,102 @@ The first post-deployment run, `eval-2026-08-11T01-59-55-114Z-0d49b9be`, complet
 - The complete suite finished 21/24 with zero evaluator errors or skips. The three unrelated failures remain visible: two email-code cases received backend send failures instead of the expected successful code-send state, and the cheaper-provider case produced the correct Spanish selection text but omitted the expected operation type from its trace projection. None of the RSVP, FAQ, automatic phone-auth success, OTP word-code, purchase-disclosure, or Spanish-only gates regressed.
 
 **Decision:** Accept the RSVP fix as deployed and deterministic. Keep the roadmap item in progress because the backend still cannot distinguish an existing attending response from an existing declining response. Do not weaken the unrelated failing gates.
+
+## 2026-08-20 — Search immediately when the last planning field arrives
+
+**Reason:** A reported WhatsApp interaction asked for wedding planners, collected a 100-to-200 guest estimate and Lima, then replied that the context was ready and promised options in a later step. The message audit confirmed successful delivery and runtime execution. On the final turn, the persisted `Wedding planners` need was `search_ready` with no missing fields and the extractor emitted one retrieval-ready query intent for that category, but the turn decision discarded its category because the follow-up correctly left unchanged top-level category fields null. The router produced `insufficient_reachable_transition`, kept `entrevista`, and performed no provider search.
+
+**Decision:** Treat the sole retrieval-ready query-intent category as typed turn focus when it matches the sole ready need. Do not fall back to durable active-need focus by itself, because that could revive stale categories on unrelated turns. Preserve the existing deterministic guest/budget reply only when it is the sole missing field; when location and scale are both missing, allow the route-owned response contract to ask for both in one compact question.
+
+**Changes:**
+
+- Updated turn evidence construction to derive focus from exactly one retrieval-ready query intent before session focus, while keeping explicit top-level extraction focus authoritative.
+- Narrowed the single-field guest/budget response override so it no longer replaces a combined location-and-scale clarification.
+- Added deterministic twins for the combined initial clarification and the exact final location-follow-up state. The latter asserts `aclarar_pedir_faltante -> recomendar`, `single_need_search`, `Wedding planners` focus, immediate provider search, and persisted recommendations.
+- Added `live_behavior.wedding_planner_location_completes_search` to `live_behavior_regression`. It reconstructs the greeting, explicit wedding-planner request, guest-range answer, and Lima answer with hard structural assertions plus a required hard semantic judge.
+- Registered the compact-question behavior and the retrieval-ready follow-up focus as separate behavior changes in `evals/live-behavior-coverage.yaml`.
+- Removed an invalid test-only `eventHint` property from an unrelated purchase fixture that prevented the repository typecheck from reaching the behavioral tests. This did not change runtime behavior.
+
+**Minimum-disclosure and prompt-size evidence:** No prompt file or model schema changed for this fix, so added instruction and input bytes are zero. `npm run audit:prompts` reported zero violations; the static serialized requests remain 11,703 bytes for `aclarar_pedir_faltante` and 11,375 bytes for `recomendar`. In the passing deployed reconstruction, the compact-question turn used classifier/extractor/reply instruction and input bytes of `9,334/701`, `10,291/1,706`, and `11,287/6,423`. The final search turn used `9,334/690`, `13,281/2,024`, and `10,974/14,291`. The larger final reply input is provider evidence from the completed search, not newly added global instruction content.
+
+**Validation:** `npm run check` passed 461 tests across 69 files after typecheck and lint. Both development CloudFormation stacks deployed successfully. Focused deployed run `eval-2026-08-20T21-25-46-977Z-26b2fe7c` passed all eight hard expectations: the first planning reply requested location and scale/budget together; the final turn transitioned to `recomendar`, searched immediately, found 12 candidates, and the semantic judge confirmed that the response presented five real options instead of promising a later step. The post-final-deployment mandatory run `eval-2026-08-20T21-30-14-294Z-d5691c83` executed 28/28 cases with zero errors or skips; the new planning case passed again. The suite finished 26/28 because two unrelated RSVP fixtures now expected declined/awaiting-change state while the backend reported confirmed attendance. Focused reruns `eval-2026-08-20T21-38-36-325Z-4a08c14a` and `eval-2026-08-20T21-38-54-751Z-dc555eac` reproduced those RSVP state mismatches, so the complete gate remains formally red and is not reported as a global pass.
+
+## 2026-08-20 — Make starting over a native plan transition
+
+**Reason:** In the reported WhatsApp interaction, “No no, quisiera empezar de nuevo, ¿podemos?” was extracted as `elicitar_necesidades`. The assistant promised to restart, but no state transition replaced the persisted wedding plan. The next provider request therefore reused the old event, location, guest range, shortlist, and contact fields. The same audit found that a later five-message burst was stored by the Agent API but produced no Lambda invocation, performance record, or model call; that unanswered burst failed at the upstream adapter-to-runtime dispatch boundary rather than in planning or reply generation.
+
+**Decision:** Add `reset_plan` as an explicit structured action, decision node, and route kind. Make it available through the dynamic action schema for every plan lifecycle state. When extracted, replace the working plan with a new plan ID before RSVP, information, provider-operation, sufficiency, or routing logic can consume old state; ignore stored session focus; then persist and reply from the dedicated reset node. If the same message also provides new event requirements, reduce only that new extraction into the fresh plan so the normal search/clarification router can continue without an extra acknowledgement-only step.
+
+**Changes:**
+
+- Added the node-scoped Spanish prompt bundle under `prompts/nodes/reset_plan/` and one extraction rule in `prompts/extractors/planning.txt`; no reset wording or exact-string routing was added to TypeScript.
+- Added deterministic coverage that seeds the complete stale wedding/provider/contact state and proves a new plan ID, cleared event/provider/contact fields, no provider or close tools, a valid `reset_plan` state-machine route, and persisted-state telemetry.
+- Added `live_behavior.reset_plan_discards_stored_context` with hard plan, transition, route, persistence, and tool assertions plus a hard required semantic judge. Registered native reset availability and complete stale-context removal as separate behavior changes.
+- Corrected final-save telemetry so a successfully persisted ordinary/reset route reports `plan_persisted=true` and its actual persist reason.
+- Updated the prompt audit and historical comparator to count the new route and compare its prompt shape against the legacy interview route instead of attempting to read nonexistent historical reset files.
+
+**Minimum-disclosure and prompt-size evidence:** The only shared extraction addition is a 226-byte planning-only rule. `npm run audit:prompts` reported zero violations: `extractor:conversation_only` remains 2,269 serialized bytes and excludes both the planning file and reset guidance; planning profiles are 9,210 bytes for initial planning and 12,214/12,212 bytes for active-plan/shortlist extraction. The new reply route is 10,221 serialized bytes and has zero tools. In mandatory deployed validation, the reset turn used classifier/extractor/reply instruction and input bytes of `9,334/621`, `13,507/2,321`, and `9,832/5,040`.
+
+**Deletion:** Before mutation, the audit preserved the last complete message span and established the failure boundary. The authorized purge then deleted one persisted plan and 29 runtime performance/history records for the exact original WhatsApp identity. Early live validation briefly recreated one plan and one performance record before the case contact was changed; both were deleted again. Final exact-key and user-index queries returned zero plan records and zero runtime-history records. Private audit files and superseded local eval artifacts were moved to macOS Trash. The upstream Agent API exposes only GET/HEAD for conversation history, so its stored messages could not be deleted through any supported endpoint; per-event CloudWatch deletion is also unavailable without deleting shared log streams.
+
+**Validation:** `npm run check` passed all 464 tests across 69 files after typecheck and lint, and `npm run audit:prompts` had zero violations. Both development CloudFormation stacks deployed successfully; the final runtime Lambda revision was modified at `2026-08-20T22:33:40Z`. Focused deployed runs passed the reset case at score `1.0`, including the retained production-backed contact run `eval-2026-08-20T22-47-53-560Z-42bf4063`. Mandatory run `eval-2026-08-20T22-48-13-261Z-0c7d3f09` executed 29/29 cases with zero errors or skips; the reset case passed at `1.0` with trace `01M0GNXZ8CA6KXJDGJ0C8PDQFD`, `recomendar -> reset_plan`, no provider search, and `plan_persisted=true`. The complete suite finished 26/29: two unrelated RSVP fixtures expected a declined invitation while the authoritative production lookup returned confirmed attendance, and the phone-fallback semantic judge scored an otherwise correct OTP reply at 0.88 because it omitted the phrase “one-time.” The mandatory gate therefore remains formally red and is not reported as a global pass.
+
+## 2026-08-22 — Use the documented accountless guest flow before email OTP
+
+**Reason:** WhatsApp campaign button responses remain upstream of this Lambda, but guests can answer or ask about the invitation in free chat. The runtime could authenticate an account by phone and could mutate RSVP by trusted phone, yet an accountless invited guest was sent toward email OTP instead of using the documented `GET /agent/guest/events` and `GET /agent/event` routes. RSVP parsing also omitted the documented `pending_guests` envelope, treated `already_responded: true` as a refused update even when `will_attend` confirmed the requested final state, asked for a second confirmation before a reversal, and selected the oldest recent campaign context.
+
+**Decision:** Make no Agent API contract extensions. After `auth-by-phone` returns `user_not_found`, resolve associated-event requests from the trusted WhatsApp phone through the existing guest-event endpoint and retrieve the selected event detail without JWT. Use email/OTP only when the trusted phone has no safe guest match. Keep RSVP decisions on the existing trusted-phone endpoint, apply explicit reversals in the same turn, treat matching `will_attend` as authoritative, parse `pending_guests`, and prefer the newest recent campaign. When a turn contains an associated-event information request but no explicit RSVP decision or selected guest, route it to information even if extraction also found a campaign-grounded event reference.
+
+**Implementation:**
+
+- Added strict normalized gateway results for the documented guest-event list and event-detail routes. The production response represents `contact_info` as an object rather than the array shown by the initial fixture, so the parser accepts both documented wire variants and normalizes them into the existing internal label/value representation.
+- Added typed `trusted_phone_guest` evidence to information execution. A single invited event is selected automatically; multiple events require a grounded event hint or return only the candidate names and dates for one compact selection question.
+- Kept the new auth guidance outcome-specific and projected only after guest lookup succeeds. No global information prompt rule or new backend field was added.
+- Added deterministic gateway, orchestration, service, RSVP, campaign-ordering, prompt-relevance, and live-coverage regressions. The permanent live case reconstructs the production campaign history and event-location question for the accountless test guest.
+
+**Minimum-disclosure and prompt-size evidence:** `npm run audit:prompts` reported zero violations. The RSVP reply route is 8,579 serialized request bytes; accountless guest guidance is injected only for the completed typed outcome. The repository-wide static comparison is 347,525 bytes versus the 723,799-byte baseline, a 51.99% reduction.
+
+**Validation and deployment:**
+
+- `npm run check` passed typecheck, lint, 471 tests across 69 files, and `tests/live-behavior-coverage.test.ts` on the final code. Direct production-shaped gateway validation returned one guest event, a successful event detail, two moments, and four normalized contact fields.
+- Deployed the final runtime artifact through CloudFormation in account `684516060775`, region `us-east-1`, using `se-dev`; the provider-sync stack was not changed. The ordinary deploy helper first succeeded, then later retries stalled while reading the current Secrets Manager value. The final two revisions therefore reused the stack's existing secret references and parameters and changed only the CloudFormation code artifact.
+- Mandatory run `eval-2026-08-22T09-21-40-761Z-acd65cf7` proved the new accountless case end to end at `0.9667`: `contacto_inicial -> resolver_consultas_informativas`, then `auth_by_phone`, `lookup_guest_events_by_phone`, and `get_guest_event_detail`, with no OTP or RSVP mutation. The one-turn reply was: “La recepción y fiesta serán en Hacienda Recoveco, Avenida Manuel Valle, Lima, Perú”.
+- The complete run finished 23/30 with five failures and two evaluator errors, so the global gate remains formally red. The target case passed. The residual hard failures are outside the implemented path: the retired email-after-phone-rejection case now contradicts guest-first lookup; two long-known RSVP cases assume mutable production state is declined/pending while the authoritative lookup returns confirmed; and two OTP wording cases varied semantically. The two errored cases were evaluator/runtime errors rather than skipped cases. Earlier post-deployment run `eval-2026-08-22T09-10-22-154Z-5fbc8807` completed all 30 cases without errors and passed 26, with only the obsolete guest-first and mutable-RSVP expectations remaining.
+
+**Boundary:** Native WhatsApp template-button callbacks still do not invoke this Lambda and remain the campaign/button service's responsibility. This Lambda now handles the free-chat fallback and event questions in one turn using only the currently deployed Agent API capabilities.
+
+## 2026-08-22 — Classify campaign replies from typed, minimum-disclosure context
+
+**Reason:** A production campaign recipient replied with a polite decline. The model classified the turn as `suppress_acknowledgement`, but a blanket runtime override changed the result to `respond` solely because any recent message had `source=admin_campaign`. The state machine then reopened onboarding and sent the generic welcome. The relevant campaign body and inbound reply were available; the incorrect decision was introduced after classification.
+
+**Decision:** Select a campaign-specific classifier profile only when the latest outbound message is an admin campaign. Project that campaign body, the current inbound message, and two typed status fields; omit the plan and unrelated history. Add a typed `campaign_reply_kind` so a pure acknowledgement or declined offer can be suppressed while RSVP decisions, questions, requests, and ambiguous replies continue to structured extraction. Keep the deterministic layer as a consistency check between the model's action and typed kind, not as phrase matching.
+
+**Implementation:** Added the campaign classifier prompt, profile-aware prompt loading and trace fields, a realistic classifier-only corpus, and a repeatable `npm run eval:classifier-live` command. Removed the blanket campaign suppression override that caused the reported regression. Older campaign messages no longer select the campaign profile after a newer agent reply.
+
+**Minimum-disclosure evidence:** The campaign classifier uses 2,343 instruction bytes, down from 9,334 bytes for the prior general classifier path (74.9% smaller). Realistic inputs measured 252–504 bytes; the reconstructed production interaction was 504 bytes. No plan, provider, purchase, authentication, or unrelated conversation-history content is included.
+
+**Validation:** Typecheck, lint, prompt audit, static prompt comparison, and all 476 unit tests across 69 files passed. The classifier-only live gate passed 48/48 attempts: 16 realistic cases repeated three times, with no fallback. It distinguished identical wording by campaign purpose—for example, declining a promotion was suppressed while declining an RSVP was sent to extraction. The first mandatory deployed run exposed one additional real-history shape: an older `admin_campaign`, a later agent message, and then a newer `admin_manual` invitation reminder. The general classifier suppressed the explicit RSVP confirmation. The profile selector now treats that newer admin reminder as refreshed typed campaign context while still ignoring an old campaign when a regular agent message is newest. After redeployment, the exact Cinthya case used `classifier_profile=campaign_reply`, `campaign_reply_kind=rsvp_decision`, transitioned to `responder_invitacion`, and passed at 1.0.
+
+**Final deployed gate:** Run `eval-2026-08-23T00-06-55-627Z-0b66bdb5` completed 30/30 cases with no evaluator errors or skips; 24 passed and six failed, so the global gate remains formally red. Both campaign-grounded RSVP cases, accountless guest-event lookup, immediate RSVP reversal, generic-reset, and the new planning behavior passed. Residual failures were unrelated mutable RSVP-state expectations, legacy/variable OTP expectations, and one provider-reference assertion. The classifier-only gate then passed 48/48 again on the deployed code.
+
+### Scheduled production smoke — 2026-08-22 19:03 America/Lima
+
+The Codex automation capability was not exposed in this session, so no scheduled-task ID could be created. The current task remained active and opened the smoke window at exactly `2026-08-22T19:03:00-05:00`.
+
+At `2026-08-23T00:03:24Z`, the production Agent API returned HTTP 200 and zero conversation messages for the sole authorized mutation identity. A second check at `2026-08-23T00:16:14Z` again returned zero messages and zero `outbound/admin_campaign` records. Because the required CRM template body and timestamp were absent, the smoke stopped at the declared integration boundary: no RSVP button was pressed, no free-chat message was sent, and no RSVP record was mutated. Production safety for the end-to-end campaign path is not claimed.
+
+Read-only comparison confirmed that a previously reported real recipient does have a complete `outbound/admin_campaign` record with a timestamp and non-empty body, followed by an inbound reply and an agent response. The body was inspected only for classifier reconstruction; reporting retains only hashes, byte counts, source, direction, and timestamps. The production Agent API has no global conversation-list endpoint, so new recipients cannot be enumerated by this Lambda. Sanitized Lambda and DynamoDB monitoring from 19:03 through 19:16 excluded `live_behavior.*` fixtures and found zero genuine production follow-up turns. Consequently there was no real post-campaign evidence of duplicate processing, missing context, generic welcome output, OTP fallback, HTTP 403/429/500, or model-stage timeout during that observation window; absence of traffic is not evidence that those paths are production-safe.
+
+## 2026-08-22 — Normalize documented OTPs and exhaust phone event context before email
+
+**Reason:** The documented login code contains exactly six digits, but the runtime accepted the first alphanumeric token containing a digit at any length from four through eight. This could submit an order number, year, or malformed alphanumeric value as an OTP, while rejecting common six-digit formatting such as grouped digits. Separately, the accountless guest fallback only ran when every protected information request was an associated-event request. A message combining an event-detail question with a private purchase question therefore skipped usable invitation context and asked for email before answering either part.
+
+**Decision:** Normalize only one unambiguous six-digit OTP candidate. Accept contiguous digits, safely space- or hyphen-separated digits, and six consecutive Spanish digit words; preserve leading zeroes and reject wrong-length, alphanumeric, or multiple distinct candidates. For protected mixed-information turns, attempt account authentication by trusted phone first; after `user_not_found`, resolve every associated-event request through the trusted-phone guest endpoints before asking for email only for private requests that remain unresolved. A guest lookup is never used to invent or disclose purchase state.
+
+**Implementation:** Added twelve deterministic OTP normalization cases and a mixed-information state-machine regression. The latter proves `auth_by_phone`, `lookup_guest_events_by_phone`, and `get_guest_event_detail` run in one turn; event evidence completes while the purchase result remains `needs_input: email`; and no login code is requested before the user supplies an email. Added a separate mandatory live behavior case with hard trajectory, tool, state, and required semantic expectations.
+
+**Minimum-disclosure evidence:** No prompt files, model schemas, or global instructions changed for these two fixes. The result-specific operational evidence is selected only when a trusted-phone guest result completed and another protected result still needs email. Prompt audit reported zero violations. Static serialized requests measured 350,060 bytes versus the 732,995-byte baseline, a 52.24% reduction. In the passing deployed mixed case, classifier/extractor/reply instruction and input bytes were `2,343/325`, `10,517/2,558`, and `13,408/9,068`; the larger reply input contains the selected event detail and two typed information results rather than new global guidance.
+
+**Validation and deployment:** `npm run check` passed typecheck, lint, and 486 tests across 69 files. The focused deployed case passed at `0.9647` in run `eval-2026-08-23T00-49-51-360Z-720ac684`, trace `01M0P1H3ZS7RM8MVMKWVF62FE0`. It returned the verified reception location immediately, requested the registered email only for purchase status, called both phone lookup forms plus event detail, and did not call either OTP endpoint. The final development Lambda revision `61de3ad2-d6b3-4fc7-9ec5-160c1bada7d4` was active with a successful update at `2026-08-23T00:47:40Z` in account `684516060775`, region `us-east-1`, using `se-dev`.
+
+**Mandatory live gate:** Run `eval-2026-08-23T00-50-17-032Z-afb3544f` executed 31/31 cases with no evaluator errors or skips; 28 passed and three failed, so the global gate remains formally red. Both accountless guest cases passed, as did the OTP word-normalization, OTP-send, OTP-nondelivery, repeated-failure, phone-auth success, and phone-auth fallback cases. The residual failures were the pre-existing wrong-account fixture, whose persisted production conversation still supplied guest context, and two mutable RSVP-state fixtures whose authoritative backend state contradicted their seeded expectations. None failed on OTP normalization or the new mixed phone fallback.
