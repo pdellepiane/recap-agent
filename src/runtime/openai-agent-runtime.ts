@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import type { ActionIntent, PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
+import type { InformationTaskResult, PurchaseInformation } from '../core/information';
 import {
   prioritizedProviderCategoriesForEvent,
   starterProviderCategoriesForEvent,
@@ -264,6 +265,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           kind: 'associated_event',
           query: request.query,
           eventHint: request.eventHint,
+          ...(request.authAction ? { authAction: request.authAction } : {}),
         },
       ];
     }
@@ -289,6 +291,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   ): Promise<ComposeReplyResult> {
     const bundle = await this.options.promptLoader.loadNodeBundle(
       request.currentNode,
+      {
+        informationAuthReasons: (request.informationResults ?? [])
+          .filter((result) => result.status === 'needs_input')
+          .map((result) => result.guidance.reason),
+      },
     );
     const allowedTools = resolveDynamicTools({
       plan: request.plan,
@@ -882,12 +889,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.extraction.ambiguity?.status === 'ambiguous'
         ? 'La extracción marcó ambigüedad. Formula la respuesta alrededor de ambiguity.clarification_question y no reinicies la conversación con una bienvenida genérica.'
         : null,
-      authenticationOnlyReply
+      request.currentNode === 'resolver_consultas_informativas' ||
+      request.currentNode === 'responder_invitacion'
         ? null
         : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
       authenticationOnlyReply
         ? null
-        : `Capacidades habilitadas del agente:\n${this.summarizeEnabledCapabilities()}`,
+        : `Capacidades habilitadas para este nodo:\n${this.summarizeEnabledCapabilities(request.currentNode)}`,
     ];
 
     if (request.currentNode === 'entrevista') {
@@ -938,12 +946,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       decision,
       extraction: args.authenticationOnlyReply
         ? {}
-        : this.buildReplyExtractionSnapshot(args.request.extraction),
+        : this.buildReplyExtractionSnapshot(
+            args.request.extraction,
+            args.request.currentNode,
+          ),
       plan: args.authenticationOnlyReply
         ? { current_node: args.request.plan.current_node }
-        : this.buildPromptPlanSnapshot(args.request.plan, args.focusNeedCategory),
+        : this.buildPromptPlanSnapshot(
+            args.request.plan,
+            args.focusNeedCategory,
+            args.request.currentNode,
+          ),
       information_results: (args.request.informationResults ?? []).map((result) =>
-        this.stripRawFields(result),
+        this.projectInformationResultForReply(result),
       ),
       turn_state: {
         focus_need_category: args.focusNeedCategory,
@@ -1005,7 +1020,41 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     ].join('\n');
   }
 
-  private buildReplyExtractionSnapshot(extraction: ComposeReplyRequest['extraction']): Record<string, unknown> {
+  private buildReplyExtractionSnapshot(
+    extraction: ComposeReplyRequest['extraction'],
+    node: ComposeReplyRequest['currentNode'],
+  ): Record<string, unknown> {
+    if (node === 'resolver_consultas_informativas') {
+      return {
+        action_intent: extraction.actionIntent,
+        information_requests: extraction.informationRequests,
+        phone_confirmation: extraction.phoneConfirmation ?? null,
+        contact_email: extraction.contactEmail,
+        ambiguity: extraction.ambiguity
+          ? {
+              status: extraction.ambiguity.status,
+              clarification_question: extraction.ambiguity.clarificationQuestion,
+            }
+          : null,
+      };
+    }
+
+    if (node === 'responder_invitacion') {
+      return {
+        action_intent: extraction.actionIntent,
+        rsvp_action: extraction.rsvpAction ?? null,
+        rsvp_candidate_guest_id: extraction.rsvpCandidateGuestId ?? null,
+        rsvp_event_reference: extraction.rsvpEventReference ?? null,
+        ambiguity: extraction.ambiguity
+          ? {
+              status: extraction.ambiguity.status,
+              clarification_question: extraction.ambiguity.clarificationQuestion,
+              interpretations: extraction.ambiguity.interpretations ?? [],
+            }
+          : null,
+      };
+    }
+
     return {
       action_intent: extraction.actionIntent,
       intent_confidence: extraction.intentConfidence,
@@ -1124,8 +1173,20 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return genericMessageSchema;
   }
 
-  private summarizeEnabledCapabilities(): string {
+  private summarizeEnabledCapabilities(node: ComposeReplyRequest['currentNode']): string {
     return this.resolveEnabledCapabilityLines()
+      .filter((line) => {
+        if (node === 'resolver_consultas_informativas') {
+          return line.startsWith('Responder preguntas') ||
+            line.startsWith('Consultar información de eventos') ||
+            line.startsWith('Consultar tus pedidos') ||
+            line.startsWith('Consultar detalles de regalos');
+        }
+        if (node === 'responder_invitacion') {
+          return line.startsWith('Registrar la asistencia');
+        }
+        return true;
+      })
       .map((line) => `- ${line}`)
       .join('\n');
   }
@@ -1932,7 +1993,30 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private buildPromptPlanSnapshot(
     plan: PersistedPlan,
     focusNeedCategory: PersistedPlan['active_need_category'],
+    node: ComposeReplyRequest['currentNode'],
   ): Record<string, unknown> {
+    if (node === 'resolver_consultas_informativas') {
+      return {
+        current_node: plan.current_node,
+        contact_email: plan.contact_email,
+        information_state: {
+          pending_requests: plan.information_state.pending_requests,
+          selection_candidates: plan.information_state.selection_candidates,
+          authentication_status: plan.user_auth.status,
+          authenticated_email: plan.user_auth.email,
+          failed_code_attempts: plan.user_auth.failed_code_attempts,
+        },
+      };
+    }
+
+    if (node === 'responder_invitacion') {
+      return {
+        current_node: plan.current_node,
+        contact_phone_present: Boolean(plan.contact_phone_extension && plan.contact_phone_number),
+        rsvp_state: plan.rsvp_state,
+      };
+    }
+
     return {
       lifecycle_state: plan.lifecycle_state,
       contact_name: plan.contact_name,
@@ -2011,6 +2095,47 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     return value;
+  }
+
+  private projectInformationResultForReply(result: InformationTaskResult): unknown {
+    if (result.status !== 'completed' || result.kind !== 'purchase') {
+      return this.stripRawFields(result);
+    }
+
+    return this.stripRawFields({
+      ...result,
+      purchases: result.purchases.map((purchase) =>
+        this.projectPurchaseForReply(purchase),
+      ),
+    });
+  }
+
+  private projectPurchaseForReply(purchase: PurchaseInformation): Record<string, unknown> {
+    const cashOnly = purchase.items.length > 0 && purchase.items.every(
+      (item) => item.type?.trim().toLowerCase() === 'cash',
+    );
+    if (!cashOnly) {
+      return purchase;
+    }
+
+    const withoutShipping = Object.fromEntries(
+      Object.entries(purchase).filter(([key]) => key !== 'shippingStatus'),
+    );
+    const dedication = purchase.dedication
+      ? Object.fromEntries(
+          Object.entries(purchase.dedication).filter(
+            ([key]) => key !== 'sendPhysical' && key !== 'physicalStatus',
+          ),
+        )
+      : null;
+    return {
+      ...withoutShipping,
+      ...(dedication
+        ? {
+            dedication,
+          }
+        : {}),
+    };
   }
 
   private truncateText(value: string, maxLength: number): string {

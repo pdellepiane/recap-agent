@@ -5,6 +5,7 @@ import type {
   ExtractRequest,
   TokenUsage,
 } from '../src/runtime/contracts';
+import type { InformationTaskResult } from '../src/core/information';
 import type { AgentFeatureFlags } from '../src/runtime/config';
 import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
@@ -260,6 +261,44 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       pauseRequested: false,
       contactEmail: null,
     });
+  });
+
+  it('preserves OTP recovery evidence for associated-event requests', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const typedRuntime = runtime as unknown as {
+      normalizeExtraction: (input: {
+        informationRequests: Array<{
+          kind: 'associated_event';
+          query: string;
+          eventHint: string | null;
+          resource: null;
+          orderId: null;
+          aspects: [];
+          sensitiveFields: [];
+          authAction: 'report_otp_not_received';
+        }>;
+      }) => ComposeReplyRequest['extraction'];
+    };
+
+    const normalized = typedRuntime.normalizeExtraction({
+      informationRequests: [{
+        kind: 'associated_event',
+        query: '¿A qué hora es mi evento?',
+        eventHint: 'Karem y Alfredo',
+        resource: null,
+        orderId: null,
+        aspects: [],
+        sensitiveFields: [],
+        authAction: 'report_otp_not_received',
+      }],
+    });
+
+    expect(normalized.informationRequests).toEqual([{
+      kind: 'associated_event',
+      query: '¿A qué hora es mi evento?',
+      eventHint: 'Karem y Alfredo',
+      authAction: 'report_otp_not_received',
+    }]);
   });
 });
 
@@ -644,6 +683,55 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('invited_event_lookup');
   });
 
+  it('omits shipping evidence from the model projection for cash-only gifts', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.informationResults = [{
+      requestId: 'cash-purchase',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'gift_purchases',
+      needsSelection: false,
+      purchases: [{
+        orderId: 'ORD-000880',
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        grandTotal: 250,
+        paymentMethod: 'Visa',
+        eventName: 'Boda Laura y Marcos',
+        eventDate: '2026-09-15',
+        eventUrl: null,
+        createdAt: '2026-07-10',
+        items: [{
+          giftName: 'Aporte libre',
+          quantity: 1,
+          amount: 250,
+          rowTotal: 250,
+          type: 'cash',
+        }],
+        dedication: {
+          message: null,
+          isPrivate: null,
+          sendPhysical: false,
+          physicalStatus: null,
+        },
+      }],
+    } satisfies InformationTaskResult];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        request: ComposeReplyRequest,
+        recommendationFunnel: ReturnType<typeof emptyFunnel>,
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+
+    expect(input).toContain('"type": "cash"');
+    expect(input).not.toContain('shippingStatus');
+    expect(input).not.toContain('physicalStatus');
+    expect(input).not.toContain('sendPhysical');
+  });
+
   it('discloses only authentication guidance when every information result needs input', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const request = createComposeRequest('resolver_consultas_informativas');
@@ -651,7 +739,6 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     request.extraction.informationRequests = [{
       kind: 'purchase',
       query: '¿Cuándo despachan el regalo digital y cuándo llega?',
-      eventHint: null,
       resource: 'gift_purchases',
       orderId: null,
       aspects: ['shipping'],
@@ -700,6 +787,61 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('information_requests');
     expect(input).not.toContain('Capacidades habilitadas');
     expect(input).not.toContain('Herramientas autorizadas');
+  });
+
+  it('projects only route-owned state into information and RSVP reply inputs', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const informationRequest = createComposeRequest('resolver_consultas_informativas');
+    informationRequest.plan.provider_needs = [{
+      category: 'Catering',
+      status: 'shortlisted',
+      preferences: [],
+      hard_constraints: [],
+      missing_fields: [],
+      recommended_provider_ids: [7],
+      recommended_providers: [],
+      selected_provider_ids: [7],
+      selected_provider_hints: [],
+    }];
+    const rsvpRequest = createComposeRequest('responder_invitacion');
+    rsvpRequest.plan.information_state.pending_requests = [
+      {
+        requestId: 'purchase-1',
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: 'estado',
+        orderId: null,
+        aspects: ['summary'],
+        sensitiveFields: [],
+        authAction: 'provide_otp',
+      },
+    ];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        request: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+    const funnel = {
+      available_candidates: 0,
+      context_candidates: 0,
+      context_candidate_ids: [],
+      presentation_limit: 0,
+    };
+
+    const informationInput = typedRuntime.composeConversationInput(informationRequest, funnel);
+    const rsvpInput = typedRuntime.composeConversationInput(rsvpRequest, funnel);
+
+    expect(informationInput).not.toContain('provider_needs');
+    expect(informationInput).not.toContain('Categorías sugeridas para event_type=');
+    expect(rsvpInput).not.toContain('pending_requests');
+    expect(rsvpInput).not.toContain('Categorías sugeridas para event_type=');
+    expect(rsvpInput).toContain('rsvp_state');
   });
 });
 

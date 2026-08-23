@@ -135,18 +135,63 @@ behaviorChanges:
   - id: report-confirmed-rsvp-state-without-redundant-mutation
     implementedBy: c132b28
     liveCaseIds: [live_behavior.rsvp_confirmed_state_is_reported]
-  - id: require-one-confirmation-before-reversing-rsvp-state
-    implementedBy: c132b28
-    liveCaseIds: [live_behavior.rsvp_declined_state_offers_one_change]
   - id: reject-false-rsvp-success-from-already-responded-envelope
     implementedBy: c132b28
-    liveCaseIds: [live_behavior.rsvp_declined_change_never_claims_false_success]
+    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
   - id: distinguish-no-associated-invitations-from-no-pending-invitations
     implementedBy: c132b28
     liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
   - id: request-email-code-by-copy-and-paste-without-text-wording
     implementedBy: c132b28
     liveCaseIds: [live_behavior.otp_sent_explains_image_limitation, live_behavior.phone_first_auth_fallback]
+  - id: distinguish-otp-transport-failures-from-invalid-codes
+    implementedBy: dee1d45
+    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
+  - id: report-rsvp-state-only-after-explicit-backend-confirmation
+    implementedBy: dee1d45
+    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+  - id: accept-backend-confirmed-rsvp-state-reversal
+    implementedBy: dee1d45
+    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+  - id: preserve-associated-event-otp-nondelivery-action
+    implementedBy: dee1d45
+    liveCaseIds: [live_behavior.otp_not_received_requires_response]
+  - id: omit-cash-gift-shipping-fields-from-reply-model
+    implementedBy: dee1d45
+    liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
   - id: withhold-blocked-information-intent-from-authentication-replies
     implementedBy: "0280883"
     liveCaseIds: [live_behavior.nonphysical_purchase_omits_shipping]
+  - id: combine-critical-provider-search-questions
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.wedding_planner_location_completes_search]
+  - id: focus-single-retrieval-ready-follow-up-query
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.wedding_planner_location_completes_search]
+  - id: support-native-structured-plan-reset
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.reset_plan_discards_stored_context]
+  - id: discard-all-stored-planning-context-on-reset
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.reset_plan_discards_stored_context]
+  - id: discover-accountless-event-guests-before-email-otp
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+  - id: read-accountless-guest-event-detail-without-jwt
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+  - id: answer-accountless-event-data-before-authenticating-remaining-private-queries
+    implementedBy: 9e68c3c
+    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+  - id: apply-explicit-rsvp-reversals-in-one-turn
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+  - id: parse-documented-rsvp-pending-guests-envelope
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.rsvp_ambiguous_event_requires_grounded_selection]
+  - id: treat-will-attend-as-authoritative-rsvp-final-state
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.rsvp_state_reversal_ends_confirmed]
+  - id: anchor-conversation-context-to-newest-campaign
+    implementedBy: f9232c8
+    liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]

@@ -68,7 +68,7 @@ export function buildTurnMessageContext(args: {
   const recentMessages = Array.from(uniqueMessages.values()).slice(
     -recentConversationMessageLimit,
   );
-  const entryMessage = recentMessages.find(
+  const entryMessage = [...recentMessages].reverse().find(
     (message) => message.source === 'admin_campaign',
   ) ?? recentMessages[0] ?? null;
 

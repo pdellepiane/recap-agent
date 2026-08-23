@@ -12,6 +12,7 @@ import {
   extractorPromptFiles,
   nodePromptManifest,
   promptRuleIdForFile,
+  responseClassifierPromptFiles,
   toolNames,
 } from '../src/runtime/prompt-manifest';
 
@@ -62,7 +63,7 @@ describe('PromptLoader', () => {
       ...conversationSharedPromptFiles,
       ...extractorPromptFiles,
       ...Object.values(nodePromptManifest).flatMap((config) => config.files),
-      'nodes/deteccion_intencion/response_classifier.txt',
+      ...Object.values(responseClassifierPromptFiles).flat(),
     ];
     const uniqueFiles = new Set(ownedFiles);
     const ruleIds = [...uniqueFiles].map(promptRuleIdForFile);
@@ -72,6 +73,23 @@ describe('PromptLoader', () => {
     expect(promptRuleIdForFile('shared/base_system.txt')).toBe(
       'prompt.shared.base_system',
     );
+  });
+
+  it('loads an outcome-specific campaign classifier bundle', async () => {
+    const general = await loader.loadResponseClassifierBundle('general');
+    const campaign = await loader.loadResponseClassifierBundle('campaign_reply');
+
+    expect(general.filePaths).toEqual([
+      'nodes/deteccion_intencion/response_classifier.txt',
+    ]);
+    expect(campaign.filePaths).toEqual([
+      'nodes/deteccion_intencion/response_classifier_campaign.txt',
+    ]);
+    expect(campaign.instructions).toContain('campaign_reply_kind');
+    expect(campaign.instructions).toContain('declines_campaign_offer');
+    expect(campaign.instructions).not.toContain('generic_corporate_reception');
+    expect(Buffer.byteLength(campaign.instructions, 'utf8'))
+      .toBeLessThan(Buffer.byteLength(general.instructions, 'utf8') / 2);
   });
 
   it('loads only shared policies relevant to the current route', async () => {
@@ -117,6 +135,29 @@ describe('PromptLoader', () => {
     }
   });
 
+  it('omits irrelevant information outcome guidance from the current bundle', async () => {
+    const invalidCode = await loader.loadNodeBundle(
+      'resolver_consultas_informativas',
+      { informationAuthReasons: ['otp_invalid'] },
+    );
+    const missingCode = await loader.loadNodeBundle(
+      'resolver_consultas_informativas',
+      { informationAuthReasons: ['otp_not_received'] },
+    );
+
+    expect(invalidCode.instructions).toContain(
+      'ofrece reintentar, reenviar o cambiar el correo',
+    );
+    expect(invalidCode.instructions).not.toContain('puede tardar hasta un minuto');
+    expect(invalidCode.instructions).not.toContain(
+      'se alcanzó temporalmente el límite de solicitudes',
+    );
+    expect(missingCode.instructions).toContain('puede tardar hasta un minuto');
+    expect(missingCode.instructions).not.toContain(
+      'ofrece reintentar, reenviar o cambiar el correo',
+    );
+  });
+
   it('uses personality prompt content in the bundle id so prompt cache invalidates on personality edits', async () => {
     const tempRoot = await fs.mkdtemp(path.join(os.tmpdir(), 'recap-prompts-'));
     await fs.cp(promptsDir, tempRoot, { recursive: true });
@@ -136,6 +177,23 @@ describe('PromptLoader', () => {
   it('includes explicit question scope and operational capability boundaries in prompt bundles', async () => {
     const informationBundle = await loader.loadNodeBundle(
       'resolver_consultas_informativas',
+      {
+        informationAuthReasons: [
+          'otp_sent',
+          'otp_resent',
+          'otp_not_received',
+          'otp_pending',
+          'otp_invalid',
+          'otp_repeated_failure',
+          'otp_send_rate_limited',
+          'otp_send_unavailable',
+          'otp_verification_rate_limited',
+          'otp_verification_unavailable',
+          'otp_email_not_verified',
+          'otp_verification_validation_failed',
+          'otp_verification_failed',
+        ],
+      },
     );
     const welcomeBundle = await loader.loadNodeBundle('contacto_inicial');
     const extractorBundle = await loader.loadExtractorBundle();
@@ -256,6 +314,35 @@ describe('PromptLoader', () => {
     expect(bundle.filePaths).not.toContain('shared/output_style.txt');
     expect(bundle.instructions).not.toContain('Personalidad del agente');
     expect(bundle.allowedTools).toEqual([]);
+  });
+
+  it('projects reset extraction guidance only into provider-planning calls', async () => {
+    const planning = await loader.loadExtractorBundle({
+      information: false,
+      rsvp: false,
+      providerPlanning: true,
+      providerOperations: false,
+      providerSelection: false,
+      providerInspection: false,
+      contact: false,
+      close: false,
+      pause: false,
+    });
+    const conversationOnly = await loader.loadExtractorBundle({
+      information: true,
+      rsvp: false,
+      providerPlanning: false,
+      providerOperations: false,
+      providerSelection: false,
+      providerInspection: false,
+      contact: false,
+      close: false,
+      pause: false,
+    });
+
+    expect(planning.instructions).toContain('`reset_plan`');
+    expect(conversationOnly.instructions).not.toContain('`reset_plan`');
+    expect(conversationOnly.filePaths).not.toContain('extractors/planning.txt');
   });
 
   it('does not expose unauthenticated event lookup as a model tool', () => {

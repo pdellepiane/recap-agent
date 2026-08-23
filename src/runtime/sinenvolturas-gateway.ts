@@ -521,15 +521,29 @@ export class SinEnvolturasGateway implements ProviderGateway {
   }
 
   async requestUserLoginCode(email: string): Promise<UserLoginCodeRequestResult> {
-    const response = await this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>(
-      '/request-login-code',
-      { email },
-      { throwOnHttpError: false },
-    );
+    let response: Awaited<ReturnType<typeof this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>> >;
+    try {
+      response = await this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>(
+        '/request-login-code',
+        { email },
+        { throwOnHttpError: false },
+      );
+    } catch (error) {
+      return {
+        status: 'unavailable',
+        error: error instanceof Error ? error.message : 'User auth service unavailable',
+      };
+    }
 
     if (!response.ok) {
       return {
-        status: response.status === 404 ? 'email_not_found' : 'failed',
+        status: response.status === 404
+          ? 'email_not_found'
+          : response.status === 429
+            ? 'rate_limited'
+            : response.status >= 500
+              ? 'unavailable'
+              : 'failed',
         error: this.authErrorMessage(response.body) ?? `User auth request failed with ${response.status}`,
         httpStatus: response.status,
         requestId: response.requestId,
@@ -557,18 +571,34 @@ export class SinEnvolturasGateway implements ProviderGateway {
     email: string,
     code: string,
   ): Promise<UserLoginCodeVerificationResult> {
-    const response = await this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>(
-      '/login-code',
-      { email, code },
-      { throwOnHttpError: false },
-    );
+    let response: Awaited<ReturnType<typeof this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>> >;
+    try {
+      response = await this.postUserAuthJson<ApiEnvelope<Record<string, unknown>>>(
+        '/login-code',
+        { email, code },
+        { throwOnHttpError: false },
+      );
+    } catch (error) {
+      return {
+        status: 'unavailable',
+        error: error instanceof Error ? error.message : 'User auth service unavailable',
+      };
+    }
 
     if (!response.ok) {
       const authError = this.authErrorMessage(response.body);
       return {
-        status:
-          response.status === 400 && this.isInvalidCodeAuthError(response.body)
-            ? 'invalid_code'
+          status:
+            response.status === 429
+              ? 'rate_limited'
+              : response.status >= 500
+                ? 'unavailable'
+                : response.status === 403 && this.isEmailNotVerifiedAuthError(response.body)
+                  ? 'email_not_verified'
+                  : response.status === 422
+                    ? 'validation_failed'
+                : response.status === 400 && this.isInvalidCodeAuthError(response.body)
+                  ? 'invalid_code'
             : response.status === 401 || response.status === 422
               ? 'invalid_code'
               : 'failed',
@@ -1069,6 +1099,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
       message.includes('vencido') ||
       message.includes('incorrecto')
     );
+  }
+
+  private isEmailNotVerifiedAuthError(body: unknown): boolean {
+    const message = this.authErrorMessage(body)?.toLowerCase() ?? '';
+    return message.includes('validations.email.not_verified') ||
+      message.includes('email.not_verified');
   }
 
   private extractAuthToken(body: unknown): string | null {

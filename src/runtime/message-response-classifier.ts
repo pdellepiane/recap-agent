@@ -5,7 +5,10 @@ import { z } from 'zod';
 import type { PersistedPlan } from '../core/plan';
 import type { OpenAiCallRef, TokenUsage } from './contracts';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
-import type { PromptLoader } from './prompt-loader';
+import type {
+  PromptLoader,
+  ResponseClassifierPromptProfile,
+} from './prompt-loader';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 import { executeWithOpenAiRetry } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
@@ -46,6 +49,16 @@ const classifierOutputSchema = z.object({
     'insufficient_context',
   ]),
   human_help_response: z.enum(['not_applicable', 'accept', 'decline', 'unclear']),
+  campaign_reply_kind: z.enum([
+    'not_applicable',
+    'rsvp_decision',
+    'declines_campaign_offer',
+    'acknowledgement_only',
+    'reaction_only',
+    'question_or_request',
+    'other_actionable',
+    'unclear',
+  ]),
 });
 
 export type ResponseClassifierMode = 'observe' | 'enforce';
@@ -54,6 +67,7 @@ export type MessageResponseClassifierAction = z.infer<typeof classifierOutputSch
 
 export type MessageResponseClassifierTrace = {
   mode: ResponseClassifierMode;
+  classifier_profile: ResponseClassifierPromptProfile;
   action: MessageResponseClassifierAction;
   reason:
     | z.infer<typeof classifierOutputSchema>['reason']
@@ -61,7 +75,7 @@ export type MessageResponseClassifierTrace = {
     | 'conversation_context_unavailable'
     | 'missing_outbound_context'
     | 'automation_confidence_insufficient'
-    | 'campaign_context_requires_extraction'
+    | 'campaign_action_requires_extraction'
     | 'help_offer_response_requires_reply';
   would_suppress: boolean;
   context_source: 'agent_api' | 'local_plan';
@@ -70,6 +84,7 @@ export type MessageResponseClassifierTrace = {
   conversation_health: z.infer<typeof classifierOutputSchema>['conversation_health'];
   health_reason: z.infer<typeof classifierOutputSchema>['health_reason'];
   human_help_response: z.infer<typeof classifierOutputSchema>['human_help_response'];
+  campaign_reply_kind: z.infer<typeof classifierOutputSchema>['campaign_reply_kind'];
   automation_confidence: z.infer<typeof classifierOutputSchema>['automation_confidence'];
   automation_pattern: z.infer<typeof classifierOutputSchema>['automation_pattern'];
   automation_scope: z.infer<typeof classifierOutputSchema>['automation_scope'];
@@ -123,14 +138,33 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
     contextSource: 'agent_api' | 'local_plan';
   }): Promise<MessageResponseClassifierResult> {
     const hasPriorOutboundMessage = args.messages.some((message) => message.direction === 'outbound');
+    const latestOutboundMessage = [...args.messages]
+      .reverse()
+      .find((message) => message.direction === 'outbound') ?? null;
+    const hasRecentCampaign = args.messages.some(
+      (message) =>
+        message.direction === 'outbound' && message.source === 'admin_campaign',
+    );
+    const classifierProfile: ResponseClassifierPromptProfile =
+      latestOutboundMessage?.source === 'admin_campaign' ||
+      (hasRecentCampaign && latestOutboundMessage?.source === 'admin_manual')
+        ? 'campaign_reply'
+        : 'general';
     let promptBundleId: string | null = null;
     let promptFilePaths: string[] = [];
 
     try {
-      const bundle = await this.options.promptLoader.loadResponseClassifierBundle();
+      const bundle = await this.options.promptLoader.loadResponseClassifierBundle(
+        classifierProfile,
+      );
       promptBundleId = bundle.id;
       promptFilePaths = bundle.filePaths;
-      const modelInput = this.buildInput(args, hasPriorOutboundMessage);
+      const modelInput = this.buildInput(
+        args,
+        hasPriorOutboundMessage,
+        classifierProfile,
+        latestOutboundMessage,
+      );
       const userInput = JSON.stringify(modelInput);
       const request = {
         model: this.options.model,
@@ -164,6 +198,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         return this.fallback({
           contextSource: args.contextSource,
           hasPriorOutboundMessage,
+          classifierProfile,
           promptBundleId,
           promptFilePaths,
         });
@@ -181,17 +216,24 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         decision.action === 'suppress_acknowledgement';
       const isNonActionableReaction =
         decision.action === 'suppress_reaction';
-      const hasCampaignInvitationContext = args.messages.some(
-        (message) => message.source === 'admin_campaign',
-      );
-      const campaignAcknowledgementRequiresExtraction =
-        isNonActionableAcknowledgement && hasCampaignInvitationContext;
+      const isCampaignReply = classifierProfile === 'campaign_reply';
+      const isCampaignClosure =
+        decision.campaign_reply_kind === 'declines_campaign_offer' ||
+        decision.campaign_reply_kind === 'acknowledgement_only';
+      const isCampaignReaction = decision.campaign_reply_kind === 'reaction_only';
+      const campaignActionRequiresExtraction =
+        isCampaignReply &&
+        decision.action !== 'respond' &&
+        !(
+          (isNonActionableAcknowledgement && isCampaignClosure) ||
+          (isNonActionableReaction && isCampaignReaction)
+        );
       const shouldSuppressAutomation =
         isHighConfidenceAutomatedResponse && !hasOutstandingHelpOffer;
       const validContextualSuppression =
         (isNonActionableAcknowledgement || isNonActionableReaction) &&
         !hasOutstandingHelpOffer &&
-        !campaignAcknowledgementRequiresExtraction &&
+        !campaignActionRequiresExtraction &&
         args.plan.rsvp_state.status === 'none';
       const action = shouldSuppressAutomation
         ? 'suppress_automated_response'
@@ -206,8 +248,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           ? decision.reason
           : hasOutstandingHelpOffer && decision.action !== 'respond'
             ? 'help_offer_response_requires_reply'
-            : campaignAcknowledgementRequiresExtraction
-              ? 'campaign_context_requires_extraction'
+            : campaignActionRequiresExtraction
+              ? 'campaign_action_requires_extraction'
             : decision.action === 'suppress_automated_response'
               ? 'automation_confidence_insufficient'
               : decision.reason;
@@ -215,6 +257,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       return {
         trace: {
           mode: this.options.mode,
+          classifier_profile: classifierProfile,
           action,
           reason,
           would_suppress: action !== 'respond',
@@ -224,6 +267,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
           conversation_health: decision.conversation_health,
           health_reason: decision.health_reason,
           human_help_response: decision.human_help_response,
+          campaign_reply_kind: decision.campaign_reply_kind,
           automation_confidence: decision.automation_confidence,
           automation_pattern: decision.automation_pattern,
           automation_scope: decision.automation_scope,
@@ -248,6 +292,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       return this.fallback({
         contextSource: args.contextSource,
         hasPriorOutboundMessage,
+        classifierProfile,
         promptBundleId,
         promptFilePaths,
       });
@@ -261,7 +306,24 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
       messages: AgentConversationMessage[];
     },
     hasPriorOutboundMessage: boolean,
+    classifierProfile: ResponseClassifierPromptProfile,
+    latestOutboundMessage: AgentConversationMessage | null,
   ): Record<string, unknown> {
+    if (classifierProfile === 'campaign_reply' && latestOutboundMessage) {
+      return {
+        inbound_message: truncatePreservingEnds(args.inboundText, 1_200),
+        decision_context: {
+          profile: classifierProfile,
+          rsvp_status: args.plan.rsvp_state.status,
+          human_help_offer_status: args.plan.conversation_health.help_offer_status,
+        },
+        campaign_message: {
+          direction: latestOutboundMessage.direction,
+          source: latestOutboundMessage.source,
+          body: truncatePreservingEnds(latestOutboundMessage.body, 1_600),
+        },
+      };
+    }
     return {
       inbound_message: truncatePreservingEnds(args.inboundText, 1_200),
       plan_context: {
@@ -284,12 +346,14 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
   private fallback(args: {
     contextSource: 'agent_api' | 'local_plan';
     hasPriorOutboundMessage: boolean;
+    classifierProfile: ResponseClassifierPromptProfile;
     promptBundleId: string | null;
     promptFilePaths: string[];
   }): MessageResponseClassifierResult {
     return {
       trace: {
         mode: this.options.mode,
+        classifier_profile: args.classifierProfile,
         action: 'respond',
         reason: 'classifier_unavailable',
         would_suppress: false,
@@ -299,6 +363,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         conversation_health: 'uncertain',
         health_reason: 'insufficient_context',
         human_help_response: 'not_applicable',
+        campaign_reply_kind: 'not_applicable',
         automation_confidence: 'uncertain',
         automation_pattern: 'none',
         automation_scope: 'none_or_uncertain',

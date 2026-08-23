@@ -1,0 +1,45 @@
+template: template.base-live
+id: live_behavior.rsvp_state_reversal_ends_confirmed
+suite: live_behavior_regression
+version: 1
+description: An affirmative attendance request ends in a backend-grounded confirmed state, whether the service changes a previous decline or reports that attendance is already confirmed.
+tags: [live, behavior, rsvp, attendance, backend-contract, state-reversal, idempotency]
+targetModes: [live_lambda]
+inputs:
+  - text: Sí, cámbiala para confirmar que asistiré.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-attendance-confirmed-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: awaiting_action
+    pending_action: attending
+    candidates:
+      - guest_id: 584353
+        event_name: Otra celebración prueba
+        event_date: "2026-08-19 05:00:00"
+    requested_at: "2026-08-20T15:00:00.000Z"
+    selection_attempts: 0
+expectations:
+  - id: remains-in-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: reads-authoritative-rsvp-state
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: reports-confirmed-final-state
+    type: text_semantic
+    rubric: >-
+      The user has explicitly confirmed that they want to attend guest invitation 584353 for Otra celebración prueba. The authoritative final state says the guest will attend: the production endpoint may have changed a previous decline, or the invitation may already be confirmed on a repeated run. The response must be natural and entirely in Spanish, clearly say that attendance is confirmed or was changed successfully, and must not claim that the invitation remains declined, ask for email or a code, expose internal fields, or offer human support as if the operation failed.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

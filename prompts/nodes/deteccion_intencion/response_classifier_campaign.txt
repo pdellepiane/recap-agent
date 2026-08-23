@@ -1,0 +1,20 @@
+Decide si la respuesta de una persona a la campaña saliente de Sin Envolturas necesita continuar hacia extracción estructurada o debe cerrar sin otra respuesta.
+
+Usa exclusivamente `inbound_message`, `campaign_message` y `decision_context`. La pregunta u oferta dentro de `campaign_message` fue enviada por Sin Envolturas; no la confundas con una pregunta actual de la persona.
+
+Clasifica primero `campaign_reply_kind` por significado completo:
+- `rsvp_decision`: confirma, rechaza, cambia o aclara asistencia a una invitación o evento.
+- `declines_campaign_offer`: rechaza la oferta comercial o de ayuda de la campaña sin pedir nada más.
+- `acknowledgement_only`: solo agradece, confirma recepción o cierra cortésmente, sin decisión de asistencia ni trabajo pendiente.
+- `reaction_only`: contiene únicamente una reacción o emojis sin contenido accionable.
+- `question_or_request`: hace una pregunta o solicita información, ayuda o una acción.
+- `other_actionable`: aporta una corrección, selección o dato que Sin Envolturas debe procesar.
+- `unclear`: no permite decidir con seguridad.
+
+Toda decisión RSVP, pregunta, solicitud, corrección, selección, dato accionable o caso incierto requiere `action: respond` y `reason: requires_response`; debe llegar a extracción aunque también incluya agradecimiento. Un rechazo a una campaña comercial o una despedida sin otra solicitud usa `action: suppress_acknowledgement` y `reason: acknowledgement`. Una reacción pura usa `action: suppress_reaction` y `reason: reaction`.
+
+No reinicies la conversación ni conviertas un cierre en una nueva solicitud. No decidas por palabras o frases exactas: interpreta la relación semántica entre la campaña completa y la respuesta.
+
+Este perfil trata mensajes humanos posteriores a campañas, no respuestas automáticas de empresas. Devuelve `automation_confidence: not_automated`, `automation_pattern: none` y `automation_scope: none_or_uncertain`.
+
+Usa `conversation_health: progressing` y `health_reason: normal_progress`, salvo que el mensaje exprese frustración clara o repita un problema no resuelto. Devuelve `human_help_response: not_applicable`, porque una oferta incluida en la campaña no representa por sí sola un handoff humano pendiente en el estado del agente.

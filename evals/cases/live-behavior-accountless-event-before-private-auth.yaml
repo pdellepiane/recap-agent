@@ -1,0 +1,38 @@
+template: template.base-live
+id: live_behavior.accountless_event_answer_precedes_remaining_private_auth
+suite: live_behavior_regression
+version: 1
+description: A mixed event and purchase question uses the trusted guest invitation first and requests email only for the remaining private purchase lookup.
+tags: [live, behavior, associated-event, accountless-guest, mixed-information, phone-first]
+targetModes: [live_lambda]
+inputs:
+  - text: ¿Dónde será la recepción y cuál es el estado de mi compra?
+    channel: whatsapp
+    contactPhone: "+51904523314"
+    sessionId: live-accountless-event-before-private-auth-session
+expectations:
+  - id: routes-to-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: checks-account-and-guest-event-before-email
+    type: tool_usage
+    mustCall: [auth_by_phone, lookup_guest_events_by_phone, get_guest_event_detail]
+    mustNotCall: [request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
+    severity: hard
+  - id: keeps-email-auth-ready-for-the-private-query
+    type: plan_field_equals
+    path: user_auth.status
+    expected: none
+    severity: hard
+  - id: answers-event-and-limits-email-request-to-private-data
+    type: text_semantic
+    rubric: >-
+      The trusted WhatsApp number is an invited guest to Julisabeth y Andrés, whose verified event detail places “Recepción y Fiesta” at Hacienda Recoveco on Avenida Manuel Valle in Lima. The answer must be concise, natural, and entirely in Spanish; provide that grounded reception location immediately, then explain that the registered email is needed only to check the private purchase status. It must not ask for an OTP yet, claim a purchase result, reopen onboarding, or defer the event answer to another turn.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1900
+  estimatedCompletionTokensPerTurn: 350

@@ -9,9 +9,17 @@ import {
   extractorPromptFilesForCapabilities,
   nodePromptManifest,
   promptRuleIdForFile,
+  responseClassifierPromptFiles,
   type ToolName,
 } from './prompt-manifest';
 import type { ExtractionCapabilityProfile } from './extraction-schemas';
+import type { InformationAuthReason } from '../core/information';
+
+export type PromptLoadContext = {
+  informationAuthReasons?: readonly InformationAuthReason[];
+};
+
+export type ResponseClassifierPromptProfile = keyof typeof responseClassifierPromptFiles;
 
 export type PromptBundle = {
   id: string;
@@ -24,10 +32,13 @@ export type PromptBundle = {
 export class PromptLoader {
   constructor(private readonly promptsDir: string) {}
 
-  async loadNodeBundle(node: DecisionNode): Promise<PromptBundle> {
+  async loadNodeBundle(
+    node: DecisionNode,
+    context: PromptLoadContext = {},
+  ): Promise<PromptBundle> {
     const config = nodePromptManifest[node];
     const relativePaths = [...conversationPromptFilesForNode(node), ...config.files];
-    return this.load(relativePaths, config.allowedTools);
+    return this.load(relativePaths, config.allowedTools, context);
   }
 
   async loadExtractorBundle(
@@ -39,20 +50,24 @@ export class PromptLoader {
     return this.load([...relativePaths], []);
   }
 
-  async loadResponseClassifierBundle(): Promise<PromptBundle> {
-    return this.load(['nodes/deteccion_intencion/response_classifier.txt'], []);
+  async loadResponseClassifierBundle(
+    profile: ResponseClassifierPromptProfile = 'general',
+  ): Promise<PromptBundle> {
+    return this.load(responseClassifierPromptFiles[profile], []);
   }
 
   private async load(
     relativePaths: readonly string[],
     allowedTools: readonly ToolName[],
+    context: PromptLoadContext = {},
   ): Promise<PromptBundle> {
     const contents = await Promise.all(
       relativePaths.map(async (relativePath) => {
         const absolutePath = path.join(this.promptsDir, relativePath);
+        const rawContent = await fs.readFile(absolutePath, 'utf8');
         return {
           relativePath,
-          content: await fs.readFile(absolutePath, 'utf8'),
+          content: this.projectMinimumDisclosure(rawContent, context),
         };
       }),
     );
@@ -78,6 +93,22 @@ export class PromptLoader {
       instructions,
       allowedTools,
     };
+  }
+
+  private projectMinimumDisclosure(
+    content: string,
+    context: PromptLoadContext,
+  ): string {
+    const selected = new Set(context.informationAuthReasons ?? []);
+    return content.replace(
+      /<!--\s*min-disclosure:\s*([^>]+?)\s*-->([\s\S]*?)<!--\s*\/min-disclosure\s*-->/gu,
+      (_match, labels: string, section: string) => {
+        const sectionLabels = labels.trim().split(/[\s,]+/u).filter(Boolean);
+        return sectionLabels.some((label) => selected.has(label as InformationAuthReason))
+          ? section.trim()
+          : '';
+      },
+    );
   }
 
   private displayPath(relativePath: string): string {

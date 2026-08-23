@@ -1,0 +1,100 @@
+template: template.base-live
+id: live_behavior.reset_plan_discards_stored_context
+suite: live_behavior_regression
+version: 1
+description: An explicit request to start over must atomically replace the stored event plan before replying.
+tags: [live, behavior, planning, reset, state-machine, reported-interaction]
+inputs:
+  - text: No no, quisiera empezar de nuevo, ¿podemos?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-behavior-reset-plan-session
+seedPlan:
+  current_node: recomendar
+  lifecycle_state: active
+  intent: confirmar_proveedor
+  event_type: boda
+  vendor_category: Wedding planners
+  active_need_category: Wedding planners
+  location: Lima, Perú
+  guest_range: 101-200
+  contact_name: Nombre anterior
+  contact_email: anterior@example.com
+  contact_phone: "51973296571"
+  preferences: [servicio integral]
+  provider_needs:
+    - category: Wedding planners
+      status: selected
+      preferences: [servicio integral]
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [43]
+      recommended_providers:
+        - id: 43
+          title: Carla Muñoz
+          category: Wedding planners
+          location: Lima
+          priceLevel: null
+          reason: selección del plan anterior
+          serviceHighlights: []
+          termsHighlights: []
+      selected_provider_ids: [43]
+      selected_provider_hints: [Carla Muñoz]
+  recommended_provider_ids: [43]
+  selected_provider_ids: [43]
+  conversation_summary: Plan anterior de boda en Lima para 101 a 200 invitados.
+  last_user_goal: confirmar_proveedor
+expectations:
+  - id: reset-is-a-native-state-transition
+    type: node_transition
+    to: reset_plan
+    severity: hard
+  - id: reset-route-is-explicit
+    type: trace_field_equals
+    path: route_kind
+    expected: reset_plan
+    severity: hard
+  - id: fresh-plan-is-persisted
+    type: trace_field_equals
+    path: plan_persisted
+    expected: true
+    severity: hard
+  - id: old-event-is-cleared
+    type: plan_field_equals
+    path: event_type
+    expected: null
+    severity: hard
+  - id: old-location-is-cleared
+    type: plan_field_equals
+    path: location
+    expected: null
+    severity: hard
+  - id: old-contact-email-is-cleared
+    type: plan_field_equals
+    path: contact_email
+    expected: null
+    severity: hard
+  - id: old-provider-needs-are-cleared
+    type: plan_field_equals
+    path: provider_needs
+    expected: []
+    severity: hard
+  - id: reset-does-not-search-or-close
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+      - create_quote_request
+      - finish_plan
+    severity: hard
+  - id: reset-response-confirms-completed-state-and-continues
+    type: text_semantic
+    rubric: >-
+      This case reconstructs the reported WhatsApp reset request over a stored wedding plan. Pass only if the Spanish response clearly says the previous plan has already been discarded or that the conversation is now starting from zero, then asks one concise open question about the new event or what the person needs. It must not merely promise to reset later, retain or mention the old wedding, Lima, guest count, contact data, Carla Muñoz, or wedding planners, search providers, present a step-by-step process, or ask the person to repeat the reset request.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

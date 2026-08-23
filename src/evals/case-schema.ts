@@ -233,6 +233,7 @@ const turnTraceSchema = z.object({
   }),
   response_classifier: z.object({
     mode: z.enum(['observe', 'enforce']),
+    classifier_profile: z.enum(['general', 'campaign_reply']).optional(),
     action: z.enum([
       'respond',
       'suppress_acknowledgement',
@@ -255,6 +256,16 @@ const turnTraceSchema = z.object({
       'insufficient_context',
     ]),
     human_help_response: z.enum(['not_applicable', 'accept', 'decline', 'unclear']),
+    campaign_reply_kind: z.enum([
+      'not_applicable',
+      'rsvp_decision',
+      'declines_campaign_offer',
+      'acknowledgement_only',
+      'reaction_only',
+      'question_or_request',
+      'other_actionable',
+      'unclear',
+    ]).optional(),
     automation_confidence: z.enum(['not_automated', 'uncertain', 'high']),
     automation_pattern: z.enum([
       'none',

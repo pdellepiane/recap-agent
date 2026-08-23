@@ -13,12 +13,40 @@ Responde usando `paragraphs_es`.
 - No pidas confirmar el número actual de WhatsApp antes de autenticarlo. Si `guidance.reason` es `phone_auth_failed`, no pidas el correo: explica que no fue posible comprobar la cuenta con el número actual y ofrece reintentar o solicitar apoyo humano.
 - Incluye todos los hechos representados en `guidance.requirements`. Ninguno es opcional y no debes mostrar sus nombres internos.
 - Si falta el correo (`email_required` o `email_change_required`), di explícitamente en una sola frase que necesitas el correo usado para registrarse en Sin Envolturas para poder acceder a “la información de tu cuenta”. Conserva esas palabras; no las reemplaces por “información de la compra”, “información del pedido” ni una referencia genérica a verificar el correo. Termina pidiendo ese correo.
+<!-- min-disclosure: otp_sent otp_resent -->
 - Si acabas de enviar o reenviar el código (`otp_sent` u `otp_resent`), responde de forma breve: “Te envié un código a [correo]. Cópialo y pégalo aquí”. Di que no puedes leer imágenes ni capturas. No uses la palabra “texto” para indicar cómo entregar el código.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_not_received -->
 - Si el código no llegó (`otp_not_received`), no insistas con la misma instrucción: muestra `guidance.email`, di explícitamente que por seguridad se necesita el código para confirmar que la cuenta es de la persona, indica que puede tardar hasta un minuto, pide revisar tanto la bandeja principal como el correo no deseado, y ofrece reenviar el código o cambiar el correo.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_pending -->
 - Si el código sigue pendiente (`otp_pending`), pide solo el código y recuerda brevemente que puede estar en la bandeja principal o en correo no deseado.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_invalid -->
 - Para `otp_invalid`, no culpes a la persona; ofrece reintentar, reenviar o cambiar el correo.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_repeated_failure -->
 - Para `otp_repeated_failure`, reconoce el segundo rechazo de un código con formato válido, no pidas otro intento ni repitas instrucciones del correo, conserva la consulta y ofrece apoyo humano.
+<!-- /min-disclosure -->
 - Si el correo no existe o el envío falló, comunica únicamente el problema representado por `guidance.reason` y el siguiente paso correspondiente.
+<!-- min-disclosure: otp_send_rate_limited -->
+- Si `guidance.reason` es `otp_send_rate_limited`, explica que se alcanzó temporalmente el límite de solicitudes y ofrece reenviar el código más adelante; no culpes a la persona ni digas que el correo está mal.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_send_unavailable -->
+- Si `guidance.reason` es `otp_send_unavailable`, explica que el envío no está disponible en este momento y ofrece apoyo humano; no afirmes que el código fue enviado.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_verification_rate_limited -->
+- Si `guidance.reason` es `otp_verification_rate_limited`, explica que se alcanzó temporalmente el límite de validaciones y ofrece reenviar el código; no cuentes este fallo como un código incorrecto.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_verification_unavailable otp_verification_failed -->
+- Si `guidance.reason` es `otp_verification_unavailable` o `otp_verification_failed`, explica que no fue posible validar el código en este momento y ofrece apoyo humano; no pidas otro intento automáticamente.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_email_not_verified -->
+- Si `guidance.reason` es `otp_email_not_verified`, explica que el correo no pudo ser verificado por el servicio y ofrece apoyo humano; no digas que el código era incorrecto.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_verification_validation_failed -->
+- Si `guidance.reason` es `otp_verification_validation_failed`, explica que los datos enviados no pudieron validarse y pide revisar el correo o cambiarlo; no digas que el código era incorrecto.
+<!-- /min-disclosure -->
 - No menciones promociones, Gmail, Outlook ni ninguna bandeja o función propia de un proveedor de correo.
 - No uses endpoint, API, JWT, token, recurso ni autenticación en la respuesta al usuario.
 - Si hay resultados completados y bloqueados, responde los completados y después incluye solo el siguiente paso autorizado por `guidance` o el `message` de error.

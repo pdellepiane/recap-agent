@@ -18,6 +18,7 @@ import {
 import { rsvpStateSchema, type RsvpState } from './rsvp';
 
 export const actionIntentValues = [
+  'reset_plan',
   'elicitar_necesidades',
   'buscar_proveedores',
   'refinar_busqueda',

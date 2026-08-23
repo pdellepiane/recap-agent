@@ -116,6 +116,62 @@ export type AgentUpdatePhoneResult =
       retryable: boolean;
     };
 
+export type AgentGuestEventSummary = {
+  eventId: number;
+  name: string;
+  slug: string;
+  url: string | null;
+  datetime: string | null;
+  type: string | null;
+  typeDetail: string | null;
+  stage: string | null;
+  city: string | null;
+  country: string | null;
+  currency: string | null;
+};
+
+export type AgentEventDetail = AgentGuestEventSummary & {
+  withTime: boolean;
+  timezone: string | null;
+  celebrateds: Array<{
+    name: string;
+    type: string | null;
+  }>;
+  moments: Array<{
+    label: string;
+    description: string | null;
+    datetime: string | null;
+    withTime: boolean;
+    locationDescription: string | null;
+    locationReference: string | null;
+    locationUrl: string | null;
+    locationCoords: string | null;
+    position: number;
+  }>;
+  dresscode: {
+    type: string | null;
+    description: string | null;
+  } | null;
+  commonAsked: Array<{
+    question: string;
+    answer: string;
+  }>;
+  contactInfo: Array<{
+    label: string;
+    value: string;
+  }>;
+};
+
+export type AgentGuestEventsResult =
+  | { status: 'success'; events: AgentGuestEventSummary[] }
+  | { status: 'not_found' }
+  | { status: 'failed'; error: string; retryable: boolean };
+
+export type AgentEventDetailResult =
+  | { status: 'success'; event: AgentEventDetail }
+  | { status: 'not_found' }
+  | { status: 'failed'; error: string; retryable: boolean };
+
 export type RsvpCandidate = {
   guestId: number;
   eventName: string | null;
@@ -131,6 +187,7 @@ export type AgentGuestRsvpResult =
   | {
       status: 'responded';
       action: RsvpAction;
+      willAttend: boolean;
       guestId: number | null;
       eventName: string | null;
       eventDate: string | null;
@@ -171,6 +228,8 @@ export interface AgentConversationGateway {
     orderId?: string | null;
   }): Promise<AgentPurchaseLookupResult>;
   authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult>;
+  getGuestEventsByPhone?(input: AgentAuthByPhoneInput): Promise<AgentGuestEventsResult>;
+  getEventDetail?(input: { eventId: number }): Promise<AgentEventDetailResult>;
   updatePhone(args: AgentAuthByPhoneInput & { token: string }): Promise<AgentUpdatePhoneResult>;
   guestRsvp?(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult>;
 }
@@ -227,6 +286,24 @@ export class NoopAgentConversationGateway implements AgentConversationGateway {
     return {
       status: 'failed',
       error: 'Agent API phone update is not configured.',
+      retryable: false,
+    };
+  }
+
+  async getGuestEventsByPhone(input: AgentAuthByPhoneInput): Promise<AgentGuestEventsResult> {
+    void input;
+    return {
+      status: 'failed',
+      error: 'Agent API guest event lookup is not configured.',
+      retryable: false,
+    };
+  }
+
+  async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> {
+    void input;
+    return {
+      status: 'failed',
+      error: 'Agent API event detail lookup is not configured.',
       retryable: false,
     };
   }
@@ -307,11 +384,87 @@ const rsvpCandidateSchema = z.object({
 type RsvpCandidateWire = z.infer<typeof rsvpCandidateSchema>;
 
 const rsvpCandidateEnvelopeSchema = z.union([
+  z.object({ pending_guests: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
   z.object({ candidates: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
   z.object({ pending: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
   z.object({ invitations: z.array(rsvpCandidateSchema).min(2) }).passthrough(),
   z.array(rsvpCandidateSchema).min(2),
 ]);
+
+const guestEventSchema = z.object({
+  event_id: z.number().int().positive(),
+  name: z.string().trim().min(1),
+  slug: z.string().trim().min(1),
+  url: z.string().trim().min(1).nullable().optional(),
+  datetime: z.string().trim().min(1).nullable().optional(),
+  type: z.string().trim().min(1).nullable().optional(),
+  type_detail: z.string().trim().min(1).nullable().optional(),
+  stage: z.string().trim().min(1).nullable().optional(),
+  city: z.string().trim().min(1).nullable().optional(),
+  country: z.string().trim().min(1).nullable().optional(),
+  currency: z.string().trim().min(1).nullable().optional(),
+  role: z.literal('guest'),
+});
+
+const guestEventsDataSchema = z.object({
+  events: z.array(guestEventSchema),
+});
+
+const eventCountrySchema = z.object({
+  id: z.number().int().positive(),
+  name: z.string().trim().min(1),
+  short_code: z.string().trim().min(1),
+});
+
+const eventDetailSchema = z.object({
+  event_id: z.number().int().positive(),
+  name: z.string().trim().min(1),
+  slug: z.string().trim().min(1),
+  url: z.string().trim().min(1).nullable().optional(),
+  type: z.string().trim().min(1).nullable().optional(),
+  type_detail: z.string().trim().min(1).nullable().optional(),
+  datetime: z.string().trim().min(1).nullable().optional(),
+  with_time: z.boolean(),
+  timezone: z.string().trim().min(1).nullable().optional(),
+  city: z.string().trim().min(1).nullable().optional(),
+  country: eventCountrySchema.nullable().optional(),
+  currency: z.string().trim().min(1).nullable().optional(),
+  stage: z.string().trim().min(1).nullable().optional(),
+  celebrateds: z.array(z.object({
+    name: z.string().trim().min(1),
+    type: z.string().trim().min(1).nullable().optional(),
+  })).default([]),
+  moments: z.array(z.object({
+    label: z.string().trim().min(1),
+    description: z.string().trim().min(1).nullable().optional(),
+    datetime: z.string().trim().min(1).nullable().optional(),
+    with_time: z.boolean(),
+    location_description: z.string().trim().min(1).nullable().optional(),
+    location_reference: z.string().trim().min(1).nullable().optional(),
+    location_url: z.string().trim().min(1).nullable().optional(),
+    location_coords: z.string().trim().min(1).nullable().optional(),
+    position: z.number().int().nonnegative(),
+  })).default([]),
+  dresscode: z.object({
+    type: z.string().trim().min(1).nullable().optional(),
+    description: z.string().trim().min(1).nullable().optional(),
+  }).nullable().optional(),
+  common_asked: z.array(z.object({
+    question: z.string().trim().min(1),
+    answer: z.string().trim().min(1),
+  })).default([]),
+  contact_info: z.union([
+    z.array(z.object({
+      label: z.string().trim().min(1),
+      value: z.string().trim().min(1),
+    })),
+    z.record(z.string(), z.string().trim().min(1).nullable()),
+  ]).default([]),
+});
+
+const eventDetailDataSchema = z.object({
+  event: eventDetailSchema,
+});
 
 const messageSchema = z.object({
   id: z.number(),
@@ -704,6 +857,126 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     };
   }
 
+  async getGuestEventsByPhone(
+    input: AgentAuthByPhoneInput,
+  ): Promise<AgentGuestEventsResult> {
+    const params = new URLSearchParams({
+      phone_extension: input.phone_extension,
+      phone_number: input.phone_number,
+    });
+    const response = await this.request(`/guest/events?${params.toString()}`, {
+      method: 'GET',
+    });
+    if (response.status !== 'success') {
+      if (response.httpStatus === 404) {
+        return { status: 'not_found' };
+      }
+      return {
+        status: 'failed',
+        error: response.error,
+        retryable: response.retryable,
+      };
+    }
+
+    const parsed = guestEventsDataSchema.safeParse(response.data);
+    if (!parsed.success) {
+      return {
+        status: 'failed',
+        error: 'Agent API guest events response had an unexpected shape.',
+        retryable: false,
+      };
+    }
+
+    return {
+      status: 'success',
+      events: parsed.data.events.map((event) => ({
+        eventId: event.event_id,
+        name: event.name,
+        slug: event.slug,
+        url: event.url ?? null,
+        datetime: event.datetime ?? null,
+        type: event.type ?? null,
+        typeDetail: event.type_detail ?? null,
+        stage: event.stage ?? null,
+        city: event.city ?? null,
+        country: event.country ?? null,
+        currency: event.currency ?? null,
+      })),
+    };
+  }
+
+  async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> {
+    const params = new URLSearchParams({ event_id: String(input.eventId) });
+    const response = await this.request(`/event?${params.toString()}`, {
+      method: 'GET',
+    });
+    if (response.status !== 'success') {
+      if (response.httpStatus === 404) {
+        return { status: 'not_found' };
+      }
+      return {
+        status: 'failed',
+        error: response.error,
+        retryable: response.retryable,
+      };
+    }
+
+    const parsed = eventDetailDataSchema.safeParse(response.data);
+    if (!parsed.success) {
+      return {
+        status: 'failed',
+        error: 'Agent API event detail response had an unexpected shape.',
+        retryable: false,
+      };
+    }
+    const event = parsed.data.event;
+    return {
+      status: 'success',
+      event: {
+        eventId: event.event_id,
+        name: event.name,
+        slug: event.slug,
+        url: event.url ?? null,
+        datetime: event.datetime ?? null,
+        type: event.type ?? null,
+        typeDetail: event.type_detail ?? null,
+        stage: event.stage ?? null,
+        city: event.city ?? null,
+        country: event.country?.name ?? null,
+        currency: event.currency ?? null,
+        withTime: event.with_time,
+        timezone: event.timezone ?? null,
+        celebrateds: event.celebrateds.map((celebrated) => ({
+          name: celebrated.name,
+          type: celebrated.type ?? null,
+        })),
+        moments: event.moments.map((moment) => ({
+          label: moment.label,
+          description: moment.description ?? null,
+          datetime: moment.datetime ?? null,
+          withTime: moment.with_time,
+          locationDescription: moment.location_description ?? null,
+          locationReference: moment.location_reference ?? null,
+          locationUrl: moment.location_url ?? null,
+          locationCoords: moment.location_coords ?? null,
+          position: moment.position,
+        })),
+        dresscode: event.dresscode
+          ? {
+              type: event.dresscode.type ?? null,
+              description: event.dresscode.description ?? null,
+            }
+          : null,
+        commonAsked: event.common_asked,
+        contactInfo: Array.isArray(event.contact_info)
+          ? event.contact_info
+          : Object.entries(event.contact_info)
+              .filter((entry): entry is [string, string] => entry[1] !== null)
+              .map(([label, value]) => ({ label, value })),
+      },
+    };
+  }
+
   async updatePhone(
     args: AgentAuthByPhoneInput & { token: string },
   ): Promise<AgentUpdatePhoneResult> {
@@ -744,6 +1017,13 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     });
 
     if (response.status === 'success') {
+      const candidates = this.parseRsvpCandidates(response.data);
+      if (candidates) {
+        return {
+          status: 'multiple_pending',
+          candidates,
+        };
+      }
       const parsed = rsvpResponseDataSchema.safeParse(response.data);
       if (!parsed.success) {
         return {
@@ -752,32 +1032,23 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           retryable: false,
         };
       }
-      if (parsed.data.already_responded === true) {
-        const willAttend = parsed.data.will_attend;
+      const expectedWillAttend = input.action === 'attending';
+      const returnedWillAttend = parsed.data.will_attend === true || parsed.data.will_attend === 1
+        ? true
+        : parsed.data.will_attend === false || parsed.data.will_attend === 0
+          ? false
+          : null;
+      if (returnedWillAttend === null || returnedWillAttend !== expectedWillAttend) {
         return {
-          status: 'already_responded',
-          currentAction: willAttend === true || willAttend === 1
-            ? 'attending'
-            : willAttend === false || willAttend === 0
-              ? 'declining'
-              : null,
-          requestedAction: input.action,
-          guestId: parsed.data.guest_id ?? input.guest_id ?? null,
-          eventName:
-            parsed.data.event_name ??
-            parsed.data.event?.name ??
-            parsed.data.event?.title ??
-            null,
-          eventDate:
-            parsed.data.event_date ??
-            parsed.data.event?.date ??
-            parsed.data.event?.event_date ??
-            null,
+          status: 'failed',
+          error: 'Agent API RSVP response did not confirm the requested attendance state.',
+          retryable: false,
         };
       }
       return {
         status: 'responded',
         action: parsed.data.action ?? input.action,
+        willAttend: returnedWillAttend,
         guestId: parsed.data.guest_id ?? input.guest_id ?? null,
         eventName:
           parsed.data.event_name ??
@@ -836,7 +1107,9 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     }
     const candidateData: RsvpCandidateWire[] = Array.isArray(parsed.data)
       ? parsed.data
-      : 'candidates' in parsed.data
+      : 'pending_guests' in parsed.data
+        ? parsed.data.pending_guests as RsvpCandidateWire[]
+        : 'candidates' in parsed.data
         ? parsed.data.candidates as RsvpCandidateWire[]
         : 'pending' in parsed.data
           ? parsed.data.pending as RsvpCandidateWire[]

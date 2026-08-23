@@ -406,6 +406,9 @@ class FakeResponseClassifier implements MessageResponseClassifier {
     return {
       trace: {
         mode: this.mode,
+        classifier_profile: args.messages.some(
+          (message) => message.direction === 'outbound' && message.source === 'admin_campaign',
+        ) ? 'campaign_reply' : 'general',
         action: this.action,
         reason,
         would_suppress: this.action !== 'respond',
@@ -415,6 +418,7 @@ class FakeResponseClassifier implements MessageResponseClassifier {
         conversation_health: this.health.status,
         health_reason: this.health.reason,
         human_help_response: this.health.helpResponse,
+        campaign_reply_kind: 'not_applicable',
         automation_confidence: this.action === 'suppress_automated_response'
           ? 'high'
           : 'not_automated',
@@ -3870,6 +3874,126 @@ describe('AgentService', () => {
     expect(response.plan.lifecycle_state).toBe('active');
   });
 
+  it('discards every planning field when structured extraction requests a reset', async () => {
+    class ResetRuntime extends FakeRuntime {
+      override async extract(request: ExtractRequest): Promise<ExtractionResult> {
+        this.extractRequests.push(request);
+        return {
+          actionIntent: 'reset_plan',
+          informationRequests: [],
+          intentConfidence: 0.99,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'La persona desea comenzar de nuevo.',
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: null,
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    const runtime = new ResetRuntime();
+    const planStore = new InMemoryPlanStore();
+    const gateway = new FakeGateway();
+    const service = new AgentService({
+      planStore,
+      runtime,
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+    const previous = mergePlan(createEmptyPlan({
+      planId: 'reported-whatsapp-plan',
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:+51900000001',
+    }), {
+      current_node: 'recomendar',
+      event_type: 'boda',
+      vendor_category: 'Wedding planners',
+      active_need_category: 'Wedding planners',
+      location: 'Lima, Perú',
+      guest_range: '101-200',
+      contact_name: 'Nombre anterior',
+      contact_email: 'anterior@example.com',
+      contact_phone: '51900000001',
+      preferences: ['servicio integral'],
+      provider_needs: [{
+        category: 'Wedding planners',
+        status: 'selected',
+        preferences: ['servicio integral'],
+        hard_constraints: [],
+        missing_fields: [],
+        recommended_provider_ids: [43],
+        recommended_providers: [{
+          id: 43,
+          title: 'Carla Muñoz',
+          category: 'Wedding planners',
+          location: 'Lima',
+          priceLevel: null,
+          reason: 'Selección anterior',
+          serviceHighlights: [],
+          termsHighlights: [],
+        }],
+        selected_provider_ids: [43],
+        selected_provider_hints: ['Carla Muñoz'],
+      }],
+      recommended_provider_ids: [43],
+      selected_provider_ids: [43],
+      conversation_summary: 'Plan anterior de boda en Lima.',
+      last_user_goal: 'confirmar_proveedor',
+    });
+    await planStore.save({ plan: previous, reason: 'seed' });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'whatsapp:+51900000001',
+      text: 'No no, quisiera empezar de nuevo, ¿podemos?',
+      messageId: 'wamid.reported-reset',
+      receivedAt: '2026-08-20T21:55:00.000Z',
+    });
+
+    expect(response.plan.plan_id).not.toBe(previous.plan_id);
+    expect(response.plan).toMatchObject({
+      current_node: 'reset_plan',
+      lifecycle_state: 'active',
+      event_type: null,
+      vendor_category: null,
+      active_need_category: null,
+      location: null,
+      guest_range: null,
+      contact_name: null,
+      contact_email: null,
+      contact_phone: null,
+      preferences: [],
+      provider_needs: [],
+      recommended_provider_ids: [],
+      selected_provider_ids: [],
+    });
+    expect(response.trace.route_kind).toBe('reset_plan');
+    expect(response.trace.state_machine_invariant_status).toBe('valid');
+    expect(response.trace.plan_persisted).toBe(true);
+    expect(response.trace.plan_persist_reason).toBe('reset_plan');
+    expect(response.trace.prompt_file_paths).toContain('nodes/reset_plan/system.txt');
+    expect(gateway.searchCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+  });
+
   it('persists finished plans without a TTL when runtime marks plan as finished', async () => {
     class FinishingRuntime extends FakeRuntime {
       override async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
@@ -5037,6 +5161,253 @@ describe('AgentService', () => {
     expect(response.trace.missing_fields).toContain('location');
     expect(response.trace.tools_called).not.toContain('search_providers_from_plan');
     expect(gateway.searchCalls).toBe(0);
+  });
+
+  it('preserves a combined clarification when location and scale are both missing', async () => {
+    class CombinedClarificationRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
+          intentConfidence: 1,
+          eventType: 'boda',
+          vendorCategory: 'Wedding planners',
+          vendorCategories: ['Wedding planners'],
+          activeNeedCategory: 'Wedding planners',
+          location: null,
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Busca wedding planners para su matrimonio.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            needCategory: 'Wedding planners',
+            location: null,
+          },
+          providerQueryIntents: [],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+
+      override async composeReply(
+        request: ComposeReplyRequest,
+      ): Promise<ComposeReplyResult> {
+        this.composeRequests.push(request);
+        return {
+          text: '',
+          structuredMessage: {
+            type: 'generic',
+            paragraphs_es: [
+              '¿En qué ciudad será el matrimonio y cuántos invitados esperas aproximadamente o qué presupuesto tienes?',
+            ],
+          },
+        };
+      }
+    }
+
+    const service = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new CombinedClarificationRuntime(),
+      providerGateway: new FakeGateway(),
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-wedding-planner-combined-clarification',
+      text: 'Dime los wedding planners que tengas para mi matrimonio.',
+      messageId: 'msg-wedding-planner-combined-clarification',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(response.trace.missing_fields).toEqual([
+      'location',
+      'budget_or_guest_range',
+    ]);
+    expect(response.outbound.text).toBe(
+      '¿En qué ciudad será el matrimonio y cuántos invitados esperas aproximadamente o qué presupuesto tienes?',
+    );
+  });
+
+  it('searches immediately when a location follow-up completes one typed query intent', async () => {
+    class LocationFollowUpRuntime extends FakeRuntime {
+      override async extract(): Promise<ExtractionResult> {
+        return {
+          actionIntent: 'buscar_proveedores',
+          informationRequests: [],
+          intentConfidence: 1,
+          eventType: null,
+          vendorCategory: null,
+          vendorCategories: [],
+          activeNeedCategory: null,
+          location: 'Lima, Perú',
+          budgetSignal: null,
+          guestRange: null,
+          preferences: [],
+          hardConstraints: [],
+          assumptions: [],
+          conversationSummary: 'Busca wedding planners para su matrimonio de 100 a 200 invitados en Lima, Perú.',
+          selectedProviderHints: [],
+          pauseRequested: false,
+          contactName: null,
+          contactEmail: null,
+          contactPhone: null,
+          providerFitCriteria: {
+            ...testProviderFitCriteria,
+            needCategory: null,
+            location: 'Lima, Perú',
+          },
+          providerQueryIntents: [
+            {
+              category: 'Wedding planners',
+              label: 'Wedding planners para boda en Lima',
+              priority: 1,
+              queries: [
+                providerNeedQuery(
+                  'Wedding planners',
+                  'Wedding planners para boda en Lima',
+                  ['organizadores de bodas en Lima para 100 a 200 invitados'],
+                ),
+              ],
+              preferences: [],
+              hardConstraints: [],
+              missingFields: [],
+              retrievalReady: true,
+              fitCriteria: {
+                ...testProviderFitCriteria,
+                needCategory: 'Wedding planners',
+                location: 'Lima, Perú',
+              },
+            },
+          ],
+          providerPlanOperations: [],
+          providerExplanationRequest: null,
+          providerDetailRequest: null,
+        };
+      }
+    }
+
+    class WeddingPlannerGateway extends FakeGateway {
+      override async searchProviders(
+        plan: PersistedPlan,
+      ): Promise<ProviderGatewaySearchResult> {
+        void plan;
+        this.searchCalls += 1;
+        return {
+          providers: [
+            {
+              id: 801,
+              title: 'Bodas Lima',
+              category: 'Wedding planners',
+              location: 'Lima, Perú',
+              priceLevel: 'mid',
+              reason: 'Organiza bodas en Lima.',
+              serviceHighlights: [],
+              termsHighlights: [],
+            },
+          ],
+        };
+      }
+
+      override async getProviderDetail(providerId: number): Promise<ProviderDetail | null> {
+        return {
+          id: providerId,
+          title: 'Bodas Lima',
+          slug: 'bodas-lima',
+          category: 'Wedding planners',
+          location: 'Lima, Perú',
+          priceLevel: 'mid',
+          rating: null,
+          reason: 'Organiza bodas en Lima.',
+          detailUrl: null,
+          websiteUrl: null,
+          minPrice: null,
+          maxPrice: null,
+          promoBadge: null,
+          promoSummary: null,
+          descriptionSnippet: 'Organización integral de bodas.',
+          serviceHighlights: [],
+          termsHighlights: [],
+          description: 'Organización integral de bodas.',
+          eventTypes: ['boda'],
+          raw: {},
+        };
+      }
+    }
+
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'seed-wedding-planner-location-follow-up',
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'plan-wedding-planner-location-follow-up',
+          channel: 'terminal_whatsapp',
+          externalUserId: 'user-wedding-planner-location-follow-up',
+        }),
+        {
+          current_node: 'aclarar_pedir_faltante',
+          event_type: 'boda',
+          location: null,
+          guest_range: '101-200',
+          vendor_category: 'Wedding planners',
+          active_need_category: 'Wedding planners',
+          provider_needs: [
+            {
+              category: 'Wedding planners',
+              status: 'identified',
+              preferences: [],
+              hard_constraints: [],
+              missing_fields: ['location'],
+              recommended_provider_ids: [],
+              recommended_providers: [],
+              selected_provider_ids: [],
+              selected_provider_hints: [],
+            },
+          ],
+        },
+      ),
+    });
+
+    const gateway = new WeddingPlannerGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new LocationFollowUpRuntime(),
+      providerGateway: gateway,
+      promptLoader,
+      renderers,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'user-wedding-planner-location-follow-up',
+      text: 'En Lima Perú',
+      messageId: 'msg-wedding-planner-location-follow-up',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('recomendar');
+    expect(response.trace.turn_decision.routeKind).toBe('single_need_search');
+    expect(response.trace.turn_decision.focusNeedCategory).toBe('Wedding planners');
+    expect(response.trace.turn_decision.needsToSearch).toEqual(['Wedding planners']);
+    expect(response.trace.missing_fields).toEqual([]);
+    expect(
+      response.plan.provider_needs.find(
+        (need) => need.category === 'Wedding planners',
+      )?.recommended_provider_ids,
+    ).toEqual([801]);
+    expect(response.trace.tools_called).toContain('search_providers_from_plan');
+    expect(gateway.searchCalls).toBe(1);
   });
 
   it('does not let stale active need downgrade a current multi-need provider request', async () => {

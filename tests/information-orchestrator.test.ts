@@ -450,6 +450,152 @@ describe('InformationOrchestrator', () => {
     expect(result.result.events[0]?.amountCollected).toBeNull();
     expect(result.result.counts.recentOrders).toBe(0);
   });
+
+  it('resolves an account-less guest event from the trusted phone without OTP', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestEventsResult = {
+      status: 'success',
+      events: [{
+        eventId: 88,
+        name: 'Boda Laura & Marcos',
+        slug: 'boda-laura-marcos',
+        url: null,
+        datetime: '15/09/2026 18:00',
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'published',
+        city: 'Lima',
+        country: 'Perú',
+        currency: 'PEN',
+      }],
+    };
+    agentGateway.eventDetailResult = {
+      status: 'success',
+      event: {
+        ...agentGateway.guestEventsResult.events[0],
+        withTime: true,
+        timezone: 'America/Lima',
+        celebrateds: [],
+        moments: [{
+          label: 'Recepción',
+          description: null,
+          datetime: '15/09/2026 19:00',
+          withTime: true,
+          locationDescription: 'Salón principal',
+          locationReference: null,
+          locationUrl: null,
+          locationCoords: null,
+          position: 1,
+        }],
+        dresscode: { type: 'formal', description: 'Vestimenta formal.' },
+        commonAsked: [],
+        contactInfo: [],
+      },
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'event-guest-1',
+        kind: 'associated_event',
+        query: '¿Dónde es la recepción?',
+        eventHint: null,
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
+    });
+
+    expect(agentGateway.guestEventCalls).toBe(1);
+    expect(agentGateway.eventDetailCalls).toBe(1);
+    expect(execution.results[0]).toMatchObject({
+      kind: 'associated_event',
+      status: 'completed',
+      accessMethod: 'trusted_phone_guest',
+      result: {
+        events: [{
+          eventId: 88,
+          detail: {
+            moments: [{ locationDescription: 'Salón principal' }],
+            dresscode: { type: 'formal' },
+          },
+        }],
+      },
+    });
+    expect(execution.summaries[0]).toMatchObject({
+      accessMethod: 'trusted_phone_guest',
+      eventDetailCount: 1,
+    });
+  });
+
+  it('returns guest event choices without OTP when several invitations remain ambiguous', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestEventsResult = {
+      status: 'success',
+      events: [
+        guestEvent(88, 'Boda Laura & Marcos'),
+        guestEvent(89, 'Bautizo Sofía'),
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'event-guest-many',
+        kind: 'associated_event',
+        query: '¿Dónde es mi evento?',
+        eventHint: null,
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
+    });
+
+    expect(agentGateway.eventDetailCalls).toBe(0);
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      accessMethod: 'trusted_phone_guest',
+      result: { counts: { guestEvents: 2 } },
+    });
+  });
+
+  it('falls back to the supplied authentication step when the phone has no guest record', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestEventsResult = { status: 'not_found' };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'event-guest-missing',
+        kind: 'associated_event',
+        query: '¿Dónde es mi evento?',
+        eventHint: null,
+      }],
+      authentication: null,
+      authBlock: {
+        nextInput: 'email',
+        guidance: createInformationAuthGuidance('email_required', null),
+      },
+      trustedPhone: { phone_extension: '+51', phone_number: '973296571' },
+    });
+
+    expect(execution.results[0]).toMatchObject({
+      status: 'needs_input',
+      nextInput: 'email',
+    });
+  });
 });
 
 class FakeAgentGateway implements AgentConversationGateway {
@@ -466,6 +612,14 @@ class FakeAgentGateway implements AgentConversationGateway {
     resource: 'gift_purchases',
     purchases: [],
   };
+  public guestEventCalls = 0;
+  public eventDetailCalls = 0;
+  public guestEventsResult: Awaited<
+    ReturnType<NonNullable<AgentConversationGateway['getGuestEventsByPhone']>>
+  > = { status: 'not_found' };
+  public eventDetailResult: Awaited<
+    ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>
+  > = { status: 'not_found' };
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
     void input;
@@ -494,6 +648,16 @@ class FakeAgentGateway implements AgentConversationGateway {
     return { status: 'success' };
   }
 
+  async getGuestEventsByPhone(): Promise<typeof this.guestEventsResult> {
+    this.guestEventCalls += 1;
+    return this.guestEventsResult;
+  }
+
+  async getEventDetail(): Promise<typeof this.eventDetailResult> {
+    this.eventDetailCalls += 1;
+    return this.eventDetailResult;
+  }
+
   async getOrders(args: {
     token: string;
     orderId?: string | null;
@@ -512,6 +676,22 @@ class FakeAgentGateway implements AgentConversationGateway {
     this.giftCalls += 1;
     return this.giftResult;
   }
+}
+
+function guestEvent(eventId: number, name: string) {
+  return {
+    eventId,
+    name,
+    slug: `event-${eventId}`,
+    url: null,
+    datetime: '15/09/2026 18:00',
+    type: 'wedding',
+    typeDetail: null,
+    stage: 'published',
+    city: 'Lima',
+    country: 'Perú',
+    currency: 'PEN',
+  };
 }
 
 function purchaseRequest(

@@ -140,6 +140,38 @@ export type UserEventSummary = {
   invitedGuestCount: number | null;
   confirmedGuestCount: number | null;
   orders: UserEventOrderSummary[];
+  detail?: {
+    withTime: boolean;
+    timezone: string | null;
+    city: string | null;
+    celebrateds: Array<{
+      name: string;
+      type: string | null;
+    }>;
+    moments: Array<{
+      label: string;
+      description: string | null;
+      datetime: string | null;
+      withTime: boolean;
+      locationDescription: string | null;
+      locationReference: string | null;
+      locationUrl: string | null;
+      locationCoords: string | null;
+      position: number;
+    }>;
+    dresscode: {
+      type: string | null;
+      description: string | null;
+    } | null;
+    commonAsked: Array<{
+      question: string;
+      answer: string;
+    }>;
+    contactInfo: Array<{
+      label: string;
+      value: string;
+    }>;
+  };
 };
 
 export type UserEventLookupResult = {
@@ -167,7 +199,7 @@ export type UserLoginCodeRequestResult =
       requestId?: string | null;
     }
   | {
-      status: 'email_not_found' | 'failed';
+      status: 'email_not_found' | 'rate_limited' | 'unavailable' | 'failed';
       error: string;
       httpStatus?: number;
       requestId?: string | null;
@@ -182,7 +214,13 @@ export type UserLoginCodeVerificationResult =
       requestId?: string | null;
     }
   | {
-      status: 'invalid_code' | 'failed';
+      status:
+        | 'invalid_code'
+        | 'email_not_verified'
+        | 'validation_failed'
+        | 'rate_limited'
+        | 'unavailable'
+        | 'failed';
       error: string;
       httpStatus?: number;
       requestId?: string | null;

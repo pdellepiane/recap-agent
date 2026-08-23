@@ -55,10 +55,44 @@ describe('dynamic agent policy', () => {
     const policy = deriveDynamicAgentPolicy(plan);
 
     expect(policy.allowedActionIntents).toContain('buscar_proveedores');
+    expect(policy.allowedActionIntents).toContain('reset_plan');
     expect(policy.allowedActionIntents).not.toContain('cerrar');
     expect(policy.allowedActionIntents).not.toContain('pausar');
     expect(policy.allowedNextNodes).not.toContain('crear_lead_cerrar');
     expect(policy.allowedNextNodes).not.toContain('guardar_cerrar_temporalmente');
+  });
+
+  it('exposes reset as a structured action in every plan lifecycle state', () => {
+    const states = [
+      createPlan(),
+      mergePlan(createPlan(), {
+        current_node: 'entrevista',
+        event_type: 'boda',
+      }),
+      mergePlan(createPlan(), {
+        current_node: 'recomendar',
+        provider_needs: [createNeed({
+          status: 'shortlisted',
+          recommended_provider_ids: [42],
+        })],
+      }),
+      mergePlan(createPlan(), {
+        current_node: 'necesidad_cubierta',
+        lifecycle_state: 'finished',
+      }),
+    ];
+
+    for (const plan of states) {
+      const policy = deriveDynamicAgentPolicy(plan);
+      const schema = createDynamicExtractionSchema({
+        allowedActionIntents: policy.allowedActionIntents,
+        capabilities: extractionCapabilities(),
+      });
+
+      expect(policy.allowedActionIntents).toContain('reset_plan');
+      expect(policy.allowedNextNodes).toContain('reset_plan');
+      expect(schema.shape.actionIntent.safeParse('reset_plan').success).toBe(true);
+    }
   });
 
   it('exposes plan actions only after structured plan evidence exists', () => {

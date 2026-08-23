@@ -21,6 +21,7 @@ export type DynamicAgentPolicy = {
 };
 
 const baseActionIntents = [
+  'reset_plan',
   'elicitar_necesidades',
   'buscar_proveedores',
   'solicitar_humano',
@@ -31,6 +32,7 @@ const baseNextNodes = [
   'contacto_inicial',
   'deteccion_intencion',
   'existe_plan_guardado',
+  'reset_plan',
   'entrevista',
   'elicitacion_necesidades',
   'minimos_para_buscar',

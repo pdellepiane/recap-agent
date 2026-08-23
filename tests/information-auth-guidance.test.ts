@@ -83,4 +83,25 @@ describe('information authentication guidance', () => {
       requirements: ['show_destination_email', 'offer_human_support'],
     });
   });
+
+  it('keeps rate limits and outages distinct from invalid codes', () => {
+    expect(createInformationAuthGuidance('otp_send_rate_limited', 'person@example.com'))
+      .toEqual({
+        reason: 'otp_send_rate_limited',
+        email: 'person@example.com',
+        requirements: ['show_destination_email', 'offer_code_resend'],
+      });
+    expect(createInformationAuthGuidance('otp_send_unavailable', 'person@example.com'))
+      .toEqual({
+        reason: 'otp_send_unavailable',
+        email: 'person@example.com',
+        requirements: ['show_destination_email', 'offer_human_support'],
+      });
+    expect(createInformationAuthGuidance('otp_verification_rate_limited', 'person@example.com'))
+      .toEqual({
+        reason: 'otp_verification_rate_limited',
+        email: 'person@example.com',
+        requirements: ['show_destination_email', 'offer_code_resend'],
+      });
+  });
 });

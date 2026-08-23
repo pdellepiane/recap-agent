@@ -100,6 +100,14 @@ export async function compareStaticPromptShapes(args: {
     counterModel: args.counterModel,
     openAIClient: args.openAIClient,
   }));
+  comparisons.push(await compareRoute({
+    route: 'classifier:campaign_reply',
+    component: 'classifier',
+    baseline: await historicalBundle(baselineRef, classifierFiles, historicalPromptReader),
+    current: await args.loader.loadResponseClassifierBundle('campaign_reply'),
+    counterModel: args.counterModel,
+    openAIClient: args.openAIClient,
+  }));
 
   for (const profile of extractorAuditProfiles) {
     comparisons.push(await compareRoute({
@@ -119,7 +127,9 @@ export async function compareStaticPromptShapes(args: {
   for (const node of decisionNodes) {
     const baselineNode = node === 'responder_invitacion'
       ? 'resolver_consultas_informativas'
-      : node;
+      : node === 'reset_plan'
+        ? 'entrevista'
+        : node;
     comparisons.push(await compareRoute({
       route: node,
       component: 'reply',

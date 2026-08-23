@@ -1,0 +1,60 @@
+template: template.base-live
+id: live_behavior.wedding_planner_location_completes_search
+suite: live_behavior_regression
+version: 1
+description: A wedding-planner request should collect the remaining search context compactly and search immediately when the location follow-up completes it.
+tags: [live, behavior, planning, provider-search, reported-interaction]
+inputs:
+  - text: Hola!
+    sessionId: live-behavior-wedding-planner-location-session
+  - text: Estoy buscando un proveedor para mi matrimonio, ¿qué opciones tienes? O mejor, dime los wedding planners que tengas.
+    sessionId: live-behavior-wedding-planner-location-session
+  - text: Entre 100-200 aprox
+    sessionId: live-behavior-wedding-planner-location-session
+  - text: En Lima Perú
+    sessionId: live-behavior-wedding-planner-location-session
+expectations:
+  - id: explicit-need-asks-location
+    type: text_contains
+    anyOf: [ciudad, zona, ubicación, dónde]
+    turnIndex: 1
+  - id: explicit-need-asks-scale-or-budget-in-same-turn
+    type: text_contains
+    anyOf: [invitados, presupuesto]
+    turnIndex: 1
+  - id: no-search-before-required-context
+    type: tool_usage
+    mustNotCall:
+      - search_providers_from_plan
+      - search_providers_by_query_intent
+    turnIndex: 1
+  - id: final-turn-search-ready
+    type: trace_field_equals
+    path: search_ready
+    expected: true
+    turnIndex: 3
+  - id: final-turn-routes-to-recommendations
+    type: node_transition
+    to: recomendar
+    turnIndex: 3
+  - id: final-turn-searches-now
+    type: tool_usage
+    mustCall:
+      - search_providers_from_plan
+    turnIndex: 3
+  - id: final-turn-has-provider-options
+    type: provider_result_count
+    min: 1
+    turnIndex: 3
+  - id: final-response-advances-without-an-empty-extra-step
+    type: text_semantic
+    rubric: >-
+      This case reconstructs a reported WhatsApp interaction. The user explicitly asks for wedding planners, then supplies a 100-to-200 guest estimate and finally Lima, Peru. Pass only if the final Spanish response immediately presents or clearly recommends actual available wedding-planner options grounded in the completed search. It must not merely acknowledge the location, say the context is ready, promise that options will appear in a later step, ask the user to request the search again, or repeat a field already supplied. The earlier wedding-planner request must remain the active need.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+    turnIndex: 3
+budget:
+  maxTurns: 4
+  estimatedPromptTokensPerTurn: 2200
+  estimatedCompletionTokensPerTurn: 450

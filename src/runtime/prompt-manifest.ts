@@ -27,6 +27,7 @@ const conversationPlanningPromptFiles = [
 
 const planningNodes = new Set<DecisionNode>([
   'existe_plan_guardado',
+  'reset_plan',
   'entrevista',
   'elicitacion_necesidades',
   'minimos_para_buscar',
@@ -80,6 +81,11 @@ export const extractorPromptFiles = [
   'extractors/contact.txt',
   'extractors/close_pause.txt',
 ] as const;
+
+export const responseClassifierPromptFiles = {
+  general: ['nodes/deteccion_intencion/response_classifier.txt'],
+  campaign_reply: ['nodes/deteccion_intencion/response_classifier_campaign.txt'],
+} as const;
 
 export function extractorPromptFilesForCapabilities(
   capabilities: ExtractionCapabilityProfile,
@@ -154,6 +160,10 @@ export const nodePromptManifest: Record<DecisionNode, NodePromptConfig> = {
       'list_event_favorite_providers',
       'list_user_events_vendor_context',
     ],
+  },
+  reset_plan: {
+    files: buildNodeFiles('reset_plan'),
+    allowedTools: [],
   },
   entrevista: {
     files: buildNodeFiles('entrevista'),

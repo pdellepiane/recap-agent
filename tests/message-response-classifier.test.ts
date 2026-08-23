@@ -63,7 +63,7 @@ describe('OpenAiMessageResponseClassifier', () => {
       attemptCount: 1,
       requestMetrics: {
         toolCount: 0,
-        schemaPropertyCount: 8,
+        schemaPropertyCount: 9,
       },
     });
     const calls = fetchMock.mock.calls as unknown as Array<[
@@ -322,10 +322,11 @@ describe('OpenAiMessageResponseClassifier', () => {
     );
   });
 
-  it('passes campaign acknowledgements to structured extraction before RSVP state exists', async () => {
+  it('passes a typed campaign RSVP decision to structured extraction before RSVP state exists', async () => {
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
       action: 'suppress_acknowledgement',
       reason: 'acknowledgement',
+      campaign_reply_kind: 'rsvp_decision',
     })));
     const classifier = new OpenAiMessageResponseClassifier({
       apiKey: 'test-key',
@@ -357,9 +358,241 @@ describe('OpenAiMessageResponseClassifier', () => {
 
     expect(response.trace).toMatchObject({
       action: 'respond',
-      reason: 'campaign_context_requires_extraction',
+      reason: 'campaign_action_requires_extraction',
+      classifier_profile: 'campaign_reply',
+      campaign_reply_kind: 'rsvp_decision',
       would_suppress: false,
       fallback_used: true,
+    });
+  });
+
+  it('suppresses the reported campaign decline without reopening the conversation', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+      campaign_reply_kind: 'declines_campaign_offer',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Gracias, no por ahora',
+      plan: createEmptyPlan({
+        planId: 'classifier-campaign-decline',
+        channel: 'whatsapp',
+        externalUserId: '51995983277',
+      }),
+      messages: [{
+        id: 1,
+        direction: 'outbound',
+        source: 'admin_campaign',
+        body: 'Vimos que activaste el Seguimiento de invitados por WhatsApp, pero aún no terminaste de configurarlo. Si prefieres que te ayudemos, puedes agendar una llamada con nuestro equipo.',
+        status: 'sent',
+        sentAt: '2026-08-22T00:00:40.000Z',
+        createdAt: '2026-08-22T00:00:40.000Z',
+      }],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+      classifier_profile: 'campaign_reply',
+      campaign_reply_kind: 'declines_campaign_offer',
+      would_suppress: true,
+      fallback_used: false,
+      prompt_file_paths: [
+        'nodes/deteccion_intencion/response_classifier_campaign.txt',
+      ],
+    });
+    const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
+    const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
+      input: Array<{ content: string }>;
+    };
+    const classifierInput = JSON.parse(request.input[1]?.content ?? '{}') as {
+      campaign_message?: { source?: string; body?: string };
+      plan_context?: unknown;
+      recent_messages?: unknown;
+    };
+    expect(classifierInput.campaign_message).toMatchObject({
+      source: 'admin_campaign',
+    });
+    expect(classifierInput.campaign_message?.body).toContain('Seguimiento de invitados');
+    expect(classifierInput).not.toHaveProperty('plan_context');
+    expect(classifierInput).not.toHaveProperty('recent_messages');
+    expect(response.openAiCall?.requestMetrics.instructionBytes).toBeLessThan(4_000);
+  });
+
+  it('forces campaign questions through extraction from typed campaign evidence', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+      campaign_reply_kind: 'question_or_request',
+    })));
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Gracias. ¿Cómo configuro el seguimiento?',
+      plan: createEmptyPlan({
+        planId: 'classifier-campaign-question',
+        channel: 'whatsapp',
+        externalUserId: '51995983277',
+      }),
+      messages: [{
+        id: 1,
+        direction: 'outbound',
+        source: 'admin_campaign',
+        body: 'Puedes agendar una llamada y configuramos el seguimiento contigo.',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      }],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'respond',
+      reason: 'campaign_action_requires_extraction',
+      campaign_reply_kind: 'question_or_request',
+      would_suppress: false,
+      fallback_used: true,
+    });
+  });
+
+  it('uses the general profile when an agent message is newer than an older campaign', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
+      action: 'suppress_acknowledgement',
+      reason: 'acknowledgement',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Gracias',
+      plan: createEmptyPlan({
+        planId: 'classifier-old-campaign',
+        channel: 'whatsapp',
+        externalUserId: '51995983277',
+      }),
+      messages: [
+        {
+          id: 1,
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Campaña anterior.',
+          status: 'sent',
+          sentAt: null,
+          createdAt: null,
+        },
+        {
+          id: 2,
+          direction: 'outbound',
+          source: 'agent',
+          body: 'Ya actualicé tu información.',
+          status: 'sent',
+          sentAt: null,
+          createdAt: null,
+        },
+      ],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'suppress_acknowledgement',
+      classifier_profile: 'general',
+      campaign_reply_kind: 'not_applicable',
+      would_suppress: true,
+      fallback_used: false,
+    });
+    expect(response.trace.prompt_file_paths).toEqual([
+      'nodes/deteccion_intencion/response_classifier.txt',
+    ]);
+  });
+
+  it('keeps typed campaign classification when a later admin message refreshes the campaign', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(responseForDecision({
+      action: 'respond',
+      reason: 'requires_response',
+      campaign_reply_kind: 'rsvp_decision',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const classifier = new OpenAiMessageResponseClassifier({
+      apiKey: 'test-key',
+      model: 'gpt-5.6-luna',
+      mode: 'enforce',
+      promptLoader,
+    });
+
+    const response = await classifier.classify({
+      inboundText: 'Gracias, confirmo asistencia',
+      plan: createEmptyPlan({
+        planId: 'classifier-refreshed-campaign',
+        channel: 'whatsapp',
+        externalUserId: '51904523314',
+      }),
+      messages: [
+        {
+          id: 1,
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Invitación inicial al evento.',
+          status: 'sent',
+          sentAt: null,
+          createdAt: null,
+        },
+        {
+          id: 2,
+          direction: 'outbound',
+          source: 'agent',
+          body: 'Mensaje anterior del agente.',
+          status: 'sent',
+          sentAt: null,
+          createdAt: null,
+        },
+        {
+          id: 3,
+          direction: 'outbound',
+          source: 'admin_manual',
+          body: 'Recordatorio actualizado de la invitación.',
+          status: 'sent',
+          sentAt: null,
+          createdAt: null,
+        },
+      ],
+      contextSource: 'agent_api',
+    });
+
+    expect(response.trace).toMatchObject({
+      action: 'respond',
+      classifier_profile: 'campaign_reply',
+      campaign_reply_kind: 'rsvp_decision',
+      would_suppress: false,
+    });
+    const calls = fetchMock.mock.calls as unknown as Array<[string, { body?: unknown }]>;
+    const request = JSON.parse(String(calls[0]?.[1]?.body)) as {
+      input: Array<{ content: string }>;
+    };
+    const classifierInput = JSON.parse(request.input[1]?.content ?? '{}') as {
+      campaign_message?: { source?: string; body?: string };
+    };
+    expect(classifierInput.campaign_message).toMatchObject({
+      source: 'admin_manual',
+      body: 'Recordatorio actualizado de la invitación.',
     });
   });
 
@@ -688,6 +921,15 @@ function responseForDecision(decision: {
     | 'repeated_template'
     | 'explicit_virtual_assistant';
   automation_scope?: 'current_sender' | 'quoted_or_discussed' | 'none_or_uncertain';
+  campaign_reply_kind?:
+    | 'not_applicable'
+    | 'rsvp_decision'
+    | 'declines_campaign_offer'
+    | 'acknowledgement_only'
+    | 'reaction_only'
+    | 'question_or_request'
+    | 'other_actionable'
+    | 'unclear';
 }): Response {
   const completeDecision = {
     conversation_health: 'progressing',
@@ -702,6 +944,7 @@ function responseForDecision(decision: {
     automation_scope: decision.action === 'suppress_automated_response'
       ? 'current_sender'
       : 'none_or_uncertain',
+    campaign_reply_kind: 'not_applicable',
     ...decision,
   };
   return new Response(JSON.stringify({

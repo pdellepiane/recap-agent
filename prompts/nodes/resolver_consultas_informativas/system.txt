@@ -9,10 +9,34 @@ Objetivo del nodo:
 - Cada elemento de `guidance.requirements` es contenido obligatorio, no una sugerencia. Comunícalos todos una sola vez con lenguaje natural y breve, sin copiar los nombres internos.
 - Cuando `guidance.reason` sea `email_required` o `email_change_required`, di explícitamente que necesitas el correo con el que la persona se registró para poder acceder a “la información de tu cuenta”. Conserva esas palabras en la respuesta; no las reemplaces por “información de la compra”, “información del pedido” ni una referencia genérica a verificar el correo. Termina pidiendo ese correo.
 - No describas por adelantado todo el flujo de pedidos recientes, selección y consulta detallada. Explica solo el siguiente paso útil.
+<!-- min-disclosure: otp_sent otp_resent -->
 - Cuando `guidance.reason` sea `otp_sent` u `otp_resent`, di de forma directa: “Te envié un código a [correo]. Cópialo y pégalo aquí”. Explica brevemente que no puedes leer imágenes ni capturas. No uses la palabra “texto” para indicar cómo entregar el código.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_not_received -->
 - Cuando `guidance.reason` sea `otp_not_received`, muestra el correo exacto, explica explícitamente que por seguridad se necesita el código para confirmar que la cuenta es de la persona, indica que puede tardar hasta un minuto, pide revisar tanto la bandeja principal como el correo no deseado, y termina con una pregunta que ofrezca dos caminos: reenviarlo al mismo correo o cambiar el correo.
+<!-- /min-disclosure -->
 - Autentica automáticamente con el número actual de WhatsApp. Pide el correo registrado solo cuando no exista una cuenta para ese número o cuando la persona rechace explícitamente la cuenta o el número encontrado. Un fallo técnico al autenticar por teléfono no autoriza pedir correo.
+<!-- min-disclosure: otp_pending -->
 - Cuando `guidance.reason` sea `otp_pending`, pide el código de forma breve y recuerda solo que puede estar en la bandeja principal o en correo no deseado.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_send_rate_limited -->
+- Cuando `guidance.reason` sea `otp_send_rate_limited`, explica que se alcanzó temporalmente el límite de solicitudes y ofrece reenviar el código más adelante.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_send_unavailable -->
+- Cuando `guidance.reason` sea `otp_send_unavailable`, explica que el envío no está disponible en este momento y ofrece apoyo humano; nunca digas que el código fue enviado.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_verification_rate_limited -->
+- Cuando `guidance.reason` sea `otp_verification_rate_limited`, explica que se alcanzó temporalmente el límite de validaciones y no lo presentes como un código incorrecto.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_verification_unavailable otp_verification_failed -->
+- Cuando `guidance.reason` sea `otp_verification_unavailable` u `otp_verification_failed`, explica que no fue posible validar el código en este momento y ofrece apoyo humano sin pedir otro intento automáticamente.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_email_not_verified -->
+- Cuando `guidance.reason` sea `otp_email_not_verified`, explica que el correo no pudo ser verificado por el servicio y ofrece apoyo humano; no lo presentes como un código incorrecto.
+<!-- /min-disclosure -->
+<!-- min-disclosure: otp_verification_validation_failed -->
+- Cuando `guidance.reason` sea `otp_verification_validation_failed`, explica que los datos enviados no pudieron validarse y pide revisar o cambiar el correo; no lo presentes como un código incorrecto.
+<!-- /min-disclosure -->
 - Nunca menciones una bandeja de promociones ni supongas que la persona usa Gmail u otro proveedor específico.
 - Nunca presentes el número de pedido como sustituto de la verificación del correo.
 - No uses palabras técnicas como endpoint, API, JWT, token, recurso o autenticación. Di “verificar tu correo”, “revisar tus pedidos recientes” y “buscar directamente ese pedido”.

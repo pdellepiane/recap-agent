@@ -49,6 +49,7 @@ export const associatedEventInformationRequestSchema = z.object({
   kind: z.literal('associated_event'),
   query: z.string().min(1),
   eventHint: z.string().nullable(),
+  authAction: z.enum(purchaseAuthActionValues).optional(),
 });
 
 export const purchaseInformationRequestSchema = z.object({
@@ -210,7 +211,14 @@ export const informationAuthReasonValues = [
   'otp_not_received',
   'email_not_found',
   'otp_send_failed',
+  'otp_send_rate_limited',
+  'otp_send_unavailable',
   'otp_invalid',
+  'otp_verification_rate_limited',
+  'otp_verification_unavailable',
+  'otp_email_not_verified',
+  'otp_verification_validation_failed',
+  'otp_verification_failed',
   'otp_repeated_failure',
 ] as const;
 
@@ -281,8 +289,25 @@ export function createInformationAuthGuidance(
   if (reason === 'otp_not_received') {
     requirements.push('offer_code_resend', 'offer_email_change');
   }
+  if (reason === 'otp_send_rate_limited') {
+    requirements.push('offer_code_resend');
+  }
+  if (reason === 'otp_send_unavailable') {
+    requirements.push('offer_human_support');
+  }
   if (reason === 'otp_invalid') {
     requirements.push('offer_code_resend', 'offer_email_change');
+  }
+  if (reason === 'otp_verification_rate_limited') {
+    requirements.push('offer_code_resend');
+  }
+  if (
+    reason === 'otp_verification_unavailable' ||
+    reason === 'otp_email_not_verified' ||
+    reason === 'otp_verification_validation_failed' ||
+    reason === 'otp_verification_failed'
+  ) {
+    requirements.push('offer_human_support');
   }
   if (reason === 'otp_repeated_failure') {
     requirements.push('offer_human_support');
@@ -303,6 +328,7 @@ export type InformationTaskResult =
       kind: 'associated_event';
       status: 'completed';
       result: UserEventLookupResult;
+      accessMethod?: 'authenticated_account' | 'trusted_phone_guest';
     }
   | {
       requestId: string;
@@ -359,4 +385,6 @@ export type InformationExecutionSummary = {
   }>;
   resultCount: number;
   durationMs: number;
+  accessMethod?: 'authenticated_account' | 'trusted_phone_guest' | null;
+  eventDetailCount?: number;
 };

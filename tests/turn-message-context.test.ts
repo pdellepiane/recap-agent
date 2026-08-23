@@ -93,6 +93,30 @@ describe('turn message context', () => {
     });
   });
 
+  it('uses the newest campaign as the entry anchor when several are visible', () => {
+    const context = buildTurnMessageContext({
+      inbound: inbound({ text: 'Sí, asistiré' }),
+      messages: [
+        message(1, {
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Campaña anterior.',
+        }),
+        message(2, { direction: 'inbound', body: 'Gracias.' }),
+        message(3, {
+          direction: 'outbound',
+          source: 'admin_campaign',
+          body: 'Campaña más reciente.',
+        }),
+      ],
+    });
+
+    expect(context.entryMessage).toMatchObject({
+      id: 3,
+      body: 'Campaña más reciente.',
+    });
+  });
+
   it('limits raw message bodies before they enter model context', () => {
     const context = buildTurnMessageContext({
       inbound: inbound({ text: 'Otra consulta' }),

@@ -48,6 +48,7 @@ export const decisionEvidenceSchema = z.object({
 export type DecisionEvidence = z.infer<typeof decisionEvidenceSchema>;
 
 export const routeKindValues = [
+  'reset_plan',
   'ask_event_context',
   'clarify_missing_fields',
   'single_need_search',

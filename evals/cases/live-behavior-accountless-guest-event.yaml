@@ -1,0 +1,38 @@
+template: template.base-live
+id: live_behavior.accountless_guest_event_uses_phone_without_otp
+suite: live_behavior_regression
+version: 1
+description: An invited WhatsApp guest without an account receives event details through the trusted phone without being pushed into email OTP.
+tags: [live, behavior, associated-event, accountless-guest, phone-first, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Respondí la invitación por WhatsApp. ¿Dónde será la recepción y fiesta?
+    channel: whatsapp
+    contactPhone: "+51904523314"
+    sessionId: live-accountless-guest-event-session
+expectations:
+  - id: routes-to-associated-event-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: checks-account-then-uses-guest-event-context
+    type: tool_usage
+    mustCall: [auth_by_phone, lookup_guest_events_by_phone, get_guest_event_detail]
+    mustNotCall: [request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
+    severity: hard
+  - id: leaves-no-authentication-request-pending
+    type: plan_field_equals
+    path: user_auth.status
+    expected: none
+    severity: hard
+  - id: answers-from-the-invited-event-without-otp
+    type: text_semantic
+    rubric: >-
+      The trusted WhatsApp number has no Sin Envolturas account but is an invited guest to Julisabeth y Andrés. The verified event detail identifies “Recepción y Fiesta” at Hacienda Recoveco on Avenida Manuel Valle in Lima. The answer must be concise, natural, and entirely in Spanish; directly provide that verified reception location, and must not ask for an email, OTP code, account creation, or another turn before answering.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

@@ -1,3 +1,4 @@
+import fs from 'node:fs';
 import path from 'node:path';
 
 import { describe, expect, it } from 'vitest';
@@ -28,6 +29,19 @@ import type {
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 
 describe('AgentService RSVP flow', () => {
+  it('keeps immediate RSVP changes in the RSVP-only prompt bundle', () => {
+    const systemPrompt = fs.readFileSync(
+      path.resolve(process.cwd(), 'prompts/nodes/responder_invitacion/system.txt'),
+      'utf8',
+    );
+    expect(systemPrompt).toContain(
+      'registra el cambio en ese mismo turno',
+    );
+    expect(systemPrompt).not.toContain(
+      'pide una sola confirmación antes de ejecutar el cambio',
+    );
+  });
+
   it.each([
     ['attending', 'confirmó que la asistencia quedó registrada'],
     ['declining', 'confirmó que la inasistencia quedó registrada'],
@@ -39,6 +53,7 @@ describe('AgentService RSVP flow', () => {
     const gateway = new RsvpGateway([{
       status: 'responded',
       action,
+      willAttend: action === 'attending',
       guestId: 41,
       eventName: 'Matrimonio de Ana y Luis',
       eventDate: '2026-09-12',
@@ -76,6 +91,7 @@ describe('AgentService RSVP flow', () => {
       {
         status: 'responded',
         action: 'attending',
+        willAttend: true,
         guestId: 42,
         eventName: 'Cumpleaños de Marta',
         eventDate: null,
@@ -207,14 +223,14 @@ describe('AgentService RSVP flow', () => {
     expect(runtime.composeRequests[0]?.errorMessage).toContain('disfrute el evento');
   });
 
-  it('asks once before reversing a decline and applies an affirmative follow-up', async () => {
+  it('applies an explicit RSVP reversal immediately without another confirmation turn', async () => {
     const runtime = new RsvpRuntime([
       rsvpExtraction({ action: 'attending' }),
-      rsvpExtraction({ action: null }),
     ]);
     const gateway = new RsvpGateway([{
       status: 'responded',
       action: 'attending',
+      willAttend: true,
       guestId: 41,
       eventName: 'Matrimonio de Ana y Luis',
       eventDate: '2026-09-12',
@@ -224,17 +240,12 @@ describe('AgentService RSVP flow', () => {
       rsvpLookupInvitation({ hasResponded: true, willAttend: false }),
     ]);
 
-    const first = await service.handleTurn(inbound('Quiero confirmar que asistiré'));
-    const second = await service.handleTurn(inbound('Sí'));
+    const result = await service.handleTurn(inbound('Quiero confirmar que asistiré'));
 
-    expect(first.plan.rsvp_state).toMatchObject({
-      status: 'awaiting_action',
-      pending_action: 'attending',
-    });
+    expect(result.plan.rsvp_state.status).toBe('none');
     expect(gateway.inputs).toHaveLength(1);
     expect(gateway.inputs[0]).toMatchObject({ action: 'attending', guest_id: 41 });
-    expect(second.plan.rsvp_state.status).toBe('none');
-    expect(runtime.composeRequests[1]?.errorMessage).toContain(
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
       'asistencia quedó registrada',
     );
   });

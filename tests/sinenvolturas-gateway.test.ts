@@ -371,6 +371,42 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     });
   });
 
+  it('distinguishes OTP rate limits and service outages from invalid codes', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        headers: new Headers(),
+        async json() {
+          return { status: false, error: 'Too many requests', data: null };
+        },
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        headers: new Headers(),
+        async json() {
+          return { status: false, error: 'Service unavailable', data: null };
+        },
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      userAuthBaseUrl: 'https://api.example.test/user',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    await expect(gateway.requestUserLoginCode('maria@example.com')).resolves.toMatchObject({
+      status: 'rate_limited',
+      httpStatus: 429,
+    });
+    await expect(gateway.verifyUserLoginCode('maria@example.com', '123456')).resolves.toMatchObject({
+      status: 'unavailable',
+      httpStatus: 503,
+    });
+  });
+
   it('looks up authenticated guest context with bearer token and verified email', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

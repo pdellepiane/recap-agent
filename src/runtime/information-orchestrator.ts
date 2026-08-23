@@ -10,7 +10,10 @@ import {
   type SensitivePurchaseField,
 } from '../core/information';
 import type {
+  AgentAuthByPhoneInput,
   AgentConversationGateway,
+  AgentGuestEventSummary,
+  AgentGuestEventsResult,
   AgentPurchaseLookupResult,
 } from './agent-conversation-gateway';
 import type { KnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
@@ -53,7 +56,14 @@ export class InformationOrchestrator {
     requests: PendingInformationRequest[];
     authentication: InformationAuthentication | null;
     authBlock: InformationAuthBlock | null;
+    trustedPhone?: AgentAuthByPhoneInput | null;
   }): Promise<InformationExecution> {
+    const guestEventsPromise =
+      !args.authentication &&
+      args.trustedPhone &&
+      args.requests.some((request) => request.kind === 'associated_event')
+        ? this.lookupGuestEvents(args.trustedPhone)
+        : null;
     const settled = await Promise.allSettled(
       args.requests.map(async (request) => {
         const startedAt = Date.now();
@@ -61,6 +71,8 @@ export class InformationOrchestrator {
           request,
           args.authentication,
           args.authBlock,
+          guestEventsPromise,
+          args.trustedPhone ?? null,
         );
         return {
           result,
@@ -75,6 +87,14 @@ export class InformationOrchestrator {
             evidence: this.evidenceReferences(result),
             resultCount: this.resultCount(result),
             durationMs: Date.now() - startedAt,
+            ...(result.status === 'completed' && result.kind === 'associated_event'
+              ? {
+                  accessMethod: result.accessMethod ?? 'authenticated_account',
+                  eventDetailCount: result.result.events.filter(
+                    (event) => event.detail !== undefined,
+                  ).length,
+                }
+              : {}),
           } satisfies InformationExecutionSummary,
         };
       }),
@@ -126,6 +146,8 @@ export class InformationOrchestrator {
     request: PendingInformationRequest,
     authentication: InformationAuthentication | null,
     authBlock: InformationAuthBlock | null,
+    guestEventsPromise: Promise<AgentGuestEventsResult> | null,
+    trustedPhone: AgentAuthByPhoneInput | null,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
       const retrieval = await this.dependencies.knowledgeGateway.search(request.query);
@@ -149,6 +171,35 @@ export class InformationOrchestrator {
         message:
           'No pude consultar la información general en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.',
       };
+    }
+
+    if (
+      request.kind === 'associated_event' &&
+      !authentication &&
+      guestEventsPromise
+    ) {
+      const guestEvents = await guestEventsPromise;
+      if (guestEvents.status === 'success' && guestEvents.events.length > 0) {
+        return await this.executeGuestEventRequest(
+          request,
+          guestEvents.events,
+          trustedPhone?.phone_number ?? '',
+        );
+      }
+      if (guestEvents.status === 'failed') {
+        return {
+          requestId: request.requestId,
+          kind: 'associated_event',
+          status: 'failed',
+          retryable: guestEvents.retryable,
+          failureKind: this.dependencies.agentGateway.getGuestEventsByPhone
+            ? 'request_failed'
+            : 'not_configured',
+          message: guestEvents.retryable
+            ? 'No pude consultar los eventos asociados a tu número en este momento. Puedo intentarlo nuevamente.'
+            : 'La consulta de eventos asociados al número no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
+        };
+      }
     }
 
     if (!authentication) {
@@ -185,6 +236,7 @@ export class InformationOrchestrator {
           kind: 'associated_event',
           status: 'completed',
           result: this.removePurchaseDataFromEventResult(result),
+          accessMethod: 'authenticated_account',
         };
       } catch (error) {
         const unauthorized =
@@ -293,6 +345,197 @@ export class InformationOrchestrator {
       message:
         'No pude consultar la compra en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.',
     };
+  }
+
+  private async lookupGuestEvents(
+    phone: AgentAuthByPhoneInput,
+  ): Promise<AgentGuestEventsResult> {
+    if (!this.dependencies.agentGateway.getGuestEventsByPhone) {
+      return {
+        status: 'failed',
+        error: 'Agent API guest event lookup is not configured.',
+        retryable: false,
+      };
+    }
+    try {
+      return await this.dependencies.agentGateway.getGuestEventsByPhone(phone);
+    } catch {
+      return {
+        status: 'failed',
+        error: 'Guest event lookup failed.',
+        retryable: true,
+      };
+    }
+  }
+
+  private async executeGuestEventRequest(
+    request: Extract<PendingInformationRequest, { kind: 'associated_event' }>,
+    events: AgentGuestEventSummary[],
+    phoneNumber: string,
+  ): Promise<InformationTaskResult> {
+    const selected = this.selectGuestEvent(events, request.eventHint);
+    if (!selected) {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'completed',
+        accessMethod: 'trusted_phone_guest',
+        result: this.guestEventsResult(events, null, phoneNumber),
+      };
+    }
+
+    if (!this.dependencies.agentGateway.getEventDetail) {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: false,
+        failureKind: 'not_configured',
+        message: 'La consulta de detalles del evento no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
+      };
+    }
+
+    let detail: Awaited<ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>>;
+    try {
+      detail = await this.dependencies.agentGateway.getEventDetail({
+        eventId: selected.eventId,
+      });
+    } catch {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: true,
+        failureKind: 'request_failed',
+        message: 'No pude consultar el detalle del evento en este momento. Puedo intentarlo nuevamente.',
+      };
+    }
+
+    if (detail.status !== 'success') {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: detail.status === 'failed' ? detail.retryable : false,
+        failureKind: detail.status === 'not_found' ? 'not_found' : 'request_failed',
+        message: detail.status === 'not_found'
+          ? 'Encontré el evento asociado al número, pero su detalle ya no está disponible.'
+          : 'No pude consultar el detalle del evento en este momento. Puedo intentarlo nuevamente.',
+      };
+    }
+
+    return {
+      requestId: request.requestId,
+      kind: 'associated_event',
+      status: 'completed',
+      accessMethod: 'trusted_phone_guest',
+      result: this.guestEventsResult([selected], detail.event, phoneNumber),
+    };
+  }
+
+  private selectGuestEvent(
+    events: AgentGuestEventSummary[],
+    eventHint: string | null,
+  ): AgentGuestEventSummary | null {
+    if (events.length === 1) {
+      return events[0] ?? null;
+    }
+    if (!eventHint) {
+      return null;
+    }
+    const normalizedHint = this.normalizeEventReference(eventHint);
+    if (!normalizedHint) {
+      return null;
+    }
+    const matches = events.filter((event) => {
+      const normalizedName = this.normalizeEventReference(event.name);
+      const normalizedSlug = this.normalizeEventReference(event.slug);
+      return normalizedName === normalizedHint ||
+        normalizedSlug === normalizedHint ||
+        normalizedName.includes(normalizedHint) ||
+        normalizedHint.includes(normalizedName);
+    });
+    return matches.length === 1 ? matches[0] ?? null : null;
+  }
+
+  private guestEventsResult(
+    events: AgentGuestEventSummary[],
+    detail: Extract<
+      Awaited<ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>>,
+      { status: 'success' }
+    >['event'] | null,
+    phoneNumber: string,
+  ): UserEventLookupResult {
+    return {
+      lookup: { email: null, phone: phoneNumber },
+      user: null,
+      events: events.map((event) => ({
+        relation: 'guest',
+        guestId: null,
+        eventId: event.eventId,
+        slug: event.slug,
+        url: event.url,
+        name: event.name,
+        place: event.city,
+        type: event.type,
+        datetime: event.datetime,
+        stage: event.stage,
+        isVisible: null,
+        isPublic: null,
+        currency: event.currency,
+        country: event.country,
+        guestStatus: null,
+        hostType: null,
+        hostPermission: null,
+        hostStatus: null,
+        celebratedType: null,
+        amountCollected: null,
+        amountTransferred: null,
+        transactionsCount: null,
+        invitedGuestCount: null,
+        confirmedGuestCount: null,
+        orders: [],
+        ...(detail && detail.eventId === event.eventId
+          ? {
+              place: detail.city,
+              name: detail.name,
+              slug: detail.slug,
+              url: detail.url,
+              type: detail.type,
+              datetime: detail.datetime,
+              stage: detail.stage,
+              currency: detail.currency,
+              country: detail.country,
+              detail: {
+                withTime: detail.withTime,
+                timezone: detail.timezone,
+                city: detail.city,
+                celebrateds: detail.celebrateds,
+                moments: detail.moments,
+                dresscode: detail.dresscode,
+                commonAsked: detail.commonAsked,
+                contactInfo: detail.contactInfo,
+              },
+            }
+          : {}),
+      })),
+      counts: {
+        ownerEvents: 0,
+        guestEvents: events.length,
+        hostEvents: 0,
+        celebratedEvents: 0,
+        recentOrders: 0,
+      },
+    };
+  }
+
+  private normalizeEventReference(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/gu, '')
+      .toLocaleLowerCase('es')
+      .replace(/[^a-z0-9]+/gu, ' ')
+      .trim();
   }
 
   private async lookupPurchase(

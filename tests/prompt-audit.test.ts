@@ -17,13 +17,13 @@ describe('prompt audit', () => {
     });
 
     expect(result.violations).toEqual([]);
-    expect(result.entries).toHaveLength(33);
+    expect(result.entries).toHaveLength(34);
     expect(entry(result, 'contacto_inicial')).toMatchObject({
       serializedRequestBytes: 7279,
       maximumToolCount: 0,
     });
     expect(entry(result, 'resolver_consultas_informativas')).toMatchObject({
-      serializedRequestBytes: 15721,
+      serializedRequestBytes: 13818,
       maximumToolCount: 0,
     });
     expect(entry(result, 'responder_invitacion')).toMatchObject({
@@ -34,9 +34,9 @@ describe('prompt audit', () => {
     expect(entry(result, 'extractor:conversation_only').serializedRequestBytes)
       .toBeLessThan(2_500);
     expect(entry(result, 'extractor:initial_planning_information').serializedRequestBytes)
-      .toBeLessThan(9_000);
+      .toBeLessThan(9_300);
     expect(entry(result, 'extractor:shortlist').serializedRequestBytes)
-      .toBeLessThan(12_000);
+      .toBeLessThan(12_300);
     for (const auditEntry of result.entries) {
       expect(auditEntry.ruleIds).toHaveLength(auditEntry.filePaths.length);
       expect(auditEntry.remoteInputTokens).toBeNull();

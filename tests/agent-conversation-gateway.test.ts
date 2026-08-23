@@ -604,16 +604,119 @@ describe('AgentConversationGateway', () => {
     );
   });
 
+  it('reads account-less guest events and full event detail using only the Agent API key', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
+        data: {
+          events: [{
+            event_id: 88,
+            name: 'Boda Laura & Marcos',
+            slug: 'boda-laura-marcos',
+            url: 'https://sinenvolturas.com/boda-laura-marcos',
+            datetime: '15/09/2026 18:00',
+            type: 'wedding',
+            type_detail: null,
+            stage: 'published',
+            city: 'Lima',
+            country: 'Perú',
+            currency: 'PEN',
+            role: 'guest',
+          }],
+        },
+      }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
+        data: {
+          event: {
+            event_id: 88,
+            name: 'Boda Laura & Marcos',
+            slug: 'boda-laura-marcos',
+            url: 'boda-laura-marcos',
+            type: 'wedding',
+            type_detail: null,
+            datetime: '15/09/2026 18:00',
+            with_time: true,
+            timezone: 'America/Lima',
+            city: 'Lima',
+            country: { id: 173, name: 'Perú', short_code: 'PE' },
+            celebrateds: [{ name: 'Laura', type: 'bride' }],
+            moments: [{
+              label: 'Recepción',
+              description: 'Cena y baile.',
+              datetime: '15/09/2026 19:00',
+              with_time: true,
+              location_description: 'Salón principal',
+              location_reference: null,
+              location_url: null,
+              location_coords: null,
+              position: 1,
+            }],
+            dresscode: { type: 'formal', description: 'Vestimenta formal.' },
+            common_asked: [{ question: '¿Habrá transporte?', answer: 'Sí.' }],
+            contact_info: {
+              email: 'coordinacion@example.com',
+              phone: '+51 999 999 999',
+              title: 'Coordinadora',
+              name_relation: 'Laura',
+            },
+          },
+        },
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.getGuestEventsByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    })).resolves.toMatchObject({
+      status: 'success',
+      events: [{ eventId: 88, name: 'Boda Laura & Marcos', city: 'Lima' }],
+    });
+    await expect(gateway.getEventDetail({ eventId: 88 })).resolves.toMatchObject({
+      status: 'success',
+      event: {
+        eventId: 88,
+        timezone: 'America/Lima',
+        dresscode: { type: 'formal' },
+        moments: [{ label: 'Recepción', locationDescription: 'Salón principal' }],
+        contactInfo: [
+          { label: 'email', value: 'coordinacion@example.com' },
+          { label: 'phone', value: '+51 999 999 999' },
+          { label: 'title', value: 'Coordinadora' },
+          { label: 'name_relation', value: 'Laura' },
+        ],
+      },
+    });
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      1,
+      'https://api.example.test/api/agent/guest/events?phone_extension=%2B51&phone_number=973296571',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { 'X-Agent-Key': 'secret-key' },
+      }),
+    );
+    expect(fetchMock).toHaveBeenNthCalledWith(
+      2,
+      'https://api.example.test/api/agent/event?event_id=88',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
   it('records an RSVP using the phone identity and optional guest id', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
       status: true,
       data: {
+        already_responded: false,
         guest_id: 481,
-        action: 'attending',
-        event: {
-          name: 'Matrimonio de Ana y Luis',
-          date: '2026-09-12',
-        },
+        will_attend: true,
+        event_name: 'Matrimonio de Ana y Luis',
       },
       errors: null,
       error: null,
@@ -635,9 +738,10 @@ describe('AgentConversationGateway', () => {
     })).resolves.toEqual({
       status: 'responded',
       action: 'attending',
+      willAttend: true,
       guestId: 481,
       eventName: 'Matrimonio de Ana y Luis',
-      eventDate: '2026-09-12',
+      eventDate: null,
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example.test/api/agent/guest/rsvp',
@@ -659,10 +763,10 @@ describe('AgentConversationGateway', () => {
 
   it('maps multiple pending RSVP candidates and terminal failures', async () => {
     const fetchMock = vi.fn()
-      .mockResolvedValueOnce(jsonResponse(409, {
-        status: false,
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
         data: {
-          candidates: [
+          pending_guests: [
             {
               guest_id: 481,
               event_name: 'Matrimonio de Ana y Luis',
@@ -677,7 +781,7 @@ describe('AgentConversationGateway', () => {
             },
           ],
         },
-        errors: { code: 'multiple_pending' },
+        code: 'multiple_pending',
         error: 'Hay varias invitaciones pendientes.',
       }))
       .mockResolvedValueOnce(jsonResponse(404, {
@@ -739,12 +843,12 @@ describe('AgentConversationGateway', () => {
     });
   });
 
-  it('preserves the real current RSVP state from a successful already-responded envelope', async () => {
+  it('treats will_attend as the final state even when a successful update reports an earlier response', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
       status: true,
       data: {
         already_responded: true,
-        will_attend: false,
+        will_attend: true,
         event_name: 'Otra celebración prueba',
       },
       errors: null,
@@ -765,12 +869,39 @@ describe('AgentConversationGateway', () => {
       action: 'attending',
       guest_id: 584353,
     })).resolves.toEqual({
-      status: 'already_responded',
-      currentAction: 'declining',
-      requestedAction: 'attending',
+      status: 'responded',
+      action: 'attending',
+      willAttend: true,
       guestId: 584353,
       eventName: 'Otra celebración prueba',
       eventDate: null,
+    });
+  });
+
+  it('does not treat an RSVP success without resulting attendance state as success', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: { action: 'attending', guest_id: 584353 },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 584353,
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API RSVP response did not confirm the requested attendance state.',
+      retryable: false,
     });
   });
 

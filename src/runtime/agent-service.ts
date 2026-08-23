@@ -284,7 +284,7 @@ export class AgentService {
       inbound.channel,
       inbound.externalUserId,
     );
-    const sessionFocus =
+    let sessionFocus =
       inbound.sessionId && this.dependencies.planStore.getSessionFocus
         ? await this.dependencies.planStore.getSessionFocus(
             inbound.channel,
@@ -672,6 +672,7 @@ export class AgentService {
       }
 
       const isPlanningIntent =
+        finishedExtraction.actionIntent === 'reset_plan' ||
         finishedExtraction.actionIntent === 'buscar_proveedores' ||
         finishedExtraction.actionIntent === 'retomar_plan' ||
         finishedExtraction.actionIntent === 'ver_opciones' ||
@@ -683,10 +684,6 @@ export class AgentService {
           planId: ulid(),
           channel: inbound.channel,
           externalUserId: inbound.externalUserId,
-        });
-        await this.dependencies.planStore.save({
-          plan: freshPlan,
-          reason: 'reset_after_finished',
         });
         existingPlan = freshPlan;
       } else {
@@ -779,7 +776,7 @@ export class AgentService {
         }
       }
     }
-    const workingPlan = mergePlan(planToResume, {
+    let workingPlan = mergePlan(planToResume, {
       current_node: existingPlan ? resolveResumeNode(planToResume) : 'deteccion_intencion',
     });
     timingMs.prepare_working_plan += Date.now() - prepareWorkingPlanStartedAt;
@@ -813,6 +810,14 @@ export class AgentService {
       extraction,
     );
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
+    if (extraction.actionIntent === 'reset_plan') {
+      workingPlan = createEmptyPlan({
+        planId: ulid(),
+        channel: inbound.channel,
+        externalUserId: inbound.externalUserId,
+      });
+      sessionFocus = null;
+    }
     const providerConfirmationGuard = this.guardAmbiguousProviderConfirmation(
       workingPlan,
       extraction,
@@ -1290,7 +1295,15 @@ export class AgentService {
 
     let planAfterFlow = mergedPlan;
 
-    if (turnDecision.nextNode === 'elicitacion_necesidades') {
+    if (turnDecision.routeKind === 'reset_plan') {
+      currentNode = 'reset_plan';
+      if (nodePath[nodePath.length - 1] !== currentNode) {
+        nodePath.push(currentNode);
+      }
+      planAfterFlow = mergePlan(planAfterFlow, {
+        current_node: currentNode,
+      });
+    } else if (turnDecision.nextNode === 'elicitacion_necesidades') {
       currentNode = 'elicitacion_necesidades';
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
@@ -1614,6 +1627,8 @@ export class AgentService {
     timingMs.compose_reply += Date.now() - composeReplyStartedAt;
 
     await persistPlan(planAfterFlow, planPersistReason ?? currentNode);
+    planPersisted = true;
+    planPersistReason = planPersistReason ?? currentNode;
     await this.saveSessionFocusFromTurn({
       inbound,
       plan: planAfterFlow,
@@ -1663,12 +1678,22 @@ export class AgentService {
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): boolean {
+    const hasExplicitRsvpSelection =
+      (extraction.rsvpAction !== null && extraction.rsvpAction !== undefined) ||
+      (extraction.rsvpCandidateGuestId !== null &&
+        extraction.rsvpCandidateGuestId !== undefined);
+    if (
+      extraction.informationRequests.length > 0 &&
+      plan.rsvp_state.status === 'none' &&
+      !hasExplicitRsvpSelection
+    ) {
+      return false;
+    }
+
     return (
       plan.rsvp_state.status !== 'none' ||
       extraction.actionIntent === 'responder_invitacion' ||
-      (extraction.rsvpAction !== null && extraction.rsvpAction !== undefined) ||
-      (extraction.rsvpCandidateGuestId !== null &&
-        extraction.rsvpCandidateGuestId !== undefined) ||
+      hasExplicitRsvpSelection ||
       (extraction.rsvpEventReference !== null &&
         extraction.rsvpEventReference !== undefined)
     );
@@ -1752,19 +1777,11 @@ export class AgentService {
       };
       operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
     } else {
-      const confirmedRequestedChange = pendingState.status === 'awaiting_action'
-        && pendingState.pending_action === action
-        && pendingState.candidates.some(
-          (candidate) => candidate.guest_id === selectedInvitation.guestId,
-        );
       const currentAction = selectedInvitation.state === 'attending'
         ? 'attending'
         : selectedInvitation.state === 'declining'
           ? 'declining'
           : null;
-      const reversesExistingResponse = Boolean(
-        action && currentAction && action !== currentAction,
-      );
 
       if (!action) {
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, true);
@@ -1774,9 +1791,6 @@ export class AgentService {
       } else if (currentAction === action) {
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, false);
         nextRsvpState = this.emptyRsvpState();
-      } else if (reversesExistingResponse && !confirmedRequestedChange) {
-        operationalNote = this.rsvpChangeConfirmationNote(selectedInvitation, action);
-        nextRsvpState = this.awaitingRsvpActionState(selectedInvitation, action);
       } else if (!args.gateway.guestRsvp) {
         operationalNote = 'El servicio de actualización de asistencia no está configurado. No afirmes que se cambió la respuesta; ofrece apoyo humano.';
         nextRsvpState = this.emptyRsvpState();
@@ -2092,16 +2106,6 @@ export class AgentService {
     return `La invitación${event} existe, pero la consulta no devolvió un estado de asistencia interpretable. No inventes el estado ni afirmes una actualización; ofrece apoyo humano.`;
   }
 
-  private rsvpChangeConfirmationNote(
-    invitation: RsvpInvitation,
-    action: 'attending' | 'declining',
-  ): string {
-    const event = invitation.eventName ? ` para ${invitation.eventName}` : '';
-    return action === 'attending'
-      ? `La invitación${event} figura actualmente como que no asistirá. Pregunta una sola vez si desea cambiarla para confirmar que sí asistirá. No ejecutes ni afirmes el cambio todavía.`
-      : `La asistencia${event} ya figura confirmada. Pregunta una sola vez si desea cambiarla para indicar que no asistirá. No ejecutes ni afirmes el cambio todavía.`;
-  }
-
   private multipleRsvpInvitationsNote(
     invitations: RsvpInvitation[],
     action: 'attending' | 'declining' | null,
@@ -2361,6 +2365,7 @@ export class AgentService {
         requests,
         authentication: authResolution.authentication,
         authBlock: authResolution.authBlock,
+        trustedPhone: splitInternationalPhone(args.inbound.contactPhone),
       });
       args.timingMs.information_execution += Date.now() - informationStartedAt;
       informationResults = execution.results;
@@ -2369,6 +2374,44 @@ export class AgentService {
         args.toolUsage,
         informationSummaries,
       );
+
+      const completedThroughGuestPhone = informationResults.some(
+        (result) =>
+          result.status === 'completed' &&
+          result.kind === 'associated_event' &&
+          result.accessMethod === 'trusted_phone_guest',
+      );
+      if (
+        completedThroughGuestPhone &&
+        requests.every((request) => request.kind === 'faq' || request.kind === 'associated_event')
+      ) {
+        planForInformation = this.resetUserAuth(planForInformation, null);
+      }
+
+      const guestEventResult = informationResults.find(
+        (result) =>
+          result.status === 'completed' &&
+          result.kind === 'associated_event' &&
+          result.accessMethod === 'trusted_phone_guest',
+      );
+      const hasRemainingEmailAuthentication = informationResults.some(
+        (result) => result.status === 'needs_input' && result.nextInput === 'email',
+      );
+      if (
+        operationalNote === null &&
+        guestEventResult?.status === 'completed' &&
+        guestEventResult.kind === 'associated_event'
+      ) {
+        const detailedEventCount = guestEventResult.result.events.filter(
+          (event) => event.detail !== undefined,
+        ).length;
+        operationalNote =
+          guestEventResult.result.events.length > 1 && detailedEventCount === 0
+            ? 'El número confiable está invitado a varios eventos y la referencia no identifica uno de forma única. Muestra únicamente sus nombres y fechas y pregunta en una sola frase a cuál se refiere. No pidas correo ni código.'
+            : hasRemainingEmailAuthentication
+              ? 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde primero solo con los datos solicitados del evento y pide el correo registrado únicamente para las consultas protegidas que siguen pendientes.'
+            : 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde solo con los datos solicitados del resultado y no pidas correo ni código.';
+      }
 
       if (
         informationResults.some(
@@ -2656,6 +2699,17 @@ export class AgentService {
         return this.phoneAuthenticationFailure(args.plan, phoneAuthentication.error);
       }
 
+      if (protectedRequests.some((request) => request.kind === 'associated_event')) {
+        return {
+          plan: this.clearPhoneAuthentication(
+            args.plan,
+            'No account found for current phone; checking guest invitations.',
+          ),
+          authentication: null,
+          authBlock: null,
+        };
+      }
+
       return this.resolveEmailAuthentication({
         ...args,
         plan: this.clearPhoneAuthentication(args.plan, 'No account found for current phone.'),
@@ -2764,12 +2818,11 @@ export class AgentService {
         request.kind === 'associated_event' || request.kind === 'purchase',
     );
 
-    const purchaseAuthAction = protectedRequests.find(
-      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
-        request.kind === 'purchase',
-    )?.authAction;
+    const informationAuthAction = protectedRequests
+      .map((request) => request.authAction ?? 'none')
+      .find((action) => action !== 'none') ?? 'none';
     const providedEmail = this.extractEmailFromText(args.userMessage);
-    if (purchaseAuthAction === 'change_email' && !providedEmail) {
+    if (informationAuthAction === 'change_email' && !providedEmail) {
       return {
         plan: this.resetUserAuth(args.plan, null),
         authentication: null,
@@ -2824,7 +2877,7 @@ export class AgentService {
 
     if (
       planForEmail.user_auth.status === 'code_requested' &&
-      purchaseAuthAction !== 'resend_otp'
+      informationAuthAction !== 'resend_otp'
     ) {
       return {
         plan: planForEmail,
@@ -2832,7 +2885,7 @@ export class AgentService {
         authBlock: {
           nextInput: 'otp',
           guidance: createInformationAuthGuidance(
-            purchaseAuthAction === 'report_otp_not_received'
+            informationAuthAction === 'report_otp_not_received'
               ? 'otp_not_received'
               : planForEmail.user_auth.failed_code_attempts >= 2
                 ? 'otp_repeated_failure'
@@ -2849,7 +2902,7 @@ export class AgentService {
       planForEmail,
       email,
       args.toolUsage,
-      purchaseAuthAction === 'resend_otp',
+      informationAuthAction === 'resend_otp',
     );
     planForEmail = requested.plan;
     return {
@@ -2940,6 +2993,11 @@ export class AgentService {
       };
     }
 
+    const sendFailureReason = result.status === 'rate_limited'
+      ? 'otp_send_rate_limited'
+      : result.status === 'unavailable'
+        ? 'otp_send_unavailable'
+        : 'otp_send_failed';
     return {
       plan: mergePlan(plan, {
         user_auth: {
@@ -2956,7 +3014,7 @@ export class AgentService {
       }),
       authBlock: {
         nextInput: 'email',
-        guidance: createInformationAuthGuidance('otp_send_failed', email),
+        guidance: createInformationAuthGuidance(sendFailureReason, email),
       },
     };
   }
@@ -2998,7 +3056,24 @@ export class AgentService {
     );
 
     if (result.status !== 'authenticated') {
+      const isInvalidCode = result.status === 'invalid_code';
       const failedCodeAttempts = plan.user_auth.failed_code_attempts + 1;
+      const nextAttempts = isInvalidCode
+        ? failedCodeAttempts
+        : plan.user_auth.failed_code_attempts;
+      const verificationReason = result.status === 'rate_limited'
+        ? 'otp_verification_rate_limited'
+        : result.status === 'unavailable'
+          ? 'otp_verification_unavailable'
+          : result.status === 'email_not_verified'
+            ? 'otp_email_not_verified'
+            : result.status === 'validation_failed'
+              ? 'otp_verification_validation_failed'
+          : result.status === 'failed'
+            ? 'otp_verification_failed'
+            : nextAttempts >= 2
+              ? 'otp_repeated_failure'
+              : 'otp_invalid';
       return {
         plan: mergePlan(plan, {
           user_auth: {
@@ -3007,14 +3082,14 @@ export class AgentService {
             token: null,
             token_expires_at: null,
             last_error: result.error,
-            failed_code_attempts: failedCodeAttempts,
+            failed_code_attempts: nextAttempts,
           },
         }),
         authentication: null,
         authBlock: {
           nextInput: 'otp',
           guidance: createInformationAuthGuidance(
-            failedCodeAttempts >= 2 ? 'otp_repeated_failure' : 'otp_invalid',
+            verificationReason,
             email,
           ),
         },
@@ -3177,13 +3252,23 @@ export class AgentService {
   ): void {
     for (const summary of summaries) {
       if (summary.status !== 'needs_input') {
-        toolUsage.called.push(
-          summary.source === 'knowledge_base'
-            ? 'knowledge_base_search'
-            : summary.source === 'associated_event_api'
-              ? 'associated_event_lookup'
-              : 'agent_api_purchase_lookup',
-        );
+        if (
+          summary.source === 'associated_event_api' &&
+          summary.accessMethod === 'trusted_phone_guest'
+        ) {
+          toolUsage.called.push('lookup_guest_events_by_phone');
+          if ((summary.eventDetailCount ?? 0) > 0) {
+            toolUsage.called.push('get_guest_event_detail');
+          }
+        } else {
+          toolUsage.called.push(
+            summary.source === 'knowledge_base'
+              ? 'knowledge_base_search'
+              : summary.source === 'associated_event_api'
+                ? 'associated_event_lookup'
+                : 'agent_api_purchase_lookup',
+          );
+        }
       }
       toolUsage.outputs.push({
         tool:
@@ -3197,6 +3282,8 @@ export class AgentService {
           kind: summary.kind,
           status: summary.status,
           result_count: summary.resultCount,
+          access_method: summary.accessMethod ?? null,
+          event_detail_count: summary.eventDetailCount ?? 0,
           duration_ms: summary.durationMs,
         }),
       });
@@ -3307,7 +3394,8 @@ export class AgentService {
   ): ComposeReplyResult {
     if (
       currentNode !== 'aclarar_pedir_faltante' ||
-      !missingFields.includes('budget_or_guest_range')
+      missingFields.length !== 1 ||
+      missingFields[0] !== 'budget_or_guest_range'
     ) {
       return reply;
     }
@@ -3516,6 +3604,7 @@ export class AgentService {
       return {
         trace: {
           mode: classifier.mode,
+          classifier_profile: 'general',
           action: 'respond',
           reason: 'requires_response',
           would_suppress: false,
@@ -3525,6 +3614,7 @@ export class AgentService {
           conversation_health: 'uncertain',
           health_reason: 'insufficient_context',
           human_help_response: 'not_applicable',
+          campaign_reply_kind: 'not_applicable',
           automation_confidence: 'uncertain',
           automation_pattern: 'none',
           automation_scope: 'none_or_uncertain',
@@ -3539,6 +3629,7 @@ export class AgentService {
       return {
         trace: {
           mode: classifier.mode,
+          classifier_profile: 'general',
           action: 'respond',
           reason: 'conversation_context_unavailable',
           would_suppress: false,
@@ -3548,6 +3639,7 @@ export class AgentService {
           conversation_health: 'uncertain',
           health_reason: 'insufficient_context',
           human_help_response: 'not_applicable',
+          campaign_reply_kind: 'not_applicable',
           automation_confidence: 'uncertain',
           automation_pattern: 'none',
           automation_scope: 'none_or_uncertain',
@@ -3971,16 +4063,28 @@ export class AgentService {
     hasAmbiguousSelection: boolean;
     hasReplaceProviderOperation: boolean;
   }): DecisionEvidence {
-    const focusedNeedCategory =
+    const extractedFocusCategory =
       args.extraction.activeNeedCategory ??
-      args.extraction.vendorCategory ??
-      (args.sessionFocus ? args.sessionFocus.activeNeedCategory : null);
+      args.extraction.vendorCategory;
     const readyNeedCategories = this.resolveReadyNeedCategories(
       args.extraction,
       args.planAfterReduction,
       args.sufficiencyByNeed,
       args.sessionFocus,
     );
+    const hasRetrievalReadyQueryIntent = (args.extraction.providerQueryIntents ?? [])
+      .some((queryIntent) =>
+        this.isStructuredQueryIntentRetrievalReady(queryIntent, args.extraction),
+      );
+    const focusedNeedCategory =
+      extractedFocusCategory ??
+      (
+        hasRetrievalReadyQueryIntent && readyNeedCategories.length === 1
+          ? readyNeedCategories[0]
+          : null
+      ) ??
+      args.sessionFocus?.activeNeedCategory ??
+      null;
 
     return decisionEvidenceSchema.parse({
       previousNode: args.previousNode,
@@ -4012,7 +4116,22 @@ export class AgentService {
   ): TurnDecision {
     let decision: Omit<TurnDecision, 'invariantStatus' | 'invariantViolations'>;
 
-    if (evidence.extractionIntent === 'pausar') {
+    if (
+      evidence.extractionIntent === 'reset_plan' &&
+      evidence.providerNeedCount === 0
+    ) {
+      decision = {
+        nextNode: 'reset_plan',
+        routeKind: 'reset_plan',
+        providerSearchMode: 'none',
+        presentationScope: 'clarification',
+        focusNeedCategory: null,
+        needsToSearch: [],
+        needsToPresent: [],
+        stopReason: 'plan_reset_completed',
+        persistReason: 'reset_plan',
+      };
+    } else if (evidence.extractionIntent === 'pausar') {
       decision = {
         nextNode: 'guardar_cerrar_temporalmente',
         routeKind: 'pause',
@@ -4951,6 +5070,10 @@ export class AgentService {
     plan: PersistedPlan,
     extraction: ExtractionResult,
   ): DecisionNode {
+    if (extraction.actionIntent === 'reset_plan') {
+      return 'reset_plan';
+    }
+
     if (!plan.intent && !plan.event_type) {
       return 'deteccion_intencion';
     }

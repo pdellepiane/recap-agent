@@ -372,6 +372,196 @@ describe('AgentService first-class information flow', () => {
         nextInput: 'email',
       }),
     );
+    expect(runtime.composeRequests.at(-1)?.errorMessage ?? '').not.toContain(
+      'invitación asociada al número confiable',
+    );
+  });
+
+  it('uses the trusted phone guest record before OTP when the phone has no account', async () => {
+    const eventQuestion = extraction([{
+      kind: 'associated_event',
+      query: '¿Dónde y a qué hora es la recepción?',
+      eventHint: null,
+    }]);
+    eventQuestion.rsvpEventReference = 'Boda Laura & Marcos';
+    const runtime = new InformationRuntime([eventQuestion]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestEventsResult = {
+      status: 'success',
+      events: [{
+        eventId: 88,
+        name: 'Boda Laura & Marcos',
+        slug: 'boda-laura-marcos',
+        url: null,
+        datetime: '15/09/2026 18:00',
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'published',
+        city: 'Lima',
+        country: 'Perú',
+        currency: 'PEN',
+      }],
+    };
+    gateway.eventDetailResult = {
+      status: 'success',
+      event: {
+        ...gateway.guestEventsResult.events[0],
+        withTime: true,
+        timezone: 'America/Lima',
+        celebrateds: [],
+        moments: [{
+          label: 'Recepción',
+          description: null,
+          datetime: '15/09/2026 19:00',
+          withTime: true,
+          locationDescription: 'Salón principal',
+          locationReference: null,
+          locationUrl: null,
+          locationCoords: null,
+          position: 1,
+        }],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+      },
+    };
+    const provider = providerGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: provider,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'accountless-guest-user',
+      text: '¿Dónde y a qué hora es la recepción?',
+      messageId: 'accountless-guest-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(gateway.guestEventCalls).toBe(1);
+    expect(gateway.eventDetailCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(provider.eventLookupCalls).toBe(0);
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.trace.tools_called).toEqual(expect.arrayContaining([
+      'auth_by_phone',
+      'lookup_guest_events_by_phone',
+      'get_guest_event_detail',
+    ]));
+    expect(response.trace.tools_called).not.toContain('request_user_login_code');
+    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
+      status: 'completed',
+      kind: 'associated_event',
+      accessMethod: 'trusted_phone_guest',
+      result: {
+        events: [{ detail: { moments: [{ label: 'Recepción' }] } }],
+      },
+    });
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'no pidas correo ni código',
+    );
+  });
+
+  it('answers invited-event data before requesting email for a separate protected query', async () => {
+    const runtime = new InformationRuntime([extraction([
+      {
+        kind: 'associated_event',
+        query: '¿Dónde es la recepción?',
+        eventHint: null,
+      },
+      purchaseRequest(null),
+    ])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestEventsResult = {
+      status: 'success',
+      events: [{
+        eventId: 88,
+        name: 'Boda Laura & Marcos',
+        slug: 'boda-laura-marcos',
+        url: null,
+        datetime: '15/09/2026 18:00',
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'published',
+        city: 'Lima',
+        country: 'Perú',
+        currency: 'PEN',
+      }],
+    };
+    gateway.eventDetailResult = {
+      status: 'success',
+      event: {
+        ...gateway.guestEventsResult.events[0],
+        withTime: true,
+        timezone: 'America/Lima',
+        celebrateds: [],
+        moments: [{
+          label: 'Recepción',
+          description: null,
+          datetime: '15/09/2026 19:00',
+          withTime: true,
+          locationDescription: 'Salón principal',
+          locationReference: null,
+          locationUrl: null,
+          locationCoords: null,
+          position: 1,
+        }],
+        dresscode: null,
+        commonAsked: [],
+        contactInfo: [],
+      },
+    };
+    const provider = providerGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: provider,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'mixed-accountless-guest-user',
+      text: '¿Dónde es la recepción y cuál es el estado de mi compra?',
+      messageId: 'mixed-accountless-guest-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(gateway.guestEventCalls).toBe(1);
+    expect(gateway.eventDetailCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(response.trace.tools_called).toEqual(expect.arrayContaining([
+      'auth_by_phone',
+      'lookup_guest_events_by_phone',
+      'get_guest_event_detail',
+    ]));
+    expect(runtime.composeRequests.at(-1)?.informationResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'associated_event',
+          status: 'completed',
+          accessMethod: 'trusted_phone_guest',
+        }),
+        expect.objectContaining({
+          kind: 'purchase',
+          status: 'needs_input',
+          nextInput: 'email',
+        }),
+      ]),
+    );
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'pide el correo registrado únicamente para las consultas protegidas que siguen pendientes',
+    );
   });
 
   it('does not ask for email when automatic phone authentication fails technically', async () => {
@@ -813,6 +1003,77 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
+  it('preserves missing-code recovery for a protected associated-event request', async () => {
+    const runtime = new InformationRuntime([
+      extraction([{
+        kind: 'associated_event',
+        query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+        eventHint: 'Karem y Alfredo',
+        authAction: 'report_otp_not_received',
+      }]),
+    ]);
+    const store = new InMemoryPlanStore();
+    await store.save({
+      reason: 'seed-associated-event-otp',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'associated-event-otp-plan',
+        channel: 'whatsapp',
+        externalUserId: 'associated-event-otp-user',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        contact_email: 'person@example.com',
+        user_auth: {
+          status: 'code_requested',
+          email: 'person@example.com',
+          token: null,
+          token_expires_at: null,
+          last_error: null,
+          requested_at: '2026-08-20T15:00:00.000Z',
+          failed_code_attempts: 0,
+          awaiting_phone_confirmation: false,
+          auth_method: null,
+        },
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [{
+            requestId: 'information-1',
+            kind: 'associated_event',
+            query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+            eventHint: 'Karem y Alfredo',
+          }],
+          selection_candidates: [],
+        },
+      }),
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: providerGateway(),
+      planStore: store,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'associated-event-otp-user',
+      text: 'No me ha llegado',
+      messageId: 'associated-event-otp-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    const blockedEvent = runtime.composeRequests
+      .at(-1)
+      ?.informationResults?.find(
+        (result) => result.kind === 'associated_event' && result.status === 'needs_input',
+      );
+    expect(
+      blockedEvent?.status === 'needs_input' ? blockedEvent.guidance : null,
+    ).toEqual(createInformationAuthGuidance('otp_not_received', 'person@example.com'));
+    expect(response.outbound.text).toBe(
+      'El código puede tardar hasta un minuto en llegar a person@example.com. Revisa la bandeja principal y el correo no deseado; por seguridad, necesitamos ese código para confirmar que la cuenta es tuya. ¿Quieres que lo reenvíe al mismo correo o prefieres usar otro correo?',
+    );
+  });
+
   it('stops the repeated OTP loop from the reported gift-deposit interaction', async () => {
     const purchase = purchaseRequest(null);
     purchase.query =
@@ -1168,6 +1429,14 @@ class FakePurchaseGateway implements AgentConversationGateway {
     resource: 'gift_purchases',
     purchases: [purchase('ORD-000880')],
   };
+  public guestEventCalls = 0;
+  public eventDetailCalls = 0;
+  public guestEventsResult: Awaited<
+    ReturnType<NonNullable<AgentConversationGateway['getGuestEventsByPhone']>>
+  > = { status: 'not_found' };
+  public eventDetailResult: Awaited<
+    ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>
+  > = { status: 'not_found' };
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
     void input;
@@ -1216,6 +1485,16 @@ class FakePurchaseGateway implements AgentConversationGateway {
     this.authByPhoneCalls += 1;
     this.lastAuthByPhoneInput = args;
     return this.authByPhoneResult;
+  }
+
+  async getGuestEventsByPhone(): Promise<typeof this.guestEventsResult> {
+    this.guestEventCalls += 1;
+    return this.guestEventsResult;
+  }
+
+  async getEventDetail(): Promise<typeof this.eventDetailResult> {
+    this.eventDetailCalls += 1;
+    return this.eventDetailResult;
   }
 
   async updatePhone(args: {
