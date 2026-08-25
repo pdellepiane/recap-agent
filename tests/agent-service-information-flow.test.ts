@@ -274,6 +274,93 @@ describe('AgentService first-class information flow', () => {
     ]);
   });
 
+  it('does not disclose trusted-phone guest data after the person rejects that phone association', async () => {
+    const pendingQuestion: ExtractedInformationRequest = {
+      kind: 'associated_event',
+      query: '¿La restricción de vestir de blanco aplica a todas las personas?',
+      eventHint: 'Boda Laura & Marcos',
+      authAction: 'none',
+    };
+    const runtime = new InformationRuntime([
+      extraction([pendingQuestion], null, null, 'no'),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestEventsResult = {
+      status: 'success',
+      events: [{
+        eventId: 88,
+        name: 'Boda Laura & Marcos',
+        slug: 'boda-laura-marcos',
+        url: null,
+        datetime: '15/09/2026 18:00',
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'published',
+        city: 'Lima',
+        country: 'Perú',
+        currency: 'PEN',
+      }],
+    };
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      plan: mergePlan(
+        createEmptyPlan({
+          planId: 'rejected-phone-event-plan',
+          channel: 'whatsapp',
+          externalUserId: 'rejected-phone-event-user',
+        }),
+        {
+          current_node: 'resolver_consultas_informativas',
+          user_auth: {
+            status: 'authenticated',
+            email: 'prior@example.com',
+            token: 'prior-token',
+            token_expires_at: '2026-12-01T00:00:00.000Z',
+            auth_method: 'phone',
+          },
+          information_state: {
+            resume_node: 'entrevista',
+            pending_requests: [{ ...pendingQuestion, requestId: 'information-1' }],
+            selection_candidates: [],
+          },
+        },
+      ),
+      reason: 'test-seed',
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'rejected-phone-event-user',
+      text: 'Esa no es mi cuenta ni el número que tengo registrado.',
+      messageId: 'rejected-phone-event-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.guestEventCalls).toBe(0);
+    expect(gateway.eventDetailCalls).toBe(0);
+    expect(response.trace.tools_called).not.toContain('lookup_guest_events_by_phone');
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({
+        query: pendingQuestion.query,
+      }),
+    ]);
+    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
+      kind: 'associated_event',
+      status: 'needs_input',
+      nextInput: 'email',
+    });
+  });
+
   it('recovers a persisted retired confirmation turn by authenticating automatically', async () => {
     const runtime = new InformationRuntime([
       extraction([], null, null, 'unclear'),
@@ -1010,6 +1097,7 @@ describe('AgentService first-class information flow', () => {
   it('hands an accountless purchase to a person without asking for an impossible registered email', async () => {
     const accountlessRequest = purchaseRequest(null);
     accountlessRequest.authAction = 'accountless_user';
+    accountlessRequest.query = 'La persona dice que no creó una cuenta.';
     const runtime = new InformationRuntime([
       extraction([purchaseRequest(null)]),
       extraction([accountlessRequest]),
@@ -1045,8 +1133,12 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.takeoverCalls).toBe(1);
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.information_state.pending_requests).toEqual([
-      expect.objectContaining({ kind: 'purchase' }),
+      expect.objectContaining({
+        kind: 'purchase',
+        query: 'Estado del regalo comprado.',
+      }),
     ]);
+    expect(response.outbound.text).toContain('Estado del regalo comprado');
     expect(response.outbound.text).not.toContain('correo');
     expect(response.outbound.text).not.toContain('código');
   });

@@ -2467,7 +2467,9 @@ export class AgentService {
             requests,
             authentication: authResolution.authentication,
             authBlock: authResolution.authBlock,
-            trustedPhone: splitInternationalPhone(args.inbound.contactPhone),
+            trustedPhone: args.extraction.phoneConfirmation === 'no'
+              ? null
+              : splitInternationalPhone(args.inbound.contactPhone),
           });
           logAuthObservabilityEvent('info', 'information_auth_execution_completed', {
             auth_flow_operation_id: authResolution.authFlowId,
@@ -2661,12 +2663,16 @@ export class AgentService {
         if (!existing) {
           continue;
         }
+        const authenticationContinuation =
+          request.kind !== 'faq' && (request.authAction ?? 'none') !== 'none';
         merged[matchingIndex] =
           existing.kind === 'purchase' && request.kind === 'purchase'
             ? {
                 ...request,
                 requestId: existing.requestId,
-                query: request.query || existing.query,
+                query: authenticationContinuation
+                  ? existing.query
+                  : request.query || existing.query,
                 orderId: request.orderId ?? existing.orderId,
                 aspects: Array.from(
                   new Set([...existing.aspects, ...request.aspects]),
@@ -2681,6 +2687,9 @@ export class AgentService {
             : {
                 ...request,
                 requestId: existing.requestId,
+                query: authenticationContinuation
+                  ? existing.query
+                  : request.query,
               };
         continue;
       }
@@ -2835,10 +2844,17 @@ export class AgentService {
       args.tokenUsage.extraction,
     );
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const pendingQueries = args.plan.information_state.pending_requests
+      .map((request) => request.query.trim())
+      .filter((query) => query.length > 0)
+      .slice(0, 2);
+    const handoffMessage = pendingQueries.length > 0
+      ? `${this.humanEscalationRequestedMessage(gatewayResult)}. El equipo continuará con tu consulta pendiente: ${pendingQueries.join(' / ')}`
+      : this.humanEscalationRequestedMessage(gatewayResult);
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
-        { text: this.humanEscalationRequestedMessage(gatewayResult) },
+        { text: handoffMessage },
         [],
         args.inbound.channel,
         planToSave.conversation_id,
