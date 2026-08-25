@@ -268,6 +268,9 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain(
       '`decline_authentication` si rechaza continuar la verificación',
     );
+    expect(extractorBundle.instructions).toContain(
+      'usa `phoneConfirmation=no` y no `decline_authentication`',
+    );
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
     expect(extractorBundle.instructions).toContain(

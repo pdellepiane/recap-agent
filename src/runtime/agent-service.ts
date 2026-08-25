@@ -2384,7 +2384,13 @@ export class AgentService {
       (request) => request.kind === 'purchase' && request.authAction === 'accountless_user',
     );
 
-    if (protectedAuthAction === 'decline_authentication') {
+    // A rejected phone association is not a refusal to continue verification.
+    // The typed phone decision takes precedence if extraction also attached the
+    // broader refusal action to the protected request.
+    if (
+      protectedAuthAction === 'decline_authentication' &&
+      args.extraction.phoneConfirmation !== 'no'
+    ) {
       return await this.completeDeclinedInformationAuthentication({
         ...args,
         plan: planForInformation,

@@ -279,7 +279,9 @@ describe('AgentService first-class information flow', () => {
       kind: 'associated_event',
       query: '¿La restricción de vestir de blanco aplica a todas las personas?',
       eventHint: 'Boda Laura & Marcos',
-      authAction: 'none',
+      // Exercise the runtime invariant even if extraction attaches both
+      // structured signals to a phone-association rejection.
+      authAction: 'decline_authentication',
     };
     const runtime = new InformationRuntime([
       extraction([pendingQuestion], null, null, 'no'),
