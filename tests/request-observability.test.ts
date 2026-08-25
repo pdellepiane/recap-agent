@@ -15,6 +15,9 @@ describe('Lambda channel request observability', () => {
       durationMs: 12.7,
       authorizationHeaderPresent: true,
       bearerTokenPresent: true,
+      bearerToken: 'incoming-channel-secret',
+      acceptedBearerKeyCount: 2,
+      matchedBearerKeyIndex: 1,
       channel: 'whatsapp',
       externalUserId: 'whatsapp:51991347878',
       messageId: 'wamid.secret-value',
@@ -38,6 +41,9 @@ describe('Lambda channel request observability', () => {
       duration_ms: 13,
       authorization_header_present: true,
       bearer_token_present: true,
+      bearer_token_length: 23,
+      accepted_bearer_key_count: 2,
+      matched_bearer_key_index: 1,
       channel: 'whatsapp',
       message_id_source: 'native',
       validation_issues: [
@@ -49,8 +55,10 @@ describe('Lambda channel request observability', () => {
     });
     expect(record.external_user_hash).toMatch(/^[a-f0-9]{64}$/u);
     expect(record.message_id_hash).toMatch(/^[a-f0-9]{64}$/u);
+    expect(record.bearer_token_sha256).toMatch(/^[a-f0-9]{64}$/u);
     expect(JSON.stringify(record)).not.toContain('51991347878');
     expect(JSON.stringify(record)).not.toContain('wamid.secret-value');
+    expect(JSON.stringify(record)).not.toContain('incoming-channel-secret');
   });
 
   it('marks an internally generated message id without presenting it as native', () => {

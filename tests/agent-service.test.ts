@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createEmptyPlan,
@@ -945,6 +945,12 @@ class RecordingPlanStore implements PlanStore {
     this.saves.push(input);
   }
 }
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+});
 
 describe('AgentService', () => {
   const promptsDir = path.resolve(process.cwd(), 'prompts');

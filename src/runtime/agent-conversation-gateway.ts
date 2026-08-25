@@ -5,6 +5,11 @@ import type {
   PurchaseResource,
 } from '../core/information';
 import { rsvpActionValues, type RsvpAction } from '../core/rsvp';
+import {
+  createAuthOperationId,
+  logAuthObservabilityEvent,
+  responseHeadersForAuthLog,
+} from './auth-observability';
 
 export type AgentMessageDirection = 'inbound' | 'outbound';
 
@@ -1197,30 +1202,87 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   > {
     const attempts = Math.max(1, this.options.maxRetries + 1);
     let lastError: string | null = null;
+    const url = `${this.options.baseUrl}${path}`;
+    const observeAuthExchange =
+      path.startsWith('/auth-by-phone') ||
+      path.startsWith('/user/update-phone') ||
+      path.startsWith('/guest/events') ||
+      path.startsWith('/event?') ||
+      path.startsWith('/orders') ||
+      path.startsWith('/gift-purchases') ||
+      Boolean(options.authorizationToken);
+    const operationId = observeAuthExchange ? createAuthOperationId() : null;
+    const requestStartedAt = Date.now();
+    const requestHeaders = {
+      'X-Agent-Key': this.options.apiKey,
+      ...(options.authorizationToken
+        ? { Authorization: `Bearer ${options.authorizationToken}` }
+        : {}),
+      ...(options.body ? { 'content-type': 'application/json' } : {}),
+    };
+    if (operationId) {
+      logAuthObservabilityEvent('info', 'auth_http_request_started', {
+        auth_http_operation_id: operationId,
+        service: 'agent_api',
+        operation: this.authOperationForPath(path),
+        method: options.method,
+        url,
+        max_attempts: attempts,
+        request_headers: requestHeaders,
+        request_body: options.body ?? null,
+      });
+    }
 
     for (let attempt = 1; attempt <= attempts; attempt += 1) {
       const controller = new AbortController();
       const timeout = setTimeout(() => controller.abort(), this.options.timeoutMs);
+      const attemptStartedAt = Date.now();
       try {
-        const response = await fetch(`${this.options.baseUrl}${path}`, {
+        const response = await fetch(url, {
           method: options.method,
-          headers: {
-            'X-Agent-Key': this.options.apiKey,
-            ...(options.authorizationToken
-              ? { Authorization: `Bearer ${options.authorizationToken}` }
-              : {}),
-            ...(options.body ? { 'content-type': 'application/json' } : {}),
-          },
+          headers: requestHeaders,
           body: options.body ? JSON.stringify(options.body) : undefined,
           signal: controller.signal,
         });
         clearTimeout(timeout);
 
         const parsedBody = await this.parseBody(response);
+        if (operationId) {
+          logAuthObservabilityEvent(
+            response.ok ? 'info' : 'error',
+            'auth_http_response_received',
+            {
+              auth_http_operation_id: operationId,
+              service: 'agent_api',
+              operation: this.authOperationForPath(path),
+              method: options.method,
+              url,
+              attempt,
+              max_attempts: attempts,
+              attempt_duration_ms: Date.now() - attemptStartedAt,
+              total_duration_ms: Date.now() - requestStartedAt,
+              response_status: response.status,
+              response_ok: response.ok,
+              response_headers: responseHeadersForAuthLog(response.headers),
+              response_body: parsedBody,
+            },
+          );
+        }
         if (!response.ok) {
           const retryable = this.isRetryableStatus(response.status);
           if (retryable && attempt < attempts) {
             lastError = this.httpError(response.status, parsedBody);
+            if (operationId) {
+              logAuthObservabilityEvent('info', 'auth_http_retry_scheduled', {
+                auth_http_operation_id: operationId,
+                service: 'agent_api',
+                operation: this.authOperationForPath(path),
+                completed_attempt: attempt,
+                next_attempt: attempt + 1,
+                response_status: response.status,
+                error: lastError,
+              });
+            }
             await this.backoff(attempt);
             continue;
           }
@@ -1272,6 +1334,28 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       } catch (error) {
         clearTimeout(timeout);
         lastError = error instanceof Error ? error.message : String(error);
+        if (operationId) {
+          logAuthObservabilityEvent('error', 'auth_http_attempt_failed', {
+            auth_http_operation_id: operationId,
+            service: 'agent_api',
+            operation: this.authOperationForPath(path),
+            method: options.method,
+            url,
+            attempt,
+            max_attempts: attempts,
+            attempt_duration_ms: Date.now() - attemptStartedAt,
+            total_duration_ms: Date.now() - requestStartedAt,
+            retry_scheduled: attempt < attempts,
+            error: error instanceof Error
+              ? {
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack ?? null,
+                  cause: error.cause ?? null,
+                }
+              : { value: error },
+          });
+        }
         if (attempt < attempts) {
           await this.backoff(attempt);
           continue;
@@ -1297,6 +1381,16 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       errorEnvelope: false,
       errorCode: null,
     };
+  }
+
+  private authOperationForPath(path: string): string {
+    if (path.startsWith('/auth-by-phone')) return 'authenticate_by_phone';
+    if (path.startsWith('/user/update-phone')) return 'update_phone_after_email_auth';
+    if (path.startsWith('/guest/events')) return 'lookup_guest_events_by_phone';
+    if (path.startsWith('/event?')) return 'lookup_guest_event_detail';
+    if (path.startsWith('/orders')) return 'lookup_authenticated_orders';
+    if (path.startsWith('/gift-purchases')) return 'lookup_authenticated_gift_purchases';
+    return 'authenticated_agent_api_request';
   }
 
   private publicFailure(

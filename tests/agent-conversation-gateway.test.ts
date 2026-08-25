@@ -8,6 +8,8 @@ import {
 describe('AgentConversationGateway', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   it('skips all operations in no-op mode', async () => {
@@ -455,6 +457,54 @@ describe('AgentConversationGateway', () => {
         }),
       }),
     );
+  });
+
+  it('logs the complete phone-auth exchange while fingerprinting both credentials', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        credentials: {
+          access_token: 'phone-jwt-secret',
+          expires_in: 1787843661,
+        },
+        user: {
+          id: 97,
+          email: 'registered@example.com',
+        },
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'agent-api-secret',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await gateway.authByPhone({
+      phone_extension: '+51',
+      phone_number: '973296571',
+    });
+
+    const logs = JSON.stringify(info.mock.calls);
+    expect(logs).toContain('auth_http_request_started');
+    expect(logs).toContain('agent_api');
+    expect(logs).toContain('authenticate_by_phone');
+    expect(logs).toContain('X-Agent-Key');
+    expect(logs).toContain('"length":16');
+    expect(logs).toContain('"phone_extension":"+51"');
+    expect(logs).toContain('"phone_number":"973296571"');
+    expect(logs).toContain('auth_http_response_received');
+    expect(logs).toContain('"response_status":200');
+    expect(logs).toContain('"length":16');
+    expect(logs).toContain('"expires_in":1787843661');
+    expect(logs).toContain('"id":97');
+    expect(logs).toContain('registered@example.com');
+    expect(logs).not.toContain('agent-api-secret');
+    expect(logs).not.toContain('phone-jwt-secret');
   });
 
   it('maps structured phone user-not-found and generic failures', async () => {

@@ -7,6 +7,8 @@ import type { ProviderVectorSearchResult } from '../src/runtime/provider-vector-
 describe('SinEnvolturasGateway strict search mapping', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
+    vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    vi.spyOn(console, 'error').mockImplementation(() => undefined);
   });
 
   it('maps keyword searches to the allowlisted filtered params', async () => {
@@ -340,6 +342,61 @@ describe('SinEnvolturasGateway strict search mapping', () => {
       expect(expiresAt).toBeGreaterThanOrEqual(before + 24 * 60 * 60 * 1000 - 1000);
       expect(expiresAt).toBeLessThanOrEqual(Date.now() + 24 * 60 * 60 * 1000 + 1000);
     }
+  });
+
+  it('logs detailed OTP requests and responses without exposing the code or token', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const responseHeaders = new Headers({
+      'content-type': 'application/json',
+      'set-cookie': 'session=secret-cookie',
+      'x-request-id': 'upstream-auth-17',
+    });
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      headers: responseHeaders,
+      async json() {
+        return {
+          status: true,
+          error: null,
+          errors: null,
+          data: {
+            user: {
+              id: 42,
+              email: 'maria@example.com',
+              credentials: {
+                access_token: 'user-token-secret',
+              },
+            },
+          },
+        };
+      },
+    }));
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor',
+      userAuthBaseUrl: 'https://api.example.test/user',
+      persistedSearchLimit: 5,
+      summarySearchWordLimit: 10,
+    });
+
+    await gateway.verifyUserLoginCode('maria@example.com', '123456');
+
+    const logs = JSON.stringify(info.mock.calls);
+    expect(logs).toContain('auth_http_request_started');
+    expect(logs).toContain('user_auth_api');
+    expect(logs).toContain('verify_login_code');
+    expect(logs).toContain('maria@example.com');
+    expect(logs).toContain('auth_http_response_received');
+    expect(logs).toContain('upstream-auth-17');
+    expect(logs).toContain('set-cookie');
+    expect(logs).toContain('"response_status":200');
+    expect(logs).toContain('"id":42');
+    expect(logs).toContain('"redacted":true');
+    expect(logs).toContain('"length":6');
+    expect(logs).toContain('"length":17');
+    expect(logs).not.toContain('123456');
+    expect(logs).not.toContain('user-token-secret');
+    expect(logs).not.toContain('secret-cookie');
   });
 
   it('maps invalid guest login codes', async () => {

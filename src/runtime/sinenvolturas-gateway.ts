@@ -32,6 +32,11 @@ import type {
   UserEventRelation,
   UserEventSummary,
 } from './provider-gateway';
+import {
+  createAuthOperationId,
+  logAuthObservabilityEvent,
+  responseHeadersForAuthLog,
+} from './auth-observability';
 
 type ApiEnvelope<T> = {
   data: T;
@@ -1004,15 +1009,62 @@ export class SinEnvolturasGateway implements ProviderGateway {
     headers?: Record<string, string>,
   ): Promise<T> {
     const baseUrl = this.options.guestServiceBaseUrl ?? this.options.baseUrl;
-    const response = headers
-      ? await fetch(`${baseUrl}${pathname}`, { headers })
-      : await fetch(`${baseUrl}${pathname}`);
-
-    if (!response.ok) {
-      throw new GuestServiceHttpError(response.status);
+    const url = `${baseUrl}${pathname}`;
+    const shouldObserve = pathname.startsWith('/user-lookup') || Boolean(headers?.authorization);
+    const operationId = shouldObserve ? createAuthOperationId() : null;
+    const startedAt = Date.now();
+    if (operationId) {
+      logAuthObservabilityEvent('info', 'auth_http_request_started', {
+        auth_http_operation_id: operationId,
+        service: 'guest_service_api',
+        operation: headers?.authorization
+          ? 'authenticated_user_lookup'
+          : 'guest_user_lookup',
+        method: 'GET',
+        url,
+        request_headers: headers ?? {},
+        request_body: null,
+      });
     }
-
-    return (await response.json()) as T;
+    try {
+      const response = headers
+        ? await fetch(url, { headers })
+        : await fetch(url);
+      const parsedBody = (await response.json().catch(() => null)) as T;
+      if (operationId) {
+        logAuthObservabilityEvent(
+          response.ok ? 'info' : 'error',
+          'auth_http_response_received',
+          {
+            auth_http_operation_id: operationId,
+            service: 'guest_service_api',
+            method: 'GET',
+            url,
+            duration_ms: Date.now() - startedAt,
+            response_status: response.status,
+            response_ok: response.ok,
+            response_headers: responseHeadersForAuthLog(response.headers),
+            response_body: parsedBody,
+          },
+        );
+      }
+      if (!response.ok) {
+        throw new GuestServiceHttpError(response.status);
+      }
+      return parsedBody;
+    } catch (error) {
+      if (operationId && !(error instanceof GuestServiceHttpError)) {
+        logAuthObservabilityEvent('error', 'auth_http_request_failed', {
+          auth_http_operation_id: operationId,
+          service: 'guest_service_api',
+          method: 'GET',
+          url,
+          duration_ms: Date.now() - startedAt,
+          error: this.errorForAuthLog(error),
+        });
+      }
+      throw error;
+    }
   }
 
   private async postUserAuthJson<T>(
@@ -1021,28 +1073,86 @@ export class SinEnvolturasGateway implements ProviderGateway {
     options?: { throwOnHttpError?: boolean },
   ): Promise<{ ok: boolean; status: number; body: T; requestId: string | null }> {
     const baseUrl = this.options.userAuthBaseUrl ?? 'https://api.sinenvolturas.com/api-web/user';
-    const response = await fetch(`${baseUrl}${pathname}`, {
+    const url = `${baseUrl}${pathname}`;
+    const operationId = createAuthOperationId();
+    const startedAt = Date.now();
+    logAuthObservabilityEvent('info', 'auth_http_request_started', {
+      auth_http_operation_id: operationId,
+      service: 'user_auth_api',
+      operation: pathname === '/request-login-code'
+        ? 'request_login_code'
+        : pathname === '/login-code'
+          ? 'verify_login_code'
+          : pathname,
       method: 'POST',
-      headers: {
+      url,
+      request_headers: {
         'content-type': 'application/json',
       },
-      body: JSON.stringify(body),
+      request_body: body,
     });
-    const parsedBody = (await response.json().catch(() => ({}))) as T;
-
-    if (!response.ok && options?.throwOnHttpError !== false) {
-      throw new Error(`User auth API request failed with ${response.status}`);
-    }
-
-    return {
-      ok: response.ok,
-      status: response.status,
-      body: parsedBody,
-      requestId:
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/json',
+        },
+        body: JSON.stringify(body),
+      });
+      const parsedBody = (await response.json().catch(() => ({}))) as T;
+      const requestId =
         response.headers?.get('x-request-id') ??
         response.headers?.get('x-amzn-requestid') ??
-        null,
-    };
+        null;
+      logAuthObservabilityEvent(
+        response.ok ? 'info' : 'error',
+        'auth_http_response_received',
+        {
+          auth_http_operation_id: operationId,
+          upstream_request_id: requestId,
+          service: 'user_auth_api',
+          method: 'POST',
+          url,
+          duration_ms: Date.now() - startedAt,
+          response_status: response.status,
+          response_ok: response.ok,
+          response_headers: responseHeadersForAuthLog(response.headers),
+          response_body: parsedBody,
+        },
+      );
+
+      if (!response.ok && options?.throwOnHttpError !== false) {
+        throw new Error(`User auth API request failed with ${response.status}`);
+      }
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        body: parsedBody,
+        requestId,
+      };
+    } catch (error) {
+      logAuthObservabilityEvent('error', 'auth_http_request_failed', {
+        auth_http_operation_id: operationId,
+        service: 'user_auth_api',
+        method: 'POST',
+        url,
+        duration_ms: Date.now() - startedAt,
+        error: this.errorForAuthLog(error),
+      });
+      throw error;
+    }
+  }
+
+  private errorForAuthLog(error: unknown): Record<string, unknown> {
+    return error instanceof Error
+      ? {
+          name: error.name,
+          message: error.message,
+          stack: error.stack ?? null,
+          cause: error.cause ?? null,
+        }
+      : { value: error };
   }
 
   private authErrorMessage(body: unknown): string | null {

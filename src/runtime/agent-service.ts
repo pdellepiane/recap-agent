@@ -116,6 +116,11 @@ import {
   unavailableTurnMessageContext,
   type TurnMessageContext,
 } from './turn-message-context';
+import {
+  createAuthOperationId,
+  logAuthObservabilityEvent,
+  withAuthenticationFlowContext,
+} from './auth-observability';
 
 export type HandleTurnResponse = {
   plan: PlanSnapshot;
@@ -2361,12 +2366,27 @@ export class AgentService {
             this.dependencies.agentConversationGateway ??
             new NoopAgentConversationGateway('not_configured'),
         });
-      const execution = await orchestrator.execute({
-        requests,
-        authentication: authResolution.authentication,
-        authBlock: authResolution.authBlock,
-        trustedPhone: splitInternationalPhone(args.inbound.contactPhone),
-      });
+      const execution = await withAuthenticationFlowContext(
+        {
+          authFlowId: authResolution.authFlowId,
+          planId: planForInformation.plan_id,
+        },
+        async () => {
+          const result = await orchestrator.execute({
+            requests,
+            authentication: authResolution.authentication,
+            authBlock: authResolution.authBlock,
+            trustedPhone: splitInternationalPhone(args.inbound.contactPhone),
+          });
+          logAuthObservabilityEvent('info', 'information_auth_execution_completed', {
+            auth_flow_operation_id: authResolution.authFlowId,
+            duration_ms: Date.now() - informationStartedAt,
+            results: result.results,
+            summaries: result.summaries,
+          });
+          return result;
+        },
+      );
       args.timingMs.information_execution += Date.now() - informationStartedAt;
       informationResults = execution.results;
       informationSummaries = execution.summaries;
@@ -2617,6 +2637,63 @@ export class AgentService {
   }
 
   private async resolveInformationAuthentication(args: {
+    plan: PlanSnapshot;
+    userMessage: string;
+    requests: PendingInformationRequest[];
+    toolUsage: ToolUsage;
+    trustedContactPhone: string | null;
+    phoneConfirmation: 'yes' | 'no' | 'unclear' | null;
+  }): Promise<{
+    plan: PlanSnapshot;
+    authentication: InformationAuthentication | null;
+    authBlock: InformationAuthBlock | null;
+    authFlowId: string;
+  }> {
+    const authFlowId = createAuthOperationId();
+    const startedAt = Date.now();
+    return await withAuthenticationFlowContext(
+      { authFlowId, planId: args.plan.plan_id },
+      async () => {
+        logAuthObservabilityEvent('info', 'information_auth_flow_started', {
+          auth_flow_operation_id: authFlowId,
+          prior_auth_state: args.plan.user_auth,
+          trusted_contact_phone: args.trustedContactPhone,
+          phone_confirmation: args.phoneConfirmation,
+          requests: args.requests,
+          user_message_length: args.userMessage.length,
+          extracted_email: this.extractEmailFromText(args.userMessage),
+          otp: this.extractUserLoginCode(args.userMessage),
+        });
+        try {
+          const result = await this.resolveInformationAuthenticationCore(args);
+          logAuthObservabilityEvent('info', 'information_auth_flow_completed', {
+            auth_flow_operation_id: authFlowId,
+            duration_ms: Date.now() - startedAt,
+            next_auth_state: result.plan.user_auth,
+            authentication: result.authentication,
+            auth_block: result.authBlock,
+          });
+          return { ...result, authFlowId };
+        } catch (error) {
+          logAuthObservabilityEvent('error', 'information_auth_flow_failed', {
+            auth_flow_operation_id: authFlowId,
+            duration_ms: Date.now() - startedAt,
+            error: error instanceof Error
+              ? {
+                  name: error.name,
+                  message: error.message,
+                  stack: error.stack ?? null,
+                  cause: error.cause ?? null,
+                }
+              : error,
+          });
+          throw error;
+        }
+      },
+    );
+  }
+
+  private async resolveInformationAuthenticationCore(args: {
     plan: PlanSnapshot;
     userMessage: string;
     requests: PendingInformationRequest[];

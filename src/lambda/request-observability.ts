@@ -37,6 +37,10 @@ export type ChannelRequestLog = {
   duration_ms: number;
   authorization_header_present: boolean;
   bearer_token_present: boolean;
+  bearer_token_sha256?: string;
+  bearer_token_length?: number;
+  accepted_bearer_key_count?: number;
+  matched_bearer_key_index?: number | null;
   channel?: string;
   external_user_hash?: string;
   message_id_hash?: string;
@@ -87,6 +91,9 @@ export function buildChannelRequestLog(args: {
   durationMs: number;
   authorizationHeaderPresent: boolean;
   bearerTokenPresent: boolean;
+  bearerToken?: string | null;
+  acceptedBearerKeyCount?: number;
+  matchedBearerKeyIndex?: number | null;
   channel?: string;
   externalUserId?: string;
   messageId?: string;
@@ -130,6 +137,18 @@ export function buildChannelRequestLog(args: {
     duration_ms: Math.max(0, Math.round(args.durationMs)),
     authorization_header_present: args.authorizationHeaderPresent,
     bearer_token_present: args.bearerTokenPresent,
+    ...(args.bearerToken
+      ? {
+          bearer_token_sha256: sha256(args.bearerToken),
+          bearer_token_length: args.bearerToken.length,
+        }
+      : {}),
+    ...(args.acceptedBearerKeyCount !== undefined
+      ? { accepted_bearer_key_count: args.acceptedBearerKeyCount }
+      : {}),
+    ...(args.matchedBearerKeyIndex !== undefined
+      ? { matched_bearer_key_index: args.matchedBearerKeyIndex }
+      : {}),
     ...(args.channel ? { channel: args.channel } : {}),
     ...(args.externalUserId
       ? { external_user_hash: sha256(args.externalUserId) }

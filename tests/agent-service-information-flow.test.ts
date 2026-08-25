@@ -1,6 +1,6 @@
 import path from 'node:path';
 
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   createInformationAuthGuidance,
@@ -35,6 +35,12 @@ import type {
   UserEventLookupResult,
 } from '../src/runtime/provider-gateway';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
+
+beforeEach(() => {
+  vi.restoreAllMocks();
+  vi.spyOn(console, 'info').mockImplementation(() => undefined);
+  vi.spyOn(console, 'error').mockImplementation(() => undefined);
+});
 
 const promptLoader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
 const renderers = {

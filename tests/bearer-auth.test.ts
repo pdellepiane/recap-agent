@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  bearerTokenMatchIndex,
   bearerTokenMatchesAny,
   readBearerAuthorization,
 } from '../src/lambda/bearer-auth';
@@ -46,5 +47,8 @@ describe('Lambda channel bearer authentication', () => {
     expect(bearerTokenMatchesAny('new-channel-secret', acceptedTokens)).toBe(true);
     expect(bearerTokenMatchesAny('previous-channel-secret', acceptedTokens)).toBe(true);
     expect(bearerTokenMatchesAny('unknown-channel-secret', acceptedTokens)).toBe(false);
+    expect(bearerTokenMatchIndex('new-channel-secret', acceptedTokens)).toBe(0);
+    expect(bearerTokenMatchIndex('previous-channel-secret', acceptedTokens)).toBe(1);
+    expect(bearerTokenMatchIndex('unknown-channel-secret', acceptedTokens)).toBeNull();
   });
 });

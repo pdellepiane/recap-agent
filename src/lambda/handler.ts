@@ -36,7 +36,7 @@ import {
   redactArtifactText,
   type ArtifactJsonValue,
 } from '../runtime/artifact-redaction';
-import { bearerTokenMatchesAny, readBearerAuthorization } from './bearer-auth';
+import { bearerTokenMatchIndex, readBearerAuthorization } from './bearer-auth';
 import {
   agentParticipationRequestSchema,
   channelRequestSchema,
@@ -50,6 +50,7 @@ import {
   type ChannelRequestOutcome,
   type ChannelRequestValidationIssue,
 } from './request-observability';
+import { withRequestObservabilityContext } from '../runtime/auth-observability';
 
 const config = getConfig();
 
@@ -65,11 +66,25 @@ export async function handler(
   event: APIGatewayProxyEventV2,
   context?: Context,
 ): Promise<APIGatewayProxyStructuredResultV2> {
-  const startedAt = Date.now();
   const requestId = context?.awsRequestId ?? event.requestContext.requestId;
+  return await withRequestObservabilityContext(
+    requestId,
+    async () => await handleRequest(event, requestId),
+  );
+}
+
+async function handleRequest(
+  event: APIGatewayProxyEventV2,
+  requestId: string,
+): Promise<APIGatewayProxyStructuredResultV2> {
+  const startedAt = Date.now();
   const method = event.requestContext.http.method;
   const route = resolveRuntimeRequestRoute(event.rawPath);
   const authorization = readBearerAuthorization(event.headers);
+  let channelAuthDiagnostics: {
+    acceptedBearerKeyCount?: number;
+    matchedBearerKeyIndex?: number | null;
+  } = {};
   let requestIdentity: {
     channel?: string;
     externalUserId?: string;
@@ -115,6 +130,9 @@ export async function handler(
       durationMs: Date.now() - startedAt,
       authorizationHeaderPresent: authorization.authorizationHeaderPresent,
       bearerTokenPresent: authorization.token !== null,
+      bearerToken: authorization.token,
+      acceptedBearerKeyCount: channelAuthDiagnostics.acceptedBearerKeyCount,
+      matchedBearerKeyIndex: channelAuthDiagnostics.matchedBearerKeyIndex,
       channel: requestIdentity.channel,
       externalUserId: requestIdentity.externalUserId,
       messageId: requestIdentity.messageId,
@@ -153,7 +171,15 @@ export async function handler(
 
   try {
     const expectedApiKeys = await getChannelApiKeys();
-    if (!bearerTokenMatchesAny(authorization.token, expectedApiKeys)) {
+    const matchedBearerKeyIndex = bearerTokenMatchIndex(
+      authorization.token,
+      expectedApiKeys,
+    );
+    channelAuthDiagnostics = {
+      acceptedBearerKeyCount: expectedApiKeys.length,
+      matchedBearerKeyIndex,
+    };
+    if (matchedBearerKeyIndex === null) {
       return respond(401, { error: 'Unauthorized.' }, 'unauthorized', {
         responseHeaders: {
           'www-authenticate': 'Bearer realm="recap-agent"',

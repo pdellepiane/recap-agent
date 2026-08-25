@@ -29,14 +29,24 @@ export function bearerTokenMatchesAny(
   provided: string | null,
   expectedTokens: readonly string[],
 ): boolean {
+  return bearerTokenMatchIndex(provided, expectedTokens) !== null;
+}
+
+export function bearerTokenMatchIndex(
+  provided: string | null,
+  expectedTokens: readonly string[],
+): number | null {
   if (!provided) {
-    return false;
+    return null;
   }
   const providedDigest = crypto.createHash('sha256').update(provided).digest();
-  let matched = false;
-  for (const expected of expectedTokens) {
+  let matchedIndex: number | null = null;
+  for (const [index, expected] of expectedTokens.entries()) {
     const expectedDigest = crypto.createHash('sha256').update(expected).digest();
-    matched = crypto.timingSafeEqual(providedDigest, expectedDigest) || matched;
+    const matched = crypto.timingSafeEqual(providedDigest, expectedDigest);
+    if (matched && matchedIndex === null) {
+      matchedIndex = index;
+    }
   }
-  return matched;
+  return matchedIndex;
 }

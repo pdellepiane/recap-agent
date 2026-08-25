@@ -1,5 +1,13 @@
 # Project Conventions
 
+## Minimum Disclosure
+
+- Treat prompt context as a constrained runtime resource, not a documentation dump. Before every model call, project the smallest typed state, evidence, policy, and tool surface that can produce the required decision or response.
+- Do not send instructions for result types, routes, tools, fields, or failure modes that are impossible or irrelevant in the current turn. Dynamic state-machine evidence must replace broad conditional guidance whenever the runtime already knows the branch.
+- Prefer route- and outcome-specific prompt sections selected deterministically from validated state. Keep shared prompts short, non-conflicting, and limited to invariants that cannot be projected.
+- When adding a prompt rule, first try to encode the invariant in typed runtime state or deterministic evidence and include only the resulting guidance. Add a prompt-size/relevance regression proving irrelevant content is absent; never solve uncertainty by appending another global rule.
+- Measure serialized instruction and input bytes for changed model calls. A behavior fix is incomplete if it needlessly increases prompt size or reintroduces duplicated/conflicting instructions.
+
 - Always write code, comments, docs, and developer-facing responses in English.
 - Conversational prompt content is the only artifact that must remain in Spanish.
 - Store all prompts as git-trackable text files under `prompts/`, mapped to exact flow nodes.

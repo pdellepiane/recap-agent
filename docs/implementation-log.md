@@ -1,5 +1,20 @@
 # Implementation Log
 
+## 2026-08-24
+
+### Expand FAQ and protected-information authentication observability
+
+- Added a request-scoped observability context that carries the Lambda request ID into every authentication decision and upstream HTTP exchange, plus a distinct authentication-flow ID, plan ID, and per-call operation ID. Extended that flow context through protected-information execution so guest fallback and authenticated account lookups share the same auth-flow ID as credential resolution.
+- Added explicit start/completion/failure records for the protected-information authentication state machine. Records include the prior and next typed auth state, pending FAQ/event/purchase request context, trusted phone and email inputs, confirmation action, auth block, duration, and full exception details.
+- Added detailed request/response logging for phone authentication, guest-by-phone fallback and event detail, email OTP send/verification, authenticated guest-service lookup, phone linking, and authenticated order/gift-purchase lookup. Logs include request URLs, ordinary headers, bodies, upstream request IDs, HTTP status, response headers/body, retry attempts, retry decisions, and timing.
+- Expanded the channel completion record with the presented bearer token's length and SHA-256 fingerprint, accepted rotation-key count, and the matched current/previous key index so channel-key mismatch and incomplete rotation can be diagnosed without recording a replayable bearer value.
+- Kept redaction intentionally narrow for internal testing: emails, phone values, ordinary API payloads, error envelopes, and provider response detail remain visible. Only replayable credentials and session material (`X-Agent-Key`, bearer/JWT values, OTP/request codes, cookies, passwords, and explicit token fields) are replaced with presence, length, SHA-256 fingerprint, and safe unverified JWT claim metadata. Embedded bearer/JWT values in free-text errors receive the same treatment.
+- Added deterministic regressions for context correlation, minimal field-based redaction, JWT diagnostics, current/previous channel-key matching, detailed email-OTP exchange logging, and detailed phone-auth exchange logging.
+
+**Prompt footprint:** No prompt, model input, tool surface, or conversational policy changed; serialized model-call instruction and input bytes are therefore unchanged.
+
+**Verification:** `npm run check` passed 491/491 tests across 70 files after one transient AWS-backed fixture timeout was rerun successfully. The development runtime and provider-sync stacks deployed successfully through `se-dev` in `us-east-1` after STS confirmed account `684516060775`. Synthetic no-OTP protected-information request `26da4343-7c18-4f4e-8f3b-b1fa322e29fe` completed with trace `01M0V1QGKYDWF6SWVMMZ8Q0AWJ`. CloudWatch showed auth flow `7b4d3af8-be15-4073-99dd-cbeaf71a2e77` consistently on the phone-auth request/404 response, guest-event fallback request/404 response, typed execution result, and final channel summary. The record retained the synthetic phone, full upstream headers/bodies, status and timing while replacing both the Agent API key and channel bearer with length plus SHA-256 fingerprints; channel key index `0` confirmed the current rotation key matched. No OTP was requested or delivered during the probe.
+
 ## 2026-08-20
 
 ### Isolate authentication-only reply evidence

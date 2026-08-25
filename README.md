@@ -272,10 +272,26 @@ Channel adapters call the root Function URL without AWS credentials or SigV4 and
 
 Every Function URL invocation emits one structured `channel_request_completed`
 record. The record includes the redacted request path, resolved route, body and
-authentication presence, ownership operation, hashed caller correlation ids,
+authentication presence, bearer length and SHA-256 fingerprint, accepted-key
+count and matched rotation index, ownership operation, hashed caller correlation ids,
 and the resulting participation and plan state when available. This makes an
 unauthenticated resume attempt distinguishable from a message or takeover
-attempt without logging bearer tokens, phone numbers, user ids, or request ids.
+attempt without logging replayable bearer tokens, phone numbers, user ids, or request ids.
+
+Authentication and protected-information turns also emit correlated
+`information_auth_flow_started`, `information_auth_flow_completed`,
+`information_auth_execution_completed`,
+`auth_http_request_started`, `auth_http_response_received`,
+`auth_http_retry_scheduled`, and failure records. These development diagnostics
+include the Lambda request ID, plan and auth-flow IDs, upstream operation ID,
+full request URL, ordinary request/response headers, request/response bodies,
+upstream request ID, status, timing, attempts, state transitions, and detailed
+errors for phone auth, guest fallback, email OTP, phone linking, and
+authenticated event/order lookups. Email addresses, phone values, and ordinary
+upstream payload fields remain visible for internal correlation. Replayable
+credentials (`X-Agent-Key`, bearer/JWT values, OTPs, cookies, and password-like
+fields) are replaced only with presence, length, SHA-256 fingerprint, and safe
+unverified JWT claim metadata where applicable.
 
 Each phone-bearing turn reads the five latest messages from the Agent API once, removes a duplicate of the current inbound message, and shares that curated context with classification, structured extraction, and reply composition. The external history is populated outside Lambda; `AGENT_MESSAGE_LOGGING_ENABLED=false` remains the expected deployment default. In `enforce` mode, clearly non-actionable acknowledgements and emoji-only reactions, plus corporate automated or templated responses classified with explicit high confidence, emit `message: null` with an explicit suppress delivery action. Those non-actionable messages can be suppressed even when campaign history is absent, while questions, corrections, selections, requests, and plan-relevant facts still require a response. A failed Agent API history read skips the classifier and fails open with the structured plan and current message; it never reuses stale history. Classifier failures and ambiguous turns also fail open. No automation status is persisted, so every later inbound turn reads fresh history and is classified again. Reply composition is stateless: durable business state remains in the event plan, while raw channel messages remain in the Agent API rather than being copied into the plan or an OpenAI conversation session.
 
