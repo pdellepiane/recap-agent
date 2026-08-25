@@ -44,8 +44,8 @@ describe('AgentService RSVP flow', () => {
   });
 
   it.each([
-    ['attending', 'confirmó que la asistencia quedó registrada'],
-    ['declining', 'confirmó que la inasistencia quedó registrada'],
+    ['attending', 'estado attending final'],
+    ['declining', 'estado declining final'],
   ] as const)('records an explicit %s response using only the trusted channel phone', async (
     action,
     expectedNote,
@@ -74,9 +74,20 @@ describe('AgentService RSVP flow', () => {
     expect(result.plan.user_auth.status).toBe('none');
     expect(result.trace.route_kind).toBe('rsvp');
     expect(result.trace.tools_called).toContain('guest_rsvp');
+    expect(result.trace.tools_called).toContain('lookup_guest_events_by_phone');
+    expect(gateway.guestEventLookupCalls).toBe(1);
     expect(result.trace.timing_ms.rsvp_execution).toBeTypeOf('number');
     expect(runtime.composeRequests[0]?.errorMessage).toContain(expectedNote);
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('correo');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      coverage: 'complete',
+      resolution: 'authoritative_invitation',
+      events: [{
+        event_name: 'Matrimonio de Ana y Luis',
+        invitation_record: 'available',
+        rsvp_state: action,
+      }],
+    });
   });
 
   it('persists multiple pending candidates and re-calls with only a validated selection', async () => {
@@ -174,7 +185,7 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(result.plan.rsvp_state.selection_attempts).toBe(1);
     expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      'varias invitaciones',
+      'varias invitaciones reconciliadas',
     );
   });
 
@@ -190,7 +201,7 @@ describe('AgentService RSVP flow', () => {
       status: 'awaiting_action',
       pending_action: 'attending',
     });
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('pendiente de respuesta');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('pending');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('confirmes su asistencia');
   });
 
@@ -212,7 +223,22 @@ describe('AgentService RSVP flow', () => {
 
   it('reports an already-confirmed invitation naturally without another mutation', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
-    const gateway = new RsvpGateway([]);
+    const gateway = new RsvpGateway([], [], {
+      status: 'success',
+      events: [{
+        eventId: 205,
+        name: 'Matrimonio de Ana y Luis',
+        slug: 'matrimonio-ana-luis',
+        url: null,
+        datetime: '2026-09-12',
+        type: null,
+        typeDetail: null,
+        stage: null,
+        city: 'Lima',
+        country: 'PE',
+        currency: 'PEN',
+      }],
+    });
     const service = createService(runtime, gateway, new InMemoryPlanStore(), [
       rsvpLookupInvitation({ hasResponded: true, willAttend: true }),
     ]);
@@ -220,7 +246,11 @@ describe('AgentService RSVP flow', () => {
     await service.handleTurn(inbound('¿Mi asistencia está confirmada?'));
 
     expect(gateway.inputs).toEqual([]);
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('ya figura confirmada');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('attending');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.invitation_record).toBe(
+      'available',
+    );
     expect(runtime.composeRequests[0]?.errorMessage).toContain('disfrute el evento');
   });
 
@@ -246,9 +276,8 @@ describe('AgentService RSVP flow', () => {
     expect(result.plan.rsvp_state.status).toBe('none');
     expect(gateway.inputs).toHaveLength(1);
     expect(gateway.inputs[0]).toMatchObject({ action: 'attending', guest_id: 41 });
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      'asistencia quedó registrada',
-    );
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('attending');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('actualización se completó');
   });
 
   it('never claims a declined invitation changed when the backend returns its current state', async () => {
@@ -292,8 +321,8 @@ describe('AgentService RSVP flow', () => {
 
     await service.handleTurn(inbound('Sí'));
 
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('sigue figurando');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('estado no cambió');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('declining');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('no cambió');
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('quedó registrada');
   });
 
@@ -341,7 +370,12 @@ describe('AgentService RSVP flow', () => {
     const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
 
     const request = runtime.composeRequests[0];
-    expect(request?.errorMessage).toContain('invitación de Gia Antonella');
+    expect(request?.rsvpPhoneEvidence).toEqual({
+      coverage: 'complete',
+      resolution: 'not_found',
+      events: [],
+    });
+    expect(request?.extraction.rsvpEventReference).toBe('Gia Antonella');
     expect(request?.errorMessage).toContain('no devolvió su registro ni su estado');
     expect(request?.errorMessage).not.toContain(
       'no encontró invitaciones pendientes para el número',
@@ -382,15 +416,96 @@ describe('AgentService RSVP flow', () => {
     const result = await service.handleTurn(inbound('Hola, ya confirmé, gracias'));
 
     expect(gateway.inputs).toEqual([]);
+    expect(gateway.guestEventLookupCalls).toBe(1);
+    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).toContain('lookup_guest_events_by_phone');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      'sí está asociado al evento de Michelle & Jorge',
-    );
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toEqual({
+      coverage: 'complete',
+      resolution: 'event_association_only',
+      events: [{
+        event_name: 'Michelle & Jorge',
+        event_date: '2026-10-10T19:00:00.000Z',
+        invitation_record: 'unavailable',
+        rsvp_state: 'unavailable',
+      }],
+    });
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain('Michelle & Jorge');
     expect(runtime.composeRequests[0]?.errorMessage).toContain(
       'no hiciste otro cambio',
     );
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
       'no encontró ninguna invitación',
+    );
+  });
+
+  it('starts both phone lookups before either result is reconciled', async () => {
+    const sequence: string[] = [];
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
+    const gateway = new RsvpGateway(
+      [],
+      [],
+      { status: 'not_found' },
+      () => sequence.push('guest-events-start'),
+    );
+    const providerGateway = {
+      async lookupUserEventContext(): Promise<UserEventLookupResult> {
+        sequence.push('user-context-start');
+        await new Promise((resolve) => setTimeout(resolve, 10));
+        sequence.push('user-context-end');
+        return {
+          lookup: { email: null, phone: '973296571' },
+          user: null,
+          events: [rsvpLookupInvitation({})],
+          counts: {
+            ownerEvents: 0,
+            guestEvents: 1,
+            hostEvents: 0,
+            celebratedEvents: 0,
+            recentOrders: 0,
+          },
+        };
+      },
+    } as unknown as ProviderGateway;
+    const service = createService(
+      runtime,
+      gateway,
+      new InMemoryPlanStore(),
+      [],
+      providerGateway,
+    );
+
+    await service.handleTurn(inbound('¿Cómo está mi invitación?'));
+
+    expect(sequence).toEqual([
+      'user-context-start',
+      'guest-events-start',
+      'user-context-end',
+    ]);
+  });
+
+  it('marks reconciled evidence partial when one phone lookup fails', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
+    const gateway = new RsvpGateway(
+      [],
+      [],
+      { status: 'not_found' },
+      () => {
+        throw new Error('guest-event read unavailable');
+      },
+    );
+    const service = createService(runtime, gateway);
+
+    await service.handleTurn(inbound('¿Cómo está mi invitación?'));
+
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      coverage: 'partial',
+      resolution: 'authoritative_invitation',
+      events: [{ invitation_record: 'available', rsvp_state: 'pending' }],
+    });
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('coverage=partial');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'no presentes la lista de eventos como exhaustiva',
     );
   });
 });
@@ -417,11 +532,13 @@ class RsvpRuntime implements AgentRuntime {
 
 class RsvpGateway implements AgentConversationGateway {
   readonly inputs: AgentGuestRsvpInput[] = [];
+  guestEventLookupCalls = 0;
 
   constructor(
     private readonly results: AgentGuestRsvpResult[],
     private readonly messages: AgentConversationMessage[] = [],
     private readonly guestEvents: AgentGuestEventsResult = { status: 'not_found' },
+    private readonly onGuestEventLookup?: () => void,
   ) {}
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
@@ -453,6 +570,8 @@ class RsvpGateway implements AgentConversationGateway {
   }
 
   async getGuestEventsByPhone(): Promise<AgentGuestEventsResult> {
+    this.guestEventLookupCalls += 1;
+    this.onGuestEventLookup?.();
     return this.guestEvents;
   }
 
@@ -527,11 +646,12 @@ function createService(
   gateway: AgentConversationGateway,
   store = new InMemoryPlanStore(),
   invitations: UserEventLookupResult['events'] | null = [rsvpLookupInvitation({})],
+  providerGateway?: ProviderGateway,
 ): AgentService {
   return new AgentService({
     planStore: store,
     runtime,
-    providerGateway: {
+    providerGateway: providerGateway ?? {
       async lookupUserEventContext(): Promise<UserEventLookupResult | null> {
         if (invitations === null) {
           return null;

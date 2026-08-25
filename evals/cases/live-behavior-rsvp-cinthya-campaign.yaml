@@ -1,9 +1,9 @@
 template: template.base-live
 id: live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing
 suite: live_behavior_regression
-version: 1
-description: A campaign-grounded RSVP for Julisabeth y Andrés must use the trusted-phone event read fallback and must not be reported as a missing invitation.
-tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context]
+version: 2
+description: A campaign-grounded RSVP for Julisabeth y Andrés must reconcile both phone-scoped reads and must not be reported as a missing invitation.
+tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context, concurrent-read]
 targetModes: [live_lambda]
 inputs:
   - text: Gracias, confirmo asistencia
@@ -17,13 +17,13 @@ expectations:
     severity: hard
   - id: reads-user-level-state-without-account-auth
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations]
+    mustCall: [lookup_rsvp_invitations, lookup_guest_events_by_phone]
     mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
     severity: hard
   - id: preserves-campaign-grounded-invitation
     type: text_semantic
     rubric: >-
-      The recent campaign history and trusted-phone event lookup establish that this number is associated with Julisabeth y Andrés, while the current read contract does not expose the guest record or attendance state. The answer must remain entirely in Spanish, acknowledge the event association, thank the person for confirming, and say that no additional change was made. It must not deny the invitation, ask for email or a code, or claim that the stored attendance state was verified or updated.
+      The reconciled phone evidence establishes that this number is associated with Julisabeth y Andrés, while the current read contract does not expose the guest record or attendance state. The answer must remain entirely in Spanish, acknowledge the event association, thank the person for confirming, and say that no additional change was made. It must not deny the invitation, ask for email or a code, or claim that the stored attendance state was verified or updated.
     minScore: 0.9
     requireJudge: true
     severity: hard

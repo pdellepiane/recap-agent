@@ -86,6 +86,20 @@ export type ExtractRequest = {
   messageContext: TurnMessageContext;
 };
 
+export type RsvpPhoneReplyEvidence = {
+  coverage: 'complete' | 'partial';
+  resolution:
+    | 'authoritative_invitation'
+    | 'event_association_only'
+    | 'not_found';
+  events: Array<{
+    event_name: string | null;
+    event_date: string | null;
+    invitation_record: 'available' | 'unavailable';
+    rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
+  }>;
+};
+
 export type ComposeReplyRequest = {
   currentNode: DecisionNode;
   previousNode: DecisionNode;
@@ -102,6 +116,7 @@ export type ComposeReplyRequest = {
   promptFilePaths: string[];
   toolUsage: ToolUsage;
   informationResults?: InformationTaskResult[];
+  rsvpPhoneEvidence?: RsvpPhoneReplyEvidence | null;
 };
 
 export type ComposeReplyResult = {

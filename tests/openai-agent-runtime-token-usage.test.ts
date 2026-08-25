@@ -51,8 +51,13 @@ function emptyFunnel(): {
 }
 
 function readCanonicalEvidence(input: string): {
+  history: {
+    status: string;
+    recent_messages: unknown[];
+  };
   extraction: Record<string, unknown>;
   plan: Record<string, unknown>;
+  rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
   provider_candidates: Array<Record<string, unknown>>;
 } {
   const marker = 'Evidencia canónica del turno (JSON): ';
@@ -62,8 +67,13 @@ function readCanonicalEvidence(input: string): {
   const separator = input.indexOf('\n\n', jsonStart);
   const json = input.slice(jsonStart, separator === -1 ? undefined : separator);
   return JSON.parse(json) as {
+    history: {
+      status: string;
+      recent_messages: unknown[];
+    };
     extraction: Record<string, unknown>;
     plan: Record<string, unknown>;
+    rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
     provider_candidates: Array<Record<string, unknown>>;
   };
 }
@@ -844,6 +854,79 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(rsvpInput).not.toContain('pending_requests');
     expect(rsvpInput).not.toContain('Categorías sugeridas para event_type=');
     expect(rsvpInput).toContain('rsvp_state');
+  });
+
+  it('gives the RSVP model one minimal reconciled phone-evidence projection', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = createComposeRequest('responder_invitacion');
+    request.userMessage = 'Hola, ya confirmé, gracias';
+    request.plan.contact_phone = '51942633292';
+    request.plan.contact_phone_extension = '+51';
+    request.plan.contact_phone_number = '942633292';
+    request.extraction.rsvpAction = 'attending';
+    request.extraction.rsvpEventReference = 'Michelle & Jorge';
+    request.messageContext = {
+      historyStatus: 'available',
+      contextSource: 'agent_api',
+      retrievedMessageCount: 1,
+      excludedCurrentMessageCount: 0,
+      recentMessages: [{
+        id: 99,
+        direction: 'outbound',
+        source: 'admin_campaign',
+        body: 'Invitación a Michelle & Jorge con información duplicada.',
+        status: 'delivered',
+        sentAt: '2026-08-24T19:02:00.000Z',
+        createdAt: null,
+      }],
+      entryMessage: null,
+    };
+    request.rsvpPhoneEvidence = {
+      coverage: 'complete',
+      resolution: 'event_association_only',
+      events: [{
+        event_name: 'Michelle & Jorge',
+        event_date: '2026-10-10T19:00:00.000Z',
+        invitation_record: 'unavailable',
+        rsvp_state: 'unavailable',
+      }],
+    };
+    request.errorMessage = 'Usa exclusivamente rsvp_phone_evidence; no inventes el estado.';
+    request.toolUsage.outputs = [{
+      tool: 'lookup_rsvp_invitations',
+      output: JSON.stringify({
+        guest_id: 8831,
+        event_id: 37218,
+        access_method: 'trusted_phone_event',
+        city: 'Lima',
+        currency: 'PEN',
+      }),
+    }];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: ReturnType<typeof emptyFunnel>,
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+    const evidence = readCanonicalEvidence(input);
+
+    expect(evidence.rsvp_phone_evidence).toEqual(request.rsvpPhoneEvidence);
+    expect(evidence.history).toEqual({
+      status: 'available',
+      recent_messages: [],
+    });
+    expect(input).not.toContain('51942633292');
+    expect(input).not.toContain('942633292');
+    expect(input).not.toContain('guest_id');
+    expect(input).not.toContain('event_id');
+    expect(input).not.toContain('access_method');
+    expect(input).not.toContain('"city"');
+    expect(input).not.toContain('"currency"');
+    expect(input).not.toContain('información duplicada');
+    expect(findDuplicateStructuredSubtrees(input)).toEqual([]);
+    expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(3_800);
   });
 });
 

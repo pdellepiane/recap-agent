@@ -84,6 +84,7 @@ type ReplyTurnEvidence = {
   extraction: Record<string, unknown>;
   plan: Record<string, unknown>;
   information_results: unknown[];
+  rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
   turn_state: {
     focus_need_category: PersistedPlan['active_need_category'];
     missing_fields: string[];
@@ -930,6 +931,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           stop_reason: args.request.turnDecision.stopReason,
         }
       : null;
+    const hasRsvpPhoneEvidence =
+      args.request.currentNode === 'responder_invitacion' &&
+      args.request.rsvpPhoneEvidence !== null &&
+      args.request.rsvpPhoneEvidence !== undefined;
 
     return {
       nodes: {
@@ -938,7 +943,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       },
       history: {
         status: args.request.messageContext.historyStatus,
-        recent_messages: args.authenticationOnlyReply
+        recent_messages: args.authenticationOnlyReply || hasRsvpPhoneEvidence
           ? []
           : buildModelVisibleConversationHistory(args.request.messageContext),
       },
@@ -946,12 +951,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       decision,
       extraction: args.authenticationOnlyReply
         ? {}
+        : hasRsvpPhoneEvidence
+          ? this.buildMinimalRsvpExtractionSnapshot(args.request.extraction)
         : this.buildReplyExtractionSnapshot(
             args.request.extraction,
             args.request.currentNode,
           ),
       plan: args.authenticationOnlyReply
         ? { current_node: args.request.plan.current_node }
+        : hasRsvpPhoneEvidence
+          ? this.buildMinimalRsvpPlanSnapshot(args.request.plan)
         : this.buildPromptPlanSnapshot(
             args.request.plan,
             args.focusNeedCategory,
@@ -960,6 +969,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       information_results: (args.request.informationResults ?? []).map((result) =>
         this.projectInformationResultForReply(result),
       ),
+      rsvp_phone_evidence: args.request.rsvpPhoneEvidence ?? null,
       turn_state: {
         focus_need_category: args.focusNeedCategory,
         missing_fields: args.request.missingFields.map((field) =>
@@ -972,6 +982,37 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         this.buildProviderEvidence(provider, index + 1),
       ),
       recommendation_funnel: args.recommendationFunnel,
+    };
+  }
+
+  private buildMinimalRsvpExtractionSnapshot(
+    extraction: ComposeReplyRequest['extraction'],
+  ): Record<string, unknown> {
+    return {
+      action_intent: extraction.actionIntent,
+      rsvp_action: extraction.rsvpAction ?? null,
+      ambiguity: extraction.ambiguity
+        ? {
+            status: extraction.ambiguity.status,
+            clarification_question: extraction.ambiguity.clarificationQuestion,
+          }
+        : null,
+    };
+  }
+
+  private buildMinimalRsvpPlanSnapshot(
+    plan: PersistedPlan,
+  ): Record<string, unknown> {
+    return {
+      current_node: plan.current_node,
+      contact_phone_present: Boolean(
+        plan.contact_phone_extension && plan.contact_phone_number,
+      ),
+      rsvp_state: {
+        status: plan.rsvp_state.status,
+        pending_action: plan.rsvp_state.pending_action,
+        selection_attempts: plan.rsvp_state.selection_attempts,
+      },
     };
   }
 

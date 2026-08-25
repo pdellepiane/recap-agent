@@ -67,6 +67,7 @@ import type {
   AgentRuntime,
   ComposeReplyResult,
   ExtractionResult,
+  RsvpPhoneReplyEvidence,
   ToolUsage,
 } from './contracts';
 import type { TokenUsage } from './contracts';
@@ -164,11 +165,21 @@ type ProviderSearchExecutionResult = {
 type RsvpInvitationState = 'pending' | 'attending' | 'declining' | 'unknown';
 
 type RsvpInvitation = {
+  eventId: number | null;
   guestId: number | null;
   eventName: string | null;
   eventDate: string | null;
   state: RsvpInvitationState;
   accessMethod: 'guest_record' | 'trusted_phone_event';
+};
+
+type RsvpPhoneEvidence = {
+  coverage: 'complete' | 'partial';
+  resolution:
+    | 'authoritative_invitation'
+    | 'event_association_only'
+    | 'not_found';
+  invitations: RsvpInvitation[];
 };
 
 type TurnTiming = {
@@ -1726,26 +1737,32 @@ export class AgentService {
     let operationalNote: string;
     let nextRsvpState = pendingState;
 
-    args.toolUsage.considered.push('lookup_rsvp_invitations', 'guest_rsvp');
+    args.toolUsage.considered.push(
+      'lookup_rsvp_invitations',
+      'lookup_guest_events_by_phone',
+      'guest_rsvp',
+    );
     const phoneExtension = args.workingPlan.contact_phone_extension;
     const phoneNumber = args.workingPlan.contact_phone_number;
-    const lookedUpInvitations = phoneExtension && phoneNumber
-      ? await this.lookupRsvpInvitations(
+    const phoneEvidence = phoneExtension && phoneNumber
+      ? await this.lookupRsvpPhoneEvidence(
           { phone_extension: phoneExtension, phone_number: phoneNumber },
           args.gateway,
           args.toolUsage,
           args.timingMs,
         )
       : null;
-    const invitations = lookedUpInvitations?.length === 0 && pendingState.candidates.length > 0
+    let replyPhoneEvidence = phoneEvidence;
+    const invitations = phoneEvidence?.invitations.length === 0 && pendingState.candidates.length > 0
       ? pendingState.candidates.map((candidate) => ({
+          eventId: null,
           guestId: candidate.guest_id,
           eventName: candidate.event_name,
           eventDate: candidate.event_date,
           state: 'unknown' as const,
           accessMethod: 'guest_record' as const,
         }))
-      : lookedUpInvitations;
+      : phoneEvidence?.invitations ?? null;
     const selectedInvitation = invitations
       ? this.selectRsvpInvitation({
           invitations,
@@ -1770,15 +1787,11 @@ export class AgentService {
         (message) => message.source === 'admin_campaign',
       );
       operationalNote = groundedCampaignEvent || hasCampaignInvitationContext
-        ? `El historial de campaña confirma contexto de una invitación${groundedCampaignEvent ? ` de ${groundedCampaignEvent}` : ''} asociada a esta conversación, pero la consulta actual de usuario no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.`
+        ? 'El historial de campaña confirma contexto de una invitación asociada a esta conversación, pero rsvp_phone_evidence no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.'
         : 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation && invitations.some((invitation) => invitation.guestId === null)) {
-      const associatedEvents = invitations.map((invitation) => ({
-        event_name: invitation.eventName,
-        event_date: invitation.eventDate,
-      }));
-      operationalNote = `El número confiable sí está asociado a estos eventos: ${JSON.stringify(associatedEvents)}. La consulta disponible no expone el registro de invitado ni el estado de asistencia. No digas que no existe una invitación, no pidas correo ni código y no afirmes que se actualizó una respuesta. Pide en una sola frase que identifique el evento solo si hay más de uno; si hay uno, reconoce la asociación y ofrece apoyo humano únicamente para verificar el estado.`;
+      operationalNote = 'Usa exclusivamente los eventos de rsvp_phone_evidence. invitation_record=unavailable significa que la consulta no expone el registro de invitado ni el estado de asistencia. No digas que no existe una invitación, no pidas correo ni código y no afirmes que se actualizó una respuesta. Pide en una sola frase que identifique el evento solo si hay más de uno; si hay uno, reconoce la asociación y ofrece apoyo humano únicamente para verificar el estado.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation) {
       const attempts = pendingState.status === 'awaiting_event_selection'
@@ -1797,12 +1810,9 @@ export class AgentService {
       };
       operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
     } else if (selectedInvitation.guestId === null) {
-      const event = selectedInvitation.eventName
-        ? ` de ${selectedInvitation.eventName}`
-        : '';
       operationalNote = action
-        ? `El número confiable sí está asociado al evento${event}, pero esta consulta de solo lectura no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.`
-        : `El número confiable sí está asociado al evento${event}, pero esta consulta de solo lectura no expone el estado de asistencia. No inventes el estado, no pidas correo ni código y ofrece apoyo humano para verificarlo.`;
+        ? 'Usa el evento seleccionado de rsvp_phone_evidence. invitation_record=unavailable significa que la consulta no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.'
+        : 'Usa el evento seleccionado de rsvp_phone_evidence. rsvp_state=unavailable significa que la consulta no expone el estado de asistencia. No inventes el estado, no pidas correo ni código y ofrece apoyo humano para verificarlo.';
       nextRsvpState = this.emptyRsvpState();
     } else {
       const currentAction = selectedInvitation.state === 'attending'
@@ -1845,6 +1855,13 @@ export class AgentService {
           tool: 'guest_rsvp',
           output: JSON.stringify(this.summarizeRsvpResult(result)),
         });
+        replyPhoneEvidence = phoneEvidence
+          ? this.applyRsvpMutationResultToPhoneEvidence(
+              phoneEvidence,
+              selectedInvitation,
+              result,
+            )
+          : null;
         operationalNote = this.rsvpOperationalNote(
           result,
           action,
@@ -1857,6 +1874,10 @@ export class AgentService {
         );
         nextRsvpState = this.emptyRsvpState();
       }
+    }
+
+    if (replyPhoneEvidence?.coverage === 'partial') {
+      operationalNote += ' coverage=partial significa que una de las dos consultas no estuvo disponible; no presentes la lista de eventos como exhaustiva.';
     }
 
     const planToSave = mergePlan(args.workingPlan, {
@@ -1886,6 +1907,9 @@ export class AgentService {
       promptBundleId: bundle.id,
       promptFilePaths: bundle.filePaths,
       toolUsage: args.toolUsage,
+      rsvpPhoneEvidence: replyPhoneEvidence
+        ? this.projectRsvpPhoneEvidenceForReply(replyPhoneEvidence)
+        : null,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
@@ -1980,26 +2004,45 @@ export class AgentService {
     };
   }
 
-  private async lookupRsvpInvitations(
+  private async lookupRsvpPhoneEvidence(
     phone: { phone_extension: string; phone_number: string },
     gateway: AgentConversationGateway,
     toolUsage: ToolUsage,
     timingMs: TurnTiming,
-  ): Promise<RsvpInvitation[] | null> {
+  ): Promise<RsvpPhoneEvidence | null> {
     const startedAt = Date.now();
     toolUsage.called.push('lookup_rsvp_invitations');
     toolUsage.inputs.push({
       tool: 'lookup_rsvp_invitations',
       input: JSON.stringify({ trusted_phone_present: true }),
     });
-    try {
-      const result = await this.dependencies.providerGateway.lookupUserEventContext({
-        email: null,
-        phone: phone.phone_number,
+    if (gateway.getGuestEventsByPhone) {
+      toolUsage.called.push('lookup_guest_events_by_phone');
+      toolUsage.inputs.push({
+        tool: 'lookup_guest_events_by_phone',
+        input: JSON.stringify({ trusted_phone_present: true }),
       });
-      const invitations: RsvpInvitation[] = result?.events
+    }
+    try {
+      const [userContextOutcome, guestEventsOutcome] = await Promise.allSettled([
+        this.dependencies.providerGateway.lookupUserEventContext({
+          email: null,
+          phone: phone.phone_number,
+        }),
+        gateway.getGuestEventsByPhone
+          ? gateway.getGuestEventsByPhone(phone)
+          : Promise.resolve(null),
+      ]);
+      const userContext = userContextOutcome.status === 'fulfilled'
+        ? userContextOutcome.value
+        : null;
+      const guestEvents = guestEventsOutcome.status === 'fulfilled'
+        ? guestEventsOutcome.value
+        : null;
+      const authoritativeInvitations: RsvpInvitation[] = userContext?.events
         .filter((event) => event.relation === 'guest' && event.guestId !== null)
         .map((event) => ({
+          eventId: event.eventId,
           guestId: event.guestId as number,
           eventName: event.name,
           eventDate: event.datetime,
@@ -2009,43 +2052,68 @@ export class AgentService {
           ),
           accessMethod: 'guest_record' as const,
         })) ?? [];
-      if (invitations.length === 0 && gateway.getGuestEventsByPhone) {
-        const trustedPhoneEvents = await gateway.getGuestEventsByPhone(phone);
-        if (trustedPhoneEvents.status === 'success') {
-          invitations.push(...trustedPhoneEvents.events.map((event) => ({
+      const associatedEvents: RsvpInvitation[] = guestEvents?.status === 'success'
+        ? guestEvents.events.map((event) => ({
+            eventId: event.eventId,
             guestId: null,
             eventName: event.name,
             eventDate: event.datetime,
             state: 'unknown' as const,
             accessMethod: 'trusted_phone_event' as const,
-          })));
-        } else if (trustedPhoneEvents.status === 'failed') {
+          }))
+        : [];
+      const invitations = this.reconcileRsvpPhoneEvidence(
+        authoritativeInvitations,
+        associatedEvents,
+      );
+      const sourceFailed =
+        !gateway.getGuestEventsByPhone ||
+        userContextOutcome.status === 'rejected' ||
+        guestEventsOutcome.status === 'rejected' ||
+        guestEvents?.status === 'failed';
+      if (invitations.length === 0 && sourceFailed) {
+        toolUsage.outputs.push({
+          tool: 'lookup_rsvp_invitations',
+          output: JSON.stringify({ status: 'failed' }),
+        });
+        if (gateway.getGuestEventsByPhone) {
           toolUsage.outputs.push({
-            tool: 'lookup_rsvp_invitations',
-            output: JSON.stringify({
-              status: 'failed',
-              source: 'trusted_phone_event',
-              retryable: trustedPhoneEvents.retryable,
-              error: trustedPhoneEvents.error,
-            }),
+            tool: 'lookup_guest_events_by_phone',
+            output: JSON.stringify({ status: 'failed' }),
           });
-          return null;
         }
+        return null;
       }
+      const resolution: RsvpPhoneEvidence['resolution'] = authoritativeInvitations.length > 0
+        ? 'authoritative_invitation'
+        : associatedEvents.length > 0
+          ? 'event_association_only'
+          : 'not_found';
       toolUsage.outputs.push({
         tool: 'lookup_rsvp_invitations',
         output: JSON.stringify({
-          status: invitations.length > 0 ? 'success' : result ? 'success' : 'not_found',
-          invitations: invitations?.map((invitation) => ({
+          status: resolution,
+          invitations: invitations.map((invitation) => ({
+            event_id: invitation.eventId,
             guest_id: invitation.guestId,
             event_name: invitation.eventName,
             event_date: invitation.eventDate,
             current_state: invitation.state,
             access_method: invitation.accessMethod,
-          })) ?? [],
+          })),
         }),
       });
-      return invitations;
+      if (gateway.getGuestEventsByPhone) {
+        toolUsage.outputs.push({
+          tool: 'lookup_guest_events_by_phone',
+          output: JSON.stringify({ status: 'incorporated_into_phone_evidence' }),
+        });
+      }
+      return {
+        coverage: sourceFailed ? 'partial' : 'complete',
+        resolution,
+        invitations,
+      };
     } catch (error) {
       toolUsage.outputs.push({
         tool: 'lookup_rsvp_invitations',
@@ -2058,6 +2126,76 @@ export class AgentService {
     } finally {
       timingMs.rsvp_execution += Date.now() - startedAt;
     }
+  }
+
+  private reconcileRsvpPhoneEvidence(
+    authoritativeInvitations: RsvpInvitation[],
+    associatedEvents: RsvpInvitation[],
+  ): RsvpInvitation[] {
+    const reconciled = [...authoritativeInvitations];
+    associatedEvents.forEach((associatedEvent) => {
+      const duplicate = reconciled.some((invitation) =>
+        this.sameRsvpEvent(invitation, associatedEvent));
+      if (!duplicate) {
+        reconciled.push(associatedEvent);
+      }
+    });
+    return reconciled;
+  }
+
+  private projectRsvpPhoneEvidenceForReply(
+    evidence: RsvpPhoneEvidence,
+  ): RsvpPhoneReplyEvidence {
+    return {
+      coverage: evidence.coverage,
+      resolution: evidence.resolution,
+      events: evidence.invitations.map((invitation) => ({
+        event_name: invitation.eventName,
+        event_date: invitation.eventDate,
+        invitation_record: invitation.guestId === null
+          ? 'unavailable'
+          : 'available',
+        rsvp_state: invitation.state === 'unknown'
+          ? 'unavailable'
+          : invitation.state,
+      })),
+    };
+  }
+
+  private applyRsvpMutationResultToPhoneEvidence(
+    evidence: RsvpPhoneEvidence,
+    selectedInvitation: RsvpInvitation,
+    result: AgentGuestRsvpResult,
+  ): RsvpPhoneEvidence {
+    const resolvedState: RsvpInvitationState | null = result.status === 'responded'
+      ? result.action
+      : result.status === 'already_responded' && result.currentAction
+        ? result.currentAction
+        : result.status === 'no_pending'
+          ? 'unknown'
+          : null;
+    if (resolvedState === null) {
+      return evidence;
+    }
+    return {
+      ...evidence,
+      invitations: evidence.invitations.map((invitation) =>
+        this.sameRsvpEvent(invitation, selectedInvitation)
+          ? { ...invitation, state: resolvedState }
+          : invitation),
+    };
+  }
+
+  private sameRsvpEvent(
+    left: RsvpInvitation,
+    right: RsvpInvitation,
+  ): boolean {
+    if (left.eventId !== null && right.eventId !== null) {
+      return left.eventId === right.eventId;
+    }
+    const leftName = this.normalizeSelectionText(left.eventName ?? '');
+    const rightName = this.normalizeSelectionText(right.eventName ?? '');
+    return Boolean(leftName) && leftName === rightName;
   }
 
   private rsvpInvitationState(
@@ -2150,17 +2288,16 @@ export class AgentService {
     invitation: RsvpInvitation,
     offerAction: boolean,
   ): string {
-    const event = invitation.eventName ? ` para ${invitation.eventName}` : '';
     if (invitation.state === 'pending') {
-      return `La invitación${event} está pendiente de respuesta. ${offerAction ? 'Pregunta de forma natural si desea que confirmes su asistencia.' : 'No afirmes que se registró una respuesta.'}`;
+      return `Comunica el estado pendiente de rsvp_phone_evidence. ${offerAction ? 'Pregunta de forma natural si desea que confirmes su asistencia.' : 'No afirmes que se registró una respuesta.'}`;
     }
     if (invitation.state === 'attending') {
-      return `La asistencia ya figura confirmada${event}. Comunícalo con naturalidad y desea que disfrute el evento; no ejecutes otra actualización.`;
+      return 'Comunica con naturalidad el estado attending de rsvp_phone_evidence y desea que disfrute el evento; no ejecutes otra actualización.';
     }
     if (invitation.state === 'declining') {
-      return `La invitación${event} figura actualmente como que no asistirá. ${offerAction ? 'Pregunta si desea cambiarla para confirmar que sí asistirá.' : 'No afirmes que se cambió.'}`;
+      return `Comunica con naturalidad el estado declining de rsvp_phone_evidence. ${offerAction ? 'Pregunta si desea cambiarlo para confirmar que sí asistirá.' : 'No afirmes que se cambió.'}`;
     }
-    return `La invitación${event} existe, pero la consulta no devolvió un estado de asistencia interpretable. No inventes el estado ni afirmes una actualización; ofrece apoyo humano.`;
+    return 'La consulta no devolvió un estado de asistencia interpretable. No inventes el estado ni afirmes una actualización; ofrece apoyo humano.';
   }
 
   private multipleRsvpInvitationsNote(
@@ -2168,15 +2305,11 @@ export class AgentService {
     action: 'attending' | 'declining' | null,
     attempts: number,
   ): string {
-    const states = invitations.map((invitation) => ({
-      event_name: invitation.eventName,
-      event_date: invitation.eventDate,
-      current_state: invitation.state,
-    }));
+    void invitations;
     const nextStep = action
       ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta.'
       : 'Informa brevemente el estado actual de cada invitación y pregunta cuál desea gestionar.';
-    return `La consulta encontró varias invitaciones: ${JSON.stringify(states)}. ${nextStep} ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
+    return `rsvp_phone_evidence contiene varias invitaciones reconciliadas. ${nextStep} ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
   }
 
   private rsvpOperationalNote(
@@ -2186,22 +2319,20 @@ export class AgentService {
     groundedCampaignEvent: string | null,
   ): string {
     if (result.status === 'responded') {
-      const eventName = result.eventName ?? selectedCandidate?.event_name ?? null;
+      void selectedCandidate;
       return action === 'attending'
-        ? `El servicio confirmó que la asistencia quedó registrada${eventName ? ` para ${eventName}` : ''}. Comunica el éxito sin pedir otra confirmación.`
-        : `El servicio confirmó que la inasistencia quedó registrada${eventName ? ` para ${eventName}` : ''}. Comunica el éxito sin pedir otra confirmación.`;
+        ? 'La actualización se completó. Comunica el estado attending final de rsvp_phone_evidence sin pedir otra confirmación.'
+        : 'La actualización se completó. Comunica el estado declining final de rsvp_phone_evidence sin pedir otra confirmación.';
     }
     if (result.status === 'multiple_pending') {
       return 'El servicio encontró varias invitaciones pendientes. Presenta únicamente los candidatos visibles en rsvp_state y pregunta a cuál evento desea responder. No afirmes que ya se registró una respuesta.';
     }
     if (result.status === 'already_responded') {
-      const eventName = result.eventName ?? selectedCandidate?.event_name ?? null;
-      const event = eventName ? ` para ${eventName}` : '';
       if (result.currentAction === 'attending') {
-        return `El servicio no realizó una nueva actualización porque la asistencia ya figura confirmada${event}. Comunica el estado real con naturalidad.`;
+        return 'El servicio no realizó una nueva actualización. Comunica con naturalidad el estado attending de rsvp_phone_evidence.';
       }
       if (result.currentAction === 'declining') {
-        return `El servicio no realizó el cambio solicitado: la invitación${event} sigue figurando como que no asistirá. No afirmes éxito; explica que el estado no cambió y ofrece apoyo humano para modificarlo.`;
+        return 'El servicio no realizó el cambio solicitado. Comunica el estado declining de rsvp_phone_evidence, explica que no cambió y ofrece apoyo humano para modificarlo.';
       }
       return 'El servicio indicó que esa invitación ya tenía una respuesta registrada, pero no devolvió si era asistencia o inasistencia. No afirmes que se realizó una nueva actualización.';
     }
