@@ -37,6 +37,8 @@ export const purchaseAuthActionValues = [
   'report_otp_not_received',
   'resend_otp',
   'change_email',
+  'accountless_user',
+  'decline_authentication',
 ] as const;
 export type PurchaseAuthAction = (typeof purchaseAuthActionValues)[number];
 
@@ -133,6 +135,8 @@ export const userAuthStateSchema = z.object({
   last_error: z.string().nullable().default(null),
   requested_at: z.string().nullable().default(null),
   failed_code_attempts: z.number().int().nonnegative().default(0),
+  otp_send_attempts: z.number().int().nonnegative().default(0),
+  otp_non_delivery_reports: z.number().int().nonnegative().default(0),
   auth_method: z.enum(['phone', 'email']).nullable().default(null),
   awaiting_phone_confirmation: z.boolean().default(false),
 });

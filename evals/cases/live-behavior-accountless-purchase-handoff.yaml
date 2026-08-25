@@ -1,0 +1,68 @@
+template: template.base-live
+id: live_behavior.accountless_purchase_hands_off_without_registered_email
+suite: live_behavior_regression
+version: 1
+description: A buyer who explicitly says they paid without registering must reach human support without another registered-email or OTP request.
+tags: [live, behavior, authentication, purchase, accountless-user, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Pagué el regalo sin registrarme ni crear una cuenta.
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: live-accountless-purchase-handoff-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  user_auth:
+    status: none
+    email: null
+    token: null
+    token_expires_at: null
+    last_error: No account found for current phone.
+    requested_at: null
+    failed_code_attempts: 0
+    otp_send_attempts: 0
+    otp_non_delivery_reports: 0
+    awaiting_phone_confirmation: false
+    auth_method: null
+  information_state:
+    resume_node: deteccion_intencion
+    pending_requests:
+      - requestId: information-1
+        kind: purchase
+        resource: gift_purchases
+        query: Revisar el estado del regalo pagado por la persona.
+        orderId: null
+        aspects: [summary, payment_status]
+        sensitiveFields: []
+        authAction: none
+    selection_candidates: []
+expectations:
+  - id: accountless-purchase-enters-human-handoff
+    type: node_transition
+    to: solicitar_agente_humano
+    severity: hard
+  - id: handoff-is-requested-without-more-authentication
+    type: tool_usage
+    mustCall: [request_human_takeover]
+    mustNotCall: [request_user_login_code, verify_user_login_code, update_phone]
+    severity: hard
+  - id: protected-query-remains-pending
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected:
+      - kind: purchase
+        resource: gift_purchases
+        query: Revisar el estado del regalo pagado por la persona.
+    severity: hard
+  - id: accountless-purchase-handoff-language
+    type: text_semantic
+    rubric: >-
+      The person explicitly says they paid for the gift without registering or creating an account. Pass only if the response confirms in natural Spanish that human support has been requested and that the team will continue in the same conversation. It must not ask for a registered email, an OTP, account creation, or another authentication attempt, and it must not invent a purchase or payment status.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 250
+

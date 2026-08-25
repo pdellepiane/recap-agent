@@ -23,7 +23,7 @@ describe('prompt audit', () => {
       maximumToolCount: 0,
     });
     expect(entry(result, 'resolver_consultas_informativas')).toMatchObject({
-      serializedRequestBytes: 13818,
+      serializedRequestBytes: 13637,
       maximumToolCount: 0,
     });
     expect(entry(result, 'responder_invitacion')).toMatchObject({

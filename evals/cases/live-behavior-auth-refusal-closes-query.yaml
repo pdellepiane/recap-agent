@@ -1,0 +1,63 @@
+template: template.base-live
+id: live_behavior.authentication_refusal_closes_protected_query
+suite: live_behavior_regression
+version: 1
+description: An explicit privacy or security refusal must close the protected request without repeating email authentication or forcing human support.
+tags: [live, behavior, authentication, privacy, refusal, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: No doy mis datos personales y no quiero continuar con esta verificación.
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: live-auth-refusal-closes-query-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  user_auth:
+    status: none
+    email: null
+    token: null
+    token_expires_at: null
+    last_error: No account found for current phone.
+    requested_at: null
+    failed_code_attempts: 0
+    otp_send_attempts: 0
+    otp_non_delivery_reports: 0
+    awaiting_phone_confirmation: false
+    auth_method: null
+  information_state:
+    resume_node: entrevista
+    pending_requests:
+      - requestId: information-1
+        kind: purchase
+        resource: gift_purchases
+        query: Revisar una compra protegida.
+        orderId: null
+        aspects: [summary]
+        sensitiveFields: []
+        authAction: none
+    selection_candidates: []
+expectations:
+  - id: refusal-returns-to-resume-node
+    type: node_transition
+    to: entrevista
+    severity: hard
+  - id: refusal-does-not-call-authentication-or-handoff
+    type: tool_usage
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    severity: hard
+  - id: protected-request-is-cleared
+    type: plan_field_equals
+    path: information_state.pending_requests
+    expected: []
+    severity: hard
+  - id: refusal-is-respected
+    type: text_semantic
+    rubric: >-
+      The person explicitly refuses to share personal data or continue verification. Pass only if the response respects that decision in natural Spanish, clearly says it will not ask again for an email or code, and closes the protected query without claiming access to purchase data. It must not force a human handoff, restart authentication, or pressure the person to continue.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 250

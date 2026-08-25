@@ -140,9 +140,9 @@ describe('PromptLoader', () => {
       'resolver_consultas_informativas',
       { informationAuthReasons: ['otp_invalid'] },
     );
-    const missingCode = await loader.loadNodeBundle(
+    const resentCode = await loader.loadNodeBundle(
       'resolver_consultas_informativas',
-      { informationAuthReasons: ['otp_not_received'] },
+      { informationAuthReasons: ['otp_resent'] },
     );
 
     expect(invalidCode.instructions).toContain(
@@ -152,9 +152,12 @@ describe('PromptLoader', () => {
     expect(invalidCode.instructions).not.toContain(
       'se alcanzó temporalmente el límite de solicitudes',
     );
-    expect(missingCode.instructions).toContain('puede tardar hasta un minuto');
-    expect(missingCode.instructions).not.toContain(
+    expect(resentCode.instructions).toContain('Te envié un código');
+    expect(resentCode.instructions).not.toContain(
       'ofrece reintentar, reenviar o cambiar el correo',
+    );
+    expect(resentCode.instructions).not.toContain(
+      '¿Quieres que lo reenvíe',
     );
   });
 
@@ -181,17 +184,8 @@ describe('PromptLoader', () => {
         informationAuthReasons: [
           'otp_sent',
           'otp_resent',
-          'otp_not_received',
           'otp_pending',
           'otp_invalid',
-          'otp_repeated_failure',
-          'otp_send_rate_limited',
-          'otp_send_unavailable',
-          'otp_verification_rate_limited',
-          'otp_verification_unavailable',
-          'otp_email_not_verified',
-          'otp_verification_validation_failed',
-          'otp_verification_failed',
         ],
       },
     );
@@ -263,9 +257,11 @@ describe('PromptLoader', () => {
     expect(informationBundle.instructions).toContain(
       'Cada elemento de `guidance.requirements` es contenido obligatorio',
     );
-    expect(informationBundle.instructions).toContain(
-      'por seguridad se necesita el código para confirmar que la cuenta es de la persona',
+    expect(informationBundle.instructions).not.toContain(
+      'ofrece reenviar el código o cambiar el correo',
     );
+    expect(extractorBundle.instructions).toContain('accountless_user');
+    expect(extractorBundle.instructions).toContain('decline_authentication');
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
     expect(extractorBundle.instructions).toContain(
@@ -286,9 +282,7 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain(
       'El número es opcional',
     );
-    expect(extractorBundle.instructions).toContain(
-      'La ausencia de número de orden no es ambigüedad',
-    );
+    expect(extractorBundle.instructions).toContain('orderId=null');
     expect(extractorBundle.instructions).toContain(
       'aspects=[summary, payment_status, shipping]',
     );

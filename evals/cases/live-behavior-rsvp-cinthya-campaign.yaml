@@ -2,7 +2,7 @@ template: template.base-live
 id: live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing
 suite: live_behavior_regression
 version: 1
-description: A campaign-grounded RSVP for Julisabeth y Andrés must not be reported as a missing invitation when the mutation endpoint has no pending response.
+description: A campaign-grounded RSVP for Julisabeth y Andrés must use the trusted-phone event read fallback and must not be reported as a missing invitation.
 tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context]
 targetModes: [live_lambda]
 inputs:
@@ -23,7 +23,7 @@ expectations:
   - id: preserves-campaign-grounded-invitation
     type: text_semantic
     rubric: >-
-      The recent campaign history establishes an invitation for Julisabeth y Andrés in this conversation, while the current user-level lookup does not return a record or current attendance state. The answer must remain entirely in Spanish, must not say that the invitation never existed or merely that there are no pending invitations, and must not claim that an attendance update succeeded. It should explain the current lookup mismatch naturally and offer human help to review the link and state.
+      The recent campaign history and trusted-phone event lookup establish that this number is associated with Julisabeth y Andrés, while the current read contract does not expose the guest record or attendance state. The answer must remain entirely in Spanish, acknowledge the event association, thank the person for confirming, and say that no additional change was made. It must not deny the invitation, ask for email or a code, or claim that the stored attendance state was verified or updated.
     minScore: 0.9
     requireJudge: true
     severity: hard

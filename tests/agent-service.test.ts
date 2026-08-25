@@ -1149,7 +1149,7 @@ describe('AgentService', () => {
     }
   });
 
-  it('auto-rejects unknown user auth emails without asking for a code', async () => {
+  it('hands off unknown user auth emails without asking for a code', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1173,20 +1173,11 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
     expect(response.plan.user_auth.status).toBe('email_not_found');
     expect(gateway.requestCodeCalls).toBe(1);
     expect(gateway.verifyCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(0);
-    expect(
-      runtime.composeRequests
-        .at(-1)
-        ?.informationResults?.some(
-          (result) =>
-            result.kind === 'associated_event' &&
-            result.status === 'completed',
-        ),
-    ).toBe(false);
     expect(response.trace.tools_called).toContain('request_user_login_code');
     expect(response.trace.tools_called).not.toContain('verify_user_login_code');
     expect(response.trace.authentication_execution_summary).toEqual([

@@ -570,7 +570,7 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
-  it('does not ask for email when automatic phone authentication fails technically', async () => {
+  it('hands off without asking for email when automatic phone authentication fails technically', async () => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = {
@@ -596,9 +596,10 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(provider.requestCodeCalls).toBe(0);
-    expect(
-      runtime.composeRequests.at(-1)?.informationResults?.[0],
-    ).toEqual(expect.objectContaining({ status: 'needs_input', nextInput: 'retry' }));
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.trace.tools_called).toContain('request_human_takeover');
     expect(response.trace.authentication_execution_summary).toEqual([
       {
         operation: 'auth_by_phone',
@@ -930,11 +931,9 @@ describe('AgentService first-class information flow', () => {
     ).toHaveLength(2);
   });
 
-  it('explains missing-code recovery without resending until the user asks', async () => {
+  it('automatically resends once and then hands off without another email or code loop', async () => {
     const missingCodeRequest = purchaseRequest(null);
     missingCodeRequest.authAction = 'report_otp_not_received';
-    const resendRequest = purchaseRequest(null);
-    resendRequest.authAction = 'resend_otp';
     const runtime = new InformationRuntime([
       extraction(
         [purchaseRequest(null)],
@@ -942,13 +941,15 @@ describe('AgentService first-class information flow', () => {
         'sandra.lopez.aguilar@gmail.com',
       ),
       extraction([missingCodeRequest]),
-      extraction([resendRequest]),
+      extraction([missingCodeRequest]),
     ]);
     const provider = providerGateway();
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
     const service = createService({
       runtime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: new FakePurchaseGateway(),
+      purchaseGateway: gateway,
       providerGateway: provider,
     });
 
@@ -958,6 +959,7 @@ describe('AgentService first-class information flow', () => {
       text: 'sandra.lopez.aguilar@gmail.com',
       messageId: 'missing-code-1',
       receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
     });
     const missingCodeResponse = await service.handleTurn({
       channel: 'terminal_whatsapp',
@@ -965,9 +967,10 @@ describe('AgentService first-class information flow', () => {
       text: 'No ha llegado nada',
       messageId: 'missing-code-2',
       receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
     });
 
-    expect(provider.requestCodeCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(2);
     const missingBlock = runtime.composeRequests
       .at(-1)
       ?.informationResults?.find(
@@ -977,36 +980,116 @@ describe('AgentService first-class information flow', () => {
       missingBlock?.status === 'needs_input' ? missingBlock.guidance : null,
     ).toEqual(
       createInformationAuthGuidance(
-        'otp_not_received',
-        'sandra.lopez.aguilar@gmail.com',
-      ),
-    );
-    expect(missingCodeResponse.outbound.text).toBe(
-      'El código puede tardar hasta un minuto en llegar a sandra.lopez.aguilar@gmail.com. Revisa la bandeja principal y el correo no deseado; por seguridad, necesitamos ese código para confirmar que la cuenta es tuya. ¿Quieres que lo reenvíe al mismo correo o prefieres usar otro correo?',
-    );
-
-    await service.handleTurn({
-      channel: 'terminal_whatsapp',
-      externalUserId: 'missing-code-user',
-      text: 'Sí, envíame otro',
-      messageId: 'missing-code-3',
-      receivedAt: new Date().toISOString(),
-    });
-
-    expect(provider.requestCodeCalls).toBe(2);
-    const resentBlock = runtime.composeRequests
-      .at(-1)
-      ?.informationResults?.find(
-        (result) => result.kind === 'purchase' && result.status === 'needs_input',
-      );
-    expect(
-      resentBlock?.status === 'needs_input' ? resentBlock.guidance : null,
-    ).toEqual(
-      createInformationAuthGuidance(
         'otp_resent',
         'sandra.lopez.aguilar@gmail.com',
       ),
     );
+    expect(missingCodeResponse.plan.user_auth).toMatchObject({
+      status: 'code_requested',
+      otp_send_attempts: 2,
+      otp_non_delivery_reports: 1,
+    });
+
+    const handoff = await service.handleTurn({
+      channel: 'terminal_whatsapp',
+      externalUserId: 'missing-code-user',
+      text: 'Sigue sin llegar',
+      messageId: 'missing-code-3',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(provider.requestCodeCalls).toBe(2);
+    expect(handoff.plan.human_escalation.status).toBe('requested');
+    expect(handoff.trace.tools_called).toContain('request_human_takeover');
+    expect(handoff.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({ kind: 'purchase' }),
+    ]);
+  });
+
+  it('hands an accountless purchase to a person without asking for an impossible registered email', async () => {
+    const accountlessRequest = purchaseRequest(null);
+    accountlessRequest.authAction = 'accountless_user';
+    const runtime = new InformationRuntime([
+      extraction([purchaseRequest(null)]),
+      extraction([accountlessRequest]),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    const provider = providerGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: provider,
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'accountless-purchase-user',
+      text: 'Quiero revisar el regalo que pagué',
+      messageId: 'accountless-purchase-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'accountless-purchase-user',
+      text: 'Pagué sin registrarme',
+      messageId: 'accountless-purchase-2',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({ kind: 'purchase' }),
+    ]);
+    expect(response.outbound.text).not.toContain('correo');
+    expect(response.outbound.text).not.toContain('código');
+  });
+
+  it('honors an explicit verification refusal and clears the protected request without another prompt', async () => {
+    const declinedRequest = purchaseRequest(null);
+    declinedRequest.authAction = 'decline_authentication';
+    const runtime = new InformationRuntime([
+      extraction([purchaseRequest(null)]),
+      extraction([declinedRequest]),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.authByPhoneResult = { status: 'user_not_found' };
+    const provider = providerGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: provider,
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'declined-auth-user',
+      text: 'Quiero revisar mi compra',
+      messageId: 'declined-auth-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'declined-auth-user',
+      text: 'No doy mis datos personales y no quiero continuar',
+      messageId: 'declined-auth-2',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(response.plan.information_state.pending_requests).toEqual([]);
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.outbound.text).toContain('No volveré a pedirte el correo ni un código');
   });
 
   it('preserves missing-code recovery for a protected associated-event request', async () => {
@@ -1036,6 +1119,8 @@ describe('AgentService first-class information flow', () => {
           last_error: null,
           requested_at: '2026-08-20T15:00:00.000Z',
           failed_code_attempts: 0,
+          otp_send_attempts: 1,
+          otp_non_delivery_reports: 0,
           awaiting_phone_confirmation: false,
           auth_method: null,
         },
@@ -1074,10 +1159,11 @@ describe('AgentService first-class information flow', () => {
       );
     expect(
       blockedEvent?.status === 'needs_input' ? blockedEvent.guidance : null,
-    ).toEqual(createInformationAuthGuidance('otp_not_received', 'person@example.com'));
-    expect(response.outbound.text).toBe(
-      'El código puede tardar hasta un minuto en llegar a person@example.com. Revisa la bandeja principal y el correo no deseado; por seguridad, necesitamos ese código para confirmar que la cuenta es tuya. ¿Quieres que lo reenvíe al mismo correo o prefieres usar otro correo?',
-    );
+    ).toEqual(createInformationAuthGuidance('otp_resent', 'person@example.com'));
+    expect(response.plan.user_auth).toMatchObject({
+      otp_send_attempts: 2,
+      otp_non_delivery_reports: 1,
+    });
   });
 
   it('stops the repeated OTP loop from the reported gift-deposit interaction', async () => {
@@ -1102,10 +1188,12 @@ describe('AgentService first-class information flow', () => {
         error: 'Invalid or expired code',
       },
     });
+    const purchaseGateway = new FakePurchaseGateway();
+    purchaseGateway.authByPhoneResult = { status: 'user_not_found' };
     const service = createService({
       runtime,
       knowledgeGateway: new FakeKnowledgeGateway(),
-      purchaseGateway: new FakePurchaseGateway(),
+      purchaseGateway,
       providerGateway: provider,
     });
     const turn = async (text: string, index: number) =>
@@ -1115,6 +1203,7 @@ describe('AgentService first-class information flow', () => {
         text,
         messageId: `reported-otp-loop-${index}`,
         receivedAt: new Date().toISOString(),
+        contactPhone: '+51948920202',
       });
 
     await turn(
@@ -1129,10 +1218,10 @@ describe('AgentService first-class information flow', () => {
     expect(firstFailure.plan.user_auth.failed_code_attempts).toBe(1);
     expect(secondFailure.plan.user_auth.failed_code_attempts).toBe(2);
     expect(followUp.plan.user_auth.failed_code_attempts).toBe(2);
-    expect(secondFailure.outbound.text).toBe(
-      'El código volvió a ser rechazado aunque tiene el formato esperado. Para no pedirte más intentos, conservaré tu consulta sobre si el pago del regalo llegó a sus destinatarios y sobre su estado. Puedo solicitar apoyo humano para revisarla',
-    );
-    expect(followUp.outbound.text).toBe(secondFailure.outbound.text);
+    expect(secondFailure.plan.human_escalation.status).toBe('requested');
+    expect(secondFailure.trace.tools_called).toContain('request_human_takeover');
+    expect(followUp.outbound.text).toBeNull();
+    expect(followUp.plan.human_escalation.status).toBe('requested');
     expect(provider.verifyCodeCalls).toBe(2);
     expect(followUp.plan.information_state.pending_requests).toEqual([
       expect.objectContaining({
@@ -1152,16 +1241,7 @@ describe('AgentService first-class information flow', () => {
         ? guidanceByTurn[2].guidance.reason
         : null,
     ).toBe('otp_invalid');
-    expect(
-      guidanceByTurn[3]?.status === 'needs_input'
-        ? guidanceByTurn[3].guidance.reason
-        : null,
-    ).toBe('otp_repeated_failure');
-    expect(
-      guidanceByTurn[4]?.status === 'needs_input'
-        ? guidanceByTurn[4].guidance.reason
-        : null,
-    ).toBe('otp_repeated_failure');
+    expect(guidanceByTurn).toHaveLength(3);
   });
 
   it('uses a newly provided email instead of the previously stored address', async () => {
@@ -1429,6 +1509,7 @@ class FakePurchaseGateway implements AgentConversationGateway {
     phone_number: string;
   } | null = null;
   public recentMessageCalls = 0;
+  public takeoverCalls = 0;
   public recentMessages: AgentConversationMessage[] | null = null;
   public giftResult: AgentPurchaseLookupResult = {
     status: 'success',
@@ -1461,6 +1542,7 @@ class FakePurchaseGateway implements AgentConversationGateway {
   }
 
   async requestHumanTakeover(): Promise<AgentGatewayResult> {
+    this.takeoverCalls += 1;
     return { status: 'skipped', reason: 'disabled', message: 'disabled' };
   }
 

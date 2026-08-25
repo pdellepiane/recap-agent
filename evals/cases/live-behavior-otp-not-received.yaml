@@ -2,7 +2,7 @@ template: template.base-live
 id: live_behavior.otp_not_received_requires_response
 suite: live_behavior_regression
 version: 1
-description: A missing-code report during an active OTP challenge must receive an actionable response and preserve the protected question.
+description: A repeated missing-code report after one resend must trigger a real handoff and preserve the protected question without another OTP loop.
 tags: [live, behavior, authentication, otp, reported-interaction]
 targetModes: [live_lambda]
 inputs:
@@ -21,6 +21,8 @@ seedPlan:
     last_error: null
     requested_at: "2026-08-08T21:57:40.134Z"
     failed_code_attempts: 0
+    otp_send_attempts: 2
+    otp_non_delivery_reports: 1
     awaiting_phone_confirmation: false
     auth_method: null
   information_state:
@@ -32,9 +34,9 @@ seedPlan:
         eventHint: Karem y Alfredo
     selection_candidates: []
 expectations:
-  - id: remains-in-information-flow
+  - id: enters-human-handoff
     type: node_transition
-    to: resolver_consultas_informativas
+    to: solicitar_agente_humano
     severity: hard
   - id: challenge-and-question-remain-pending
     type: plan_field_subset
@@ -43,15 +45,20 @@ expectations:
       - kind: associated_event
         query: ¿La restricción de vestir de blanco aplica a mujeres y varones?
     severity: hard
-  - id: missing-code-report-is-not-suppressed-or-verified
+  - id: missing-code-report-hands-off-without-another-code-operation
     type: tool_usage
-    mustNotCall: [verify_user_login_code]
+    mustCall: [request_human_takeover]
+    mustNotCall: [request_user_login_code, verify_user_login_code]
     severity: hard
-  - id: offers-actionable-code-delivery-recovery
+  - id: handoff-is-persisted
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    severity: hard
+  - id: ends-code-delivery-loop
     type: text_semantic
     rubric: >-
-      The user says the one-time code has not arrived while an active challenge protects an event question. Pass only if the assistant responds in natural Spanish, acknowledges that the code is still needed, gives concise delivery guidance, and offers an actionable choice to resend the code or change the email. It must not suppress the turn, ask the user to enter a code they do not have, claim authentication succeeded, or lose the pending event question.
-      The delivery guidance must explicitly say that arrival can take up to one minute and ask the user to check both the main inbox and correo no deseado.
+      The user reports for a second time that the one-time code has not arrived after the system already resent it once. Pass only if the assistant confirms in natural Spanish that human support has now been requested and leaves the conversation with that team. It must not ask for another email or code, repeat inbox instructions, claim authentication succeeded, or invent an answer to the protected event question.
     minScore: 0.9
     requireJudge: true
     severity: hard

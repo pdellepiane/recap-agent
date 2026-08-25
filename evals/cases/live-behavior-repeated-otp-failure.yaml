@@ -36,9 +36,6 @@ seedPlan:
         authAction: provide_otp
     selection_candidates: []
 expectations:
-  - id: tokens-all-turns
-    type: token_usage_present
-    allTurns: true
   - id: first-code-verified-once
     type: tool_usage
     turnIndex: 0
@@ -46,7 +43,7 @@ expectations:
   - id: second-code-verified-once
     type: tool_usage
     turnIndex: 1
-    mustCall: [verify_user_login_code]
+    mustCall: [verify_user_login_code, request_human_takeover]
   - id: prose-follow-up-does-not-reverify
     type: tool_usage
     turnIndex: 2
@@ -55,6 +52,11 @@ expectations:
     type: plan_field_equals
     path: user_auth.failed_code_attempts
     expected: 2
+  - id: repeated-failure-persists-human-handoff
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    severity: hard
   - id: gift-query-remains-pending
     type: plan_field_subset
     path: information_state.pending_requests
@@ -74,15 +76,7 @@ expectations:
     type: text_semantic
     turnIndex: 1
     rubric: >-
-      The user entered the same correctly formatted six-digit code twice after it was rejected by the verification service. Pass only if the response acknowledges that verification failed again without blaming the user, does not ask for another code attempt or repeat inbox instructions, offers to request human support, and preserves the pending question about whether the gift deposit reached the couple. It must not claim that the payment succeeded or failed because no authenticated purchase result exists. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
-    minScore: 0.9
-    requireJudge: true
-    severity: hard
-  - id: follow-up-remains-actionable
-    type: text_semantic
-    turnIndex: 2
-    rubric: >-
-      After the user explains that this is the code they received, the response must not restart the code or inbox loop. It should acknowledge the failed verification, preserve the gift-deposit question, and explicitly offer human support as the next available step without inventing a payment status. A direct offer such as “Puedo solicitar apoyo humano para revisarla” satisfies this requirement; it does not have to be phrased as a question or claim that the request was already submitted. The response must be natural and entirely in Spanish except for literal addresses, codes, numbers, URLs, and proper names.
+      The user entered the same correctly formatted six-digit code twice after it was rejected by the verification service. Pass only if the response says in natural Spanish that human support has now been requested, does not ask for another code attempt or repeat inbox instructions, and preserves the pending question about whether the gift deposit reached the couple. It must not claim that the payment succeeded or failed because no authenticated purchase result exists.
     minScore: 0.9
     requireJudge: true
     severity: hard

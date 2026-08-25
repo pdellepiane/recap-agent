@@ -15,6 +15,7 @@ import type {
 import {
   createInformationAuthGuidance,
   type ExtractedInformationRequest,
+  type InformationAuthReason,
   type InformationExecutionSummary,
   type InformationSelectionCandidate,
   type InformationTaskResult,
@@ -163,10 +164,11 @@ type ProviderSearchExecutionResult = {
 type RsvpInvitationState = 'pending' | 'attending' | 'declining' | 'unknown';
 
 type RsvpInvitation = {
-  guestId: number;
+  guestId: number | null;
   eventName: string | null;
   eventDate: string | null;
   state: RsvpInvitationState;
+  accessMethod: 'guest_record' | 'trusted_phone_event';
 };
 
 type TurnTiming = {
@@ -1727,8 +1729,13 @@ export class AgentService {
     args.toolUsage.considered.push('lookup_rsvp_invitations', 'guest_rsvp');
     const phoneExtension = args.workingPlan.contact_phone_extension;
     const phoneNumber = args.workingPlan.contact_phone_number;
-    const lookedUpInvitations = phoneNumber
-      ? await this.lookupRsvpInvitations(phoneNumber, args.toolUsage, args.timingMs)
+    const lookedUpInvitations = phoneExtension && phoneNumber
+      ? await this.lookupRsvpInvitations(
+          { phone_extension: phoneExtension, phone_number: phoneNumber },
+          args.gateway,
+          args.toolUsage,
+          args.timingMs,
+        )
       : null;
     const invitations = lookedUpInvitations?.length === 0 && pendingState.candidates.length > 0
       ? pendingState.candidates.map((candidate) => ({
@@ -1736,6 +1743,7 @@ export class AgentService {
           eventName: candidate.event_name,
           eventDate: candidate.event_date,
           state: 'unknown' as const,
+          accessMethod: 'guest_record' as const,
         }))
       : lookedUpInvitations;
     const selectedInvitation = invitations
@@ -1765,6 +1773,13 @@ export class AgentService {
         ? `El historial de campaña confirma contexto de una invitación${groundedCampaignEvent ? ` de ${groundedCampaignEvent}` : ''} asociada a esta conversación, pero la consulta actual de usuario no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.`
         : 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
       nextRsvpState = this.emptyRsvpState();
+    } else if (!selectedInvitation && invitations.some((invitation) => invitation.guestId === null)) {
+      const associatedEvents = invitations.map((invitation) => ({
+        event_name: invitation.eventName,
+        event_date: invitation.eventDate,
+      }));
+      operationalNote = `El número confiable sí está asociado a estos eventos: ${JSON.stringify(associatedEvents)}. La consulta disponible no expone el registro de invitado ni el estado de asistencia. No digas que no existe una invitación, no pidas correo ni código y no afirmes que se actualizó una respuesta. Pide en una sola frase que identifique el evento solo si hay más de uno; si hay uno, reconoce la asociación y ofrece apoyo humano únicamente para verificar el estado.`;
+      nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation) {
       const attempts = pendingState.status === 'awaiting_event_selection'
         ? pendingState.selection_attempts + 1
@@ -1773,7 +1788,7 @@ export class AgentService {
         status: 'awaiting_event_selection',
         pending_action: action,
         candidates: invitations.map((invitation) => ({
-          guest_id: invitation.guestId,
+          guest_id: invitation.guestId as number,
           event_name: invitation.eventName,
           event_date: invitation.eventDate,
         })),
@@ -1781,6 +1796,14 @@ export class AgentService {
         selection_attempts: attempts,
       };
       operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
+    } else if (selectedInvitation.guestId === null) {
+      const event = selectedInvitation.eventName
+        ? ` de ${selectedInvitation.eventName}`
+        : '';
+      operationalNote = action
+        ? `El número confiable sí está asociado al evento${event}, pero esta consulta de solo lectura no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.`
+        : `El número confiable sí está asociado al evento${event}, pero esta consulta de solo lectura no expone el estado de asistencia. No inventes el estado, no pidas correo ni código y ofrece apoyo humano para verificarlo.`;
+      nextRsvpState = this.emptyRsvpState();
     } else {
       const currentAction = selectedInvitation.state === 'attending'
         ? 'attending'
@@ -1958,7 +1981,8 @@ export class AgentService {
   }
 
   private async lookupRsvpInvitations(
-    phoneNumber: string,
+    phone: { phone_extension: string; phone_number: string },
+    gateway: AgentConversationGateway,
     toolUsage: ToolUsage,
     timingMs: TurnTiming,
   ): Promise<RsvpInvitation[] | null> {
@@ -1971,9 +1995,9 @@ export class AgentService {
     try {
       const result = await this.dependencies.providerGateway.lookupUserEventContext({
         email: null,
-        phone: phoneNumber,
+        phone: phone.phone_number,
       });
-      const invitations = result?.events
+      const invitations: RsvpInvitation[] = result?.events
         .filter((event) => event.relation === 'guest' && event.guestId !== null)
         .map((event) => ({
           guestId: event.guestId as number,
@@ -1983,16 +2007,41 @@ export class AgentService {
             event.guestStatus?.hasResponded ?? null,
             event.guestStatus?.willAttend ?? null,
           ),
+          accessMethod: 'guest_record' as const,
         })) ?? [];
+      if (invitations.length === 0 && gateway.getGuestEventsByPhone) {
+        const trustedPhoneEvents = await gateway.getGuestEventsByPhone(phone);
+        if (trustedPhoneEvents.status === 'success') {
+          invitations.push(...trustedPhoneEvents.events.map((event) => ({
+            guestId: null,
+            eventName: event.name,
+            eventDate: event.datetime,
+            state: 'unknown' as const,
+            accessMethod: 'trusted_phone_event' as const,
+          })));
+        } else if (trustedPhoneEvents.status === 'failed') {
+          toolUsage.outputs.push({
+            tool: 'lookup_rsvp_invitations',
+            output: JSON.stringify({
+              status: 'failed',
+              source: 'trusted_phone_event',
+              retryable: trustedPhoneEvents.retryable,
+              error: trustedPhoneEvents.error,
+            }),
+          });
+          return null;
+        }
+      }
       toolUsage.outputs.push({
         tool: 'lookup_rsvp_invitations',
         output: JSON.stringify({
-          status: result ? 'success' : 'not_found',
+          status: invitations.length > 0 ? 'success' : result ? 'success' : 'not_found',
           invitations: invitations?.map((invitation) => ({
             guest_id: invitation.guestId,
             event_name: invitation.eventName,
             event_date: invitation.eventDate,
             current_state: invitation.state,
+            access_method: invitation.accessMethod,
           })) ?? [],
         }),
       });
@@ -2071,6 +2120,9 @@ export class AgentService {
     invitation: RsvpInvitation,
     action: 'attending' | 'declining',
   ): PlanSnapshot['rsvp_state'] {
+    if (invitation.guestId === null) {
+      return this.emptyRsvpState();
+    }
     return {
       status: 'awaiting_action',
       pending_action: action,
@@ -2324,6 +2376,37 @@ export class AgentService {
     let informationResults: InformationTaskResult[] = [];
     let informationSummaries: InformationExecutionSummary[] = [];
     let operationalNote: string | null = null;
+    const protectedAuthAction = requests
+      .filter((request) => request.kind === 'purchase' || request.kind === 'associated_event')
+      .map((request) => request.authAction ?? 'none')
+      .find((action) => action !== 'none') ?? 'none';
+    const hasAccountlessPurchase = requests.some(
+      (request) => request.kind === 'purchase' && request.authAction === 'accountless_user',
+    );
+
+    if (protectedAuthAction === 'decline_authentication') {
+      return await this.completeDeclinedInformationAuthentication({
+        ...args,
+        plan: planForInformation,
+        resumeNode,
+        requests,
+      });
+    }
+
+    const exhaustedOtpRecovery =
+      (protectedAuthAction === 'report_otp_not_received' &&
+        planForInformation.user_auth.otp_non_delivery_reports >= 1) ||
+      (protectedAuthAction === 'resend_otp' &&
+        planForInformation.user_auth.otp_send_attempts >= 2);
+    if (hasAccountlessPurchase || exhaustedOtpRecovery) {
+      return await this.escalateInformationAuthentication({
+        ...args,
+        plan: planForInformation,
+        reason: hasAccountlessPurchase
+          ? 'accountless_purchase'
+          : 'otp_recovery_exhausted',
+      });
+    }
 
     if (hasActionConflict) {
       operationalNote =
@@ -2348,6 +2431,14 @@ export class AgentService {
         phoneConfirmation: args.extraction.phoneConfirmation ?? null,
       });
       planForInformation = authResolution.plan;
+
+      if (this.isTerminalInformationAuthBlock(authResolution.authBlock)) {
+        return await this.escalateInformationAuthentication({
+          ...args,
+          plan: planForInformation,
+          reason: authResolution.authBlock?.guidance.reason ?? 'authentication_failed',
+        });
+      }
 
       requests.forEach((request) => {
         this.recordDeterministicToolInput(
@@ -2494,15 +2585,7 @@ export class AgentService {
       replyExtraction,
       composedReply,
     );
-    const missingOtpReply = this.enforceMissingOtpRecoveryReply(
-      informationResults,
-      ambiguitySafeReply,
-    );
-    const reply = this.enforceRepeatedOtpRecoveryReply(
-      informationResults,
-      planForInformation,
-      missingOtpReply,
-    );
+    const reply = ambiguitySafeReply;
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
@@ -2615,6 +2698,176 @@ export class AgentService {
     }
 
     return merged;
+  }
+
+  private isTerminalInformationAuthBlock(
+    authBlock: InformationAuthBlock | null,
+  ): boolean {
+    if (!authBlock) {
+      return false;
+    }
+    return new Set<InformationAuthReason>([
+      'phone_auth_failed',
+      'email_not_found',
+      'otp_send_failed',
+      'otp_send_rate_limited',
+      'otp_send_unavailable',
+      'otp_verification_rate_limited',
+      'otp_verification_unavailable',
+      'otp_email_not_verified',
+      'otp_verification_validation_failed',
+      'otp_verification_failed',
+      'otp_repeated_failure',
+    ]).has(authBlock.guidance.reason);
+  }
+
+  private async completeDeclinedInformationAuthentication(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    plan: PlanSnapshot;
+    resumeNode: DecisionNode | null;
+    requests: PendingInformationRequest[];
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const remainingRequests = args.requests.filter((request) => request.kind === 'faq');
+    const planToSave = mergePlan(this.resetUserAuth(args.plan, null), {
+      current_node: remainingRequests.length > 0
+        ? 'resolver_consultas_informativas'
+        : args.resumeNode ?? 'resolver_consultas_informativas',
+      information_state: {
+        resume_node: args.resumeNode,
+        pending_requests: remainingRequests,
+        selection_candidates: [],
+      },
+    });
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: 'information_authentication_declined',
+    });
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+    );
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const message = 'Entiendo. No volveré a pedirte el correo ni un código. Cerré esa consulta; si después deseas retomarla, puedes escribirnos por aquí.';
+    return {
+      plan: planToSave,
+      outbound: this.renderOutbound(
+        { text: message },
+        [],
+        args.inbound.channel,
+        planToSave.conversation_id,
+        planToSave,
+      ),
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.previousNode,
+        currentNode: planToSave.current_node,
+        nodePath: args.previousNode === planToSave.current_node
+          ? [planToSave.current_node]
+          : [args.previousNode, planToSave.current_node],
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: 'deterministic:information_authentication_declined',
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'information_authentication_declined',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision: this.informationTurnDecision('authentication_declined'),
+        operationalNote: 'La persona rechazó explícitamente la verificación. La consulta protegida se cerró sin volver a pedir datos.',
+      }),
+    };
+  }
+
+  private async escalateInformationAuthentication(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    plan: PlanSnapshot;
+    reason: string;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const gateway = this.dependencies.agentConversationGateway ??
+      new NoopAgentConversationGateway('not_configured');
+    const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
+    const gatewayResult = phoneNumber
+      ? await this.requestHumanTakeoverWithTrace(gateway, phoneNumber, args.toolUsage)
+      : this.missingPhoneEscalationResult();
+    const planToSave = mergePlan(args.plan, {
+      current_node: 'solicitar_agente_humano',
+      intent: 'solicitar_humano',
+      human_escalation: {
+        status: 'requested',
+        requested_at: new Date().toISOString(),
+        phone_number: phoneNumber,
+        last_error: gatewayResult.status === 'failed'
+          ? gatewayResult.error
+          : gatewayResult.status === 'skipped'
+            ? gatewayResult.message
+            : null,
+      },
+    });
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: 'information_authentication_terminal_handoff',
+    });
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+    );
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    return {
+      plan: planToSave,
+      outbound: this.renderOutbound(
+        { text: this.humanEscalationRequestedMessage(gatewayResult) },
+        [],
+        args.inbound.channel,
+        planToSave.conversation_id,
+        planToSave,
+      ),
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.previousNode,
+        currentNode: 'solicitar_agente_humano',
+        nodePath: [args.previousNode, 'solicitar_agente_humano'],
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: 'deterministic:information_authentication_terminal_handoff',
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'information_authentication_terminal_handoff',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision: this.humanEscalationTurnDecision(args.reason),
+        operationalNote: `La verificación alcanzó un resultado terminal (${args.reason}). Se conservó la consulta y se solicitó apoyo humano sin pedir otro correo ni código.`,
+      }),
+    };
   }
 
   private sameInformationThread(
@@ -2954,6 +3207,23 @@ export class AgentService {
 
     if (
       planForEmail.user_auth.status === 'code_requested' &&
+      informationAuthAction === 'report_otp_not_received'
+    ) {
+      const requested = await this.requestUserCodeForInformation(
+        planForEmail,
+        email,
+        args.toolUsage,
+        'non_delivery_recovery',
+      );
+      return {
+        plan: requested.plan,
+        authentication: null,
+        authBlock: requested.authBlock,
+      };
+    }
+
+    if (
+      planForEmail.user_auth.status === 'code_requested' &&
       informationAuthAction !== 'resend_otp'
     ) {
       return {
@@ -2962,9 +3232,7 @@ export class AgentService {
         authBlock: {
           nextInput: 'otp',
           guidance: createInformationAuthGuidance(
-            informationAuthAction === 'report_otp_not_received'
-              ? 'otp_not_received'
-              : planForEmail.user_auth.failed_code_attempts >= 2
+            planForEmail.user_auth.failed_code_attempts >= 2
                 ? 'otp_repeated_failure'
                 : planForEmail.user_auth.failed_code_attempts === 1
                   ? 'otp_invalid'
@@ -2979,7 +3247,7 @@ export class AgentService {
       planForEmail,
       email,
       args.toolUsage,
-      informationAuthAction === 'resend_otp',
+      informationAuthAction === 'resend_otp' ? 'explicit_resend' : 'initial',
     );
     planForEmail = requested.plan;
     return {
@@ -2993,7 +3261,7 @@ export class AgentService {
     plan: PlanSnapshot,
     email: string,
     toolUsage: ToolUsage,
-    isResend: boolean,
+    mode: 'initial' | 'explicit_resend' | 'non_delivery_recovery',
   ): Promise<{
     plan: PlanSnapshot;
     authBlock: InformationAuthBlock;
@@ -3022,6 +3290,7 @@ export class AgentService {
     );
 
     if (result.status === 'sent') {
+      const isResend = mode !== 'initial';
       return {
         plan: mergePlan(plan, {
           contact_email: email,
@@ -3033,6 +3302,11 @@ export class AgentService {
             last_error: null,
             requested_at: new Date().toISOString(),
             failed_code_attempts: 0,
+            otp_send_attempts: plan.user_auth.otp_send_attempts + 1,
+            otp_non_delivery_reports:
+              mode === 'non_delivery_recovery'
+                ? plan.user_auth.otp_non_delivery_reports + 1
+                : plan.user_auth.otp_non_delivery_reports,
             auth_method: null,
             awaiting_phone_confirmation: false,
           },
@@ -3059,6 +3333,8 @@ export class AgentService {
             last_error: result.error,
             requested_at: null,
             failed_code_attempts: 0,
+            otp_send_attempts: plan.user_auth.otp_send_attempts + 1,
+            otp_non_delivery_reports: plan.user_auth.otp_non_delivery_reports,
             auth_method: null,
             awaiting_phone_confirmation: false,
           },
@@ -3085,6 +3361,8 @@ export class AgentService {
           last_error: result.error,
           requested_at: null,
           failed_code_attempts: 0,
+          otp_send_attempts: plan.user_auth.otp_send_attempts + 1,
+          otp_non_delivery_reports: plan.user_auth.otp_non_delivery_reports,
           auth_method: null,
           awaiting_phone_confirmation: false,
         },
@@ -3183,6 +3461,8 @@ export class AgentService {
           last_error: null,
           requested_at: plan.user_auth.requested_at,
           failed_code_attempts: 0,
+          otp_send_attempts: plan.user_auth.otp_send_attempts,
+          otp_non_delivery_reports: plan.user_auth.otp_non_delivery_reports,
           auth_method: 'email',
           awaiting_phone_confirmation: false,
         },
@@ -3505,71 +3785,6 @@ export class AgentService {
     };
   }
 
-  private enforceRepeatedOtpRecoveryReply(
-    informationResults: InformationTaskResult[],
-    plan: PlanSnapshot,
-    reply: ComposeReplyResult,
-  ): ComposeReplyResult {
-    const hasRepeatedFailure = informationResults.some(
-      (result) =>
-        result.status === 'needs_input' &&
-        result.guidance.reason === 'otp_repeated_failure',
-    );
-    if (!hasRepeatedFailure) {
-      return reply;
-    }
-
-    const giftPaymentRequest = plan.information_state.pending_requests.find(
-      (request) =>
-        request.kind === 'purchase' &&
-        request.resource === 'gift_purchases' &&
-        request.aspects.includes('payment_details'),
-    );
-    const pendingQuery = giftPaymentRequest
-      ? 'tu consulta sobre si el pago del regalo llegó a sus destinatarios y sobre su estado'
-      : 'tu consulta pendiente';
-
-    return {
-      ...reply,
-      text: '',
-      structuredMessage: {
-        type: 'generic',
-        paragraphs_es: [
-          `El código volvió a ser rechazado aunque tiene el formato esperado. Para no pedirte más intentos, conservaré ${pendingQuery}. Puedo solicitar apoyo humano para revisarla.`,
-        ],
-      },
-    };
-  }
-
-  private enforceMissingOtpRecoveryReply(
-    informationResults: InformationTaskResult[],
-    reply: ComposeReplyResult,
-  ): ComposeReplyResult {
-    const missingCodeResult = informationResults.find(
-      (result) =>
-        result.status === 'needs_input' &&
-        result.guidance.reason === 'otp_not_received',
-    );
-    if (!missingCodeResult || missingCodeResult.status !== 'needs_input') {
-      return reply;
-    }
-
-    const destination = missingCodeResult.guidance.email ?? 'tu correo registrado';
-    const message =
-      `El código puede tardar hasta un minuto en llegar a ${destination}. ` +
-      'Revisa la bandeja principal y el correo no deseado; por seguridad, necesitamos ese código para confirmar que la cuenta es tuya. ' +
-      '¿Quieres que lo reenvíe al mismo correo o prefieres usar otro correo?';
-
-    return {
-      ...reply,
-      text: message,
-      structuredMessage: {
-        type: 'generic',
-        paragraphs_es: [message],
-      },
-    };
-  }
-
   private safeAuthErrorPreview(error: string): string {
     return error.replace(/[A-Za-z0-9_-]{20,}/gu, '[redacted]').slice(0, 240);
   }
@@ -3624,6 +3839,8 @@ export class AgentService {
         last_error: lastError,
         requested_at: null,
         failed_code_attempts: 0,
+        otp_send_attempts: 0,
+        otp_non_delivery_reports: 0,
         auth_method: null,
         awaiting_phone_confirmation: false,
       },

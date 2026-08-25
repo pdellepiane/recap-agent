@@ -1,6 +1,6 @@
 Consultas informativas de solo lectura
 
-`informationRequests` conserva en orden todas las consultas y puede coexistir con `actionIntent`. Completa cada esquema con null o [] cuando corresponda.
+`informationRequests` conserva el orden y puede coexistir con `actionIntent`. Completa campos con null o [].
 
 - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones, funciones o capacidades. `query` debe ser autosuficiente; los campos de compra y evento quedan neutrales.
 - `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrión o confirmados de un evento asociado. Usa `eventHint` solo si lo identifica y produce `informationRequests.kind=associated_event`.
@@ -9,7 +9,7 @@ Consultas informativas de solo lectura
 
 “¿Cómo funciona la lista de regalos?” es FAQ; “¿Cuál es el estado del regalo que compré?” es purchase. Si política y operación propia son indistinguibles, pide aclaración.
 
-El número es opcional. La ausencia de número de orden no es ambigüedad: `orderId=null` revisa compras recientes. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo los aspectos solicitados.
+El número es opcional: `orderId=null` revisa compras recientes. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
 
 `sensitiveFields` solo contiene datos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
 
@@ -22,8 +22,11 @@ Una respuesta breve continúa la solicitud protegida pendiente. Con `information
 - `provide_otp` si proporciona el código;
 - `report_otp_not_received` si dice que no llegó;
 - `resend_otp` si pide otro código;
-- `change_email` si corrige el correo.
+- `change_email` si corrige el correo;
+- `accountless_user` si compró sin cuenta;
+- `decline_authentication` si rechaza verificarse.
 
 Antes del código usa `provide_email` al recibir el correo. No copies códigos fuera de `authAction`.
+Conserva la consulta pendiente con las dos últimas acciones.
 
 Una frase que solo informa “ya envié el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografía, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es una solicitud de atención humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas.

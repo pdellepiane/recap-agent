@@ -8,6 +8,7 @@ import type {
   AgentConversationMessage,
   AgentConversationGateway,
   AgentGatewayResult,
+  AgentGuestEventsResult,
   AgentGuestRsvpInput,
   AgentGuestRsvpResult,
   AgentMessageLogInput,
@@ -352,6 +353,46 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
   });
+
+  it('uses the trusted-phone event read fallback instead of falsely denying an associated invitation', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({
+        action: 'attending',
+        eventReference: 'Michelle & Jorge',
+      }),
+    ]);
+    const gateway = new RsvpGateway([], [], {
+      status: 'success',
+      events: [{
+        eventId: 37218,
+        name: 'Michelle & Jorge',
+        slug: 'michellejorge',
+        url: 'https://sinenvolturas.com/michellejorge',
+        datetime: '2026-10-10T19:00:00.000Z',
+        type: 'wedding',
+        typeDetail: null,
+        stage: 'active',
+        city: 'Lima',
+        country: 'PE',
+        currency: 'PEN',
+      }],
+    });
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
+
+    const result = await service.handleTurn(inbound('Hola, ya confirmé, gracias'));
+
+    expect(gateway.inputs).toEqual([]);
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'sí está asociado al evento de Michelle & Jorge',
+    );
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'no hiciste otro cambio',
+    );
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
+      'no encontró ninguna invitación',
+    );
+  });
 });
 
 class RsvpRuntime implements AgentRuntime {
@@ -380,6 +421,7 @@ class RsvpGateway implements AgentConversationGateway {
   constructor(
     private readonly results: AgentGuestRsvpResult[],
     private readonly messages: AgentConversationMessage[] = [],
+    private readonly guestEvents: AgentGuestEventsResult = { status: 'not_found' },
   ) {}
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
@@ -408,6 +450,10 @@ class RsvpGateway implements AgentConversationGateway {
 
   async updatePhone(): Promise<{ status: 'success' }> {
     return { status: 'success' };
+  }
+
+  async getGuestEventsByPhone(): Promise<AgentGuestEventsResult> {
+    return this.guestEvents;
   }
 
   async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {

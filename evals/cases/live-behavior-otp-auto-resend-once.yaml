@@ -1,0 +1,73 @@
+template: template.base-live
+id: live_behavior.otp_nondelivery_auto_resends_once
+suite: live_behavior_regression
+version: 1
+description: The first missing-code report must automatically resend once while preserving the protected request and without asking the user to choose another email path.
+tags: [live, behavior, authentication, otp, nondelivery, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: No me llega ningún código.
+    channel: whatsapp
+    contactPhone: "$PHONE_FIRST_FALLBACK_CONTACT_PHONE"
+    sessionId: live-otp-nondelivery-auto-resend-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  contact_email: fallback@example.invalid
+  user_auth:
+    status: code_requested
+    email: fallback@example.invalid
+    token: null
+    token_expires_at: null
+    last_error: null
+    requested_at: "2026-08-24T21:18:00.000Z"
+    failed_code_attempts: 0
+    otp_send_attempts: 1
+    otp_non_delivery_reports: 0
+    awaiting_phone_confirmation: false
+    auth_method: null
+  information_state:
+    resume_node: deteccion_intencion
+    pending_requests:
+      - requestId: information-1
+        kind: purchase
+        resource: gift_purchases
+        query: Revisar el estado del regalo pagado por la persona.
+        orderId: null
+        aspects: [summary, payment_status]
+        sensitiveFields: []
+        authAction: none
+    selection_candidates: []
+expectations:
+  - id: remains-in-information-flow-after-single-resend
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: first-nondelivery-dispatches-exactly-the-resend-path
+    type: tool_usage
+    mustCall: [request_user_login_code]
+    mustNotCall: [verify_user_login_code, request_human_takeover]
+    severity: hard
+  - id: one-resend-is-recorded
+    type: plan_field_equals
+    path: user_auth.otp_non_delivery_reports
+    expected: 1
+    severity: hard
+  - id: protected-query-remains-pending-after-resend
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected:
+      - kind: purchase
+        resource: gift_purchases
+        query: Revisar el estado del regalo pagado por la persona.
+    severity: hard
+  - id: automatic-resend-language-has-no-choice-loop
+    type: text_semantic
+    rubric: >-
+      This is the first report that the one-time code did not arrive during a protected purchase query. Pass only if the assistant says in natural Spanish that it resent a code to the known email and asks the person to paste it if it arrives. It must not ask whether to resend, request another email, claim authentication succeeded, lose the pending purchase question, or say that human support was already requested.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300
