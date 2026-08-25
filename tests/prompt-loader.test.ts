@@ -262,6 +262,12 @@ describe('PromptLoader', () => {
     );
     expect(extractorBundle.instructions).toContain('accountless_user');
     expect(extractorBundle.instructions).toContain('decline_authentication');
+    expect(extractorBundle.instructions).toContain(
+      '`phoneConfirmation=no` solo si niega que la cuenta o el número actuales sean suyos',
+    );
+    expect(extractorBundle.instructions).toContain(
+      '`decline_authentication` si rechaza continuar la verificación',
+    );
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
     expect(extractorBundle.instructions).toContain(

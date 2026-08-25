@@ -2,7 +2,7 @@ template: template.base-live
 id: live_behavior.phone_first_auth_fallback
 suite: live_behavior_regression
 version: 1
-description: A protected WhatsApp request automatically receives phone user-not-found and then falls back to email OTP verification.
+description: A protected WhatsApp request tries phone, requests the registered email, and hands off when the email OTP endpoint rejects that address.
 tags: [live, behavior, authentication, phone-first, email-fallback, protected-information]
 targetModes: [live_lambda]
 inputs:
@@ -29,16 +29,16 @@ expectations:
     minScore: 0.9
     requireJudge: true
     severity: hard
-  - id: phone-auth-fails-and-email-fallback-starts
+  - id: email-fallback-failure-requests-human-support
     type: tool_usage
     turnIndex: 1
-    mustCall: [auth_by_phone, request_user_login_code]
+    mustCall: [auth_by_phone, request_user_login_code, request_human_takeover]
     severity: hard
-  - id: email-fallback-reports-code-requested
+  - id: email-fallback-failure-persists-handoff
     type: plan_field_equals
     turnIndex: 1
-    path: user_auth.status
-    expected: code_requested
+    path: human_escalation.status
+    expected: requested
     severity: hard
   - id: phone-failure-does-not-claim-success
     type: text_not_contains
@@ -49,7 +49,7 @@ expectations:
     type: text_semantic
     turnIndex: 1
     rubric: >-
-      After automatic phone authentication returns user-not-found and the user provides an email, the response must clearly explain in Spanish that a one-time code was sent to that email, explicitly say that it cannot read images or screenshots, and ask the user to copy and paste the code here. It must not use the word “texto” as an instruction, claim phone authentication succeeded, or ask the user to confirm the WhatsApp number.
+      After automatic phone authentication returns user-not-found, the user supplies an email, and the email-code endpoint rejects that address. Pass only if the response confirms in natural Spanish that human support has been requested and that the team will continue the pending gift query in this conversation. It must not claim that a code was sent, request another email or code attempt, claim phone authentication succeeded, or ask the user to confirm the WhatsApp number.
     minScore: 0.9
     requireJudge: true
     severity: hard

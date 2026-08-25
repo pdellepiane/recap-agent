@@ -15,7 +15,7 @@ El número es opcional: `orderId=null` revisa compras recientes. Para “estado 
 
 Autenticación de consultas personales
 
-Primero se intenta automáticamente el número actual de WhatsApp; correo y código son respaldo. Clasifica `phoneConfirmation` como `no` solo cuando la persona diga explícitamente que ese número o la cuenta encontrada no le pertenece, no corresponde o no debe usarse. No infieras rechazo de respuestas imprecisas. Usa `yes` únicamente si existe una confirmación explícita y `unclear` para cualquier referencia ambigua.
+Primero se intenta automáticamente el número actual de WhatsApp; correo y código son respaldo. `phoneConfirmation=no` solo si niega que la cuenta o el número actuales sean suyos; `yes` exige confirmación explícita y `unclear` cubre referencias ambiguas.
 
 Una respuesta breve continúa la solicitud protegida pendiente. Con `information_state.authentication_status=code_requested`, consérvala y usa:
 
@@ -24,7 +24,7 @@ Una respuesta breve continúa la solicitud protegida pendiente. Con `information
 - `resend_otp` si pide otro código;
 - `change_email` si corrige el correo;
 - `accountless_user` si compró sin cuenta;
-- `decline_authentication` si rechaza verificarse.
+- `decline_authentication` si rechaza continuar la verificación.
 
 Antes del código usa `provide_email` al recibir el correo. No copies códigos fuera de `authAction`.
 Conserva la consulta pendiente con las dos últimas acciones.
