@@ -222,3 +222,9 @@ behaviorChanges:
   - id: disable-phone-scoped-guest-access-after-explicit-phone-rejection
     implementedBy: 56390b5
     liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
+  - id: distinguish-phone-association-rejection-from-authentication-refusal
+    implementedBy: 5403a10
+    liveCaseIds: [live_behavior.phone_account_rejection_requests_email, live_behavior.authentication_refusal_closes_protected_query]
+  - id: hand-off-when-email-fallback-address-is-rejected
+    implementedBy: 5403a10
+    liveCaseIds: [live_behavior.phone_first_auth_fallback]
