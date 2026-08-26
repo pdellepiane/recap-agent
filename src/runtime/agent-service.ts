@@ -170,7 +170,10 @@ type RsvpInvitation = {
   eventName: string | null;
   eventDate: string | null;
   state: RsvpInvitationState;
-  accessMethod: 'guest_record' | 'trusted_phone_event';
+  accessMethod:
+    | 'guest_record'
+    | 'trusted_phone_event'
+    | 'phone_enriched_event';
 };
 
 type RsvpPhoneEvidence = {
@@ -1750,6 +1753,7 @@ export class AgentService {
           args.gateway,
           args.toolUsage,
           args.timingMs,
+          args.extraction.rsvpEventReference ?? null,
         )
       : null;
     let replyPhoneEvidence = phoneEvidence;
@@ -2009,6 +2013,7 @@ export class AgentService {
     gateway: AgentConversationGateway,
     toolUsage: ToolUsage,
     timingMs: TurnTiming,
+    eventReference: string | null,
   ): Promise<RsvpPhoneEvidence | null> {
     const startedAt = Date.now();
     toolUsage.called.push('lookup_rsvp_invitations');
@@ -2039,6 +2044,60 @@ export class AgentService {
       const guestEvents = guestEventsOutcome.status === 'fulfilled'
         ? guestEventsOutcome.value
         : null;
+      const associatedSummaries = guestEvents?.status === 'success'
+        ? guestEvents.events
+        : [];
+      const selectedAssociatedEvent = associatedSummaries.length === 1
+        ? associatedSummaries[0] ?? null
+        : eventReference
+          ? associatedSummaries.find((event) => {
+              const reference = this.normalizeSelectionText(eventReference);
+              return reference.length > 0 && (
+                this.normalizeSelectionText(event.name).includes(reference) ||
+                reference.includes(this.normalizeSelectionText(event.name)) ||
+                this.normalizeSelectionText(event.slug) === reference
+              );
+            }) ?? null
+          : null;
+      let enrichedDetail: Awaited<
+        ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>
+      > | null = null;
+      let enrichedDetailFailed = false;
+      if (selectedAssociatedEvent && gateway.getEventDetail) {
+        toolUsage.called.push('get_guest_event_detail');
+        toolUsage.inputs.push({
+          tool: 'get_guest_event_detail',
+          input: JSON.stringify({
+            event_id: selectedAssociatedEvent.eventId,
+            trusted_phone_present: true,
+          }),
+        });
+        try {
+          enrichedDetail = await gateway.getEventDetail({
+            eventId: selectedAssociatedEvent.eventId,
+            phone,
+          });
+          enrichedDetailFailed = enrichedDetail.status === 'failed';
+        } catch {
+          enrichedDetailFailed = true;
+        }
+        toolUsage.outputs.push({
+          tool: 'get_guest_event_detail',
+          output: JSON.stringify({
+            status: enrichedDetail?.status ?? 'failed',
+            attendance_present:
+              enrichedDetail?.status === 'success' &&
+              enrichedDetail.event.attendance !== null &&
+              enrichedDetail.event.attendance !== undefined,
+            purchase_count:
+              enrichedDetail?.status === 'success'
+                ? enrichedDetail.event.purchases?.length ?? 0
+                : 0,
+          }),
+        });
+      } else if (selectedAssociatedEvent) {
+        enrichedDetailFailed = true;
+      }
       const authoritativeInvitations: RsvpInvitation[] = userContext?.events
         .filter((event) => event.relation === 'guest' && event.guestId !== null)
         .map((event) => ({
@@ -2052,16 +2111,29 @@ export class AgentService {
           ),
           accessMethod: 'guest_record' as const,
         })) ?? [];
-      const associatedEvents: RsvpInvitation[] = guestEvents?.status === 'success'
-        ? guestEvents.events.map((event) => ({
+      const associatedEvents: RsvpInvitation[] = associatedSummaries
+        .map((event) => {
+          const attendance =
+            enrichedDetail?.status === 'success' &&
+            enrichedDetail.event.eventId === event.eventId
+              ? enrichedDetail.event.attendance ?? null
+              : null;
+          return {
             eventId: event.eventId,
-            guestId: null,
+            guestId: attendance?.guestId ?? null,
             eventName: event.name,
             eventDate: event.datetime,
-            state: 'unknown' as const,
-            accessMethod: 'trusted_phone_event' as const,
-          }))
-        : [];
+            state: attendance
+              ? this.rsvpInvitationState(
+                  attendance.hasResponded,
+                  attendance.willAttend,
+                )
+              : 'unknown' as const,
+            accessMethod: attendance
+              ? 'phone_enriched_event' as const
+              : 'trusted_phone_event' as const,
+          };
+        });
       const invitations = this.reconcileRsvpPhoneEvidence(
         authoritativeInvitations,
         associatedEvents,
@@ -2070,7 +2142,8 @@ export class AgentService {
         !gateway.getGuestEventsByPhone ||
         userContextOutcome.status === 'rejected' ||
         guestEventsOutcome.status === 'rejected' ||
-        guestEvents?.status === 'failed';
+        guestEvents?.status === 'failed' ||
+        enrichedDetailFailed;
       if (invitations.length === 0 && sourceFailed) {
         toolUsage.outputs.push({
           tool: 'lookup_rsvp_invitations',
@@ -2084,7 +2157,9 @@ export class AgentService {
         }
         return null;
       }
-      const resolution: RsvpPhoneEvidence['resolution'] = authoritativeInvitations.length > 0
+      const resolution: RsvpPhoneEvidence['resolution'] = invitations.some(
+        (invitation) => invitation.guestId !== null,
+      )
         ? 'authoritative_invitation'
         : associatedEvents.length > 0
           ? 'event_association_only'
@@ -2134,10 +2209,12 @@ export class AgentService {
   ): RsvpInvitation[] {
     const reconciled = [...authoritativeInvitations];
     associatedEvents.forEach((associatedEvent) => {
-      const duplicate = reconciled.some((invitation) =>
+      const duplicateIndex = reconciled.findIndex((invitation) =>
         this.sameRsvpEvent(invitation, associatedEvent));
-      if (!duplicate) {
+      if (duplicateIndex < 0) {
         reconciled.push(associatedEvent);
+      } else if (associatedEvent.accessMethod === 'phone_enriched_event') {
+        reconciled[duplicateIndex] = associatedEvent;
       }
     });
     return reconciled;
@@ -2511,10 +2588,6 @@ export class AgentService {
       .filter((request) => request.kind === 'purchase' || request.kind === 'associated_event')
       .map((request) => request.authAction ?? 'none')
       .find((action) => action !== 'none') ?? 'none';
-    const hasAccountlessPurchase = requests.some(
-      (request) => request.kind === 'purchase' && request.authAction === 'accountless_user',
-    );
-
     // A rejected phone association is not a refusal to continue verification.
     // The typed phone decision takes precedence if extraction also attached the
     // broader refusal action to the protected request.
@@ -2535,13 +2608,11 @@ export class AgentService {
         planForInformation.user_auth.otp_non_delivery_reports >= 1) ||
       (protectedAuthAction === 'resend_otp' &&
         planForInformation.user_auth.otp_send_attempts >= 2);
-    if (hasAccountlessPurchase || exhaustedOtpRecovery) {
+    if (exhaustedOtpRecovery) {
       return await this.escalateInformationAuthentication({
         ...args,
         plan: planForInformation,
-        reason: hasAccountlessPurchase
-          ? 'accountless_purchase'
-          : 'otp_recovery_exhausted',
+        reason: 'otp_recovery_exhausted',
       });
     }
 
@@ -2611,7 +2682,6 @@ export class AgentService {
           logAuthObservabilityEvent('info', 'information_auth_execution_completed', {
             auth_flow_operation_id: authResolution.authFlowId,
             duration_ms: Date.now() - informationStartedAt,
-            results: result.results,
             summaries: result.summaries,
           });
           return result;
@@ -2625,15 +2695,21 @@ export class AgentService {
         informationSummaries,
       );
 
-      const completedThroughGuestPhone = informationResults.some(
+      const completedThroughTrustedPhone = informationResults.some(
         (result) =>
           result.status === 'completed' &&
-          result.kind === 'associated_event' &&
-          result.accessMethod === 'trusted_phone_guest',
+          ((result.kind === 'associated_event' &&
+            result.accessMethod === 'trusted_phone_guest') ||
+            (result.kind === 'purchase' &&
+              (result.accessMethod === 'trusted_phone_purchase' ||
+                result.accessMethod === 'trusted_phone_event_purchase'))),
       );
       if (
-        completedThroughGuestPhone &&
-        requests.every((request) => request.kind === 'faq' || request.kind === 'associated_event')
+        completedThroughTrustedPhone &&
+        requests.every((request) =>
+          request.kind === 'faq' ||
+          request.kind === 'associated_event' ||
+          request.kind === 'purchase')
       ) {
         planForInformation = this.resetUserAuth(planForInformation, null);
       }
@@ -2660,7 +2736,50 @@ export class AgentService {
             ? 'El número confiable está invitado a varios eventos y la referencia no identifica uno de forma única. Muestra únicamente sus nombres y fechas y pregunta en una sola frase a cuál se refiere. No pidas correo ni código.'
             : hasRemainingEmailAuthentication
               ? 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde primero solo con los datos solicitados del evento y pide el correo registrado únicamente para las consultas protegidas que siguen pendientes.'
-            : 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde solo con los datos solicitados del resultado y no pidas correo ni código.';
+              : 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde solo con los datos solicitados del resultado y no pidas correo ni código.';
+      }
+
+      const phonePurchaseResult = informationResults.find(
+        (result) =>
+          result.status === 'completed' &&
+          result.kind === 'purchase' &&
+          (result.accessMethod === 'trusted_phone_purchase' ||
+            result.accessMethod === 'trusted_phone_event_purchase'),
+      );
+      if (
+        operationalNote === null &&
+        phonePurchaseResult?.status === 'completed' &&
+        phonePurchaseResult.kind === 'purchase'
+      ) {
+        operationalNote = phonePurchaseResult.coverage === 'partial'
+          ? 'La consulta se resolvió con información resumida asociada al número confiable porque el detalle no estuvo disponible. Responde solo con los campos presentes, aclara brevemente que la cobertura es parcial y no pidas correo ni código.'
+          : phonePurchaseResult.coverage === 'inconsistent'
+            ? 'Las fuentes asociadas al número confiable discreparon. Usa únicamente los valores canónicos proyectados, indica que se requiere revisión para cualquier campo no concluyente y no muestres versiones contradictorias ni pidas correo o código.'
+            : 'La consulta de compra se resolvió directamente con el número confiable. Responde solo con los campos solicitados del resultado y no pidas correo ni código.';
+      }
+
+      const requiresPhonePurchaseDetailHandoff = requests.some((request) => {
+        if (
+          request.kind !== 'purchase' ||
+          !request.aspects.some((aspect) => aspect === 'dedication' || aspect === 'thanks')
+        ) {
+          return false;
+        }
+        const result = informationResults.find(
+          (candidate) => candidate.requestId === request.requestId,
+        );
+        return result?.status === 'failed' && result.retryable;
+      });
+      if (
+        requiresPhonePurchaseDetailHandoff &&
+        args.inbound.contactPhone &&
+        args.extraction.phoneConfirmation !== 'no'
+      ) {
+        return await this.escalateInformationAuthentication({
+          ...args,
+          plan: planForInformation,
+          reason: 'phone_purchase_detail_unavailable',
+        });
       }
 
       if (
@@ -3062,22 +3181,46 @@ export class AgentService {
       async () => {
         logAuthObservabilityEvent('info', 'information_auth_flow_started', {
           auth_flow_operation_id: authFlowId,
-          prior_auth_state: args.plan.user_auth,
-          trusted_contact_phone: args.trustedContactPhone,
+          prior_auth_state: {
+            status: args.plan.user_auth.status,
+            auth_method: args.plan.user_auth.auth_method,
+            email_present: Boolean(args.plan.user_auth.email),
+            token_present: Boolean(args.plan.user_auth.token),
+            otp_send_attempts: args.plan.user_auth.otp_send_attempts,
+            otp_non_delivery_reports: args.plan.user_auth.otp_non_delivery_reports,
+          },
+          trusted_contact_phone_present: Boolean(args.trustedContactPhone),
           phone_confirmation: args.phoneConfirmation,
-          requests: args.requests,
+          requests: args.requests.map((request) => ({
+            kind: request.kind,
+            request_id: request.requestId,
+            ...(request.kind === 'purchase'
+              ? {
+                  resource: request.resource,
+                  order_id_present: Boolean(request.orderId),
+                  aspects: request.aspects,
+                }
+              : request.kind === 'associated_event'
+                ? { event_hint_present: Boolean(request.eventHint) }
+                : {}),
+          })),
           user_message_length: args.userMessage.length,
-          extracted_email: this.extractEmailFromText(args.userMessage),
-          otp: this.extractUserLoginCode(args.userMessage),
+          extracted_email_present: this.extractEmailFromText(args.userMessage) !== null,
+          otp_present: this.extractUserLoginCode(args.userMessage) !== null,
         });
         try {
           const result = await this.resolveInformationAuthenticationCore(args);
           logAuthObservabilityEvent('info', 'information_auth_flow_completed', {
             auth_flow_operation_id: authFlowId,
             duration_ms: Date.now() - startedAt,
-            next_auth_state: result.plan.user_auth,
-            authentication: result.authentication,
-            auth_block: result.authBlock,
+            next_auth_state: {
+              status: result.plan.user_auth.status,
+              auth_method: result.plan.user_auth.auth_method,
+              email_present: Boolean(result.plan.user_auth.email),
+              token_present: Boolean(result.plan.user_auth.token),
+            },
+            authentication_present: result.authentication !== null,
+            auth_block_reason: result.authBlock?.guidance.reason ?? null,
           });
           return { ...result, authFlowId };
         } catch (error) {
@@ -3130,6 +3273,34 @@ export class AgentService {
         ...args,
         plan: this.clearPhoneAuthentication(args.plan, 'Current phone account rejected by user.'),
       });
+    }
+
+    const informationAuthAction = protectedRequests
+      .map((request) => request.authAction ?? 'none')
+      .find((action) => action !== 'none') ?? 'none';
+    const shouldContinueEmailAuthentication =
+      args.plan.user_auth.status === 'code_requested' ||
+      this.extractEmailFromText(args.userMessage) !== null ||
+      informationAuthAction === 'provide_email' ||
+      informationAuthAction === 'provide_otp' ||
+      informationAuthAction === 'report_otp_not_received' ||
+      informationAuthAction === 'resend_otp' ||
+      informationAuthAction === 'change_email';
+
+    // Event and purchase support now have phone-scoped read contracts. Let the
+    // information orchestrator try those contracts before starting account
+    // authentication. Existing authenticated sessions remain available, and a
+    // scoped phone miss can still request email verification on the next turn.
+    if (
+      trustedPhoneParts &&
+      !this.hasValidUserAuthToken(args.plan) &&
+      !shouldContinueEmailAuthentication
+    ) {
+      return {
+        plan: this.clearPhoneAuthentication(args.plan, null),
+        authentication: null,
+        authBlock: null,
+      };
     }
 
     if (
@@ -3770,6 +3941,15 @@ export class AgentService {
           if ((summary.eventDetailCount ?? 0) > 0) {
             toolUsage.called.push('get_guest_event_detail');
           }
+        } else if (
+          summary.source === 'agent_api' &&
+          summary.accessMethod === 'trusted_phone_purchase'
+        ) {
+          toolUsage.called.push(
+            summary.resource === 'orders'
+              ? 'lookup_guest_orders_by_phone'
+              : 'lookup_guest_gift_purchases_by_phone',
+          );
         } else {
           toolUsage.called.push(
             summary.source === 'knowledge_base'
@@ -3793,6 +3973,8 @@ export class AgentService {
           status: summary.status,
           result_count: summary.resultCount,
           access_method: summary.accessMethod ?? null,
+          coverage: summary.coverage ?? null,
+          resource: summary.resource ?? null,
           event_detail_count: summary.eventDetailCount ?? 0,
           duration_ms: summary.durationMs,
         }),

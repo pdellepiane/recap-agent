@@ -339,8 +339,14 @@ export type InformationTaskResult =
       kind: 'purchase';
       status: 'completed';
       resource: PurchaseResource;
+      lookupResource?: PurchaseResource;
       purchases: PurchaseInformation[];
       needsSelection: boolean;
+      accessMethod?:
+        | 'authenticated_account'
+        | 'trusted_phone_purchase'
+        | 'trusted_phone_event_purchase';
+      coverage?: 'complete' | 'partial' | 'inconsistent';
     }
   | {
       requestId: string;
@@ -389,6 +395,13 @@ export type InformationExecutionSummary = {
   }>;
   resultCount: number;
   durationMs: number;
-  accessMethod?: 'authenticated_account' | 'trusted_phone_guest' | null;
+  accessMethod?:
+    | 'authenticated_account'
+    | 'trusted_phone_guest'
+    | 'trusted_phone_purchase'
+    | 'trusted_phone_event_purchase'
+    | null;
+  coverage?: 'complete' | 'partial' | 'inconsistent' | null;
   eventDetailCount?: number;
+  resource?: PurchaseResource;
 };

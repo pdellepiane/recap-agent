@@ -12,6 +12,8 @@ import {
 import type {
   AgentAuthByPhoneInput,
   AgentConversationGateway,
+  AgentEventDetailResult,
+  AgentPhonePurchaseLookupResult,
   AgentGuestEventSummary,
   AgentGuestEventsResult,
   AgentPurchaseLookupResult,
@@ -27,6 +29,38 @@ type PurchaseRequest = Extract<
   PendingInformationRequest,
   { kind: 'purchase' }
 >;
+
+/**
+ * Phone-scoped Agent API capabilities are optional while the backend rollout
+ * is in progress. Keeping this narrow local view lets the orchestrator remain
+ * compatible with gateways that have not enabled the new routes yet.
+ */
+type PhoneEventDetailSuccess = Extract<
+  AgentEventDetailResult,
+  { status: 'success' }
+> & {
+  /** New enriched responses expose these alongside `event`. */
+  attendance?: {
+    guestId: number;
+    name: string;
+    hasResponded: boolean;
+    willAttend: boolean | null;
+    responseDate: string | null;
+  } | null;
+  purchases?: PurchaseInformation[];
+};
+
+type PhoneEventDetailResult =
+  | PhoneEventDetailSuccess
+  | Exclude<AgentEventDetailResult, { status: 'success' }>;
+
+type EventDetailCache = Map<string, Promise<PhoneEventDetailResult>>;
+
+type PhoneContextSnapshot = {
+  purchasesByOrderId: Map<string, PurchaseInformation>;
+  purchaseSourceByOrderId: Map<string, 'orders' | 'gift_purchases' | 'event'>;
+  inconsistentOrderIds: Set<string>;
+};
 
 export type InformationAuthentication = {
   token: string;
@@ -58,14 +92,34 @@ export class InformationOrchestrator {
     authBlock: InformationAuthBlock | null;
     trustedPhone?: AgentAuthByPhoneInput | null;
   }): Promise<InformationExecution> {
+    const canUseTrustedPhone =
+      !args.authBlock || args.authBlock.guidance.reason === 'email_required';
+    const phoneGateway = this.dependencies.agentGateway;
+    const phonePurchaseLookups = new Map<
+      string,
+      Promise<AgentPhonePurchaseLookupResult | undefined>
+    >();
+    const eventDetailLookups: EventDetailCache = new Map();
+    const phoneContext: PhoneContextSnapshot = {
+      purchasesByOrderId: new Map(),
+      purchaseSourceByOrderId: new Map(),
+      inconsistentOrderIds: new Set(),
+    };
     const guestEventsPromise =
       !args.authentication &&
+      canUseTrustedPhone &&
       args.trustedPhone &&
       args.requests.some((request) => request.kind === 'associated_event')
         ? this.lookupGuestEvents(args.trustedPhone)
         : null;
-    const settled = await Promise.allSettled(
-      args.requests.map(async (request) => {
+    const outcomes = new Map<number, { result: InformationTaskResult; durationMs: number }>();
+    const executeIndexes = async (indexes: number[]): Promise<void> => {
+      const settled = await Promise.allSettled(
+        indexes.map(async (index) => {
+          const request = args.requests[index];
+          if (!request) {
+            throw new Error('Information request index is unavailable.');
+          }
         const startedAt = Date.now();
         const result = await this.executeRequest(
           request,
@@ -73,70 +127,96 @@ export class InformationOrchestrator {
           args.authBlock,
           guestEventsPromise,
           args.trustedPhone ?? null,
+          phoneGateway,
+          phonePurchaseLookups,
+          eventDetailLookups,
+          phoneContext,
         );
-        return {
-          result,
-          summary: {
+          return { result, durationMs: Date.now() - startedAt };
+        }),
+      );
+      settled.forEach((entry, settledIndex) => {
+        const requestIndex = indexes[settledIndex];
+        const request = requestIndex === undefined ? undefined : args.requests[requestIndex];
+        if (requestIndex === undefined || !request) {
+          return;
+        }
+      if (entry.status === 'fulfilled') {
+          outcomes.set(requestIndex, entry.value);
+        return;
+      }
+        outcomes.set(requestIndex, {
+          durationMs: 0,
+          result: {
             requestId: request.requestId,
             kind: request.kind,
-            status: result.status,
-            source: this.sourceFor(request),
-            outcomeCode: this.outcomeCode(result),
-            retryable: result.status === 'failed' ? result.retryable : null,
-            queryHash: this.hash(request.query),
-            evidence: this.evidenceReferences(result),
-            resultCount: this.resultCount(result),
-            durationMs: Date.now() - startedAt,
-            ...(result.status === 'completed' && result.kind === 'associated_event'
-              ? {
-                  accessMethod: result.accessMethod ?? 'authenticated_account',
-                  eventDetailCount: result.result.events.filter(
-                    (event) => event.detail !== undefined,
-                  ).length,
-                }
-              : {}),
-          } satisfies InformationExecutionSummary,
-        };
-      }),
+            status: 'failed',
+            retryable: true,
+            failureKind: 'request_failed',
+            message:
+              entry.reason instanceof Error
+                ? entry.reason.message
+                : 'No se pudo completar esta consulta.',
+          },
+        });
+      });
+    };
+
+    const nonPurchaseIndexes = args.requests
+      .map((request, index) => ({ request, index }))
+      .filter(({ request }) => request.kind !== 'purchase')
+      .map(({ index }) => index);
+    const purchaseIndexes = args.requests
+      .map((request, index) => ({ request, index }))
+      .filter(({ request }) => request.kind === 'purchase')
+      .map(({ index }) => index);
+    await executeIndexes(nonPurchaseIndexes);
+    await executeIndexes(purchaseIndexes);
+
+    const results = this.reconcilePhoneContextResults(
+      args.requests,
+      args.requests.map((request, index) =>
+        outcomes.get(index)?.result ?? {
+          requestId: request.requestId,
+          kind: request.kind,
+          status: 'failed' as const,
+          retryable: true,
+          failureKind: 'request_failed' as const,
+          message: 'No se pudo completar esta consulta.',
+        }),
+      phoneContext,
     );
-
-    const results: InformationTaskResult[] = [];
-    const summaries: InformationExecutionSummary[] = [];
-
-    settled.forEach((entry, index) => {
-      if (entry.status === 'fulfilled') {
-        results.push(entry.value.result);
-        summaries.push(entry.value.summary);
-        return;
-      }
-
+    const summaries = results.map((result, index): InformationExecutionSummary => {
       const request = args.requests[index];
       if (!request) {
-        return;
+        throw new Error('Information result has no matching request.');
       }
-      results.push({
+      return {
         requestId: request.requestId,
         kind: request.kind,
-        status: 'failed',
-        retryable: true,
-        failureKind: 'request_failed',
-        message:
-          entry.reason instanceof Error
-            ? entry.reason.message
-            : 'No se pudo completar esta consulta.',
-      });
-      summaries.push({
-        requestId: request.requestId,
-        kind: request.kind,
-        status: 'failed',
+        status: result.status,
         source: this.sourceFor(request),
-        outcomeCode: 'request_failed',
-        retryable: true,
+        outcomeCode: this.outcomeCode(result),
+        retryable: result.status === 'failed' ? result.retryable : null,
         queryHash: this.hash(request.query),
-        evidence: [],
-        resultCount: 0,
-        durationMs: 0,
-      });
+        evidence: this.evidenceReferences(result),
+        resultCount: this.resultCount(result),
+        durationMs: outcomes.get(index)?.durationMs ?? 0,
+        ...(result.status === 'completed' && result.kind === 'associated_event'
+          ? {
+              accessMethod: result.accessMethod ?? 'authenticated_account',
+              eventDetailCount: result.result.events.filter(
+                (event) => event.detail !== undefined,
+              ).length,
+            }
+          : result.status === 'completed' && result.kind === 'purchase'
+            ? {
+                accessMethod: result.accessMethod ?? 'authenticated_account',
+                coverage: result.coverage ?? 'complete',
+                resource: result.lookupResource ?? result.resource,
+              }
+            : {}),
+      };
     });
 
     return { results, summaries };
@@ -148,6 +228,13 @@ export class InformationOrchestrator {
     authBlock: InformationAuthBlock | null,
     guestEventsPromise: Promise<AgentGuestEventsResult> | null,
     trustedPhone: AgentAuthByPhoneInput | null,
+    phoneGateway: AgentConversationGateway,
+    phonePurchaseLookups: Map<
+      string,
+      Promise<AgentPhonePurchaseLookupResult | undefined>
+    >,
+    eventDetailLookups: EventDetailCache,
+    phoneContext: PhoneContextSnapshot,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
       const retrieval = await this.dependencies.knowledgeGateway.search(request.query);
@@ -183,7 +270,10 @@ export class InformationOrchestrator {
         return await this.executeGuestEventRequest(
           request,
           guestEvents.events,
-          trustedPhone?.phone_number ?? '',
+          trustedPhone ?? null,
+          phoneGateway,
+          eventDetailLookups,
+          phoneContext,
         );
       }
       if (guestEvents.status === 'failed') {
@@ -203,6 +293,19 @@ export class InformationOrchestrator {
     }
 
     if (!authentication) {
+      if (
+        request.kind === 'purchase' &&
+        trustedPhone &&
+        (!authBlock || authBlock.guidance.reason === 'email_required')
+      ) {
+        return await this.executePhonePurchaseRequest(
+          request,
+          trustedPhone,
+          phoneGateway,
+          phonePurchaseLookups,
+          phoneContext,
+        );
+      }
       return {
         requestId: request.requestId,
         kind: request.kind,
@@ -293,6 +396,7 @@ export class InformationOrchestrator {
         kind: 'purchase',
         status: 'completed',
         resource: request.resource,
+        lookupResource: request.resource,
         purchases: lookup.purchases.map((purchase) =>
           this.projectPurchase(purchase, request),
         ),
@@ -371,7 +475,10 @@ export class InformationOrchestrator {
   private async executeGuestEventRequest(
     request: Extract<PendingInformationRequest, { kind: 'associated_event' }>,
     events: AgentGuestEventSummary[],
-    phoneNumber: string,
+    trustedPhone: AgentAuthByPhoneInput | null,
+    phoneGateway: AgentConversationGateway,
+    eventDetailLookups: EventDetailCache,
+    phoneContext: PhoneContextSnapshot,
   ): Promise<InformationTaskResult> {
     const selected = this.selectGuestEvent(events, request.eventHint);
     if (!selected) {
@@ -380,11 +487,15 @@ export class InformationOrchestrator {
         kind: 'associated_event',
         status: 'completed',
         accessMethod: 'trusted_phone_guest',
-        result: this.guestEventsResult(events, null, phoneNumber),
+        result: this.guestEventsResult(
+          events,
+          null,
+          trustedPhone?.phone_number ?? '',
+        ),
       };
     }
 
-    if (!this.dependencies.agentGateway.getEventDetail) {
+    if (!phoneGateway.getEventDetail || !trustedPhone) {
       return {
         requestId: request.requestId,
         kind: 'associated_event',
@@ -395,11 +506,14 @@ export class InformationOrchestrator {
       };
     }
 
-    let detail: Awaited<ReturnType<NonNullable<AgentConversationGateway['getEventDetail']>>>;
+    let detail: PhoneEventDetailResult;
     try {
-      detail = await this.dependencies.agentGateway.getEventDetail({
-        eventId: selected.eventId,
-      });
+      detail = await this.lookupEventDetail(
+        selected.eventId,
+        trustedPhone,
+        phoneGateway,
+        eventDetailLookups,
+      );
     } catch {
       return {
         requestId: request.requestId,
@@ -412,6 +526,46 @@ export class InformationOrchestrator {
     }
 
     if (detail.status !== 'success') {
+      // A 5xx from the enriched route must not discard a known guest/event
+      // association. Retry once as a public event read, then retain the
+      // summary if the public route is also unavailable.
+      if (detail.status === 'failed' && detail.retryable) {
+        let publicDetail: PhoneEventDetailResult | null = null;
+        try {
+          publicDetail = await this.lookupEventDetail(
+            selected.eventId,
+            null,
+            phoneGateway,
+            eventDetailLookups,
+          );
+        } catch {
+          publicDetail = null;
+        }
+        if (publicDetail?.status === 'success') {
+          return {
+            requestId: request.requestId,
+            kind: 'associated_event',
+            status: 'completed',
+            accessMethod: 'trusted_phone_guest',
+            result: this.guestEventsResult(
+              [selected],
+              publicDetail.event,
+              trustedPhone.phone_number,
+            ),
+          };
+        }
+        return {
+          requestId: request.requestId,
+          kind: 'associated_event',
+          status: 'completed',
+          accessMethod: 'trusted_phone_guest',
+          result: this.guestEventsResult(
+            [selected],
+            null,
+            trustedPhone.phone_number,
+          ),
+        };
+      }
       return {
         requestId: request.requestId,
         kind: 'associated_event',
@@ -424,13 +578,48 @@ export class InformationOrchestrator {
       };
     }
 
+    for (const purchase of detail.event.purchases ?? []) {
+      this.mergePhonePurchase(phoneContext, purchase, 'event');
+    }
+
     return {
       requestId: request.requestId,
       kind: 'associated_event',
       status: 'completed',
       accessMethod: 'trusted_phone_guest',
-      result: this.guestEventsResult([selected], detail.event, phoneNumber),
+      result: this.guestEventsResult(
+        [selected],
+        detail.event,
+        trustedPhone.phone_number,
+        detail,
+      ),
     };
+  }
+
+  private async lookupEventDetail(
+    eventId: number,
+    trustedPhone: AgentAuthByPhoneInput | null,
+    phoneGateway: AgentConversationGateway,
+    eventDetailLookups: EventDetailCache,
+  ): Promise<PhoneEventDetailResult> {
+    if (!phoneGateway.getEventDetail) {
+      return {
+        status: 'failed',
+        error: 'Agent API event detail lookup is not configured.',
+        retryable: false,
+      };
+    }
+    const cacheKey = `${eventId}:${trustedPhone ? `${trustedPhone.phone_extension}:${trustedPhone.phone_number}` : 'public'}`;
+    const existing = eventDetailLookups.get(cacheKey);
+    if (existing) {
+      return await existing;
+    }
+    const lookup = phoneGateway.getEventDetail({
+      eventId,
+      ...(trustedPhone ? { phone: trustedPhone } : {}),
+    });
+    eventDetailLookups.set(cacheKey, lookup);
+    return await lookup;
   }
 
   private selectGuestEvent(
@@ -465,13 +654,19 @@ export class InformationOrchestrator {
       { status: 'success' }
     >['event'] | null,
     phoneNumber: string,
+    enrichedDetail?: PhoneEventDetailSuccess,
   ): UserEventLookupResult {
+    const attendance = enrichedDetail?.attendance ?? enrichedDetail?.event.attendance;
+    const purchases = enrichedDetail?.purchases ?? enrichedDetail?.event.purchases ?? [];
     return {
       lookup: { email: null, phone: phoneNumber },
       user: null,
       events: events.map((event) => ({
         relation: 'guest',
-        guestId: null,
+        guestId:
+          enrichedDetail?.event.eventId === event.eventId
+            ? attendance?.guestId ?? null
+            : null,
         eventId: event.eventId,
         slug: event.slug,
         url: event.url,
@@ -484,7 +679,16 @@ export class InformationOrchestrator {
         isPublic: null,
         currency: event.currency,
         country: event.country,
-        guestStatus: null,
+        guestStatus:
+          enrichedDetail?.event.eventId === event.eventId &&
+          attendance
+            ? {
+                hasResponded: attendance.hasResponded,
+                willAttend: attendance.willAttend,
+                hasCouple: null,
+                responseDate: attendance.responseDate,
+              }
+            : null,
         hostType: null,
         hostPermission: null,
         hostStatus: null,
@@ -494,7 +698,19 @@ export class InformationOrchestrator {
         transactionsCount: null,
         invitedGuestCount: null,
         confirmedGuestCount: null,
-        orders: [],
+        orders:
+          enrichedDetail?.event.eventId === event.eventId
+            ? purchases.map((purchase) => ({
+                id: null,
+                incrementId: purchase.orderId,
+                giftType: purchase.items[0]?.type ?? null,
+                grandTotal: purchase.grandTotal,
+                paymentStatus: purchase.paymentStatus,
+                shippingStatus: purchase.shippingStatus,
+                createdAt: purchase.createdAt,
+                paymentMethod: purchase.paymentMethod,
+              }))
+            : [],
         ...(detail && detail.eventId === event.eventId
           ? {
               place: detail.city,
@@ -524,7 +740,7 @@ export class InformationOrchestrator {
         guestEvents: events.length,
         hostEvents: 0,
         celebratedEvents: 0,
-        recentOrders: 0,
+        recentOrders: purchases.length,
       },
     };
   }
@@ -536,6 +752,348 @@ export class InformationOrchestrator {
       .toLocaleLowerCase('es')
       .replace(/[^a-z0-9]+/gu, ' ')
       .trim();
+  }
+
+  private async executePhonePurchaseRequest(
+    request: PurchaseRequest,
+    trustedPhone: AgentAuthByPhoneInput,
+    phoneGateway: AgentConversationGateway,
+    phonePurchaseLookups: Map<
+      string,
+      Promise<AgentPhonePurchaseLookupResult | undefined>
+    >,
+    phoneContext: PhoneContextSnapshot,
+  ): Promise<InformationTaskResult> {
+    const eventScopedPurchases = this.eventScopedPurchasesForRequest(
+      request,
+      phoneContext,
+    );
+    if (eventScopedPurchases.length > 0) {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'completed',
+        resource: request.resource,
+        purchases: eventScopedPurchases.map((purchase) =>
+          this.projectPurchase(purchase, request),
+        ),
+        needsSelection: !request.orderId && eventScopedPurchases.length > 1,
+        accessMethod: 'trusted_phone_event_purchase',
+        coverage: 'complete',
+      };
+    }
+    const lookup = await this.lookupPhonePurchase(
+      request,
+      trustedPhone,
+      phoneGateway,
+      phonePurchaseLookups,
+    );
+    if (!lookup) {
+      // The capability is optional during rollout. Preserve the normal
+      // authentication contract when this deployment has not picked it up.
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'needs_input',
+        nextInput: 'email',
+        guidance: createInformationAuthGuidance('email_required', null),
+      };
+    }
+
+    if (lookup.result.status === 'success') {
+      const purchases = lookup.result.purchases;
+      if (purchases.length === 0) {
+        return {
+          requestId: request.requestId,
+          kind: 'purchase',
+          status: 'failed',
+          retryable: false,
+          failureKind: 'not_found',
+          message:
+            'No encontré compras asociadas a este número. Si usaste otro número o un correo diferente, indícamelo y puedo orientarte con esa búsqueda.',
+        };
+      }
+      for (const purchase of purchases) {
+        this.mergePhonePurchase(
+          phoneContext,
+          purchase,
+          lookup.sourceResource,
+        );
+      }
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'completed',
+        resource: request.resource,
+        lookupResource: lookup.sourceResource,
+        purchases: purchases.map((purchase) =>
+          this.projectPurchase(purchase, request),
+        ),
+        needsSelection: !request.orderId && purchases.length > 1,
+        accessMethod: 'trusted_phone_purchase',
+        coverage: lookup.coverage,
+      };
+    }
+
+    if (lookup.result.status === 'not_found') {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'failed',
+        retryable: false,
+        failureKind: 'not_found',
+        message:
+          'No encontré esa compra asociada a este número. Si usaste otro número o un correo diferente, indícamelo y puedo orientarte con esa búsqueda.',
+      };
+    }
+
+    return {
+      requestId: request.requestId,
+      kind: 'purchase',
+      status: 'failed',
+      retryable: lookup.result.status === 'retryable_failure',
+      failureKind:
+        lookup.result.status === 'unauthorized'
+          ? 'unauthorized'
+          : lookup.result.status === 'invalid_response'
+            ? 'invalid_response'
+            : 'request_failed',
+      message:
+        'No pude consultar la compra asociada a este número en este momento. Puedo comunicarte con una persona del equipo para revisarlo.',
+    };
+  }
+
+  private async lookupPhonePurchase(
+    request: PurchaseRequest,
+    trustedPhone: AgentAuthByPhoneInput,
+    phoneGateway: AgentConversationGateway,
+    phonePurchaseLookups: Map<
+      string,
+      Promise<AgentPhonePurchaseLookupResult | undefined>
+    >,
+  ): Promise<{
+    result: AgentPhonePurchaseLookupResult;
+    coverage: 'complete' | 'partial';
+    sourceResource: 'orders' | 'gift_purchases';
+  } | undefined> {
+    const lookupResource: 'orders' | 'gift_purchases' = request.aspects.some(
+      (aspect) =>
+        aspect === 'dedication' ||
+        aspect === 'thanks' ||
+        aspect === 'payment_details',
+    )
+      ? 'gift_purchases'
+      : 'orders';
+    if (
+      (lookupResource === 'orders' && !phoneGateway.getGuestOrdersByPhone) ||
+      (lookupResource === 'gift_purchases' &&
+        !phoneGateway.getGuestGiftPurchasesByPhone)
+    ) {
+      return undefined;
+    }
+    const key = [
+      lookupResource,
+      trustedPhone.phone_extension,
+      trustedPhone.phone_number,
+      request.orderId ?? '*',
+    ].join(':');
+    const existing = phonePurchaseLookups.get(key);
+    if (existing) {
+      const result = await existing;
+      return result
+        ? { result, coverage: 'complete', sourceResource: lookupResource }
+        : undefined;
+    }
+    const lookupPromise = lookupResource === 'orders'
+      ? phoneGateway.getGuestOrdersByPhone!({
+          phone_extension: trustedPhone.phone_extension,
+          phone_number: trustedPhone.phone_number,
+          orderId: request.orderId,
+        })
+      : phoneGateway.getGuestGiftPurchasesByPhone!({
+          phone_extension: trustedPhone.phone_extension,
+          phone_number: trustedPhone.phone_number,
+          orderId: request.orderId,
+        });
+    phonePurchaseLookups.set(key, lookupPromise);
+    let lookup = await lookupPromise;
+    let coverage: 'complete' | 'partial' = 'complete';
+    let sourceResource: 'orders' | 'gift_purchases' = lookupResource;
+
+    // Gift purchases is the detailed route. If it is temporarily failing,
+    // one summary/status request can still be answered through guest orders.
+    if (
+      lookupResource === 'gift_purchases' &&
+      this.isSummaryOrStatusRequest(request) &&
+      this.isRetryableLookupFailure(lookup) &&
+      phoneGateway.getGuestOrdersByPhone
+    ) {
+      const fallbackKey = [
+        'orders',
+        trustedPhone.phone_extension,
+        trustedPhone.phone_number,
+        request.orderId ?? '*',
+      ].join(':');
+      const fallbackExisting = phonePurchaseLookups.get(fallbackKey);
+      const fallbackPromise = fallbackExisting ?? phoneGateway.getGuestOrdersByPhone({
+        phone_extension: trustedPhone.phone_extension,
+        phone_number: trustedPhone.phone_number,
+        orderId: request.orderId,
+      });
+      if (!fallbackExisting) {
+        phonePurchaseLookups.set(fallbackKey, fallbackPromise);
+      }
+      const fallback = await fallbackPromise;
+      if (fallback?.status === 'success' && fallback.purchases.length > 0) {
+        lookup = fallback;
+        coverage = 'partial';
+        sourceResource = 'orders';
+      }
+    }
+    return { result: lookup, coverage, sourceResource };
+  }
+
+  private eventScopedPurchasesForRequest(
+    request: PurchaseRequest,
+    snapshot: PhoneContextSnapshot,
+  ): PurchaseInformation[] {
+    if (request.orderId) {
+      const purchase = snapshot.purchasesByOrderId.get(request.orderId);
+      return purchase && snapshot.purchaseSourceByOrderId.get(request.orderId) === 'event'
+        ? [purchase]
+        : [];
+    }
+    return [...snapshot.purchasesByOrderId.entries()]
+      .filter(([orderId]) => snapshot.purchaseSourceByOrderId.get(orderId) === 'event')
+      .map(([, purchase]) => purchase);
+  }
+
+  private mergePhonePurchase(
+    snapshot: PhoneContextSnapshot,
+    incoming: PurchaseInformation,
+    source: 'orders' | 'gift_purchases' | 'event',
+  ): void {
+    const current = snapshot.purchasesByOrderId.get(incoming.orderId);
+    const currentSource = snapshot.purchaseSourceByOrderId.get(incoming.orderId);
+    if (!current || !currentSource) {
+      snapshot.purchasesByOrderId.set(incoming.orderId, incoming);
+      snapshot.purchaseSourceByOrderId.set(incoming.orderId, source);
+      return;
+    }
+    if (this.purchaseRecordsConflict(current, incoming)) {
+      snapshot.inconsistentOrderIds.add(incoming.orderId);
+    }
+    const priority = { orders: 0, event: 1, gift_purchases: 2 } as const;
+    const preferred = priority[source] >= priority[currentSource] ? incoming : current;
+    const fallback = preferred === incoming ? current : incoming;
+    snapshot.purchasesByOrderId.set(
+      incoming.orderId,
+      this.mergePurchaseRecords(preferred, fallback),
+    );
+    snapshot.purchaseSourceByOrderId.set(
+      incoming.orderId,
+      priority[source] >= priority[currentSource] ? source : currentSource,
+    );
+  }
+
+  private mergePurchaseRecords(
+    preferred: PurchaseInformation,
+    fallback: PurchaseInformation,
+  ): PurchaseInformation {
+    return {
+      ...fallback,
+      ...preferred,
+      paymentStatus: preferred.paymentStatus ?? fallback.paymentStatus,
+      shippingStatus: preferred.shippingStatus ?? fallback.shippingStatus,
+      grandTotal: preferred.grandTotal ?? fallback.grandTotal,
+      paymentMethod: preferred.paymentMethod ?? fallback.paymentMethod,
+      eventName: preferred.eventName ?? fallback.eventName,
+      eventDate: preferred.eventDate ?? fallback.eventDate,
+      eventUrl: preferred.eventUrl ?? fallback.eventUrl,
+      createdAt: preferred.createdAt ?? fallback.createdAt,
+      items: preferred.items.length > 0 ? preferred.items : fallback.items,
+      payment: preferred.payment ?? fallback.payment,
+      declineCode: preferred.declineCode ?? fallback.declineCode,
+      adminComment: preferred.adminComment ?? fallback.adminComment,
+      dedication: preferred.dedication ?? fallback.dedication,
+      thanks: preferred.thanks ?? fallback.thanks,
+      isThanked: preferred.isThanked ?? fallback.isThanked,
+    };
+  }
+
+  private purchaseRecordsConflict(
+    left: PurchaseInformation,
+    right: PurchaseInformation,
+  ): boolean {
+    const pairs: Array<[unknown, unknown]> = [
+      [left.paymentStatus, right.paymentStatus],
+      [left.shippingStatus, right.shippingStatus],
+      [left.grandTotal, right.grandTotal],
+      [left.paymentMethod, right.paymentMethod],
+      [left.eventName, right.eventName],
+      [left.eventDate, right.eventDate],
+      [left.createdAt, right.createdAt],
+      [left.items.length > 0 ? left.items : null, right.items.length > 0 ? right.items : null],
+    ];
+    return pairs.some(([leftValue, rightValue]) =>
+      leftValue !== null && leftValue !== undefined &&
+      rightValue !== null && rightValue !== undefined &&
+      JSON.stringify(leftValue) !== JSON.stringify(rightValue));
+  }
+
+  private reconcilePhoneContextResults(
+    requests: PendingInformationRequest[],
+    results: InformationTaskResult[],
+    snapshot: PhoneContextSnapshot,
+  ): InformationTaskResult[] {
+    const requestById = new Map(requests.map((request) => [request.requestId, request]));
+    return results.map((result) => {
+      if (result.status === 'completed' && result.kind === 'associated_event') {
+        return {
+          ...result,
+          result: this.removePurchaseDataFromEventResult(result.result),
+        };
+      }
+      if (
+        result.status !== 'completed' ||
+        result.kind !== 'purchase' ||
+        (result.accessMethod !== 'trusted_phone_purchase' &&
+          result.accessMethod !== 'trusted_phone_event_purchase')
+      ) {
+        return result;
+      }
+      const request = requestById.get(result.requestId);
+      if (!request || request.kind !== 'purchase') {
+        return result;
+      }
+      const purchases = result.purchases.map((projected) => {
+        const canonical = snapshot.purchasesByOrderId.get(projected.orderId);
+        return canonical ? this.projectPurchase(canonical, request) : projected;
+      });
+      return {
+        ...result,
+        purchases,
+        coverage: purchases.some((purchase) =>
+          snapshot.inconsistentOrderIds.has(purchase.orderId))
+          ? 'inconsistent'
+          : result.coverage ?? 'complete',
+      };
+    });
+  }
+
+  private isSummaryOrStatusRequest(request: PurchaseRequest): boolean {
+    return request.aspects.every((aspect) =>
+      aspect === 'summary' ||
+      aspect === 'payment_status' ||
+      aspect === 'shipping' ||
+      aspect === 'decline'
+    );
+  }
+
+  private isRetryableLookupFailure(
+    lookup: AgentPhonePurchaseLookupResult,
+  ): boolean {
+    return lookup.status === 'retryable_failure';
   }
 
   private async lookupPurchase(

@@ -856,6 +856,64 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(rsvpInput).toContain('rsvp_state');
   });
 
+  it('projects one minimal phone-purchase result without endpoint or payment internals', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.userMessage = '¿Ya se aprobó mi regalo?';
+    request.informationResults = [{
+      requestId: 'phone-order-status',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'gift_purchases',
+      lookupResource: 'orders',
+      accessMethod: 'trusted_phone_purchase',
+      coverage: 'complete',
+      needsSelection: false,
+      purchases: [{
+        orderId: 'ORD-000880',
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        grandTotal: null,
+        paymentMethod: null,
+        eventName: 'Caroline & Jason',
+        eventDate: '2026-09-05',
+        eventUrl: null,
+        createdAt: null,
+        items: [],
+      }],
+    } satisfies InformationTaskResult];
+    request.errorMessage =
+      'La consulta de compra se resolvió directamente con el número confiable. Responde solo con los campos solicitados del resultado y no pidas correo ni código.';
+    request.toolUsage.outputs = [{
+      tool: 'lookup_guest_orders_by_phone',
+      output: JSON.stringify({
+        phone_number: '962983263',
+        gateway_message: 'private gateway detail',
+        destination_account: 'private bank destination',
+      }),
+    }];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        replyRequest: ComposeReplyRequest,
+        recommendationFunnel: ReturnType<typeof emptyFunnel>,
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+
+    expect(input).toContain('ORD-000880');
+    expect(input).toContain('approved');
+    expect(input).toContain('trusted_phone_purchase');
+    expect(input).not.toContain('962983263');
+    expect(input).not.toContain('private gateway detail');
+    expect(input).not.toContain('private bank destination');
+    expect(input).not.toContain('lookup_guest_orders_by_phone');
+    expect(input).not.toContain('Capacidades habilitadas');
+    expect(input).not.toContain('Herramientas autorizadas');
+    expect(findDuplicateStructuredSubtrees(input)).toEqual([]);
+    expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(5_000);
+  });
+
   it('gives the RSVP model one minimal reconciled phone-evidence projection', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const request = createComposeRequest('responder_invitacion');

@@ -860,6 +860,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   ): string {
     const authenticationOnlyReply =
       this.isAuthenticationOnlyInformationReply(request);
+    const resolvedInformationReply =
+      request.currentNode === 'resolver_consultas_informativas' ||
+      request.currentNode === 'responder_invitacion';
     const allowedTools =
       request.toolUsage.considered.length > 0
         ? request.toolUsage.considered.join(', ')
@@ -890,11 +893,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.extraction.ambiguity?.status === 'ambiguous'
         ? 'La extracción marcó ambigüedad. Formula la respuesta alrededor de ambiguity.clarification_question y no reinicies la conversación con una bienvenida genérica.'
         : null,
-      request.currentNode === 'resolver_consultas_informativas' ||
-      request.currentNode === 'responder_invitacion'
+      resolvedInformationReply
         ? null
         : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
-      authenticationOnlyReply
+      authenticationOnlyReply || resolvedInformationReply
         ? null
         : `Capacidades habilitadas para este nodo:\n${this.summarizeEnabledCapabilities(request.currentNode)}`,
     ];
@@ -903,7 +905,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       parts.push(`Categorías de proveedores disponibles: ${categoryBucketNames.join(', ')}. No inventar categorías fuera de esta lista.`);
     }
 
-    if (!authenticationOnlyReply) {
+    if (!authenticationOnlyReply && !resolvedInformationReply) {
       parts.push(`Herramientas autorizadas en este nodo: ${allowedTools}`);
     }
 

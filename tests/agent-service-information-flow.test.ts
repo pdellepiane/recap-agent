@@ -13,6 +13,7 @@ import {
   type AgentConversationGateway,
   type AgentGatewayResult,
   type AgentMessageLogInput,
+  type AgentPhonePurchaseLookupResult,
   type AgentPurchaseLookupResult,
 } from '../src/runtime/agent-conversation-gateway';
 import { AgentService } from '../src/runtime/agent-service';
@@ -186,14 +187,13 @@ describe('AgentService first-class information flow', () => {
     ).toEqual(createInformationAuthGuidance('email_required', null));
   });
 
-  it('authenticates a protected request with the current WhatsApp number automatically', async () => {
+  it('reads a protected purchase with the trusted WhatsApp number without authentication', async () => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = {
-      status: 'authenticated',
-      token: 'phone-jwt',
-      tokenExpiresAtIso: '2026-12-01T00:00:00.000Z',
-      email: 'registered@example.com',
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
     };
     const service = createService({
       runtime,
@@ -211,30 +211,22 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(1);
-    expect(gateway.lastAuthByPhoneInput).toEqual({
-      phone_extension: '+51',
-      phone_number: '973296571',
-    });
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(0);
     expect(response.plan.user_auth).toMatchObject({
-      status: 'authenticated',
-      token: 'phone-jwt',
-      token_expires_at: '2026-12-01T00:00:00.000Z',
-      auth_method: 'phone',
-      email: 'registered@example.com',
+      status: 'none',
+      token: null,
+      auth_method: null,
     });
-    expect(response.trace.authentication_execution_summary).toEqual([
-      {
-        operation: 'auth_by_phone',
-        status: 'authenticated',
-        auth_method: 'phone',
-        failure_kind: null,
-        retryable: null,
-        error_preview: null,
-        http_status: null,
-        request_id: null,
-      },
-    ]);
+    expect(response.trace.tools_called).toContain(
+      'lookup_guest_orders_by_phone',
+    );
+    expect(response.trace.tools_called).not.toContain('auth_by_phone');
+    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
+      status: 'completed',
+      accessMethod: 'trusted_phone_purchase',
+    });
   });
 
   it('routes an explicit wrong-account statement to email OTP without phone authentication', async () => {
@@ -363,16 +355,15 @@ describe('AgentService first-class information flow', () => {
     });
   });
 
-  it('recovers a persisted retired confirmation turn by authenticating automatically', async () => {
+  it('recovers a persisted retired confirmation turn with the phone-scoped purchase read', async () => {
     const runtime = new InformationRuntime([
       extraction([], null, null, 'unclear'),
     ]);
     const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = {
-      status: 'authenticated',
-      token: 'phone-jwt',
-      tokenExpiresAtIso: '2026-12-01T00:00:00.000Z',
-      email: 'registered@example.com',
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
     };
     const planStore = new InMemoryPlanStore();
     await planStore.save({
@@ -413,10 +404,12 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(0);
     expect(response.plan.user_auth).toMatchObject({
-      status: 'authenticated',
-      auth_method: 'phone',
+      status: 'none',
+      auth_method: null,
       awaiting_phone_confirmation: false,
     });
     const recoveryExtraction = runtime.composeRequests.at(-1)?.extraction;
@@ -435,7 +428,7 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
-  it('asks for the registered email only after the current phone is not found', async () => {
+  it('treats a phone-scoped 404 as a scoped miss without starting OTP', async () => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = { status: 'user_not_found' };
@@ -456,15 +449,17 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.user_auth.status).toBe('none');
     expect(
       runtime.composeRequests.at(-1)?.informationResults?.[0],
     ).toEqual(
       expect.objectContaining({
-        status: 'needs_input',
-        nextInput: 'email',
+        status: 'failed',
+        failureKind: 'not_found',
       }),
     );
     expect(runtime.composeRequests.at(-1)?.errorMessage ?? '').not.toContain(
@@ -538,7 +533,7 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(gateway.authByPhoneCalls).toBe(0);
     expect(gateway.guestEventCalls).toBe(1);
     expect(gateway.eventDetailCalls).toBe(1);
     expect(provider.requestCodeCalls).toBe(0);
@@ -546,7 +541,6 @@ describe('AgentService first-class information flow', () => {
     expect(response.plan.user_auth.status).toBe('none');
     expect(response.plan.information_state.pending_requests).toEqual([]);
     expect(response.trace.tools_called).toEqual(expect.arrayContaining([
-      'auth_by_phone',
       'lookup_guest_events_by_phone',
       'get_guest_event_detail',
     ]));
@@ -612,6 +606,8 @@ describe('AgentService first-class information flow', () => {
         dresscode: null,
         commonAsked: [],
         contactInfo: [],
+        attendance: null,
+        purchases: [purchase('ORD-000880')],
       },
     };
     const provider = providerGateway();
@@ -631,12 +627,11 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(gateway.authByPhoneCalls).toBe(1);
+    expect(gateway.authByPhoneCalls).toBe(0);
     expect(gateway.guestEventCalls).toBe(1);
     expect(gateway.eventDetailCalls).toBe(1);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.trace.tools_called).toEqual(expect.arrayContaining([
-      'auth_by_phone',
       'lookup_guest_events_by_phone',
       'get_guest_event_detail',
     ]));
@@ -649,23 +644,26 @@ describe('AgentService first-class information flow', () => {
         }),
         expect.objectContaining({
           kind: 'purchase',
-          status: 'needs_input',
-          nextInput: 'email',
+          status: 'completed',
+          accessMethod: 'trusted_phone_event_purchase',
         }),
       ]),
     );
     expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'pide el correo registrado únicamente para las consultas protegidas que siguen pendientes',
+      'no pidas correo ni código',
     );
   });
 
-  it('hands off without asking for email when automatic phone authentication fails technically', async () => {
-    const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
+  it('hands off without asking for email when phone-scoped gift detail fails', async () => {
+    const detailRequest = purchaseRequest(null);
+    detailRequest.aspects = ['dedication'];
+    const runtime = new InformationRuntime([extraction([detailRequest])]);
     const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = {
-      status: 'failed',
-      error: 'Agent auth endpoint timed out',
+    gateway.guestGiftResult = {
+      status: 'retryable_failure',
+      resource: 'gift_purchases',
       retryable: true,
+      error: 'Gift purchase endpoint returned HTTP 500',
     };
     const provider = providerGateway();
     const service = createService({
@@ -688,19 +686,10 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.takeoverCalls).toBe(1);
     expect(runtime.composeRequests).toHaveLength(0);
     expect(response.plan.human_escalation.status).toBe('requested');
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.guestGiftCalls).toBe(1);
     expect(response.trace.tools_called).toContain('request_human_takeover');
-    expect(response.trace.authentication_execution_summary).toEqual([
-      {
-        operation: 'auth_by_phone',
-        status: 'failed',
-        auth_method: 'phone',
-        failure_kind: 'transient_failure',
-        retryable: true,
-        error_preview: 'Agent auth endpoint timed out',
-        http_status: null,
-        request_id: null,
-      },
-    ]);
+    expect(response.trace.tools_called).not.toContain('auth_by_phone');
   });
 
   it('uses email OTP immediately when the trusted phone is absent', async () => {
@@ -1096,7 +1085,7 @@ describe('AgentService first-class information flow', () => {
     ]);
   });
 
-  it('hands an accountless purchase to a person without asking for an impossible registered email', async () => {
+  it('resolves an accountless purchase by trusted phone without asking for email', async () => {
     const accountlessRequest = purchaseRequest(null);
     accountlessRequest.authAction = 'accountless_user';
     accountlessRequest.query = 'La persona dice que no creó una cuenta.';
@@ -1105,7 +1094,11 @@ describe('AgentService first-class information flow', () => {
       extraction([accountlessRequest]),
     ]);
     const gateway = new FakePurchaseGateway();
-    gateway.authByPhoneResult = { status: 'user_not_found' };
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
+    };
     const provider = providerGateway();
     const service = createService({
       runtime,
@@ -1132,17 +1125,19 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(provider.requestCodeCalls).toBe(0);
-    expect(gateway.takeoverCalls).toBe(1);
-    expect(response.plan.human_escalation.status).toBe('requested');
-    expect(response.plan.information_state.pending_requests).toEqual([
-      expect.objectContaining({
-        kind: 'purchase',
-        query: 'Estado del regalo comprado.',
-      }),
-    ]);
-    expect(response.outbound.text).toContain('Estado del regalo comprado');
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(gateway.guestOrdersCalls).toBe(2);
+    expect(gateway.guestGiftCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(response.plan.information_state.pending_requests).toEqual([]);
     expect(response.outbound.text).not.toContain('correo');
     expect(response.outbound.text).not.toContain('código');
+    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
+      kind: 'purchase',
+      status: 'completed',
+      accessMethod: 'trusted_phone_purchase',
+    });
   });
 
   it('honors an explicit verification refusal and clears the protected request without another prompt', async () => {
@@ -1582,6 +1577,8 @@ class FakeKnowledgeGateway implements KnowledgeRetrievalGateway {
 class FakePurchaseGateway implements AgentConversationGateway {
   public ordersCalls = 0;
   public giftCalls = 0;
+  public guestOrdersCalls = 0;
+  public guestGiftCalls = 0;
   public authByPhoneCalls = 0;
   public updatePhoneCalls = 0;
   public lastAuthByPhoneInput: {
@@ -1609,6 +1606,16 @@ class FakePurchaseGateway implements AgentConversationGateway {
     status: 'success',
     resource: 'gift_purchases',
     purchases: [purchase('ORD-000880')],
+  };
+  public guestOrdersResult: AgentPhonePurchaseLookupResult = {
+    status: 'not_found',
+    resource: 'orders',
+    orderId: null,
+  };
+  public guestGiftResult: AgentPhonePurchaseLookupResult = {
+    status: 'not_found',
+    resource: 'gift_purchases',
+    orderId: null,
   };
   public guestEventCalls = 0;
   public eventDetailCalls = 0;
@@ -1658,6 +1665,16 @@ class FakePurchaseGateway implements AgentConversationGateway {
     this.giftCalls += 1;
     this.lastToken = args.token;
     return this.giftResult;
+  }
+
+  async getGuestOrdersByPhone(): Promise<AgentPhonePurchaseLookupResult> {
+    this.guestOrdersCalls += 1;
+    return this.guestOrdersResult;
+  }
+
+  async getGuestGiftPurchasesByPhone(): Promise<AgentPhonePurchaseLookupResult> {
+    this.guestGiftCalls += 1;
+    return this.guestGiftResult;
   }
 
   async authByPhone(args: {

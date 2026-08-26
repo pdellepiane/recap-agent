@@ -8,6 +8,7 @@ import type {
   AgentConversationMessage,
   AgentConversationGateway,
   AgentGatewayResult,
+  AgentEventDetailResult,
   AgentGuestEventsResult,
   AgentGuestRsvpInput,
   AgentGuestRsvpResult,
@@ -395,9 +396,7 @@ describe('AgentService RSVP flow', () => {
         eventReference: 'Michelle & Jorge',
       }),
     ]);
-    const gateway = new RsvpGateway([], [], {
-      status: 'success',
-      events: [{
+    const guestEvent = {
         eventId: 37218,
         name: 'Michelle & Jorge',
         slug: 'michellejorge',
@@ -409,8 +408,34 @@ describe('AgentService RSVP flow', () => {
         city: 'Lima',
         country: 'PE',
         currency: 'PEN',
-      }],
-    });
+      };
+    const gateway = new RsvpGateway(
+      [],
+      [],
+      { status: 'success', events: [guestEvent] },
+      undefined,
+      {
+        status: 'success',
+        event: {
+          ...guestEvent,
+          withTime: true,
+          timezone: 'America/Lima',
+          celebrateds: [],
+          moments: [],
+          dresscode: null,
+          commonAsked: [],
+          contactInfo: [],
+          attendance: {
+            guestId: 584352,
+            name: 'Cristian Abarca',
+            hasResponded: true,
+            willAttend: true,
+            responseDate: '2026-08-25T00:00:00.000Z',
+          },
+          purchases: [],
+        },
+      },
+    );
     const service = createService(runtime, gateway, new InMemoryPlanStore(), []);
 
     const result = await service.handleTurn(inbound('Hola, ya confirmé, gracias'));
@@ -419,21 +444,20 @@ describe('AgentService RSVP flow', () => {
     expect(gateway.guestEventLookupCalls).toBe(1);
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.trace.tools_called).toContain('lookup_guest_events_by_phone');
+    expect(result.trace.tools_called).toContain('get_guest_event_detail');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toEqual({
       coverage: 'complete',
-      resolution: 'event_association_only',
+      resolution: 'authoritative_invitation',
       events: [{
         event_name: 'Michelle & Jorge',
         event_date: '2026-10-10T19:00:00.000Z',
-        invitation_record: 'unavailable',
-        rsvp_state: 'unavailable',
+        invitation_record: 'available',
+        rsvp_state: 'attending',
       }],
     });
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('Michelle & Jorge');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      'no hiciste otro cambio',
-    );
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('estado attending');
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
       'no encontró ninguna invitación',
     );
@@ -539,6 +563,7 @@ class RsvpGateway implements AgentConversationGateway {
     private readonly messages: AgentConversationMessage[] = [],
     private readonly guestEvents: AgentGuestEventsResult = { status: 'not_found' },
     private readonly onGuestEventLookup?: () => void,
+    private readonly eventDetail: AgentEventDetailResult = { status: 'not_found' },
   ) {}
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
@@ -573,6 +598,10 @@ class RsvpGateway implements AgentConversationGateway {
     this.guestEventLookupCalls += 1;
     this.onGuestEventLookup?.();
     return this.guestEvents;
+  }
+
+  async getEventDetail(): Promise<AgentEventDetailResult> {
+    return this.eventDetail;
   }
 
   async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {
