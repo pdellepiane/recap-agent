@@ -1,0 +1,33 @@
+template: template.base-live
+id: live_behavior.purchase_delia_status_by_phone
+suite: live_behavior_regression
+version: 1
+description: Delia's payment status is answered from phone-scoped order summaries without an account or OTP loop.
+tags: [live, behavior, purchase, phone-orders, reported-interaction, delia]
+targetModes: [live_lambda]
+inputs:
+  - text: Ya pagué el regalo para Caroline & Jason. ¿Mi pago está aprobado?
+    channel: whatsapp
+    contactPhone: "+51962983263"
+    sessionId: live-purchase-delia-phone-orders-session
+expectations:
+  - id: delia-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: delia-uses-order-summary-only
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: delia-approved-payment-is-reported
+    type: text_semantic
+    rubric: >-
+      The phone-scoped order lookup contains Delia's approved gift purchase for Caroline & Jason. The answer must be concise, natural, and entirely in Spanish; clearly say the payment is approved. It must not ask for email, an OTP, account registration, or a payment receipt, and must not expose private payment identifiers or gateway data.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 220

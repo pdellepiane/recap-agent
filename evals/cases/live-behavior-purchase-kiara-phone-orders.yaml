@@ -1,0 +1,33 @@
+template: template.base-live
+id: live_behavior.purchase_kiara_pending_by_phone
+suite: live_behavior_regression
+version: 1
+description: Kiara's pending gift status is answered from phone-scoped orders without requesting an OTP that may never arrive.
+tags: [live, behavior, purchase, phone-orders, reported-interaction, kiara]
+targetModes: [live_lambda]
+inputs:
+  - text: Hice la compra para Suki Sofía pero no me llegó confirmación. ¿Cuál es el estado?
+    channel: whatsapp
+    contactPhone: "+51999927635"
+    sessionId: live-purchase-kiara-phone-orders-session
+expectations:
+  - id: kiara-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: kiara-uses-order-summary-only
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: kiara-pending-status-is-reported
+    type: text_semantic
+    rubric: >-
+      The phone-scoped order result for Suki Sofía is pending. The answer must be concise, natural, and entirely in Spanish; explain that the payment or gift is still pending or being verified, without calling it approved or failed. It must not ask for email, an OTP, another registration, or a screenshot.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 240

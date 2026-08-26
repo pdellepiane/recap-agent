@@ -48,15 +48,6 @@ behaviorChanges:
   - id: render-completed-submissions-as-final
     implementedBy: 26893ff
     liveCaseIds: [live_feedback.token_seeded_close_flow]
-  - id: authenticate-protected-information-by-phone-first
-    implementedBy: 67e978d
-    liveCaseIds: [live_behavior.phone_first_auth_success]
-  - id: fall-back-from-unregistered-phone-to-email-otp
-    implementedBy: 67e978d
-    liveCaseIds: [live_behavior.phone_first_auth_fallback]
-  - id: authenticate-current-whatsapp-phone-without-confirmation
-    implementedBy: 14e0e65
-    liveCaseIds: [live_behavior.phone_first_auth_success]
   - id: recover-retired-phone-confirmation-state
     implementedBy: bbe5ca6
     liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
@@ -68,7 +59,7 @@ behaviorChanges:
     liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
   - id: persist-sanitized-authentication-execution-diagnostics
     implementedBy: 14e0e65
-    liveCaseIds: [live_behavior.phone_first_auth_success, live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
   - id: clarify-imprecise-phone-confirmation-answers
     implementedBy: de67a04
     liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]
@@ -143,7 +134,7 @@ behaviorChanges:
     liveCaseIds: [live_behavior.rsvp_trusted_phone_reports_no_pending]
   - id: request-email-code-by-copy-and-paste-without-text-wording
     implementedBy: c132b28
-    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation, live_behavior.phone_first_auth_fallback]
+    liveCaseIds: [live_behavior.otp_sent_explains_image_limitation]
   - id: distinguish-otp-transport-failures-from-invalid-codes
     implementedBy: dee1d45
     liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
@@ -204,9 +195,6 @@ behaviorChanges:
   - id: hand-off-after-terminal-auth-service-failures
     implementedBy: ae90190
     liveCaseIds: [live_behavior.otp_not_received_requires_response]
-  - id: hand-off-accountless-purchase-without-registered-email-loop
-    implementedBy: ae90190
-    liveCaseIds: [live_behavior.accountless_purchase_hands_off_without_registered_email]
   - id: close-protected-request-after-explicit-authentication-refusal
     implementedBy: ae90190
     liveCaseIds: [live_behavior.authentication_refusal_closes_protected_query]
@@ -221,16 +209,34 @@ behaviorChanges:
     liveCaseIds: [live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
   - id: preserve-original-protected-query-through-authentication-continuations
     implementedBy: 56390b5
-    liveCaseIds: [live_behavior.accountless_purchase_hands_off_without_registered_email, live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
   - id: name-the-pending-query-in-terminal-authentication-handoffs
     implementedBy: 56390b5
-    liveCaseIds: [live_behavior.accountless_purchase_hands_off_without_registered_email, live_behavior.repeated_otp_failure_preserves_gift_query]
+    liveCaseIds: [live_behavior.repeated_otp_failure_preserves_gift_query]
   - id: disable-phone-scoped-guest-access-after-explicit-phone-rejection
     implementedBy: 56390b5
     liveCaseIds: [live_behavior.phone_account_rejection_requests_email]
   - id: distinguish-phone-association-rejection-from-authentication-refusal
     implementedBy: 5403a10
     liveCaseIds: [live_behavior.phone_account_rejection_requests_email, live_behavior.authentication_refusal_closes_protected_query]
-  - id: hand-off-when-email-fallback-address-is-rejected
-    implementedBy: 5403a10
-    liveCaseIds: [live_behavior.phone_first_auth_fallback]
+  - id: route-phone-purchase-summary-without-account-auth
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.purchase_delia_status_by_phone, live_behavior.purchase_kiara_pending_by_phone]
+  - id: route-phone-gift-detail-without-account-auth
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.purchase_joaquin_dedication_selection]
+  - id: resolve-accountless-phone-purchases-without-otp-loop
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.purchase_martha_accountless_selection]
+  - id: enrich-rsvp-state-through-phone-scoped-event
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing]
+  - id: preserve-event-association-when-enriched-attendance-is-null
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.accountless_guest_event_uses_phone_without_otp]
+  - id: reuse-event-scoped-purchases-without-redundant-global-read
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.accountless_event_answer_precedes_remaining_private_auth]
+  - id: reconcile-phone-purchase-sources-with-minimum-disclosure
+    implementedBy: aff284b
+    liveCaseIds: [live_behavior.purchase_delia_status_by_phone, live_behavior.purchase_joaquin_dedication_selection]

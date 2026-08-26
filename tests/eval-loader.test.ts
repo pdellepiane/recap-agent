@@ -142,25 +142,24 @@ describe('EvalLoader', () => {
     await expect(loader.loadCatalog()).rejects.toThrow();
   });
 
-  it('keeps phone-first live cases on distinct environment fixtures', async () => {
+  it('keeps reported phone-scoped live cases on their exact fixtures', async () => {
     const loader = new EvalLoader(path.resolve(process.cwd(), 'evals'));
     const catalog = await loader.loadCatalog();
-    const success = catalog.cases.find(
-      (currentCase) => currentCase.id === 'live_behavior.phone_first_auth_success',
+    const delia = catalog.cases.find(
+      (currentCase) => currentCase.id === 'live_behavior.purchase_delia_status_by_phone',
     );
-    const fallback = catalog.cases.find(
-      (currentCase) => currentCase.id === 'live_behavior.phone_first_auth_fallback',
+    const martha = catalog.cases.find(
+      (currentCase) => currentCase.id === 'live_behavior.purchase_martha_accountless_selection',
     );
 
-    expect(success?.inputs.map((input) => input.contactPhone)).toEqual([
-      '$TERMINAL_CONTACT_PHONE',
+    expect(delia?.inputs.map((input) => input.contactPhone)).toEqual([
+      '+51962983263',
     ]);
-    expect(fallback?.inputs.map((input) => input.contactPhone)).toEqual([
-      '$PHONE_FIRST_FALLBACK_CONTACT_PHONE',
-      '$PHONE_FIRST_FALLBACK_CONTACT_PHONE',
+    expect(martha?.inputs.map((input) => input.contactPhone)).toEqual([
+      '+51922701221',
     ]);
-    expect(success?.inputs[0]?.contactPhone).not.toBe(
-      fallback?.inputs[0]?.contactPhone,
+    expect(delia?.inputs[0]?.contactPhone).not.toBe(
+      martha?.inputs[0]?.contactPhone,
     );
   });
 });

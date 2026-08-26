@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.accountless_guest_event_uses_phone_without_otp
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An invited WhatsApp guest without an account receives event details through the trusted phone without being pushed into email OTP.
 tags: [live, behavior, associated-event, accountless-guest, phone-first, reported-interaction]
 targetModes: [live_lambda]
@@ -15,10 +15,10 @@ expectations:
     type: node_transition
     to: resolver_consultas_informativas
     severity: hard
-  - id: checks-account-then-uses-guest-event-context
+  - id: uses-phone-enriched-event-context-directly
     type: tool_usage
-    mustCall: [auth_by_phone, lookup_guest_events_by_phone, get_guest_event_detail]
-    mustNotCall: [request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
+    mustCall: [lookup_guest_events_by_phone, get_guest_event_detail]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
     severity: hard
   - id: leaves-no-authentication-request-pending
     type: plan_field_equals

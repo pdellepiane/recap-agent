@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.accountless_event_answer_precedes_remaining_private_auth
 suite: live_behavior_regression
-version: 1
-description: A mixed event and purchase question uses the trusted guest invitation first and requests email only for the remaining private purchase lookup.
+version: 2
+description: A mixed event and purchase question reuses the phone-enriched event and its scoped purchases without account authentication.
 tags: [live, behavior, associated-event, accountless-guest, mixed-information, phone-first]
 targetModes: [live_lambda]
 inputs:
@@ -15,20 +15,20 @@ expectations:
     type: node_transition
     to: resolver_consultas_informativas
     severity: hard
-  - id: checks-account-and-guest-event-before-email
+  - id: reads-and-reuses-phone-enriched-event
     type: tool_usage
-    mustCall: [auth_by_phone, lookup_guest_events_by_phone, get_guest_event_detail]
-    mustNotCall: [request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
+    mustCall: [lookup_guest_events_by_phone, get_guest_event_detail]
+    mustNotCall: [auth_by_phone, lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone, request_user_login_code, verify_user_login_code, update_phone, guest_rsvp]
     severity: hard
   - id: keeps-email-auth-ready-for-the-private-query
     type: plan_field_equals
     path: user_auth.status
     expected: none
     severity: hard
-  - id: answers-event-and-limits-email-request-to-private-data
+  - id: answers-event-and-reuses-scoped-purchase
     type: text_semantic
     rubric: >-
-      The trusted WhatsApp number is an invited guest to Julisabeth y Andrés, whose verified event detail places “Recepción y Fiesta” at Hacienda Recoveco on Avenida Manuel Valle in Lima. The answer must be concise, natural, and entirely in Spanish; provide that grounded reception location immediately, then explain that the registered email is needed only to check the private purchase status. It must not ask for an OTP yet, claim a purchase result, reopen onboarding, or defer the event answer to another turn.
+      The trusted WhatsApp number is an invited guest to Julisabeth y Andrés. The phone-enriched event detail contains the verified “Recepción y Fiesta” location at Hacienda Recoveco on Avenida Manuel Valle in Lima and an event-scoped purchase. The answer must be concise, natural, and entirely in Spanish; provide the requested event location and the available purchase status in the same turn. It must not ask for email or an OTP, issue a redundant global purchase lookup, reopen onboarding, or expose sensitive payment data.
     minScore: 0.9
     requireJudge: true
     severity: hard

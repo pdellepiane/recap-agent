@@ -1,0 +1,33 @@
+template: template.base-live
+id: live_behavior.purchase_joaquin_dedication_selection
+suite: live_behavior_regression
+version: 1
+description: Joaquín's dedication request uses phone-scoped gift details and asks him to select among multiple purchases without authentication.
+tags: [live, behavior, purchase, gift-detail, selection, reported-interaction, joaquin]
+targetModes: [live_lambda]
+inputs:
+  - text: Quisiera cambiar la dedicatoria de un regalo que hice para Chiara Vittoria.
+    channel: whatsapp
+    contactPhone: "+51926857444"
+    sessionId: live-purchase-joaquin-dedication-session
+expectations:
+  - id: joaquin-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: joaquin-uses-detailed-gift-read
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [lookup_guest_orders_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: joaquin-is-asked-to-select-one-purchase
+    type: text_semantic
+    rubric: >-
+      The phone-scoped gift-purchase lookup finds more than one purchase for Chiara Vittoria. The answer must be concise, natural, and entirely in Spanish; present compact distinguishing information for the matching purchases and ask Joaquín in one question which purchase he means. It must not claim that the dedication was already changed, ask for email or a code, or disclose sensitive payment or bank data.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 300

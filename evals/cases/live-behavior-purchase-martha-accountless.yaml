@@ -1,0 +1,33 @@
+template: template.base-live
+id: live_behavior.purchase_martha_accountless_selection
+suite: live_behavior_regression
+version: 1
+description: Martha's purchases are found by trusted phone even though she has no account, and multiple records are presented for selection without OTP.
+tags: [live, behavior, purchase, phone-orders, accountless, selection, reported-interaction, martha]
+targetModes: [live_lambda]
+inputs:
+  - text: No me registré ni tengo cuenta. Quiero saber qué pasó con el regalo que intenté pagar.
+    channel: whatsapp
+    contactPhone: "+51922701221"
+    sessionId: live-purchase-martha-accountless-session
+expectations:
+  - id: martha-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: martha-uses-phone-orders-without-auth
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    severity: hard
+  - id: martha-is-given-purchase-selection
+    type: text_semantic
+    rubric: >-
+      The trusted phone has multiple historical order records but no associated guest event. The answer must be concise, natural, and entirely in Spanish; show compact distinguishing information for the available orders and ask Martha which one she means. It must not say no information was found, infer an invitation or event association, ask for email or a code, require account creation, or expose sensitive payment data.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 300
