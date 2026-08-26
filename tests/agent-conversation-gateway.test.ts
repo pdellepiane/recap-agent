@@ -373,6 +373,228 @@ describe('AgentConversationGateway', () => {
     expect(result.purchases[0]?.payment?.destinationAccount?.cci).toBe('002');
   });
 
+  it('retrieves accountless orders by trusted phone without an authorization header', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        orders: [{
+          id: 'ORD-000882',
+          payment_status: 'approved',
+          shipping_status: 'delivered',
+          grand_total: 125,
+          payment_method: 'Yape',
+          event_name: 'Boda Lima',
+          event_date: '20/09/2026',
+          items: [],
+        }],
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.getGuestOrdersByPhone({
+      phone_extension: '51',
+      phone_number: '987 654 321',
+      orderId: 'ORD-000882',
+    })).resolves.toMatchObject({
+      status: 'success',
+      resource: 'orders',
+      purchases: [{ orderId: 'ORD-000882', paymentStatus: 'approved' }],
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/guest/orders?phone_extension=%2B51&phone_number=987654321&order_id=ORD-000882',
+      expect.objectContaining({
+        method: 'GET',
+        headers: { 'X-Agent-Key': 'secret-key' },
+      }),
+    );
+  });
+
+  it('retrieves rich accountless gift purchases and maps documented phone failures', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
+        data: {
+          purchases: [{
+            id: 'ORD-000883',
+            payment_status: 'approved',
+            shipping_status: 'pending',
+            grand_total: 275,
+            event_name: 'Boda Lima',
+            items: [],
+            dedication: { message: 'Felicidades', send_physical: true },
+            thanks: { message: null, send_method: 'whatsapp' },
+          }],
+        },
+        errors: null,
+        error: null,
+      }))
+      .mockResolvedValueOnce(jsonResponse(404, {
+        status: false,
+        data: null,
+        errors: null,
+        error: 'No purchases for this phone.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(422, {
+        status: false,
+        data: null,
+        errors: { code: 'invalid_phone' },
+        error: 'Invalid phone.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(500, {
+        status: false,
+        data: null,
+        errors: null,
+        error: 'Temporary failure.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(200, {
+        status: true,
+        data: { purchases: [{ id: 123 }] },
+        errors: null,
+        error: null,
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+    const input = { phone_extension: '+51', phone_number: '987654321' };
+
+    await expect(gateway.getGuestGiftPurchasesByPhone(input)).resolves.toMatchObject({
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [{
+        orderId: 'ORD-000883',
+        dedication: { message: 'Felicidades' },
+      }],
+    });
+    await expect(gateway.getGuestGiftPurchasesByPhone(input)).resolves.toEqual({
+      status: 'not_found',
+      resource: 'gift_purchases',
+      orderId: null,
+    });
+    await expect(gateway.getGuestGiftPurchasesByPhone(input)).resolves.toMatchObject({
+      status: 'invalid_request',
+      resource: 'gift_purchases',
+    });
+    await expect(gateway.getGuestGiftPurchasesByPhone(input)).resolves.toMatchObject({
+      status: 'retryable_failure',
+      resource: 'gift_purchases',
+      retryable: true,
+    });
+    await expect(gateway.getGuestGiftPurchasesByPhone(input)).resolves.toMatchObject({
+      status: 'invalid_response',
+      resource: 'gift_purchases',
+    });
+  });
+
+  it('parses phone-enriched attendance and event-scoped purchases', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        event: {
+          event_id: 88,
+          name: 'Boda Lima',
+          slug: 'boda-lima',
+          with_time: true,
+          timezone: 'America/Lima',
+          celebrateds: [],
+          moments: [],
+          common_asked: [],
+          contact_info: [],
+        },
+        attendance: {
+          guest_id: 481,
+          name: 'Cristian Abarca',
+          has_responded: 1,
+          will_attend: true,
+          response_date: '2026-08-25T19:40:00Z',
+        },
+        purchases: [{
+          id: 'ORD-000884',
+          payment_status: 'approved',
+          shipping_status: null,
+          grand_total: 50,
+          event_name: 'Boda Lima',
+          items: [],
+          dedication: null,
+        }],
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.getEventDetail({
+      eventId: 88,
+      phone_extension: '51',
+      phone_number: '987 654 321',
+    })).resolves.toMatchObject({
+      status: 'success',
+      event: {
+        eventId: 88,
+        attendance: {
+          guestId: 481,
+          hasResponded: true,
+          willAttend: true,
+        },
+        purchases: [{ orderId: 'ORD-000884', paymentStatus: 'approved' }],
+      },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/event?event_id=88&phone_extension=%2B51&phone_number=987654321',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
+  it('supports slug-based event detail and maps phone-enrichment 500 as retryable', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(500, {
+      status: false,
+      data: null,
+      errors: null,
+      error: 'Temporary failure.',
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.getEventDetail({
+      slug: 'boda-lima',
+      phone: { phone_extension: '+51', phone_number: '987654321' },
+    })).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API request failed with 500: Temporary failure.',
+      retryable: true,
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/event?slug=boda-lima&phone_extension=%2B51&phone_number=987654321',
+      expect.objectContaining({ method: 'GET' }),
+    );
+  });
+
   it('distinguishes an account-level order miss from an unavailable route', async () => {
     const fetchMock = vi
       .fn()
@@ -459,7 +681,7 @@ describe('AgentConversationGateway', () => {
     );
   });
 
-  it('logs the complete phone-auth exchange while fingerprinting both credentials', async () => {
+  it('logs phone-auth route metadata without exposing phone or response credentials', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
       status: true,
@@ -494,15 +716,16 @@ describe('AgentConversationGateway', () => {
     expect(logs).toContain('agent_api');
     expect(logs).toContain('authenticate_by_phone');
     expect(logs).toContain('X-Agent-Key');
-    expect(logs).toContain('"length":16');
-    expect(logs).toContain('"phone_extension":"+51"');
-    expect(logs).toContain('"phone_number":"973296571"');
+    expect(logs).toContain('"route":"/auth-by-phone"');
+    expect(logs).toContain('"request_body_fields":["phone_extension","phone_number"]');
     expect(logs).toContain('auth_http_response_received');
     expect(logs).toContain('"response_status":200');
-    expect(logs).toContain('"length":16');
-    expect(logs).toContain('"expires_in":1787843661');
-    expect(logs).toContain('"id":97');
-    expect(logs).toContain('registered@example.com');
+    expect(logs).toContain('"response_body_summary"');
+    expect(logs).not.toContain('"expires_in":1787843661');
+    expect(logs).not.toContain('"id":97');
+    expect(logs).not.toContain('registered@example.com');
+    expect(logs).not.toContain('+51');
+    expect(logs).not.toContain('973296571');
     expect(logs).not.toContain('agent-api-secret');
     expect(logs).not.toContain('phone-jwt-secret');
   });

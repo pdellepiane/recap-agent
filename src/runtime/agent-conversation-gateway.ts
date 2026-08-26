@@ -85,6 +85,54 @@ export type AgentPurchaseLookupResult =
       retryable: boolean;
       failureKind: 'invalid_response' | 'request_failed';
       error: string;
+  };
+
+/**
+ * A purchase lookup made with the channel-trusted phone identity.
+ *
+ * This deliberately has a separate result type from the authenticated lookup:
+ * a phone-scoped 404 means that this phone is not associated with the record,
+ * not that the account has no records at all.
+ */
+export type AgentPhonePurchaseLookupResult =
+  | {
+      status: 'success';
+      resource: PurchaseResource;
+      purchases: PurchaseInformation[];
+    }
+  | {
+      status: 'not_found';
+      resource: PurchaseResource;
+      orderId: string | null;
+    }
+  | {
+      status: 'unauthorized';
+      resource: PurchaseResource;
+      error: string;
+    }
+  | {
+      status: 'invalid_request' | 'invalid_response';
+      resource: PurchaseResource;
+      error: string;
+    }
+  | {
+      status: 'retryable_failure';
+      resource: PurchaseResource;
+      retryable: true;
+      error: string;
+    }
+  | {
+      status: 'route_unavailable';
+      resource: PurchaseResource;
+      retryable: boolean;
+      error: string;
+    }
+  | {
+      status: 'failed';
+      resource: PurchaseResource;
+      retryable: boolean;
+      failureKind: 'invalid_response' | 'request_failed';
+      error: string;
     };
 
 export type AgentAuthByPhoneInput = {
@@ -165,6 +213,18 @@ export type AgentEventDetail = AgentGuestEventSummary & {
     label: string;
     value: string;
   }>;
+  /** Present for phone-enriched requests; absent on legacy test doubles. */
+  attendance?: AgentGuestAttendance | null;
+  /** Event-scoped gift purchases returned by phone-enriched event lookup. */
+  purchases?: PurchaseInformation[];
+};
+
+export type AgentGuestAttendance = {
+  guestId: number;
+  name: string;
+  hasResponded: boolean;
+  willAttend: boolean | null;
+  responseDate: string | null;
 };
 
 export type AgentGuestEventsResult =
@@ -176,6 +236,15 @@ export type AgentEventDetailResult =
   | { status: 'success'; event: AgentEventDetail }
   | { status: 'not_found' }
   | { status: 'failed'; error: string; retryable: boolean };
+
+export type AgentEventDetailInput = {
+  eventId?: number;
+  slug?: string;
+  phone?: AgentAuthByPhoneInput;
+  trustedPhone?: AgentAuthByPhoneInput | null;
+  phone_extension?: string;
+  phone_number?: string;
+};
 
 export type RsvpCandidate = {
   guestId: number;
@@ -232,9 +301,19 @@ export interface AgentConversationGateway {
     token: string;
     orderId?: string | null;
   }): Promise<AgentPurchaseLookupResult>;
+  getGuestOrdersByPhone?(args: {
+    phone_extension: string;
+    phone_number: string;
+    orderId?: string | null;
+  }): Promise<AgentPhonePurchaseLookupResult>;
+  getGuestGiftPurchasesByPhone?(args: {
+    phone_extension: string;
+    phone_number: string;
+    orderId?: string | null;
+  }): Promise<AgentPhonePurchaseLookupResult>;
   authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult>;
   getGuestEventsByPhone?(input: AgentAuthByPhoneInput): Promise<AgentGuestEventsResult>;
-  getEventDetail?(input: { eventId: number }): Promise<AgentEventDetailResult>;
+  getEventDetail?(input: AgentEventDetailInput): Promise<AgentEventDetailResult>;
   updatePhone(args: AgentAuthByPhoneInput & { token: string }): Promise<AgentUpdatePhoneResult>;
   guestRsvp?(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult>;
 }
@@ -275,6 +354,24 @@ export class NoopAgentConversationGateway implements AgentConversationGateway {
     return this.unavailablePurchaseResult('gift_purchases');
   }
 
+  async getGuestOrdersByPhone(args: {
+    phone_extension: string;
+    phone_number: string;
+    orderId?: string | null;
+  }): Promise<AgentPhonePurchaseLookupResult> {
+    void args;
+    return this.unavailablePhonePurchaseResult('orders');
+  }
+
+  async getGuestGiftPurchasesByPhone(args: {
+    phone_extension: string;
+    phone_number: string;
+    orderId?: string | null;
+  }): Promise<AgentPhonePurchaseLookupResult> {
+    void args;
+    return this.unavailablePhonePurchaseResult('gift_purchases');
+  }
+
   async authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult> {
     void input;
     return {
@@ -304,7 +401,7 @@ export class NoopAgentConversationGateway implements AgentConversationGateway {
     };
   }
 
-  async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> {
+  async getEventDetail(input: AgentEventDetailInput): Promise<AgentEventDetailResult> {
     void input;
     return {
       status: 'failed',
@@ -331,6 +428,17 @@ export class NoopAgentConversationGateway implements AgentConversationGateway {
       retryable: false,
       failureKind: 'request_failed',
       error: 'Agent API purchase lookup is not configured.',
+    };
+  }
+
+  private unavailablePhonePurchaseResult(
+    resource: PurchaseResource,
+  ): AgentPhonePurchaseLookupResult {
+    return {
+      status: 'retryable_failure',
+      resource,
+      retryable: true,
+      error: 'Agent API phone-scoped purchase lookup is not configured.',
     };
   }
 
@@ -467,8 +575,12 @@ const eventDetailSchema = z.object({
   ]).default([]),
 });
 
-const eventDetailDataSchema = z.object({
-  event: eventDetailSchema,
+const attendanceSchema = z.object({
+  guest_id: z.number().int().positive(),
+  name: z.string().trim().min(1),
+  has_responded: z.union([z.boolean(), z.literal(0), z.literal(1)]),
+  will_attend: z.union([z.boolean(), z.literal(0), z.literal(1)]).nullable(),
+  response_date: z.string().trim().min(1).nullable(),
 });
 
 const messageSchema = z.object({
@@ -574,6 +686,29 @@ const ordersDataSchema = z.object({
 const giftPurchasesDataSchema = z.object({
   purchases: z.array(giftPurchaseSchema),
 });
+
+const eventDetailDataSchema = z.object({
+  event: eventDetailSchema,
+  attendance: attendanceSchema.nullable().default(null),
+  purchases: z.array(giftPurchaseSchema).default([]),
+});
+
+type OrderWire = z.infer<typeof orderSchema>;
+type GiftPurchaseWire = z.infer<typeof giftPurchaseSchema>;
+
+function normalizePhoneInput(
+  input: AgentAuthByPhoneInput,
+): AgentAuthByPhoneInput | null {
+  const extensionDigits = input.phone_extension.replace(/\D/gu, '');
+  const phoneDigits = input.phone_number.replace(/\D/gu, '');
+  if (!extensionDigits || !phoneDigits) {
+    return null;
+  }
+  return {
+    phone_extension: `+${extensionDigits}`,
+    phone_number: phoneDigits,
+  };
+}
 
 export class HttpAgentConversationGateway implements AgentConversationGateway {
   constructor(
@@ -682,8 +817,8 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return response;
     }
 
-    const parsed = ordersDataSchema.safeParse(response.data);
-    if (!parsed.success) {
+    const purchases = this.parseOrders(response.data);
+    if (!purchases) {
       return {
         status: 'failed',
         resource: 'orders',
@@ -696,24 +831,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     return {
       status: 'success',
       resource: 'orders',
-      purchases: parsed.data.orders.map((order) => ({
-        orderId: order.id,
-        paymentStatus: order.payment_status ?? null,
-        shippingStatus: order.shipping_status ?? null,
-        grandTotal: order.grand_total ?? null,
-        paymentMethod: order.payment_method ?? null,
-        eventName: order.event_name ?? null,
-        eventDate: order.event_date ?? null,
-        eventUrl: order.event_url ?? null,
-        createdAt: order.created_at ?? null,
-        items: order.items.map((item) => ({
-          giftName: item.gift_name ?? null,
-          quantity: item.quantity ?? null,
-          amount: item.amount ?? null,
-          rowTotal: item.row_total ?? null,
-          type: item.type ?? null,
-        })),
-      })),
+      purchases,
     };
   }
 
@@ -730,8 +848,8 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return response;
     }
 
-    const parsed = giftPurchasesDataSchema.safeParse(response.data);
-    if (!parsed.success) {
+    const purchases = this.parseGiftPurchases(response.data);
+    if (!purchases) {
       return {
         status: 'failed',
         resource: 'gift_purchases',
@@ -744,72 +862,40 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     return {
       status: 'success',
       resource: 'gift_purchases',
-      purchases: parsed.data.purchases.map((purchase) => ({
-        orderId: purchase.id,
-        paymentStatus: purchase.payment_status ?? null,
-        shippingStatus: purchase.shipping_status ?? null,
-        grandTotal: purchase.grand_total ?? null,
-        paymentMethod: purchase.payment?.method ?? null,
-        eventName: purchase.event_name ?? null,
-        eventDate: purchase.event_date ?? null,
-        eventUrl: purchase.event_url ?? null,
-        createdAt: purchase.created_at ?? null,
-        items: purchase.items.map((item) => ({
-          giftName: item.gift_name ?? null,
-          quantity: item.quantity ?? null,
-          amount: item.amount ?? null,
-          rowTotal: item.row_total ?? null,
-          type: item.type ?? null,
-        })),
-        payment: purchase.payment
-          ? {
-              method: purchase.payment.method ?? null,
-              amount: purchase.payment.amount ?? null,
-              paidAt: purchase.payment.paid_at ?? null,
-              paymentId: purchase.payment.payment_id ?? null,
-              transactionStatus: purchase.payment.transaction_status ?? null,
-              gatewayMessage: purchase.payment.gateway_message ?? null,
-              operationCode: purchase.payment.op_code ?? null,
-              originBank: purchase.payment.origin_bank ?? null,
-              destinationAccount: purchase.payment.destination_account
-                ? {
-                    holder: purchase.payment.destination_account.holder ?? null,
-                    bank: purchase.payment.destination_account.bank ?? null,
-                    number: purchase.payment.destination_account.number ?? null,
-                    cci: purchase.payment.destination_account.cci ?? null,
-                    type: purchase.payment.destination_account.type ?? null,
-                  }
-                : null,
-              voucherImage: purchase.payment.voucher ?? null,
-            }
-          : null,
-        declineCode: purchase.decline_code ?? null,
-        adminComment: purchase.admin_comment ?? null,
-        dedication: purchase.dedication
-          ? {
-              message: purchase.dedication.message ?? null,
-              isPrivate: purchase.dedication.is_private ?? null,
-              sendPhysical: purchase.dedication.send_physical ?? null,
-              physicalStatus: purchase.dedication.physical_status ?? null,
-            }
-          : null,
-        thanks: purchase.thanks
-          ? {
-              message: purchase.thanks.message ?? null,
-              sendMethod: purchase.thanks.send_method ?? null,
-            }
-          : null,
-        isThanked: purchase.is_thanked ?? null,
-      })),
+      purchases,
     };
   }
 
+  async getGuestOrdersByPhone(args: {
+    phone_extension: string;
+    phone_number: string;
+    orderId?: string | null;
+  }): Promise<AgentPhonePurchaseLookupResult> {
+    return this.getGuestPurchaseByPhone('orders', args);
+  }
+
+  async getGuestGiftPurchasesByPhone(args: {
+    phone_extension: string;
+    phone_number: string;
+    orderId?: string | null;
+  }): Promise<AgentPhonePurchaseLookupResult> {
+    return this.getGuestPurchaseByPhone('gift_purchases', args);
+  }
+
   async authByPhone(input: AgentAuthByPhoneInput): Promise<AgentAuthByPhoneResult> {
+    const phone = normalizePhoneInput(input);
+    if (!phone) {
+      return {
+        status: 'failed',
+        error: 'Agent API phone authentication requires a valid phone identity.',
+        retryable: false,
+      };
+    }
     const response = await this.request('/auth-by-phone', {
       method: 'POST',
       body: {
-        phone_extension: input.phone_extension,
-        phone_number: input.phone_number,
+        phone_extension: phone.phone_extension,
+        phone_number: phone.phone_number,
       },
     });
 
@@ -865,9 +951,17 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   async getGuestEventsByPhone(
     input: AgentAuthByPhoneInput,
   ): Promise<AgentGuestEventsResult> {
+    const phone = normalizePhoneInput(input);
+    if (!phone) {
+      return {
+        status: 'failed',
+        error: 'Agent API guest event lookup requires a valid phone identity.',
+        retryable: false,
+      };
+    }
     const params = new URLSearchParams({
-      phone_extension: input.phone_extension,
-      phone_number: input.phone_number,
+      phone_extension: phone.phone_extension,
+      phone_number: phone.phone_number,
     });
     const response = await this.request(`/guest/events?${params.toString()}`, {
       method: 'GET',
@@ -910,8 +1004,52 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     };
   }
 
-  async getEventDetail(input: { eventId: number }): Promise<AgentEventDetailResult> {
-    const params = new URLSearchParams({ event_id: String(input.eventId) });
+  async getEventDetail(input: AgentEventDetailInput): Promise<AgentEventDetailResult> {
+    const eventId = input.eventId;
+    const slug = input.slug?.trim() || null;
+    if (eventId === undefined && !slug) {
+      return {
+        status: 'failed',
+        error: 'Agent API event detail lookup requires an event id or slug.',
+        retryable: false,
+      };
+    }
+    if (eventId !== undefined && (!Number.isSafeInteger(eventId) || eventId <= 0)) {
+      return {
+        status: 'failed',
+        error: 'Agent API event detail lookup received an invalid event id.',
+        retryable: false,
+      };
+    }
+    const hasDirectPhone = input.phone_extension !== undefined || input.phone_number !== undefined;
+    const suppliedPhone = input.trustedPhone ?? input.phone ?? (hasDirectPhone
+      ? {
+          phone_extension: input.phone_extension ?? '',
+          phone_number: input.phone_number ?? '',
+        }
+      : null);
+    if (hasDirectPhone && (!input.phone_extension || !input.phone_number)) {
+      return {
+        status: 'failed',
+        error: 'Agent API event detail phone lookup requires both phone fields.',
+        retryable: false,
+      };
+    }
+    const phone = suppliedPhone ? normalizePhoneInput(suppliedPhone) : null;
+    if (suppliedPhone && !phone) {
+      return {
+        status: 'failed',
+        error: 'Agent API event detail lookup received an invalid phone identity.',
+        retryable: false,
+      };
+    }
+    const params = new URLSearchParams(
+      eventId !== undefined ? { event_id: String(eventId) } : { slug: slug as string },
+    );
+    if (phone) {
+      params.set('phone_extension', phone.phone_extension);
+      params.set('phone_number', phone.phone_number);
+    }
     const response = await this.request(`/event?${params.toString()}`, {
       method: 'GET',
     });
@@ -978,6 +1116,18 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           : Object.entries(event.contact_info)
               .filter((entry): entry is [string, string] => entry[1] !== null)
               .map(([label, value]) => ({ label, value })),
+        attendance: parsed.data.attendance
+          ? {
+              guestId: parsed.data.attendance.guest_id,
+              name: parsed.data.attendance.name,
+              hasResponded: parsed.data.attendance.has_responded === true || parsed.data.attendance.has_responded === 1,
+              willAttend: parsed.data.attendance.will_attend === null
+                ? null
+                : parsed.data.attendance.will_attend === true || parsed.data.attendance.will_attend === 1,
+              responseDate: parsed.data.attendance.response_date,
+            }
+          : null,
+        purchases: parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase)),
       },
     };
   }
@@ -985,12 +1135,20 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   async updatePhone(
     args: AgentAuthByPhoneInput & { token: string },
   ): Promise<AgentUpdatePhoneResult> {
+    const phone = normalizePhoneInput(args);
+    if (!phone) {
+      return {
+        status: 'failed',
+        error: 'Agent API phone update requires a valid phone identity.',
+        retryable: false,
+      };
+    }
     const response = await this.request('/user/update-phone', {
       method: 'POST',
       authorizationToken: args.token,
       body: {
-        phone_extension: args.phone_extension,
-        phone_number: args.phone_number,
+        phone_extension: phone.phone_extension,
+        phone_number: phone.phone_number,
       },
     });
 
@@ -1011,11 +1169,19 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   }
 
   async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {
+    const phone = normalizePhoneInput(input);
+    if (!phone) {
+      return {
+        status: 'failed',
+        error: 'Agent API RSVP requires a valid phone identity.',
+        retryable: false,
+      };
+    }
     const response = await this.request('/guest/rsvp', {
       method: 'POST',
       body: {
-        phone_extension: input.phone_extension,
-        phone_number: input.phone_number,
+        phone_extension: phone.phone_extension,
+        phone_number: phone.phone_number,
         action: input.action,
         ...(input.guest_id !== undefined ? { guest_id: input.guest_id } : {}),
       },
@@ -1134,6 +1300,165 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     }));
   }
 
+  private parseOrders(data: unknown): PurchaseInformation[] | null {
+    const parsed = ordersDataSchema.safeParse(data);
+    if (!parsed.success) {
+      return null;
+    }
+    return parsed.data.orders.map((order) => this.mapOrder(order));
+  }
+
+  private mapOrder(order: OrderWire): PurchaseInformation {
+    return {
+      orderId: order.id,
+      paymentStatus: order.payment_status ?? null,
+      shippingStatus: order.shipping_status ?? null,
+      grandTotal: order.grand_total ?? null,
+      paymentMethod: order.payment_method ?? null,
+      eventName: order.event_name ?? null,
+      eventDate: order.event_date ?? null,
+      eventUrl: order.event_url ?? null,
+      createdAt: order.created_at ?? null,
+      items: order.items.map((item) => ({
+        giftName: item.gift_name ?? null,
+        quantity: item.quantity ?? null,
+        amount: item.amount ?? null,
+        rowTotal: item.row_total ?? null,
+        type: item.type ?? null,
+      })),
+    };
+  }
+
+  private parseGiftPurchases(data: unknown): PurchaseInformation[] | null {
+    const parsed = giftPurchasesDataSchema.safeParse(data);
+    if (!parsed.success) {
+      return null;
+    }
+    return parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase));
+  }
+
+  private mapGiftPurchase(purchase: GiftPurchaseWire): PurchaseInformation {
+    return {
+      orderId: purchase.id,
+      paymentStatus: purchase.payment_status ?? null,
+      shippingStatus: purchase.shipping_status ?? null,
+      grandTotal: purchase.grand_total ?? null,
+      paymentMethod: purchase.payment?.method ?? null,
+      eventName: purchase.event_name ?? null,
+      eventDate: purchase.event_date ?? null,
+      eventUrl: purchase.event_url ?? null,
+      createdAt: purchase.created_at ?? null,
+      items: purchase.items.map((item) => ({
+        giftName: item.gift_name ?? null,
+        quantity: item.quantity ?? null,
+        amount: item.amount ?? null,
+        rowTotal: item.row_total ?? null,
+        type: item.type ?? null,
+      })),
+      payment: purchase.payment
+        ? {
+            method: purchase.payment.method ?? null,
+            amount: purchase.payment.amount ?? null,
+            paidAt: purchase.payment.paid_at ?? null,
+            paymentId: purchase.payment.payment_id ?? null,
+            transactionStatus: purchase.payment.transaction_status ?? null,
+            gatewayMessage: purchase.payment.gateway_message ?? null,
+            operationCode: purchase.payment.op_code ?? null,
+            originBank: purchase.payment.origin_bank ?? null,
+            destinationAccount: purchase.payment.destination_account
+              ? {
+                  holder: purchase.payment.destination_account.holder ?? null,
+                  bank: purchase.payment.destination_account.bank ?? null,
+                  number: purchase.payment.destination_account.number ?? null,
+                  cci: purchase.payment.destination_account.cci ?? null,
+                  type: purchase.payment.destination_account.type ?? null,
+                }
+              : null,
+            voucherImage: purchase.payment.voucher ?? null,
+          }
+        : null,
+      declineCode: purchase.decline_code ?? null,
+      adminComment: purchase.admin_comment ?? null,
+      dedication: purchase.dedication
+        ? {
+            message: purchase.dedication.message ?? null,
+            isPrivate: purchase.dedication.is_private ?? null,
+            sendPhysical: purchase.dedication.send_physical ?? null,
+            physicalStatus: purchase.dedication.physical_status ?? null,
+          }
+        : null,
+      thanks: purchase.thanks
+        ? {
+            message: purchase.thanks.message ?? null,
+            sendMethod: purchase.thanks.send_method ?? null,
+          }
+        : null,
+      isThanked: purchase.is_thanked ?? null,
+    };
+  }
+
+  private async getGuestPurchaseByPhone(
+    resource: PurchaseResource,
+    args: {
+      phone_extension: string;
+      phone_number: string;
+      orderId?: string | null;
+    },
+  ): Promise<AgentPhonePurchaseLookupResult> {
+    const phone = normalizePhoneInput(args);
+    if (!phone) {
+      return {
+        status: 'invalid_request',
+        resource,
+        error: 'Agent API phone lookup requires a valid phone identity.',
+      };
+    }
+    const endpoint = resource === 'orders' ? '/guest/orders' : '/guest/gift-purchases';
+    const params = new URLSearchParams({
+      phone_extension: phone.phone_extension,
+      phone_number: phone.phone_number,
+    });
+    if (args.orderId) {
+      params.set('order_id', args.orderId);
+    }
+    const response = await this.request(`${endpoint}?${params.toString()}`, {
+      method: 'GET',
+    });
+    if (response.status !== 'success') {
+      if (response.httpStatus === 404 && response.errorEnvelope) {
+        return {
+          status: 'not_found',
+          resource,
+          orderId: args.orderId ?? null,
+        };
+      }
+      if (response.httpStatus === 401 || response.httpStatus === 403) {
+        return { status: 'unauthorized', resource, error: response.error };
+      }
+      if (response.httpStatus === 400 || response.httpStatus === 422) {
+        return { status: 'invalid_request', resource, error: response.error };
+      }
+      return {
+        status: 'retryable_failure',
+        resource,
+        retryable: true,
+        error: response.error,
+      };
+    }
+
+    const purchases = resource === 'orders'
+      ? this.parseOrders(response.data)
+      : this.parseGiftPurchases(response.data);
+    if (!purchases) {
+      return {
+        status: 'invalid_response',
+        resource,
+        error: `Agent API ${resource === 'orders' ? 'orders' : 'gift-purchases'} response had an unexpected shape.`,
+      };
+    }
+    return { status: 'success', resource, purchases };
+  }
+
   private async requestPurchase(
     resource: PurchaseResource,
     token: string,
@@ -1226,10 +1551,10 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         service: 'agent_api',
         operation: this.authOperationForPath(path),
         method: options.method,
-        url,
+        route: path.split('?')[0],
         max_attempts: attempts,
-        request_headers: requestHeaders,
-        request_body: options.body ?? null,
+        request_headers_present: Object.keys(requestHeaders),
+        request_body_fields: options.body ? Object.keys(options.body) : [],
       });
     }
 
@@ -1256,7 +1581,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
               service: 'agent_api',
               operation: this.authOperationForPath(path),
               method: options.method,
-              url,
+              route: path.split('?')[0],
               attempt,
               max_attempts: attempts,
               attempt_duration_ms: Date.now() - attemptStartedAt,
@@ -1264,7 +1589,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
               response_status: response.status,
               response_ok: response.ok,
               response_headers: responseHeadersForAuthLog(response.headers),
-              response_body: parsedBody,
+              response_body_summary: this.observabilityBodySummary(parsedBody),
             },
           );
         }
@@ -1280,7 +1605,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
                 completed_attempt: attempt,
                 next_attempt: attempt + 1,
                 response_status: response.status,
-                error: lastError,
+                failure_class: this.failureClassForStatus(response.status),
               });
             }
             await this.backoff(attempt);
@@ -1340,20 +1665,13 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
             service: 'agent_api',
             operation: this.authOperationForPath(path),
             method: options.method,
-            url,
+            route: path.split('?')[0],
             attempt,
             max_attempts: attempts,
             attempt_duration_ms: Date.now() - attemptStartedAt,
             total_duration_ms: Date.now() - requestStartedAt,
             retry_scheduled: attempt < attempts,
-            error: error instanceof Error
-              ? {
-                  name: error.name,
-                  message: error.message,
-                  stack: error.stack ?? null,
-                  cause: error.cause ?? null,
-                }
-              : { value: error },
+            failure_class: 'transport_error',
           });
         }
         if (attempt < attempts) {
@@ -1388,9 +1706,47 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     if (path.startsWith('/user/update-phone')) return 'update_phone_after_email_auth';
     if (path.startsWith('/guest/events')) return 'lookup_guest_events_by_phone';
     if (path.startsWith('/event?')) return 'lookup_guest_event_detail';
+    if (path.startsWith('/guest/orders')) return 'lookup_guest_orders_by_phone';
+    if (path.startsWith('/guest/gift-purchases')) return 'lookup_guest_gift_purchases_by_phone';
     if (path.startsWith('/orders')) return 'lookup_authenticated_orders';
     if (path.startsWith('/gift-purchases')) return 'lookup_authenticated_gift_purchases';
     return 'authenticated_agent_api_request';
+  }
+
+  private observabilityBodySummary(body: unknown): Record<string, unknown> {
+    if (body === null || body === undefined) {
+      return { kind: 'null' };
+    }
+    if (Array.isArray(body)) {
+      return { kind: 'array', item_count: body.length };
+    }
+    if (typeof body !== 'object') {
+      return { kind: typeof body };
+    }
+    const record = body as Record<string, unknown>;
+    const summary: Record<string, unknown> = {
+      kind: 'object',
+      fields: Object.keys(record),
+    };
+    if (typeof record.status === 'boolean') {
+      summary.status = record.status;
+    }
+    for (const key of ['orders', 'purchases', 'messages', 'events']) {
+      const value = record[key];
+      if (Array.isArray(value)) {
+        summary[`${key}_count`] = value.length;
+      }
+    }
+    return summary;
+  }
+
+  private failureClassForStatus(status: number): string {
+    if (status === 401 || status === 403) return 'authorization_error';
+    if (status === 404) return 'not_found';
+    if (status === 422 || status === 400) return 'invalid_request';
+    if (status === 429) return 'rate_limited';
+    if (status >= 500) return 'server_error';
+    return 'http_error';
   }
 
   private publicFailure(
