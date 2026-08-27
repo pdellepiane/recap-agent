@@ -81,13 +81,14 @@ describe('AgentService RSVP flow', () => {
     expect(runtime.composeRequests[0]?.errorMessage).toContain(expectedNote);
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('correo');
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
       coverage: 'complete',
       resolution: 'authoritative_invitation',
-      events: [{
+      event: {
         event_name: 'Matrimonio de Ana y Luis',
         invitation_record: 'available',
         rsvp_state: action,
-      }],
+      },
     });
   });
 
@@ -202,7 +203,8 @@ describe('AgentService RSVP flow', () => {
       status: 'awaiting_action',
       pending_action: 'attending',
     });
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('pending');
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; event: { rsvp_state: string } }).event.rsvp_state).toBe('pending');
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string }).state).toBe('resolved_single');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('confirmes su asistencia');
   });
 
@@ -247,9 +249,9 @@ describe('AgentService RSVP flow', () => {
     await service.handleTurn(inbound('¿Mi asistencia está confirmada?'));
 
     expect(gateway.inputs).toEqual([]);
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('attending');
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events).toHaveLength(1);
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.invitation_record).toBe(
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; event: { rsvp_state: string } }).event.rsvp_state).toBe('attending');
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string }).state).toBe('resolved_single');
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { event: { invitation_record: string } }).event.invitation_record).toBe(
       'available',
     );
     expect(runtime.composeRequests[0]?.errorMessage).toContain('disfrute el evento');
@@ -277,7 +279,7 @@ describe('AgentService RSVP flow', () => {
     expect(result.plan.rsvp_state.status).toBe('none');
     expect(gateway.inputs).toHaveLength(1);
     expect(gateway.inputs[0]).toMatchObject({ action: 'attending', guest_id: 41 });
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('attending');
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; event: { rsvp_state: string } }).event.rsvp_state).toBe('attending');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('actualización se completó');
   });
 
@@ -322,7 +324,7 @@ describe('AgentService RSVP flow', () => {
 
     await service.handleTurn(inbound('Sí'));
 
-    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence?.events[0]?.rsvp_state).toBe('declining');
+    expect((runtime.composeRequests[0]?.rsvpPhoneEvidence as unknown as { state: string; event: { rsvp_state: string } }).event.rsvp_state).toBe('declining');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('no cambió');
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('quedó registrada');
   });
@@ -372,9 +374,10 @@ describe('AgentService RSVP flow', () => {
 
     const request = runtime.composeRequests[0];
     expect(request?.rsvpPhoneEvidence).toEqual({
+      state: 'unavailable',
       coverage: 'complete',
       resolution: 'not_found',
-      events: [],
+      reason: 'no_invitations',
     });
     expect(request?.extraction.rsvpEventReference).toBe('Gia Antonella');
     expect(request?.errorMessage).toContain('no devolvió su registro ni su estado');
@@ -447,14 +450,15 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.tools_called).toContain('get_guest_event_detail');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toEqual({
+      state: 'resolved_single',
       coverage: 'complete',
       resolution: 'authoritative_invitation',
-      events: [{
+      event: {
         event_name: 'Michelle & Jorge',
         event_date: '2026-10-10T19:00:00.000Z',
         invitation_record: 'available',
         rsvp_state: 'attending',
-      }],
+      },
     });
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('Michelle & Jorge');
     expect(runtime.composeRequests[0]?.errorMessage).toContain('estado attending');
@@ -523,9 +527,10 @@ describe('AgentService RSVP flow', () => {
     await service.handleTurn(inbound('¿Cómo está mi invitación?'));
 
     expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
       coverage: 'partial',
       resolution: 'authoritative_invitation',
-      events: [{ invitation_record: 'available', rsvp_state: 'pending' }],
+      event: { invitation_record: 'available', rsvp_state: 'pending' },
     });
     expect(runtime.composeRequests[0]?.errorMessage).toContain('coverage=partial');
     expect(runtime.composeRequests[0]?.errorMessage).toContain(

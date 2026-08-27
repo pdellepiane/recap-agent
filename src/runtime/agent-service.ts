@@ -1913,7 +1913,7 @@ export class AgentService {
       promptFilePaths: bundle.filePaths,
       toolUsage: args.toolUsage,
       rsvpPhoneEvidence: replyPhoneEvidence
-        ? this.projectRsvpPhoneEvidenceForReply(replyPhoneEvidence)
+        ? this.projectRsvpPhoneEvidenceForReply(replyPhoneEvidence, selectedInvitation)
         : null,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
@@ -2204,12 +2204,74 @@ export class AgentService {
     }
   }
 
+  private hasRsvpEventIdentity(invitation: RsvpInvitation): boolean {
+    if (invitation.eventId !== null) {
+      return true;
+    }
+    const normalizedName = this.normalizeSelectionText(invitation.eventName ?? '');
+    return normalizedName.length > 0;
+  }
+
+  private toRsvpReplyEvent(invitation: RsvpInvitation): {
+    event_name: string | null;
+    event_date: string | null;
+    invitation_record: 'available' | 'unavailable';
+    rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
+  } {
+    return {
+      event_name: invitation.eventName,
+      event_date: invitation.eventDate,
+      invitation_record: invitation.guestId === null ? 'unavailable' : 'available',
+      rsvp_state: invitation.state === 'unknown' ? 'unavailable' : invitation.state,
+    };
+  }
+
+  private sortRsvpInvitationsDeterministically(
+    invitations: RsvpInvitation[],
+  ): RsvpInvitation[] {
+    return [...invitations].sort((left, right) => {
+      if (left.eventId !== null && right.eventId !== null) {
+        return left.eventId - right.eventId;
+      }
+      if (left.eventId !== null) {
+        return -1;
+      }
+      if (right.eventId !== null) {
+        return 1;
+      }
+      const leftName = this.normalizeSelectionText(left.eventName ?? '');
+      const rightName = this.normalizeSelectionText(right.eventName ?? '');
+      if (leftName < rightName) return -1;
+      if (leftName > rightName) return 1;
+      const leftDate = left.eventDate ?? '';
+      const rightDate = right.eventDate ?? '';
+      if (leftDate < rightDate) return -1;
+      if (leftDate > rightDate) return 1;
+      return 0;
+    });
+  }
+
   private reconcileRsvpPhoneEvidence(
     authoritativeInvitations: RsvpInvitation[],
     associatedEvents: RsvpInvitation[],
   ): RsvpInvitation[] {
-    const reconciled = [...authoritativeInvitations];
-    associatedEvents.forEach((associatedEvent) => {
+    const filteredAuthoritative = authoritativeInvitations.filter((invitation) =>
+      this.hasRsvpEventIdentity(invitation));
+    const filteredAssociated = associatedEvents.filter((invitation) =>
+      this.hasRsvpEventIdentity(invitation));
+    if (
+      filteredAuthoritative.length !== authoritativeInvitations.length ||
+      filteredAssociated.length !== associatedEvents.length
+    ) {
+      logAuthObservabilityEvent('info', 'rsvp_reconcile_rejected_missing_identity', {
+        authoritative_before: authoritativeInvitations.length,
+        authoritative_after: filteredAuthoritative.length,
+        associated_before: associatedEvents.length,
+        associated_after: filteredAssociated.length,
+      });
+    }
+    const reconciled = [...filteredAuthoritative];
+    filteredAssociated.forEach((associatedEvent) => {
       const duplicateIndex = reconciled.findIndex((invitation) =>
         this.sameRsvpEvent(invitation, associatedEvent));
       if (duplicateIndex < 0) {
@@ -2218,26 +2280,100 @@ export class AgentService {
         reconciled[duplicateIndex] = associatedEvent;
       }
     });
-    return reconciled;
+    return this.sortRsvpInvitationsDeterministically(reconciled);
   }
 
   private projectRsvpPhoneEvidenceForReply(
     evidence: RsvpPhoneEvidence,
+    selectedInvitation: RsvpInvitation | null,
   ): RsvpPhoneReplyEvidence {
-    return {
+    const sortedInvitations = this.sortRsvpInvitationsDeterministically(
+      evidence.invitations.filter((invitation) => this.hasRsvpEventIdentity(invitation)),
+    );
+    if (sortedInvitations.length === 0) {
+      const projection: RsvpPhoneReplyEvidence = {
+        state: 'unavailable',
+        coverage: evidence.coverage,
+        resolution: evidence.resolution,
+        reason: 'no_invitations',
+      };
+      logAuthObservabilityEvent('info', 'rsvp_projection_state', {
+        state: projection.state,
+        coverage: projection.coverage,
+        resolution: projection.resolution,
+        invitation_count: 0,
+        reason: projection.reason,
+      });
+      return projection;
+    }
+    if (selectedInvitation && this.hasRsvpEventIdentity(selectedInvitation)) {
+      const matched = sortedInvitations.find((invitation) =>
+        this.sameRsvpEvent(invitation, selectedInvitation));
+      const target = matched ?? selectedInvitation;
+      const projection: RsvpPhoneReplyEvidence = {
+        state: 'resolved_single',
+        coverage: evidence.coverage,
+        resolution: evidence.resolution,
+        event: this.toRsvpReplyEvent(target),
+      };
+      logAuthObservabilityEvent('info', 'rsvp_projection_state', {
+        state: projection.state,
+        coverage: projection.coverage,
+        resolution: projection.resolution,
+        invitation_count: sortedInvitations.length,
+        selected_event_id: target.eventId,
+        selected_event_name: target.eventName,
+      });
+      return projection;
+    }
+    if (sortedInvitations.length === 1) {
+      const only = sortedInvitations[0];
+      if (!only) {
+        const projection: RsvpPhoneReplyEvidence = {
+          state: 'unavailable',
+          coverage: evidence.coverage,
+          resolution: evidence.resolution,
+          reason: 'no_invitations',
+        };
+        logAuthObservabilityEvent('info', 'rsvp_projection_state', {
+          state: projection.state,
+          coverage: projection.coverage,
+          resolution: projection.resolution,
+          invitation_count: 0,
+          reason: projection.reason,
+        });
+        return projection;
+      }
+      const projection: RsvpPhoneReplyEvidence = {
+        state: 'resolved_single',
+        coverage: evidence.coverage,
+        resolution: evidence.resolution,
+        event: this.toRsvpReplyEvent(only),
+      };
+      logAuthObservabilityEvent('info', 'rsvp_projection_state', {
+        state: projection.state,
+        coverage: projection.coverage,
+        resolution: projection.resolution,
+        invitation_count: 1,
+        selected_event_id: only.eventId,
+        selected_event_name: only.eventName,
+      });
+      return projection;
+    }
+    const projection: RsvpPhoneReplyEvidence = {
+      state: 'needs_event_selection',
       coverage: evidence.coverage,
       resolution: evidence.resolution,
-      events: evidence.invitations.map((invitation) => ({
-        event_name: invitation.eventName,
-        event_date: invitation.eventDate,
-        invitation_record: invitation.guestId === null
-          ? 'unavailable'
-          : 'available',
-        rsvp_state: invitation.state === 'unknown'
-          ? 'unavailable'
-          : invitation.state,
-      })),
+      candidates: sortedInvitations.map((invitation) => this.toRsvpReplyEvent(invitation)),
     };
+    logAuthObservabilityEvent('info', 'rsvp_projection_state', {
+      state: projection.state,
+      coverage: projection.coverage,
+      resolution: projection.resolution,
+      invitation_count: sortedInvitations.length,
+      candidate_event_ids: sortedInvitations.map((invitation) => invitation.eventId),
+    });
+    return projection;
   }
 
   private applyRsvpMutationResultToPhoneEvidence(

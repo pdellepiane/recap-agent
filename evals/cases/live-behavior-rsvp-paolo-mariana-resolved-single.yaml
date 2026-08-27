@@ -1,0 +1,42 @@
+template: template.base-live
+id: live_behavior.rsvp_paolo_mariana_resolved_single
+suite: live_behavior_regression
+version: 1
+description: Paolo & Mariana attending invitation reports the already-resolved RSVP result for the named event; it does not ask the user to choose among invitations when one is resolved.
+tags: [live, behavior, rsvp, paolo-mariana, resolved-single, projection]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola, quisiera confirmar el estado de mi invitacion a Otra celebración prueba
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-paolo-mariana-resolved-single-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: none
+    pending_action: null
+    candidates: []
+    requested_at: null
+    selection_attempts: 0
+expectations:
+  - id: enters-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: projects-resolved-single-without-candidate-list
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: reports-already-resolved-invitation-for-named-event
+    type: text_semantic
+    rubric: >-
+      The user asked about the invitation to Otra celebración prueba and the canonical phone evidence has that event as attending (Paolo & Mariana pattern: resolved_single). The response must be natural and entirely in Spanish, report that attendance is already confirmed for that named event and wish the guest well, without asking the user to choose among invitations, without listing other candidate events as alternatives, without asking for email or a code, and without claiming a new mutation was made.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 250

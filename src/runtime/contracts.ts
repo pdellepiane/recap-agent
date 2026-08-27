@@ -86,19 +86,35 @@ export type ExtractRequest = {
   messageContext: TurnMessageContext;
 };
 
-export type RsvpPhoneReplyEvidence = {
-  coverage: 'complete' | 'partial';
-  resolution:
-    | 'authoritative_invitation'
-    | 'event_association_only'
-    | 'not_found';
-  events: Array<{
-    event_name: string | null;
-    event_date: string | null;
-    invitation_record: 'available' | 'unavailable';
-    rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
-  }>;
-};
+export type RsvpPhoneReplyEvidence =
+  | {
+      state: 'resolved_single';
+      coverage: 'complete' | 'partial';
+      resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
+      event: {
+        event_name: string | null;
+        event_date: string | null;
+        invitation_record: 'available' | 'unavailable';
+        rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
+      };
+    }
+  | {
+      state: 'needs_event_selection';
+      coverage: 'complete' | 'partial';
+      resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
+      candidates: Array<{
+        event_name: string | null;
+        event_date: string | null;
+        invitation_record: 'available' | 'unavailable';
+        rsvp_state: 'pending' | 'attending' | 'declining' | 'unavailable';
+      }>;
+    }
+  | {
+      state: 'unavailable';
+      coverage: 'complete' | 'partial';
+      resolution: 'authoritative_invitation' | 'event_association_only' | 'not_found';
+      reason: 'no_invitations' | 'missing_event_identity' | 'lookup_failed';
+    };
 
 export type ComposeReplyRequest = {
   currentNode: DecisionNode;

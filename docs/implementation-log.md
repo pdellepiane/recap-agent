@@ -33,6 +33,20 @@ Focused live run `eval-2026-08-27T16-52-00-593Z-27d9a70b` passed 1/1 with zero f
 
 **Verification:** `npm run typecheck` passed, `npm run lint` passed, `npm test` passed 536/536 tests across 73 files (baseline 520/71 on clean tree; +16 tests from this change).
 
+### Implement three-state RSVP projection (Paolo & Mariana fix)
+
+- Reconciled phone evidence now rejects records without event identity (`eventId` or normalized `eventName` empty), logs `rsvp_reconcile_rejected_missing_identity`, and is stably sorted by `eventId` then name/date for deterministic rendering (reference pattern `selectGuestEvent`/`guestEventsResult` in `information-orchestrator.ts:626-745`).
+- `reconcileRsvpPhoneEvidence` (src/runtime/agent-service.ts:2207-2222) and `projectRsvpPhoneEvidenceForReply` (2224-2241) now emit exactly one of `resolved_single` | `needs_event_selection` | `unavailable`. `resolved_single` carries a single `event` and omits candidate arrays entirely; `needs_event_selection` carries `candidates` only in that branch; `unavailable` carries `reason`. Records lacking identity are rejected, not projected.
+- `handleRsvpFlow` preserves uncertainty: when message/records do not identify a unique event, it keeps `awaiting_event_selection` with candidates; the broad candidate list exists only in `needs_event_selection`. The reply model never receives resolved event plus broad list together.
+- Added `/guest/rsvp` observability via `logAuthObservabilityEvent('info','rsvp_projection_state',...)` and `rsvp_reconcile_rejected_missing_identity`, emitting projection state, coverage, resolution, invitation counts, and selected/rejected identity outcome without altering flow logic (follows existing `auth-observability` patterns).
+- Aligned the RSVP reply prompt to the three states (Minimum Disclosure): `prompts/nodes/responder_invitacion/system.txt` and `response_contract.txt` now branch on `rsvp_phone_evidence.state`; the generic multi-invitation enumeration rule was replaced by state-conditioned Spanish guidance. Conversational content stays Spanish.
+- Registered behavior change `project-rsvp-phone-evidence-as-three-state` in `evals/live-behavior-coverage.yaml` with live case `live_behavior.rsvp_paolo_mariana_resolved_single` (hard `node_transition` + `tool_usage` + hard `text_semantic` with `requireJudge:true` describing correct Spanish reporting of the already-resolved attending event without asking to choose). Added the case to `evals/suites/live_behavior_regression.yaml`. Added deterministic offline twin `tests/rsvp-three-state-projection.test.ts` proving `resolved_single` without candidates, rejection, stable ordering, and that candidate list appears only in `needs_event_selection`.
+
+**Prompt footprint:** `responder_invitacion` bundle instructionBytes anchor 8233 -> current 8253 (+20 bytes, +0.24%). Serialized request delta approx +20 bytes. `system.txt` 1367 -> 1345 (-22), `response_contract.txt` 1242 -> 1284 (+42). Net increase is justified: it replaces the broad conditional multi-invitation guidance with precise typed-state guidance, eliminating contradictory/irrelevant instructions per branch and enabling the model to render `resolved_single` without enumerating other invitations (Minimum Disclosure: typed state replaces prompt rule). Overall prompt comparison still shows 52.21% reduction below historical baseline (732,995 -> 350,327 serialized bytes). `npm run audit:prompts` and `npm run audit:prompts:compare` remain green.
+
+**Verification:** `npm run typecheck` passed, `npm run lint` passed, `npm test` passed 541/541 tests across 74 files (baseline 520/71; +5 twin tests + 16 from T0). `tests/live-behavior-coverage.test.ts` passed. `npm run audit:prompts` 0 violations, `npm run audit:prompts:compare` 0 violations (52.21% reduction). Byte deltas measured against anchor `78ae24e` via `git show 78ae24e:prompts/<path>` per file.
+
+
 ## 2026-08-24
 
 ### Expand FAQ and protected-information authentication observability

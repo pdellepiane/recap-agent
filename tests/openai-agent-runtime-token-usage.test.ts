@@ -940,14 +940,15 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       entryMessage: null,
     };
     request.rsvpPhoneEvidence = {
+      state: 'resolved_single',
       coverage: 'complete',
       resolution: 'event_association_only',
-      events: [{
+      event: {
         event_name: 'Michelle & Jorge',
         event_date: '2026-10-10T19:00:00.000Z',
         invitation_record: 'unavailable',
         rsvp_state: 'unavailable',
-      }],
+      },
     };
     request.errorMessage = 'Usa exclusivamente rsvp_phone_evidence; no inventes el estado.';
     request.toolUsage.outputs = [{
