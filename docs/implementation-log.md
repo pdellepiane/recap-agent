@@ -21,6 +21,18 @@ Focused live run `eval-2026-08-27T16-52-00-593Z-27d9a70b` passed 1/1 with zero f
 - The backend and canonical reply evidence did contain Paolo & Mariana, selected the correct guest, and represented the final attendance state as attending. The reply model nevertheless followed the unrelated multi-invitation branch because the resolved single-event turn still received the broad candidate union and a generic instruction to enumerate multiple invitations.
 - Durable correction proposed: project a typed `resolved_single | needs_event_selection | unavailable` response mode; omit all candidate arrays in `resolved_single`; reject candidate records without an event identity; render successful/already-final RSVP outcomes deterministically; and add sanitized `/guest/rsvp` status/latency/result observability plus a full interaction regression. No RSVP behavior was changed in this transaction-code implementation.
 
+### Expose repeatable case filtering in the live-behavior eval CLI (T0)
+
+- Extended `EvalRunnerOptions` with optional `caseIds?: string[]` and updated `selectCases` in `src/evals/runner.ts` to intersect the allowlist with the existing suite filter, preserving single `caseId` behavior.
+- Extended `src/evals/live-behavior-cli.ts` to parse repeatable `--case <id>` (spaced and `--case=<id>` forms) and pass `caseIds` to the runner; when absent, behavior is identical to the full suite (37 cases via `live_behavior_regression`). Preserved the fail-closed exit contract verbatim (`totalCases===0` or any failed/errored/skipped yields exit 1).
+- Added unit tests covering no filter (all cases), single case, repeatable multiple cases, unknown case (zero cases -> exit contract), and suite intersection (case not in suite), plus CLI parsing tests.
+
+**Reason:** Waves T6/T7 require named 12-case subsets per deploy; T8 keeps the full suite behind explicit approval. The eval harness previously executed the entire suite with no filtering, making bounded per-deploy gates impossible.
+
+**Decision:** Membership is explicit case IDs only (deterministic, no tag filtering). The single `caseId` option used by `src/evals/cli.ts` remains untouched. The change is eval-harness-only and not Lambda-impacting, so no redeploy.
+
+**Verification:** `npm run typecheck` passed, `npm run lint` passed, `npm test` passed 536/536 tests across 73 files (baseline 520/71 on clean tree; +16 tests from this change).
+
 ## 2026-08-24
 
 ### Expand FAQ and protected-information authentication observability

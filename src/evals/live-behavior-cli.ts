@@ -8,6 +8,28 @@ import { runEvaluation } from './runner';
 
 dotenv.config({ path: ['.env.local', '.env'], quiet: true });
 
+export function parseCaseIds(argv: string[]): string[] | undefined {
+  const ids: string[] = [];
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (arg === '--case') {
+      const next = argv[i + 1];
+      if (next !== undefined && !next.startsWith('--')) {
+        ids.push(next);
+        i += 1;
+      }
+      continue;
+    }
+    if (arg.startsWith('--case=')) {
+      const value = arg.slice('--case='.length);
+      if (value.length > 0) {
+        ids.push(value);
+      }
+    }
+  }
+  return ids.length > 0 ? ids : undefined;
+}
+
 async function main(): Promise<void> {
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
@@ -15,11 +37,14 @@ async function main(): Promise<void> {
     );
   }
 
+  const caseIds = parseCaseIds(process.argv.slice(2));
+
   const result = await runEvaluation({
     evalsDir: path.resolve(process.cwd(), 'evals'),
     outputDir: path.resolve(process.cwd(), '.eval-runs'),
     suite: 'live_behavior_regression',
     target: 'live_lambda',
+    caseIds: caseIds ?? undefined,
   });
   const summary = {
     runId: result.runId,
@@ -44,7 +69,9 @@ async function main(): Promise<void> {
   }
 }
 
-void main().catch((error: unknown) => {
-  process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
-  process.exitCode = 1;
-});
+if (!process.env.VITEST) {
+  void main().catch((error: unknown) => {
+    process.stderr.write(`${error instanceof Error ? error.message : String(error)}\n`);
+    process.exitCode = 1;
+  });
+}

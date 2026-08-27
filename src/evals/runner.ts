@@ -37,6 +37,7 @@ export type EvalRunnerOptions = {
   suite?: string | null;
   target?: EvalRunConfig['target'] | null;
   caseId?: string | null;
+  caseIds?: string[] | null;
   matrixPath?: string | null;
   dryRun?: boolean;
   caseOverrides?: EvalCase[];
@@ -167,6 +168,11 @@ function selectCases(
 
   if (options.caseId) {
     selected = selected.filter((candidate) => candidate.id === options.caseId);
+  }
+
+  if (options.caseIds && options.caseIds.length > 0) {
+    const allowed = new Set(options.caseIds);
+    selected = selected.filter((candidate) => allowed.has(candidate.id));
   }
 
   if (options.suite) {
