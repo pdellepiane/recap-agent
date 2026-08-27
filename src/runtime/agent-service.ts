@@ -1817,8 +1817,8 @@ export class AgentService {
       operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
     } else if (selectedInvitation.guestId === null) {
       operationalNote = action
-        ? 'Usa el evento seleccionado de rsvp_phone_evidence. invitation_record=unavailable significa que la consulta no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.'
-        : 'Usa el evento seleccionado de rsvp_phone_evidence. rsvp_state=unavailable significa que la consulta no expone el estado de asistencia. No inventes el estado, no pidas correo ni código y ofrece apoyo humano para verificarlo.';
+        ? 'Usa el evento seleccionado de rsvp_phone_evidence. invitation_record=unavailable significa que la consulta no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no afirmes que el estado registrado esté confirmado, no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.'
+        : 'Usa el evento seleccionado de rsvp_phone_evidence. rsvp_state=unavailable significa que la consulta no expone el estado de asistencia. No inventes el estado, no afirmes que el estado registrado esté confirmado, no pidas correo ni código y ofrece apoyo humano para verificarlo.';
       nextRsvpState = this.emptyRsvpState();
     } else {
       const currentAction = selectedInvitation.state === 'attending'
@@ -2522,8 +2522,8 @@ export class AgentService {
   ): string {
     void invitations;
     const nextStep = action
-      ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta.'
-      : 'Informa brevemente el estado actual de cada invitación y pregunta cuál desea gestionar.';
+      ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta, enumerando cada candidato con su nombre y fecha.'
+      : 'Informa brevemente el estado actual de cada invitación con su nombre y fecha y pregunta cuál desea gestionar.';
     return `rsvp_phone_evidence contiene varias invitaciones reconciliadas. ${nextStep} ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
   }
 

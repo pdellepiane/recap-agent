@@ -85,10 +85,10 @@ describe('per-branch historical baseline via git show', () => {
     const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
-    // Current has +521 delta: +20 for T1 three-state guidance and +501 for T6-fix C minimal resolved_single/unavailable clarifications
+    // Current has +543 delta: +20 for T1 three-state guidance, +501 for T6-fix C clarifications, +22 for T6-fix-2 B nombre+fecha and unavailable confirmation guard
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(8754);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(521);
+    expect(currentRsvp?.instructionBytes).toBe(8776);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(543);
   }, 15_000);
 });
 
