@@ -5988,3 +5988,18 @@ Prior deployed mixed case classifier/extractor/reply were 2343/325, 10517/2558, 
 
 **Validation:** typecheck clean, `tests/eval-rsvp-hooks.test.ts` 4/4, `eval-loader` and `live-behavior-coverage` still pass, `eval-runner` 2/2 and `eval-runner-case-ids` 9/9.
 
+
+### T6-fix Commit B: fixture + registry corrections (evals)
+
+**Reason:** Paolamariana fixture seeded status none with status-query phrasing causing hasRsvpWork false -> information flow; declined/missing fixtures had stale plan_field expectations vs clear-on-resolve lifecycle and pending_action null vs attending contradiction; registry pointed at unreachable 86a5b3a; rubrics under-specified for ambiguous dates and purchase disclosure.
+
+**Decision:**
+- Paolamariana (live-behavior-rsvp-paolo-mariana-resolved-single.yaml): seeded rsvp_state to status awaiting_action, pending_action attending, candidate {guest_id 584353, event_name Otra celebración prueba, event_date 2026-08-19 05:00:00, requested_at 2026-08-17T15:00:00Z} mirroring live-behavior-rsvp-confirmed-state.yaml structure; kept all three hard expectations unchanged; bumped version 1->2.
+- Declined (live-behavior-rsvp-declined-state.yaml): fixed pending_action seed null->attending to resolve contradiction with expectation attending; kept status awaiting_action and pending_action attending expectations as they reflect the correct clear-on-resolve for declining branch (awaiting_action is the resolved state offering one change, analogous to confirmed's none for attending); did not delete other expectations.
+- Missing-action (live-behavior-rsvp-missing-action.yaml): fixed seed pending_action null->attending and added explicit pending_action attending expectation to resolve contradiction; preserved awaiting_action status as correct for declining/pending branch; did not soften other expectations.
+- Registry: fixed provenance hash 86a5b3a (unreachable) -> 82d48b0 (reachable mainline, validated via git merge-base --is-ancestor 82d48b0 HEAD ==0, 86a5b3a ==1); no other hashes touched.
+- Rubric clarifications (specification, not weakening): ambiguous-event now explicitly requires dates when enumerating candidates, quoting "Si rsvp_phone_evidence.state es needs_event_selection, enumera solo los candidatos de ese estado y formula una sola pregunta." (response_contract.txt:9) and noting candidates include event_date; bumped version 1->2. Accountless-event-answer now cites existing purchase disclosure rules "Para compras, responde solamente los aspectos presentes en cada objeto proyectado." (line 7) and "No reveles identificadores de transacción..." (line 33), left amount/product disclosure unchanged where contract silent and flagged needs_input.
+- Verification: eval-loader re-validated, typecheck clean.
+
+**needs_input:** Purchase amount/product disclosure when only status was requested is not governed by the information node response contract (lines 7 and 33 are silent on amount/product/card-type withholding). Rubric left unchanged beyond citing existing rules; policy invention would be required to make the 0.82 judge failure deterministic.
+

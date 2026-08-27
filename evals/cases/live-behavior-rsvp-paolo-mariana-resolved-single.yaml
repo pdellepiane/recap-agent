@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_paolo_mariana_resolved_single
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Paolo & Mariana attending invitation reports the already-resolved RSVP result for the named event; it does not ask the user to choose among invitations when one is resolved.
 tags: [live, behavior, rsvp, paolo-mariana, resolved-single, projection]
 targetModes: [live_lambda]
@@ -14,10 +14,13 @@ seedPlan:
   current_node: responder_invitacion
   intent: responder_invitacion
   rsvp_state:
-    status: none
-    pending_action: null
-    candidates: []
-    requested_at: null
+    status: awaiting_action
+    pending_action: attending
+    candidates:
+      - guest_id: 584353
+        event_name: Otra celebración prueba
+        event_date: "2026-08-19 05:00:00"
+    requested_at: "2026-08-17T15:00:00.000Z"
     selection_attempts: 0
 rsvpIsolation:
   setup:

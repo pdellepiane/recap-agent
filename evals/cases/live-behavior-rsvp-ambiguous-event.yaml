@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_ambiguous_event_requires_grounded_selection
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An underspecified event reference cannot select or mutate one of several persisted RSVP candidates.
 tags: [live, behavior, rsvp, attendance, ambiguity, reported-interaction]
 targetModes: [live_lambda]
@@ -46,8 +46,12 @@ expectations:
     severity: hard
   - id: asks-which-persisted-event
     type: text_semantic
+    # Rubric clarification (specification, not weakening): dates are required when enumerating candidates.
+    # Derived from prompts/nodes/responder_invitacion/response_contract.txt:9
+    # "Si rsvp_phone_evidence.state es needs_event_selection, enumera solo los candidatos de ese estado y formula una sola pregunta."
+    # Candidates are defined as {event_name, event_date}; enumeration must include dates when present.
     rubric: >-
-      The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events in natural Spanish and ask which one the guest means, without requesting email or an authentication code.
+      The guest says only “Ese” while two invitation candidates are pending: Matrimonio de Ana y Luis on 12 September 2026 and Cumpleaños de Marta on 19 September 2026. The response must not choose either event or claim that attendance was registered. It must identify the two available events with their dates (12 September 2026 and 19 September 2026) in natural Spanish and ask which one the guest means, without requesting email or an authentication code.
     minScore: 0.9
     requireJudge: true
     severity: hard
