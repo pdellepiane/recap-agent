@@ -60,7 +60,8 @@ function parsePhone(phone: string): { extension: string; number: string } | null
 function createGateway(): HttpAgentConversationGateway | null {
   const config = getConfig();
   const baseUrl = config.agentApi.baseUrl;
-  const apiKey = process.env.AGENT_API_KEY ?? process.env.CHANNEL_API_KEY ?? '';
+  const apiKey =
+    process.env.SE_API_KEY ?? process.env.AGENT_API_KEY ?? process.env.CHANNEL_API_KEY ?? '';
   if (!baseUrl || baseUrl.length === 0) {
     return null;
   }
