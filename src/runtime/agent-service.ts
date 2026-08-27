@@ -1736,7 +1736,8 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'responder_invitacion';
     const pendingState = args.workingPlan.rsvp_state;
-    const action = args.extraction.rsvpAction ?? pendingState.pending_action;
+    const action = args.extraction.rsvpAction
+      ?? (pendingState.status === 'awaiting_event_selection' ? pendingState.pending_action : null);
     let result: AgentGuestRsvpResult | null = null;
     let operationalNote: string;
     let nextRsvpState = pendingState;

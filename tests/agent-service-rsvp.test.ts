@@ -284,7 +284,7 @@ describe('AgentService RSVP flow', () => {
   });
 
   it('never claims a declined invitation changed when the backend returns its current state', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })]);
     const gateway = new RsvpGateway([{
       status: 'already_responded',
       currentAction: 'declining',
