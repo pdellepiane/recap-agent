@@ -1,0 +1,531 @@
+plan_id: plan-2026-08-27-rsvp-projection-prompt-audit
+status: pending
+tldr: |
+  Two workstreams, sequenced for exactly 2 Lambda deploys and 2 eval:behavior-live runs, each
+  running a named case subset via the new eval CLI filtering (T0), never the full suite. Wave 1
+  (parallel): T0 exposes repeatable --case filtering in the live eval CLI; T1 implements the
+  recorded three-state RSVP projection fix with its live case and offline twin; T2 fixes the
+  Aug 2026 audit rubric (bounded research); T3 builds the prompt inventory plus per-branch byte
+  measurement as an extension of the existing audit:prompts tooling, baselining ALL branches
+  (RSVP included) from the 78ae24e anchor via git show. Wave 2 (parallel): T1r is a reviewer
+  gate on T1's change set; T4 produces the full prompt-audit report with one remediation decision
+  per finding. Wave 3: T6 deploys the T1 change set and runs eval gate 1 on the named 12-case
+  RSVP subset. Wave 4: T5 applies the remediation batch with measured byte deltas and relevance
+  regressions, registering its own coverage entries. Wave 5: T5r is a reviewer gate on T5's
+  change set. Wave 6: T7 deploys the remediation batch and runs eval gate 2 on the RSVP
+  re-validation subset plus T5's registered cases. Wave 7: T8 verifies all ten baseline criteria
+  and presents the explicit user decision point for the full live_behavior_regression suite
+  (37 cases today, pinned by suite ID), also closing the gate open since commit 78ae24e; the
+  suite is never silently skipped. Code and prompt changes are never co-batched across
+  workstreams, so live cases cannot mask each other.
+created_at: 2026-08-27
+created_by: planner
+revision: 2
+replan_count: 1
+planner_revision_used: true
+
+baseline:
+  objective: |
+    (A) Ship the diagnosed three-state RSVP phone-evidence projection in src/runtime/agent-service.ts
+    (resolved_single | needs_event_selection | unavailable; candidate arrays omitted when resolved_single;
+    records without event identity rejected; deterministic rendering; /guest/rsvp observability) exactly
+    per the proposal recorded in docs/implementation-log.md, with the Paolo & Mariana interaction
+    registered and gated. (B) Execute a total system-prompt audit under the Minimum Disclosure
+    convention, state-machine aware (per node and per transition), benchmarked against current
+    (Aug 2026) context-engineering and agent-design practice, with remediation applied and measured.
+    Sequence the work to minimize deploys and eval:behavior-live runs without co-batching changes
+    whose live cases could mask each other, and fold the pending full 36-conversation suite gate
+    into the final strategy.
+  acceptance_criteria:
+    - "AC1: RSVP projection exposes exactly three states; resolved_single omits candidate arrays; records lacking event identity are rejected; rendering deterministic; /guest/rsvp observability added; broad candidate list only in needs_event_selection."
+    - "AC2: Paolo & Mariana registered as a new entry in evals/live-behavior-coverage.yaml with a live case in evals/cases/ carrying hard structural assertions plus a hard text_semantic expectation with requireJudge true, and a deterministic offline twin test; reuse of an existing live case only with exact coverage."
+    - "AC3: Git-tracked audit report with per-node prompt inventory (path -> node -> transitions consuming it), byte measurements per model call type (classifier/extraction/reply) before and after changes, categorized findings (duplicate/conflict/irrelevant/underspecified), and a remediation decision per finding."
+    - "AC4: Every applied remediation satisfies Minimum Disclosure; no new global rules where typed state can carry the invariant; dynamic state-machine evidence replaces broad conditional guidance; measured instruction/input bytes recorded for every changed model call; net reduction or justified delta."
+    - "AC5: tests/live-behavior-coverage.test.ts passes; every registered change points to a live case."
+    - "AC6: Full local gate green; unit/orchestration tests at baseline (520 tests / 71 files), typecheck, lint; no any in TypeScript (strict)."
+    - "AC7: Dev Lambda redeployed via se-dev profile us-east-1, fail closed unless STS confirms account 684516060775, after any Lambda-impacting change; npm run eval:behavior-live executed for every conversational-behavior change; missing judge key, skipped case, evaluator error, or failed hard expectation = failed gate."
+    - "AC8: Bounded strategy for the full 36-conversation live suite respecting the recorded usage-limit decision; wave-gated subsets per deploy plus an explicit final user decision point; never silently skipped."
+    - "AC9: docs/implementation-log.md updated for every code, prompt, and infra change with reason and decision."
+    - "AC10: No keyword/exact-string matching introduced for flow decisions; runtime stays channel-agnostic; no backward-compat shims; CloudFormation for any infra change."
+  captured_at: 2026-08-27
+
+decisions:
+  - "Two deploys, never one. Deploy 1 (T6) carries the RSVP code fix plus its own reply-branch prompt alignment, because one live case covers both. Deploy 2 (T7) carries the audit remediation batch (T5). No cross-workstream co-batching, so live cases cannot mask each other."
+  - "Exactly two npm run eval:behavior-live runs, one per deploy, each restricted to a named case subset via the T0 repeatable --case flag (e.g. npm run eval:behavior-live -- --case <id> ...). The full suite (suite ID live_behavior_regression, 37 cases today, grows as T1/T5 register entries) is deferred to one explicit user decision point in T8, which also closes the gate open since commit 78ae24e. The suite is always referenced by suite ID, never by a frozen count; T8's cost estimate uses the then-current manifest count."
+  - "The RSVP fix spec is the recorded three-state proposal in docs/implementation-log.md (section Diagnose the omitted Paolo & Mariana RSVP result); implement it, do not redesign it. Reference gating pattern: information-orchestrator executeGuestEventRequest/selectGuestEvent/guestEventsResult."
+  - "Byte comparison anchor is commit 78ae24e. T3 records the per-branch baseline for ALL branches and call types INCLUDING the RSVP branches, extracted from the anchor commit content (git show), never the racy wave-1 working tree. T1 computes its RSVP reply-branch delta against the same anchor with the same method. T4 and T5 complete the before/after table in the audit report."
+  - "Byte measurement reuses and extends the existing audit infrastructure (npm run audit:prompts via src/audit/prompt-audit-cli.ts and auditPromptBundles; npm run audit:prompts:compare via src/audit/static-prompt-comparison-cli.ts; tests/prompt-audit.test.ts; tests/static-prompt-comparison.test.ts). No parallel harness or CLI is built. Prompt changes (T1 RSVP section, T5 batch) must keep audit:prompts:compare gates green, resolving any trip through the tool's existing mechanism with a logged justification, never by weakening gates."
+  - "Audit report path: docs/prompt-audit/2026-08-system-prompt-audit.md (English, git-tracked); rubric artifact path: docs/plan/plan-2026-08-27-rsvp-projection-prompt-audit/rubric.md."
+  - "T4 remediation decisions are final scope for T5. Findings that would require RSVP redesign or reopening paths closed in 78ae24e (parser/gateway, COD301816 normalization, phone-scoped retrieval) are flagged out of scope, not planned."
+  - "Every behavior-affecting prompt remediation gets its own evals/live-behavior-coverage.yaml entry; reuse an existing live case only with exact coverage of the new behavior."
+  - "Reviewer gates before each Lambda-impacting deploy: T1r reviews the T1 change set before T6 deploys; T5r reviews the T5 change set before T7 deploys. T4 remains the prompts-only review. A review verdict with blocking findings sends the reviewed task back to needs_revision; the deploy never proceeds over an unresolved blocking finding."
+  - "Per-deploy eval subsets are pinned by explicit case IDs (deterministic membership), not by tags or counts: gate 1 (T6) runs the 12-case RSVP projection subset; gate 2 (T7) runs the same 12 RSVP re-validation cases plus every case ID referenced by the registry behavior-change entries T5 adds. Tag filtering in the eval CLI is deliberately cut (YAGNI): tags would make per-deploy membership drift as cases evolve, and finding 2 requires named exact IDs."
+  - "Parallelism and file ownership: wave 1 runs T0, T1, T2, T3 concurrently on disjoint paths; wave 2 runs T1r and T4 concurrently (both read-only over runtime/prompts, disjoint outputs). Wave 3 (T6) precedes wave 4 (T5) so the deploy tree contains exactly the T1 change set; T0's eval-harness change is not Lambda-impacting and does not affect the deploy bundle. No other wave barriers exist; each barrier is a real dependency (review gate, deploy-snapshot integrity) or resource conflict, not convenience."
+  - "docs/implementation-log.md is append-only in every wave: each worker appends its entries as single atomic writes committed immediately after the change they document; concurrent tasks never reorder or rewrite existing entries. This is the deterministic write ordering for any wave with concurrent log appenders."
+  - "T0's CLI change preserves the fail-closed gate contract of src/evals/live-behavior-cli.ts (empty selection, any failed, errored, or skipped case, or passedCases !== totalCases sets exit code 1); the single-case runner option used by src/evals/cli.ts stays untouched."
+
+assumptions:
+  - "The recorded three-state proposal is implementable as written without renaming state-machine nodes."
+  - "Prompt assembly is deterministic and unit-testable offline, so per-branch serialized byte counts can be asserted without live calls (buildRequestMetrics instructionBytes/inputBytes, src/runtime/openai-agent-runtime.ts:411-423)."
+  - "The existing dev deploy pipeline uses CloudFormation artifacts and needs no new infrastructure in this plan."
+  - "The live_behavior_regression suite harness exists and is invocable on demand (evals/suites/live_behavior_regression.yaml, 37 case IDs today); T0's --case filtering makes per-deploy subsets invocable without changing the suite manifest."
+  - "The evals case patterns from the COD entries (evals/live-behavior-coverage.yaml:243-248) generalize to the new RSVP case."
+  - "Extending EvalRunnerOptions with an optional caseIds field is non-breaking for the existing offline eval CLI (src/evals/cli.ts) which uses the single caseId option."
+
+replan:
+  reason: >
+    Bounded revision from code-verified review findings. Blocking: (1) npm run eval:behavior-live
+    executes the ENTIRE live_behavior_regression suite with no case filtering
+    (src/evals/live-behavior-cli.ts passes no caseId; src/evals/runner.ts:169 supports single-case
+    only), contradicting the plan's bounded strategy and making the T8 decision point redundant;
+    (2) the per-deploy bounded subset was undefined. Also: T3 baseline scope raced T1's concurrent
+    RSVP edits; no reviewer gate before either deploy; T3 proposed a parallel byte harness instead
+    of extending the existing audit:prompts tooling; suite size was frozen at 36; T1 line refs were
+    off by one function; concurrent log appends in wave 2 lacked ordering.
+  changed_tasks: [T1, T3, T6, T7, T8]
+  added_tasks: [T0, T1r, T5r]
+  removed_tasks: []
+  preserved_acceptance_criteria:
+    - "AC1 through AC10 unchanged; baseline objective and hard constraints unchanged."
+  new_risks:
+    - "T0 modifies the eval gate CLI; regression risk is bounded by preserving the exit-code contract verbatim and adding selection unit tests."
+    - "T1r/T5r review gates can trigger rework loops that extend the schedule; each reviewed task returns to needs_revision with retry accounting unchanged."
+    - "Subset runs (12 of 37) do not exercise non-subset cases between deploys; residual regression risk is accepted and closed by the T8 full-suite user decision point."
+  progress_signal: "No tasks started; plan status pending; revision applied before execution."
+  revised_tasks: [T1, T3, T6, T7, T8]
+  invalidated_tasks: []
+  invalidated_assumptions:
+    - "The 36-conversation live suite harness exists and is invocable on demand. Replaced by: the live_behavior_regression suite (37 cases today, pinned by suite ID) is invocable on demand, with per-deploy subsets enabled by T0."
+
+tasks:
+  - id: T0
+    title: Expose repeatable case filtering in the live eval CLI
+    description: >
+      Small owned change so per-deploy eval subsets are invocable without running the full suite
+      (code-verified gap: src/evals/live-behavior-cli.ts passes no case filtering to runEvaluation,
+      so npm run eval:behavior-live executes all 37 live_behavior_regression cases today; the
+      runner only supports a single caseId, src/evals/runner.ts:39 and 168-179). (a) Extend
+      EvalRunnerOptions with an optional caseIds?: string[] and extend selectCases
+      (src/evals/runner.ts:161-182) to intersect the allowlist with the existing suite filter.
+      (b) Extend src/evals/live-behavior-cli.ts to parse repeatable --case <id> flags from argv and
+      pass them as caseIds; invocation form: npm run eval:behavior-live -- --case <id> --case <id>.
+      (c) Preserve the fail-closed exit contract verbatim (live-behavior-cli.ts:36-44): empty
+      selection (including any unknown case ID, since the suite filter intersects the allowlist),
+      any failed, errored, or skipped case, or passedCases !== totalCases sets exit code 1.
+      (d) Unit test covering subset selection, suite intersection, unknown-ID empty selection, and
+      the exit contract. (e) docs/implementation-log.md entry. Do NOT add tag filtering: per-deploy
+      membership must be deterministic named case IDs (decision recorded); the single caseId option
+      used by src/evals/cli.ts stays untouched. reuse: existing selectCases filtering and exit
+      contract; new: repeatable --case CLI flag plus caseIds runner option.
+    wave: 1
+    agent: gem-implementer
+    status: completed
+    notes: "completed (wave 1)"
+    retries_used: 0
+    acceptance_criteria:
+      - "npm run eval:behavior-live -- --case <id> (repeatable) runs exactly the named cases against live_lambda and no others."
+      - "Fail-closed contract preserved: empty selection, unknown case ID, any failed/errored/skipped case, or passedCases !== totalCases exits 1."
+      - "Single caseId runner option and src/evals/cli.ts behavior unchanged; strict TypeScript with no any."
+      - "Selection unit tests pass; full local gate green; docs/implementation-log.md entry added."
+    handoff:
+      constraints:
+        - "No tag filtering; membership is explicit case IDs only (determinism decision)."
+        - "No changes to eval case schemas, the suite manifest, or runtime code; src/evals/runner.ts and src/evals/live-behavior-cli.ts plus their tests only."
+        - "Eval-harness-only change: not Lambda-impacting; no redeploy obligation."
+        - "English, ASCII; atomic commit for the change."
+      relevant_context:
+        - "src/evals/live-behavior-cli.ts:18-23 (no filtering passed today) and 36-44 (exit contract)"
+        - "src/evals/runner.ts:34-44 (EvalRunnerOptions), 161-182 (selectCases), 168-179 (single caseId + suite filter)"
+        - "evals/suites/live_behavior_regression.yaml (suite manifest, 37 case IDs today)"
+
+  - id: T1
+    title: Implement three-state RSVP projection with live case and offline twin
+    description: >
+      Implement the recorded three-state RSVP phone-evidence projection (authoritative spec:
+      docs/implementation-log.md, section "Diagnose the omitted Paolo & Mariana RSVP result") in
+      src/runtime/agent-service.ts, covering selectRsvpInvitation (1771-1816),
+      lookupRsvpPhoneEvidence/reconcileRsvpPhoneEvidence (2012-2222; reconcileRsvpPhoneEvidence at
+      2207-2222) and projectRsvpPhoneEvidenceForReply (2224-2241). Typed states resolved_single |
+      needs_event_selection | unavailable following the reference gating pattern in
+      src/runtime/information-orchestrator.ts (executeGuestEventRequest 476-597, selectGuestEvent
+      626-649, guestEventsResult 651-745). Candidate arrays omitted when resolved_single; records
+      without event identity rejected per the recorded spec; evidence rendering deterministic;
+      /guest/rsvp observability emitting projection state and event-identity resolution outcome.
+      Minimally align the reply prompt RSVP branch guidance to the three states as a
+      state-conditioned Spanish section replacing broad multi-invitation conditional guidance.
+      Measure serialized reply-branch instruction/input bytes before and after against the SAME
+      anchor and method as T3 (commit 78ae24e content, via buildRequestMetrics fields); the working
+      tree baseline is not used because T3 concurrently baselines from the anchor. Register the
+      Paolo & Mariana live case with the pinned case ID live_behavior.rsvp_paolo_mariana_resolved_single.
+      Run npm run audit:prompts and npm run audit:prompts:compare on the change tree; the RSVP
+      prompt-byte delta must not trip the compare gates; if it trips, resolve via the tool's
+      existing mechanism updating only RSVP-branch recorded expectations with a logged
+      justification, never by weakening gates. reuse: reference gating pattern, buildRequestMetrics,
+      existing eval case structure, audit:prompts tooling; new: three-state projection,
+      observability, state-conditioned RSVP prompt section.
+    wave: 1
+    agent: gem-implementer
+    status: completed
+    notes: "completed (wave 1)"
+    retries_used: 0
+    acceptance_criteria:
+      - "Projection emits exactly the three typed states; resolved_single omits candidate arrays; records without event identity are rejected per the recorded spec; the broad candidate list appears only in needs_event_selection."
+      - "Rendering is deterministic; an offline unit test proves identical inputs yield identical evidence snapshots."
+      - "/guest/rsvp observability logs projection state and reconciliation outcome without altering flow logic."
+      - "Reply prompt RSVP branch is state-conditioned Spanish; before/after serialized instruction/input bytes recorded against the 78ae24e anchor with net reduction or justified delta."
+      - "audit:prompts and audit:prompts:compare pass on the change tree; any RSVP-branch gate trip is resolved through the tool's existing mechanism with a logged justification and no gate weakening."
+      - "New evals/live-behavior-coverage.yaml entry for Paolo & Mariana with live case ID live_behavior.rsvp_paolo_mariana_resolved_single, the case file in evals/cases/ carrying at least 2 hard structural assertions (e.g. resolved_single state projected, no candidate array in reply evidence) plus a hard text_semantic expectation with requireJudge true, and a deterministic offline twin test."
+      - "tests/live-behavior-coverage.test.ts passes; affected unit tests pass; strict TypeScript with no any; no keyword/exact-string matching for flow decisions; core stays channel-agnostic."
+      - "docs/implementation-log.md updated with reason and decision; atomic commit so T6 deploys exactly this change set."
+    handoff:
+      constraints:
+        - "State machine node names are authoritative; do not rename nodes."
+        - "Implement the recorded proposal exactly; no redesign, no extra states, no backward-compat shims."
+        - "Conversational prompt content in Spanish; code comments and tests in English; ASCII only."
+        - "Strict TypeScript, no any; unknown plus validation everywhere; typed config stays centralized."
+        - "Do not weaken or modify existing live cases; do not reopen paths shipped in commit 78ae24e (parser/gateway incl. optional increment_id, COD301816 normalization, phone-scoped retrieval)."
+        - "File ownership: T1 owns src/runtime/agent-service.ts, the RSVP section of the reply prompt, the new evals RSVP case, and its offline twin test. It must not modify src/audit/ tooling (T3 owns it in wave 1); compare-gate resolution touches only RSVP-branch recorded expectation values."
+      relevant_context:
+        - "src/runtime/agent-service.ts:1771-1816 (selectRsvpInvitation), 2012-2222 (lookup/reconcile; reconcileRsvpPhoneEvidence 2207-2222), 2224-2241 (projectRsvpPhoneEvidenceForReply; defect site, always projects the full reconciled union)"
+        - "src/runtime/information-orchestrator.ts:476-597, 626-745 (correct gating reference pattern)"
+        - "src/runtime/openai-agent-runtime.ts:411-423 (buildRequestMetrics instructionBytes/inputBytes), 962-975 (buildReplyTurnEvidence minimal RSVP snapshots)"
+        - "docs/implementation-log.md section Diagnose the omitted Paolo & Mariana RSVP result; metrics at docs/implementation-log.md:3-23"
+        - "evals/live-behavior-coverage.yaml:243-248 (COD entry pattern); evals/cases/; npm run audit:prompts; npm run audit:prompts:compare"
+
+  - id: T2
+    title: Establish Aug 2026 prompt-audit rubric (bounded research)
+    description: >
+      Bounded research task to fix the grading rubric for the system-prompt audit from current
+      (2026) context-engineering and agent-design sources: prompt minimization, state-conditioned
+      prompts, tool/state-surface projection, evidence-grounded generation, duplicate/conflict
+      detection, and eval-driven prompt regression. Deliver a rubric of at most 10 criteria, each
+      mapped to one concrete audit check usable by T4, including a state-conditioned-prompt
+      criterion exemplified by branch evidence like resolved_single vs needs_event_selection vs
+      unavailable. reuse: current public sources; new: rubric artifact.
+      Bound: at most 6 sources; no open-ended exploration.
+    wave: 1
+    agent: gem-researcher
+    status: completed
+    notes: "completed (wave 1)"
+    retries_used: 0
+    acceptance_criteria:
+      - "Rubric of at most 10 criteria, each with citation and one concrete audit check."
+      - "Explicitly covers state-conditioned prompts and branch-specific evidence projection."
+      - "Artifact in English, ASCII, written to docs/plan/plan-2026-08-27-rsvp-projection-prompt-audit/rubric.md."
+      - "Bounded to at most 6 sources; grading input only, no implementation prescriptions."
+    handoff:
+      constraints:
+        - "The rubric grades prompts; it must not prescribe runtime redesign."
+        - "English only; ASCII only; no speculative criteria beyond the bounded source set."
+      relevant_context:
+        - "AGENTS.md Minimum Disclosure convention (typed state over prompt rules; prompt-size/relevance regression)"
+        - "prompts/ layout (prompts/extractors/*, prompts/nodes/<node>/*) and per-call types classifier/extraction/reply"
+        - "Three RSVP projection states as the exemplar of branch-conditioned evidence"
+
+  - id: T3
+    title: Prompt inventory and per-branch byte baseline via existing audit tooling
+    description: >
+      Build the audit measurement foundation by extending the EXISTING prompt-audit infrastructure,
+      not a parallel tool. (a) Inventory every git-tracked prompt file under prompts/ (extractors
+      and nodes) mapped to its flow node and to the transitions whose model calls consume it, using
+      the authoritative state machine in the runtime; no file may remain unmapped. (b) Extend the
+      existing static tooling (npm run audit:prompts via src/audit/prompt-audit-cli.ts and
+      auditPromptBundles; npm run audit:prompts:compare via src/audit/static-prompt-comparison-cli.ts)
+      with offline deterministic per-branch, per-state serialized byte measurement: assemble each
+      prompt payload per call type (classifier, extraction, reply) and per branch/state, count
+      serialized instruction/input bytes aligned with buildRequestMetrics fields
+      (src/runtime/openai-agent-runtime.ts:411-423), assertable from unit tests, requiring no live
+      runs; extend tests/prompt-audit.test.ts and tests/static-prompt-comparison.test.ts rather
+      than adding a new harness or CLI. (c) Record the per-branch baseline table for ALL branches
+      and call types INCLUDING the RSVP branches, anchored at commit 78ae24e and extracted from
+      that commit's content (git show 78ae24e:<path>), never the wave-1 working tree, because T1
+      concurrently edits the RSVP prompt section. reuse: auditPromptBundles, static comparison CLI,
+      PromptLoader, buildRequestMetrics byte fields, existing prompt files; new: per-branch
+      assembly inside the existing tooling and the inventory artifact only.
+    wave: 1
+    agent: gem-implementer
+    status: completed
+    notes: "completed (wave 1)"
+    retries_used: 0
+    acceptance_criteria:
+      - "Inventory artifact maps every prompts/ file to its node and consuming transitions; zero unmapped files."
+      - "Extended existing tooling deterministically computes per-branch serialized bytes for classifier, extraction, and reply calls, including RSVP branches; covered by extensions to tests/prompt-audit.test.ts and tests/static-prompt-comparison.test.ts; no new parallel harness or CLI introduced; no live calls needed."
+      - "Baseline table for ALL branches and call types recorded from 78ae24e content via git show (not the working tree), ready for T4; measurement method documented so T1's delta uses the identical method."
+      - "No production behavior change; strict TypeScript, no any; audit:prompts and audit:prompts:compare still pass at the anchor; docs/implementation-log.md entry added for the extension."
+    handoff:
+      constraints:
+        - "Read-only over prompts/; the extension must not alter runtime prompt assembly."
+        - "Changes live in src/audit/ and the existing audit test files only; English, ASCII; reusable by T5."
+        - "File ownership: T3 owns prompts/ reads, src/audit/ tooling, the audit test files, and the inventory artifact; it must not write files T1 owns (src/runtime/agent-service.ts, the RSVP reply prompt section, the evals RSVP case)."
+      relevant_context:
+        - "prompts/extractors/*, prompts/nodes/<node>/*"
+        - "src/audit/prompt-audit-cli.ts and auditPromptBundles; src/audit/static-prompt-comparison-cli.ts (audit:prompts:compare monotonic gates)"
+        - "src/runtime/openai-agent-runtime.ts:411-423 (buildRequestMetrics), 962-975 (buildReplyTurnEvidence)"
+        - "Runtime state machine definition (node and transition names authoritative)"
+
+  - id: T1r
+    title: Reviewer gate on the T1 change set before deploy 1
+    description: >
+      Read-only code review of the T1 change set (atomic commit) before T6 deploys: three-state
+      contract matches the recorded spec exactly; no candidate arrays in resolved_single; rejection
+      of records without event identity; deterministic rendering; /guest/rsvp observability without
+      flow-logic changes; no shims, no keyword matching, channel-agnostic core, strict TypeScript
+      with no any; existing live cases untouched; 78ae24e paths not reopened; RSVP prompt section
+      state-conditioned Spanish; audit:prompts:compare green. Verdict recorded in a git-tracked
+      review note docs/plan/plan-2026-08-27-rsvp-projection-prompt-audit/review-t1.md (English,
+      ASCII). Blocking findings set T1 to needs_revision; T6 never deploys over an unresolved
+      blocking finding. reuse: existing review practice; new: review note only.
+    wave: 2
+    depends_on: [T1]
+    agent: gem-reviewer
+    status: completed
+    notes: "completed - pass (review-t1.md; F1 registry hash finding resolved later by T6-fix-2 Commit C ea80010)"
+    retries_used: 0
+    acceptance_criteria:
+      - "Review verdict recorded in review-t1.md covering every T1 acceptance criterion plus the invariant checklist (no shims, no keyword matching, channel-agnostic, no weakened cases)."
+      - "Zero unresolved blocking findings before T6 may deploy; any blocking finding returns T1 to needs_revision with the finding itemized."
+      - "Read-only: no edits to runtime, prompts, or evals; review note is the only artifact written."
+    handoff:
+      constraints:
+        - "Review only; do not fix code yourself."
+        - "English, ASCII; verdict is pass or block with itemized findings, no conditional passes."
+      relevant_context:
+        - "T1 atomic commit and review-t1.md location"
+        - "Recorded spec: docs/implementation-log.md section Diagnose the omitted Paolo & Mariana RSVP result"
+
+  - id: T4
+    title: Full system-prompt audit report with remediation decisions
+    description: >
+      Execute the total prompt audit against the T2 rubric using the T3 inventory and baseline,
+      state-machine aware: for every node and transition, inspect each prompt for duplicated,
+      conflicting, irrelevant, or underspecified instructions; conditional guidance replaceable by
+      typed runtime state evidence; missing route-specific sections; needless size. Evaluate
+      whether each node projects the smallest typed state for the calls it serves, including
+      branch-specific evidence like resolved_single vs needs_event_selection vs unavailable.
+      Produce the git-tracked English report docs/prompt-audit/2026-08-system-prompt-audit.md
+      with: per-node inventory (path -> node -> transitions), per-call-type byte table
+      (classifier/extraction/reply) with before values from T3 (all branches, RSVP included,
+      anchored at 78ae24e), categorized findings with evidence (file, node, transition, bytes), and
+      exactly one remediation decision per finding (typed-state replacement | route-specific
+      section | deletion | keep-with-reason). reuse: rubric, inventory, extended audit tooling;
+      new: findings and remediation decisions.
+    wave: 2
+    depends_on: [T1, T2, T3]
+    agent: gem-reviewer
+    status: completed
+    notes: "completed - report at docs/prompt-audit/2026-08-system-prompt-audit.md (commit b40713a); verdict warning; backlog feeds T5"
+    retries_used: 0
+    acceptance_criteria:
+      - "Report covers every node and every prompt file from the T3 inventory; every finding carries category, evidence, byte impact, and one of the four remediation decisions."
+      - "Byte table lists classifier/extraction/reply per branch with before values (T3 anchor-78ae24e baseline, RSVP included) and projected after values; any proposed increase is individually justified; net direction is reduction where typed-state replacement applies."
+      - "Every proposed edit keeps conversational content in Spanish; no new global rules where typed state can carry the invariant; no keyword-matching fixes proposed."
+      - "The remediation set is batchable into one deploy; changes whose live cases could mask each other are split or flagged; nothing requires RSVP redesign or reopening paths closed in 78ae24e."
+      - "Report is English, ASCII, git-tracked; docs/implementation-log.md entry added for the audit report (single atomic append per the log-ordering decision)."
+    handoff:
+      constraints:
+        - "Remediation decisions are final scope for T5; no unbounded follow-up findings."
+        - "State machine node names are authoritative; do not propose renames."
+        - "Audit/review artifact in English only; ASCII only."
+        - "Base byte comparisons on the T3 baseline anchored at 78ae24e plus the T1 RSVP-branch delta measured against the same anchor."
+      relevant_context:
+        - "T2 rubric artifact (docs/plan/plan-2026-08-27-rsvp-projection-prompt-audit/rubric.md)"
+        - "T3 inventory and baseline table; T1 three-state projection as the typed-state exemplar"
+        - "AGENTS.md Minimum Disclosure; prompt footprint history (information reply 13637 -> 13854 for COD handling)"
+
+  - id: T6
+    title: Deploy RSVP fix and run eval gate 1 (12-case RSVP subset)
+    description: >
+      Redeploy the dev Lambda with the T1 change set (RSVP projection plus branch prompt alignment
+      plus new live case) using the se-dev execution profile in us-east-1, fail closed unless STS
+      confirms account 684516060775, CloudFormation artifacts only. Pre-deploy full local gate
+      green: unit/orchestration suite at or above baseline (520 tests / 71 files), typecheck,
+      lint, no any, tests/live-behavior-coverage.test.ts passing, review-t1.md verdict pass.
+      Then run eval gate 1 as a named subset via T0 filtering: npm run eval:behavior-live with
+      repeatable --case flags for EXACTLY the 12-case RSVP projection subset (11 existing suite
+      cases whose IDs contain rsvp, plus both accountless-event cases, plus T1's new case):
+      1. live_behavior.rsvp_paolo_mariana_resolved_single (new, T1)
+      2. live_behavior.rsvp_ambiguous_event_requires_grounded_selection
+      3. live_behavior.rsvp_state_reversal_ends_confirmed
+      4. live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing
+      5. live_behavior.rsvp_confirmed_state_is_reported
+      6. live_behavior.rsvp_cristian_phone_enriched_confirmation
+      7. live_behavior.rsvp_declined_state_offers_one_change
+      8. live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
+      9. live_behavior.rsvp_missing_action_requires_explicit_decision
+      10. live_behavior.rsvp_trusted_phone_reports_no_pending
+      11. live_behavior.accountless_guest_event_uses_phone_without_otp
+      12. live_behavior.accountless_event_answer_precedes_remaining_private_auth
+      Size: 12 of the suite's then-current 37 cases. Judge-gated, fail-closed: no missing judge
+      keys, no skipped cases, no evaluator errors, no failed hard expectations, no empty selection.
+      The full suite (live_behavior_regression) is NOT run here. reuse: existing deploy pipeline
+      and eval harness with T0 filtering.
+    wave: 3
+    depends_on: [T0, T1, T1r]
+    agent: gem-devops
+    status: blocked
+    notes: "blocked at gate 1. Attempt 1: 4/12 (eval-2026-08-27T20-38-57-569Z-f4748e3b, rev 3894a691). Fix cycle 1 (T6-fix): eval-runner isolation hooks, fixture/registry corrections, state-aligned RSVP rules. Attempt 2: 8/12 (eval-2026-08-27T21-28-19-828Z-ba2c472f, rev 52e32c53); paolo_mariana PASSED judge 1.00. Fix cycle 2 (T6-fix-2, commits 26f2971/d020e14/ea80010/c67b25e, 553 tests local): premature-mutation product fix at src/runtime/agent-service.ts:1739 (status-conditional pending_action fallback; decision recorded: awaiting_action requires current-turn extraction; awaiting_event_selection keeps stored-decision continuation), prompt/note hardening, registry provenance corrections, byte accounting reconciliation (instructionBytes authoritative per prompt-loader.ts:75-77). Fix cycle 2b: dev-data hunt for a campaign-context phone WITHOUT guest record -> NOT_FOUND (80 phones enumerated; evidence /tmp/evidence-T6-fix-2b.json). Remaining pipeline unchanged: gate attempt 3 (redeploy includes mutation fix) -> T5 -> T5r -> T7 -> T8"
+    retries_used: 0
+    acceptance_criteria:
+      - "STS account 684516060775 confirmed before any mutating AWS call; deployment fails closed otherwise; se-dev profile us-east-1 only, never default."
+      - "Full local gate green on the T1 tree before deploy, including the T1r pass verdict; audit:prompts and audit:prompts:compare green."
+      - "eval:behavior-live gate 1 runs exactly the 12 named cases and is fully green, including the new judge-gated RSVP case; empty or partial selection aborts."
+      - "Named-subset execution and results recorded per case; full live_behavior_regression suite deferred to T8."
+      - "Deploy, eval, and per-call byte metrics recorded in docs/implementation-log.md (single atomic appends)."
+    handoff:
+      constraints:
+        - "Deploy contains the T1 change set (the only Lambda-impacting content) plus T0's eval-harness-only change; no T5 prompt-remediation changes may ride along."
+        - "Abort on any failed hard expectation, skipped case, or evaluator error; never weaken criteria to pass."
+        - "Refresh the se-dev login (aws login --profile se-signin) before AWS operations; mutating scripts must fail closed on account mismatch."
+        - "Subset invocation must use the exact 12 case IDs listed in the task description; do not substitute tags or counts."
+      relevant_context:
+        - "T1 diff and new live case; T0 --case filtering; evals/live-behavior-coverage.yaml"
+        - "docs/implementation-log.md:3-23 (deploy and eval conventions); commit 78ae24e deploy record"
+
+  - id: T5
+    title: Apply prompt remediation batch with measured deltas and relevance regressions
+    description: >
+      Apply every T4 remediation decision in a single batch: typed-state replacements (runtime
+      evidence projected deterministically, prompt guidance reduced accordingly), route-specific
+      sections, deletions, and keep-with-reason (no edit). For every changed model call, measure
+      serialized instruction/input bytes after the change (extended T3 tooling plus
+      buildRequestMetrics) and complete the report after-table. Extend the relevance regression so
+      it proves branch-irrelevant content is absent and required content is present per branch
+      (e.g. a resolved_single reply payload carries no multi-invitation guidance). Conversational
+      content stays Spanish. Register each behavior-affecting remediation as a separate
+      evals/live-behavior-coverage.yaml entry (reuse an existing live case only with exact
+      coverage) and add deterministic offline twins where verifiable offline. Run npm run
+      audit:prompts and audit:prompts:compare on the batch; any gate trip is resolved through the
+      tool's existing mechanism with a logged justification, never by weakening gates. Record the
+      exact case IDs of every newly registered live case in the handoff so T7's gate-2 subset is
+      deterministic. reuse: existing prompts, registry patterns, extended T3 tooling; new:
+      targeted prompt edits.
+    wave: 4
+    depends_on: [T4]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - "Every T4 decision is applied or explicitly kept-with-reason; no prompt edits outside the T4 list."
+      - "Before/after bytes recorded for every changed model call; net reduction or individually justified delta; no needless size increase; audit:prompts:compare green on the batch."
+      - "Extended relevance regression passes and proves absence of branch-irrelevant content and presence of required branch content."
+      - "Separate evals/live-behavior-coverage.yaml entry per behavior-affecting remediation; tests/live-behavior-coverage.test.ts passes; offline twins added where verifiable; the exact new case IDs are listed in the handoff."
+      - "No new global rules; no keyword matching; strict TypeScript, no any; docs/implementation-log.md updated per change (single atomic appends)."
+    handoff:
+      constraints:
+        - "Single batch; no deploy (T7 owns deployment and the eval gate); begin only after T6's deploy is complete (wave ordering guarantees this)."
+        - "Spanish conversational content; English comments and tests; ASCII only."
+        - "Do not touch the runtime state machine or node names; runtime code changes only where a typed-state replacement requires new projected evidence."
+        - "Do not weaken existing live cases; never weaken acceptance criteria."
+        - "Atomic commits so T7 deploys exactly this change set."
+      relevant_context:
+        - "T4 report (docs/prompt-audit/2026-08-system-prompt-audit.md)"
+        - "Extended T3 tooling; evals/live-behavior-coverage.yaml; evals/cases/"
+        - "T1 RSVP branch as the pattern for state-conditioned sections"
+
+  - id: T5r
+    title: Reviewer gate on the T5 change set before deploy 2
+    description: >
+      Read-only review of the T5 change set before T7 deploys: every T4 decision applied or
+      kept-with-reason with no out-of-scope edits; Minimum Disclosure respected (no new global
+      rules where typed state carries the invariant); Spanish conversational content; measured
+      byte deltas recorded with net reduction or justified delta; relevance regression proves
+      per-branch absence/presence; one new registry entry per behavior-affecting remediation with
+      exact-coverage live cases; no shims, no keyword matching; existing live cases untouched.
+      Verdict recorded in a git-tracked review note
+      docs/plan/plan-2026-08-27-rsvp-projection-prompt-audit/review-t5.md (English, ASCII).
+      Blocking findings set T5 to needs_revision; T7 never deploys over an unresolved blocking
+      finding. reuse: existing review practice; new: review note only.
+    wave: 5
+    depends_on: [T5]
+    agent: gem-reviewer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - "Review verdict recorded in review-t5.md covering every T5 acceptance criterion plus the invariant checklist."
+      - "Zero unresolved blocking findings before T7 may deploy; any blocking finding returns T5 to needs_revision with the finding itemized."
+      - "Read-only: no edits to runtime, prompts, or evals; review note is the only artifact written."
+    handoff:
+      constraints:
+        - "Review only; do not fix code or prompts yourself."
+        - "English, ASCII; verdict is pass or block with itemized findings, no conditional passes."
+      relevant_context:
+        - "T4 report and T5 batch diff; review-t5.md location"
+        - "T5 handoff listing newly registered case IDs (needed to validate gate-2 subset determinism)"
+
+  - id: T7
+    title: Deploy prompt remediation batch and run eval gate 2 (RSVP re-validation plus remediation cases)
+    description: >
+      Second and final deploy: the T5 prompt remediation batch. Same profile and fail-closed STS
+      constraint (account 684516060775, us-east-1, CloudFormation artifacts). Pre-deploy full
+      local gate green including the extended relevance regression,
+      tests/live-behavior-coverage.test.ts, audit:prompts and audit:prompts:compare, and the T5r
+      pass verdict. Run eval gate 2 as a named subset via T0 filtering: npm run eval:behavior-live
+      with repeatable --case flags for EXACTLY the union of (a) the 12-case RSVP re-validation
+      subset from gate 1 (identical case-ID list, unchanged) and (b) every case ID referenced by
+      the evals/live-behavior-coverage.yaml behavior-change entries added or modified by T5,
+      taken deterministically from the registry at run time (T5's handoff lists them; expected 2-5
+      additional cases, so gate 2 is 14-17 cases; if T5 registers zero behavior-affecting
+      remediations, gate 2 is the 12 RSVP re-validation cases and is never empty). Judge-gated,
+      fail-closed: no missing judge keys, no skipped cases, no evaluator errors, no failed hard
+      expectations, no empty selection. Record the after-byte table and artifacts. reuse: existing
+      deploy pipeline and eval harness with T0 filtering.
+    wave: 6
+    depends_on: [T0, T5, T5r]
+    agent: gem-devops
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - "STS account 684516060775 confirmed before any mutating call; fail closed otherwise; se-dev profile us-east-1 only."
+      - "Full local gate green before deploy (unit/orchestration at or above 520 tests / 71 files, typecheck, lint, no any, coverage test, relevance regression, T5r pass verdict)."
+      - "eval:behavior-live gate 2 runs exactly the deterministic union subset and is fully green, including re-validation of all 12 RSVP cases and every new remediation entry; empty or partial selection aborts."
+      - "After-byte measurements for every changed model call recorded; named-subset execution and results recorded per case; full live_behavior_regression suite deferred to T8."
+      - "Deploy, eval, and byte artifacts recorded in docs/implementation-log.md (single atomic appends)."
+    handoff:
+      constraints:
+        - "Single batch deploy matching the T5 change set exactly; no extra changes."
+        - "Abort on any failed hard expectation; never weaken criteria."
+        - "se-dev profile us-east-1 only; fail closed on account mismatch."
+        - "Subset part (b) must be derived from the registry entries T5 added or modified, never from memory or tags."
+      relevant_context:
+        - "T5 change set, after-byte table, and handoff case-ID list; evals/live-behavior-coverage.yaml"
+        - "T6 gate-1 case-ID list (unchanged for re-validation)"
+        - "docs/implementation-log.md deploy and eval conventions"
+
+  - id: T8
+    title: Cumulative gate and full-suite user decision point
+    description: >
+      Final gate. (a) Verify cumulative completion against all ten baseline criteria: full local
+      gate green on the final tree, tests/live-behavior-coverage.test.ts passing, both eval runs
+      recorded green, byte tables complete, implementation log complete for every code, prompt,
+      and infra change. (b) Present the explicit user decision point for the FULL
+      live_behavior_regression suite (pinned by suite ID, never by a frozen count; 37 cases today
+      and grown by T1's and T5's registrations, so compute the then-current count from
+      evals/suites/live_behavior_regression.yaml at decision time), also closing the gate open
+      since commit 78ae24e (docs/implementation-log.md:16), with a cost/usage estimate derived
+      from the then-current per-case count and the suite's per-case token budgets; execute the
+      suite only on user approval. On decline, record the decision and the deferred open gate in
+      docs/implementation-log.md and complete the plan with the open gate documented. The suite
+      must never be silently skipped. reuse: existing suite harness.
+    wave: 7
+    depends_on: [T7]
+    agent: gem-devops
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - "Cumulative verification recorded item by item against all ten baseline criteria, with any exception itemized."
+      - "User decision point presented with a cost/usage estimate computed from the then-current live_behavior_regression case count (not a frozen number); on approval the full suite is executed and results recorded (any failed conversation blocks completion per the failure contract); on decline the decision and open gate are recorded in docs/implementation-log.md."
+      - "Plan status finalized accordingly; no acceptance criterion weakened in either branch."
+    handoff:
+      constraints:
+        - "Never silently skip the full suite; the decision belongs to the user via the orchestrator."
+        - "Honor the recorded usage-limit decision; do not run the full suite without approval."
+        - "Reference the suite by ID (live_behavior_regression) only; compute size from the manifest at decision time."
+      relevant_context:
+        - "docs/implementation-log.md:16 (open full-suite gate since 78ae24e)"
+        - "evals/suites/live_behavior_regression.yaml (37 case IDs today, grows with T1/T5 registrations)"
+        - "T6 and T7 eval artifacts and byte tables; baseline acceptance criteria"
+
+open_decisions:
+  - id: T6-open-decision
+    note: "jose campaign case premise (invitation_record unavailable) is false against live dev data (event 38331 guest 579788 has_responded=true will_attend=true); SE API cannot provision the condition; awaiting user decision between (B) re-ground jose to attending + re-point rsvp-unavailable-never-claim-confirmation to trusted_phone_reports_no_pending IF that case verifiably exercises the unavailable projection, or (C-alt) build SE-API provisioning capability (new scope, needs user approval). Option (keep as-is) rejected: case tests nothing it claims. Evidence: /tmp/evidence-T6-fix-2b.json, 80 phones enumerated, 2 campaign contexts both with guest records; SE API surface limited to lookup_rsvp_invitations/lookup_guest_events_by_phone/getEventDetail/guestRsvp; cannot force unavailable."
+
