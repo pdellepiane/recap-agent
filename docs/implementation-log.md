@@ -11,7 +11,9 @@
 
 **Prompt footprint:** The information-reply serialized request increased from 13,637 to 13,854 bytes (+217) to add the route-specific customer-reference extraction and disclosure contract. No new tool was exposed.
 
-**Verification so far:** Focused gateway/orchestration/reference tests passed 56/56 and typecheck passed. The first complete local gate passed 519/520 tests; its only failure was the expected prompt-audit byte snapshot, which was updated to the measured 13,854-byte value. Deployment and the mandatory live gate remain pending.
+**Verification:** The final complete local gate passed typecheck, lint, and all 520 tests across 71 files. The development runtime and provider-sync stacks deployed successfully through `se-dev` in account `684516060775`, region `us-east-1`. Runtime revision `7206bb2b-84cd-476a-acd7-d9fbd21f85cd` was last modified at `2026-08-27T16:49:59Z` with code SHA-256 `ou1oxcqxqRtDRCr4ReDD3WgR0T5LSGmtbOlLIaFrh2Y=`.
+
+Focused live run `eval-2026-08-27T16-52-00-593Z-27d9a70b` passed 1/1 with zero failures, errors, or skips and score `0.9947`. Trace `01M1225SFCCKTD1F983FN1C003` transitioned directly to `resolver_consultas_informativas`, called `lookup_guest_orders_by_phone`, did not call phone auth or OTP endpoints, withheld the two opaque backend ids, and presented the two phone-scoped approved purchases by event, date, and amount for selection. The required semantic judge scored `0.98`. Live request metrics were classifier `9,334/1,138`, extraction `10,584/2,207`, and reply `13,459/5,618` instruction/input bytes. Per the previously recorded usage-limit decision, the complete mandatory live suite was not rerun; the new interaction-derived case was run directly against the deployed Lambda.
 
 ### Diagnose the omitted Paolo & Mariana RSVP result
 
