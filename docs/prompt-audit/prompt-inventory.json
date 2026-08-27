@@ -1,0 +1,2587 @@
+{
+  "generatedAt": "2026-08-27T20:04:18.667Z",
+  "anchorRef": null,
+  "totalFiles": 128,
+  "totalNodes": 29,
+  "callTypes": [
+    "classifier",
+    "extraction",
+    "reply"
+  ],
+  "entries": [
+    {
+      "filePath": "extractors/base_system.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:conversation_only",
+            "extractor:rsvp",
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:conversation_only",
+            "extraction:rsvp",
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/close_pause.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/contact.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/information.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/planning.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:initial_planning_information",
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:initial_planning_information",
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/provider_management.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:active_plan",
+            "extractor:shortlist"
+          ],
+          "transitions": [
+            "extraction:active_plan",
+            "extraction:shortlist"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "extractors/rsvp.txt",
+      "consumers": [
+        {
+          "callType": "extraction",
+          "nodes": [],
+          "profiles": [
+            "extractor:rsvp"
+          ],
+          "transitions": [
+            "extraction:rsvp"
+          ],
+          "loader": "PromptLoader.loadExtractorBundle -> extractorPromptFilesForCapabilities"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"accion_final_exitosa\") -> nodePromptManifest[\"accion_final_exitosa\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"accion_final_exitosa\") -> nodePromptManifest[\"accion_final_exitosa\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"accion_final_exitosa\") -> nodePromptManifest[\"accion_final_exitosa\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/accion_final_exitosa/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "accion_final_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:accion_final_exitosa:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"aclarar_pedir_faltante\") -> nodePromptManifest[\"aclarar_pedir_faltante\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"aclarar_pedir_faltante\") -> nodePromptManifest[\"aclarar_pedir_faltante\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"aclarar_pedir_faltante\") -> nodePromptManifest[\"aclarar_pedir_faltante\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/aclarar_pedir_faltante/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "aclarar_pedir_faltante"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:aclarar_pedir_faltante:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"anadir_a_proveedores_recomendados\") -> nodePromptManifest[\"anadir_a_proveedores_recomendados\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"anadir_a_proveedores_recomendados\") -> nodePromptManifest[\"anadir_a_proveedores_recomendados\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"anadir_a_proveedores_recomendados\") -> nodePromptManifest[\"anadir_a_proveedores_recomendados\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/anadir_a_proveedores_recomendados/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "anadir_a_proveedores_recomendados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:anadir_a_proveedores_recomendados:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"buscar_proveedores\") -> nodePromptManifest[\"buscar_proveedores\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"buscar_proveedores\") -> nodePromptManifest[\"buscar_proveedores\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"buscar_proveedores\") -> nodePromptManifest[\"buscar_proveedores\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/buscar_proveedores/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "buscar_proveedores"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:buscar_proveedores:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"busqueda_exitosa\") -> nodePromptManifest[\"busqueda_exitosa\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"busqueda_exitosa\") -> nodePromptManifest[\"busqueda_exitosa\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"busqueda_exitosa\") -> nodePromptManifest[\"busqueda_exitosa\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/busqueda_exitosa/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "busqueda_exitosa"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:busqueda_exitosa:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"contacto_inicial\") -> nodePromptManifest[\"contacto_inicial\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"contacto_inicial\") -> nodePromptManifest[\"contacto_inicial\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"contacto_inicial\") -> nodePromptManifest[\"contacto_inicial\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/contacto_inicial/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"continua\") -> nodePromptManifest[\"continua\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"continua\") -> nodePromptManifest[\"continua\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"continua\") -> nodePromptManifest[\"continua\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/continua/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "continua"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:continua:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"crear_lead_cerrar\") -> nodePromptManifest[\"crear_lead_cerrar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"crear_lead_cerrar\") -> nodePromptManifest[\"crear_lead_cerrar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"crear_lead_cerrar\") -> nodePromptManifest[\"crear_lead_cerrar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/crear_lead_cerrar/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "crear_lead_cerrar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:crear_lead_cerrar:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/response_classifier_campaign.txt",
+      "consumers": [
+        {
+          "callType": "classifier",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [
+            "campaign_reply"
+          ],
+          "transitions": [
+            "classifier:campaign_reply"
+          ],
+          "loader": "PromptLoader.loadResponseClassifierBundle(\"campaign_reply\") -> responseClassifierPromptFiles.campaign_reply"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/response_classifier.txt",
+      "consumers": [
+        {
+          "callType": "classifier",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [
+            "general"
+          ],
+          "transitions": [
+            "classifier:general"
+          ],
+          "loader": "PromptLoader.loadResponseClassifierBundle(\"general\") -> responseClassifierPromptFiles.general"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"deteccion_intencion\") -> nodePromptManifest[\"deteccion_intencion\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"deteccion_intencion\") -> nodePromptManifest[\"deteccion_intencion\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"deteccion_intencion\") -> nodePromptManifest[\"deteccion_intencion\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/deteccion_intencion/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "deteccion_intencion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:deteccion_intencion:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"elicitacion_necesidades\") -> nodePromptManifest[\"elicitacion_necesidades\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"elicitacion_necesidades\") -> nodePromptManifest[\"elicitacion_necesidades\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"elicitacion_necesidades\") -> nodePromptManifest[\"elicitacion_necesidades\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/elicitacion_necesidades/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "elicitacion_necesidades"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:elicitacion_necesidades:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"entrevista\") -> nodePromptManifest[\"entrevista\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"entrevista\") -> nodePromptManifest[\"entrevista\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"entrevista\") -> nodePromptManifest[\"entrevista\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/entrevista/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"existe_plan_guardado\") -> nodePromptManifest[\"existe_plan_guardado\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"existe_plan_guardado\") -> nodePromptManifest[\"existe_plan_guardado\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"existe_plan_guardado\") -> nodePromptManifest[\"existe_plan_guardado\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/existe_plan_guardado/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"guardar_cerrar_temporalmente\") -> nodePromptManifest[\"guardar_cerrar_temporalmente\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"guardar_cerrar_temporalmente\") -> nodePromptManifest[\"guardar_cerrar_temporalmente\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"guardar_cerrar_temporalmente\") -> nodePromptManifest[\"guardar_cerrar_temporalmente\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_cerrar_temporalmente/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_cerrar_temporalmente"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_cerrar_temporalmente:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"guardar_seleccion_reintentar_luego\") -> nodePromptManifest[\"guardar_seleccion_reintentar_luego\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"guardar_seleccion_reintentar_luego\") -> nodePromptManifest[\"guardar_seleccion_reintentar_luego\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"guardar_seleccion_reintentar_luego\") -> nodePromptManifest[\"guardar_seleccion_reintentar_luego\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/guardar_seleccion_reintentar_luego/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "guardar_seleccion_reintentar_luego"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:guardar_seleccion_reintentar_luego:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"hay_resultados\") -> nodePromptManifest[\"hay_resultados\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"hay_resultados\") -> nodePromptManifest[\"hay_resultados\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"hay_resultados\") -> nodePromptManifest[\"hay_resultados\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/hay_resultados/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "hay_resultados"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:hay_resultados:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"informar_error_reintento\") -> nodePromptManifest[\"informar_error_reintento\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"informar_error_reintento\") -> nodePromptManifest[\"informar_error_reintento\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"informar_error_reintento\") -> nodePromptManifest[\"informar_error_reintento\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/informar_error_reintento/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "informar_error_reintento"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:informar_error_reintento:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"minimos_para_buscar\") -> nodePromptManifest[\"minimos_para_buscar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"minimos_para_buscar\") -> nodePromptManifest[\"minimos_para_buscar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"minimos_para_buscar\") -> nodePromptManifest[\"minimos_para_buscar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/minimos_para_buscar/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "minimos_para_buscar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:minimos_para_buscar:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"necesidad_cubierta\") -> nodePromptManifest[\"necesidad_cubierta\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"necesidad_cubierta\") -> nodePromptManifest[\"necesidad_cubierta\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"necesidad_cubierta\") -> nodePromptManifest[\"necesidad_cubierta\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/necesidad_cubierta/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "necesidad_cubierta"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:necesidad_cubierta:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/ofrecer_agente_humano/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "ofrecer_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:ofrecer_agente_humano"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"ofrecer_agente_humano\") -> nodePromptManifest[\"ofrecer_agente_humano\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/ofrecer_agente_humano/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "ofrecer_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:ofrecer_agente_humano"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"ofrecer_agente_humano\") -> nodePromptManifest[\"ofrecer_agente_humano\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/ofrecer_agente_humano/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "ofrecer_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:ofrecer_agente_humano"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"ofrecer_agente_humano\") -> nodePromptManifest[\"ofrecer_agente_humano\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"recomendar\") -> nodePromptManifest[\"recomendar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"recomendar\") -> nodePromptManifest[\"recomendar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"recomendar\") -> nodePromptManifest[\"recomendar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/recomendar/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "recomendar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:recomendar:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"refinar_criterios\") -> nodePromptManifest[\"refinar_criterios\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"refinar_criterios\") -> nodePromptManifest[\"refinar_criterios\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"refinar_criterios\") -> nodePromptManifest[\"refinar_criterios\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/refinar_criterios/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:refinar_criterios:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"reintentar\") -> nodePromptManifest[\"reintentar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"reintentar\") -> nodePromptManifest[\"reintentar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"reintentar\") -> nodePromptManifest[\"reintentar\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reintentar/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reintentar:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reset_plan/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reset_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reset_plan"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"reset_plan\") -> nodePromptManifest[\"reset_plan\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reset_plan/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reset_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reset_plan"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"reset_plan\") -> nodePromptManifest[\"reset_plan\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/reset_plan/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "reset_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:reset_plan"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"reset_plan\") -> nodePromptManifest[\"reset_plan\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:resolver_consultas_informativas"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"resolver_consultas_informativas\") -> nodePromptManifest[\"resolver_consultas_informativas\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:resolver_consultas_informativas"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"resolver_consultas_informativas\") -> nodePromptManifest[\"resolver_consultas_informativas\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/resolver_consultas_informativas/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "resolver_consultas_informativas"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:resolver_consultas_informativas"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"resolver_consultas_informativas\") -> nodePromptManifest[\"resolver_consultas_informativas\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:responder_invitacion",
+            "reply:responder_invitacion:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"responder_invitacion\") -> nodePromptManifest[\"responder_invitacion\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:responder_invitacion",
+            "reply:responder_invitacion:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"responder_invitacion\") -> nodePromptManifest[\"responder_invitacion\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/responder_invitacion/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:responder_invitacion",
+            "reply:responder_invitacion:resolved_single (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:needs_event_selection (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)",
+            "reply:responder_invitacion:unavailable (rsvp_phone_evidence.state via projectRsvpPhoneEvidenceForReply)"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"responder_invitacion\") -> nodePromptManifest[\"responder_invitacion\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"seguir_refinando_guardar_plan\") -> nodePromptManifest[\"seguir_refinando_guardar_plan\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"seguir_refinando_guardar_plan\") -> nodePromptManifest[\"seguir_refinando_guardar_plan\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"seguir_refinando_guardar_plan\") -> nodePromptManifest[\"seguir_refinando_guardar_plan\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/seguir_refinando_guardar_plan/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "seguir_refinando_guardar_plan"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:seguir_refinando_guardar_plan:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/solicitar_agente_humano/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "solicitar_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:solicitar_agente_humano"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"solicitar_agente_humano\") -> nodePromptManifest[\"solicitar_agente_humano\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/solicitar_agente_humano/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "solicitar_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:solicitar_agente_humano"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"solicitar_agente_humano\") -> nodePromptManifest[\"solicitar_agente_humano\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/solicitar_agente_humano/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "solicitar_agente_humano"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:solicitar_agente_humano"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"solicitar_agente_humano\") -> nodePromptManifest[\"solicitar_agente_humano\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"usuario_elige_proveedor\") -> nodePromptManifest[\"usuario_elige_proveedor\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"usuario_elige_proveedor\") -> nodePromptManifest[\"usuario_elige_proveedor\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"usuario_elige_proveedor\") -> nodePromptManifest[\"usuario_elige_proveedor\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_elige_proveedor/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_elige_proveedor"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_elige_proveedor:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/response_contract.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"usuario_responde\") -> nodePromptManifest[\"usuario_responde\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"usuario_responde\") -> nodePromptManifest[\"usuario_responde\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/tool_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde"
+          ],
+          "loader": "PromptLoader.loadNodeBundle(\"usuario_responde\") -> nodePromptManifest[\"usuario_responde\"].files"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "nodes/usuario_responde/transition_policy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "usuario_responde"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:usuario_responde:transition_policy (orphaned: not in nodePromptManifest)"
+          ],
+          "loader": "filesystem: prompts/nodes/<node>/transition_policy.txt exists but not wired in PromptLoader"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/agent_personality.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/base_system.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/common_anti_patterns.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/domain_knowledge.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/domain_scope.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/flow_discipline.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "reintentar"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:reintentar"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/output_style.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "contacto_inicial",
+            "deteccion_intencion",
+            "existe_plan_guardado",
+            "reset_plan",
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "buscar_proveedores",
+            "busqueda_exitosa",
+            "hay_resultados",
+            "recomendar",
+            "refinar_criterios",
+            "usuario_elige_proveedor",
+            "anadir_a_proveedores_recomendados",
+            "seguir_refinando_guardar_plan",
+            "continua",
+            "accion_final_exitosa",
+            "necesidad_cubierta",
+            "crear_lead_cerrar",
+            "guardar_seleccion_reintentar_luego",
+            "guardar_cerrar_temporalmente",
+            "ofrecer_agente_humano",
+            "solicitar_agente_humano",
+            "informar_error_reintento",
+            "reintentar",
+            "resolver_consultas_informativas",
+            "responder_invitacion"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:contacto_inicial",
+            "reply:deteccion_intencion",
+            "reply:existe_plan_guardado",
+            "reply:reset_plan",
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:buscar_proveedores",
+            "reply:busqueda_exitosa",
+            "reply:hay_resultados",
+            "reply:recomendar",
+            "reply:refinar_criterios",
+            "reply:usuario_elige_proveedor",
+            "reply:anadir_a_proveedores_recomendados",
+            "reply:seguir_refinando_guardar_plan",
+            "reply:continua",
+            "reply:accion_final_exitosa",
+            "reply:necesidad_cubierta",
+            "reply:crear_lead_cerrar",
+            "reply:guardar_seleccion_reintentar_luego",
+            "reply:guardar_cerrar_temporalmente",
+            "reply:ofrecer_agente_humano",
+            "reply:solicitar_agente_humano",
+            "reply:informar_error_reintento",
+            "reply:reintentar",
+            "reply:resolver_consultas_informativas",
+            "reply:responder_invitacion"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    },
+    {
+      "filePath": "shared/question_strategy.txt",
+      "consumers": [
+        {
+          "callType": "reply",
+          "nodes": [
+            "entrevista",
+            "elicitacion_necesidades",
+            "minimos_para_buscar",
+            "aclarar_pedir_faltante",
+            "usuario_responde",
+            "refinar_criterios"
+          ],
+          "profiles": [],
+          "transitions": [
+            "reply:entrevista",
+            "reply:elicitacion_necesidades",
+            "reply:minimos_para_buscar",
+            "reply:aclarar_pedir_faltante",
+            "reply:usuario_responde",
+            "reply:refinar_criterios"
+          ],
+          "loader": "PromptLoader.loadNodeBundle -> conversationPromptFilesForNode"
+        }
+      ],
+      "isOrphaned": false
+    }
+  ],
+  "unmappedFiles": []
+}

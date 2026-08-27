@@ -17,6 +17,8 @@ type Options = {
   baselineRef: string;
   outputDir: string | null;
   remoteTokenCount: boolean;
+  perBranchPath: string | null;
+  perBranchAnchorRef: string | null;
 };
 
 async function main(): Promise<void> {
@@ -25,6 +27,53 @@ async function main(): Promise<void> {
   if (options.remoteTokenCount && !apiKey) {
     throw new Error('OPENAI_API_KEY is required for --remote-token-count.');
   }
+
+  if (options.perBranchPath) {
+    const { measureHistoricalBranches, measureCurrentBranches, summarizeMeasurements } = await import('./prompt-branch-measurement');
+    const anchorRef = options.perBranchAnchorRef ?? '78ae24e';
+    const historical = await measureHistoricalBranches({
+      anchorRef,
+      counterModel: process.env.OPENAI_MODEL ?? DEFAULT_GPT_TEXT_MODEL,
+    });
+    const currentLoader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
+    const current = await measureCurrentBranches({
+      loader: currentLoader,
+      counterModel: process.env.OPENAI_MODEL ?? DEFAULT_GPT_TEXT_MODEL,
+    });
+    const payload = {
+      generatedAt: new Date().toISOString(),
+      baselineRef: anchorRef,
+      counterModel: process.env.OPENAI_MODEL ?? DEFAULT_GPT_TEXT_MODEL,
+      method: 'Buffer.byteLength(instructions/input) + JSON.stringify(candidate) aligned with buildRequestMetrics (src/runtime/openai-agent-runtime.ts:411-423)',
+      historical: {
+        branches: historical,
+        summary: summarizeMeasurements(historical),
+      },
+      current: {
+        branches: current,
+        summary: summarizeMeasurements(current),
+      },
+      delta: current.map((branch) => {
+        const base = historical.find((candidate) => candidate.branchId === branch.branchId);
+        return {
+          branchId: branch.branchId,
+          callType: branch.callType,
+          baselineInstructionBytes: base?.instructionBytes ?? null,
+          currentInstructionBytes: branch.instructionBytes,
+          instructionByteDelta: base ? branch.instructionBytes - base.instructionBytes : null,
+          baselineInputBytes: base?.inputBytes ?? null,
+          currentInputBytes: branch.inputBytes,
+          inputByteDelta: base ? branch.inputBytes - base.inputBytes : null,
+          baselineSerializedBytes: base?.serializedRequestBytes ?? null,
+          currentSerializedBytes: branch.serializedRequestBytes,
+          serializedByteDelta: base ? branch.serializedRequestBytes - base.serializedRequestBytes : null,
+        };
+      }),
+    };
+    await fs.mkdir(path.dirname(path.resolve(options.perBranchPath)), { recursive: true });
+    await fs.writeFile(path.resolve(options.perBranchPath), `${JSON.stringify(payload, null, 2)}\n`, { encoding: 'utf8', mode: 0o644 });
+  }
+
   const result = await compareStaticPromptShapes({
     loader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     baselineRef: options.baselineRef,
@@ -51,6 +100,8 @@ async function main(): Promise<void> {
     ]);
   }
 
+
+
   process.stdout.write(`${JSON.stringify(result.summary, null, 2)}\n`);
   if (result.violations.length > 0) {
     process.stderr.write(`${result.violations.join('\n')}\n`);
@@ -63,6 +114,8 @@ function parseOptions(args: readonly string[]): Options {
     baselineRef: legacyPromptBaselineRef,
     outputDir: null,
     remoteTokenCount: false,
+    perBranchPath: null,
+    perBranchAnchorRef: null,
   };
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index];
@@ -70,15 +123,19 @@ function parseOptions(args: readonly string[]): Options {
       options.remoteTokenCount = true;
       continue;
     }
-    if (argument === '--baseline-ref' || argument === '--output-dir') {
+    if (argument === '--baseline-ref' || argument === '--output-dir' || argument === '--per-branch' || argument === '--per-branch-anchor') {
       const value = args[index + 1];
       if (!value) {
         throw new Error(`${argument} requires a value.`);
       }
       if (argument === '--baseline-ref') {
         options.baselineRef = value;
-      } else {
+      } else if (argument === '--output-dir') {
         options.outputDir = value;
+      } else if (argument === '--per-branch') {
+        options.perBranchPath = value;
+      } else {
+        options.perBranchAnchorRef = value;
       }
       index += 1;
       continue;

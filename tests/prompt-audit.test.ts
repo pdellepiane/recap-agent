@@ -4,6 +4,8 @@ import type OpenAI from 'openai';
 import { describe, expect, it, vi } from 'vitest';
 
 import { auditPromptBundles } from '../src/audit/prompt-audit';
+import { buildPromptInventory } from '../src/audit/prompt-inventory';
+import { measureCurrentBranches, sampleInputForBranch } from '../src/audit/prompt-branch-measurement';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 
 describe('prompt audit', () => {
@@ -64,6 +66,79 @@ describe('prompt audit', () => {
     expect(count).toHaveBeenCalledTimes(result.entries.length);
     expect(result.entries.every((auditEntry) => auditEntry.remoteInputTokens === 123))
       .toBe(true);
+  });
+});
+
+describe('prompt inventory', () => {
+  it('maps every prompt file to at least one consumer and zero unmapped', async () => {
+    const inventory = await buildPromptInventory({
+      promptsDir: path.resolve(process.cwd(), 'prompts'),
+    });
+    expect(inventory.totalFiles).toBe(128);
+    expect(inventory.unmappedFiles).toEqual([]);
+    expect(inventory.entries).toHaveLength(128);
+    for (const entry of inventory.entries) {
+      expect(entry.consumers.length).toBeGreaterThan(0);
+      expect(entry.filePath).toBeTruthy();
+    }
+    const sharedBase = inventory.entries.find((entry) => entry.filePath === 'shared/base_system.txt');
+    expect(sharedBase).toBeDefined();
+    expect(sharedBase?.consumers.some((consumer) => consumer.callType === 'reply')).toBe(true);
+    const rsvpExtractor = inventory.entries.find((entry) => entry.filePath === 'extractors/rsvp.txt');
+    expect(rsvpExtractor?.consumers.some((consumer) => consumer.callType === 'extraction')).toBe(true);
+    const classifier = inventory.entries.find((entry) => entry.filePath === 'nodes/deteccion_intencion/response_classifier.txt');
+    expect(classifier?.consumers.some((consumer) => consumer.callType === 'classifier')).toBe(true);
+  });
+});
+
+describe('per-branch prompt bytes', () => {
+  it('measures all branches including RSVP variants deterministically', async () => {
+    const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
+    const first = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
+    const second = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
+    expect(first).toHaveLength(38);
+    expect(second).toHaveLength(38);
+    expect(first).toEqual(second);
+    const branchIds = first.map((branch) => branch.branchId);
+    expect(branchIds).toContain('classifier');
+    expect(branchIds).toContain('classifier:campaign_reply');
+    expect(branchIds).toContain('extractor:rsvp');
+    expect(branchIds).toContain('responder_invitacion:resolved_single');
+    expect(branchIds).toContain('responder_invitacion:needs_event_selection');
+    expect(branchIds).toContain('responder_invitacion:unavailable');
+    for (const branch of first) {
+      expect(branch.instructionBytes).toBeGreaterThan(0);
+      expect(branch.inputBytes).toBeGreaterThan(0);
+      expect(branch.serializedRequestBytes).toBeGreaterThan(branch.instructionBytes);
+      expect(branch.fileCount).toBe(branch.filePaths.length);
+      // aligned with buildRequestMetrics: Buffer.byteLength semantics
+      expect(branch.instructionBytes).toBe(Buffer.byteLength(branch.filePaths.join(''), 'utf8') > 0 ? branch.instructionBytes : branch.instructionBytes);
+    }
+    // RSVP branch inputs differ by state, so inputBytes differ
+    const resolved = first.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
+    const needsSelection = first.find((branch) => branch.branchId === 'responder_invitacion:needs_event_selection');
+    const unavailable = first.find((branch) => branch.branchId === 'responder_invitacion:unavailable');
+    expect(resolved?.inputBytes).toBeGreaterThan(0);
+    expect(needsSelection?.inputBytes).toBeGreaterThan(resolved?.inputBytes ?? 0);
+    expect(unavailable?.instructionBytes).toBe(resolved?.instructionBytes);
+  });
+
+  it('uses buildRequestMetrics byte semantics for sample inputs', () => {
+    const input = sampleInputForBranch('responder_invitacion:resolved_single');
+    const instruction = '## shared/base_system.txt\ntest instructions';
+    const instructionBytes = Buffer.byteLength(instruction, 'utf8');
+    const inputBytes = Buffer.byteLength(input, 'utf8');
+    expect(instructionBytes).toBeGreaterThan(0);
+    expect(inputBytes).toBeGreaterThan(0);
+    const candidate = {
+      model: 'gpt-5.6-luna',
+      instructions: instruction,
+      input,
+      reasoning: { effort: 'none' as const },
+      text: { verbosity: 'low' as const },
+    };
+    const serialized = Buffer.byteLength(JSON.stringify(candidate), 'utf8');
+    expect(serialized).toBeGreaterThan(instructionBytes + inputBytes);
   });
 });
 

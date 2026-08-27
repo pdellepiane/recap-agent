@@ -8,6 +8,7 @@ import {
   compareStaticPromptShapes,
   legacyPromptBaselineRef,
 } from '../src/audit/static-prompt-comparison';
+import { measureHistoricalBranches, measureCurrentBranches } from '../src/audit/prompt-branch-measurement';
 
 describe('static prompt comparison', () => {
   const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
@@ -61,6 +62,34 @@ describe('static prompt comparison', () => {
     )).toBe(true);
     expect(result.violations).toHaveLength(result.comparisons.length - 2);
   });
+});
+
+describe('per-branch historical baseline via git show', () => {
+  it('measures all branches from 78ae24e anchor without using working tree', async () => {
+    const historical = await measureHistoricalBranches({
+      anchorRef: '78ae24e',
+      counterModel: 'gpt-5.6-luna',
+    });
+    expect(historical).toHaveLength(38);
+    const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
+    const current = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
+    expect(current).toHaveLength(38);
+    // Historical and current share same branchId set
+    expect(historical.map((branch) => branch.branchId).sort()).toEqual(
+      current.map((branch) => branch.branchId).sort(),
+    );
+    // RSVP branches exist in historical baseline
+    expect(historical.some((branch) => branch.branchId === 'responder_invitacion:resolved_single')).toBe(true);
+    expect(historical.some((branch) => branch.branchId === 'responder_invitacion:needs_event_selection')).toBe(true);
+    // Anchor instruction bytes for responder_invitacion are 8233 (stable anchor)
+    const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
+    expect(anchorRsvp?.instructionBytes).toBe(8233);
+    expect(anchorRsvp?.fileCount).toBe(7);
+    // Current has +20 delta due to T1 three-state guidance
+    const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
+    expect(currentRsvp?.instructionBytes).toBe(8253);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(20);
+  }, 15_000);
 });
 
 function route(
