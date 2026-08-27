@@ -6003,3 +6003,17 @@ Prior deployed mixed case classifier/extractor/reply were 2343/325, 10517/2558, 
 
 **needs_input:** Purchase amount/product disclosure when only status was requested is not governed by the information node response contract (lines 7 and 33 are silent on amount/product/card-type withholding). Rubric left unchanged beyond citing existing rules; policy invention would be required to make the 0.82 judge failure deterministic.
 
+
+### T6-fix Commit C: state-aligned RSVP reply rules (prompts + registry)
+
+**Reason:** Borderline text_semantic failures (cinthya/jose/cristian 0.55-0.85) due to rubric-required phrasing (thanks; no-change-was-needed; no implying new registration / no claiming verified state) that reply prompts did not reliably elicit. Need minimal targeted prompt alignment without full per-state section split (deferred to T5).
+
+**Decision:**
+- `prompts/nodes/responder_invitacion/system.txt`: added two minimal Spanish bullets: for resolved_single with attending already recorded, thank and clarify no change needed without implying new registration; for unavailable state/record, never claim stored confirmation and may offer human verification. Kept existing three-state branching line intact; no per-state section split.
+- `prompts/nodes/responder_invitacion/response_contract.txt`: refined "ya estaba confirmada" bullet to include thank + no-change wording; added bullet for unavailable never claim; kept other bullets unchanged; Spanish conversational content.
+- Registry: added two new behaviorChange entries pointing at existing live cases (no new case required): `rsvp-resolved-single-thanks-no-change` implementedBy e5b59bc liveCaseIds [live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing], and `rsvp-unavailable-never-claim-confirmation` implementedBy e5b59bc liveCaseIds [live_behavior.rsvp_jose_campaign_invitation_not_reported_missing]; both hashes are reachable (e5b59bc is Commit B, ancestor of HEAD).
+- Updated `tests/static-prompt-comparison.test.ts` expectation: responder_invitacion:resolved_single instructionBytes 8253->8754 (+501 over T1, +521 over anchor 8233) due to 268B system +253B contract additions.
+- Measurement: git show 78ae24e anchor vs HEAD: system.txt 1367->1635 (+268), response_contract.txt 1242->1495 (+253); audit:prompts 0 violations, audit:prompts:compare 52.14% reduction (732995->350831, +504 vs pre-C T1 tree 350327); net increase justified as specification repair for hard semantic judges, still well above 20% reduction guard; no new global rules.
+
+**Validation:** typecheck clean, lint clean, 549/549 tests across 75 files (updated static-prompt-comparison), live-behavior-coverage still passes, audit gates green.
+

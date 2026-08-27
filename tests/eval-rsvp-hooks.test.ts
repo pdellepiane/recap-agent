@@ -6,11 +6,12 @@ import { runEvaluation } from '../src/evals/runner';
 import type { EvalCase } from '../src/evals/case-schema';
 
 vi.mock('../src/evals/rsvp-isolation', async () => {
-  const actual = await vi.importActual<typeof import('../src/evals/rsvp-isolation')>('../src/evals/rsvp-isolation');
+  const actual = await vi.importActual('../src/evals/rsvp-isolation') as unknown as Record<string, unknown>;
   return {
-    ...actual,
-    setupRsvpIsolation: vi.fn(actual.setupRsvpIsolation),
-    teardownRsvpIsolation: vi.fn(actual.teardownRsvpIsolation),
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+    ...(actual as Record<string, unknown>),
+    setupRsvpIsolation: vi.fn((actual as unknown as { setupRsvpIsolation: (...args: unknown[]) => unknown }).setupRsvpIsolation),
+    teardownRsvpIsolation: vi.fn((actual as unknown as { teardownRsvpIsolation: (...args: unknown[]) => unknown }).teardownRsvpIsolation),
   };
 });
 
@@ -42,7 +43,7 @@ describe('rsvp isolation hooks', () => {
     const callOrder: string[] = [];
     const mockedSetup = vi.mocked(setupRsvpIsolation);
     const mockedTeardown = vi.mocked(teardownRsvpIsolation);
-    mockedSetup.mockImplementation(async (hooks) => {
+    mockedSetup.mockImplementation(async () => {
       callOrder.push('setup');
       // call real to keep context handling but record order
       return { guestId: 584353, eventName: 'Otra celebración prueba', phone: '+51973296571', priorState: null, targetState: 'declining' };
