@@ -73,6 +73,7 @@ import type {
 import type { TokenUsage } from './contracts';
 import type { OpenAiCallRef } from './contracts';
 import { extractOtpCode } from './otp-normalization';
+import { normalizeExtractedOrderReference } from '../core/order-reference';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import {
   NoopAgentConversationGateway,
@@ -2751,7 +2752,9 @@ export class AgentService {
         phonePurchaseResult?.status === 'completed' &&
         phonePurchaseResult.kind === 'purchase'
       ) {
-        operationalNote = phonePurchaseResult.coverage === 'partial'
+        operationalNote = phonePurchaseResult.referenceResolution === 'unavailable'
+          ? 'El número confiable permitió recuperar compras, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Dilo brevemente, muestra opciones solo por evento, fecha, monto y estado, pide elegir una y no muestres identificadores internos ni pidas correo o código.'
+          : phonePurchaseResult.coverage === 'partial'
           ? 'La consulta se resolvió con información resumida asociada al número confiable porque el detalle no estuvo disponible. Responde solo con los campos presentes, aclara brevemente que la cobertura es parcial y no pidas correo ni código.'
           : phonePurchaseResult.coverage === 'inconsistent'
             ? 'Las fuentes asociadas al número confiable discreparon. Usa únicamente los valores canónicos proyectados, indica que se requiere revisión para cualquier campo no concluyente y no muestres versiones contradictorias ni pidas correo o código.'
@@ -2929,7 +2932,9 @@ export class AgentService {
                 query: authenticationContinuation
                   ? existing.query
                   : request.query || existing.query,
-                orderId: request.orderId ?? existing.orderId,
+                orderId: normalizeExtractedOrderReference(
+                  request.orderId ?? existing.orderId,
+                ),
                 aspects: Array.from(
                   new Set([...existing.aspects, ...request.aspects]),
                 ),
@@ -2957,6 +2962,9 @@ export class AgentService {
       }
       merged.push({
         ...request,
+        ...(request.kind === 'purchase'
+          ? { orderId: normalizeExtractedOrderReference(request.orderId) }
+          : {}),
         requestId,
       } as PendingInformationRequest);
       nextId += 1;

@@ -16,6 +16,7 @@ import { z } from 'zod';
 
 import type { ActionIntent, PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
+import { normalizeExtractedOrderReference } from '../core/order-reference';
 import type { InformationTaskResult, PurchaseInformation } from '../core/information';
 import {
   prioritizedProviderCategoriesForEvent,
@@ -278,7 +279,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         kind: 'purchase',
         resource: request.resource,
         query: request.query,
-        orderId: request.orderId,
+        orderId: normalizeExtractedOrderReference(request.orderId),
         aspects:
           request.aspects.length > 0 ? request.aspects : ['summary'],
         sensitiveFields: request.sensitiveFields,

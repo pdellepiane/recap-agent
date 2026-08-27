@@ -5,6 +5,7 @@ import type {
   PurchaseResource,
 } from '../core/information';
 import { rsvpActionValues, type RsvpAction } from '../core/rsvp';
+import { normalizeBackendCustomerTransactionNumber } from '../core/order-reference';
 import {
   createAuthOperationId,
   logAuthObservabilityEvent,
@@ -632,6 +633,7 @@ const paymentSchema = z.object({
 
 const orderSchema = z.object({
   id: z.string().min(1),
+  increment_id: z.union([z.string(), z.number()]).nullable().optional(),
   name: nullableStringSchema,
   email: nullableStringSchema,
   payment_status: nullableStringSchema,
@@ -648,6 +650,7 @@ const orderSchema = z.object({
 
 const giftPurchaseSchema = z.object({
   id: z.string().min(1),
+  increment_id: z.union([z.string(), z.number()]).nullable().optional(),
   payment_status: nullableStringSchema,
   shipping_status: nullableStringSchema,
   grand_total: nullableNumberSchema,
@@ -1311,6 +1314,9 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   private mapOrder(order: OrderWire): PurchaseInformation {
     return {
       orderId: order.id,
+      customerTransactionNumber: normalizeBackendCustomerTransactionNumber(
+        order.increment_id,
+      ),
       paymentStatus: order.payment_status ?? null,
       shippingStatus: order.shipping_status ?? null,
       grandTotal: order.grand_total ?? null,
@@ -1340,6 +1346,9 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   private mapGiftPurchase(purchase: GiftPurchaseWire): PurchaseInformation {
     return {
       orderId: purchase.id,
+      customerTransactionNumber: normalizeBackendCustomerTransactionNumber(
+        purchase.increment_id,
+      ),
       paymentStatus: purchase.payment_status ?? null,
       shippingStatus: purchase.shipping_status ?? null,
       grandTotal: purchase.grand_total ?? null,

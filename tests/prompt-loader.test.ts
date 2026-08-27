@@ -289,9 +289,10 @@ describe('PromptLoader', () => {
       '“¿Cuál es el estado del regalo que compré?” es purchase',
     );
     expect(extractorBundle.instructions).toContain(
-      'El número es opcional',
+      'Sin número usa',
     );
     expect(extractorBundle.instructions).toContain('orderId=null');
+    expect(extractorBundle.instructions).toContain('COD301816');
     expect(extractorBundle.instructions).toContain(
       'aspects=[summary, payment_status, shipping]',
     );

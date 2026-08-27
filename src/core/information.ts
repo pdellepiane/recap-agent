@@ -179,6 +179,8 @@ export type PurchasePaymentDetails = {
 
 export type PurchaseInformation = {
   orderId: string;
+  /** Customer-visible numeric transaction reference, displayed as COD<number>. */
+  customerTransactionNumber?: string | null;
   paymentStatus: string | null;
   shippingStatus: string | null;
   grandTotal: number | null;
@@ -347,6 +349,8 @@ export type InformationTaskResult =
         | 'trusted_phone_purchase'
         | 'trusted_phone_event_purchase';
       coverage?: 'complete' | 'partial' | 'inconsistent';
+      referenceResolution?: 'matched' | 'unavailable';
+      requestedCustomerTransactionNumber?: string | null;
     }
   | {
       requestId: string;

@@ -379,6 +379,7 @@ describe('AgentConversationGateway', () => {
       data: {
         orders: [{
           id: 'ORD-000882',
+          increment_id: '301816',
           payment_status: 'approved',
           shipping_status: 'delivered',
           grand_total: 125,
@@ -400,14 +401,19 @@ describe('AgentConversationGateway', () => {
       messageLoggingEnabled: false,
     });
 
-    await expect(gateway.getGuestOrdersByPhone({
+    const result = await gateway.getGuestOrdersByPhone({
       phone_extension: '51',
       phone_number: '987 654 321',
       orderId: 'ORD-000882',
-    })).resolves.toMatchObject({
+    });
+    expect(result).toMatchObject({
       status: 'success',
       resource: 'orders',
-      purchases: [{ orderId: 'ORD-000882', paymentStatus: 'approved' }],
+      purchases: [{
+        orderId: 'ORD-000882',
+        customerTransactionNumber: '301816',
+        paymentStatus: 'approved',
+      }],
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example.test/api/agent/guest/orders?phone_extension=%2B51&phone_number=987654321&order_id=ORD-000882',
@@ -638,7 +644,7 @@ describe('AgentConversationGateway', () => {
       data: {
         credentials: {
           access_token: 'phone-jwt',
-          expires_in: 1787843661,
+          expires_in: 2_000_000_000,
         },
         user: {
           email: 'registered@example.com',
@@ -662,7 +668,7 @@ describe('AgentConversationGateway', () => {
     })).resolves.toEqual({
       status: 'authenticated',
       token: 'phone-jwt',
-      tokenExpiresAtIso: '2026-08-27T15:14:21.000Z',
+      tokenExpiresAtIso: '2033-05-18T03:33:20.000Z',
       email: 'registered@example.com',
     });
     expect(fetchMock).toHaveBeenCalledWith(

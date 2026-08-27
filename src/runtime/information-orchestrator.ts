@@ -9,6 +9,7 @@ import {
   type PurchaseInformation,
   type SensitivePurchaseField,
 } from '../core/information';
+import { parseOrderReference } from '../core/order-reference';
 import type {
   AgentAuthByPhoneInput,
   AgentConversationGateway,
@@ -829,9 +830,19 @@ export class InformationOrchestrator {
         purchases: purchases.map((purchase) =>
           this.projectPurchase(purchase, request),
         ),
-        needsSelection: !request.orderId && purchases.length > 1,
+        needsSelection:
+          lookup.referenceResolution === 'unavailable' ||
+          (!request.orderId && purchases.length > 1) ||
+          (lookup.referenceResolution === 'matched' && purchases.length > 1),
         accessMethod: 'trusted_phone_purchase',
         coverage: lookup.coverage,
+        ...(lookup.referenceResolution === 'not_requested'
+          ? {}
+          : {
+              referenceResolution: lookup.referenceResolution,
+              requestedCustomerTransactionNumber:
+                lookup.requestedCustomerTransactionNumber,
+            }),
       };
     }
 
@@ -875,6 +886,8 @@ export class InformationOrchestrator {
     result: AgentPhonePurchaseLookupResult;
     coverage: 'complete' | 'partial';
     sourceResource: 'orders' | 'gift_purchases';
+    referenceResolution: 'not_requested' | 'matched' | 'unavailable';
+    requestedCustomerTransactionNumber: string | null;
   } | undefined> {
     const lookupResource: 'orders' | 'gift_purchases' = request.aspects.some(
       (aspect) =>
@@ -891,29 +904,43 @@ export class InformationOrchestrator {
     ) {
       return undefined;
     }
+    const parsedReference = parseOrderReference(request.orderId);
+    const requestedCustomerTransactionNumber =
+      parsedReference?.kind === 'customer_transaction'
+        ? parsedReference.transactionNumber
+        : null;
+    const lookupOrderId = parsedReference?.kind === 'backend_order_id'
+      ? parsedReference.orderId
+      : null;
     const key = [
       lookupResource,
       trustedPhone.phone_extension,
       trustedPhone.phone_number,
-      request.orderId ?? '*',
+      lookupOrderId ?? '*',
     ].join(':');
     const existing = phonePurchaseLookups.get(key);
     if (existing) {
       const result = await existing;
-      return result
-        ? { result, coverage: 'complete', sourceResource: lookupResource }
-        : undefined;
+      if (!result) {
+        return undefined;
+      }
+      return this.resolveCustomerTransactionLookup(
+        result,
+        lookupResource,
+        requestedCustomerTransactionNumber,
+        'complete',
+      );
     }
     const lookupPromise = lookupResource === 'orders'
       ? phoneGateway.getGuestOrdersByPhone!({
           phone_extension: trustedPhone.phone_extension,
           phone_number: trustedPhone.phone_number,
-          orderId: request.orderId,
+          orderId: lookupOrderId,
         })
       : phoneGateway.getGuestGiftPurchasesByPhone!({
           phone_extension: trustedPhone.phone_extension,
           phone_number: trustedPhone.phone_number,
-          orderId: request.orderId,
+          orderId: lookupOrderId,
         });
     phonePurchaseLookups.set(key, lookupPromise);
     let lookup = await lookupPromise;
@@ -932,13 +959,13 @@ export class InformationOrchestrator {
         'orders',
         trustedPhone.phone_extension,
         trustedPhone.phone_number,
-        request.orderId ?? '*',
+        lookupOrderId ?? '*',
       ].join(':');
       const fallbackExisting = phonePurchaseLookups.get(fallbackKey);
       const fallbackPromise = fallbackExisting ?? phoneGateway.getGuestOrdersByPhone({
         phone_extension: trustedPhone.phone_extension,
         phone_number: trustedPhone.phone_number,
-        orderId: request.orderId,
+        orderId: lookupOrderId,
       });
       if (!fallbackExisting) {
         phonePurchaseLookups.set(fallbackKey, fallbackPromise);
@@ -950,7 +977,76 @@ export class InformationOrchestrator {
         sourceResource = 'orders';
       }
     }
-    return { result: lookup, coverage, sourceResource };
+    return this.resolveCustomerTransactionLookup(
+      lookup,
+      sourceResource,
+      requestedCustomerTransactionNumber,
+      coverage,
+    );
+  }
+
+  private resolveCustomerTransactionLookup(
+    result: AgentPhonePurchaseLookupResult,
+    sourceResource: 'orders' | 'gift_purchases',
+    requestedCustomerTransactionNumber: string | null,
+    coverage: 'complete' | 'partial',
+  ): {
+    result: AgentPhonePurchaseLookupResult;
+    coverage: 'complete' | 'partial';
+    sourceResource: 'orders' | 'gift_purchases';
+    referenceResolution: 'not_requested' | 'matched' | 'unavailable';
+    requestedCustomerTransactionNumber: string | null;
+  } {
+    if (!requestedCustomerTransactionNumber || result.status !== 'success') {
+      return {
+        result,
+        coverage,
+        sourceResource,
+        referenceResolution: requestedCustomerTransactionNumber
+          ? 'unavailable'
+          : 'not_requested',
+        requestedCustomerTransactionNumber,
+      };
+    }
+    const purchasesWithCustomerReference = result.purchases.filter(
+      (purchase) => Boolean(purchase.customerTransactionNumber),
+    );
+    if (purchasesWithCustomerReference.length === 0) {
+      return {
+        result,
+        coverage: 'partial',
+        sourceResource,
+        referenceResolution: 'unavailable',
+        requestedCustomerTransactionNumber,
+      };
+    }
+    const matches = purchasesWithCustomerReference.filter(
+      (purchase) =>
+        purchase.customerTransactionNumber === requestedCustomerTransactionNumber,
+    );
+    if (matches.length === 0) {
+      return {
+        result: {
+          status: 'not_found',
+          resource: result.resource,
+          orderId: requestedCustomerTransactionNumber,
+        },
+        coverage,
+        sourceResource,
+        referenceResolution: 'matched',
+        requestedCustomerTransactionNumber,
+      };
+    }
+    return {
+      result: {
+        ...result,
+        purchases: matches,
+      },
+      coverage,
+      sourceResource,
+      referenceResolution: 'matched',
+      requestedCustomerTransactionNumber,
+    };
   }
 
   private eventScopedPurchasesForRequest(
@@ -1004,6 +1100,8 @@ export class InformationOrchestrator {
       ...fallback,
       ...preferred,
       paymentStatus: preferred.paymentStatus ?? fallback.paymentStatus,
+      customerTransactionNumber:
+        preferred.customerTransactionNumber ?? fallback.customerTransactionNumber,
       shippingStatus: preferred.shippingStatus ?? fallback.shippingStatus,
       grandTotal: preferred.grandTotal ?? fallback.grandTotal,
       paymentMethod: preferred.paymentMethod ?? fallback.paymentMethod,
@@ -1027,6 +1125,7 @@ export class InformationOrchestrator {
   ): boolean {
     const pairs: Array<[unknown, unknown]> = [
       [left.paymentStatus, right.paymentStatus],
+      [left.customerTransactionNumber, right.customerTransactionNumber],
       [left.shippingStatus, right.shippingStatus],
       [left.grandTotal, right.grandTotal],
       [left.paymentMethod, right.paymentMethod],
@@ -1139,6 +1238,7 @@ export class InformationOrchestrator {
 
     return {
       orderId: purchase.orderId,
+      customerTransactionNumber: purchase.customerTransactionNumber ?? null,
       paymentStatus:
         aspectSet.has('summary') || aspectSet.has('payment_status') || aspectSet.has('decline')
           ? purchase.paymentStatus

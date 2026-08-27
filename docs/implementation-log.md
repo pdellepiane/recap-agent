@@ -1,5 +1,24 @@
 # Implementation Log
 
+## 2026-08-27
+
+### Normalize customer transaction codes without conflating them with Agent API order ids
+
+- Reproduced the reported `COD301816` interaction and probed the phone-scoped purchase routes with sanitized GET requests. The customer-facing forms `301816` and `COD301816` both returned HTTP 404 as `order_id` filters, while the opaque Agent API id returned HTTP 200. The unfiltered order and gift-purchase payloads expose opaque `id` values and currently omit the documented `increment_id`; the UI's customer transaction number therefore cannot be proven from the current response.
+- Added typed order-reference parsing after purchase intent is established. `COD301816`, spacing/hyphen variants, and `301816` normalize to transaction number `301816`; opaque backend identifiers remain unchanged. The purchase orchestrator now retrieves phone-scoped records without misusing a customer number as an internal filter, matches locally when `increment_id` is available, and marks coverage partial when the backend omits it.
+- Extended order and gift-purchase parsing for optional `increment_id`. Reply projection exposes only `customerTransactionNumber`; opaque internal ids are explicitly withheld. When the reference cannot be linked, the agent presents grounded choices by event, date, amount, and status and asks for one selection without starting email/OTP authentication.
+- Added deterministic normalization, gateway-mapping, matched-reference, and missing-reference fallback tests. Added the reported interaction as mandatory live Lambda case `live_behavior.customer_transaction_code_by_phone`, with hard routing/tool assertions and a required semantic judge.
+
+**Prompt footprint:** The information-reply serialized request increased from 13,637 to 13,854 bytes (+217) to add the route-specific customer-reference extraction and disclosure contract. No new tool was exposed.
+
+**Verification so far:** Focused gateway/orchestration/reference tests passed 56/56 and typecheck passed. The first complete local gate passed 519/520 tests; its only failure was the expected prompt-audit byte snapshot, which was updated to the measured 13,854-byte value. Deployment and the mandatory live gate remain pending.
+
+### Diagnose the omitted Paolo & Mariana RSVP result
+
+- Reconstructed the complete stored turn using CloudWatch, DynamoDB trace linkage, Agent API reads, and stored OpenAI extraction/reply payloads. The turn consulted the guest-service phone lookup, `/guest/events`, and phone-enriched `/event`; the successful RSVP mutation itself is not included in the current sanitized HTTP observability allowlist.
+- The backend and canonical reply evidence did contain Paolo & Mariana, selected the correct guest, and represented the final attendance state as attending. The reply model nevertheless followed the unrelated multi-invitation branch because the resolved single-event turn still received the broad candidate union and a generic instruction to enumerate multiple invitations.
+- Durable correction proposed: project a typed `resolved_single | needs_event_selection | unavailable` response mode; omit all candidate arrays in `resolved_single`; reject candidate records without an event identity; render successful/already-final RSVP outcomes deterministically; and add sanitized `/guest/rsvp` status/latency/result observability plus a full interaction regression. No RSVP behavior was changed in this transaction-code implementation.
+
 ## 2026-08-24
 
 ### Expand FAQ and protected-information authentication observability

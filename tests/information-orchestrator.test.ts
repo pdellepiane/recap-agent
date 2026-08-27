@@ -759,6 +759,94 @@ describe('InformationOrchestrator', () => {
     expect(execution.results.every((result) => result.status === 'completed')).toBe(true);
   });
 
+  it('matches COD and numeric customer references locally against backend increment ids', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        { ...giftPurchase(), orderId: 'ORD_internal_1', customerTransactionNumber: '301816' },
+        { ...giftPurchase(), orderId: 'ORD_internal_2', customerTransactionNumber: '188308' },
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'customer-code',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'COD301816',
+        orderId: 'COD301816',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(agentGateway.guestOrderIds).toEqual([null]);
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      needsSelection: false,
+      referenceResolution: 'matched',
+      requestedCustomerTransactionNumber: '301816',
+      purchases: [{
+        orderId: 'ORD_internal_1',
+        customerTransactionNumber: '301816',
+      }],
+    });
+  });
+
+  it('falls back to phone-scoped choices when the backend omits customer transaction ids', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        { ...giftPurchase(), orderId: 'ORD_internal_1', eventName: 'Maria Inés & Santiago' },
+        { ...giftPurchase(), orderId: 'ORD_internal_2', eventName: 'Sylvia & Moises' },
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'customer-code-unavailable',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '301816',
+        orderId: '301816',
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '987654321' },
+    });
+
+    expect(agentGateway.guestOrderIds).toEqual([null]);
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      coverage: 'partial',
+      needsSelection: true,
+      referenceResolution: 'unavailable',
+      requestedCustomerTransactionNumber: '301816',
+      purchases: [{ eventName: 'Maria Inés & Santiago' }, { eventName: 'Sylvia & Moises' }],
+    });
+  });
+
   it('retains a known guest event when enriched detail returns 500 and public detail succeeds', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestEventsResult = {
@@ -998,6 +1086,8 @@ class FakeAgentGateway implements AgentConversationGateway {
   public giftCalls = 0;
   public guestOrdersCalls = 0;
   public guestGiftCalls = 0;
+  public guestOrderIds: Array<string | null> = [];
+  public guestGiftOrderIds: Array<string | null> = [];
   public authByPhoneCalls = 0;
   public orderIds: Array<string | null> = [];
   public ordersResult: AgentPurchaseLookupResult = {
@@ -1098,8 +1188,8 @@ class FakeAgentGateway implements AgentConversationGateway {
     phone_number: string;
     orderId?: string | null;
   }): Promise<AgentPhonePurchaseLookupResult> {
-    void args;
     this.guestOrdersCalls += 1;
+    this.guestOrderIds.push(args.orderId ?? null);
     return this.guestOrdersResult;
   }
 
@@ -1108,8 +1198,8 @@ class FakeAgentGateway implements AgentConversationGateway {
     phone_number: string;
     orderId?: string | null;
   }): Promise<AgentPhonePurchaseLookupResult> {
-    void args;
     this.guestGiftCalls += 1;
+    this.guestGiftOrderIds.push(args.orderId ?? null);
     return this.guestGiftResult;
   }
 

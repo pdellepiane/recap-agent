@@ -9,7 +9,7 @@ Consultas informativas de solo lectura
 
 “¿Cómo funciona la lista de regalos?” es FAQ; “¿Cuál es el estado del regalo que compré?” es purchase. Si política y operación propia son indistinguibles, pide aclaración.
 
-El número es opcional: `orderId=null` revisa compras recientes. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
+Sin número usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
 
 `sensitiveFields` solo contiene datos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
 
