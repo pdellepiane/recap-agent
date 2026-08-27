@@ -30,6 +30,11 @@ import {
   getEvaluationOutputText,
   getEvaluationPlan,
 } from './evaluation-state';
+import {
+  setupRsvpIsolation,
+  teardownRsvpIsolation,
+  type RsvpIsolationContext,
+} from './rsvp-isolation';
 
 export type EvalRunnerOptions = {
   evalsDir: string;
@@ -89,15 +94,54 @@ export async function runEvaluation(
         config.label,
       );
       await fs.mkdir(caseOutputDir, { recursive: true });
+      let rsvpIsolationContext: RsvpIsolationContext | null = null;
+      let rsvpSetupError: string | null = null;
+      if (currentCase.rsvpIsolation?.setup) {
+        try {
+          rsvpIsolationContext = await setupRsvpIsolation({
+            setup: currentCase.rsvpIsolation.setup,
+          });
+        } catch (error) {
+          rsvpSetupError = error instanceof Error ? error.message : String(error);
+        }
+      }
       let runtimeResult: RuntimeCaseResult;
-      try {
-        runtimeResult = await executeCase(currentCase, config, caseOutputDir);
-      } catch (error) {
+      if (rsvpSetupError !== null) {
         runtimeResult = {
           turns: [],
           status: 'errored',
-          errorMessage: error instanceof Error ? error.message : String(error),
+          errorMessage: `RSVP isolation setup failed: ${rsvpSetupError}`,
         };
+      } else {
+        try {
+          runtimeResult = await executeCase(currentCase, config, caseOutputDir);
+        } catch (error) {
+          runtimeResult = {
+            turns: [],
+            status: 'errored',
+            errorMessage: error instanceof Error ? error.message : String(error),
+          };
+        }
+      }
+      if (currentCase.rsvpIsolation?.teardown) {
+        try {
+          await teardownRsvpIsolation(
+            {
+              setup: currentCase.rsvpIsolation.setup,
+              teardown: currentCase.rsvpIsolation.teardown,
+            },
+            rsvpIsolationContext,
+          );
+        } catch (error) {
+          const teardownMessage = error instanceof Error ? error.message : String(error);
+          if (runtimeResult.status !== 'errored') {
+            runtimeResult = {
+              turns: runtimeResult.turns,
+              status: 'errored',
+              errorMessage: `RSVP isolation teardown failed: ${teardownMessage}`,
+            };
+          }
+        }
       }
       const finalized = await finalizeResult({
         runId,

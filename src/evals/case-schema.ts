@@ -581,6 +581,25 @@ const scorerSchema = z.discriminatedUnion('type', [
 ]);
 export type EvalScorerConfig = z.infer<typeof scorerSchema>;
 
+const rsvpIsolationSetupSchema = z.object({
+  guestId: z.number().int().positive().default(584353),
+  eventName: z.string().min(1).default('Otra celebración prueba'),
+  phone: z.string().min(1).default('+51973296571'),
+  targetState: z.enum(['attending', 'declining', 'pending']),
+}).strict();
+
+const rsvpIsolationTeardownSchema = z.object({
+  guestId: z.number().int().positive().default(584353),
+  eventName: z.string().min(1).default('Otra celebración prueba'),
+  phone: z.string().min(1).default('+51973296571'),
+  restore: z.boolean().default(true),
+}).strict();
+
+const rsvpIsolationHooksSchema = z.object({
+  setup: rsvpIsolationSetupSchema.optional(),
+  teardown: rsvpIsolationTeardownSchema.optional(),
+}).strict();
+
 const budgetSchema = z.object({
   maxTurns: z.number().int().positive().optional(),
   maxToolCalls: z.number().int().nonnegative().optional(),
@@ -620,9 +639,11 @@ export const evalCaseSchema = z.object({
   expectations: z.array(expectationSchema).default([]),
   scorers: z.array(scorerSchema).default([]),
   budget: budgetSchema.optional(),
+  rsvpIsolation: rsvpIsolationHooksSchema.optional(),
   notes: z.array(z.string()).default([]),
-});
+}).strict();
 export type EvalCase = z.infer<typeof evalCaseSchema>;
+export type RsvpIsolationHooks = z.infer<typeof rsvpIsolationHooksSchema>;
 
 export const evalSuiteManifestSchema = z.object({
   id: z.string().min(1),
