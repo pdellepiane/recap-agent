@@ -6017,3 +6017,74 @@ Prior deployed mixed case classifier/extractor/reply were 2343/325, 10517/2558, 
 
 **Validation:** typecheck clean, lint clean, 549/549 tests across 75 files (updated static-prompt-comparison), live-behavior-coverage still passes, audit gates green.
 
+### T6-fix hotfix: correct SE_API_KEY for RSVP isolation gateway
+
+**Reason:** Live gate 1 attempt 2a failed with 4 errored cases due to RSVP isolation setup 401: createGateway used AGENT_API_KEY/CHANNEL_API_KEY but the production Agent API key is SE_API_KEY. Eval runner loads .env so SE_API_KEY was available locally but unused.
+
+**Decision:** Change createGateway fallback to SE_API_KEY first, then AGENT_API_KEY, then CHANNEL_API_KEY. No behavior change offline (no-op when baseUrl missing). Strict TS, no any.
+
+**Validation:** typecheck clean, 549/549 tests across 75 files, audit gates green. Commit bf3e347 reachable from HEAD.
+
+### Deploy RSVP fix and run eval gate 1 retry -- attempt 2 (T6 gate 1 retry, 12-case RSVP subset)
+
+**Preflight:** `git status --short` clean except untracked plan artifacts `docs/plan/plan-2026-08-27-rsvp-projection-prompt-audit/plan.yaml` and `review-t1.md` (non-source, not in deploy bundle) and allowed `.continues-handoff.md`; zero tracked-file diff before deploy. STS `aws sts get-caller-identity --profile se-dev --region us-east-1` confirmed account `684516060775` before any mutating call; se-dev us-east-1 only, fail-closed via scripts/aws-profile.mjs. T6-fix commits reachable: 9e8d065 (A), e5b59bc (B), 4c4a56a (C), bf3e347 (hotfix) all ancestors of HEAD bf3e347 (also contains T0 3a1b116 and T1 82d48b0).
+
+**Local gate green before deploy:** typecheck clean; lint clean; npm test 549/549 across 75 files; tests/live-behavior-coverage.test.ts passing; audit:prompts 0 violations; audit:prompts:compare 52.14% reduction (732995 -> 350831); reviewer gate review-t1.md pass.
+
+**Deployment:** npm run deploy via CloudFormation (scripts/deploy.mjs). Stacks recap-agent-runtime and recap-agent-provider-sync-dev both UPDATE_COMPLETE in account 684516060775 region us-east-1 via se-dev. Runtime Lambda recap-agent-runtime revision 52e32c53-1c1d-4165-a524-04f8e4df6130 active with LastModified 2026-08-27T21:27:01.000+0000 CodeSha256 btC3xiTAQhcglHEEhTvS6IL1ucHiASdJENWUYc6Pv10= State Active LastUpdateStatus Successful. Code artifact s3://recap-agent-artifacts-684516060775-us-east-1/lambda/1787865980241-recap-agent.zip (6.4 MiB). Deployed tree includes T1 three-state projection plus RSVP reply-branch prompt alignment plus T6-fix A/B/C/hotfix; T3/T4 not Lambda-impacting; no T5 changes.
+
+**Intermediate attempt 2a (pre-hotfix) for traceability:** eval-2026-08-27T21-21-05-474Z-9f2633f1 at .eval-runs/eval-2026-08-27T21-21-05-474Z-9f2633f1, 12 total, 5 passed, 3 failed, 4 errored (RSVP isolation setup 401), averageScore 0.684. Errored cases: rsvp_paolo_mariana_resolved_single, rsvp_declined_state_offers_one_change, rsvp_missing_action_requires_explicit_decision, rsvp_state_reversal_ends_confirmed all planDiffSummary Runtime error: RSVP isolation setup failed: Agent API request failed with 401. This run is FAILED GATE and demonstrates setup failure surfaced as evaluator error, never silent skip, per task note.
+
+**Eval gate 1 retry -- named 12-case RSVP subset via T0 repeatable --case filtering:**
+
+Invocation: `npm run eval:behavior-live -- --case live_behavior.rsvp_paolo_mariana_resolved_single --case live_behavior.rsvp_ambiguous_event_requires_grounded_selection --case live_behavior.rsvp_state_reversal_ends_confirmed --case live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing --case live_behavior.rsvp_confirmed_state_is_reported --case live_behavior.rsvp_cristian_phone_enriched_confirmation --case live_behavior.rsvp_declined_state_offers_one_change --case live_behavior.rsvp_jose_campaign_invitation_not_reported_missing --case live_behavior.rsvp_missing_action_requires_explicit_decision --case live_behavior.rsvp_trusted_phone_reports_no_pending --case live_behavior.accountless_guest_event_uses_phone_without_otp --case live_behavior.accountless_event_answer_precedes_remaining_private_auth`
+
+Result: eval-2026-08-27T21-28-19-828Z-ba2c472f at .eval-runs/eval-2026-08-27T21-28-19-828Z-ba2c472f (artifacts under artifacts/live_lambda/), report.json + report.md + results.jsonl. Summary: totalCases 12, passedCases 8, failedCases 4, erroredCases 0, skippedCases 0 averageScore 0.834 averageLatencyMs 7490. Suite live_behavior_regression 12/12, config live_lambda 12/12. No missing judge keys, no skipped cases, no evaluator errors, no empty selection -- gate semantics hard: any failed hard expectation = FAILED GATE. This run is FAILED GATE.
+
+Per-case table (hard expectations; text_semantic minScore 0.9 requireJudge true):
+
+| # | case ID | status | finalScore | judge score | hard expectations |
+|---|---------|--------|------------|-------------|-------------------|
+| 1 | live_behavior.rsvp_paolo_mariana_resolved_single | passed | 0.967 | 1.00 | enters-rsvp-node:PASS, projects-resolved-single-without-candidate-list:PASS, reports-already-resolved-invitation-for-named-event:PASS |
+| 2 | live_behavior.rsvp_ambiguous_event_requires_grounded_selection | failed | 0.916 | 0.60 | remains-in-rsvp-node:PASS, preserves-event-selection-state:PASS, records-one-ambiguous-attempt:PASS, does-not-mutate-an-ungrounded-candidate:PASS, asks-which-persisted-event:FAIL |
+| 3 | live_behavior.rsvp_state_reversal_ends_confirmed | passed | 0.957 | 1.00 | remains-in-rsvp-node:PASS, reads-authoritative-rsvp-state:PASS, reports-confirmed-final-state:PASS |
+| 4 | live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing | passed | 0.967 | 1.00 | enters-rsvp-node:PASS, reads-user-level-state-without-account-auth:PASS, preserves-campaign-grounded-invitation:PASS |
+| 5 | live_behavior.rsvp_confirmed_state_is_reported | passed | 0.967 | 1.00 | remains-in-rsvp-node:PASS, reads-user-level-invitation-state:PASS, clears-completed-rsvp-state:PASS, reports-existing-confirmation-naturally:PASS |
+| 6 | live_behavior.rsvp_cristian_phone_enriched_confirmation | passed | 0.967 | 1.00 | cristian-enters-rsvp:PASS, cristian-reconciles-both-phone-reads:PASS, cristian-existing-confirmation-is-reported:PASS |
+| 7 | live_behavior.rsvp_declined_state_offers_one_change | failed | 0.317 | 0.00 | remains-in-rsvp-node:PASS, reads-state-without-premature-mutation:FAIL (forbidden guest_rsvp called, total 7), waits-for-one-change-confirmation:FAIL (rsvp_state.status none vs awaiting_action), preserves-attending-change:FAIL (pending_action null vs attending), reports-decline-and-offers-change:FAIL |
+| 8 | live_behavior.rsvp_jose_campaign_invitation_not_reported_missing | failed | 0.713 | 0.05 | enters-rsvp-node:PASS, reads-user-level-state-without-account-auth:PASS, preserves-campaign-grounded-invitation:FAIL |
+| 9 | live_behavior.rsvp_missing_action_requires_explicit_decision | failed | 0.317 | 0.00 | enters-rsvp-node:PASS, preserves-awaiting-action-state:FAIL (none vs awaiting_action), preserves-attending-change:FAIL (null vs attending), does-not-mutate-without-decision:FAIL (forbidden guest_rsvp), asks-for-explicit-rsvp-decision:FAIL |
+| 10 | live_behavior.rsvp_trusted_phone_reports_no_pending | passed | 0.974 | 0.97 | enters-rsvp-node:PASS, reads-user-level-invitations-without-auth:PASS, records-rsvp-route:PASS, reports-no-associated-invitation-outcome:PASS |
+| 11 | live_behavior.accountless_guest_event_uses_phone_without_otp | passed | 0.980 | 1.00 | routes-to-associated-event-information:PASS, uses-phone-enriched-event-context-directly:PASS, leaves-no-authentication-request-pending:PASS, answers-from-the-invited-event-without-otp:PASS |
+| 12 | live_behavior.accountless_event_answer_precedes_remaining_private_auth | passed | 0.967 | 1.00 | routes-to-information:PASS, reads-and-reuses-phone-enriched-event:PASS, keeps-email-auth-ready-for-the-private-query:PASS, answers-event-and-reuses-scoped-purchase:PASS |
+
+Short single-case re-check not needed; paolo_mariana now deterministic PASS (was errored 0.02 pre-hotfix, FAIL pre-fix).
+
+**Per-call byte metrics (classifier / extraction / reply instructionBytes/inputBytes from trace.openai_calls.*.requestMetrics):**
+
+- rsvp_paolo_mariana_resolved_single: 9334/730, 10584/1689, 8754/1854
+- rsvp_ambiguous_event_requires_grounded_selection: 9334/736, 10584/1695, 8754/1913
+- rsvp_state_reversal_ends_confirmed: 9334/696, 10584/1655, 8754/1814
+- rsvp_cinthya_campaign_invitation_not_reported_missing: 2343/290, 10584/2523, 8754/1807
+- rsvp_confirmed_state_is_reported: 9334/715, 10584/1674, 8754/1839
+- rsvp_cristian_phone_enriched_confirmation: 9334/1231, 10584/2300, 8754/1812
+- rsvp_declined_state_offers_one_change: 9334/708, 10584/1667, 8754/1819
+- rsvp_jose_campaign_invitation_not_reported_missing: 2343/298, 10584/2556, 8754/1800
+- rsvp_missing_action_requires_explicit_decision: 9334/684, 10584/1643, 8754/1795
+- rsvp_trusted_phone_reports_no_pending: 9334/569, 10584/1513, 8754/1990
+- accountless_guest_event_uses_phone_without_otp: 2343/339, 10584/2572, 13459/7343
+- accountless_event_answer_precedes_remaining_private_auth: 2343/325, 10584/2558, 13459/8625
+
+Reply bundle for RSVP routes is 8754 instructionBytes (anchor 8233 -> T1 8253 -> T6-fix C 8754, +521 net justified). Information reply remains ~13459. Prior mixed case reply was 13408 before T6-fix C; delta tracked. audit:prompts 0 violations, audit:prompts:compare 52.14% reduction (732995->350831) still green.
+
+**Failure classification:** Gate FAILED -- hard expectations failed, not transient infra (no 429, no Secrets stall, no skipped/errored, no empty selection in final run). Breakdown of 4 failures:
+- rsvp_ambiguous_event_requires_grounded_selection (0.60): judge-variance / rubric under-specification -- reply correctly asks which event but omits required dates (12 and 19 septiembre 2026) per updated rubric that cites response_contract.txt:9. Prompt enumerates candidates without dates. Needs per-state enumeration with event_date. Not transient.
+- rsvp_declined_state_offers_one_change (0.00) and rsvp_missing_action_requires_explicit_decision (0.00): fixture/product -- seed pending_action attending triggers premature guest_rsvp mutation even for status-query / missing-action turns, violating mustNotCall and clearing rsvp_state to none/null. Expectation says must preserve awaiting_action/attending, but runtime auto-mutates. This matches pre-existing contamination noted in gate 1 attempt 1 as declined/missing_action expectation drift plus persistent backend mutation. Not transient infra; requires reconciling seed pending_action null vs attending and handling of pending_action lifecycle.
+- rsvp_jose_campaign_invitation_not_reported_missing (0.05): product/prompt -- reply claims Ya esta confirmada for Gia Antonella with date/time without thanking for indicating already-confirmed and without offering verification, violating unavailable-state rule never claim verified state that T6-fix C added. Prompt alignment insufficient to elicit thanks+offer-verification phrasing for unavailable records. Not transient.
+
+None are 429/Retryable, Secrets, or empty-selection transient infra. One blind retry already consumed for 401 isolation bug (transient infra-like but actually fixable fixture). No further blind retry per constraints; path stopped.
+
+**Evidence:** Run dir .eval-runs/eval-2026-08-27T21-28-19-828Z-ba2c472f with report.json (8 passed, 4 failed), per-case artifacts/live_lambda/*.json with trace IDs 01M12J1RQESCD5M0MM79E3P192 (declined), 01M12J0M2E8H0???? for others, plus intermediate errored run .eval-runs/eval-2026-08-27T21-21-05-474Z-9f2633f1 showing isolation 401. CloudWatch/Lambda revision 52e32c53 above. This commit records deployment + gate retry evidence atomically; source unchanged beyond hotfix already deployed.
+
+**T8 blocked:** Full live_behavior_regression suite (37+ cases) not run per T8 behind user approval. T7/T8 must not proceed until 4 failures fixed (prompt dates, pending_action lifecycle, unavailable thanks+verification).
+
