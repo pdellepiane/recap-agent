@@ -61,7 +61,7 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.plan.rsvp_state.status).toBe('awaiting_action');
     expect(result.plan.rsvp_state.pending_action).toBe('attending');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('declining');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('no asistir');
   });
 
   it('awaiting_event_selection without current-turn action but stored pending_action still executes selection continuation', async () => {
@@ -217,7 +217,7 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.plan.rsvp_state.status).toBe('awaiting_action');
     expect(result.plan.rsvp_state.pending_action).toBe('attending');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('declining');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('no asistir');
   });
 
   it('bare affirmative Si with decision_source current_message still mutates after offer (continuation)', async () => {

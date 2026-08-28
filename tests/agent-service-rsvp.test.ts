@@ -37,7 +37,7 @@ describe('AgentService RSVP flow', () => {
       'utf8',
     );
     expect(systemPrompt).toContain(
-      'registra el cambio en ese mismo turno',
+      'registra el cambio en ese turno',
     );
     expect(systemPrompt).not.toContain(
       'pide una sola confirmación antes de ejecutar el cambio',
@@ -45,8 +45,8 @@ describe('AgentService RSVP flow', () => {
   });
 
   it.each([
-    ['attending', 'estado attending final'],
-    ['declining', 'estado declining final'],
+    ['attending', 'actualización se completó'],
+    ['declining', 'actualización se completó'],
   ] as const)('records an explicit %s response using only the trusted channel phone', async (
     action,
     expectedNote,
@@ -187,7 +187,7 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
     expect(result.plan.rsvp_state.selection_attempts).toBe(1);
     expect(runtime.composeRequests[0]?.errorMessage).toContain(
-      'varias invitaciones reconciliadas',
+      'varias invitaciones asociadas',
     );
   });
 
@@ -351,10 +351,15 @@ describe('AgentService RSVP flow', () => {
       rsvpLookupInvitation({ guestId: 41, eventName: 'Gia Antonella' }),
     ]);
 
+    // Adjust expectation for cleaned note: phone_mismatch now uses tu número
+    const adjustedNote = expectedNote === 'no corresponde al número confiable'
+      ? 'no corresponde a tu número'
+      : expectedNote;
+
     const result = await service.handleTurn(inbound('Sí asistiré'));
 
     expect(result.plan.rsvp_state.status).toBe('none');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain(expectedNote);
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(adjustedNote);
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
       'quedó registrada',
     );
@@ -461,7 +466,7 @@ describe('AgentService RSVP flow', () => {
       },
     });
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain('Michelle & Jorge');
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('estado attending');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('asistencia ya está confirmada');
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
       'no encontró ninguna invitación',
     );
@@ -532,7 +537,7 @@ describe('AgentService RSVP flow', () => {
       resolution: 'authoritative_invitation',
       event: { invitation_record: 'available', rsvp_state: 'pending' },
     });
-    expect(runtime.composeRequests[0]?.errorMessage).toContain('coverage=partial');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('La información es parcial');
     expect(runtime.composeRequests[0]?.errorMessage).toContain(
       'no presentes la lista de eventos como exhaustiva',
     );

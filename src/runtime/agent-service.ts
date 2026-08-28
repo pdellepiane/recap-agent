@@ -1792,10 +1792,10 @@ export class AgentService {
       : null;
 
     if (!phoneExtension || !phoneNumber) {
-      operationalNote = 'No está disponible el número confiable del canal. No solicites correo ni código; ofrece apoyo humano para revisar la invitación.';
+      operationalNote = 'No está disponible tu número. No solicites correo ni código; ofrece apoyo humano para revisar la invitación.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!invitations) {
-      operationalNote = 'No fue posible consultar las invitaciones asociadas al número confiable del canal. No afirmes que no existen ni que se actualizó una respuesta; ofrece reintentar o pedir apoyo humano.';
+      operationalNote = 'No fue posible consultar las invitaciones asociadas a tu número. No afirmes que no existen ni que se actualizó una respuesta; ofrece reintentar o pedir apoyo humano.';
       nextRsvpState = this.emptyRsvpState();
     } else if (invitations.length === 0) {
       const groundedCampaignEvent = this.groundedRsvpCampaignEvent(
@@ -1806,11 +1806,11 @@ export class AgentService {
         (message) => message.source === 'admin_campaign',
       );
       operationalNote = groundedCampaignEvent || hasCampaignInvitationContext
-        ? 'El historial de campaña confirma contexto de una invitación asociada a esta conversación, pero rsvp_phone_evidence no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.'
-        : 'La consulta de usuario no encontró ninguna invitación asociada al número confiable del canal. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
+        ? 'El historial de campaña confirma contexto de una invitación asociada a esta conversación, pero la consulta no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.'
+        : 'La consulta no encontró ninguna invitación asociada a tu número. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation && invitations.some((invitation) => invitation.guestId === null)) {
-      operationalNote = 'Usa exclusivamente los eventos de rsvp_phone_evidence. invitation_record=unavailable significa que la consulta no expone el registro de invitado ni el estado de asistencia. No digas que no existe una invitación, no pidas correo ni código y no afirmes que se actualizó una respuesta. Pide en una sola frase que identifique el evento solo si hay más de uno; si hay uno, reconoce la asociación y ofrece apoyo humano únicamente para verificar el estado.';
+      operationalNote = 'Usa exclusivamente los eventos disponibles. La consulta no expone el registro de invitado ni el estado de asistencia. No digas que no existe una invitación, no pidas correo ni código y no afirmes que se actualizó una respuesta. Pide en una sola frase que identifique el evento solo si hay más de uno; si hay uno, reconoce la asociación y ofrece apoyo humano únicamente para verificar el estado.';
       nextRsvpState = this.emptyRsvpState();
     } else if (!selectedInvitation) {
       const attempts = pendingState.status === 'awaiting_event_selection'
@@ -1830,8 +1830,8 @@ export class AgentService {
       operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
     } else if (selectedInvitation.guestId === null) {
       operationalNote = action
-        ? 'Usa el evento seleccionado de rsvp_phone_evidence. invitation_record=unavailable significa que la consulta no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no afirmes que el estado registrado esté confirmado, no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.'
-        : 'Usa el evento seleccionado de rsvp_phone_evidence. rsvp_state=unavailable significa que la consulta no expone el estado de asistencia. No inventes el estado, no afirmes que el estado registrado esté confirmado, no pidas correo ni código y ofrece apoyo humano para verificarlo.';
+        ? 'Usa el evento seleccionado. La consulta no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no afirmes que el estado registrado esté confirmado, no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.'
+        : 'Usa el evento seleccionado. La consulta no expone el estado de asistencia. No inventes el estado, no afirmes que el estado registrado esté confirmado, no pidas correo ni código y ofrece apoyo humano para verificarlo.';
       nextRsvpState = this.emptyRsvpState();
     } else {
       const currentAction = selectedInvitation.state === 'attending'
@@ -1902,7 +1902,7 @@ export class AgentService {
     }
 
     if (replyPhoneEvidence?.coverage === 'partial') {
-      operationalNote += ' coverage=partial significa que una de las dos consultas no estuvo disponible; no presentes la lista de eventos como exhaustiva.';
+      operationalNote += ' La información es parcial porque una de las consultas no estuvo disponible; no presentes la lista de eventos como exhaustiva.';
     }
 
     const planToSave = mergePlan(args.workingPlan, {
@@ -2544,13 +2544,13 @@ export class AgentService {
     offerAction: boolean,
   ): string {
     if (invitation.state === 'pending') {
-      return `Comunica el estado pendiente de rsvp_phone_evidence. ${offerAction ? 'Pregunta de forma natural si desea que confirmes su asistencia.' : 'No afirmes que se registró una respuesta.'}`;
+      return `Comunica el estado pendiente según la información disponible. ${offerAction ? 'Pregunta de forma natural si desea que confirmes su asistencia.' : 'No afirmes que se registró una respuesta.'}`;
     }
     if (invitation.state === 'attending') {
-      return 'Comunica con naturalidad el estado attending de rsvp_phone_evidence y desea que disfrute el evento; no ejecutes otra actualización.';
+      return 'La información indica que la asistencia ya está confirmada; desea que disfrute el evento y no ejecutes otra actualización.';
     }
     if (invitation.state === 'declining') {
-      return `Comunica con naturalidad el estado declining de rsvp_phone_evidence. ${offerAction ? 'Pregunta si desea cambiarlo para confirmar que sí asistirá.' : 'No afirmes que se cambió.'}`;
+      return `La información indica que figura que no asistirá. ${offerAction ? 'Pregunta si desea cambiarlo para confirmar que sí asistirá.' : 'No afirmes que se cambió.'}`;
     }
     return 'La consulta no devolvió un estado de asistencia interpretable. No inventes el estado ni afirmes una actualización; ofrece apoyo humano.';
   }
@@ -2564,7 +2564,7 @@ export class AgentService {
     const nextStep = action
       ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta, enumerando cada candidato con su nombre y fecha.'
       : 'Informa brevemente el estado actual de cada invitación con su nombre y fecha y pregunta cuál desea gestionar.';
-    return `rsvp_phone_evidence contiene varias invitaciones reconciliadas. ${nextStep} Candidatos: ${enumerated}. ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
+    return `Hay varias invitaciones asociadas a tu número. ${nextStep} Candidatos: ${enumerated}. ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
   }
 
   private formatRsvpInvitationEnumeration(invitations: RsvpInvitation[]): string {
@@ -2622,18 +2622,18 @@ export class AgentService {
     if (result.status === 'responded') {
       void selectedCandidate;
       return action === 'attending'
-        ? 'La actualización se completó. Comunica el estado attending final de rsvp_phone_evidence sin pedir otra confirmación.'
-        : 'La actualización se completó. Comunica el estado declining final de rsvp_phone_evidence sin pedir otra confirmación.';
+        ? 'La actualización se completó. Comunica el estado final sin pedir otra confirmación.'
+        : 'La actualización se completó. Comunica el estado final sin pedir otra confirmación.';
     }
     if (result.status === 'multiple_pending') {
-      return 'El servicio encontró varias invitaciones pendientes. Presenta únicamente los candidatos visibles en rsvp_state y pregunta a cuál evento desea responder. No afirmes que ya se registró una respuesta.';
+      return 'El servicio encontró varias invitaciones pendientes. Presenta únicamente los candidatos visibles y pregunta a cuál evento desea responder. No afirmes que ya se registró una respuesta.';
     }
     if (result.status === 'already_responded') {
       if (result.currentAction === 'attending') {
-        return 'El servicio no realizó una nueva actualización. Comunica con naturalidad el estado attending de rsvp_phone_evidence.';
+        return 'El servicio no realizó una nueva actualización. Comunica con naturalidad que la asistencia ya está confirmada según la información disponible.';
       }
       if (result.currentAction === 'declining') {
-        return 'El servicio no realizó el cambio solicitado. Comunica el estado declining de rsvp_phone_evidence, explica que no cambió y ofrece apoyo humano para modificarlo.';
+        return 'El servicio no realizó el cambio solicitado. Comunica que figura que no asistirá, explica que no cambió y ofrece apoyo humano para modificarlo.';
       }
       return 'El servicio indicó que esa invitación ya tenía una respuesta registrada, pero no devolvió si era asistencia o inasistencia. No afirmes que se realizó una nueva actualización.';
     }
@@ -2642,15 +2642,15 @@ export class AgentService {
         const eventName = selectedCandidate.event_name
           ? ` de ${selectedCandidate.event_name}`
           : '';
-        return `La consulta de usuario sí encontró la invitación${eventName}, pero el servicio de actualización indicó que no estaba pendiente y no confirmó ninguna actualización. No digas que la invitación no existe ni afirmes que el estado cambió; ofrece apoyo humano si la persona desea modificarla.`;
+        return `La consulta sí encontró la invitación${eventName}, pero el servicio de actualización indicó que no estaba pendiente y no confirmó ninguna actualización. No digas que la invitación no existe ni afirmes que el estado cambió; ofrece apoyo humano si la persona desea modificarla.`;
       }
       if (groundedCampaignEvent) {
-        return `El historial de campaña confirma que la invitación de ${groundedCampaignEvent} sí está asociada al número confiable del canal, pero el servicio indicó que ya no tiene una respuesta pendiente. Comunica que no se realizó una nueva actualización y que la invitación ya no está pendiente. No digas que la invitación no existe ni afirmes si la respuesta registrada es asistencia o inasistencia, porque el servicio no devolvió ese estado. Ofrece apoyo humano solo si la persona quiere revisar o cambiar la respuesta.`;
+        return `El historial de campaña confirma que la invitación de ${groundedCampaignEvent} sí está asociada a tu número, pero el servicio indicó que ya no tiene una respuesta pendiente. Comunica que no se realizó una nueva actualización y que la invitación ya no está pendiente. No digas que la invitación no existe ni afirmes si la respuesta registrada es asistencia o inasistencia, porque el servicio no devolvió ese estado. Ofrece apoyo humano solo si la persona quiere revisar o cambiar la respuesta.`;
       }
-      return 'El servicio no encontró invitaciones pendientes para el número confiable del canal. Dilo directamente y ofrece apoyo humano si la persona considera que falta una invitación.';
+      return 'El servicio no encontró invitaciones pendientes para tu número. Dilo directamente y ofrece apoyo humano si la persona considera que falta una invitación.';
     }
     if (result.status === 'phone_mismatch') {
-      return 'El servicio indicó que la invitación elegida no corresponde al número confiable del canal. No pidas correo ni código; ofrece apoyo humano para revisar la invitación.';
+      return 'El servicio indicó que la invitación elegida no corresponde a tu número. No pidas correo ni código; ofrece apoyo humano para revisar la invitación.';
     }
     return result.retryable
       ? 'El servicio de asistencia falló temporalmente y no confirmó ninguna actualización. Pide reintentar más tarde u ofrece apoyo humano.'
