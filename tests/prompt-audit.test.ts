@@ -91,6 +91,17 @@ describe('prompt inventory', () => {
   });
 });
 
+describe('rsvp extractor decision faithfulness', () => {
+  it('requires current-message decision and forbids deriving from pending_action', async () => {
+    const fs = await import('node:fs/promises');
+    const content = await fs.readFile(path.resolve(process.cwd(), 'prompts/extractors/rsvp.txt'), 'utf8');
+    expect(content).toContain('pide responder o gestionar sin expresar la decisión');
+    expect(content).toContain('debe expresarse en el mensaje ACTUAL');
+    expect(content).toContain('prohíbe derivar `rsvpAction` de `plan.rsvp_state.pending_action`');
+    expect(content).not.toContain('conserva `pending_action`');
+  });
+});
+
 describe('per-branch prompt bytes', () => {
   it('measures all branches including RSVP variants deterministically', async () => {
     const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
