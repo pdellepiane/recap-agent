@@ -38,14 +38,16 @@ describe('RSVP deterministic current-state report (Fix 2)', () => {
     const invitation = { eventId: 1, guestId: 1, eventName: 'Evento Decline', eventDate: '2026-09-12', state: 'declining', accessMethod: 'guest_record' } as unknown;
     const textWithOffer = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(invitation, true);
     expect(textWithOffer.toLowerCase()).toContain('gracias');
-    expect(textWithOffer.toLowerCase()).toContain('no fue necesario hacer otro cambio');
+    expect(textWithOffer.toLowerCase()).not.toContain('no fue necesario hacer otro cambio');
     expect(textWithOffer).toContain('no asistirás');
     expect(textWithOffer).toContain('Evento Decline');
     expect(textWithOffer).toContain('12 de septiembre de 2026');
-    expect(textWithOffer).toContain('Si deseas cambiarlo para confirmar que sí asistirás');
+    expect(textWithOffer).toContain('¿Deseas que confirme tu asistencia?');
+    expect(textWithOffer.trim().endsWith('?')).toBe(true);
     const textWithoutOffer = (service as unknown as { renderRsvpCurrentStateDeterministically: (a: unknown, b: boolean) => string }).renderRsvpCurrentStateDeterministically(invitation, false);
     expect(textWithoutOffer).toContain('no asistirás');
-    expect(textWithoutOffer).not.toContain('Si deseas cambiarlo');
+    expect(textWithoutOffer.toLowerCase()).toContain('no fue necesario hacer otro cambio');
+    expect(textWithoutOffer).not.toContain('¿Deseas que confirme tu asistencia?');
   });
 
   it('identical inputs produce byte-identical output', () => {

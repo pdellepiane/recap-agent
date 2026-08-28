@@ -2586,11 +2586,10 @@ export class AgentService {
       return `${gracias}, tu asistencia a ${eventName}${datePart} ya está confirmada y figura que asistirás. ${capitalizedNoChange} y no se realizó un nuevo registro. ¡Que disfrutes el evento!`;
     }
     if (invitation.state === 'declining') {
-      const base = `${gracias}, figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
       if (offerAction) {
-        return `${base} Si deseas cambiarlo para confirmar que sí asistirás, dime y lo gestionamos.`;
+        return `${gracias}, figura que no asistirás a ${eventName}${datePart}. ¿Deseas que confirme tu asistencia?`;
       }
-      return base;
+      return `${gracias}, figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
     }
     return this.rsvpCurrentStateNote(invitation, offerAction);
   }

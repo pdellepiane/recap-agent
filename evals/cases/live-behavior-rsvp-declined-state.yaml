@@ -55,6 +55,14 @@ expectations:
     minScore: 0.9
     requireJudge: true
     severity: hard
+  - id: deterministic-declining-offers-explicit-question
+    type: text_contains
+    allOf: ["figura que no asistirás", "¿Deseas que confirme tu asistencia?"]
+    severity: hard
+  - id: deterministic-declining-omits-no-change
+    type: text_not_contains
+    phrases: ["no fue necesario hacer otro cambio"]
+    severity: hard
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600

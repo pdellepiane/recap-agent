@@ -39,4 +39,16 @@ export default tseslint.config(
       '@typescript-eslint/require-await': 'off',
     },
   },
+  {
+    files: ['src/runtime/agent-service.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "MethodDefinition[key.name='renderRsvpCurrentStateDeterministically'] TemplateLiteral > MemberExpression[object.name='invitation'][property.name='eventDate']",
+          message: 'Use formatRsvpSpanishDate(invitation.eventDate) - direct invitation.eventDate interpolation is forbidden in deterministic renderers.',
+        },
+      ],
+    },
+  },
 );
