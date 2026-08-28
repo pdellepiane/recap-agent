@@ -1759,16 +1759,25 @@ export class AgentService {
         )
       : null;
     let replyPhoneEvidence = phoneEvidence;
-    const invitations = phoneEvidence?.invitations.length === 0 && pendingState.candidates.length > 0
-      ? pendingState.candidates.map((candidate) => ({
-          eventId: null,
-          guestId: candidate.guest_id,
-          eventName: candidate.event_name,
-          eventDate: candidate.event_date,
-          state: 'unknown' as const,
-          accessMethod: 'guest_record' as const,
-        }))
-      : phoneEvidence?.invitations ?? null;
+    let invitations: RsvpInvitation[] | null = phoneEvidence?.invitations ?? null;
+    const shouldFallbackToSeededCandidates = Boolean(phoneEvidence && phoneEvidence.invitations.length === 0 && pendingState.candidates.length > 0);
+    if (shouldFallbackToSeededCandidates) {
+      invitations = pendingState.candidates.map((candidate) => ({
+        eventId: null,
+        guestId: candidate.guest_id,
+        eventName: candidate.event_name,
+        eventDate: candidate.event_date,
+        state: 'unknown' as const,
+        accessMethod: 'guest_record' as const,
+      }));
+      if (phoneEvidence) {
+        replyPhoneEvidence = {
+          coverage: phoneEvidence.coverage,
+          resolution: phoneEvidence.resolution,
+          invitations,
+        };
+      }
+    }
     const selectedInvitation = invitations
       ? this.selectRsvpInvitation({
           invitations,
@@ -2520,11 +2529,37 @@ export class AgentService {
     action: 'attending' | 'declining' | null,
     attempts: number,
   ): string {
-    void invitations;
+    const enumerated = this.formatRsvpInvitationEnumeration(invitations);
     const nextStep = action
       ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta, enumerando cada candidato con su nombre y fecha.'
       : 'Informa brevemente el estado actual de cada invitación con su nombre y fecha y pregunta cuál desea gestionar.';
-    return `rsvp_phone_evidence contiene varias invitaciones reconciliadas. ${nextStep} ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
+    return `rsvp_phone_evidence contiene varias invitaciones reconciliadas. ${nextStep} Candidatos: ${enumerated}. ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
+  }
+
+  private formatRsvpInvitationEnumeration(invitations: RsvpInvitation[]): string {
+    if (invitations.length === 0) {
+      return 'sin candidatos';
+    }
+    const sorted = this.sortRsvpInvitationsDeterministically(invitations);
+    return sorted
+      .map((invitation) => `${invitation.eventName ?? 'Evento sin nombre'} - ${this.formatRsvpSpanishDate(invitation.eventDate)}`)
+      .join('; ');
+  }
+
+  private formatRsvpSpanishDate(value: string | null): string {
+    if (!value) {
+      return 'fecha por confirmar';
+    }
+    const match = value.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/u);
+    if (!match || !match[1] || !match[2] || !match[3]) {
+      return value;
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    const day = Number(match[3]);
+    const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    const monthName = months[month - 1] ?? String(month);
+    return `${day} de ${monthName} de ${year}`;
   }
 
   private rsvpOperationalNote(

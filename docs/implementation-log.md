@@ -1,5 +1,21 @@
 # Implementation Log
 
+## 2026-08-28
+
+### Fix 1: deterministic seeded-candidate fallback and note enumeration (T6-fix-4 A)
+
+**Reason:** Eval 2026-08-28T03:32:59 attempt 3 failed rsvp_ambiguous_event_requires_grounded_selection (0.55) because phone evidence was empty while pendingState held persisted candidates. Reply evidence projected unavailable while note was generic, contradicting each other and omitting required Spanish dates. Prompt prose alone cannot guarantee consistency.
+
+**Decision:**
+- In src/runtime/agent-service.ts: when seeded-candidate fallback engages (phoneEvidence 0 invites + pendingState.candidates >0), rebuild replyPhoneEvidence with same coverage/resolution but invitations from candidates so projectRsvpPhoneEvidenceForReply emits needs_event_selection carrying each candidate with event_name and event_date. Do not change selection logic.
+- Replace void invitations discard in multipleRsvpInvitationsNote with deterministic enumeration that sorts candidates via sortRsvpInvitationsDeterministically and renders each as "name - D de month de YYYY" via new formatRsvpSpanishDate and formatRsvpInvitationEnumeration. Note now contains every candidate name+date and stays byte-identical for identical inputs.
+- Added hard structural expectation projection-carries-candidate-dates to live_behavior.rsvp_ambiguous_event_requires_grounded_selection (text_contains both Spanish dates) and registry entry needs-event-selection-projection-carries-candidate-dates pointing at that case.
+- Added offline twin tests/rsvp-seeded-candidate-fallback.test.ts covering projection, note enumeration, and determinism.
+
+**Prompt footprint:** No prompt file edited. Anchor 78ae24e vs HEAD: responder_invitacion instructionBytes 8754 (+521 vs anchor, +0 vs pre-fix tree 8754). npm run audit:prompts 0 violations, audit:prompts:compare 52.14% reduction (732995->350831).
+
+**Verification:** npm run typecheck clean, lint clean, 552 tests (baseline 549 +3) across 76 files, live-behavior-coverage passes. Deterministic twin proves fallback projection and enumeration.
+
 ## 2026-08-27
 
 ### Normalize customer transaction codes without conflating them with Agent API order ids
