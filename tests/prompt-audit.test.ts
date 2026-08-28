@@ -32,7 +32,7 @@ describe('prompt audit', () => {
       maximumToolCount: 0,
     });
     expect(entry(result, 'extractor:rsvp').serializedRequestBytes)
-      .toBeLessThan(4_500);
+      .toBeLessThan(5_000);
     expect(entry(result, 'extractor:conversation_only').serializedRequestBytes)
       .toBeLessThan(2_500);
     expect(entry(result, 'extractor:initial_planning_information').serializedRequestBytes)

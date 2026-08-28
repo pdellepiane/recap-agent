@@ -86,6 +86,7 @@ type ReplyTurnEvidence = {
   plan: Record<string, unknown>;
   information_results: unknown[];
   rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
+  rsvp_party: { scope: string; mentioned_names: string[] } | null;
   turn_state: {
     focus_need_category: PersistedPlan['active_need_category'];
     missing_fields: string[];
@@ -224,6 +225,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       rsvpDecisionSource: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
       rsvpCandidateGuestId: extraction.rsvpCandidateGuestId ?? null,
       rsvpEventReference: extraction.rsvpEventReference ?? null,
+      rsvpParty: extraction.rsvpParty ?? null,
       intentConfidence: extraction.intentConfidence ?? null,
       ambiguity: extraction.ambiguity ?? {
         status: 'clear',
@@ -974,6 +976,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         this.projectInformationResultForReply(result),
       ),
       rsvp_phone_evidence: args.request.rsvpPhoneEvidence ?? null,
+      rsvp_party: args.request.currentNode === 'responder_invitacion' && args.request.extraction.rsvpParty
+        ? {
+            scope: args.request.extraction.rsvpParty.scope,
+            mentioned_names: args.request.extraction.rsvpParty.mentioned_names,
+          }
+        : null,
       turn_state: {
         focus_need_category: args.focusNeedCategory,
         missing_fields: args.request.missingFields.map((field) =>
@@ -996,6 +1004,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       action_intent: extraction.actionIntent,
       rsvp_action: extraction.rsvpAction ?? null,
       decision_source: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
+      rsvp_party: extraction.rsvpParty
+        ? {
+            scope: extraction.rsvpParty.scope,
+            mentioned_names: extraction.rsvpParty.mentioned_names,
+          }
+        : null,
       ambiguity: extraction.ambiguity
         ? {
             status: extraction.ambiguity.status,
@@ -1092,6 +1106,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         decision_source: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
         rsvp_candidate_guest_id: extraction.rsvpCandidateGuestId ?? null,
         rsvp_event_reference: extraction.rsvpEventReference ?? null,
+        rsvp_party: extraction.rsvpParty
+          ? {
+              scope: extraction.rsvpParty.scope,
+              mentioned_names: extraction.rsvpParty.mentioned_names,
+            }
+          : null,
         ambiguity: extraction.ambiguity
           ? {
               status: extraction.ambiguity.status,

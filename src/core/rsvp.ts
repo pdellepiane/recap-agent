@@ -8,6 +8,19 @@ export const rsvpDecisionSourceValues = ['current_message', 'plan_state'] as con
 
 export type RsvpDecisionSource = (typeof rsvpDecisionSourceValues)[number];
 
+export const rsvpPartyScopeValues = ['self', 'self_and_others'] as const;
+
+export type RsvpPartyScope = (typeof rsvpPartyScopeValues)[number];
+
+export const rsvpPartySchema = z
+  .object({
+    scope: z.enum(rsvpPartyScopeValues),
+    mentioned_names: z.array(z.string().trim().min(1)),
+  })
+  .strict();
+
+export type RsvpParty = z.infer<typeof rsvpPartySchema>;
+
 export const rsvpCandidateStateSchema = z.object({
   guest_id: z.number().int().positive(),
   event_name: z.string().nullable(),
