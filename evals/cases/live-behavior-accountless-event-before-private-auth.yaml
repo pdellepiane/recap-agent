@@ -36,6 +36,10 @@ expectations:
     minScore: 0.9
     requireJudge: true
     severity: hard
+  - id: summary-excludes-payment-type
+    type: text_not_contains
+    phrases: ["tarjeta de crédito", "tarjeta de debito", "tipo de tarjeta", "con tarjeta"]
+    severity: hard
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1900

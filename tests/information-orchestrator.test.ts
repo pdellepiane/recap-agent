@@ -1079,6 +1079,64 @@ describe('InformationOrchestrator', () => {
       });
     }
   });
+
+  it('excludes paymentMethod from summary aspect and includes it for payment_details', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.giftResult = {
+      status: 'success',
+      resource: 'gift_purchases',
+      purchases: [giftPurchase()],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const summaryExecution = await orchestrator.execute({
+      requests: [
+        {
+          requestId: 'summary-1',
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query: 'estado',
+          orderId: 'ORD-000880',
+          aspects: ['summary'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+      ],
+      authentication: { token: 'jwt', email: 'user@example.com' },
+      authBlock: null,
+    });
+    const summaryResult = summaryExecution.results[0];
+    if (!summaryResult || summaryResult.status !== 'completed' || summaryResult.kind !== 'purchase') {
+      throw new Error('Expected completed purchase for summary aspect.');
+    }
+    expect(summaryResult.purchases[0]?.paymentMethod).toBeNull();
+
+    const paymentDetailsExecution = await orchestrator.execute({
+      requests: [
+        {
+          requestId: 'payment-details-1',
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query: 'pago',
+          orderId: 'ORD-000880',
+          aspects: ['payment_details'],
+          sensitiveFields: [],
+          authAction: 'none',
+        },
+      ],
+      authentication: { token: 'jwt', email: 'user@example.com' },
+      authBlock: null,
+    });
+    const paymentDetailsResult = paymentDetailsExecution.results[0];
+    if (!paymentDetailsResult || paymentDetailsResult.status !== 'completed' || paymentDetailsResult.kind !== 'purchase') {
+      throw new Error('Expected completed purchase for payment_details aspect.');
+    }
+    expect(paymentDetailsResult.purchases[0]?.paymentMethod).toBe('Transferencia');
+  });
 });
 
 class FakeAgentGateway implements AgentConversationGateway {

@@ -1249,8 +1249,7 @@ export class InformationOrchestrator {
           ? purchase.shippingStatus
           : null,
       grandTotal: aspectSet.has('summary') || includePayment ? purchase.grandTotal : null,
-      paymentMethod:
-        aspectSet.has('summary') || includePayment ? purchase.paymentMethod : null,
+      paymentMethod: includePayment ? purchase.paymentMethod : null,
       eventName: purchase.eventName,
       eventDate: purchase.eventDate,
       eventUrl: purchase.eventUrl,

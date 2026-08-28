@@ -31,6 +31,20 @@
 
 **Verification:** Typecheck clean, lint clean, 556 tests (552 +4) across 77 files, live-behavior-coverage passes. Deterministic renderer proven.
 
+### Fix 3: payment-type projection exclusion for summary aspect (T6-fix-4 C)
+
+**Reason:** Eval 2026-08-28T03:32:59 attempt 3 failed accountless_event_answer_precedes_remaining_private_auth (exposed payment type "tarjeta de crédito/débito" prohibited by contract although amount allowed). Root cause in src/runtime/information-orchestrator.ts:1252-1253 where paymentMethod was projected for both summary and payment_details aspects.
+
+**Decision:**
+- Removed aspectSet.has('summary') || from paymentMethod mapping so paymentMethod appears only under payment_details aspect (includePayment). grandTotal and other summary fields unchanged; no consumer needs paymentMethod on summary (selection candidates use paymentStatus).
+- Added deterministic test in tests/information-orchestrator.test.ts: summary-aspect purchase -> paymentMethod null; payment_details-aspect -> present (Transferencia).
+- Added hard text_not_contains expectation summary-excludes-payment-type to live_behavior.accountless_event_answer_precedes_remaining_private_auth and registry entry payment-type-excluded-from-summary-aspect.
+- Prompt footprint unchanged (information-orchestrator is code-side projection, not prompt).
+
+**Prompt footprint:** No prompt file edited. Anchor 78ae24e vs HEAD: information reply 13854 (+217 vs anchor for COD handling, +0 vs pre-fix), audit gates green.
+
+**Verification:** Typecheck clean, lint clean, 557 tests (556 +1) across 77 files (baseline 549 +3+4+1), live-behavior-coverage passes, audit:prompts and audit:prompts:compare green.
+
 ## 2026-08-27
 
 ### Normalize customer transaction codes without conflating them with Agent API order ids
