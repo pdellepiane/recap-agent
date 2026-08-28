@@ -2610,7 +2610,7 @@ export class AgentService {
     const noChange = 'no fue necesario hacer otro cambio';
     const capitalizedNoChange = noChange[0] ? noChange[0].toUpperCase() + noChange.slice(1) : noChange;
     if (invitation.state === 'attending') {
-      return `Tu asistencia a ${eventName}${datePart} ya está confirmada y figura que asistirás. ${capitalizedNoChange} y no se realizó un nuevo registro.`;
+      return `Gracias, tu asistencia a ${eventName}${datePart} ya está confirmada y figura que asistirás. ${capitalizedNoChange} y no se realizó un nuevo registro.`;
     }
     if (invitation.state === 'declining') {
       if (offerAction) {

@@ -26,8 +26,8 @@ describe('RSVP hybrid fragment composition (T6-fix-11)', () => {
     expect(fragment.toLowerCase()).toContain('ya está confirmada');
     expect(fragment.toLowerCase()).toContain('no fue necesario hacer otro cambio');
     expect(fragment.toLowerCase()).toContain('no se realizó un nuevo registro');
-    // Fragment is code-owned facts only: no conversational tissue
-    expect(fragment).not.toContain('Gracias');
+    expect(fragment).toContain('Gracias,');
+    expect(fragment.startsWith('Gracias,')).toBe(true);
     expect(fragment).not.toContain('Que disfrutes');
     expect(fragment).not.toContain('19/08/2026');
   });
