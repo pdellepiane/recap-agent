@@ -1938,8 +1938,25 @@ export class AgentService {
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     if (deterministicReplyText !== null) {
-      reply.text = deterministicReplyText;
-      reply.structuredMessage = undefined;
+      const fragment = deterministicReplyText;
+      const tissueParagraphs: string[] = [];
+      if (
+        reply.structuredMessage?.type === 'generic' &&
+        Array.isArray(reply.structuredMessage.paragraphs_es)
+      ) {
+        tissueParagraphs.push(...reply.structuredMessage.paragraphs_es);
+      } else if (reply.text && reply.text.trim().length > 0) {
+        tissueParagraphs.push(reply.text.trim());
+      }
+      const mergedParagraphs = [
+        fragment,
+        ...tissueParagraphs.filter((paragraph) => paragraph.trim().length > 0),
+      ];
+      reply.structuredMessage = {
+        type: 'generic',
+        paragraphs_es: mergedParagraphs,
+      };
+      reply.text = mergedParagraphs.join('\n\n');
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -2582,17 +2599,16 @@ export class AgentService {
   ): string {
     const eventName = invitation.eventName ?? 'el evento';
     const datePart = invitation.eventDate ? ` el ${this.formatRsvpSpanishDate(invitation.eventDate)}` : '';
-    const gracias = 'Gracias';
     const noChange = 'no fue necesario hacer otro cambio';
     const capitalizedNoChange = noChange[0] ? noChange[0].toUpperCase() + noChange.slice(1) : noChange;
     if (invitation.state === 'attending') {
-      return `${gracias}, tu asistencia a ${eventName}${datePart} ya está confirmada y figura que asistirás. ${capitalizedNoChange} y no se realizó un nuevo registro. ¡Que disfrutes el evento!`;
+      return `Tu asistencia a ${eventName}${datePart} ya está confirmada y figura que asistirás. ${capitalizedNoChange} y no se realizó un nuevo registro.`;
     }
     if (invitation.state === 'declining') {
       if (offerAction) {
-        return `${gracias}, figura que no asistirás a ${eventName}${datePart}. ¿Deseas que confirme tu asistencia?`;
+        return `Figura que no asistirás a ${eventName}${datePart}. ¿Deseas que confirme tu asistencia?`;
       }
-      return `${gracias}, figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
+      return `Figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
     }
     return this.rsvpCurrentStateNote(invitation, offerAction);
   }
