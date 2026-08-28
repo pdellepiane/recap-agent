@@ -6150,3 +6150,65 @@ Verdict: Step 1 VERIFIED -- trusted_phone_reports_no_pending does exercise the u
 
 **Verification:** See commit SHA below and gate results; registry re-point details as above.
 
+### T6 gate 1 attempt 3 -- final attempt under retry cap (plan-2026-08-27-rsvp-projection-prompt-audit T6 attempt 3)
+
+**Preflight:** Tree clean except .continues-handoff.md (review-t1.md was untracked from T1r; verified and now tracked in this atomic commit) -- git status --porcelain showed only review-t1.md untracked pre-commit. HEAD commits verified: T6-fix-2 batch 26f2971 (A mutation-authorization), d020e14 (B prompt hardening), ea80010 (C registry provenance), c67b25e (D log reconciliation) and T6-fix-3 5b80d1a (E jose re-ground + re-point) are HEAD and reachable via git log --oneline and git merge-base --is-ancestor checks for implementedBy hashes 4c4a56a, 82d48b0.
+
+**Deployment (se-dev / us-east-1, fail-closed):** STS confirmed account 684516060775 via aws sts get-caller-identity --profile se-dev (UserId AIDAZ6YCWFZTX3S5WV4DC, Account 684516060775). Build via node scripts/build.mjs (Build completed), artifact zipped in dist -> .artifacts/recap-agent.zip (6.4 MiB, sha256 e67aa42762cacb47495e3913fa39d13d5e8935b0804ee1aac028bd4930221ca2), uploaded to s3://recap-agent-artifacts-684516060775-us-east-1/lambda/1787887848-recap-agent.zip, CloudFormation deploy recap-agent-runtime with CAPABILITY_NAMED_IAM. Result: Stack UPDATE_COMPLETE at 2026-08-28T03:32:17.265000+00:00, Lambda LastModified 2026-08-28T03:32:22.000+0000, RevisionId 6c9b1695-b49e-43f5-bc7e-afb803565015, CodeSha256 5nqkJ2LKy0dJXjkT+jnRPV6JNbCATuGqwCi9STAiHKI=. This deploy finally ships the premature-mutation fix (agent-service.ts:1739) and T6-fix-3 jose re-ground. Prior revision was 52e32c53 (btC3xiTAQhcglHEEhTvS6IL1ucHiASdJENWUYc6Pv10=) which did not include the fix.
+
+**Local gate pre-deploy (T6 acceptance):** npm test 553/553 across 76 files (76 passed), typecheck clean, lint clean, npm run audit:prompts 0 violations (SerializedRequest 350853 bytes), npm run audit:prompts:compare 52.13% reduction (732995 -> 350853) green, tests/live-behavior-coverage.test.ts passing. Review-t1.md verdict PASS still valid.
+
+**Eval gate 1 execution (12-case RSVP subset, exact repeatable --case filtering):** Command: npm run eval:behavior-live -- --case live_behavior.rsvp_paolo_mariana_resolved_single --case live_behavior.rsvp_ambiguous_event_requires_grounded_selection --case live_behavior.rsvp_state_reversal_ends_confirmed --case live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing --case live_behavior.rsvp_confirmed_state_is_reported --case live_behavior.rsvp_cristian_phone_enriched_confirmation --case live_behavior.rsvp_declined_state_offers_one_change --case live_behavior.rsvp_jose_campaign_invitation_not_reported_missing --case live_behavior.rsvp_missing_action_requires_explicit_decision --case live_behavior.rsvp_trusted_phone_reports_no_pending --case live_behavior.accountless_guest_event_uses_phone_without_otp --case live_behavior.accountless_event_answer_precedes_remaining_private_auth . RunId eval-2026-08-28T03-32-59-145Z-6a49e257, runDir .eval-runs/eval-2026-08-28T03-32-59-145Z-6a49e257, generatedAt 2026-08-28T03:35:18.603Z, totalCases 12, passedCases 7, failedCases 5, erroredCases 0, skippedCases 0, averageScore 0.932, averageLatency 7284 ms. Fail-closed: no missing judge keys (all 12 have text_semantic with requireJudge), no skipped/errored, no empty selection -- but failed hard expectations present => gate FAILED per hard semantics.
+
+**12-row per-case table (status + judge score + hard diagnostics):**
+
+| # | Case ID | Status | FinalScore | text_semantic score | Hard expectation verdict |
+|---|---------|--------|------------|---------------------|--------------------------|
+| 1 | live_behavior.rsvp_paolo_mariana_resolved_single | passed | 0.967 | 1.00 | node_transition PASS, tool_usage PASS (mustCall lookup_rsvp_invitations, mustNotCall guest_rsvp/auth), text_semantic PASS |
+| 2 | live_behavior.rsvp_ambiguous_event_requires_grounded_selection | failed | 0.908 | 0.55 | node_transition PASS, plan_field PASS, tool_usage PASS, text_semantic FAIL: "no incluye las fechas requeridas: 12 de septiembre de 2026 y 19 de septiembre de 2026" Output: "Te refieres al matrimonio de Ana y Luis o al cumpleaños de Marta?" missing dates |
+| 3 | live_behavior.rsvp_state_reversal_ends_confirmed | passed | 0.957 | 1.00 | node_transition PASS, tool_usage PASS, text_semantic PASS |
+| 4 | live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing | failed | 0.913 | 0.80 | node_transition PASS, tool_usage PASS (mustCall lookup_rsvp_invitations, lookup_guest_events_by_phone, get_guest_event_detail), text_semantic FAIL: "no agradece explicitamente; Que disfrutes mucho el evento es deseo, no agradecimiento" Output: "Tu asistencia ya esta confirmada para Julisabeth y Andres, el 15/08/2026 a las 17:00. No fue necesario hacer otro cambio. Que disfrutes mucho el evento!" |
+| 5 | live_behavior.rsvp_confirmed_state_is_reported | failed | 0.767 | 0.00 | node_transition PASS, tool_usage PASS, plan_field PASS (rsvp_state.status none), text_semantic FAIL 0.0: "afirma que la persona no asistira, cuando la asistencia ya esta confirmada" Output: "Para Otra celebracion prueba, figura que no asistirias el 19/08/2026 a las 05:00. No fue necesario hacer otro cambio" trace operational_note says attending but output inverted -- product inversion |
+| 6 | live_behavior.rsvp_cristian_phone_enriched_confirmation | passed | 0.940 | 0.90 | node_transition PASS, tool_usage PASS, text_semantic PASS 0.90 (minor missing explicit not needed) |
+| 7 | live_behavior.rsvp_declined_state_offers_one_change | passed | 0.967 | 1.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic PASS |
+| 8 | live_behavior.rsvp_jose_campaign_invitation_not_reported_missing | failed | 0.927 | 0.85 | node_transition PASS, tool_usage PASS, text_semantic FAIL: "no agradece explicitamente; Que disfrutes mucho el evento es deseo, no agradecimiento" Output: "Tu asistencia ya esta confirmada para Gia Antonella, el 15/08/2026 a las 22:00! No fue necesario hacer otro cambio. Que disfrutes mucho el evento" (version 2 resolved_single attending per /tmp/evidence-T6-fix-2b.json) |
+| 9 | live_behavior.rsvp_missing_action_requires_explicit_decision | passed | 0.967 | 1.00 | node_transition PASS, plan_field PASS, tool_usage PASS, text_semantic PASS |
+| 10 | live_behavior.rsvp_trusted_phone_reports_no_pending | passed | 0.978 | 0.99 | node_transition PASS, tool_usage PASS, trace_field PASS, text_semantic PASS |
+| 11 | live_behavior.accountless_guest_event_uses_phone_without_otp | passed | 0.980 | 1.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic PASS |
+| 12 | live_behavior.accountless_event_answer_precedes_remaining_private_auth | failed | 0.917 | 0.75 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic FAIL: "expone informacion de pago (tipo de tarjeta), lo que esta prohibido aunque el monto total si esta permitido" Output: "La recepcion y fiesta sera en Hacienda Recoveco ... Tu compra para Julisabeth y Andres fue aprobada. El monto total fue de 248.08 y se pago con tarjeta de credito/debito" |
+
+No missing judge keys, no skipped, no evaluator errors, no empty selection. 5 failed hard expectations.
+
+**Per-call byte metrics (from trace.openai_calls.*.requestMetrics per case, Buffer.byteLength semantics via prompt-loader.ts:75-77 + openai-agent-runtime.ts:411-423):**
+
+- rsvp_paolo_mariana: classifier 9334/730 inputBytes=?, extraction 10584/1689, reply 8776/1854 (trace 01M136V? replyMetrics 8776/1854)
+- rsvp_ambiguous: 9334/736, 10584/1695, 8776/1962
+- rsvp_state_reversal: 9334/696, 10584/1655, 8776/1814
+- rsvp_cinthya: 2343/290, 10584/2523, 8776/1807
+- rsvp_confirmed: 9334/715, 10584/1674, 8776/1839
+- rsvp_cristian: 9334/1231, 10584/2300, 8776/1812
+- rsvp_declined: 9334/708, 10584/1667, 8776/1819
+- rsvp_jose: 2343/298, 10584/2556, 8776/1800
+- rsvp_missing_action: 9334/684, 10584/1643, 8776/1795
+- rsvp_trusted_phone: 9334/569, 10584/1513, 8776/1990
+- accountless_guest_event: 2343/339, 10584/2572, 13459/7343
+- accountless_event_answer: 2343/325, 10584/2558, 13459/8625
+
+Reply bundle for RSVP routes is 8776 instructionBytes (anchor 8233 -> T1 8253 (+20) -> T6-fix C 8754 (+521) -> T6-fix-2 B 8776 (+22) net +543 justified). Information reply remains ~13459. Overall audit:prompts 0 violations, audit:prompts:compare 52.13% reduction (732995 -> 350853). Serialized delta +22 vs pre-B tree 350831.
+
+**Failure classification (attempt 3 is last under retry cap, escalate on product):** Gate FAILED. Category: product behavior (not fixture transient nor judge-only). Evidence:
+
+- 3 failures are model product failures driven by prompt/logic gaps: ambiguous missing dates (prompt enumerates without date despite response_contract requiring name+date), cinthya/jose missing explicit thank (prompt operationalNote says "desea que disfrute" not "agradece"; judge requires thanks per rubric, but output is deterministic product omission), confirmed_state inversion (product claims not attending when trace says attending -- prompt evidence correct but model hallucinates inversion; trace rsvp_phone_evidence correct attending per operationalNote yet output inverted, not transient).
+- 1 failure (accountless payment type exposure) is product disclosure: reply includes prohibited tarjeta info ("se pago con tarjeta de credito/debito") while amount is allowed; trace shows purchase disclosure policy violation in information route, not RSVP fix but still product.
+- No skipped/errored, no 401/429, no empty selection, no judge infra error. The 5th failure (ambiguous) is prompt under-spec, not infrastructure.
+
+Since this is attempt 3/3 final under retry cap, do not blind retry. Escalate to orchestrator/user per plan.
+
+**Evidence path:** .eval-runs/eval-2026-08-28T03-32-59-145Z-6a49e257 (report.json, report.md, artifacts/live_lambda/*.json with trace IDs 01M136V... for each case). Also /tmp/evidence-T6-fix-2b.json for jose provenance.
+
+**Do not run full suite (T8) per constraints -- deferred behind user approval. No T8 execution.
+
+**Next lane:** T5 batch must not proceed until gate 1 product failures fixed; T7/T8 blocked. Orchestrator must decide remediation or replan. No further T6 retries per cap.
+
+**Verification:** Full local gate still green (553 tests, typecheck, lint, audit prompts). This log entry is sole appender; single atomic commit with revision/timestamp/SHA256 and 12-row table recorded.
+
