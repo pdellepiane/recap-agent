@@ -221,6 +221,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ),
       phoneConfirmation: extraction.phoneConfirmation ?? null,
       rsvpAction: extraction.rsvpAction ?? null,
+      rsvpDecisionSource: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
       rsvpCandidateGuestId: extraction.rsvpCandidateGuestId ?? null,
       rsvpEventReference: extraction.rsvpEventReference ?? null,
       intentConfidence: extraction.intentConfidence ?? null,
@@ -994,6 +995,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return {
       action_intent: extraction.actionIntent,
       rsvp_action: extraction.rsvpAction ?? null,
+      decision_source: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
       ambiguity: extraction.ambiguity
         ? {
             status: extraction.ambiguity.status,
@@ -1087,6 +1089,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return {
         action_intent: extraction.actionIntent,
         rsvp_action: extraction.rsvpAction ?? null,
+        decision_source: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
         rsvp_candidate_guest_id: extraction.rsvpCandidateGuestId ?? null,
         rsvp_event_reference: extraction.rsvpEventReference ?? null,
         ambiguity: extraction.ambiguity
@@ -1420,6 +1423,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       actionIntent: null,
       informationRequests: [],
       phoneConfirmation: null,
+      rsvpAction: null,
+      rsvpDecisionSource: 'plan_state',
+      rsvpCandidateGuestId: null,
+      rsvpEventReference: null,
       intentConfidence: 1,
       ambiguity: {
         status: 'clear',

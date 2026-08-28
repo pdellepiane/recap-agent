@@ -1736,7 +1736,10 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'responder_invitacion';
     const pendingState = args.workingPlan.rsvp_state;
-    const action = args.extraction.rsvpAction
+    const rawRsvpAction = args.extraction.rsvpAction ?? null;
+    const decisionSource = args.extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state';
+    const validatedRsvpAction = decisionSource === 'current_message' ? rawRsvpAction : null;
+    const action = validatedRsvpAction
       ?? (pendingState.status === 'awaiting_event_selection' ? pendingState.pending_action : null);
     let result: AgentGuestRsvpResult | null = null;
     let operationalNote: string;

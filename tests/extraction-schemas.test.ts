@@ -373,6 +373,56 @@ describe('structured extraction schemas', () => {
       expect(parsed.missingFields).toEqual(['full_name', 'phone']);
     }
   });
+
+  it('defaults missing and unknown rsvpDecisionSource to plan_state (safe)', () => {
+    const base = {
+      actionIntent: 'responder_invitacion' as const,
+      informationRequests: [],
+      intentConfidence: 0.98,
+      ambiguity: { status: 'clear' as const, clarificationQuestion: null, interpretations: [] },
+      eventType: null,
+      vendorCategory: null,
+      vendorCategories: [],
+      activeNeedCategory: null,
+      location: null,
+      budgetSignal: null,
+      guestRange: null,
+      preferences: [],
+      hardConstraints: [],
+      assumptions: [],
+      conversationSummary: 'RSVP',
+      selectedProviderHints: [],
+      pauseRequested: false,
+      contactName: null,
+      contactEmail: null,
+      contactPhone: null,
+      providerFitCriteria: fitCriteria,
+      rsvpAction: 'attending' as const,
+      rsvpCandidateGuestId: null,
+      rsvpEventReference: null,
+    };
+    const missing = extractionSchema.parse({ ...base });
+    expect(missing.rsvpDecisionSource).toBe('plan_state');
+    const unknown = extractionSchema.parse({ ...base, rsvpDecisionSource: 'unknown_source' as unknown as string });
+    expect(unknown.rsvpDecisionSource).toBe('plan_state');
+    const current = extractionSchema.parse({ ...base, rsvpDecisionSource: 'current_message' });
+    expect(current.rsvpDecisionSource).toBe('current_message');
+    const planState = extractionSchema.parse({ ...base, rsvpDecisionSource: 'plan_state' });
+    expect(planState.rsvpDecisionSource).toBe('plan_state');
+  });
+
+  it('exposes rsvpDecisionSource only when rsvp capability is enabled', () => {
+    const withoutRsvp = createDynamicExtractionSchema({
+      allowedActionIntents: ['solicitar_humano'],
+      capabilities: capabilityProfile(),
+    });
+    expect(withoutRsvp.keyof().options).not.toContain('rsvpDecisionSource');
+    const withRsvp = createDynamicExtractionSchema({
+      allowedActionIntents: ['solicitar_humano', 'responder_invitacion'],
+      capabilities: { ...capabilityProfile(), rsvp: true },
+    });
+    expect(withRsvp.keyof().options).toEqual(expect.arrayContaining(['rsvpDecisionSource']));
+  });
 });
 
 function capabilityProfile(

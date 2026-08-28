@@ -13,7 +13,7 @@ import {
   sensitivePurchaseFieldValues,
   phoneConfirmationValues,
 } from '../core/information';
-import { rsvpActionValues } from '../core/rsvp';
+import { rsvpActionValues, rsvpDecisionSourceValues } from '../core/rsvp';
 
 export const providerReferenceSchema = z.object({
   providerId: z.number().int().positive().nullable(),
@@ -112,6 +112,7 @@ export const extractionSchema = z.object({
   informationRequests: z.array(openAiInformationRequestSchema).default([]),
   phoneConfirmation: z.enum(phoneConfirmationValues).nullable().default(null),
   rsvpAction: z.enum(rsvpActionValues).nullable().default(null),
+  rsvpDecisionSource: z.enum(rsvpDecisionSourceValues).default('plan_state').catch('plan_state'),
   rsvpCandidateGuestId: z.number().int().positive().nullable().default(null),
   rsvpEventReference: z.string().trim().min(1).nullable().default(null),
   intentConfidence: z.number().min(0).max(1).nullable(),
@@ -179,6 +180,7 @@ export function createDynamicExtractionSchema(args: {
     ...(args.capabilities.rsvp
       ? {
           rsvpAction: extractionSchema.shape.rsvpAction,
+          rsvpDecisionSource: extractionSchema.shape.rsvpDecisionSource,
           rsvpCandidateGuestId: extractionSchema.shape.rsvpCandidateGuestId,
           rsvpEventReference: extractionSchema.shape.rsvpEventReference,
         }

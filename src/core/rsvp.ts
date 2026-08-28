@@ -4,6 +4,10 @@ export const rsvpActionValues = ['attending', 'declining'] as const;
 
 export type RsvpAction = (typeof rsvpActionValues)[number];
 
+export const rsvpDecisionSourceValues = ['current_message', 'plan_state'] as const;
+
+export type RsvpDecisionSource = (typeof rsvpDecisionSourceValues)[number];
+
 export const rsvpCandidateStateSchema = z.object({
   guest_id: z.number().int().positive(),
   event_name: z.string().nullable(),

@@ -25,7 +25,7 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
-import type { RsvpAction } from '../core/rsvp';
+import type { RsvpAction, RsvpDecisionSource } from '../core/rsvp';
 
 export type OpenAiRequestMetrics = {
   instructionBytes: number;
@@ -47,6 +47,7 @@ export type ExtractionResult = {
   informationRequests: ExtractedInformationRequest[];
   phoneConfirmation?: PhoneConfirmation | null;
   rsvpAction?: RsvpAction | null;
+  rsvpDecisionSource?: RsvpDecisionSource | null;
   rsvpCandidateGuestId?: number | null;
   rsvpEventReference?: string | null;
   intentConfidence: number | null;

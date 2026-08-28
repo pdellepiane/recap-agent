@@ -108,7 +108,7 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
   });
 
   it('current-turn explicit action executes in awaiting_action status', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending' })]);
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending', decisionSource: 'current_message' })]);
     const gateway = new RsvpGateway([
       { status: 'responded', action: 'attending', willAttend: true, guestId: 41, eventName: 'Matrimonio de Ana y Luis', eventDate: '2026-09-12' },
     ]);
@@ -144,7 +144,7 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
   });
 
   it('current-turn explicit action executes in awaiting_event_selection status', async () => {
-    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'declining', candidateGuestId: 41 })]);
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'declining', decisionSource: 'current_message', candidateGuestId: 41 })]);
     const gateway = new RsvpGateway([
       { status: 'responded', action: 'declining', willAttend: false, guestId: 41, eventName: 'Matrimonio de Ana y Luis', eventDate: '2026-09-12' },
     ]);
@@ -180,6 +180,79 @@ describe('RSVP mutation authorization (awaiting_action vs awaiting_event_selecti
 
     expect(gateway.inputs).toHaveLength(1);
     expect(gateway.inputs[0]).toMatchObject({ action: 'declining', guest_id: 41 });
+    expect(result.plan.rsvp_state.status).toBe('none');
+  });
+
+  it('typed decision_source plan_state with rsvpAction does NOT mutate in awaiting_action (offer preserved)', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending', decisionSource: 'plan_state' })]);
+    const gateway = new RsvpGateway([]);
+    const store = new InMemoryPlanStore();
+    await store.save({
+      reason: 'seed-plan-state-no-mutation',
+      plan: mergePlan(
+        createEmptyPlan({ planId: 'plan-auth-5', channel: 'whatsapp', externalUserId: 'user-rsvp' }),
+        {
+          contact_phone: '51973296571',
+          contact_phone_extension: '+51',
+          contact_phone_number: '973296571',
+          current_node: 'responder_invitacion',
+          rsvp_state: {
+            status: 'awaiting_action',
+            pending_action: 'attending',
+            candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }],
+            requested_at: '2026-08-17T15:00:00.000Z',
+            selection_attempts: 0,
+          },
+        },
+      ),
+    });
+    const service = createService(runtime, gateway, store, [
+      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: true, willAttend: false }),
+    ]);
+
+    const result = await service.handleTurn(inbound('Quiero responder mi invitación.'));
+
+    expect(gateway.inputs).toEqual([]);
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.plan.rsvp_state.status).toBe('awaiting_action');
+    expect(result.plan.rsvp_state.pending_action).toBe('attending');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('declining');
+  });
+
+  it('bare affirmative Si with decision_source current_message still mutates after offer (continuation)', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: 'attending', decisionSource: 'current_message' })]);
+    const gateway = new RsvpGateway([
+      { status: 'responded', action: 'attending', willAttend: true, guestId: 41, eventName: 'Matrimonio de Ana y Luis', eventDate: '2026-09-12' },
+    ]);
+    const store = new InMemoryPlanStore();
+    await store.save({
+      reason: 'seed-bare-si-current-message',
+      plan: mergePlan(
+        createEmptyPlan({ planId: 'plan-auth-6', channel: 'whatsapp', externalUserId: 'user-rsvp' }),
+        {
+          contact_phone: '51973296571',
+          contact_phone_extension: '+51',
+          contact_phone_number: '973296571',
+          current_node: 'responder_invitacion',
+          rsvp_state: {
+            status: 'awaiting_action',
+            pending_action: 'attending',
+            candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: '2026-09-12' }],
+            requested_at: '2026-08-17T15:00:00.000Z',
+            selection_attempts: 0,
+          },
+        },
+      ),
+    });
+    const service = createService(runtime, gateway, store, [
+      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: true, willAttend: false }),
+    ]);
+
+    const result = await service.handleTurn(inbound('Si'));
+
+    expect(gateway.inputs).toHaveLength(1);
+    expect(gateway.inputs[0]).toMatchObject({ action: 'attending', guest_id: 41 });
     expect(result.plan.rsvp_state.status).toBe('none');
   });
 });
@@ -223,11 +296,12 @@ class RsvpGateway implements AgentConversationGateway {
   }
 }
 
-function rsvpExtraction(args: { action: 'attending' | 'declining' | null; candidateGuestId?: number | null; eventReference?: string | null }): ExtractionResult {
+function rsvpExtraction(args: { action: 'attending' | 'declining' | null; decisionSource?: 'current_message' | 'plan_state' | null; candidateGuestId?: number | null; eventReference?: string | null }): ExtractionResult {
   return {
     actionIntent: 'responder_invitacion',
     informationRequests: [],
     rsvpAction: args.action,
+    rsvpDecisionSource: args.decisionSource ?? (args.action ? 'current_message' : 'plan_state'),
     rsvpCandidateGuestId: args.candidateGuestId ?? null,
     rsvpEventReference: args.eventReference ?? null,
     intentConfidence: 0.98,
