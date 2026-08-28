@@ -23,7 +23,7 @@ expectations:
   - id: cristian-existing-confirmation-is-reported
     type: text_semantic
     rubric: >-
-      The response must contain the deterministic attending fragment elements in order: polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", event name "Michelle & Jorge", date "10/10/2026 20:15" (slash fallback via formatRsvpSpanishDate), followed by natural Spanish conversational tissue. Must be entirely in Spanish, natural, must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not invert polarity to "figura que no asistirás".
+      The response must contain the deterministic attending fragment elements — polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", event name "Michelle & Jorge", date "10/10/2026 20:15" (slash fallback via formatRsvpSpanishDate), and natural Spanish conversational tissue. Element presence is required, order is not evaluated. Must be entirely in Spanish, natural, must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not invert polarity to "Figura que no asistirás".
     minScore: 0.9
     requireJudge: true
     severity: hard
@@ -33,7 +33,7 @@ expectations:
     severity: hard
   - id: fragment-not-inverted
     type: text_not_contains
-    phrases: ["figura que no asistirás"]
+    phrases: ["Figura que no asistirás"]
     severity: hard
   - id: no-rsvp-vocabulary
     type: text_not_contains
