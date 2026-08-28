@@ -2,6 +2,20 @@
 
 ## 2026-08-28
 
+### Fix 4: deterministic RSVP current-state renderer override was dead code — clear structuredMessage (T6-fix-5)
+
+**Reason:** Deterministic current-state renderer override (commit 8172732) was dead code in production: it set `reply.text` at src/runtime/agent-service.ts:1937-1939, but live `composeReply` always returns `{ text: '', structuredMessage }` (src/runtime/openai-agent-runtime.ts:386-388) and `renderOutbound` gives structuredMessage absolute precedence, discarding reply.text (agent-service.ts:7777-7793; WhatsApp renderer joins model paragraphs_es verbatim, src/runtime/message-renderer.ts:299). Result: all deterministic RSVP replies were model-rendered live; confirmed_state inverted polarity (judge 0.00); cinthya/jose missed deterministic gracias; declined was model text.
+
+**Decision:**
+- At existing override site src/runtime/agent-service.ts ~1937-1939: when deterministic path engages, also clear model structured message so renderOutbound falls through to reply.text path: `reply.text = deterministicReplyText; reply.structuredMessage = undefined;` Branch conditions, renderer strings, and trace operationalNote unchanged (operationalNote stays for observability).
+- Verify no other consumer breaks: grep consumers of `structuredMessage` on these turn types (event-plan metadata, metrics, logging, adapters) and confirm clearing it on RSVP current-state turns is safe; follows existing pattern at agent-service.ts:4289 where text override clears structuredMessage. `structuredMessageKind` becomes null for these turns, which perf logging and handler accept (type `string | null`), and no adapter requires a kind for RSVP current-state.
+- Faithful offline twin: updated tests/rsvp-deterministic-current-state.test.ts fake runtime to mirror live ComposeReplyResult shape — return `{ text: '', structuredMessage: { type: 'generic', paragraphs_es: [<model-ish Spanish with raw datetime 19/08/2026>] } }` — so handleTurn outbound assertion reproduces bypass without fix (assert fails without clearing: outbound equals renderer string, contains Gracias, figura que asistirás polarity, formatRsvpSpanishDate output 19 de agosto de 2026, and does NOT contain raw 19/08/2026). Keep run-twice byte-identical determinism assertion.
+- Registry: update entry rsvp-current-state-report-rendered-deterministically implementedBy hash to this commit (validate reachable via git merge-base --is-ancestor). Same-bypass coverage note: cinthya/jose/declined cases already pointed at their entries; no new entries needed (this commit completes existing registered behavior).
+
+**Prompt footprint:** No prompt file edited. Anchor 78ae24e vs HEAD: responder_invitacion instructionBytes 8754 (+0 vs pre-fix), audit:prompts 0 violations, audit:prompts:compare green (no prompt changes).
+
+**Verification:** typecheck clean, lint clean, 561 tests across 78 files (faithful twin updated — without fix outbound equals model generic paragraphs_es with raw 19/08/2026; with fix outbound is deterministic Gracias + figura que asistirás + 19 de agosto de 2026 and byte-identical), live-behavior-coverage 1/1, audit:prompts 0 violations, audit:prompts:compare 52.13% reduction (732995->350853) green. Consumer safety: structuredMessageKind nullable (handler/perf allow null); no adapter requires kind for RSVP current-state; pattern follows agent-service.ts:4289 clearing structuredMessage on text override. Registry hash updated to this commit and merge-base ancestor validated.
+
 ### Fix 1: deterministic seeded-candidate fallback and note enumeration (T6-fix-4 A)
 
 **Reason:** Eval 2026-08-28T03:32:59 attempt 3 failed rsvp_ambiguous_event_requires_grounded_selection (0.55) because phone evidence was empty while pendingState held persisted candidates. Reply evidence projected unavailable while note was generic, contradicting each other and omitting required Spanish dates. Prompt prose alone cannot guarantee consistency.

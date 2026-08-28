@@ -102,10 +102,23 @@ describe('RSVP deterministic current-state report (Fix 2)', () => {
     const a = await runOnce();
     const b = await runOnce();
     expect(a).toBe(b);
-    expect(a.toLowerCase()).toContain('gracias');
+    expect(Buffer.from(a).toString()).toBe(Buffer.from(b).toString());
+    expect(a).toContain('Gracias');
+    expect(a.toLowerCase()).toContain('figura que asistirás');
+    expect(a).toContain('19 de agosto de 2026');
+    expect(a).not.toContain('19/08/2026');
     expect(a.toLowerCase()).toContain('no fue necesario hacer otro cambio');
     expect(a).toContain('Otra celebración prueba');
-    expect(a).toContain('19 de agosto de 2026');
+    // Must equal deterministic renderer output (bypass model paragraphs_es)
+    const verifier = new AgentService({
+      planStore: new InMemoryPlanStore(),
+      runtime: new RsvpRuntime([]),
+      providerGateway: { async lookupUserEventContext() { return null; } } as unknown as ProviderGateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    }) as unknown as { renderRsvpCurrentStateDeterministically: (inv: unknown, offer: boolean) => string };
+    const expected = verifier.renderRsvpCurrentStateDeterministically({ eventId: 1, guestId: 584352, eventName: 'Otra celebración prueba', eventDate: '2026-08-19 05:00:00', state: 'attending' } as unknown, true);
+    expect(a).toBe(expected);
   });
 });
 
@@ -119,7 +132,16 @@ class RsvpRuntime implements AgentRuntime {
   }
   async composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult> {
     this.composeRequests.push(request);
-    return { text: request.errorMessage ?? 'ok' };
+    return {
+      text: '',
+      structuredMessage: {
+        type: 'generic',
+        paragraphs_es: [
+          'Tu asistencia para Otra celebración prueba el 19/08/2026 está pendiente de confirmación. Modelo.',
+          'Fecha cruda 19/08/2026 no debe aparecer en salida determinística.',
+        ],
+      },
+    };
   }
 }
 

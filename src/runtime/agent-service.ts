@@ -1936,6 +1936,7 @@ export class AgentService {
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     if (deterministicReplyText !== null) {
       reply.text = deterministicReplyText;
+      reply.structuredMessage = undefined;
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
