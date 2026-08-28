@@ -1741,6 +1741,7 @@ export class AgentService {
     let result: AgentGuestRsvpResult | null = null;
     let operationalNote: string;
     let nextRsvpState = pendingState;
+    let deterministicReplyText: string | null = null;
 
     args.toolUsage.considered.push(
       'lookup_rsvp_invitations',
@@ -1837,11 +1838,17 @@ export class AgentService {
           : null;
 
       if (!action) {
+        if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
+          deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, true);
+        }
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, true);
         nextRsvpState = selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining'
           ? this.awaitingRsvpActionState(selectedInvitation, 'attending')
           : this.emptyRsvpState();
       } else if (currentAction === action) {
+        if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
+          deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, false);
+        }
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, false);
         nextRsvpState = this.emptyRsvpState();
       } else if (!args.gateway.guestRsvp) {
@@ -1927,6 +1934,9 @@ export class AgentService {
         : null,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
+    if (deterministicReplyText !== null) {
+      reply.text = deterministicReplyText;
+    }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
@@ -2560,6 +2570,28 @@ export class AgentService {
     const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const monthName = months[month - 1] ?? String(month);
     return `${day} de ${monthName} de ${year}`;
+  }
+
+  private renderRsvpCurrentStateDeterministically(
+    invitation: RsvpInvitation,
+    offerAction: boolean,
+  ): string {
+    const eventName = invitation.eventName ?? 'el evento';
+    const datePart = invitation.eventDate ? ` el ${this.formatRsvpSpanishDate(invitation.eventDate)}` : '';
+    const gracias = 'Gracias';
+    const noChange = 'no fue necesario hacer otro cambio';
+    const capitalizedNoChange = noChange[0] ? noChange[0].toUpperCase() + noChange.slice(1) : noChange;
+    if (invitation.state === 'attending') {
+      return `${gracias}, tu asistencia a ${eventName}${datePart} ya está confirmada y figura que asistirás. ${capitalizedNoChange} y no se realizó un nuevo registro. ¡Que disfrutes el evento!`;
+    }
+    if (invitation.state === 'declining') {
+      const base = `${gracias}, figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
+      if (offerAction) {
+        return `${base} Si deseas cambiarlo para confirmar que sí asistirás, dime y lo gestionamos.`;
+      }
+      return base;
+    }
+    return this.rsvpCurrentStateNote(invitation, offerAction);
   }
 
   private rsvpOperationalNote(

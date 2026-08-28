@@ -16,6 +16,21 @@
 
 **Verification:** npm run typecheck clean, lint clean, 552 tests (baseline 549 +3) across 76 files, live-behavior-coverage passes. Deterministic twin proves fallback projection and enumeration.
 
+### Fix 2: deterministic current-state report for attending/declining (T6-fix-4 B)
+
+**Reason:** Eval 2026-08-28T03:32:59 attempt 3 failed rsvp_confirmed_state_is_reported (inversion: said not assist when confirmed) and rsvp_cinthya/jose missing thanks. Model-side enum-to-Spanish via response_contract 6/7 is brittle for these branches; typed state already knows attending/declining and must be rendered code-side.
+
+**Decision:**
+- Added pure deterministic renderer renderRsvpCurrentStateDeterministically in src/runtime/agent-service.ts: attending -> "Gracias, tu asistencia a {name} el {D de month de YYYY} ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!"; declining -> "Gracias, figura que no asistirás a {name} el {date}. No fue necesario hacer otro cambio." plus offer-one-change "Si deseas cambiarlo para confirmar que sí asistirás, dime..." when offerAction true. Includes gracias, no-change clause, event name/date, unambiguous polarity.
+- In handleRsvpFlow branches handling !action and currentAction===action for attending/declining, set deterministicReplyText and bypass model rendering: reply is code-generated, not via composeReply, ensuring byte-identical for identical inputs and killing inversion.
+- Keeps pending/unknown via existing rsvpCurrentStateNote; all other branches still use model rendering (prompts unchanged, mirrored conditionals at 6/7 stay for other branches).
+- Added hard text_contains expectation deterministic-attending-contains-thanks-and-no-change to live_behavior.rsvp_confirmed_state_is_reported and registry entry rsvp-current-state-report-rendered-deterministically.
+- Added offline twin tests/rsvp-deterministic-current-state.test.ts covering attending polarity+thanks+no-change+event/date, declining polarity+offer, and byte-identical determinism, plus handleTurn byte-identical.
+
+**Prompt footprint:** No prompt file edited. Anchor 78ae24e vs HEAD: responder_invitacion 8754 (+521 vs anchor, +0 vs pre-fix), audit gates green.
+
+**Verification:** Typecheck clean, lint clean, 556 tests (552 +4) across 77 files, live-behavior-coverage passes. Deterministic renderer proven.
+
 ## 2026-08-27
 
 ### Normalize customer transaction codes without conflating them with Agent API order ids

@@ -44,6 +44,10 @@ expectations:
     minScore: 0.9
     requireJudge: true
     severity: hard
+  - id: deterministic-attending-contains-thanks-and-no-change
+    type: text_contains
+    allOf: ["Gracias", "no fue necesario hacer otro cambio", "Otra celebración prueba", "19 de agosto de 2026"]
+    severity: hard
 budget:
   maxTurns: 1
   estimatedPromptTokensPerTurn: 1600
