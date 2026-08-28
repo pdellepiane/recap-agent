@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_cristian_phone_enriched_confirmation
 suite: live_behavior_regression
-version: 2
-description: Cristian's completed invitation is resolved from the guest association and phone-enriched event attendance without a false missing-invitation answer.
+version: 3
+description: Cristian's completed invitation is resolved via hybrid fragment plus natural tissue without a false missing-invitation answer.
 tags: [live, behavior, rsvp, phone-enrichment, reported-interaction, cristian]
 targetModes: [live_lambda]
 inputs:
@@ -23,14 +23,17 @@ expectations:
   - id: cristian-existing-confirmation-is-reported
     type: text_semantic
     rubric: >-
-      The deterministic reply for the attending current-state must be exactly "Gracias, tu asistencia a Michelle & Jorge el 10/10/2026 20:15 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!" Required elements in order: explicit "Gracias", event name "Michelle & Jorge", date "10/10/2026 20:15" (rendered via formatRsvpSpanishDate fallback for slash input), confirmation "ya está confirmada", attending polarity "figura que asistirás", no-change clause "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", and closing "¡Que disfrutes el evento!". The answer must be entirely in Spanish, natural, and must not imply a new mutation was made, ask for email or a code, or mention internal states or tools.
+      The response must contain the deterministic attending fragment elements in order: polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", event name "Michelle & Jorge", date "10/10/2026 20:15" (slash fallback via formatRsvpSpanishDate), followed by natural Spanish conversational tissue. Must be entirely in Spanish, natural, must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not invert polarity to "figura que no asistirás".
     minScore: 0.9
     requireJudge: true
     severity: hard
-  # exact-match deterministic renderer (T6-fix-5) — src/runtime/agent-service.ts:2586 renderRsvpCurrentStateDeterministically; verified byte-identical vs .eval-runs/eval-2026-08-28T15-19-45-749Z-a39b4199
-  - id: deterministic-attending-contains-thanks-and-no-change
+  - id: fragment-attending-polarity-event-date-no-change
     type: text_contains
-    allOf: ["Gracias, tu asistencia a Michelle & Jorge el 10/10/2026 20:15 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!"]
+    allOf: ["figura que asistirás", "Michelle & Jorge", "10/10/2026 20:15", "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", "ya está confirmada"]
+    severity: hard
+  - id: fragment-not-inverted
+    type: text_not_contains
+    phrases: ["figura que no asistirás"]
     severity: hard
 budget:
   maxTurns: 1

@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_confirmed_state_is_reported
 suite: live_behavior_regression
-version: 2
-description: A user-level invitation that already has attendance confirmed is reported naturally without another mutation.
+version: 3
+description: A user-level invitation that already has attendance confirmed is reported via hybrid fragment plus natural tissue without another mutation.
 tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
 targetModes: [live_lambda]
 inputs:
@@ -40,14 +40,17 @@ expectations:
   - id: reports-existing-confirmation-naturally
     type: text_semantic
     rubric: >-
-      The deterministic reply for the attending current-state must be exactly "Gracias, tu asistencia a Otra celebración prueba el 19 de agosto de 2026 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!" Required elements in order: explicit "Gracias", attending polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", Spanish-rendered date "19 de agosto de 2026", event name "Otra celebración prueba", and closing "¡Que disfrutes el evento!". The answer must be entirely in Spanish, natural, and must not imply a new mutation was made, ask for email or a code, or mention internal states or tools.
+      The response must contain the deterministic attending fragment elements in order: polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", Spanish date "19 de agosto de 2026", event name "Otra celebración prueba", followed by natural Spanish conversational tissue (thanks, closing). Must be entirely in Spanish, natural, must not imply a new mutation was made, must not ask for email or a code, must not mention internal states or tools, and must not invert polarity to "figura que no asistirás".
     minScore: 0.9
     requireJudge: true
     severity: hard
-  # exact-match assertion justified by byte-deterministic renderer (T6-fix-5) — src/runtime/agent-service.ts:2586 renderRsvpCurrentStateDeterministically
-  - id: deterministic-attending-contains-thanks-and-no-change
+  - id: fragment-attending-polarity-event-date-no-change
     type: text_contains
-    allOf: ["Gracias, tu asistencia a Otra celebración prueba el 19 de agosto de 2026 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!"]
+    allOf: ["figura que asistirás", "Otra celebración prueba", "19 de agosto de 2026", "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", "ya está confirmada"]
+    severity: hard
+  - id: fragment-not-inverted
+    type: text_not_contains
+    phrases: ["figura que no asistirás"]
     severity: hard
 budget:
   maxTurns: 1

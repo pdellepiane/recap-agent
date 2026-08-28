@@ -1,10 +1,10 @@
 template: template.base-live
 id: live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
 suite: live_behavior_regression
-version: 3
+version: 4
 # Evidence: event 38331 / guest 579788 has_responded=true will_attend=true -> resolved_single attending (not unavailable)
 # Verified via live API GET /guest/events and GET /event?event_id=38331 with phone +51941438449 (see /tmp/evidence-T6-fix-2b.json); SE API cannot provision unavailable condition; user-approved Option B T6-fix-3
-description: A campaign-grounded RSVP for Gia Antonella is resolved as attending and must report the confirmed state naturally without claiming a new mutation.
+description: A campaign-grounded RSVP for Gia Antonella is resolved via hybrid fragment plus natural tissue without claiming a new mutation.
 tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context]
 targetModes: [live_lambda]
 inputs:
@@ -25,14 +25,17 @@ expectations:
   - id: preserves-campaign-grounded-invitation
     type: text_semantic
     rubric: >-
-      The deterministic reply for the attending current-state must be exactly "Gracias, tu asistencia a Gia Antonella el 15/08/2026 22:00 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!" Required elements in order: explicit "Gracias", event name "Gia Antonella", date "15/08/2026 22:00" (rendered via formatRsvpSpanishDate fallback for slash input), confirmation "ya está confirmada", attending polarity "figura que asistirás", no-change clause "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", and closing "¡Que disfrutes el evento!". The answer must be entirely in Spanish, natural, and must not deny the invitation, restart onboarding, request email authentication or a code, or invent guest details. It must correctly reflect that the reconciled phone evidence establishes this number is associated with Gia Antonella (event 38331, guest 579788, has_responded=true, will_attend=true per /tmp/evidence-T6-fix-2b.json) and projects resolved_single with rsvp_state attending and invitation_record available.
+      The response must contain the deterministic attending fragment elements in order: polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio" and "no se realizó un nuevo registro", event name "Gia Antonella", date "15/08/2026 22:00" (rendered via fallback for slash input), followed by natural Spanish conversational tissue. Must be entirely in Spanish, natural, must not deny the invitation, must not restart onboarding, must not request email authentication or a code, must not invent guest details, and must not invert polarity to "figura que no asistirás". It must reflect that reconciled phone evidence establishes this number is associated with Gia Antonella (event 38331, guest 579788, has_responded=true, will_attend=true) and projects resolved_single with rsvp_state attending.
     minScore: 0.9
     requireJudge: true
     severity: hard
-  # exact-match deterministic renderer (T6-fix-5) — src/runtime/agent-service.ts:2586 renderRsvpCurrentStateDeterministically; verified byte-identical vs .eval-runs/eval-2026-08-28T15-19-45-749Z-a39b4199
-  - id: deterministic-attending-contains-thanks-and-no-change
+  - id: fragment-attending-polarity-event-date-no-change
     type: text_contains
-    allOf: ["Gracias, tu asistencia a Gia Antonella el 15/08/2026 22:00 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!"]
+    allOf: ["figura que asistirás", "Gia Antonella", "15/08/2026 22:00", "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", "ya está confirmada"]
+    severity: hard
+  - id: fragment-not-inverted
+    type: text_not_contains
+    phrases: ["figura que no asistirás"]
     severity: hard
 budget:
   maxTurns: 1
