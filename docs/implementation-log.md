@@ -6257,3 +6257,64 @@ Since this is attempt 3/3 final under retry cap, do not blind retry. Escalate to
 
 **Verification:** Full local gate still green (553 tests, typecheck, lint, audit prompts). This log entry is sole appender; single atomic commit with revision/timestamp/SHA256 and 12-row table recorded.
 
+
+### T6 gate 1 attempt 4 -- user-authorized final retry (plan-2026-08-27-rsvp-projection-prompt-audit T6 attempt 4)
+
+**Preflight:** Tree clean except .continues-handoff.md -- git status --porcelain showed CLEAN (except .continues-handoff.md allowed, plus ignored .DS_Store/.artifacts/node_modules/dist). HEAD verified at b20881a (T6-fix-4 C) with reachable hashes 4b5e14b (A seeded-candidate fallback), 8172732 (B deterministic current-state), b20881a (C paymentMethod exclusion). All 561 tests green pre-deploy (T6-fix-4 batch adds +8 vs 553 baseline; prompts unchanged).
+
+**Deployment (se-dev / us-east-1, fail-closed):** STS confirmed account 684516060775 via aws sts get-caller-identity --profile se-dev (UserId AIDAZ6YCWFZTX3S5WV4DC, Account 684516060775). Build via node scripts/build.mjs (Build completed), artifact zipped dist -> .artifacts/recap-agent.zip (6.4 MiB), uploaded to s3://recap-agent-artifacts-684516060775-us-east-1/lambda/1787890786949-recap-agent.zip, CloudFormation deploy recap-agent-runtime with CAPABILITY_NAMED_IAM. Result: Stack UPDATE_COMPLETE at 2026-08-28T04:22:47.162000+00:00, Lambda LastModified 2026-08-28T04:22:52.000+0000, RevisionId 5e65ba26-e711-44f4-a30a-e3b4919f84ff, CodeSha256 HzxNA2Eokr+hyhxj1aQcvEwgkqrsubnerpIGcALpI/w=. Prior revision was 6c9b1695-b49e-43f5-bc7e-afb803565015 (CodeSha256 5nqkJ2LKy0dJXjkT+jnRPV6JNbCATuGqwCi9STAiHKI=) which shipped T6-fix-3; this deploy finally ships T6-fix-4 A/B/C (deterministic report renderer, seeded-candidate fallback, paymentMethod exclusion). Provider-sync stack also deployed (recap-agent-provider-sync-dev) UPDATE_COMPLETE.
+
+**Local gate pre-deploy (T6 acceptance):** npm test 561/561 across 78 files (78 passed), typecheck clean, lint clean, npm run audit:prompts 0 violations (SerializedRequest 350853 bytes), npm run audit:prompts:compare 52.13% reduction (732995 -> 350853) green, tests/live-behavior-coverage.test.ts passing. No prompt byte change (audit gates unchanged; responder_invitacion 8776 instructionBytes stable).
+
+**Eval gate 1 execution (12-case RSVP subset, exact repeatable --case filtering):** Command: npm run eval:behavior-live -- --case live_behavior.rsvp_paolo_mariana_resolved_single --case live_behavior.rsvp_ambiguous_event_requires_grounded_selection --case live_behavior.rsvp_state_reversal_ends_confirmed --case live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing --case live_behavior.rsvp_confirmed_state_is_reported --case live_behavior.rsvp_cristian_phone_enriched_confirmation --case live_behavior.rsvp_declined_state_offers_one_change --case live_behavior.rsvp_jose_campaign_invitation_not_reported_missing --case live_behavior.rsvp_missing_action_requires_explicit_decision --case live_behavior.rsvp_trusted_phone_reports_no_pending --case live_behavior.accountless_guest_event_uses_phone_without_otp --case live_behavior.accountless_event_answer_precedes_remaining_private_auth . RunId eval-2026-08-28T04-24-18-171Z-c59c08b9, runDir .eval-runs/eval-2026-08-28T04-24-18-171Z-c59c08b9, generatedAt 2026-08-28T04:26:40.141Z, totalCases 12, passedCases 9, failedCases 3, erroredCases 0, skippedCases 0, averageScore 0.930, averageLatency 7616.9 ms. Fail-closed: no missing judge keys (all 12 have text_semantic with requireJudge), no skipped/errored, no empty selection, no evaluator errors -- but 3 failed hard expectations => gate FAILED per hard semantics (missing judge key, skipped case, evaluator error, or failed hard expectation = FAILED GATE).
+
+**12-row per-case table (status + judge score + hard diagnostics):**
+
+| # | Case ID | Status | FinalScore | text_semantic score | Hard expectation verdict |
+|---|---------|--------|------------|---------------------|--------------------------|
+| 1 | live_behavior.rsvp_paolo_mariana_resolved_single | passed | 0.967 | 1.00 | node_transition PASS, tool_usage PASS, text_semantic PASS |
+| 2 | live_behavior.rsvp_ambiguous_event_requires_grounded_selection | passed | 0.980 | 1.00 | node_transition PASS, plan_field PASS, tool_usage PASS, text_semantic PASS; text_contains PASS (candidate dates) |
+| 3 | live_behavior.rsvp_state_reversal_ends_confirmed | passed | 0.957 | 1.00 | node_transition PASS, tool_usage PASS, text_semantic PASS |
+| 4 | live_behavior.rsvp_cinthya_campaign_invitation_not_reported_missing | failed | 0.927 | 0.85 | node_transition PASS, tool_usage PASS, text_semantic FAIL: "no agradece explicitamente; Que disfrutes mucho el evento es deseo, no agradecimiento" Output: "Tu asistencia al evento Julisabeth y Andres, el 15/08/2026 a las 17:00, ya esta confirmada. No fue necesario hacer otro cambio. Que disfrutes mucho el evento!" |
+| 5 | live_behavior.rsvp_confirmed_state_is_reported | failed | 0.647 | 0.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic FAIL 0.0: "afirma que la persona no asistira, cuando la asistencia ya esta confirmada" Output: "Tu asistencia a Otra celebracion prueba no esta confirmada: figura registrada como inasistencia para el 19/08/2026 a las 05:00. Que disfrutes el evento!" + deterministic-attending-contains-thanks-and-no-change text_contains FAIL |
+| 6 | live_behavior.rsvp_cristian_phone_enriched_confirmation | passed | 0.940 | 0.90 | node_transition PASS, tool_usage PASS, text_semantic PASS |
+| 7 | live_behavior.rsvp_declined_state_offers_one_change | passed | 0.967 | 1.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic PASS |
+| 8 | live_behavior.rsvp_jose_campaign_invitation_not_reported_missing | failed | 0.881 | 0.68 | node_transition PASS, tool_usage PASS, text_semantic FAIL: "Tu asistencia a Gia Antonella es poco natural; deberia decir la asistencia de Gia Antonella. No agradece explicitamente" Output: "Tu asistencia a Gia Antonella, el 15/08/2026 a las 22:00, ya esta confirmada. No fue necesario hacer otro cambio. Que disfrutes mucho el evento!" |
+| 9 | live_behavior.rsvp_missing_action_requires_explicit_decision | passed | 0.967 | 1.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic PASS |
+| 10 | live_behavior.rsvp_trusted_phone_reports_no_pending | passed | 0.976 | 0.98 | node_transition PASS, tool_usage PASS, trace_field PASS, text_semantic PASS |
+| 11 | live_behavior.accountless_guest_event_uses_phone_without_otp | passed | 0.980 | 1.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic PASS |
+| 12 | live_behavior.accountless_event_answer_precedes_remaining_private_auth | passed | 0.967 | 1.00 | node_transition PASS, tool_usage PASS, plan_field PASS, text_semantic PASS; summary-excludes-payment-type text_not_contains PASS |
+
+No missing judge keys, no skipped, no evaluator errors, no empty selection. 3 failed hard expectations (was 5 in attempt 3; delta -2).
+
+**Per-call byte metrics (from trace.openai_calls.*.requestMetrics per case, Buffer.byteLength via prompt-loader.ts:75-77 + openai-agent-runtime.ts:411-423):**
+
+- rsvp_paolo_mariana: classifier 9334/730, extraction 10584/1689, reply 8776/1854 (prompt_bundle 537dd4d96cc9)
+- rsvp_ambiguous: classifier 9334/736, extraction 10584/1695, reply 8776/2438 (now includes candidate dates, was 8776/1962 in attempt 3)
+- rsvp_state_reversal: 9334/696, 10584/1655, 8776/1814
+- rsvp_cinthya: 2343/290, 10584/2523, 8776/1807
+- rsvp_confirmed: 9334/715, 10584/1674, 8776/1839 (trace 01M139TVE0QJW06ECQA917YPZD)
+- rsvp_cristian: 9334/1231, 10584/2300, 8776/1812
+- rsvp_declined: 9334/708, 10584/1667, 8776/1848
+- rsvp_jose: 2343/298, 10584/2556, 8776/1800
+- rsvp_missing_action: 9334/684, 10584/1643, 8776/1824
+- rsvp_trusted_phone: 9334/569, 10584/1513, 8776/1767
+- accountless_guest_event: 2343/339, 10584/2572, 13459/7313 (was 13459/7343 in attempt 3)
+- accountless_event_answer: 2343/325, 10584/2558, 13459/8605 (was 13459/8625 in attempt 3) -- now correctly excludes paymentMethod from summary aspect
+
+Reply bundle for RSVP routes stable at 8776 instructionBytes (anchor 8233 -> T1 8253 (+20) -> T6-fix C 8754 (+521) -> T6-fix-2 B 8776 (+22) = +543 justified; T6-fix-4 adds 0). Information reply 13459 stable. Overall audit:prompts 0 violations, audit:prompts:compare 52.13% reduction (732995 -> 350853). Average latency 7616.9 ms, total tokens 114308, cache hit 0.732.
+
+**Failure classification (attempt 4 is user-authorized final retry, escalate and STOP):** Gate FAILED. Category: product behavior - deterministic (not transient, not infra). Evidence:
+
+- Fix progress: T6-fix-4 A fixed ambiguous candidate dates (was failed 0.55, now passed 1.00, output now "Cumpleanos de Marta, el 19 de septiembre de 2026, o al Matrimonio de Ana y Luis, el 12 de septiembre de 2026" with both required dates). Fix C fixed paymentMethod exposure (was failed 0.75, now passed 1.00, summary no longer contains tarjeta type, output now "Parrilla de acero inoxidable por S/ 248.08 tiene el pago aprobado" without tarjeta). 5->3 failures (-2) demonstrates A and C are deterministic and verified.
+- Remaining 3 failures are product gaps in deterministic current-state report (T6-fix-4 B partial):
+  * rsvp_confirmed_state_is_reported: Product inversion -- says "no esta confirmada: figura registrada como inasistencia" when operational_note says attending and extraction_summary says attending with event_reference. Hard text_contains deterministic-attending-contains-thanks-and-no-change also FAIL. Indicates deterministic renderer was bypassed: selectedInvitation.state not attending/declining or action branch not taken, so model rendered inversion. Trace shows operational_note "Comunica con naturalidad el estado attending..." but output inverted, proving model hallucination over correct evidence. Deterministic B was expected to render "Gracias, tu asistencia a Otra celebracion prueba el 19 de agosto de 2026 ya esta confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. Que disfrutes el evento!" byte-identical. Evidence: artifact live_behavior.rsvp_confirmed_state_is_reported.json trace_id 01M139TVE0QJW06ECQA917YPZD, outputText line 19/08/2026 05:00 mismatch.
+  * rsvp_cinthya_campaign (0.85) and rsvp_jose_campaign (0.68): Both report already-confirmed attending but miss explicit thanks ("Gracias") required by rubric; judge treats "Que disfrutes mucho el evento" as wish not thanks. Deterministic B should have rendered "Gracias, tu asistencia a Julisabeth y Andres el 15 de agosto de 2026..." and "Gracias, tu asistencia a Gia Antonella..." but output was "Tu asistencia al evento Julisabeth..." without gracias and with awkward "Tu asistencia a Gia Antonella" (should be "la asistencia de Gia Antonella" per rubric). Indicates same bypass of deterministic path for these campaign-grounded attending cases (maybe selectedInvitation.state is unknown/pending or candidate path).
+- No skipped/errored/missing judge keys, no 401/429, no empty selection, no evaluator error. All 12 cases have requireJudge true text_semantic.
+
+Since this is attempt 4/4 (retries_used 3 -> now 4, gate 1 final retry per user authorization, 4/12 -> 8/12 -> 7/12 -> 9/12), do not blind retry. Escalate to orchestrator. No further T6 fix cycles this attempt per constraints. T5/T7/T8 remain blocked until gate 1 re-planned. Full suite (T8) still deferred behind user approval; not executed.
+
+**Evidence path:** .eval-runs/eval-2026-08-28T04-24-18-171Z-c59c08b9 (report.json, report.md, results.jsonl, artifacts/live_lambda/*.json with trace_ids 01M139SCXSR0EN0XDH3DDXDM9W, 01M139SQMGFDXDQB2274GNBH09, 01M139T5D2TWG4Q3F70KX0TZNV, 01M139TFB43QSGA4MT5NDAA2VQ, 01M139TVE0QJW06ECQA917YPZD, 01M139V4M66PR0TADAK5Y7657J, 01M139VGRA6DBF086WFVJ97WSV, 01M139VSRDB9ABJ3X45QQ4XMHE, 01M139W672CFEMAZNBFCJ4Y394, 01M139WKK5EHPRV3DSJBHV6DJQ, 01M139WY99JJ0TJ4JPDTXBM6CT, 01M139X9F01FN7J8TWNZQNTE35). Prior run .eval-runs/eval-2026-08-28T03-32-59-145Z-6a49e257 retained for diff. Deployment artifact s3://recap-agent-artifacts-684516060775-us-east-1/lambda/1787890786949-recap-agent.zip, dist build metrics above.
+
+**Verification:** Full local gate still green (561 tests, typecheck, lint, audit:prompts, audit:prompts:compare). This log entry is sole appender; single atomic commit with revision/timestamp/SHA256 and 12-row table recorded. Do not run full suite (T8). .continues-handoff.md untouched.
+
