@@ -10,7 +10,7 @@ import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/prov
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 describe('RSVP human-help disclosure deterministic fragment (T10-fix-4 B)', () => {
-  it('self_and_others with selection appends disclosure as final sentence containing names', async () => {
+  it('self_and_others with selection composes warm lead + enumeration + exact question + disclosure as final sentence', async () => {
     const runtime = new DisclosureRuntime(
       rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
       '¿A cuál evento deseas confirmar tu asistencia?',
@@ -45,11 +45,13 @@ describe('RSVP human-help disclosure deterministic fragment (T10-fix-4 B)', () =
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-multi', text: 'Hola, confirmo mi asistencia y la de mi esposa Maria', messageId: 'msg-1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     const outbound = result.outbound.text ?? '';
     const disclosure = 'Para confirmar la asistencia de Maria, nuestro equipo de apoyo humano te ayudará';
+    expect(outbound).toContain('¡Con gusto!');
+    expect(outbound).toContain('Otra celebración prueba - 19 de agosto de 2026');
+    expect(outbound).toContain('Otra celebración prueba 2 - 20 de agosto de 2026');
+    expect(outbound).toContain('¿Para cuál de estos eventos deseas registrar tu asistencia?');
+    expect(outbound).toContain(disclosure);
     expect(outbound.endsWith(disclosure)).toBe(true);
-    expect(outbound).toContain('Maria');
-    // Should contain selection enumeration still (mocked)
-    expect(outbound).toContain('Evento 1');
-    // No overclaim? disclosure present, but check not claiming registration
+    expect(outbound.toLowerCase()).not.toContain('aplicar la confirmación');
     expect(outbound.toLowerCase()).not.toContain('ya está confirmada');
   });
 

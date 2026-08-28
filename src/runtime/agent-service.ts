@@ -1940,7 +1940,72 @@ export class AgentService {
         : null,
     });
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
-    if (deterministicReplyText !== null) {
+    const isComposedMultiPersonSelection = Boolean(
+      (args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined)?.scope === 'self_and_others' &&
+        nextRsvpState.status === 'awaiting_event_selection' &&
+        invitations !== null &&
+        invitations.length > 1 &&
+        selectedInvitation === null,
+    );
+    if (isComposedMultiPersonSelection && invitations) {
+      const warmLead = '¡Con gusto!';
+      const enumeration = this.formatRsvpInvitationEnumeration(invitations);
+      const selectionQuestion = '¿Para cuál de estos eventos deseas registrar tu asistencia?';
+      const composedDisclosure = this.renderHumanHelpDisclosureFragment(
+        args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined,
+      ) ?? 'Para confirmar la asistencia de tu acompañante, nuestro equipo de apoyo humano te ayudará.';
+      const rawTissueParagraphs: string[] = [];
+      if (
+        reply.structuredMessage?.type === 'generic' &&
+        Array.isArray(reply.structuredMessage.paragraphs_es)
+      ) {
+        rawTissueParagraphs.push(...reply.structuredMessage.paragraphs_es.map((p) => String(p).trim()).filter(Boolean));
+      } else if (reply.text && reply.text.trim().length > 0) {
+        rawTissueParagraphs.push(...reply.text.split('\n\n').map((p) => p.trim()).filter(Boolean));
+      }
+      let sanitizedTissue: string | null = null;
+      if (rawTissueParagraphs.length > 0) {
+        const candidate = rawTissueParagraphs[0] ?? '';
+        const lower = candidate.toLowerCase();
+        const containsForbidden = lower.includes('aplicar la confirmación') || lower.includes('aplicar la confirmacion');
+        const repeatsEnumeration = Boolean(enumeration && candidate.includes(enumeration.split(';')[0]?.trim().split(' - ')[0] ?? '')) && candidate.includes(' - ');
+        const repeatsQuestion = lower.includes('para cuál de estos eventos deseas') || lower.includes('para cual de estos eventos deseas');
+        const repeatsDisclosure = lower.includes('nuestro equipo de apoyo humano te ayudará') || lower.includes('nuestro equipo de apoyo humano te ayudara');
+        const claimsConfirmation = lower.includes('ya está confirmada') || lower.includes('ya esta confirmada') || lower.includes('confirmada y figura');
+        // enforce single sentence: allow one sentence; if more than one sentence terminator, take first sentence
+        let tissueOneSentence = candidate;
+        const sentenceTerminators = (candidate.match(/[.!?]/gu) ?? []).length;
+        if (sentenceTerminators > 1) {
+          const firstMatch = candidate.match(/^[^.!?]+[.!?]/u);
+          tissueOneSentence = firstMatch ? firstMatch[0].trim() : candidate.split(/[.!?]/u)[0]?.trim() ?? candidate;
+        }
+        const lowerOne = tissueOneSentence.toLowerCase();
+        const oneContainsForbidden = lowerOne.includes('aplicar la confirmación') || lowerOne.includes('aplicar la confirmacion');
+        if (!containsForbidden && !repeatsEnumeration && !repeatsQuestion && !repeatsDisclosure && !claimsConfirmation && !oneContainsForbidden) {
+          sanitizedTissue = tissueOneSentence.trim() || null;
+          if (sanitizedTissue && sanitizedTissue.length > 0 && lowerOne.includes('confirmar la asistencia de') && lowerOne.includes('acompañante')) {
+            sanitizedTissue = null;
+          }
+        } else if (tissueOneSentence.trim().length > 0 && !oneContainsForbidden && !claimsConfirmation) {
+          const cleanLower = tissueOneSentence.toLowerCase();
+          if (!cleanLower.includes('aplicar la confirmación') && !cleanLower.includes('aplicar la confirmacion') && !cleanLower.includes('ya está confirmada')) {
+            // still check not repeating enumeration verbatim
+            sanitizedTissue = tissueOneSentence.trim();
+          }
+        }
+        // final guard: if sanitized tissue repeats enumeration word-for-word, discard
+        if (sanitizedTissue && enumeration.split(';').some((part) => sanitizedTissue !== null && sanitizedTissue.includes(part.trim().split(' - ')[0] ?? '')) && sanitizedTissue.includes(' - ')) {
+          sanitizedTissue = null;
+        }
+      }
+      const composedParagraphs: string[] = [warmLead, enumeration, selectionQuestion];
+      if (sanitizedTissue) {
+        composedParagraphs.push(sanitizedTissue);
+      }
+      composedParagraphs.push(composedDisclosure);
+      reply.structuredMessage = { type: 'generic', paragraphs_es: composedParagraphs };
+      reply.text = composedParagraphs.join('\n\n');
+    } else if (deterministicReplyText !== null) {
       const fragment = deterministicReplyText;
       if (deterministicIsDecliningOffer) {
         reply.text = fragment;
@@ -1969,7 +2034,7 @@ export class AgentService {
     const disclosure = this.renderHumanHelpDisclosureFragment(
       args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined,
     );
-    if (disclosure) {
+    if (disclosure && !isComposedMultiPersonSelection) {
       if (
         reply.structuredMessage?.type === 'generic' &&
         Array.isArray(reply.structuredMessage.paragraphs_es)
