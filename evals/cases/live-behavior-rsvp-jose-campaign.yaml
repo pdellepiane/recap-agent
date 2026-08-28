@@ -1,8 +1,10 @@
 template: template.base-live
 id: live_behavior.rsvp_jose_campaign_invitation_not_reported_missing
 suite: live_behavior_regression
-version: 1
-description: A campaign-grounded RSVP for Gia Antonella must not be reported as a missing invitation when the mutation endpoint has no pending response.
+version: 2
+# Evidence: event 38331 / guest 579788 has_responded=true will_attend=true -> resolved_single attending (not unavailable)
+# Verified via live API GET /guest/events and GET /event?event_id=38331 with phone +51941438449 (see /tmp/evidence-T6-fix-2b.json); SE API cannot provision unavailable condition; user-approved Option B T6-fix-3
+description: A campaign-grounded RSVP for Gia Antonella is resolved as attending and must report the confirmed state naturally without claiming a new mutation.
 tags: [live, behavior, rsvp, attendance, reported-interaction, campaign-context]
 targetModes: [live_lambda]
 inputs:
@@ -23,7 +25,7 @@ expectations:
   - id: preserves-campaign-grounded-invitation
     type: text_semantic
     rubric: >-
-      The recent campaign and the trusted-phone event lookup establish an association with Gia Antonella, but the read-only result does not include a guest record or current attendance state. Pass only if the answer stays entirely in Spanish, thanks the person for saying attendance was already confirmed, and avoids claiming that this turn changed or verified the stored RSVP state. It may offer human help to verify the stored state. It must not deny the invitation, restart onboarding, request email authentication, or invent a guest record.
+      The reconciled phone evidence establishes that this number is associated with Gia Antonella (event 38331, guest 579788, has_responded=true, will_attend=true per /tmp/evidence-T6-fix-2b.json) and projects resolved_single with rsvp_state attending and invitation_record available. The answer must be entirely in Spanish, naturally report that attendance is already confirmed for Gia Antonella on 15/08/2026 22:00, thank the person, and state that no additional change was needed without implying a new registration was made. It must not deny the invitation, restart onboarding, request email authentication or a code, or invent guest details.
     minScore: 0.9
     requireJudge: true
     severity: hard
