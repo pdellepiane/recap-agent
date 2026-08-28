@@ -1966,6 +1966,29 @@ export class AgentService {
         reply.text = mergedParagraphs.join('\n\n');
       }
     }
+    const disclosure = this.renderHumanHelpDisclosureFragment(
+      args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined,
+    );
+    if (disclosure) {
+      if (
+        reply.structuredMessage?.type === 'generic' &&
+        Array.isArray(reply.structuredMessage.paragraphs_es)
+      ) {
+        reply.structuredMessage.paragraphs_es = [
+          ...reply.structuredMessage.paragraphs_es,
+          disclosure,
+        ];
+        reply.text = reply.structuredMessage.paragraphs_es.join('\n\n');
+      } else if (reply.text && reply.text.trim().length > 0) {
+        const paragraphs = reply.text.trim().split('\n\n').filter((p) => p.trim().length > 0);
+        const newParagraphs = [...paragraphs, disclosure];
+        reply.structuredMessage = { type: 'generic', paragraphs_es: newParagraphs };
+        reply.text = newParagraphs.join('\n\n');
+      } else {
+        reply.text = disclosure;
+        reply.structuredMessage = { type: 'generic', paragraphs_es: [disclosure] };
+      }
+    }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
@@ -2619,6 +2642,27 @@ export class AgentService {
       return `Figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
     }
     return this.rsvpCurrentStateNote(invitation, offerAction);
+  }
+
+  private renderHumanHelpDisclosureFragment(
+    party: { scope: string; mentioned_names: string[] } | null | undefined,
+  ): string | null {
+    if (!party || party.scope !== 'self_and_others') {
+      return null;
+    }
+    const names = (party.mentioned_names ?? []).map((n) => n.trim()).filter(Boolean);
+    if (names.length === 0) {
+      return 'Para confirmar la asistencia de tu acompañante, nuestro equipo de apoyo humano te ayudará.';
+    }
+    if (names.length === 1) {
+      return `Para confirmar la asistencia de ${names[0]}, nuestro equipo de apoyo humano te ayudará.`;
+    }
+    if (names.length === 2) {
+      return `Para confirmar la asistencia de ${names[0]} y ${names[1]}, nuestro equipo de apoyo humano te ayudará.`;
+    }
+    const allButLast = names.slice(0, -1).join(', ');
+    const last = names[names.length - 1];
+    return `Para confirmar la asistencia de ${allButLast} y ${last}, nuestro equipo de apoyo humano te ayudará.`;
   }
 
   private rsvpOperationalNote(
