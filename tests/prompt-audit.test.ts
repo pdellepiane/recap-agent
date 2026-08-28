@@ -96,9 +96,21 @@ describe('rsvp extractor decision faithfulness', () => {
     const fs = await import('node:fs/promises');
     const content = await fs.readFile(path.resolve(process.cwd(), 'prompts/extractors/rsvp.txt'), 'utf8');
     expect(content).toContain('pide responder o gestionar sin expresar la decisión');
-    expect(content).toContain('debe expresarse en el mensaje ACTUAL');
-    expect(content).toContain('prohíbe derivar `rsvpAction` de `plan.rsvp_state.pending_action`');
+    expect(content).toContain('expresada en el mensaje ACTUAL');
+    expect(content.toLowerCase()).toContain('prohíbe derivar `rsvpaction` de `plan.rsvp_state.pending_action`');
     expect(content).not.toContain('conserva `pending_action`');
+  });
+
+  it('defines typed decision_source for mutation authorization', async () => {
+    const fs = await import('node:fs/promises');
+    const content = await fs.readFile(path.resolve(process.cwd(), 'prompts/extractors/rsvp.txt'), 'utf8');
+    expect(content).toContain('rsvpDecisionSource');
+    expect(content).toContain('current_message');
+    expect(content).toContain('plan_state');
+    expect(content).toContain('Emite siempre `rsvpDecisionSource`');
+    expect(content).toContain('Prohíbe derivar `rsvpAction` de `plan.rsvp_state.pending_action`');
+    expect(content).toContain('"Sí"');
+    expect(content).toContain('oferta visible');
   });
 });
 

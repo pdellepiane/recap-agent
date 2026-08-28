@@ -634,6 +634,7 @@ function campaignMessage(eventName: string): AgentConversationMessage {
 
 function rsvpExtraction(args: {
   action: 'attending' | 'declining' | null;
+  decisionSource?: 'current_message' | 'plan_state' | null;
   candidateGuestId?: number | null;
   eventReference?: string | null;
 }): ExtractionResult {
@@ -641,6 +642,7 @@ function rsvpExtraction(args: {
     actionIntent: 'responder_invitacion',
     informationRequests: [],
     rsvpAction: args.action,
+    rsvpDecisionSource: args.decisionSource ?? (args.action ? 'current_message' : 'plan_state'),
     rsvpCandidateGuestId: args.candidateGuestId ?? null,
     rsvpEventReference: args.eventReference ?? null,
     intentConfidence: 0.98,
