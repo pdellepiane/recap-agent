@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.rsvp_multi_person_offers_human_help
 suite: live_behavior_regression
-version: 1
-description: Multi-person RSVP reference triggers human support disclosure for companions without claiming companion registration and without RSVP vocabulary.
+version: 2
+description: Multi-person RSVP reference triggers additive human support disclosure for companions (selection enumeration + disclosure) without claiming companion registration and without RSVP vocabulary.
 tags: [live, behavior, rsvp, multi-person, human-help, spanish]
 targetModes: [live_lambda]
 inputs:
@@ -18,7 +18,7 @@ expectations:
   - id: multi-person-offers-human-help
     type: text_semantic
     rubric: >-
-      The user confirms attendance for themselves and a companion (partner Maria). The response must be entirely in natural Latin American Spanish, acknowledge warmly both people, confirm it will handle the user's own attendance per the conversation, and clearly state that our human support team will help confirm the attendance for the other person(s) (for example "nuestro equipo de apoyo humano te ayudara con la confirmacion"). It must not claim that the companion's attendance was already registered or mutated, must not invent companion registration, and must not offer to do nothing. It must remain natural and helpful.
+      The user confirms attendance for themselves and a companion (partner Maria) and the phone lookup returned multiple invitations requiring selection. The response must be entirely in natural Latin American Spanish, acknowledge warmly both people, confirm it will handle the user's own attendance per the conversation, and clearly state that our human support team will help confirm the attendance for the other person(s) (for example "nuestro equipo de apoyo humano te ayudara con la confirmacion de Maria"). It must be additive: when multiple candidate events require selection, the response must IN ADDITION enumerate the candidate events with names/dates and ask one question to choose, while still including the human-help sentence in the same reply. It must not claim that the companion's attendance was already registered or mutated, must not invent companion registration, must not offer to do nothing, and must not use RSVP vocabulary. It must remain natural and helpful.
     minScore: 0.9
     requireJudge: true
     severity: hard
