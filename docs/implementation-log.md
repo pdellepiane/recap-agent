@@ -7048,3 +7048,50 @@ Per-expectation failures (1 hard text_semantic):
 
 **Verification:** Full local gate green pre-deploy (build PASS, 581 tests, expected typecheck/lint/audit per T10-fix-4 B; this attempt redeploys same HEAD). Audit:prompts 0 violations, audit:prompts:compare 51.65% reduction (732995->354435) green. This log entry is sole appender; single atomic commit covering single redeploy (cb50285f) + full 13 (61bbfb52) + 13-row table + judges + byte metrics. Do not run full suite (T8). .continues-handoff.md untouched. STOP per failure classification; single-case retry NOT triggered (judge states flaw).
 
+### T10-fix-5 — code-composed multi-person selection reply (plan-2026-08-27-rsvp-projection-prompt-audit)
+
+**Reason:** 12/13 gate on eval-2026-08-28T18-51-01-404Z-61bbfb52: multi_person 0.10 FAIL — model preamble "aplicar la confirmación" overclaim + missing warm acknowledgement "¡Con gusto!" while selection pending. Hybrid policy requires deterministic warm lead + enumeration + question scoped to own attendance.
+
+**Decision (Commit A 76fd6bf4):** src/runtime/agent-service.ts code-composed path for rsvpParty.scope=self_and_others && rsvp_state.status=awaiting_event_selection && invitations>1 && !selectedInvitation. Build outbound deterministically in order: 1) "¡Con gusto!" warm lead, 2) enumeration via formatRsvpInvitationEnumeration (sorted deterministic, Spanish date "D de month de YYYY" via formatRsvpSpanishDate), 3) exact fragment "¿Para cuál de estos eventos deseas registrar tu asistencia?" scoped to USER's OWN attendance (never "aplicar la confirmación", never implies companion registration), 4) disclosure via renderHumanHelpDisclosureFragment (Para confirmar la asistencia de {nombres}, nuestro equipo de apoyo humano te ayudará.), 5) optional single courtesy tissue sentence sanitized (not repeating enumeration/state/question, not affirming confirmations, forbidden "aplicar la confirmación", single sentence). Composition overwrites model reply (structuredMessage paragraphs or reply.text per established merge pattern); disclosure logic skipped for composed path to avoid duplication (disclosure && !isComposed). Single-person selection (scope self or null) remains model-rendered exactly as today.
+
+**Twins (Commit A):** tests/rsvp-composed-multi-person-selection.test.ts 4 cases — self_and_others+selection contains warm lead, all candidates (Otra celebración prueba - 19 de agosto de 2026; Otra celebración prueba 2 - 20 de agosto de 2026), exact question, disclosure with Maria, no "aplicar la confirmación", warm lead at index 0, question before disclosure; tissue passthrough when single courtesy sentence present; single-person path untouched (modelReply preserved, no warm lead/question/disclosure); forbidden tissue sanitized (no overclaim). Also updated tests/rsvp-human-help-disclosure.test.ts first case to expect code-composed warm lead + enumeration + exact question + disclosure final (endsWith disclosure true, contains candidates, no overclaim). Suite 585/585 (581 +4).
+
+**Contract (Commit B):** prompts/nodes/responder_invitacion/system.txt + response_contract.txt add code-composed clause Spanish: "Para turnos con rsvp_party.scope = self_and_others y esperando selección de evento, la respuesta es compuesta por código: lidera con '¡Con gusto!', enumera candidatos con nombre y fecha, pregunta '¿Para cuál de estos eventos deseas registrar tu asistencia?' limitada a tu propia asistencia, y cierra con la frase determinista de apoyo humano; el tejido es opcional una sola frase de cortesía sin repetir enumeración/estado/pregunta ni afirmar confirmaciones; prohibido 'aplicar la confirmación', implicar que la selección registra al acompañante, o repetir enumeración/pregunta."
+
+**Fixture (Commit B):** evals/cases/live-behavior-rsvp-multi-person-human-help.yaml 5->6: description updated to code-composed warm lead + enumeration via multipleRsvpInvitationsNote format + disclosure + exact question scoped to own attendance; rubric warm-ack now satisfied by deterministic "¡Con gusto!" (code-composed), keep enumeration + disclosure + no-overclaim; ADD text_notContains "aplicar la confirmación" / "aplicar la confirmacion" (eval-side forbidden, allowed per constraints), keep no-rsvp-vocabulary.
+
+**Registry (Commit B):** evals/live-behavior-coverage.yaml 3 entries implementedBy e1820df2 -> 76fd6bf4 reachable-validated via git merge-base --is-ancestor 76fd6bf4 HEAD: rsvp-multi-person-references-offer-human-help, rsvp-tissue-bounded-to-one-closing-sentence, rsvp-multi-person-additive-human-help-with-selection; comment updated to code-composed description.
+
+**Byte deltas (Commit B):**
+- audit:prompts:compare serializedRequestBytes 732995 -> 355633 = 51.48% reduction green (delta +1198 vs prior 354435 due to added composed clause ~+1184 bytes).
+- per-branch responder_invitacion:resolved_single 8233 -> 12580 = +4347 (prior 11396 +1184): breakdown +878 system +854 contract tissue-bound + additive human-help (T10-fix) +126 tissue example (T10-fix-2) +211 offer-variant (T10-fix-3 A) +719 no-overclaim (T10-fix-3 B) +340 Gracias fragment (T10-fix-4 A) +35 disclosure final (T10-fix-4 B) +1184 code-composed warm lead multi-person selection (T10-fix-5: ¡Con gusto! + enumeration via multipleRsvpInvitationsNote + exact question scoped to own attendance + disclosure deterministic + tissue optional + forbidden aplicar la confirmación).
+- extractor 11518 stable, classifier 9334/2343 etc unchanged, global instructionBytes stable per prompt-loader.ts:75-77.
+
+**Gates (Commit B, no deploy per constraints):** typecheck PASS, lint PASS, full unit suite 585/585 PASS, live-behavior-coverage 1/1 PASS, audit:prompts 0 violations (38 branches), audit:prompts:compare green 51.48% reduction, no live runs (devops follows), no keyword matching in runtime (eval-side text_notContains allowed), no criteria weakening, .continues-handoff.md untouched.
+
+**Composed reply example (verbatim, code-composed for self_and_others + awaiting_event_selection with invitations Otra celebración prueba 19/08/2026, Otra celebración prueba 2 20/08/2026, party Maria, no tissue):**
+```
+¡Con gusto!
+
+Otra celebración prueba - 19 de agosto de 2026; Otra celebración prueba 2 - 20 de agosto de 2026
+
+¿Para cuál de estos eventos deseas registrar tu asistencia?
+
+Para confirmar la asistencia de Maria, nuestro equipo de apoyo humano te ayudará.
+```
+With optional tissue "¡Gracias por tu paciencia!" => adds as paragraph before final disclosure (disclosure remains final):
+```
+¡Con gusto!
+
+Otra celebración prueba - 19 de agosto de 2026; Otra celebración prueba 2 - 20 de agosto de 2026
+
+¿Para cuál de estos eventos deseas registrar tu asistencia?
+
+¡Gracias por tu paciencia!
+
+Para confirmar la asistencia de Maria, nuestro equipo de apoyo humano te ayudará.
+```
+Note: forbids "aplicar la confirmación" — never present. Single-person selection remains model-rendered, e.g., "¿A cuál evento te refieres: Evento 1 - 19 de agosto de 2026 o Evento 2 - 20 de agosto de 2026?" without warm lead.
+
+**Evidence:** .eval-runs/eval-2026-08-28T18-51-01-404Z-61bbfb52 is prior failing artifact (multi_person 0.10 overclaim + warm-ack). No new live run per task (no deploys, no live runs). Local twins prove fix. Deploys follow via devops.
+
