@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_cristian_phone_enriched_confirmation
 suite: live_behavior_regression
-version: 3
+version: 4
 description: Cristian's completed invitation is resolved via hybrid fragment plus natural tissue without a false missing-invitation answer.
 tags: [live, behavior, rsvp, phone-enrichment, reported-interaction, cristian]
 targetModes: [live_lambda]
@@ -34,6 +34,10 @@ expectations:
   - id: fragment-not-inverted
     type: text_not_contains
     phrases: ["figura que no asistirás"]
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
     severity: hard
 budget:
   maxTurns: 1

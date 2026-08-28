@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_paolo_mariana_resolved_single
 suite: live_behavior_regression
-version: 2
+version: 3
 description: Paolo & Mariana attending invitation reports the already-resolved RSVP result for the named event; it does not ask the user to choose among invitations when one is resolved.
 tags: [live, behavior, rsvp, paolo-mariana, resolved-single, projection]
 targetModes: [live_lambda]
@@ -44,6 +44,10 @@ expectations:
       The user asked about the invitation to Otra celebración prueba and the canonical phone evidence has that event as attending (Paolo & Mariana pattern: resolved_single). The response must be natural and entirely in Spanish, report that attendance is already confirmed for that named event and wish the guest well, without asking the user to choose among invitations, without listing other candidate events as alternatives, without asking for email or a code, and without claiming a new mutation was made.
     minScore: 0.9
     requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
     severity: hard
 budget:
   maxTurns: 1

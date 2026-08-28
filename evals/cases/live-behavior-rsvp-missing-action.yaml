@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_missing_action_requires_explicit_decision
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An RSVP request without an attendance decision reports the selected invitation state and does not mutate it.
 tags: [live, behavior, rsvp, attendance, explicit-decision]
 targetModes: [live_lambda]
@@ -54,6 +54,10 @@ expectations:
       The guest wants to manage the selected invitation but has not stated a new attendance decision. The current user-level state says the guest will not attend. The response must naturally and entirely in Spanish report that current state and ask one clear question offering to change it to attending. It must not mutate the invitation, ask for email or an authentication code, or claim that any new response was registered.
     minScore: 0.9
     requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
     severity: hard
 budget:
   maxTurns: 1

@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_trusted_phone_reports_no_pending
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A clear RSVP decision uses the trusted channel phone and distinguishes no associated invitations from no pending invitations.
 tags: [live, behavior, rsvp, attendance, trusted-phone, agent-api]
 targetModes: [live_lambda]
@@ -31,6 +31,10 @@ expectations:
       This case uses a reserved synthetic phone number for which the user-level lookup has no associated invitations at all. The response must say naturally and entirely in Spanish that no invitation is associated with the current number. It must not use the misleading statement that there are merely no pending invitations, request email or a one-time code, expose internal values, or claim that attendance was registered. It may offer human help if the guest expected an invitation.
     minScore: 0.9
     requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
     severity: hard
 budget:
   maxTurns: 1

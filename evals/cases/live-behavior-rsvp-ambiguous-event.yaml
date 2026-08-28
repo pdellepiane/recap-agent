@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_ambiguous_event_requires_grounded_selection
 suite: live_behavior_regression
-version: 2
+version: 3
 description: An underspecified event reference cannot select or mutate one of several persisted RSVP candidates.
 tags: [live, behavior, rsvp, attendance, ambiguity, reported-interaction]
 targetModes: [live_lambda]
@@ -58,6 +58,10 @@ expectations:
   - id: projection-carries-candidate-dates
     type: text_contains
     allOf: ["12 de septiembre de 2026", "19 de septiembre de 2026"]
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
     severity: hard
 budget:
   maxTurns: 1

@@ -85,10 +85,10 @@ describe('per-branch historical baseline via git show', () => {
     const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
-    // Current has -160 delta after hybrid fragment cleanup: removed mirrored state conditionals and internal jargon (T6-fix-11 B)
+    // Current has +276 delta vs anchor: +352 file bytes for multi-person human-help disclosure (T10) net +436 vs prior -160 after T6-fix-11 cleanup
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(8073);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(-160);
+    expect(currentRsvp?.instructionBytes).toBe(8509);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(276);
   }, 15_000);
 });
 

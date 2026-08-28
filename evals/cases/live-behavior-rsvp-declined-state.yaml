@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_declined_state_offers_one_change
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A declined invitation reports its current state and offers one clear confirmation to change it to attending.
 tags: [live, behavior, rsvp, attendance, current-state, confirmation]
 targetModes: [live_lambda]
@@ -62,6 +62,10 @@ expectations:
   - id: deterministic-declining-omits-no-change
     type: text_not_contains
     phrases: ["no fue necesario hacer otro cambio"]
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
     severity: hard
 budget:
   maxTurns: 1
