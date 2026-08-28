@@ -1745,6 +1745,7 @@ export class AgentService {
     let operationalNote: string;
     let nextRsvpState = pendingState;
     let deterministicReplyText: string | null = null;
+    let deterministicIsDecliningOffer = false;
 
     args.toolUsage.considered.push(
       'lookup_rsvp_invitations',
@@ -1843,6 +1844,7 @@ export class AgentService {
       if (!action) {
         if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
           deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, true);
+          deterministicIsDecliningOffer = selectedInvitation.state === 'declining';
         }
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, true);
         nextRsvpState = selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining'
@@ -1851,6 +1853,7 @@ export class AgentService {
       } else if (currentAction === action) {
         if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
           deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, false);
+          deterministicIsDecliningOffer = false;
         }
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, false);
         nextRsvpState = this.emptyRsvpState();
@@ -1939,24 +1942,29 @@ export class AgentService {
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     if (deterministicReplyText !== null) {
       const fragment = deterministicReplyText;
-      const tissueParagraphs: string[] = [];
-      if (
-        reply.structuredMessage?.type === 'generic' &&
-        Array.isArray(reply.structuredMessage.paragraphs_es)
-      ) {
-        tissueParagraphs.push(...reply.structuredMessage.paragraphs_es);
-      } else if (reply.text && reply.text.trim().length > 0) {
-        tissueParagraphs.push(reply.text.trim());
+      if (deterministicIsDecliningOffer) {
+        reply.text = fragment;
+        reply.structuredMessage = undefined;
+      } else {
+        const tissueParagraphs: string[] = [];
+        if (
+          reply.structuredMessage?.type === 'generic' &&
+          Array.isArray(reply.structuredMessage.paragraphs_es)
+        ) {
+          tissueParagraphs.push(...reply.structuredMessage.paragraphs_es);
+        } else if (reply.text && reply.text.trim().length > 0) {
+          tissueParagraphs.push(reply.text.trim());
+        }
+        const mergedParagraphs = [
+          fragment,
+          ...tissueParagraphs.filter((paragraph) => paragraph.trim().length > 0),
+        ];
+        reply.structuredMessage = {
+          type: 'generic',
+          paragraphs_es: mergedParagraphs,
+        };
+        reply.text = mergedParagraphs.join('\n\n');
       }
-      const mergedParagraphs = [
-        fragment,
-        ...tissueParagraphs.filter((paragraph) => paragraph.trim().length > 0),
-      ];
-      reply.structuredMessage = {
-        type: 'generic',
-        paragraphs_es: mergedParagraphs,
-      };
-      reply.text = mergedParagraphs.join('\n\n');
     }
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;

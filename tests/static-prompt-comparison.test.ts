@@ -85,10 +85,10 @@ describe('per-branch historical baseline via git show', () => {
     const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
-    // Current has +1858 delta vs anchor 78ae24e: +878 system +854 contract for tissue-bound single-sentence + additive human-help (T10-fix) +126 tissue example (T10-fix-2)
+    // Current has +2069 delta vs anchor 78ae24e: +878 system +854 contract for tissue-bound single-sentence + additive human-help (T10-fix) +126 tissue example (T10-fix-2) +211 offer-variant fragment-only (T10-fix-3 A)
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(10091);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1858);
+    expect(currentRsvp?.instructionBytes).toBe(10302);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(2069);
   }, 15_000);
 });
 
