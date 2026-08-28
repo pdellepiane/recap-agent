@@ -1,7 +1,7 @@
 template: template.base-live
 id: live_behavior.rsvp_confirmed_state_is_reported
 suite: live_behavior_regression
-version: 1
+version: 2
 description: A user-level invitation that already has attendance confirmed is reported naturally without another mutation.
 tags: [live, behavior, rsvp, attendance, current-state, trusted-phone]
 targetModes: [live_lambda]
@@ -40,13 +40,14 @@ expectations:
   - id: reports-existing-confirmation-naturally
     type: text_semantic
     rubric: >-
-      The user-level invitation for Otra celebración prueba already says the guest will attend. The answer must be natural and entirely in Spanish, clearly say that attendance is already confirmed, and may wish the guest a good event. It must not imply that a new change was made, ask for email or a code, or mention internal states or tools.
+      The deterministic reply for the attending current-state must be exactly "Gracias, tu asistencia a Otra celebración prueba el 19 de agosto de 2026 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!" Required elements in order: explicit "Gracias", attending polarity "figura que asistirás", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", Spanish-rendered date "19 de agosto de 2026", event name "Otra celebración prueba", and closing "¡Que disfrutes el evento!". The answer must be entirely in Spanish, natural, and must not imply a new mutation was made, ask for email or a code, or mention internal states or tools.
     minScore: 0.9
     requireJudge: true
     severity: hard
+  # exact-match assertion justified by byte-deterministic renderer (T6-fix-5) — src/runtime/agent-service.ts:2586 renderRsvpCurrentStateDeterministically
   - id: deterministic-attending-contains-thanks-and-no-change
     type: text_contains
-    allOf: ["Gracias", "no fue necesario hacer otro cambio", "Otra celebración prueba", "19 de agosto de 2026"]
+    allOf: ["Gracias, tu asistencia a Otra celebración prueba el 19 de agosto de 2026 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!"]
     severity: hard
 budget:
   maxTurns: 1

@@ -2,6 +2,22 @@
 
 ## 2026-08-28
 
+### Fixture alignment to deterministic renderer output (T6-fix-6)
+
+**Reason:** Deterministic RSVP current-state renderer is LIVE (T6-fix-5, deploy 315befda) but single-case run eval-2026-08-28T14-21-19-944Z-c177c7d3 failed 0/1 on live_behavior.rsvp_confirmed_state_is_reported. Reply is byte-deterministic: "Gracias, tu asistencia a Otra celebración prueba el 19 de agosto de 2026 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!" (src/runtime/agent-service.ts:2586 renderRsvpCurrentStateDeterministically). Failures: (1) case-sensitive text_contains mismatch — expectation used "no fue..." lowercase vs renderer "No fue..." (String.includes is case-sensitive); (2) text_semantic 0.88 < 0.90 despite every required element present verbatim — rubric was generic and not aligned to deterministic content.
+
+**Decision:**
+- evals/cases/live-behavior-rsvp-confirmed-state.yaml: bump version 1 -> 2; replace fuzzy text_contains allOf (4 substrings) with exact deterministic string as single allOf hard assertion — exact-match justified by byte-deterministic renderer (T6-fix-5), citing src/runtime/agent-service.ts:2586 renderRsvpCurrentStateDeterministically (strengthens assertion: exact match vs substrings). Added YAML comment citing renderer location.
+- Same file: align text_semantic rubric to deterministic content — enumerate exact required elements in order: attending polarity "figura que asistirás", explicit "Gracias", confirmation "ya está confirmada", no-change clause "No fue necesario hacer otro cambio", "no se realizó un nuevo registro", Spanish-rendered date "19 de agosto de 2026", event name "Otra celebración prueba", closing "¡Que disfrutes el evento!". Rubric now describes deterministic reply precisely; specification alignment, NOT weakening (minScore stays 0.9, requireJudge stays true).
+- Registry: entry rsvp-current-state-report-rendered-deterministically implementedBy updated to 83344ea (current HEAD, reachable-validated via git merge-base --is-ancestor). Schema has no description field; exact-match assertion noted via case YAML comment and this log.
+- No product code changes, no deploys, no prompt changes.
+
+**Evidence:** Run ID eval-2026-08-28T14-21-19-944Z-c177c7d3. Renderer source src/runtime/agent-service.ts:2582-2586, verified exact string bytes (UTF-8). Gates: typecheck, lint, live-behavior-coverage.test.ts, full unit suite, audit:prompts and audit:prompts:compare green (no prompt/runtime changes).
+
+**Prompt footprint:** No prompt file edited. audit:prompts 0 violations, audit:prompts:compare green — unchanged.
+
+**Verification:** typecheck clean, lint clean, live-behavior-coverage 1/1, full unit suite 561 tests, audit:prompts 0 violations, audit:prompts:compare green. Exact string asserted: "Gracias, tu asistencia a Otra celebración prueba el 19 de agosto de 2026 ya está confirmada y figura que asistirás. No fue necesario hacer otro cambio y no se realizó un nuevo registro. ¡Que disfrutes el evento!"
+
 ### Fix 4: deterministic RSVP current-state renderer override was dead code — clear structuredMessage (T6-fix-5)
 
 **Reason:** Deterministic current-state renderer override (commit 8172732) was dead code in production: it set `reply.text` at src/runtime/agent-service.ts:1937-1939, but live `composeReply` always returns `{ text: '', structuredMessage }` (src/runtime/openai-agent-runtime.ts:386-388) and `renderOutbound` gives structuredMessage absolute precedence, discarding reply.text (agent-service.ts:7777-7793; WhatsApp renderer joins model paragraphs_es verbatim, src/runtime/message-renderer.ts:299). Result: all deterministic RSVP replies were model-rendered live; confirmed_state inverted polarity (judge 0.00); cinthya/jose missed deterministic gracias; declined was model text.
