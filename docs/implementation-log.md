@@ -7143,3 +7143,17 @@ Per-expectation failures (1 hard text_semantic):
 
 **Verification:** Full local gate green pre-deploy (585 tests, typecheck, lint, live-behavior-coverage 1/1, audit:prompts 0 violations, audit:prompts:compare 51.48% reduction). This log entry is sole appender; single atomic commit covering single redeploy (ce6985ec) + full 13 (d1a92798) + 13-row table + judges + byte metrics. Do not run full suite (T8). .continues-handoff.md untouched. STOP per failure classification; single-case retry NOT triggered (judge states invented companion flaw).
 
+
+### T11 revert -- remove multi-person overcompensation (plan-2026-08-27-rsvp-projection-prompt-audit T11)
+
+**Reason (user simplification):** Multi-person RSVP was overcompensated. Desired behavior ONLY: detect attendance for more than one person and reply one natural sentence deferring to human support, DO NOTHING ELSE: no backend lookups, no mutations, no enumeration, no selection. Task binding: revert exactly composed multi-person selection reply + tissue sanitizer (T10-fix-5), additive human-help disclosure (T10-fix-4 B), and no-overclaim-during-selection contract rubric (T10-fix-3 B).
+
+**Decision (Commit A):**
+- prompts/nodes/responder_invitacion/system.txt: removed 3 bullets added for multi-person (self_and_others deterministic last sentence, code-composed warm lead/enumeration/question, no-overclaim during selection). Bytes 3649->2209.
+- prompts/nodes/responder_invitacion/response_contract.txt: removed 3 bullets (self_and_others deterministic, code-composed, no-overclaim). Bytes 3307->1941.
+- src/runtime/agent-service.ts: deleted isComposedMultiPersonSelection block (warmLead, enumeration, selectionQuestion, sanitizedTissue with all lower.includes substring-matching sanitizer) — sanitizer removed entirely (grep confirms no lower.includes remains in agent-service.ts). Deleted additive disclosure block (disclosure && !isComposed). Deleted renderHumanHelpDisclosureFragment helper (fallback generic). Single-person RSVP flows untouched (three-state projection, fragments, mutation-authorization, offer fragment-only, attending Gracias, tissue single-sentence).
+- tests: deleted rsvp-composed-multi-person-selection.test.ts (4 cases) and rsvp-human-help-disclosure.test.ts (4 cases) — overcompensation twins, now moot. Updated tests/static-prompt-comparison.test.ts expectations: responder_invitacion:resolved_single 12580->9774, delta 4347->1541 (reduction 2806 bytes). Total suite 585->577.
+- Verification: typecheck PASS, lint PASS, 577/577 tests PASS, live-behavior-coverage PASS, audit:prompts violations [] green, audit:prompts:compare 51.87% reduction (baseline 732995 -> current 352805) green, byte delta vs anchor 78ae24e drops from +4347 to +1541 — net REDUCTION as required. No keyword matching remains.
+
+**Evidence:** git diff 78ae24e..HEAD for responder_invitacion -2806 bytes, sanitizer gone proof grep lower.includes empty, prompt audit green, compare green.
+

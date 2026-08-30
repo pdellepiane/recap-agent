@@ -85,10 +85,10 @@ describe('per-branch historical baseline via git show', () => {
     const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
-    // Current has +4347 delta vs anchor 78ae24e: +878 system +854 contract for tissue-bound single-sentence + additive human-help (T10-fix) +126 tissue example (T10-fix-2) +211 offer-variant fragment-only (T10-fix-3 A) +719 no-overclaim during selection (T10-fix-3 B) +340 Gracias in attending fragment + tissue free close (T10-fix-4 A) +35 deterministic human-help disclosure final sentence (T10-fix-4 B) +1184 code-composed warm lead multi-person selection (T10-fix-5: warm lead ¡Con gusto!, enumeration via multipleRsvpInvitationsNote, exact question ¿Para cuál...registrar tu asistencia? scoped to own attendance, disclosure deterministic, tissue optional single courtesy, forbidden aplicar la confirmación)
+    // Current after T11 revert: net +1541 vs anchor 78ae24e (down from +4347) — reverted multi-person overcompensation (composed selection + sanitizer 1184, additive disclosure 35, no-overclaim during selection 719 and related rubric) and kept single-person RSVP tissue/offer/Gracias semantics; handoff is code-composed (no prompt growth)
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(12580);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(4347);
+    expect(currentRsvp?.instructionBytes).toBe(9774);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(1541);
   }, 15_000);
 });
 
