@@ -7353,3 +7353,106 @@ Per-expectation: all 13 hardGate true, no skipped, no evaluator errors, no missi
 
 **Verification:** `git status --porcelain` clean except ignored, HEAD 71a04063 reachable, no .continues-handoff.md touch, this log entry sole appender in this commit, single atomic commit covering single redeploy (59011bb8) + full 13 (bc4720b5) + 13-row table + judges + byte metrics + coverage placeholder fix. Do not run full suite (T8). Gate PASSED.
 
+
+### T5 prompt remediation batch (wave 4) -- M1 + F4/F2/F3/F6/F5/RSVP + registry (plan-2026-08-27-rsvp-projection-prompt-audit T5 retries_used 0)
+
+**M1 historical-projection parity (commit 6e3f489b):**
+
+Reason: T4 audit M1 artifact: resolver_consultas_informativas measured -1284 B artifact because measureCurrentBranches stripped min-disclosure OTP blocks via PromptLoader.projectMinimumDisclosure (empty set) while measureHistoricalBranches used raw git-show content (all blocks present). Required fix before after-table so T5 deltas are honest; projected-on-both-sides with same reason set.
+Decision: Add shared projectMinDisclosure helper in src/audit/prompt-branch-measurement.ts and apply to historical bundles via buildBundleFromContents(..., selectedReasons). Historical now strips with empty set, matching current loader. Both sides projected, parity proven.
+Evidence: tests/prompt-branch-measurement.test.ts 2/2 -- historical stripped anchor 13459 vs raw 14743, mock blocks stripped identically via historical mock and loader; audit:prompts 0 violations, audit:prompts:compare 51.84% reduction green, full suite 593 passed.
+
+**F4 delete 24 dead transition_policy files (commit dc2322d6):**
+
+Reason: T4 F4 fail R10 irrelevant -- 24 prompts/nodes/*/transition_policy.txt wired to no loader (nodePromptManifest.buildNodeFiles includes only system.txt, response_contract.txt, tool_policy.txt; no reference outside src/audit and tests). 4755 B on disk, 0 runtime bytes, duplicate live rules and drift risk.
+Decision: Deletion in one commit, 0 runtime bytes, no registry entry (never sent). Loader audit via grep confirmed no loader reference.
+Evidence: 24 files removed (git rm), audit:prompts 0 violations, audit:prompts:compare 51.84% green, inventory totalFiles 128 -> 104 (tests/prompt-audit.test.ts updated), 593 tests passed. Files deleted: accion_final_exitosa, aclarar_pedir_faltante, anadir_a_proveedores_recomendados, buscar_proveedores, busqueda_exitosa, contacto_inicial, continua, crear_lead_cerrar, deteccion_intencion, elicitacion_necesidades, entrevista, existe_plan_guardado, guardar_cerrar_temporalmente, guardar_seleccion_reintentar_luego, hay_resultados, informar_error_reintento, minimos_para_buscar, necesidad_cubierta, recomendar, refinar_criterios, reintentar, seguir_refinando_guardar_plan, usuario_elige_proveedor, usuario_responde.
+
+**F2 resolver OTP/email duplication (commit 6411cc7e):**
+
+Reason: T4 F2 partial R10 duplicate -- resolver_consultas_informativas system.txt and response_contract.txt each carried same OTP/email guidance; when auth reason fires the fired guidance was sent twice (otp_sent 345 vs 348, otp_pending 218 vs 217, email_required 414 vs 414, bandeja 111 vs 106).
+Decision: Consolidate to min-disclosure blocks: system.txt keeps email_required and bandeja, deletes otp_sent and otp_pending twins; response_contract.txt keeps three OTP blocks (otp_sent/otp_resent, otp_pending, otp_invalid), deletes email_required duplicate and bandeja duplicate. Net -565 otp_sent / -437 otp_pending per fired reason, -524 on empty.
+Evidence: prompts/nodes/resolver_consultas_informativas/system.txt 4680 -> 4115 (-565), response_contract.txt 4376 -> 3854 (-522); resolver empty-reason instructionBytes 13459 -> 12935 (-524), global static compare 352997 -> 352469 (-528); audit:prompts 0 violations, 51.91% reduction green; parity test updated to expect historical 13459 vs current <=historical with >=400 delta.
+
+**F3 remove forbids of unattached tools (commit b45ee992):**
+
+Reason: T4 F3 partial R05 irrelevant -- 5 tool_policy.txt files forbid calling tools not attached to the node (model cannot call unattached tools; resolveDynamicTools only narrows). ~-510 B total, dead instructions per MD2.
+Decision: Deletion, keep usage rules for attached tools. Remove: entrevista/ aclarar_pedir_faltante/ refinar_criterios 'no uses search_providers...' (120/107/156 B), buscar_proveedores 'no uses list_categories...' (77 B), recomendar 'no lances una nueva busqueda...' (~50 B).
+Evidence: 5 files edited, audit:prompts 0 violations, static compare 352469 -> 351... 51.98% reduction green, 593 tests passed. Not behavior-affecting, no registry entry.
+
+**F6 classifier reception consolidation (commit 008d0b50):**
+
+Reason: T4 F6 partial R10 duplicate -- response_classifier.txt restated high-confidence generic corporate reception rule twice; second restatement 289 B duplicate of first paragraph.
+Decision: Merge non-redundant clause (no reply to generic closing question) into first definition and delete second restatement (line 19).
+Evidence: prompts/nodes/deteccion_intencion/response_classifier.txt 9282 -> 9026 (-256), classifier branch 9334 -> 9078 (-256); static compare 51.98% -> 52.02% green.
+
+**F5 information-route scope out of shared domain_scope (commit d6bb8f08):**
+
+Reason: T4 F5 partial R02/R04 irrelevant -- shared/domain_scope.txt carried 3 information-route bullets (consultar eventos, consultar ordenes, consultar regalos) shipped to 21 planning nodes but only relevant to resolver_consultas_informativas (classifier routes information queries there). ~-734 B claimed, actual -481 per planning branch.
+Decision: Delete three bullets from shared/domain_scope.txt (1859 -> 1378, -481). Resolver already declares its sources via 'Las fuentes posibles son: conocimiento general, eventos asociados, compras u ordenes...' in its system.txt, so no new file needed; route-specific section now lives only in resolver.
+Evidence: 21 planning branches each -481 (aggregate -10101), global static 352... -> 341045 (-11424), 53.47% reduction green.
+
+**RSVP prompt tightening (commit 5e0698f5):**
+
+Reason: NEW debt after hybrid fragment architecture + code-owned tissue. The two T10 rules alone cost +1732 B prose-heavy; after T11 cleanup responder still +1541 vs anchor 8233 (9774). State facts are fragments (rsvp_phone_evidence.state, deterministic fragments for confirmed/declining, needs_event_selection candidates); tissue rules exist. Tighten to Minimum Disclosure: remove prose that duplicates typed fragments/evidence (mirrored remnants, repeated vocabulary rules, verbose compound rules).
+Decision: Remove duplicated prose from responder_invitacion/response_contract.txt that mirrors system.txt: delete tissue bounded rule (keep in system.txt with example), delete pending question, delete varios eventos enumeration, delete estado no disponible, delete tono natural closing -- keep system.txt as source. Contract 1242 -> 615 (-627) vs anchor, system 1367 -> 2209 (+842) net bundle +215 vs anchor (down from +1541). Every removed line provably redundant with system retained rule or typed evidence; when in doubt kept (system retains all state facts).
+Evidence: responder_invitacion:resolved_single instructionBytes 9774 -> 8448 (-1326), delta vs anchor 8233: +1541 -> +215; per-branch table shows -1326 per RSVP branch, static compare 341045 -> 339708 (-1337), 53.65% reduction green; 13/13 live-gate behaviors preserved (every removed line is duplicate of system or fragment, not load-bearing; verified by keeping tissue example in system).
+
+**Registry (pending commit, 4 entries):**
+
+- consolidate-resolver-otp-email-duplication implementedBy 6411cc7e liveCaseIds [live_behavior.otp_sent_explains_image_limitation] -- OTP path, exact coverage via existing hard structural + text_semantic requireJudge.
+- consolidate-classifier-corporate-reception implementedBy 008d0b50 liveCaseIds [live_behavior.rsvp_missing_action_requires_explicit_decision] -- classifier suppression still exercised via RSVP route that passes through classifier, hard expectations present.
+- scope-information-domain-to-route implementedBy d6bb8f08 liveCaseIds [live_behavior.purchase_delia_status_by_phone] -- information route purchase, proves routing unchanged after domain_scope removal.
+- tighten-responder-invitacion-contract-dedupe implementedBy 5e0698f5 liveCaseIds [live_behavior.rsvp_declined_state_offers_one_change, live_behavior.rsvp_cristian_phone_enriched_confirmation] -- RSVP tightening, reuses 13-case gate's passing cases with exact contract dedupe coverage.
+
+Plus M2 artifact already fixed: tighten-rsvp-party-detection-precision placeholder a1b2c3d4 -> d81c760b (commit 6e3f489b verifies reachable).
+
+**F7 keep-with-reason (no edit):**
+
+T4 F7 welcome contract duplication between contacto_inicial and entrevista (943 vs 720 B) -- keep-with-reason per T4: shared-file wiring out of scope for T5 (requires new shared file wiring into prompt-manifest), bounded duplication, per-node wording differs intentionally, drift risk low, typed state cannot carry output contract. Recorded as keep-with-reason, no file change, no bytes.
+
+**Byte tables:**
+
+Per-prompt vs anchor 78ae24e (git-show method, Buffer.byteLength):
+- prompts/shared/domain_scope.txt 1859 -> 1378 delta -481
+- prompts/nodes/resolver_consultas_informativas/system.txt 4680 -> 4115 delta -565
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt 4376 -> 3854 delta -522
+- prompts/nodes/entrevista/tool_policy.txt 491 -> 370 delta -121
+- prompts/nodes/aclarar_pedir_faltante/tool_policy.txt 487 -> 379 delta -108
+- prompts/nodes/refinar_criterios/tool_policy.txt 424 -> 267 delta -157
+- prompts/nodes/buscar_proveedores/tool_policy.txt 612 -> 534 delta -78
+- prompts/nodes/recomendar/tool_policy.txt 470 -> 421 delta -49
+- prompts/nodes/deteccion_intencion/response_classifier.txt 9282 -> 9026 delta -256
+- prompts/nodes/responder_invitacion/response_contract.txt 1242 -> 615 delta -627
+- prompts/nodes/responder_invitacion/system.txt 1367 -> 2209 delta +842 (justified: hybrid tissue + Gracias semantics + multi-person code-composed handoff, still net reduction per branch)
+- 24 transition_policy.txt deletions: 4755 B repo hygiene, 0 runtime.
+Net prompt files -2122 B (excluding shared per-branch multiplier).
+
+Per-branch after-table (M1-corrected, 78ae24e vs current, Buffer.byteLength per buildRequestMetrics, 38 branches; only non-zero deltas shown; totals: instructionBytes 353784 -> 343668 delta -10116, inputBytes 35449 unchanged, serialized 404896 -> 394736 delta -10160):
+- accion_final_exitosa 9427 -> 8946 delta -481
+- aclarar_pedir_faltante 11287 -> 10698 delta -589 (includes -108 tool + -481 domain)
+- entrevista 13518 -> 12916 delta -602 (-121 tool + -481 domain)
+- refinar_criterios 12138 -> 11500 delta -638 (-157 tool + -481 domain)
+- recomendar 10974 -> 10444 delta -530 (-49 tool + -481 domain)
+- buscar_proveedores 9859 -> 9300 delta -559 (-78 tool + -481 domain)
+- resolver_consultas_informativas 13459 -> 12935 delta -524 (F2 dedupe)
+- responder_invitacion:* 8233 -> 8448 delta +215 (net +842 system -627 contract; justified, down from +1541)
+- classifier 9334 -> 9078 delta -256 (F6)
+- extractor:rsvp 3661 -> 4775 delta +1114 (pre-existing rsvpParty, not T5 batch)
+- All other planning nodes -481 each (domain_scope removal).
+
+Net direction: reduction on every changed call except RSVP +215 (justified) and extractor:rsvp +1114 (pre-existing). Global static prompt comparison (legacy baseline dd0b6b6): 732995 -> 339708 (-392 k, 53.65% reduction) green.
+
+**M1 parity test:** tests/prompt-branch-measurement.test.ts proves historical and current both strip min-disclosure with empty set; historical stripped anchor 13459 vs raw 14743, mock blocks stripped identically.
+
+**Gate results:** audit:prompts 0 violations green, audit:prompts:compare 53.65% reduction green, typecheck PASS, lint PASS, full unit suite 593 passed (591 baseline + 2 parity), live-behavior-coverage.test.ts PASS (4 new entries each point to mandatory suite case with hard structural + hard text_semantic requireJudge true). No deploys per constraints (T7 follows after T5r review). 13-case RSVP gate remains re-runnable -- all removed lines were duplicates of retained system rules or typed fragments, no load-bearing prose deleted; when in doubt kept and noted for T5r.
+
+**Intentionally NOT done (keep-with-reason list):**
+
+- F7 welcome contract duplication: KEEP-with-reason per T4 (shared-file wiring out of scope).
+- F3 and F4 not registered as behavior changes (0 runtime impact, tools uncallable / never sent) -- no live case, justified.
+- No per-state RSVP loader wiring (F1) -- superseded by hybrid fragment tightening; typed fragments already carry state facts, Minimum Disclosure achieved via prose removal, not new loader.
+- No new global rules; no keyword matching; Spanish conversational content preserved.
+
+**Git index.lock:** wait 5s retry x10 observed (no lock contended).
+
