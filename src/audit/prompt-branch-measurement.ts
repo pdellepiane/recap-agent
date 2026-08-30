@@ -53,14 +53,29 @@ async function readHistoricalPrompt(ref: string, relativePath: string): Promise<
   return stdout;
 }
 
+function projectMinDisclosure(
+  content: string,
+  selectedReasons: ReadonlySet<string>,
+): string {
+  return content.replace(
+    /<!--\s*min-disclosure:\s*([^>]+?)\s*-->([\s\S]*?)<!--\s*\/min-disclosure\s*-->/gu,
+    (_match, labels: string, section: string) => {
+      const sectionLabels = labels.trim().split(/[\s,]+/u).filter(Boolean);
+      return sectionLabels.some((label) => selectedReasons.has(label)) ? section.trim() : '';
+    },
+  );
+}
+
 function buildBundleFromContents(
   relativePaths: readonly string[],
   contents: Map<string, string>,
   allowedTools: readonly string[],
+  selectedReasons: ReadonlySet<string> = new Set(),
 ): PromptBundle {
   const instructions = relativePaths
     .map((relativePath) => {
-      const content = contents.get(relativePath) ?? '';
+      const raw = contents.get(relativePath) ?? '';
+      const content = projectMinDisclosure(raw, selectedReasons);
       return `## ${relativePath}\n${content.trim()}`;
     })
     .join('\n\n');
