@@ -1747,6 +1747,76 @@ export class AgentService {
     let deterministicReplyText: string | null = null;
     let deterministicIsDecliningOffer = false;
 
+    const handoffParty = args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined;
+    if (handoffParty?.scope === 'self_and_others') {
+      const handoffFragment = this.renderRsvpHandoffFragment(handoffParty);
+      const handoffOperationalNote = `RSVP multi-person handoff: rsvpParty.scope=self_and_others (mentioned_names=${JSON.stringify(handoffParty.mentioned_names ?? [])}) — short-circuited BEFORE RSVP backend calls (no lookup_rsvp_invitations, no lookup_guest_events_by_phone, no get_guest_event_detail, no guest_rsvp); plan rsvp_state untouched; reply is handoff fragment only.`;
+      logAuthObservabilityEvent('info', 'rsvp_handoff_multi_person', {
+        scope: handoffParty.scope,
+        mentioned_names: handoffParty.mentioned_names ?? [],
+        fragment: handoffFragment,
+        rsvp_state_status: pendingState.status,
+      });
+      const planToSaveHandoff = mergePlan(args.workingPlan, {
+        current_node: currentNode,
+        intent: 'responder_invitacion',
+        intent_confidence: args.extraction.intentConfidence,
+        rsvp_state: pendingState,
+      });
+      const replyHandoff = {
+        text: handoffFragment,
+        structuredMessage: { type: 'generic' as const, paragraphs_es: [handoffFragment] },
+      } as ComposeReplyResult;
+      args.timingMs.rsvp_execution += 0;
+      args.tokenUsage.reply = replyHandoff.tokenUsage ?? null;
+      args.tokenUsage.openAiCalls.reply = replyHandoff.openAiCall ?? null;
+      args.tokenUsage.total = this.sumTokenUsage(
+        args.tokenUsage.classifier,
+        args.tokenUsage.extraction,
+        args.tokenUsage.reply,
+      );
+      const handoffSaveStartedAt = Date.now();
+      await this.dependencies.planStore.save({
+        plan: planToSaveHandoff,
+        reason: currentNode,
+      });
+      args.timingMs.save_plan += Date.now() - handoffSaveStartedAt;
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan: planToSaveHandoff,
+        outbound: this.renderOutbound(
+          replyHandoff,
+          [],
+          args.inbound.channel,
+          planToSaveHandoff.conversation_id,
+          planToSaveHandoff,
+        ),
+        trace: this.buildTrace({
+          plan: planToSaveHandoff,
+          previousNode: args.previousNode,
+          currentNode,
+          nodePath: args.previousNode === currentNode ? [currentNode] : [args.previousNode, currentNode],
+          extraction: args.extraction,
+          missingFields: [],
+          searchReady: false,
+          promptBundleId: 'deterministic:rsvp_multi_person_handoff',
+          promptFilePaths: [],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: currentNode,
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          responseClassifier: args.responseClassifierTrace,
+          messageContext: args.messageContext,
+          searchStrategy: 'none',
+          turnDecision: this.rsvpTurnDecision('handoff_multi_person'),
+          operationalNote: handoffOperationalNote,
+        }),
+      };
+    }
+
     args.toolUsage.considered.push(
       'lookup_rsvp_invitations',
       'lookup_guest_events_by_phone',
@@ -2619,6 +2689,27 @@ export class AgentService {
       return `Figura que no asistirás a ${eventName}${datePart}. ${capitalizedNoChange}.`;
     }
     return this.rsvpCurrentStateNote(invitation, offerAction);
+  }
+
+  private renderRsvpHandoffFragment(
+    party: { scope: string; mentioned_names: string[] } | null | undefined,
+  ): string {
+    if (!party || party.scope !== 'self_and_others') {
+      return '¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará.';
+    }
+    const names = (party.mentioned_names ?? []).map((n) => n.trim()).filter(Boolean);
+    if (names.length === 0) {
+      return '¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará.';
+    }
+    if (names.length === 1) {
+      return `¡Con gusto! Para confirmar la asistencia para ti y para ${names[0]}, nuestro equipo de apoyo humano te ayudará.`;
+    }
+    if (names.length === 2) {
+      return `¡Con gusto! Para confirmar la asistencia para ti y para ${names[0]} y ${names[1]}, nuestro equipo de apoyo humano te ayudará.`;
+    }
+    const allButLast = names.slice(0, -1).join(', ');
+    const last = names[names.length - 1];
+    return `¡Con gusto! Para confirmar la asistencia para ti y para ${allButLast} y ${last}, nuestro equipo de apoyo humano te ayudará.`;
   }
 
   private rsvpOperationalNote(

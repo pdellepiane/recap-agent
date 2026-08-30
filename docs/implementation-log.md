@@ -7157,3 +7157,21 @@ Per-expectation failures (1 hard text_semantic):
 
 **Evidence:** git diff 78ae24e..HEAD for responder_invitacion -2806 bytes, sanitizer gone proof grep lower.includes empty, prompt audit green, compare green.
 
+
+### T11 handoff -- short-circuit multi-person RSVP to human support (plan-2026-08-27-rsvp-projection-prompt-audit T11)
+
+**Reason:** User simplification requires detect + defer to human, nothing else: when rsvpParty.scope=self_and_others, short-circuit BEFORE any RSVP backend calls, leave plan rsvp_state untouched, reply one natural sentence.
+
+**Decision (Commit B):**
+- src/runtime/agent-service.ts handleRsvpFlow: early short-circuit at top if handoffParty.scope===self_and_others. Builds handoffFragment via new renderRsvpHandoffFragment (names natural Spanish join, fallback "tu acompañante"), logs observability operational note "RSVP multi-person handoff..." via logAuthObservabilityEvent, saves plan with unchanged rsvp_state, returns deterministic reply with promptBundleId deterministic:rsvp_multi_person_handoff and no tool calls (considered/called remain empty for RSVP tools). Zero backend lookups cascade.
+- New helper renderRsvpHandoffFragment: 0-> fallback tu acompañante, 1-> name, 2-> "a y b", 3+-> "a, b y c" — always prefix "¡Con gusto! Para confirmar la asistencia para ti y para {names}, nuestro equipo de apoyo humano te ayudará." Never uses RSVP word.
+- Twins: tests/rsvp-handoff-multi-person.test.ts 5 cases: with Maria (single sentence, names interpolated, zero RSVP tools, plan untouched, operational note contains handoff, no RSVP word, no enumeration), fallback tu acompañante, two names, single-person not handoff (lookup called), deterministic helper.
+
+**Verification:** typecheck PASS, lint PASS, 582/582 tests PASS (577 +5 new), live-behavior-coverage PASS, audit:prompts 0 violations, compare 51.87% reduction (352805 vs 732995) green, sanitizer still gone, no keyword matching in runtime.
+
+**Handoff fragment verbatim:**
+- with names (Maria): "¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará."
+- with two names (Maria y Carlos): "¡Con gusto! Para confirmar la asistencia para ti y para Maria y Carlos, nuestro equipo de apoyo humano te ayudará."
+- fallback (no names): "¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará."
+- outbound sanitized strips trailing period (sanitizeAssistantOutput), so outbound text ends without final dot: "¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará" (sanitized).
+
