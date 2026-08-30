@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { AgentService } from '../src/runtime/agent-service';
-import type { AgentConversationGateway, AgentGuestEventsResult, AgentGuestRsvpResult } from '../src/runtime/agent-conversation-gateway';
+import type { AgentConversationGateway, AgentGatewayResult, AgentGuestEventsResult, AgentGuestRsvpResult } from '../src/runtime/agent-conversation-gateway';
 import type { AgentRuntime, ComposeReplyRequest, ComposeReplyResult, ExtractionResult } from '../src/runtime/contracts';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
@@ -10,7 +10,7 @@ import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/prov
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 
 describe('RSVP multi-person handoff (T11)', () => {
-  it('self_and_others with names replies single handoff sentence, no backend calls, plan untouched', async () => {
+  it('self_and_others with names replies single handoff sentence, no backend calls, plan untouched except backend-registered handoff', async () => {
     const runtime = new HandoffRuntime(
       rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
     );
@@ -46,12 +46,16 @@ describe('RSVP multi-person handoff (T11)', () => {
     expect(outbound).not.toContain('Evento sin nombre');
     expect(gateway.calledTools).toEqual([]);
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
+    expect(result.trace.tools_called).toContain('request_human_takeover');
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(gateway.lastPhoneNumber).toBe('51973296571');
     expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
     expect(result.plan.current_node).toBe('responder_invitacion');
+    expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
     expect(result.trace.operational_note ?? '').toContain('handoff');
   });
 
-  it('self_and_others without names uses fallback tu acompañante, one sentence', async () => {
+  it('self_and_others without names uses fallback tu acompañante, one sentence and backend registered', async () => {
     const runtime = new HandoffRuntime(
       rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: [] } }),
     );
@@ -83,11 +87,14 @@ describe('RSVP multi-person handoff (T11)', () => {
     expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará');
     expect(outbound.toLowerCase()).not.toContain('rsvp');
     expect(gateway.calledTools).toEqual([]);
+    expect(result.trace.tools_called).toContain('request_human_takeover');
+    expect(gateway.takeoverCalls).toBe(1);
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
     expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
+    expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
   });
 
-  it('self_and_others with two names interpolates both', async () => {
+  it('self_and_others with two names interpolates both and registers handoff', async () => {
     const runtime = new HandoffRuntime(
       rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria', 'Carlos'] } }),
     );
@@ -118,8 +125,11 @@ describe('RSVP multi-person handoff (T11)', () => {
     const outbound = result.outbound.text ?? '';
     expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria y Carlos, nuestro equipo de apoyo humano te ayudará');
     expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
+    expect(result.trace.tools_called).toContain('request_human_takeover');
+    expect(gateway.takeoverCalls).toBe(1);
     expect(result.trace.tools_called.filter((t: string) => ['lookup_rsvp_invitations', 'lookup_guest_events_by_phone', 'get_guest_event_detail', 'guest_rsvp'].includes(t))).toEqual([]);
     expect(gateway.calledTools).toEqual([]);
+    expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
   });
 
   it('single-person does NOT handoff and proceeds to normal RSVP backend (lookup called)', async () => {
@@ -156,6 +166,8 @@ describe('RSVP multi-person handoff (T11)', () => {
     const outbound = result.outbound.text ?? '';
     expect(outbound).not.toBe('¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará');
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    expect(gateway.takeoverCalls).toBe(0);
   });
 
   it('handoff fragment is deterministic helper', () => {
@@ -175,6 +187,194 @@ describe('RSVP multi-person handoff (T11)', () => {
   });
 });
 
+describe('RSVP multi-person handoff (T12 backend-registered)', () => {
+  it('dedupe: second detection in same conversation does not create second backend call', async () => {
+    const runtime = new HandoffRuntime(
+      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
+    );
+    const store = new InMemoryPlanStore();
+    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-dedupe', channel: 'whatsapp', externalUserId: 'user-dedupe' }), {
+      current_node: 'responder_invitacion',
+      intent: 'responder_invitacion',
+      contact_phone: '+51973296571',
+      contact_phone_extension: '+51',
+      contact_phone_number: '973296571',
+      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
+    });
+    await store.save({ plan: seeded, reason: 'seed' });
+    const gateway = new TrackingGateway();
+    const service = new AgentService({
+      planStore: store,
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> { throw new Error('should not be called'); },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const first = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-dedupe', text: 'Confirmo para mi y Maria', messageId: 'msg-d1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(first.trace.tools_called).toContain('request_human_takeover');
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(first.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará');
+    expect(first.plan.assumptions).toContain(`rsvp_handoff:${first.plan.conversation_id ?? first.plan.plan_id}`);
+    const second = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-dedupe', text: 'Confirmo para mi y Maria otra vez', messageId: 'msg-d2', receivedAt: '2026-08-27T15:01:00.000Z', contactPhone: '+51973296571' });
+    expect(second.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará');
+    expect(second.trace.tools_called).not.toContain('request_human_takeover');
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(second.plan.assumptions).toContain(`rsvp_handoff:${second.plan.conversation_id ?? second.plan.plan_id}`);
+    expect(second.trace.operational_note ?? '').toContain('deduped');
+  });
+
+  it('retryable failure is retried once then honest fallback on second failure', async () => {
+    const runtime = new HandoffRuntime(
+      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
+    );
+    const store = new InMemoryPlanStore();
+    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-retry-fail', channel: 'whatsapp', externalUserId: 'user-retry-fail' }), {
+      current_node: 'responder_invitacion',
+      intent: 'responder_invitacion',
+      contact_phone: '+51973296571',
+      contact_phone_extension: '+51',
+      contact_phone_number: '973296571',
+      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
+    });
+    await store.save({ plan: seeded, reason: 'seed' });
+    const gateway = new TrackingGateway({
+      takeoverSequence: [
+        { status: 'failed', error: 'transient 500', retryable: true },
+        { status: 'failed', error: 'still 500', retryable: true },
+      ],
+    });
+    const service = new AgentService({
+      planStore: store,
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> { throw new Error('should not be called'); },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-retry-fail', text: 'Confirmo para mi y Maria', messageId: 'msg-rf', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(gateway.takeoverCalls).toBe(2);
+    expect(result.trace.tools_called).toContain('request_human_takeover');
+    expect(result.outbound.text ?? '').toContain('No pude registrar');
+    expect(result.outbound.text ?? '').toContain('intenta nuevamente');
+    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará');
+    expect(result.plan.human_escalation.status).toBe('none');
+    expect(result.plan.human_escalation.last_error).toContain('still 500');
+  });
+
+  it('retryable failure retried once succeeds on second attempt then handoff registered', async () => {
+    const runtime = new HandoffRuntime(
+      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Carlos'] } }),
+    );
+    const store = new InMemoryPlanStore();
+    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-retry-success', channel: 'whatsapp', externalUserId: 'user-retry-success' }), {
+      current_node: 'responder_invitacion',
+      intent: 'responder_invitacion',
+      contact_phone: '+51973296571',
+      contact_phone_extension: '+51',
+      contact_phone_number: '973296571',
+      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
+    });
+    await store.save({ plan: seeded, reason: 'seed' });
+    const gateway = new TrackingGateway({
+      takeoverSequence: [
+        { status: 'failed', error: 'transient', retryable: true },
+        { status: 'success', message: 'Requested.' },
+      ],
+    });
+    const service = new AgentService({
+      planStore: store,
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> { throw new Error('should not be called'); },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-retry-success', text: 'Confirmo para mi y Carlos', messageId: 'msg-rs', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(gateway.takeoverCalls).toBe(2);
+    expect(result.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Carlos, nuestro equipo de apoyo humano te ayudará');
+    expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
+  });
+
+  it('definitive failure returns honest fallback without claiming help', async () => {
+    const runtime = new HandoffRuntime(
+      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
+    );
+    const store = new InMemoryPlanStore();
+    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-definitive', channel: 'whatsapp', externalUserId: 'user-definitive' }), {
+      current_node: 'responder_invitacion',
+      intent: 'responder_invitacion',
+      contact_phone: '+51973296571',
+      contact_phone_extension: '+51',
+      contact_phone_number: '973296571',
+      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
+    });
+    await store.save({ plan: seeded, reason: 'seed' });
+    const gateway = new TrackingGateway({
+      takeoverSequence: [{ status: 'failed', error: 'definitive 400', retryable: false }],
+    });
+    const service = new AgentService({
+      planStore: store,
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> { throw new Error('should not be called'); },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-definitive', text: 'Confirmo para mi y Maria', messageId: 'msg-def', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(result.trace.tools_called.filter((t) => t === 'request_human_takeover').length).toBe(1);
+    expect(result.outbound.text ?? '').toContain('No pude registrar');
+    expect(result.outbound.text ?? '').toContain('intenta nuevamente');
+    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará');
+    expect(result.plan.human_escalation.status).toBe('none');
+    expect(result.plan.human_escalation.last_error).toContain('definitive 400');
+    expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
+  });
+
+  it('skipped handoff (missing phone / not configured) returns honest fallback', async () => {
+    const runtime = new HandoffRuntime(
+      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] } }),
+    );
+    const store = new InMemoryPlanStore();
+    const seeded = mergePlan(createEmptyPlan({ planId: 'plan-skipped', channel: 'whatsapp', externalUserId: 'user-skipped' }), {
+      current_node: 'responder_invitacion',
+      intent: 'responder_invitacion',
+      contact_phone: null,
+      contact_phone_extension: null,
+      contact_phone_number: null,
+      rsvp_state: { status: 'none', pending_action: null, candidates: [], requested_at: null, selection_attempts: 0 },
+    });
+    await store.save({ plan: seeded, reason: 'seed' });
+    const gateway = new TrackingGateway({
+      takeoverSequence: [{ status: 'skipped', reason: 'missing_phone_number', message: 'Human escalation requires a phone number for the Agent API.' }],
+    });
+    const service = new AgentService({
+      planStore: store,
+      runtime,
+      providerGateway: {
+        async lookupUserEventContext(): Promise<UserEventLookupResult | null> { throw new Error('should not be called'); },
+      } as unknown as ProviderGateway,
+      agentConversationGateway: gateway,
+      promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      renderers: { whatsapp: new WhatsAppMessageRenderer() },
+    });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-skipped', text: 'Confirmo para mi y Maria', messageId: 'msg-skip', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '' });
+    // missing phone triggers missingPhoneEscalationResult without calling gateway, but honest fallback still
+    expect(result.outbound.text ?? '').toContain('No pude registrar');
+    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará');
+    expect(result.plan.human_escalation.status).toBe('none');
+  });
+});
+
 class HandoffRuntime implements AgentRuntime {
   constructor(private readonly extraction: ExtractionResult) {}
   async extract(): Promise<ExtractionResult> { return this.extraction; }
@@ -186,9 +386,28 @@ class HandoffRuntime implements AgentRuntime {
 
 class TrackingGateway implements AgentConversationGateway {
   calledTools: string[] = [];
+  takeoverCalls = 0;
+  lastPhoneNumber: string | null = null;
+  private takeoverSequence: AgentGatewayResult[];
+  private takeoverIndex = 0;
+  constructor(options?: { takeoverSequence?: AgentGatewayResult[] }) {
+    this.takeoverSequence = options?.takeoverSequence ?? [{ status: 'success', message: 'Requested.' }];
+  }
   async logMessage(input: unknown): Promise<{ status: 'skipped'; reason: 'disabled'; message: string }> { void input; return { status: 'skipped', reason: 'disabled', message: 'Disabled.' }; }
   async getRecentMessages(): Promise<{ status: 'success'; messages: [] }> { return { status: 'success', messages: [] }; }
-  async requestHumanTakeover(): Promise<{ status: 'success'; message: string }> { return { status: 'success', message: 'Requested.' }; }
+  async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
+    this.takeoverCalls += 1;
+    this.lastPhoneNumber = phoneNumber;
+    const fallback = this.takeoverSequence[this.takeoverSequence.length - 1];
+    if (!fallback) {
+      throw new Error('takeoverSequence is empty');
+    }
+    const result = this.takeoverSequence[this.takeoverIndex] ?? fallback;
+    if (this.takeoverIndex < this.takeoverSequence.length - 1) {
+      this.takeoverIndex += 1;
+    }
+    return result;
+  }
   async authByPhone(): Promise<{ status: 'failed'; error: string; retryable: false }> { return { status: 'failed', error: 'Unused.', retryable: false }; }
   async updatePhone(): Promise<{ status: 'success' }> { return { status: 'success' }; }
   async getGuestEventsByPhone(): Promise<AgentGuestEventsResult> { this.calledTools.push('lookup_guest_events_by_phone'); return { status: 'not_found' }; }

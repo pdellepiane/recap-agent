@@ -1750,56 +1750,236 @@ export class AgentService {
     const handoffParty = args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined;
     if (handoffParty?.scope === 'self_and_others') {
       const handoffFragment = this.renderRsvpHandoffFragment(handoffParty);
-      const handoffOperationalNote = `RSVP multi-person handoff: rsvpParty.scope=self_and_others (mentioned_names=${JSON.stringify(handoffParty.mentioned_names ?? [])}) — short-circuited BEFORE RSVP backend calls (no lookup_rsvp_invitations, no lookup_guest_events_by_phone, no get_guest_event_detail, no guest_rsvp); plan rsvp_state untouched; reply is handoff fragment only.`;
+      const handoffPhoneNumber = this.resolveEscalationPhone(args.inbound, args.workingPlan);
+      const dedupeKey = `rsvp_handoff:${args.workingPlan.conversation_id ?? args.workingPlan.plan_id}`;
+      const isDeduped = args.workingPlan.assumptions.includes(dedupeKey);
+      if (isDeduped) {
+        logAuthObservabilityEvent('info', 'rsvp_handoff_multi_person_deduped', {
+          dedupe_key: dedupeKey,
+          scope: handoffParty.scope,
+          mentioned_names: handoffParty.mentioned_names ?? [],
+          fragment: handoffFragment,
+          rsvp_state_status: pendingState.status,
+          phone_number: handoffPhoneNumber ?? null,
+        });
+        const planToSaveDeduped = mergePlan(args.workingPlan, {
+          current_node: currentNode,
+          intent: 'responder_invitacion',
+          intent_confidence: args.extraction.intentConfidence,
+          rsvp_state: pendingState,
+        });
+        const replyDeduped = {
+          text: handoffFragment,
+          structuredMessage: { type: 'generic' as const, paragraphs_es: [handoffFragment] },
+        } as ComposeReplyResult;
+        args.tokenUsage.reply = replyDeduped.tokenUsage ?? null;
+        args.tokenUsage.openAiCalls.reply = replyDeduped.openAiCall ?? null;
+        args.tokenUsage.total = this.sumTokenUsage(
+          args.tokenUsage.classifier,
+          args.tokenUsage.extraction,
+          args.tokenUsage.reply,
+        );
+        const dedupedSaveStartedAt = Date.now();
+        await this.dependencies.planStore.save({
+          plan: planToSaveDeduped,
+          reason: currentNode,
+        });
+        args.timingMs.save_plan += Date.now() - dedupedSaveStartedAt;
+        args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+        return {
+          plan: planToSaveDeduped,
+          outbound: this.renderOutbound(
+            replyDeduped,
+            [],
+            args.inbound.channel,
+            planToSaveDeduped.conversation_id,
+            planToSaveDeduped,
+          ),
+          trace: this.buildTrace({
+            plan: planToSaveDeduped,
+            previousNode: args.previousNode,
+            currentNode,
+            nodePath: args.previousNode === currentNode ? [currentNode] : [args.previousNode, currentNode],
+            extraction: args.extraction,
+            missingFields: [],
+            searchReady: false,
+            promptBundleId: 'deterministic:rsvp_multi_person_handoff',
+            promptFilePaths: [],
+            toolUsage: args.toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason: currentNode,
+            timingMs: args.timingMs,
+            tokenUsage: args.tokenUsage,
+            responseClassifier: args.responseClassifierTrace,
+            messageContext: args.messageContext,
+            searchStrategy: 'none',
+            turnDecision: this.rsvpTurnDecision('handoff_multi_person_deduped'),
+            operationalNote: `RSVP multi-person handoff deduped (dedupe_key=${dedupeKey}) — second detection in same conversation, no duplicate backend call; reply remains handoff fragment only.`,
+          }),
+        };
+      }
+      const handoffEventReference = args.extraction.rsvpEventReference ?? null;
       logAuthObservabilityEvent('info', 'rsvp_handoff_multi_person', {
         scope: handoffParty.scope,
         mentioned_names: handoffParty.mentioned_names ?? [],
         fragment: handoffFragment,
         rsvp_state_status: pendingState.status,
+        dedupe_key: dedupeKey,
+        phone_number: handoffPhoneNumber ?? null,
+        event_reference: handoffEventReference,
       });
-      const planToSaveHandoff = mergePlan(args.workingPlan, {
+      const gatewayForHandoff = this.dependencies.agentConversationGateway ??
+        new NoopAgentConversationGateway('not_configured');
+      let handoffGatewayResult: AgentGatewayResult | null = null;
+      let handoffRegistered = false;
+      if (!handoffPhoneNumber) {
+        handoffGatewayResult = this.missingPhoneEscalationResult();
+      } else {
+        const firstResult = await this.requestHumanTakeoverWithTrace(
+          gatewayForHandoff,
+          handoffPhoneNumber,
+          args.toolUsage,
+        );
+        handoffGatewayResult = firstResult;
+        if (firstResult.status === 'failed' && firstResult.retryable) {
+          const retryResult = await this.requestHumanTakeoverWithTrace(
+            gatewayForHandoff,
+            handoffPhoneNumber,
+            args.toolUsage,
+          );
+          handoffGatewayResult = retryResult;
+        }
+        if (handoffGatewayResult.status === 'success') {
+          handoffRegistered = true;
+        }
+      }
+      if (handoffRegistered && handoffGatewayResult) {
+        const planToSaveHandoff = mergePlan(args.workingPlan, {
+          current_node: currentNode,
+          intent: 'responder_invitacion',
+          intent_confidence: args.extraction.intentConfidence,
+          rsvp_state: pendingState,
+          assumptions: [...args.workingPlan.assumptions, dedupeKey],
+        });
+        const replyHandoff = {
+          text: handoffFragment,
+          structuredMessage: { type: 'generic' as const, paragraphs_es: [handoffFragment] },
+        } as ComposeReplyResult;
+        args.timingMs.rsvp_execution += 0;
+        args.tokenUsage.reply = replyHandoff.tokenUsage ?? null;
+        args.tokenUsage.openAiCalls.reply = replyHandoff.openAiCall ?? null;
+        args.tokenUsage.total = this.sumTokenUsage(
+          args.tokenUsage.classifier,
+          args.tokenUsage.extraction,
+          args.tokenUsage.reply,
+        );
+        const handoffSaveStartedAt = Date.now();
+        await this.dependencies.planStore.save({
+          plan: planToSaveHandoff,
+          reason: currentNode,
+        });
+        args.timingMs.save_plan += Date.now() - handoffSaveStartedAt;
+        args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+        const handoffOperationalNote = `RSVP multi-person handoff: rsvpParty.scope=self_and_others (mentioned_names=${JSON.stringify(handoffParty.mentioned_names ?? [])}) dedupe_key=${dedupeKey} phone=${handoffPhoneNumber ?? 'missing'} event_reference=${JSON.stringify(handoffEventReference)} — backend handoff registered via request_human_takeover; plan rsvp_state untouched; reply is handoff fragment only.`;
+        return {
+          plan: planToSaveHandoff,
+          outbound: this.renderOutbound(
+            replyHandoff,
+            [],
+            args.inbound.channel,
+            planToSaveHandoff.conversation_id,
+            planToSaveHandoff,
+          ),
+          trace: this.buildTrace({
+            plan: planToSaveHandoff,
+            previousNode: args.previousNode,
+            currentNode,
+            nodePath: args.previousNode === currentNode ? [currentNode] : [args.previousNode, currentNode],
+            extraction: args.extraction,
+            missingFields: [],
+            searchReady: false,
+            promptBundleId: 'deterministic:rsvp_multi_person_handoff',
+            promptFilePaths: [],
+            toolUsage: args.toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason: currentNode,
+            timingMs: args.timingMs,
+            tokenUsage: args.tokenUsage,
+            responseClassifier: args.responseClassifierTrace,
+            messageContext: args.messageContext,
+            searchStrategy: 'none',
+            turnDecision: this.rsvpTurnDecision('handoff_multi_person'),
+            operationalNote: handoffOperationalNote,
+          }),
+        };
+      }
+      const honestFallbackText = 'No pude registrar tu solicitud de apoyo humano en este momento. Por favor, intenta nuevamente en unos minutos.';
+      logAuthObservabilityEvent('info', 'rsvp_handoff_multi_person_failed', {
+        scope: handoffParty.scope,
+        mentioned_names: handoffParty.mentioned_names ?? [],
+        dedupe_key: dedupeKey,
+        phone_number: handoffPhoneNumber ?? null,
+        gateway_result: handoffGatewayResult ? this.redactAgentGatewayResult(handoffGatewayResult) : null,
+      });
+      const failureLastError = handoffGatewayResult
+        ? handoffGatewayResult.status === 'failed'
+          ? handoffGatewayResult.error
+          : handoffGatewayResult.status === 'skipped'
+            ? handoffGatewayResult.message
+            : 'No se pudo registrar la solicitud de apoyo humano.'
+        : 'No se pudo registrar la solicitud de apoyo humano.';
+      const planToSaveFailure = mergePlan(args.workingPlan, {
         current_node: currentNode,
         intent: 'responder_invitacion',
         intent_confidence: args.extraction.intentConfidence,
         rsvp_state: pendingState,
+        human_escalation: {
+          status: 'none',
+          requested_at: null,
+          phone_number: handoffPhoneNumber ?? null,
+          last_error: failureLastError,
+        },
       });
-      const replyHandoff = {
-        text: handoffFragment,
-        structuredMessage: { type: 'generic' as const, paragraphs_es: [handoffFragment] },
+      const replyFailure = {
+        text: honestFallbackText,
+        structuredMessage: { type: 'generic' as const, paragraphs_es: [honestFallbackText] },
       } as ComposeReplyResult;
-      args.timingMs.rsvp_execution += 0;
-      args.tokenUsage.reply = replyHandoff.tokenUsage ?? null;
-      args.tokenUsage.openAiCalls.reply = replyHandoff.openAiCall ?? null;
+      args.tokenUsage.reply = replyFailure.tokenUsage ?? null;
+      args.tokenUsage.openAiCalls.reply = replyFailure.openAiCall ?? null;
       args.tokenUsage.total = this.sumTokenUsage(
         args.tokenUsage.classifier,
         args.tokenUsage.extraction,
         args.tokenUsage.reply,
       );
-      const handoffSaveStartedAt = Date.now();
+      const failureSaveStartedAt = Date.now();
       await this.dependencies.planStore.save({
-        plan: planToSaveHandoff,
+        plan: planToSaveFailure,
         reason: currentNode,
       });
-      args.timingMs.save_plan += Date.now() - handoffSaveStartedAt;
+      args.timingMs.save_plan += Date.now() - failureSaveStartedAt;
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
       return {
-        plan: planToSaveHandoff,
+        plan: planToSaveFailure,
         outbound: this.renderOutbound(
-          replyHandoff,
+          replyFailure,
           [],
           args.inbound.channel,
-          planToSaveHandoff.conversation_id,
-          planToSaveHandoff,
+          planToSaveFailure.conversation_id,
+          planToSaveFailure,
         ),
         trace: this.buildTrace({
-          plan: planToSaveHandoff,
+          plan: planToSaveFailure,
           previousNode: args.previousNode,
           currentNode,
           nodePath: args.previousNode === currentNode ? [currentNode] : [args.previousNode, currentNode],
           extraction: args.extraction,
           missingFields: [],
           searchReady: false,
-          promptBundleId: 'deterministic:rsvp_multi_person_handoff',
+          promptBundleId: 'deterministic:rsvp_multi_person_handoff_failure',
           promptFilePaths: [],
           toolUsage: args.toolUsage,
           providerResults: [],
@@ -1811,8 +1991,8 @@ export class AgentService {
           responseClassifier: args.responseClassifierTrace,
           messageContext: args.messageContext,
           searchStrategy: 'none',
-          turnDecision: this.rsvpTurnDecision('handoff_multi_person'),
-          operationalNote: handoffOperationalNote,
+          turnDecision: this.rsvpTurnDecision('handoff_multi_person_failure'),
+          operationalNote: `RSVP multi-person handoff failed to register backend handoff (dedupe_key=${dedupeKey} phone=${handoffPhoneNumber ?? 'missing'} result=${handoffGatewayResult?.status ?? 'none'}); honest fallback returned, plan rsvp_state untouched, human_escalation not requested.`,
         }),
       };
     }

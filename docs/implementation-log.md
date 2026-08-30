@@ -7185,3 +7185,41 @@ Per-expectation failures (1 hard text_semantic):
 - evals/live-behavior-coverage.yaml: rsvp-multi-person-references-offer-human-help implementedBy 76fd6bf4->eb20f19c (new handoff HEAD, reachable via git merge-base --is-ancestor), removed rsvp-multi-person-additive-human-help-with-selection entry (moot), kept rsvp-tissue-bounded-to-one-closing-sentence implementedBy eb20f19c (single-person tissue, no multi parts) — comment updated to T11 handoff description.
 - Verification: typecheck PASS, lint PASS, 582/582 tests PASS, live-behavior-coverage 1/1 PASS (hard semantic + hard tool assertions + requireJudge), coverage test green, no live runs per constraints, no .continues-handoff.md touch.
 
+### T12 Phase A -- backend capability audit (read-only)
+
+**Endpoint inventory (gateway layer src/runtime/agent-conversation-gateway.ts):**
+
+- POST /messages (logMessage:727) -- log inbound/outbound conversation message, optional, gated by messageLoggingEnabled, surfaces to human team via conversation history but not a handoff.
+- GET /conversations/messages?phone_number= (getRecentMessages:760) -- read-only history, no handoff.
+- POST /conversations/request-human (requestHumanTakeover:796-808) -- request human takeover, body {phone_number}, returns AgentGatewayResult success/skipped/failed, used throughout for human_help_offer_accepted, information_authentication_terminal_handoff, etc. This is the ONLY real human-handoff/escalation endpoint.
+- GET /guest/events?phone_extension&phone_number (getGuestEventsByPhone:954) -- guest event lookup, not handoff.
+- GET /event?event_id|slug&phone_* (getEventDetail:1010) -- event detail, not handoff.
+- POST /auth-by-phone (authByPhone:888) -- phone auth, not handoff.
+- POST /user/update-phone (updatePhone:1138) -- phone update, not handoff.
+- POST /guest/rsvp (guestRsvp:1174) -- RSVP mutation, not handoff.
+- GET /guest/orders, /guest/gift-purchases (getGuestOrdersByPhone:871, getGuestGiftPurchasesByPhone:880) -- purchase lookups.
+- GET /orders, /gift-purchases (getOrders:810, getGiftPurchases:841) -- authenticated purchase lookups.
+- sinenvolturas-gateway.ts: categories, locations, filtered search, provider detail, quote/favorite/review, user-lookup -- no handoff.
+
+**Support/escalation/ticket search:** grepped support|escalation|ticket|handoff|assignment|notification, admin/admin_campaign, agent-assigned. No support/ticket/assignment/notification endpoint exists. admin_campaign is a message source marker, not a backend call. log_agent_conversation_message (logMessage) is history logging, not assignment. Human agents receive conversations via POST /conversations/request-human which flips human_escalation state and makes conversation visible to human tooling.
+
+**Docs/API contracts:** docs/, evals, tests show no documented handoff flow beyond request-human. No alternative mechanism.
+
+**Chosen mechanism:** POST /conversations/request-human via HttpAgentConversationGateway.requestHumanTakeover (agent-conversation-gateway.ts:796). File:line as above. Rationale: only real mechanism that actually tasks a human (others are read-only or logging), already used for all human escalations, typed inputs (phoneNumber string) with gateway's typed result (success/skipped/failed+retryable), follows existing gateway patterns for 404/401/403/400/422 handling, and does not require inventing endpoint.
+
+### T12 Phase B -- backend-registered handoff implementation
+
+**Wire handoff call into short-circuit path (agent-service.ts:1750-2020):** When rsvpParty.scope=self_and_others, before any RSVP backend calls, resolve phone via resolveEscalationPhone (digits, no +), build dedupeKey `rsvp_handoff:${conversation_id ?? plan_id}`, call gateway.requestHumanTakeoverWithTrace with typed input {phone_number: digits, auth: X-Agent-Key redacted} and typed output AgentGatewayResult. Event context (rsvpEventReference) and party names are logged via observability without extra lookups (no lookup cascades).
+
+**Dedupe:** Conversation/plan-scoped key `rsvp_handoff:${conversation_id ?? plan_id}` stored in plan.assumptions (plan-scoped, like information-orchestrator resource keys Map). isDeduped = assumptions.includes(dedupeKey). First detection: backend call, on success push dedupeKey to assumptions. Second detection in same conversation (assumption present) -> no duplicate backend call, return same handoff sentence "¡Con gusto! Para confirmar la asistencia para ti y para {nombres}, nuestro equipo de apoyo humano te ayudará." with operationalNote deduped. This avoids using human_escalation soft-pause which would suppress second reply.
+
+**Typed failure handling (gateway patterns 404/401/403/400/422/retryable):** Gateway returns success (HTTP 2xx envelope status true), skipped (disabled/not_configured/missing_phone_number), or failed (retryable true for 429/5xx/transport, false for 400/401/403/404/422). On success -> handoff reply as built, plan assumptions adds dedupeKey. On retryable failure -> one bounded retry (second requestHumanTakeover call). On definitive failure (including skipped or retryable failure after retry) -> honest fallback reply "No pude registrar tu solicitud de apoyo humano en este momento. Por favor, intenta nuevamente en unos minutos." which states could not register and to try again shortly, does NOT claim a person will help. Plan assumptions not added, last_error recorded in human_escalation.last_error for observability, rsvp_state untouched.
+
+**Call typed input/output:** Input: phoneNumber digits string (e.g., "51973296571"), dedupeKey, mentioned_names string[], event_reference (trivially available extraction field). Output: AgentGatewayResult {status:'success',message} or {status:'failed',error,retryable} or {status:'skipped',reason,message}. Guarded via validation, no any.
+
+**Offline twins (tests/rsvp-handoff-multi-person.test.ts 10 tests):** 5 T11 twins updated to expect backend-registered handoff (mustCall request_human_takeover, assumption dedupeKey, phone digits) + 5 new T12 twins: dedupe second turn no second call, retryable->retried once then honest fallback on second failure, retryable->retry success then handoff registered, definitive failure honest fallback, skipped honest fallback. All 5 new twins fail without fix (no backend call, no dedupe, no retry, no honest fallback).
+
+**Case/registry updates:** evals/cases/live-behavior-rsvp-multi-person-human-help.yaml v7->8 description "backend-registered handoff (request_human_takeover)" added hard tool assertion mustCall [request_human_takeover] keep semantic warm ack + human team will help + no enumeration/selection/registration + text_notContains RSVP/aplicar. Bump version. evals/live-behavior-coverage.yaml rsvp-multi-person-references-offer-human-help implementedBy eb20f19c->a1b2c3d (placeholder, to be updated to reachable SHA after commit) description updated to backend-registered handoff with dedupe/typed failure semantics. Coverage test green.
+
+**Gates (no deploys, no live runs per constraints):** typecheck PASS, lint PASS, unit suite 587 PASSED (81 files, 587 tests, baseline 582 +5 new T12 twins), coverage test live-behavior-coverage PASS, audit:prompts violations [] green, audit:prompts:compare 352805 vs 732995 (51.87% reduction) green, responder_invitacion bytes unchanged (handoff is deterministic, no prompt change). No .continues-handoff.md touch, git index.lock wait x10 observed, strict TS no any.
+
