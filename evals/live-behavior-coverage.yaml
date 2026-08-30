@@ -274,12 +274,9 @@ behaviorChanges:
     implementedBy: f937265
     liveCaseIds: [live_behavior.rsvp_missing_action_requires_explicit_decision]
   - id: rsvp-multi-person-references-offer-human-help
-    implementedBy: 76fd6bf4
+    implementedBy: eb20f19c
     liveCaseIds: [live_behavior.rsvp_multi_person_offers_human_help]
-  # code-composed multi-person selection: self_and_others+awaiting_event_selection -> warm lead '¡Con gusto!', enumeration via formatRsvpInvitationEnumeration, exact question '¿Para cuál de estos eventos deseas registrar tu asistencia?' scoped to own attendance, disclosure deterministic final, tissue optional single courtesy sentence (no repeat/overclaim, forbidden 'aplicar la confirmación'); single-person selection remains model-rendered
+  # T11 handoff: self_and_others short-circuits BEFORE any RSVP backend calls, plan rsvp_state untouched, reply is single handoff sentence "¡Con gusto! Para confirmar la asistencia para ti y para {nombres}, nuestro equipo de apoyo humano te ayudará." (fallback "tu acompañante"), no enumeration, no selection, no mutation, no RSVP word
   - id: rsvp-tissue-bounded-to-one-closing-sentence
-    implementedBy: 76fd6bf4
+    implementedBy: eb20f19c
     liveCaseIds: [live_behavior.rsvp_cristian_phone_enriched_confirmation, live_behavior.rsvp_jose_campaign_invitation_not_reported_missing, live_behavior.rsvp_declined_state_offers_one_change, live_behavior.rsvp_missing_action_requires_explicit_decision]
-  - id: rsvp-multi-person-additive-human-help-with-selection
-    implementedBy: 76fd6bf4
-    liveCaseIds: [live_behavior.rsvp_multi_person_offers_human_help]

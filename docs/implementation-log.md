@@ -7175,3 +7175,13 @@ Per-expectation failures (1 hard text_semantic):
 - fallback (no names): "¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará."
 - outbound sanitized strips trailing period (sanitizeAssistantOutput), so outbound text ends without final dot: "¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará" (sanitized).
 
+
+### T11 evals -- rework multi-person live case to handoff contract (plan-2026-08-27-rsvp-projection-prompt-audit T11)
+
+**Reason:** T11-B handoff short-circuits multi-person RSVP to single sentence deferring to human support; prior eval expected enumeration/selection/additive behavior which is now moot. Task requires reworked expectations and registry cleanup.
+
+**Decision (Commit C):**
+- evals/cases/live-behavior-rsvp-multi-person-human-help.yaml v6->7: description now "single-sentence handoff, no backend mutation, no enumeration or selection". Expectations: enters-rsvp-node (node_transition hard), tool_usage mustNotCall [guest_rsvp, lookup_rsvp_invitations, lookup_guest_events_by_phone, get_guest_event_detail, auth_by_phone, request_user_login_code, verify_user_login_code] hard, text_semantic hard minScore 0.9 requireJudge Spanish warm acknowledgement + human team will help for companion/named people, must NOT enumerate, NOT ask to select, NOT claim registration, NOT "aplicar la confirmación", text_notContains ["RSVP","rsvp"] and ["aplicar la confirmación","aplicar la confirmacion"] hard. Removed enumeration/additive elements from rubric. Bump version 6->7.
+- evals/live-behavior-coverage.yaml: rsvp-multi-person-references-offer-human-help implementedBy 76fd6bf4->eb20f19c (new handoff HEAD, reachable via git merge-base --is-ancestor), removed rsvp-multi-person-additive-human-help-with-selection entry (moot), kept rsvp-tissue-bounded-to-one-closing-sentence implementedBy eb20f19c (single-person tissue, no multi parts) — comment updated to T11 handoff description.
+- Verification: typecheck PASS, lint PASS, 582/582 tests PASS, live-behavior-coverage 1/1 PASS (hard semantic + hard tool assertions + requireJudge), coverage test green, no live runs per constraints, no .continues-handoff.md touch.
+
