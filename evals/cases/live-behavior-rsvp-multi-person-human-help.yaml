@@ -1,14 +1,14 @@
 template: template.base-live
 id: live_behavior.rsvp_multi_person_offers_human_help
 suite: live_behavior_regression
-version: 8
-description: Multi-person RSVP triggers single-sentence backend-registered handoff to human support (request_human_takeover), no RSVP mutation, no enumeration or selection.
+version: 9
+description: Multi-person RSVP triggers single-sentence backend-registered handoff to human support (request_human_takeover), no RSVP mutation, no enumeration or selection. Seed phone mirrors jose/cinthya pattern for resolveEscalationPhone.
 tags: [live, behavior, rsvp, multi-person, human-help, spanish]
 targetModes: [live_lambda]
 inputs:
   - text: Hola, confirmo mi asistencia y la de mi esposa Maria para el evento del sabado
     channel: whatsapp
-    contactPhone: "+51973296571"
+    contactPhone: "+51941438449"
     sessionId: live-rsvp-multi-person-human-help-session
 expectations:
   - id: enters-rsvp-node
