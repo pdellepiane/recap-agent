@@ -250,14 +250,11 @@ export class InformationOrchestrator {
                 coverage: result.coverage ?? 'complete',
                 resource: result.lookupResource ?? result.resource,
               }
-            : result.status === 'failed' &&
-                result.kind === 'purchase' &&
-                'accessMethod' in result &&
-                typeof (result as { accessMethod?: string }).accessMethod === 'string'
+            : result.status === 'failed' && result.accessMethod
             ? {
-                accessMethod: (result as { accessMethod?: InformationExecutionSummary['accessMethod'] }).accessMethod ?? 'authenticated_account',
+                accessMethod: result.accessMethod,
                 coverage: null,
-                resource: (request as { resource?: InformationExecutionSummary['resource'] }).resource,
+                ...(request.kind === 'purchase' ? { resource: result.lookupResource ?? request.resource } : {}),
               }
             : {}),
       };
@@ -326,6 +323,7 @@ export class InformationOrchestrator {
           kind: 'associated_event',
           status: 'failed',
           retryable: guestEvents.retryable,
+          accessMethod: 'trusted_phone_guest',
           failureKind: this.dependencies.agentGateway.getGuestEventsByPhone
             ? 'request_failed'
             : 'not_configured',
@@ -334,6 +332,17 @@ export class InformationOrchestrator {
             : 'La consulta de eventos asociados al número no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
         };
       }
+      // A completed phone lookup with no association is not a request to log in.
+      // Preserve scoped absence for the service's human-help policy and trace.
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: false,
+        accessMethod: 'trusted_phone_guest',
+        failureKind: 'not_found',
+        message: 'No encontré eventos asociados a este número en la consulta realizada. Se necesita apoyo del equipo para revisar esta consulta.',
+      };
     }
 
     if (!authentication) {
@@ -919,9 +928,10 @@ export class InformationOrchestrator {
             retryable: false,
             failureKind: 'not_found',
             message:
-              'No encontre una compra que coincida con la referencia indicada entre las asociadas a este numero. Si me compartes otro dato del evento puedo revisarlo nuevamente.',
+              'No encontré una compra que coincida con la referencia indicada entre las asociadas a este número. Se necesita apoyo del equipo para revisar esa referencia.',
             accessMethod: 'trusted_phone_purchase',
-          } as unknown as InformationTaskResult;
+            lookupResource: lookup.sourceResource,
+          };
         }
         return {
           requestId: request.requestId,
@@ -930,9 +940,10 @@ export class InformationOrchestrator {
           retryable: false,
           failureKind: 'not_found',
           message:
-            'No encontré compras asociadas a este número. Si usaste otro número o un correo diferente, indícamelo y puedo orientarte con esa búsqueda.',
+            'No encontré compras coincidentes asociadas a este número en la consulta realizada. Se necesita apoyo del equipo para revisarlo.',
           accessMethod: 'trusted_phone_purchase',
-        } as unknown as InformationTaskResult;
+          lookupResource: lookup.sourceResource,
+        };
       }
       for (const purchase of purchases) {
         this.mergePhonePurchase(
@@ -975,9 +986,10 @@ export class InformationOrchestrator {
         retryable: false,
         failureKind: 'not_found',
         message:
-          'No encontré esa compra asociada a este número. Si usaste otro número o un correo diferente, indícamelo y puedo orientarte con esa búsqueda.',
+          'No encontré esa compra asociada a este número en la consulta realizada. Se necesita apoyo del equipo para revisarlo.',
         accessMethod: 'trusted_phone_purchase',
-      } as unknown as InformationTaskResult;
+        lookupResource: lookup.sourceResource,
+      };
     }
 
     return {

@@ -424,6 +424,9 @@ export type InformationTaskResult =
       kind: 'faq' | 'associated_event' | 'purchase';
       status: 'failed';
       retryable: boolean;
+      /** Identifies a scoped lookup even when it returned no records. */
+      accessMethod?: 'trusted_phone_guest' | 'trusted_phone_purchase';
+      lookupResource?: PurchaseResource;
       failureKind:
         | 'not_configured'
         | 'not_found'

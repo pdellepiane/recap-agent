@@ -576,9 +576,11 @@ describe('InformationOrchestrator', () => {
     });
   });
 
-  it('falls back to the supplied authentication step when the phone has no guest record', async () => {
+  it.each(['not_found', 'empty'] as const)('preserves a scoped phone %s instead of falling through to email', async (outcome) => {
     const agentGateway = new FakeAgentGateway();
-    agentGateway.guestEventsResult = { status: 'not_found' };
+    agentGateway.guestEventsResult = outcome === 'not_found'
+      ? { status: 'not_found' }
+      : { status: 'success', events: [] };
     const orchestrator = new InformationOrchestrator({
       knowledgeGateway: { async search() { throw new Error('unused'); } },
       providerGateway: {} as ProviderGateway,
@@ -601,9 +603,11 @@ describe('InformationOrchestrator', () => {
     });
 
     expect(execution.results[0]).toMatchObject({
-      status: 'needs_input',
-      nextInput: 'email',
+      status: 'failed',
+      failureKind: 'not_found',
+      accessMethod: 'trusted_phone_guest',
     });
+    expect(execution.summaries[0]).toMatchObject({ outcomeCode: 'not_found', accessMethod: 'trusted_phone_guest' });
   });
 
   it('reads phone-scoped orders without an authentication or OTP preflight', async () => {

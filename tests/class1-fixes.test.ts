@@ -78,7 +78,7 @@ describe('class1 fixes twins', () => {
     });
     expect(exec404.results[0]?.status).toBe('failed');
     if (exec404.results[0]?.status === 'failed') {
-      expect((exec404.results[0] as unknown as { accessMethod?: string }).accessMethod).toBe('trusted_phone_purchase');
+      expect(exec404.results[0].accessMethod).toBe('trusted_phone_purchase');
     }
     expect(exec404.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
 
@@ -102,8 +102,8 @@ describe('class1 fixes twins', () => {
     });
     expect(execMismatch.results[0]?.status).toBe('failed');
     if (execMismatch.results[0]?.status === 'failed') {
-      expect((execMismatch.results[0] as unknown as { accessMethod?: string }).accessMethod).toBe('trusted_phone_purchase');
-      expect(execMismatch.results[0].message).toContain('No encontre una compra que coincida');
+      expect(execMismatch.results[0].accessMethod).toBe('trusted_phone_purchase');
+      expect(execMismatch.results[0].message).toContain('coincida con la referencia indicada');
     }
     expect(execMismatch.summaries[0]?.accessMethod).toBe('trusted_phone_purchase');
   });
@@ -127,7 +127,7 @@ describe('class1 fixes twins', () => {
       trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
     });
     const mismatchMessage = execMismatch.results[0]?.status === 'failed' ? (execMismatch.results[0] as { message: string }).message : '';
-    expect(mismatchMessage).toContain('No encontre una compra que coincida');
+    expect(mismatchMessage).toContain('coincida con la referencia indicada');
 
     const gatewayEmpty = new FakeAgentGateway();
     gatewayEmpty.guestOrdersResult = {
@@ -149,7 +149,7 @@ describe('class1 fixes twins', () => {
     });
     const phoneWideMessage = execEmpty.results[0]?.status === 'failed' ? (execEmpty.results[0] as { message: string }).message : '';
     expect(mismatchMessage).not.toBe(phoneWideMessage);
-    expect(phoneWideMessage).toContain('No encontré compras asociadas a este número');
+    expect(phoneWideMessage).toContain('No encontré compras coincidentes asociadas a este número');
   });
 
   it('c: projection omits timezone for offset-less records and renderer emits no zone claim', async () => {

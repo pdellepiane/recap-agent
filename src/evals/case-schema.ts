@@ -177,6 +177,10 @@ const turnTraceSchema = z.object({
     })),
     resultCount: z.number().int().nonnegative(),
     durationMs: z.number().nonnegative(),
+    accessMethod: z.enum(['authenticated_account', 'trusted_phone_guest', 'trusted_phone_purchase', 'trusted_phone_event_purchase']).nullable().optional(),
+    resource: z.enum(['orders', 'gift_purchases']).optional(),
+    coverage: z.enum(['complete', 'partial', 'inconsistent']).nullable().optional(),
+    eventDetailCount: z.number().int().nonnegative().optional(),
   })).default([]),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),

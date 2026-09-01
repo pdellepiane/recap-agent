@@ -8105,3 +8105,63 @@ remains 712/712 across 98 files; it was not rerun for this documentation-only up
 **Still limited:** no durable recovery after wait exhaustion/crash if the caller
 does not retry; no completed-message idempotency, FIFO/delivery ordering, or guarantee
 against unrelated LLM misinterpretation. Full-suite evaluation was not run, per owner.
+
+### 2026-09-01 — Phone-scoped absence requests human help, not automatic OTP
+
+**Finding:** the retained concurrency run above did invoke the internal guest-event
+read, but against `support-continuity`'s empty fixture, not real customer records.
+The stored extractor classified the supplied Roger/Baby Shower details as an
+associated-event query. Its empty guest-event result fell through to `email_required`;
+the trace omitted the phone operation because the final result was `needs_input`.
+Read-only inspection of the retained response confirmed this branch. This is not
+evidence that every live endpoint or every customer phone was searched. Roger's name
+also does not authorize access to his purchases using Claudia's trusted number.
+
+**Owner decision:** request human help when phone-scoped information cannot be
+found; keep OTP available, without treating it as the automatic next step for guests.
+The assumption that registered users always have correct linked phones is not
+encoded: explicit email/code actions and existing verification sessions still work.
+
+**Implementation:** typed failed outcomes retain the access method and actual
+purchase resource. Empty guest-event lists and scoped 404s now return `not_found`,
+not an authentication request. If every requested non-FAQ resource is a phone-scoped
+miss, the service reuses its existing one-time human handoff, persists the original
+question, and renders a deterministic scoped explanation. A failed takeover is not
+reported as a successful backend request; its error remains in plan state. Existing
+human ownership prevents repeated takeover/code requests on subsequent messages.
+Trace summaries retain the lookup metadata, including in evaluation artifacts.
+
+**Boundaries:** no unrelated endpoint fan-out, alternate phone impersonation, new
+authentication mechanism, or lock change. Multiple candidates and nonempty carts
+remain usable information. A mixed batch with a usable purchase/event result keeps
+its partial-answer flow instead of discarding the result. Server errors, malformed
+responses, and authorization failures are not relabeled as absence. This change
+does not guarantee account lookup or third-party support resolution. No trusted
+phone still uses the existing authentication path. Explicit/in-progress OTP is
+preserved; after handoff, existing human-ownership/resume rules still apply.
+
+**Minimum disclosure:** no prompts or model-input builders changed. The terminal
+miss branch makes no reply-model call (zero reply instruction/input bytes); only
+the existing structured extraction runs. No raw backend data is added to model
+context. A factual scoped absence replaces the contradictory email instruction.
+
+**Regression specification:** retain contention and prior-plan loading assertions
+in `live_behavior.concurrent_support_turns_preserve_context`; update its next step
+to the newly requested human handoff and require the guest phone read, no OTP, and
+preserved guest/event identity. Add `live_behavior.phone_purchase_missing_hands_off_once`
+for empty orders/carts and the next inbound acknowledgment. Both use fixtures behind
+the deployed Lambda, not real customer takeover operations. Offline twins cover
+404/empty event and purchase results, mixed usable information, preserved explicit
+verification, bounded OTP failure, and cart-only coverage. The old OTP-loop twin now
+starts from an already-requested code, matching its live specification; it no longer
+depends on the obsolete fresh-phone-miss-to-email route.
+
+Validation and deployment results will be appended after the focused gate. The
+owner's prior request to limit live testing to the feature remains in effect.
+
+**Local gate:** typecheck and lint passed; 717/717 tests across 98 files passed with
+two test workers, including coverage registry, phone misses, carts, and OTP tests.
+The first unrestricted run exposed two stale wording assertions and a 15-second
+historical prompt-measurement timeout. The assertions were updated to the scoped
+message, and the unchanged timing test passed with lower test concurrency; no
+tests were skipped or timeout limits increased. Prompt audit: zero violations.

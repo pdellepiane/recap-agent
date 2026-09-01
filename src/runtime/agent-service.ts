@@ -3383,6 +3383,20 @@ export class AgentService {
         informationSummaries,
       );
 
+      const scopedRequests = informationResults.filter((result) => result.kind !== 'faq');
+      const onlyPhoneScopedMisses = scopedRequests.length > 0 && scopedRequests.every(
+        (result) => result.status === 'failed' && result.failureKind === 'not_found' &&
+          (result.accessMethod === 'trusted_phone_guest' || result.accessMethod === 'trusted_phone_purchase'),
+      );
+      if (onlyPhoneScopedMisses) {
+        return await this.escalateInformationAuthentication({
+          ...args,
+          plan: planForInformation,
+          reason: 'phone_information_not_found',
+          informationExecution: informationSummaries,
+        });
+      }
+
       const completedThroughTrustedPhone = informationResults.some(
         (result) =>
           result.status === 'completed' &&
@@ -3874,6 +3888,7 @@ export class AgentService {
     previousNode: DecisionNode;
     plan: PlanSnapshot;
     reason: string;
+    informationExecution?: InformationExecutionSummary[];
     extraction: ExtractionResult;
     toolUsage: ToolUsage;
     timingMs: TurnTiming;
@@ -3915,9 +3930,12 @@ export class AgentService {
       .map((request) => request.query.trim())
       .filter((query) => query.length > 0)
       .slice(0, 2);
-    const handoffMessage = pendingQueries.length > 0
+    const handoffSummary = pendingQueries.length > 0
       ? `${this.humanEscalationRequestedMessage(gatewayResult)}. El equipo continuará con tu consulta pendiente: ${pendingQueries.join(' / ')}`
       : this.humanEscalationRequestedMessage(gatewayResult);
+    const handoffMessage = args.reason === 'phone_information_not_found'
+      ? `No encontré la información solicitada asociada a este número en la consulta realizada. ${handoffSummary}`
+      : handoffSummary;
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
@@ -3948,7 +3966,10 @@ export class AgentService {
         responseClassifier: args.responseClassifierTrace,
         searchStrategy: 'none',
         turnDecision: this.humanEscalationTurnDecision(args.reason),
-        operationalNote: `La verificación alcanzó un resultado terminal (${args.reason}). Se conservó la consulta y se solicitó apoyo humano sin pedir otro correo ni código.`,
+        informationExecution: args.informationExecution,
+        operationalNote: args.reason === 'phone_information_not_found'
+          ? 'La consulta por el número de contacto no devolvió información coincidente. Se conservó la consulta y se intentó solicitar apoyo humano sin iniciar verificación por correo.'
+          : `La verificación alcanzó un resultado terminal (${args.reason}). Se conservó la consulta y se solicitó apoyo humano sin pedir otro correo ni código.`,
       }),
     };
   }
@@ -4141,8 +4162,8 @@ export class AgentService {
 
     // Event and purchase support now have phone-scoped read contracts. Let the
     // information orchestrator try those contracts before starting account
-    // authentication. Existing authenticated sessions remain available, and a
-    // scoped phone miss can still request email verification on the next turn.
+    // authentication. Existing sessions and explicit email/OTP actions remain
+    // available; a scoped miss is handled by the human-help policy, not login.
     if (
       trustedPhoneParts &&
       !this.hasValidUserAuthToken(args.plan) &&

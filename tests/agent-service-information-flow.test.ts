@@ -634,10 +634,16 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
-  it('treats a phone-scoped 404 as a scoped miss without starting OTP', async () => {
+  it.each(['not_found', 'empty'] as const)('hands off a phone-scoped %s once without OTP or reply-model guessing', async (outcome) => {
     const runtime = new InformationRuntime([extraction([purchaseRequest(null)])]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = { status: 'user_not_found' };
+    if (outcome === 'empty') {
+      gateway.guestOrdersResult = {
+        status: 'success', resource: 'orders', purchases: [],
+        orderPartitions: { completed: [], pending: [] }, carts: [],
+      };
+    }
     const provider = providerGateway();
     const service = createService({
       runtime,
@@ -660,17 +666,81 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.guestGiftCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.user_auth.status).toBe('none');
-    expect(
-      runtime.composeRequests.at(-1)?.informationResults?.[0],
-    ).toEqual(
-      expect.objectContaining({
-        status: 'failed',
-        failureKind: 'not_found',
-      }),
-    );
-    expect(runtime.composeRequests.at(-1)?.errorMessage ?? '').not.toContain(
-      'invitación asociada al número confiable',
-    );
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.information_state.pending_requests[0]?.query).toBe('Estado del regalo comprado.');
+    expect(response.trace.tools_called).toContain('lookup_guest_orders_by_phone');
+    expect(response.trace.tools_called).toContain('request_human_takeover');
+    expect(response.trace.information_execution_summary).toEqual([
+      expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_purchase', resource: 'orders' }),
+    ]);
+    expect(response.outbound.text).toContain('asociada a este número');
+    const repeated = await service.handleTurn({
+      channel: 'whatsapp', externalUserId: 'phone-not-found-user',
+      contactPhone: '+51973296571', text: 'No tengo cuenta',
+      messageId: 'phone-not-found-2', receivedAt: new Date().toISOString(),
+    });
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(repeated.plan.human_escalation.status).toBe('requested');
+  });
+
+  it.each(['not_found', 'empty'] as const)('hands off a phone guest-event %s with the support details preserved', async (outcome) => {
+    const query = 'Consulta sobre el invitado Roger Abanto del evento Baby Shower Catalina.';
+    const runtime = new InformationRuntime([extraction([{
+      kind: 'associated_event', query, eventHint: 'Baby Shower Catalina',
+    }])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestEventsResult = outcome === 'empty'
+      ? { status: 'success', events: [] }
+      : { status: 'not_found' };
+    const provider = providerGateway();
+    const response = await createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: provider,
+    }).handleTurn({
+      channel: 'whatsapp', externalUserId: 'missing-event-support',
+      text: 'El invitado es Roger Abanto y el evento es Baby Shower Catalina.',
+      contactPhone: '+51985101461', messageId: 'missing-event-1',
+      receivedAt: new Date().toISOString(),
+    });
+    expect(gateway.guestEventCalls).toBe(1);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+    expect(provider.requestCodeCalls + provider.verifyCodeCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.information_state.pending_requests[0]?.query).toBe(query);
+    expect(response.outbound.text).toContain('el invitado Roger Abanto');
+    expect(response.outbound.text).toContain('Baby Shower Catalina');
+    expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
+    expect(response.trace.information_execution_summary).toEqual([
+      expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_guest' }),
+    ]);
+  });
+
+  it('keeps usable phone purchase context when another requested lookup has no event match', async () => {
+    const runtime = new InformationRuntime([extraction([
+      purchaseRequest(null),
+      { kind: 'associated_event', query: 'Consulta de mi invitación.', eventHint: null },
+    ])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases: [purchase('ORD-000880')] };
+    const response = await createService({
+      runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway, providerGateway: providerGateway(),
+    }).handleTurn({
+      channel: 'whatsapp', externalUserId: 'mixed-missing-event',
+      text: '¿Cómo va mi compra y mi invitación?', contactPhone: '+51985101461',
+      messageId: 'mixed-missing-1', receivedAt: new Date().toISOString(),
+    });
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(response.plan.human_escalation.status).toBe('none');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.informationResults).toEqual(expect.arrayContaining([
+      expect.objectContaining({ kind: 'purchase', status: 'completed' }),
+      expect.objectContaining({ kind: 'associated_event', status: 'failed', failureKind: 'not_found' }),
+    ]));
   });
 
   it('uses the trusted phone guest record before OTP when the phone has no account', async () => {
@@ -1523,7 +1593,6 @@ describe('AgentService first-class information flow', () => {
       text: 'Quiero revisar mi compra',
       messageId: 'declined-auth-1',
       receivedAt: new Date().toISOString(),
-      contactPhone: '+51973296571',
     });
     const response = await service.handleTurn({
       channel: 'whatsapp',
@@ -1625,8 +1694,6 @@ describe('AgentService first-class information flow', () => {
     codeAttempt.aspects = purchase.aspects;
     codeAttempt.authAction = 'provide_otp';
     const runtime = new InformationRuntime([
-      extraction([purchase]),
-      extraction([], null, 'jimmy.pilar@gmail.com'),
       extraction([codeAttempt]),
       extraction([codeAttempt]),
       extraction([]),
@@ -1639,11 +1706,26 @@ describe('AgentService first-class information flow', () => {
     });
     const purchaseGateway = new FakePurchaseGateway();
     purchaseGateway.authByPhoneResult = { status: 'user_not_found' };
+    // Reconstruct the already-started verification stage, as in the live twin.
+    // A fresh phone miss now hands off before this stage instead of starting OTP.
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'reported-otp-already-requested',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'reported-otp-plan', channel: 'terminal_whatsapp', externalUserId: 'whatsapp:+51948920202',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        contact_email: 'regression@example.invalid',
+        user_auth: { status: 'code_requested', email: 'regression@example.invalid', requested_at: new Date().toISOString() },
+        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ ...purchase, requestId: 'information-1' }], selection_candidates: [] },
+      }),
+    });
     const service = createService({
       runtime,
       knowledgeGateway: new FakeKnowledgeGateway(),
       purchaseGateway,
       providerGateway: provider,
+      planStore,
     });
     const turn = async (text: string, index: number) =>
       service.handleTurn({
@@ -1655,11 +1737,6 @@ describe('AgentService first-class information flow', () => {
         contactPhone: '+51948920202',
       });
 
-    await turn(
-      'Hola buen día. Yo les deposité un monto de regalo. ¿Cómo saber que les llegó? Porque no recibí confirmación alguna.',
-      1,
-    );
-    await turn('jimmy.pilar@gmail.com', 2);
     const firstFailure = await turn('753994', 3);
     const secondFailure = await turn('753994', 4);
     const followUp = await turn('Ese es el código que me llegó', 5);
@@ -1686,11 +1763,11 @@ describe('AgentService first-class information flow', () => {
       ),
     );
     expect(
-      guidanceByTurn[2]?.status === 'needs_input'
-        ? guidanceByTurn[2].guidance.reason
+      guidanceByTurn[0]?.status === 'needs_input'
+        ? guidanceByTurn[0].guidance.reason
         : null,
     ).toBe('otp_invalid');
-    expect(guidanceByTurn).toHaveLength(3);
+    expect(guidanceByTurn).toHaveLength(1);
   });
 
   it('uses a newly provided email instead of the previously stored address', async () => {
