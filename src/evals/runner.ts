@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
+import * as fsSync from 'node:fs';
 import path from 'node:path';
 
 import { createEmptyPlan } from '../core/plan';
@@ -637,7 +638,7 @@ async function evaluateExpectation(
         model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
         rubric: expectation.rubric,
         candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
-        context: buildSemanticJudgeContext(context.turns, expectation.turnIndex),
+        context: buildSemanticJudgeContext(context.turns, expectation.turnIndex, context.currentCase),
       });
       const verdict = evaluateSemanticJudgeOutcome({
         outcome: judge,
@@ -756,46 +757,86 @@ async function evaluateExpectation(
 export function buildSemanticJudgeContext(
   turns: EvalTurnResult[],
   turnIndex: number | undefined,
+  currentCase?: EvalCase,
 ): string {
   const selectedIndex = turnIndex ?? turns.length - 1;
-  return JSON.stringify(
-    turns
-      .filter((turn) => turn.turnIndex <= selectedIndex)
-      .map((turn) => {
-        const plan = getEvaluationPlan(turn);
-        return {
-          turnIndex: turn.turnIndex,
-          userInput: redactArtifactText(getEvaluationInput(turn).text),
-          priorAssistantOutput:
-            turn.turnIndex < selectedIndex
-              ? redactArtifactText(getEvaluationOutputText(turn))
-              : undefined,
-          nodeTransition: `${turn.trace.previous_node}->${turn.trace.next_node}`,
-          toolsCalled: [...turn.trace.tools_called],
-          plan: {
-            eventType: plan.event_type,
-            location: plan.location,
-            guestRange: plan.guest_range,
-            activeNeedCategory: plan.active_need_category,
-            providerNeeds: plan.provider_needs.map((need) => ({
-              category: need.category,
-              status: need.status,
-              selectedProviderIds: [...need.selected_provider_ids],
-            })),
-            authEvidence: {
-              status: plan.user_auth.status,
-              authMethod: plan.user_auth.auth_method,
-              awaitingPhoneConfirmation: plan.user_auth.awaiting_phone_confirmation,
-              contactFieldsPresent: {
-                name: turn.trace.contact_validation_summary.plan_contact_fields_present.name,
-                email: turn.trace.contact_validation_summary.plan_contact_fields_present.email,
-                phone: turn.trace.contact_validation_summary.plan_contact_fields_present.phone,
-              },
+  const interaction = turns
+    .filter((turn) => turn.turnIndex <= selectedIndex)
+    .map((turn) => {
+      const plan = getEvaluationPlan(turn);
+      return {
+        turnIndex: turn.turnIndex,
+        userInput: redactArtifactText(getEvaluationInput(turn).text),
+        priorAssistantOutput:
+          turn.turnIndex < selectedIndex
+            ? redactArtifactText(getEvaluationOutputText(turn))
+            : undefined,
+        nodeTransition: `${turn.trace.previous_node}->${turn.trace.next_node}`,
+        toolsCalled: [...turn.trace.tools_called],
+        plan: {
+          eventType: plan.event_type,
+          location: plan.location,
+          guestRange: plan.guest_range,
+          activeNeedCategory: plan.active_need_category,
+          providerNeeds: plan.provider_needs.map((need) => ({
+            category: need.category,
+            status: need.status,
+            selectedProviderIds: [...need.selected_provider_ids],
+          })),
+          authEvidence: {
+            status: plan.user_auth.status,
+            authMethod: plan.user_auth.auth_method,
+            awaitingPhoneConfirmation: plan.user_auth.awaiting_phone_confirmation,
+            contactFieldsPresent: {
+              name: turn.trace.contact_validation_summary.plan_contact_fields_present.name,
+              email: turn.trace.contact_validation_summary.plan_contact_fields_present.email,
+              phone: turn.trace.contact_validation_summary.plan_contact_fields_present.phone,
             },
           },
-        };
-      }),
-  );
+        },
+      };
+    });
+  const base = JSON.stringify(interaction);
+  if (!currentCase) {
+    return base;
+  }
+  const hasNotes = currentCase.notes.length > 0;
+  let fixtureMessages: Array<{ id: number; direction: string; body: string }> | null = null;
+  if (currentCase.backendFixture?.scenario) {
+    try {
+      const fixturePath = path.join(process.cwd(), 'evals', 'fixtures', `${currentCase.backendFixture.scenario}.json`);
+      const raw = fsSync.readFileSync(fixturePath, 'utf8');
+      const parsed = JSON.parse(raw) as {
+        recentMessages?: Record<string, { messages?: Array<{ id: number; direction: string; body: string }> }>;
+      };
+      if (parsed.recentMessages && typeof parsed.recentMessages === 'object') {
+        const collected: Array<{ id: number; direction: string; body: string }> = [];
+        for (const entry of Object.values(parsed.recentMessages)) {
+          const msgs = entry?.messages ?? [];
+          for (const m of msgs) {
+            collected.push({ id: m.id, direction: m.direction, body: m.body });
+          }
+        }
+        if (collected.length > 0) {
+          fixtureMessages = collected;
+        }
+      }
+    } catch {
+      // fixture missing or unreadable - treat as no fixture context
+    }
+  }
+  if (!hasNotes && !fixtureMessages) {
+    return base;
+  }
+  const trustedLines: string[] = [];
+  trustedLines.push('Contexto confiable reconstruido del caso:');
+  if (hasNotes) {
+    trustedLines.push(`Notas del caso (verbatim, hecho establecido): ${JSON.stringify(currentCase.notes)}`);
+  }
+  if (fixtureMessages) {
+    trustedLines.push(`Historial confiable reciente (fixture ${currentCase.backendFixture?.scenario}) - mensajes declarados (id, direction, body): ${JSON.stringify(fixtureMessages)}`);
+  }
+  return `${base}\n\n${trustedLines.join('\n')}`;
 }
 
 function computeFinalScore(

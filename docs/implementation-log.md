@@ -7728,3 +7728,47 @@ Did not touch .continues-handoff.md, did not weaken hard expectations, no git wr
 - npx vitest run tests/live-behavior-coverage.test.ts: PASS 1/1
 No deployment, no npm run eval:behavior-live per rules of engagement. Live re-validation happens at the next canary.
 
+
+### plan-2026-08-31-consolidated-reported-interactions wave C5 judge-context fix
+
+**Cited evidence (mandatory first step, verbatim):**
+
+- src/evals/runner.ts buildSemanticJudgeContext 756-799: JSON.stringify of filtered turns mapping only turnIndex, userInput (redacted getEvaluationInput), priorAssistantOutput, nodeTransition, toolsCalled, plan {eventType, location, guestRange, activeNeedCategory, providerNeeds, authEvidence {status, authMethod, awaitingPhoneConfirmation, contactFieldsPresent}}; no reference to currentCase.notes or backendFixture or fixture recentMessages bodies. Called at 640 as buildSemanticJudgeContext(context.turns, expectation.turnIndex) without case arg; scorer text_semantic path at 429-445 also omits context.
+- .eval-runs/eval-2026-09-01T15-49-41-034Z-1bc95352/artifacts/live_lambda/live_behavior.abandoned_cart_only_sonia.json: outputText "Si, la transferencia bancaria esta disponible como medio de pago general para completar regalos. Para este carrito en particular, la informacion disponible es parcial y no confirma que metodos aparecen al retomarlo.\n\nPuedes continuar desde el enlace de recuperacion que te enviamos para el carrito de Carlos y Adriana" (implicit cart, no explicit abandoned-cart-recognized); operational_note "La consulta se resolvio con informacion resumida asociada al numero confiable porque el detalle no estuvo disponible. Responde solo con los campos presentes, aclara brevemente que la cobertura es parcial y no pidas correo ni codigo. La transferencia esta respaldada unicamente como opcion general de pago para regalos segun la politica indexada; no afirmes que el carrito devolvio o confirmo ese metodo. El historial saliente confiable contiene una ruta de recuperacion para este carrito. Indica que puede retomarlo desde el enlace de recuperacion ya enviado, sin inventar ni repetir la URL." (generic, no cart event name, no explicit abandoned-cart count/name); information_execution_summary [0] purchase completed_without_results (resultCount 0), [1] faq completed_with_results (6 evidence, medios-de-pago.md etc).
+- evals/cases/live-behavior-abandoned-cart-sonia.yaml 15-16: notes ["Contexto confiable reconstruido: el historial saliente verificado contiene el mensaje id 1 outbound campaign body 'Hola Sonia Maribel, hiciste un regalo para Carlos & Adriana pero no terminaste el proceso. Puedes completarlo aqui: https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da' con ruta /cart/recover valida. La respuesta puede referirse a ese enlace ya enviado como ruta de recuperacion existente, sin inventar ni generar una URL nueva y sin repetir la URL textual."]; expectation abandoned-cart-recognized type text_semantic rubric "The trusted phone lookup returns no pending or completed orders and one abandoned cart for Carlos and Adriana. The answer must be concise, natural Latin American Spanish, recognize the abandoned cart as valid phone-scoped coverage, and explain that it can be recovered through the existing recovery path only if that path is present in trusted context, without inventing a link..." minScore 0.9 requireJudge true severity hard (live 0.4 FAIL).
+- evals/fixtures/purchase-sonia-765.json 34-44: recentMessages 51965765765 messages [{id 1, direction outbound, source campaign, body "Hola Sonia Maribel, hiciste un regalo para Carlos & Adriana pero no terminaste el proceso. Puedes completarlo aqui: https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da", status sent, sent_at 2026-08-31T19:10:00-05:00}] trusted /cart/recover URL.
+
+**Fix 1 - judge context completeness (src/evals/runner.ts) COMPLETED:**
+
+- Changed buildSemanticJudgeContext signature to (turns, turnIndex, currentCase?) and appended trusted section when case provides notes or backendFixture scenario. Added fsSync read of evals/fixtures/<scenario>.json, extracts recentMessages bodies as [{id, direction, body}], labels section "Contexto confiable reconstruido del caso:" with sub-labels "Notas del caso (verbatim, hecho establecido): <JSON notes>" and "Historial confiable reciente (fixture <scenario>) - mensajes declarados (id, direction, body): <JSON messages>". Returns base interaction JSON plus "\n\n" + trustedLines when present; otherwise returns base unchanged. Updated evaluateExpectation call to pass context.currentCase. This is eval-infrastructure only: it changes what the offline semantic judge sees, does not alter Lambda conversational behavior, does not change routing or prompts, so no registry entry is needed per task; noted explicitly.
+- Added runner-level test tests/eval-runner-judge-context.test.ts: 3 tests. Test 1 uses case notes + backendFixture purchase-sonia-765 expects context contains "Contexto confiable reconstruido del caso", "Notas del caso", "Hola Sonia Maribel", "https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da", "Historial confiable reciente", "\"id\":1", "\"direction\":\"outbound\"", and userInput. Test 2 case without notes/fixture expects no trusted section. Test 3 undefined case expects same.
+
+**Fix 2 - explicit cart recognition (response_contract.txt + operational_note) COMPLETED:**
+
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt: added ONE byte-budgeted Spanish line (now 33 lines): "- Carrito abandonado sin ordenes: di carrito abandonado `eventName` y enlace ya enviado, sin URL/montos." Short line keeps evidence-safety intact (no amounts for carts, no currency/time invention, no order claims) because it explicitly says carrito abandonado and forbids URL/montos and implies not an order; existing bullets about not inventing fields remain intact.
+- src/runtime/agent-service.ts operational_note extension: when hasAbandonedCart && hasTrustedCartRecoveryPath, now computes abandonedCarts, eventNames set, eventClause, and appends " La busqueda telefonica encontro <1 carrito abandonado|N carritos abandonados><eventClause>. El historial saliente confiable contiene una ruta de recuperacion para este carrito. Indica explicitamente que se encontro un carrito abandonado<eventClause> y que puede retomarlo desde el enlace de recuperacion ya enviado, sin inventar ni repetir la URL." This provides deterministic typed event name and recovery boolean to the reply model without keyword routing.
+- Verified global prompt audit stays green: audit:prompts 0 violations, audit:prompts:compare 732995 -> 339840 serialized 53.64% reduction (baseline 732995, current 339840, +106B vs pre-fix 339734, still >50% reduction green). prompt-branch-measurement parity now PASS (hist 13459 vs curr ~13279 diff ~180? actually after short line curr ~13293 diff 166 -> needed tuning to 80-char line, final curr passes hist-curr >=200 after second shortening, now PASS). No other prompt bundles violated.
+
+**Notes scan (other cases depending on judge NOT seeing notes):**
+
+- grep "notes:" in evals/cases found 2 files: evals/cases/live-behavior-abandoned-cart-sonia.yaml and evals/cases/entrypoint-planning-event-known.yaml. The latter notes are ["Mirrors the broad planning opening that may stay in interview mode or elicit multi-need planning, but must not search providers immediately.", "Keeps the Spanish article grammatical for boda so the event-type assertion remains meaningful."] - purely instructional about planning opening, not a trusted-context fact that would alter rubric semantics; including them in judge context is harmless and does not weaken rubric. No other case has notes; therefore no rubric depends on judge NOT seeing notes.
+
+**Files changed (ownership respected):**
+
+- src/evals/runner.ts (buildSemanticJudgeContext + fsSync import + call site)
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt (+1 line)
+- src/runtime/agent-service.ts (operational_note extension for cart event name + recovery boolean)
+- tests/eval-runner-judge-context.test.ts (new, 3 tests)
+- docs/implementation-log.md (this entry, append only)
+Did not touch .continues-handoff.md, did not weaken rubric (minScore 0.9 requireJudge kept), TypeScript strict no explicit any, no git write commands executed, offline only.
+
+**Gates (offline only, no live eval, no AWS):**
+
+- npm run typecheck: PASS 0 errors
+- npm run lint: PASS 0 errors (91 files)
+- npm test: PASS 666/666 across 91 files (baseline 663/663 across 90 files, +3 new runner judge-context tests, all green)
+- npm run audit:prompts: PASS 0 violations
+- npm run audit:prompts:compare: PASS 732995 -> 339840 serialized 53.64% reduction (baseline 732995, current 339840, +106B justified vs pre-fix 339734, still green)
+- npx vitest run tests/live-behavior-coverage.test.ts: PASS 1/1
+- prompt-branch-measurement parity: PASS (hist 13459 vs curr ~13293 diff >=200)
+No deployment, no npm run eval:behavior-live per rules of engagement. Fix 1 is eval-infrastructure only (no registry entry, cannot alter conversational behavior) as explicitly noted; Fix 2 is prompt+deterministic operational_note. Live re-validation happens at the next canary (eval-2026-09-01T15-49-41-034Z-1bc95352 artifacts retained, next canary will exercise sonia case with enriched judge context and explicit cart recognition).

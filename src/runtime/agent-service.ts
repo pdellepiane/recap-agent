@@ -3477,7 +3477,10 @@ export class AgentService {
           hasAbandonedCart &&
           this.hasTrustedCartRecoveryPath(args.messageContext)
         ) {
-          operationalNote += ' El historial saliente confiable contiene una ruta de recuperación para este carrito. Indica que puede retomarlo desde el enlace de recuperación ya enviado, sin inventar ni repetir la URL.';
+          const abandonedCarts = phonePurchaseResult.carts?.filter((cart) => cart.wasAbandoned) ?? [];
+          const eventNames = [...new Set(abandonedCarts.map((cart) => cart.eventName).filter((name): name is string => Boolean(name?.trim())) )];
+          const eventClause = eventNames.length > 0 ? ` para ${eventNames.join(', ')}` : '';
+          operationalNote += ` La búsqueda telefónica encontró ${abandonedCarts.length === 1 ? 'un carrito abandonado' : `${abandonedCarts.length} carritos abandonados`}${eventClause}. El historial saliente confiable contiene una ruta de recuperación para este carrito. Indica explícitamente que se encontró un carrito abandonado${eventClause} y que puede retomarlo desde el enlace de recuperación ya enviado, sin inventar ni repetir la URL.`;
         }
       }
 
