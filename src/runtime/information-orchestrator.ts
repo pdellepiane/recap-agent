@@ -912,6 +912,21 @@ export class InformationOrchestrator {
         return result;
       }
       if (purchases.length === 0) {
+        const hasExplicitSelector =
+          Boolean(request.eventHint?.trim()) ||
+          (request.amount !== null && request.amount !== undefined) ||
+          Boolean(this.requestDateSelector(request));
+        if (hasExplicitSelector && evidence.purchases.length > 0) {
+          return {
+            requestId: request.requestId,
+            kind: 'purchase',
+            status: 'failed',
+            retryable: false,
+            failureKind: 'not_found',
+            message:
+              'No encontre una compra que coincida con la referencia indicada entre las asociadas a este numero. Si me compartes otro dato del evento puedo revisarlo nuevamente.',
+          };
+        }
         return {
           requestId: request.requestId,
           kind: 'purchase',

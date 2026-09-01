@@ -2207,10 +2207,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const boundedCarts = shouldExposeCarts
       ? carts.slice(0, 3).map((cart) => this.projectCartForReply(cart))
       : undefined;
+    const sameEventCarts = !shouldExposeCarts && boundedPurchases.length > 0 && carts.length > 0
+      ? carts.filter((cart) => this.isSameEventCart(cart, boundedPurchases))
+      : [];
+    const boundedSameEventCarts =
+      sameEventCarts.length > 0
+        ? sameEventCarts.slice(0, 1).map((cart) => this.projectSameEventCartForReply(cart))
+        : undefined;
+    const finalCarts = boundedCarts ?? boundedSameEventCarts;
     return this.stripRawFields({
       ...result,
       purchases: boundedPurchases,
-      ...(boundedCarts ? { carts: boundedCarts } : { carts: undefined }),
+      ...(finalCarts ? { carts: finalCarts } : { carts: undefined }),
     });
   }
 
@@ -2251,6 +2259,43 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       giftsQuantity: source.giftsQuantity,
       createdAt: source.createdAt,
     };
+  }
+
+  private projectSameEventCartForReply(cart: unknown): unknown {
+    if (!cart || typeof cart !== 'object') return cart;
+    const source = cart as Record<string, unknown>;
+    return {
+      status: source.status,
+      wasAbandoned: source.wasAbandoned,
+      eventName: source.eventName,
+    };
+  }
+
+  private isSameEventCart(cart: unknown, purchases: ReadonlyArray<Record<string, unknown>>): boolean {
+    if (!cart || typeof cart !== 'object') return false;
+    const source = cart as Record<string, unknown>;
+    const cartEventId = source.eventId;
+    const cartEventName = typeof source.eventName === 'string' ? source.eventName : null;
+    const normalizedCartName = cartEventName ? this.normalizeEventNameForCartMatch(cartEventName) : '';
+    return purchases.some((purchase) => {
+      const purchaseEventId = purchase.eventId;
+      if (cartEventId !== null && cartEventId !== undefined && purchaseEventId !== null && purchaseEventId !== undefined) {
+        if (cartEventId === purchaseEventId) return true;
+      }
+      const purchaseEventName = typeof purchase.eventName === 'string' ? purchase.eventName : null;
+      if (!purchaseEventName || !cartEventName) return false;
+      const normalizedPurchaseName = this.normalizeEventNameForCartMatch(purchaseEventName);
+      return normalizedPurchaseName !== '' && normalizedCartName !== '' && normalizedPurchaseName === normalizedCartName;
+    });
+  }
+
+  private normalizeEventNameForCartMatch(value: string): string {
+    return value
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/gu, '')
+      .toLocaleLowerCase('en')
+      .replace(/[^a-z0-9]+/gu, ' ')
+      .trim();
   }
 
   private truncateText(value: string, maxLength: number): string {

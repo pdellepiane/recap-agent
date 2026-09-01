@@ -61,9 +61,15 @@ describe('rsvp party detection precision (T12-fix)', () => {
     expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano');
   });
 
-  it('maria twin: confirmo mi asistencia y la de mi esposa Maria -> self_and_others Maria with handoff', async () => {
+  // Guards the untyped-evidence boundary: when companion_count and plus_one_response are absent/unknown (no typed count), handoff is required.
+  // Does NOT guard the single explicit +1 path (that path must NOT hand off; other tests cover companion_count='one' staying self).
+  it('maria twin (untyped-evidence boundary): self_and_others Maria with unknown count still hands off', async () => {
     const runtime = new HandoffRuntime(
-      rsvpExtraction({ party: { scope: 'self_and_others', mentioned_names: ['Maria'] }, eventReference: 'evento del sabado', conversationSummary: 'Confirma asistencia para si mismo y esposa Maria' }),
+      rsvpExtraction({
+        party: { scope: 'self_and_others', mentioned_names: ['Maria'], companion_count: 'unknown', plus_one_response: 'unknown' },
+        eventReference: 'evento del sabado',
+        conversationSummary: 'Confirma asistencia para si mismo y esposa Maria sin conteo tipado',
+      }),
     );
     const store = new InMemoryPlanStore();
     const seeded = mergePlan(createEmptyPlan({ planId: 'plan-maria-twin', channel: 'whatsapp', externalUserId: 'user-maria-twin' }), {
@@ -168,7 +174,7 @@ class TrackingGateway implements AgentConversationGateway {
   async guestRsvp(): Promise<AgentGuestRsvpResult> { this.calledTools.push('guest_rsvp'); return { status: 'failed', error: 'unused', retryable: false }; }
 }
 
-function rsvpExtraction(args: { party?: { scope: string; mentioned_names: string[] } | null; eventReference?: string | null; conversationSummary?: string }): ExtractionResult {
+function rsvpExtraction(args: { party?: { scope: string; mentioned_names: string[]; companion_count?: string | null; plus_one_response?: string | null } | null; eventReference?: string | null; conversationSummary?: string }): ExtractionResult {
   return {
     actionIntent: 'responder_invitacion',
     informationRequests: [],

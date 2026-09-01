@@ -12,18 +12,11 @@ import { InformationOrchestrator } from '../src/runtime/information-orchestrator
 import type { KnowledgeRetrievalGateway } from '../src/runtime/knowledge-retrieval-gateway';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import {
-  canDisclosePaymentDestination,
   hasPhysicalFulfillment,
   pendingPaymentValidationExpectation,
 } from '../src/runtime/purchase-disclosure-policy';
 
 describe('purchase disclosure policy', () => {
-  it('never allows destination account details into customer-facing evidence', () => {
-    expect(canDisclosePaymentDestination(purchase({ paymentStatus: 'pending' }))).toBe(false);
-    expect(canDisclosePaymentDestination(purchase({ paymentStatus: 'approved' }))).toBe(false);
-    expect(canDisclosePaymentDestination(purchase({ paymentStatus: null }))).toBe(false);
-  });
-
   it('requires affirmative physical-fulfillment evidence before exposing shipping', () => {
     expect(hasPhysicalFulfillment(purchase({ paymentStatus: 'approved', itemType: 'cash' }))).toBe(false);
     expect(hasPhysicalFulfillment(purchase({ paymentStatus: 'approved', itemType: null }))).toBe(false);

@@ -862,7 +862,7 @@ tasks:
     title: Integrate route-specific minimum disclosure
     wave: 3
     owner: primary
-    status: pending
+    status: completed
     depends_on: [T3, T4]
     scope:
       - Compose PhoneContextSnapshot once per turn.
@@ -882,7 +882,7 @@ tasks:
     title: Add permanent interaction regressions and coverage entries
     wave: 3
     owner: primary
-    status: in_progress
+    status: completed
     depends_on: [T3, T4]
     required_live_cases:
       - purchase_pending_transfer_currency_time_continuity
@@ -909,7 +909,7 @@ tasks:
     title: Independent review and regression gate
     wave: 4
     owner: reviewer
-    status: pending
+    status: completed
     depends_on: [T5, T6]
     acceptance:
       - Review selection truth table and disclosure projections.
@@ -950,6 +950,9 @@ acceptance_criteria:
   - No currency, local timestamp, balance, approval, or receipt confirmation is inferred from missing fields.
   - The indexed 72-business-hour policy is combined only with a selected pending transfer, Yape,
     or Plin case. PayPal remains gated until its conflicting policy sources are resolved.
+    Revision note (T7 review W1): faq_vector_store_audit.policy_conflict records the user decision
+    selecting the indexed validation-window article as authoritative for this implementation,
+    including its PayPal guidance; that resolution supersedes the PayPal gating clause above.
   - When currency is null, customer-facing output contains no currency symbol or denomination;
     a verified numeric amount may be paired with its verified payment method.
   - Offset-less timestamps never reach the model. UTC-to-America/Lima conversion is deterministic

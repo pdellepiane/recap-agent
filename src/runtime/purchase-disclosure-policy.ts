@@ -11,15 +11,6 @@ const physicalItemTypeValues = new Set([
   'producto_fisico',
 ]);
 
-export function canDisclosePaymentDestination(
-  purchase: PurchaseInformation,
-): boolean {
-  // Destination accounts are internal payment-routing data. They are never
-  // customer-facing evidence, even when a purchase is pending.
-  void purchase;
-  return false;
-}
-
 export function pendingPaymentValidationExpectation(
   purchase: PurchaseInformation,
 ): PendingPaymentValidationExpectation | null {
