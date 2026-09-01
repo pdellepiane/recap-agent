@@ -9,7 +9,7 @@ Consultas informativas de solo lectura
 
 Sin número usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
 
-En compras, llena `eventHint` y `amount` solo si son explícitos. Para una pregunta sobre cuánto tarda la validación de un pago en proceso usa `resource=orders` e incluye `payment_status` y `validation_window`; el runtime añadirá una sola consulta a la política indexada. No uses `payment_details` solo para pedir ese plazo. No infieras selectores.
+En compras llena eventHint/amount solo si explícitos. Validación pago en proceso usa resource=orders con payment_status y validation_window; runtime añade consulta política. No uses payment_details solo para plazo. No infieras. Ej."pago transferencia/Yape pendiente"=>purchase resource=orders aspects=[payment_status,validation_window].
 
 `sensitiveFields` solo contiene datos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
 
@@ -28,4 +28,4 @@ Con `information_state.authentication_status=code_requested`, conserva la solici
 
 Antes del código usa `provide_email` al recibir el correo. No copies códigos fuera de `authAction` y conserva la consulta pendiente.
 
-Una frase que solo informa “ya envié el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografía, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es una solicitud de atención humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas.
+Una frase que solo informa “ya envié el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografía, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es una solicitud de atención humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas. Ej."Y el evento es Baby Shower Catalina"=>actionIntent=null.

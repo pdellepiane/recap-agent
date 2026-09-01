@@ -247,6 +247,15 @@ export class InformationOrchestrator {
                 coverage: result.coverage ?? 'complete',
                 resource: result.lookupResource ?? result.resource,
               }
+            : result.status === 'failed' &&
+                result.kind === 'purchase' &&
+                'accessMethod' in result &&
+                typeof (result as { accessMethod?: string }).accessMethod === 'string'
+            ? {
+                accessMethod: (result as { accessMethod?: InformationExecutionSummary['accessMethod'] }).accessMethod ?? 'authenticated_account',
+                coverage: null,
+                resource: (request as { resource?: InformationExecutionSummary['resource'] }).resource,
+              }
             : {}),
       };
     });
@@ -925,7 +934,8 @@ export class InformationOrchestrator {
             failureKind: 'not_found',
             message:
               'No encontre una compra que coincida con la referencia indicada entre las asociadas a este numero. Si me compartes otro dato del evento puedo revisarlo nuevamente.',
-          };
+            accessMethod: 'trusted_phone_purchase',
+          } as unknown as InformationTaskResult;
         }
         return {
           requestId: request.requestId,
@@ -935,7 +945,8 @@ export class InformationOrchestrator {
           failureKind: 'not_found',
           message:
             'No encontré compras asociadas a este número. Si usaste otro número o un correo diferente, indícamelo y puedo orientarte con esa búsqueda.',
-        };
+          accessMethod: 'trusted_phone_purchase',
+        } as unknown as InformationTaskResult;
       }
       for (const purchase of purchases) {
         this.mergePhonePurchase(
@@ -979,7 +990,8 @@ export class InformationOrchestrator {
         failureKind: 'not_found',
         message:
           'No encontré esa compra asociada a este número. Si usaste otro número o un correo diferente, indícamelo y puedo orientarte con esa búsqueda.',
-      };
+        accessMethod: 'trusted_phone_purchase',
+      } as unknown as InformationTaskResult;
     }
 
     return {

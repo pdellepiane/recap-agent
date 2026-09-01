@@ -3102,16 +3102,35 @@ export class AgentService {
     extraction: ExtractionResult,
     previousNode: DecisionNode,
   ): boolean {
+    const lastCompleted = plan.information_state.last_completed_request;
+    const hasSupportDetail = Boolean(
+      extraction.contactName ||
+      extraction.contactEmail ||
+      extraction.eventType,
+    );
+    const hasProviderNeed = Boolean(
+      extraction.vendorCategory ||
+      (extraction.vendorCategories?.length ?? 0) > 0 ||
+      (extraction.providerQueryIntents?.length ?? 0) > 0 ||
+      (extraction.providerPlanOperations?.length ?? 0) > 0 ||
+      (extraction.selectedProviderReferences?.length ?? 0) > 0 ||
+      (extraction.selectedProviderHints?.length ?? 0) > 0 ||
+      extraction.budgetSignal ||
+      extraction.location ||
+      extraction.guestRange !== null ||
+      extraction.activeNeedCategory,
+    );
+    const isInformationThread =
+      lastCompleted?.kind === 'faq' ||
+      lastCompleted?.kind === 'purchase' ||
+      lastCompleted?.kind === 'associated_event';
     return (
       previousNode === 'resolver_consultas_informativas' &&
-      plan.information_state.last_completed_request?.kind === 'faq' &&
-      extraction.actionIntent === null &&
+      isInformationThread &&
       extraction.informationRequests.length === 0 &&
-      Boolean(
-        extraction.contactName ||
-        extraction.contactEmail ||
-        extraction.eventType,
-      )
+      hasSupportDetail &&
+      !hasProviderNeed &&
+      (extraction.actionIntent === null || (hasSupportDetail && !hasProviderNeed))
     );
   }
 
