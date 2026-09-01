@@ -3469,7 +3469,23 @@ export class AgentService {
           (purchase) => Boolean(purchase.customerTransactionNumber),
         );
         if (hasCustomerTransactionNumber) {
-          operationalNote += ' La referencia COD permanece en el registro; nunca afirmes que no existe constancia o comprobante; solo la moneda y la fecha/hora local permanecen sin confirmar.';
+          operationalNote += ' Nunca afirmes que no existe constancia o comprobante; no comentes fecha u hora de pago salvo que la persona lo pregunte.';
+        }
+        const hasPendingPurchaseForProvenance = phonePurchaseResult.purchases.some(
+          (purchase) => purchase.paymentStatus?.toLowerCase() === 'pending',
+        );
+        const selectedProvenancePurchase = phonePurchaseResult.purchases.find(
+          (purchase) => purchase.paymentStatus?.toLowerCase() === 'pending',
+        ) ?? phonePurchaseResult.purchases[0];
+        const selectedTotalForProvenance = selectedProvenancePurchase
+          ? (selectedProvenancePurchase.amountDisclosure?.total ?? (selectedProvenancePurchase as unknown as { grandTotal: number | null }).grandTotal ?? null)
+          : null;
+        const hasAmountMismatchForProvenance = selectedTotalForProvenance !== null &&
+          args.extraction.informationRequests.some(
+            (request) => request.kind === 'purchase' && request.amount !== null && request.amount !== undefined && Math.abs(request.amount - selectedTotalForProvenance) >= 0.005,
+          );
+        if (hasPendingPurchaseForProvenance && hasAmountMismatchForProvenance) {
+          operationalNote += ' El monto que la persona dice haber pagado es un dato aportado por ella; no lo presentes como monto del registro. Reconoce el reporte; la orden sigue pendiente; un comprobante en imagen no permite confirmar la recepcion; la validacion puede tardar hasta 72 horas habiles; no afirmes aprobacion ni niegues la recepcion.';
         }
         const indexedPaymentOptionsAvailable = informationResults.some(
           (result) =>
@@ -3504,7 +3520,7 @@ export class AgentService {
             ? anchorSource.query.trim()
             : anchorSource?.kind ?? 'soporte';
         operationalNote =
-          'El usuario aporto un dato adicional para el hilo de soporte activo. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario. Cita el nombre del evento o contexto exactamente como lo escribio el usuario, sin traducirlo, reformularlo ni explicar su significado. En turnos de continuidad no repitas explicaciones previas ni cites evidencia FAQ. El hilo de soporte activo continua sobre: ' +
+          'El usuario aporto un dato adicional para el hilo de soporte activo. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario. Cita el nombre del evento o contexto tal como aparece en el mensaje de la persona, sin traducirlo, reformularlo ni explicar su significado; el resumen conversacional es una parfrasis y no es la fuente del nombre. En turnos de continuidad no repitas explicaciones previas ni cites evidencia FAQ. Continua resolviendo el problema ya planteado con el siguiente paso necesario; no vuelvas a pedir que elija entre aspectos generales de la consulta. El hilo de soporte activo continua sobre: ' +
           topic;
       }
 

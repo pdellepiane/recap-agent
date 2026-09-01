@@ -2282,6 +2282,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     delete sanitized.payment;
     delete sanitized.declineCode;
     delete sanitized.adminComment;
+    // Backend no longer returns COD reference for this flow; identifier is reply-internal only - exclude from model projection per minimum_disclosure
+    delete sanitized.customerTransactionNumber;
     return sanitized;
   }
 
