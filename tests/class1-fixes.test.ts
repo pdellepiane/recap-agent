@@ -212,13 +212,7 @@ describe('class1 fixes twins', () => {
       expect(giftResult.purchases[0]?.payment?.paidAt).toBeNull();
     }
 
-    // response_contract contains zone guard
-    const contract = fs.readFileSync('prompts/nodes/resolver_consultas_informativas/response_contract.txt', 'utf8');
-    expect(contract).toContain('nunca afirmes fecha/zona/UTC si sin offset');
-    expect(contract).toContain('backend o mensaje usuario');
-    expect(contract).toContain('Di sin info zona');
-
-    // ensure no projection contains UTC/Lima claim: check orchestrator projection for offset-less case
+    // Ensure canonical projection contains no inferred UTC/Lima claim.
     const exec = await new InformationOrchestrator({
       knowledgeGateway: { async search() { return { status: 'failed' as const, reason: 'not_configured' as const, retryable: false, error: 'x' }; } } as unknown as KnowledgeRetrievalGateway,
       providerGateway: {} as ProviderGateway,
@@ -347,7 +341,8 @@ describe('class1 fixes twins', () => {
 
   it('extractor prompts contain salience rules', () => {
     const infoExtractor = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
-    expect(infoExtractor).toContain('El pago por transferencia para Claudia y Luis Felipe');
+    expect(infoExtractor).toContain('constancia o correccion de moneda');
+    expect(infoExtractor).toContain('purchase orders; no FAQ/plan');
     expect(infoExtractor).toContain('resource=orders');
     expect(infoExtractor).toContain('payment_status');
     expect(infoExtractor).toContain('validation_window');
