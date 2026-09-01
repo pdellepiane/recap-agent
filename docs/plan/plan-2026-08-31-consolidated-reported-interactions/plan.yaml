@@ -488,6 +488,10 @@ invariants:
   routing_safety:
     - No keyword or exact-string flow routing.
     - Use structured extraction and typed persisted state.
+    - >-
+      Reply composition remains model-driven. Deterministic code contributes only small necessary
+      fragments: typed operational notes, handoff renders, and mutation outcomes. Never compose a
+      complete customer-facing reply deterministically.
     - A support subject name must never overwrite the trusted channel user's identity.
     - Contextual corrections and requested support details must not restart planning or welcome flow.
     - Cart-only evidence is valid information coverage and must not become purchase not_found.

@@ -3480,7 +3480,10 @@ export class AgentService {
           const abandonedCarts = phonePurchaseResult.carts?.filter((cart) => cart.wasAbandoned) ?? [];
           const eventNames = [...new Set(abandonedCarts.map((cart) => cart.eventName).filter((name): name is string => Boolean(name?.trim())) )];
           const eventClause = eventNames.length > 0 ? ` para ${eventNames.join(', ')}` : '';
-          operationalNote += ` La búsqueda telefónica encontró ${abandonedCarts.length === 1 ? 'un carrito abandonado' : `${abandonedCarts.length} carritos abandonados`}${eventClause}. El historial saliente confiable contiene una ruta de recuperación para este carrito. Indica explícitamente que encontraste el carrito al revisar las compras y carritos asociados a tu numero de WhatsApp - se encontró un carrito abandonado${eventClause} y que puede retomarlo desde el enlace de recuperacion ya enviado en esta conversacion; no afirmes que se envio por correo ni menciones otro canal de envio, sin inventar ni repetir la URL. Para este caso de solo carrito no anadas hedges genericos sobre informacion parcial; si calificas, di con precision que no hay compras registradas y que lo asociado a tu numero es el carrito abandonado, sin usar frases de compra no encontrada.`;
+          operationalNote += ` La búsqueda telefónica encontró ${abandonedCarts.length === 1 ? 'un carrito abandonado' : `${abandonedCarts.length} carritos abandonados`}${eventClause}. El historial saliente confiable contiene una ruta de recuperación para este carrito. Indica explícitamente que encontraste el carrito al revisar las compras y carritos asociados a tu numero de WhatsApp - se encontró un carrito abandonado${eventClause} y que puede retomarlo desde el enlace de recuperacion ya enviado en esta conversacion; no afirmes que se envio por correo ni menciones otro canal de envio, sin inventar ni repetir la URL. Para este caso de solo carrito no anadas hedges genericos sobre informacion parcial.`;
+          if (indexedPaymentOptionsAvailable) {
+            operationalNote += ' La transferencia bancaria figura como opcion general para completar la compra segun la politica indexada de medios de pago.';
+          }
         }
       }
 
@@ -3544,95 +3547,6 @@ export class AgentService {
             null,
         },
       });
-    }
-
-    const phonePurchaseForDeterministic = informationResults.find(
-      (result) =>
-        result.status === 'completed' &&
-        result.kind === 'purchase' &&
-        (result.accessMethod === 'trusted_phone_purchase' ||
-          result.accessMethod === 'trusted_phone_event_purchase'),
-    ) as
-      | { status: string; kind: string; purchases?: unknown[]; carts?: Array<{ wasAbandoned?: boolean; eventName?: string | null }>; needsSelection?: boolean }
-      | undefined;
-    if (
-      this.isDeterministicCartOnlyState({
-        phonePurchaseResult: phonePurchaseForDeterministic ?? null,
-        messageContext: args.messageContext,
-        informationResults,
-        extraction: informationExtraction,
-      })
-    ) {
-      const carts = (phonePurchaseForDeterministic?.carts ?? []) as Array<{ wasAbandoned?: boolean; eventName?: string | null }>;
-      const abandonedCarts = carts.filter((cart) => cart.wasAbandoned === true);
-      const eventName = (abandonedCarts[0]?.eventName ?? '').trim() || 'tu evento';
-      const hasIndexedPaymentPolicy = informationResults.some(
-        (result) =>
-          result.requestId === informationPaymentOptionsPolicyRequestId &&
-          result.status === 'completed',
-      );
-      const deterministicText = this.renderDeterministicCartOnlyAbandonedReply(
-        eventName,
-        hasIndexedPaymentPolicy,
-      );
-      const deterministicReply: ComposeReplyResult = {
-        text: deterministicText,
-        structuredMessage: { type: 'generic', paragraphs_es: [deterministicText] },
-      };
-      args.tokenUsage.reply = null;
-      args.tokenUsage.openAiCalls.reply = null;
-      args.tokenUsage.total = this.sumTokenUsage(
-        args.tokenUsage.classifier,
-        args.tokenUsage.extraction,
-        args.tokenUsage.reply,
-      );
-      const saveDeterministicStartedAt = Date.now();
-      await this.dependencies.planStore.save({
-        plan: planForInformation,
-        reason: currentNode,
-      });
-      args.timingMs.save_plan += Date.now() - saveDeterministicStartedAt;
-      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-      const deterministicTurnDecision = this.informationTurnDecision(
-        'deterministic_cart_only_abandoned',
-      );
-      return {
-        plan: planForInformation,
-        outbound: this.renderOutbound(
-          deterministicReply,
-          [],
-          args.inbound.channel,
-          planForInformation.conversation_id,
-          planForInformation,
-        ),
-        trace: this.buildTrace({
-          plan: planForInformation,
-          previousNode: args.previousNode,
-          currentNode,
-          nodePath:
-            args.previousNode === currentNode
-              ? [currentNode]
-              : [args.previousNode, currentNode],
-          extraction: informationExtraction,
-          missingFields: [],
-          searchReady: false,
-          promptBundleId: 'deterministic:cart_only_abandoned',
-          promptFilePaths: [],
-          toolUsage: args.toolUsage,
-          providerResults: [],
-          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
-          planPersisted: true,
-          planPersistReason: currentNode,
-          timingMs: args.timingMs,
-          tokenUsage: args.tokenUsage,
-          messageContext: args.messageContext,
-          responseClassifier: args.responseClassifierTrace,
-          searchStrategy: 'none',
-          turnDecision: deterministicTurnDecision,
-          operationalNote: null,
-          informationExecution: informationSummaries,
-        }),
-      };
     }
 
     const promptBundleStartedAt = Date.now();
@@ -4057,61 +3971,6 @@ export class AgentService {
       }
     }
     return false;
-  }
-
-  private isDeterministicCartOnlyState(args: {
-    phonePurchaseResult: { status: string; kind: string; purchases?: unknown[]; carts?: Array<{ wasAbandoned?: boolean; eventName?: string | null }>; needsSelection?: boolean } | null | undefined;
-    messageContext: TurnMessageContext;
-    informationResults: InformationTaskResult[];
-    extraction: ExtractionResult;
-  }): boolean {
-    const result = args.phonePurchaseResult;
-    if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
-      return false;
-    }
-    const purchases = result.purchases ?? [];
-    if (purchases.length !== 0) {
-      return false;
-    }
-    if (result.needsSelection === true) {
-      return false;
-    }
-    const carts = result.carts ?? [];
-    if (carts.length === 0) {
-      return false;
-    }
-    const abandonedCarts = carts.filter((cart) => cart.wasAbandoned === true);
-    if (abandonedCarts.length === 0) {
-      return false;
-    }
-    const activeCarts = carts.filter((cart) => cart.wasAbandoned === false);
-    if (activeCarts.length > 0) {
-      return false;
-    }
-    if (!this.hasTrustedCartRecoveryPath(args.messageContext)) {
-      return false;
-    }
-    if (args.extraction.ambiguity?.status === 'ambiguous') {
-      return false;
-    }
-    const hasUnresolvedNeed = args.informationResults.some(
-      (entry) => entry.status === 'needs_input' || entry.status === 'failed',
-    );
-    if (hasUnresolvedNeed) {
-      return false;
-    }
-    return true;
-  }
-
-  private renderDeterministicCartOnlyAbandonedReply(
-    eventName: string,
-    includeTransferClause: boolean,
-  ): string {
-    const base = `Al revisar las compras y carritos asociados a tu numero de WhatsApp encontre un carrito abandonado para ${eventName} que no se completo. Puedes retomarlo desde el enlace de recuperacion que ya te enviamos en esta conversacion.`;
-    if (!includeTransferClause) {
-      return base;
-    }
-    return `${base} Si completas el pago por transferencia, la confirmacion puede tardar hasta 72 horas habiles.`;
   }
 
   private async resolveInformationAuthentication(args: {

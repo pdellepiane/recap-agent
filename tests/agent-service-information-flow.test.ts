@@ -410,20 +410,29 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51965765765',
     });
 
-    expect(response.outbound.text).toContain(
-      'Al revisar las compras y carritos asociados a tu numero de WhatsApp',
+    // Model-driven path: operational note carries typed fragments, reply model composes final reply
+    expect(runtime.composeRequests.length).toBe(1);
+    const compose = runtime.composeRequests[0] as unknown as { errorMessage: string | null; informationResults: unknown[] };
+    expect(compose.errorMessage).toContain(
+      'al revisar las compras y carritos asociados a tu numero de WhatsApp',
     );
-    expect(response.outbound.text).toContain(
-      'carrito abandonado para Carlos and Adriana que no se completo',
+    expect(compose.errorMessage).toContain(
+      'carrito abandonado para Carlos and Adriana',
     );
-    expect(response.outbound.text).toContain(
-      'que ya te enviamos en esta conversacion',
+    expect(compose.errorMessage).toContain(
+      'ya enviado en esta conversacion',
     );
-    expect(response.outbound.text).not.toContain('recovery-id');
-    expect(response.outbound.text).not.toContain('correo');
+    expect(compose.errorMessage).toContain(
+      'puede retomarlo desde el enlace de recuperacion ya enviado en esta conversacion',
+    );
+    expect(compose.errorMessage).not.toContain('recovery-id');
+    expect(compose.errorMessage).toContain('no afirmes que se envio por correo');
+    // operational note must not contain ungrounded 72h clause for cart
+    expect(compose.errorMessage?.toLowerCase()).not.toContain('72 horas');
+    expect((response.trace as unknown as { prompt_bundle_id: string }).prompt_bundle_id).not.toBe('deterministic:cart_only_abandoned');
+    // outbound is model output (fake runtime returns generic), not deterministic full reply
     expect(response.outbound.text).not.toContain('https://');
-    expect((response.trace as unknown as { prompt_bundle_id: string }).prompt_bundle_id).toBe('deterministic:cart_only_abandoned');
-    expect(runtime.composeRequests.length).toBe(0);
+    expect(response.trace.tools_called).toContain('lookup_guest_orders_by_phone');
   });
 
   it('routes an explicit wrong-account statement to email OTP without phone authentication', async () => {

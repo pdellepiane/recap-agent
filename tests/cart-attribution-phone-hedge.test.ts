@@ -16,18 +16,25 @@ describe('cart reply attribution and hedge fix', () => {
     // Change 2 - hedge source is agent-service.ts:3442 partial coverage base, cart-only suppresses generic hedge
     // base partial note still present at 3442
     expect(content).toContain('aclara brevemente que la cobertura es parcial');
-    // cart-only clause suppresses vague hedge and states precise qualification
+    // cart-only clause suppresses vague hedge
     expect(content).toContain('no anadas hedges genericos sobre informacion parcial');
-    expect(content).toContain('no hay compras registradas');
-    expect(content).toContain('lo asociado a tu numero es el carrito abandonado');
+    // precise qualification removed - must NOT be present (judge read as near-denial 0.72)
+    expect(content).not.toContain('no hay compras registradas');
+    expect(content).not.toContain('lo asociado a tu numero es el carrito abandonado');
+    // grounded transfer availability fact (only when policy present)
+    expect(content).toContain('La transferencia bancaria figura como opcion general para completar la compra segun la politica indexada de medios de pago.');
     // must not introduce forbidden purchase-not-found phrases verbatim in the cart instruction as positive output
     // check cart clause specifically does not contain the hard forbidden phrases
     const cartClauseStart = content.indexOf('al revisar las compras y carritos asociados a tu numero de WhatsApp');
-    const cartClause = cartClauseStart >= 0 ? content.slice(cartClauseStart, cartClauseStart + 600) : '';
+    const cartClause = cartClauseStart >= 0 ? content.slice(cartClauseStart, cartClauseStart + 800) : '';
     expect(cartClause.toLowerCase()).not.toContain('no encontramos ninguna compra');
     expect(cartClause.toLowerCase()).not.toContain('no se encontro ningun pedido');
     // hedge suppression uses negation "sin usar frases de compra no encontrada" not the verbatim forbidden string "no existe"
     expect(cartClause.toLowerCase()).not.toContain('no existe');
+    // cart clause must not contain 72h window language (ungrounded for cart)
+    expect(cartClause.toLowerCase()).not.toContain('72 horas');
+    expect(cartClause.toLowerCase()).not.toContain('72h');
+    expect(cartClause.toLowerCase()).not.toContain('ventana');
   });
 
   it('response contract hedge source is not the origin', () => {
