@@ -17,7 +17,19 @@ export type ChannelRequestOutcome =
   | 'agent_participation_unchanged'
   | 'conversation_overtaken'
   | 'conversation_overtake_unchanged'
+  | 'conversation_busy'
+  | 'coordination_unavailable'
   | 'internal_error';
+
+export type ConversationLeaseLog = {
+  event: 'conversation_lease';
+  request_id: string;
+  name: string;
+  outcome?: string;
+  wait_ms?: number;
+  elapsed_ms?: number;
+  attempt_count?: number;
+};
 
 export type ChannelRequestValidationIssue = {
   path: string;
@@ -79,6 +91,35 @@ export type ChannelRequestLog = {
   error_name?: string;
   error_message_redacted?: string;
 };
+
+export function buildConversationLeaseLog(args: {
+  requestId: string;
+  name: string;
+  outcome?: string;
+  waitMs?: number;
+  elapsedMs?: number;
+  attemptCount?: number;
+}): ConversationLeaseLog {
+  return {
+    event: 'conversation_lease',
+    request_id: args.requestId,
+    name: redactLeaseText(args.name),
+    ...(args.outcome ? { outcome: redactLeaseText(args.outcome) } : {}),
+    ...(args.waitMs !== undefined ? { wait_ms: finiteNonNegative(args.waitMs) } : {}),
+    ...(args.elapsedMs !== undefined ? { elapsed_ms: finiteNonNegative(args.elapsedMs) } : {}),
+    ...(args.attemptCount !== undefined
+      ? { attempt_count: finiteNonNegative(args.attemptCount) }
+      : {}),
+  };
+}
+
+function redactLeaseText(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_.:-]/gu, '_').slice(0, 80);
+}
+
+function finiteNonNegative(value: number): number {
+  return Number.isFinite(value) ? Math.max(0, Math.round(value)) : 0;
+}
 
 export function buildChannelRequestLog(args: {
   requestId: string;

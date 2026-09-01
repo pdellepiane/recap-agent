@@ -9,6 +9,18 @@ import {
 } from '../src/lambda/request-contract';
 
 describe('Lambda channel request contract', () => {
+  it('rejects ambiguous channel key components but preserves user identifiers', () => {
+    expect(channelRequestSchema.safeParse({
+      channel: 'terminal#other', user_id: 'user', text: 'Hola',
+    }).success).toBe(false);
+    expect(agentParticipationRequestSchema.safeParse({
+      channel: 'terminal#other', user_id: 'user', request_id: 'request',
+    }).success).toBe(false);
+    expect(channelRequestSchema.parse({
+      channel: 'terminal', user_id: 'other#user', text: 'Hola',
+    }).user_id).toBe('other#user');
+  });
+
   it('publishes the media descriptor as JSON Schema Draft 2020-12', () => {
     const schema = JSON.parse(fs.readFileSync(
       path.resolve(process.cwd(), 'docs/contracts/channel-media.schema.json'),

@@ -26,6 +26,13 @@ import {
 } from '../runtime/knowledge-retrieval-gateway';
 import { InformationOrchestrator } from '../runtime/information-orchestrator';
 import { WhatsAppMessageRenderer, WebChatMessageRenderer } from '../runtime/message-renderer';
+import {
+  ConversationTurnBusyError,
+  ConversationTurnUnavailableError,
+  runWithConversationTurnLease,
+  type ConversationTurnEvent,
+} from '../storage/conversation-turn-coordinator';
+import { DynamoConversationTurnCoordinator } from '../storage/dynamo-conversation-turn-coordinator';
 import { resolveChannelApiKeys, resolveOpenAiApiKey, resolveSeApiKey } from '../runtime/secrets';
 import { buildTurnPerfRecord, toCliPerfSummary, type CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPerfStore } from '../storage/dynamo-perf-store';
@@ -48,6 +55,7 @@ import {
 } from './request-route';
 import {
   buildChannelRequestLog,
+  buildConversationLeaseLog,
   type ChannelRequestOutcome,
   type ChannelRequestValidationIssue,
 } from './request-observability';
@@ -62,6 +70,7 @@ let runtimePromise: Promise<{
 let channelApiKeysPromise: Promise<string[]> | null = null;
 let planStore: DynamoPlanStore | null = null;
 let agentParticipationService: AgentParticipationService | null = null;
+let conversationTurnCoordinator: DynamoConversationTurnCoordinator | null = null;
 
 type SharedRuntimeDeps = {
   promptLoader: PromptLoader;
@@ -80,15 +89,23 @@ export async function handler(
   context?: Context,
 ): Promise<APIGatewayProxyStructuredResultV2> {
   const requestId = context?.awsRequestId ?? event.requestContext.requestId;
+  const remainingMs = context?.getRemainingTimeInMillis();
+  const effectiveRemainingMs = context === undefined
+    ? config.lambda.runtimeTimeoutMs
+    : remainingMs !== undefined && Number.isFinite(remainingMs) && remainingMs >= 0
+      ? remainingMs
+      : 0;
+  const hardDeadlineMs = Date.now() + effectiveRemainingMs;
   return await withRequestObservabilityContext(
     requestId,
-    async () => await handleRequest(event, requestId),
+    async () => await handleRequest(event, requestId, hardDeadlineMs),
   );
 }
 
 async function handleRequest(
   event: APIGatewayProxyEventV2,
   requestId: string,
+  hardDeadlineMs: number,
 ): Promise<APIGatewayProxyStructuredResultV2> {
   const startedAt = Date.now();
   const method = event.requestContext.http.method;
@@ -181,6 +198,26 @@ async function handleRequest(
       ...diagnostics?.responseHeaders,
     });
   };
+  const respondConversationTurnBusy = (): APIGatewayProxyStructuredResultV2 => respond(
+    503,
+    {
+      error: 'Conversation is busy. Retry this request.',
+      code: 'conversation_busy',
+      retryable: true,
+    },
+    'conversation_busy',
+    { responseHeaders: { 'retry-after': '2' } },
+  );
+  const respondConversationTurnUnavailable = (): APIGatewayProxyStructuredResultV2 => respond(
+    503,
+    {
+      error: 'Conversation coordination is temporarily unavailable. Retry this request.',
+      code: 'coordination_unavailable',
+      retryable: true,
+    },
+    'coordination_unavailable',
+    { responseHeaders: { 'retry-after': '2' } },
+  );
 
   try {
     const expectedApiKeys = await getChannelApiKeys();
@@ -245,16 +282,33 @@ async function handleRequest(
         externalUserId: controlRequest.user_id,
         ownershipRequestId: controlRequest.request_id,
       };
-      const result = route === 'resume_automated_agent'
-        ? await getAgentParticipationService().resumeAutomatedAgent({
-            channel: controlRequest.channel,
-            externalUserId: controlRequest.user_id,
-          })
-        : await getAgentParticipationService().overtakeConversation({
-            channel: controlRequest.channel,
-            externalUserId: controlRequest.user_id,
-            requestedAt: controlRequest.requested_at,
-          });
+      let leaseWaitMs: number | undefined;
+      let leaseAttempts: number | undefined;
+      const result = await runConversationTurn({
+        requestId,
+        hardDeadlineMs,
+        identity: {
+          channel: controlRequest.channel,
+          externalUserId: controlRequest.user_id,
+        },
+        operation: async () => route === 'resume_automated_agent'
+          ? await getAgentParticipationService().resumeAutomatedAgent({
+              channel: controlRequest.channel,
+              externalUserId: controlRequest.user_id,
+            })
+          : await getAgentParticipationService().overtakeConversation({
+              channel: controlRequest.channel,
+              externalUserId: controlRequest.user_id,
+              requestedAt: controlRequest.requested_at,
+            }),
+        onEvent: (event) => {
+          const metrics = readLeaseAcquisitionMetrics(event);
+          if (metrics) {
+            leaseWaitMs = metrics.waitMs;
+            leaseAttempts = metrics.attempts;
+          }
+        },
+      });
       if (result.status === 'plan_not_found') {
         return respond(404, {
           status: result.status,
@@ -269,6 +323,7 @@ async function handleRequest(
         participationStatus: result.status,
         planId: result.plan.plan_id,
         humanEscalationStatus: result.plan.human_escalation.status,
+        responseHeaders: leaseResponseHeaders(leaseWaitMs, leaseAttempts),
       });
     }
     const parsedBody = channelRequestSchema.safeParse(rawBody);
@@ -298,88 +353,110 @@ async function handleRequest(
       providerMediaIds: body.media.map((item) => item.id),
     };
 
-    const hasFixture = Boolean(body.backendFixture?.scenario);
-    const runtime = hasFixture
-      ? await getFixtureRuntime(body.backendFixture?.scenario as string)
-      : await getRuntime();
+    let leaseWaitMs: number | undefined;
+    let leaseAttempts: number | undefined;
+    return await runConversationTurn({
+      requestId,
+      hardDeadlineMs,
+      identity: {
+        channel,
+        externalUserId: body.user_id,
+      },
+      operation: async () => {
+        const hasFixture = Boolean(body.backendFixture?.scenario);
+        const runtime = hasFixture
+          ? await getFixtureRuntime(body.backendFixture?.scenario as string)
+          : await getRuntime();
 
-    const receivedAt = body.received_at ?? new Date().toISOString();
-    const media = body.media.map((item) => ({
-      kind: item.type,
-      providerMediaId: item.id,
-      mimeType: item.mime_type,
-      sha256: item.sha256,
-      fileName: item.filename ?? null,
-    }));
-    const response = await runtime.service.handleTurn({
-      channel,
-      externalUserId: body.user_id,
-      text: body.text,
-      messageId,
-      receivedAt,
-      media,
-      sessionId: body.session_id ?? null,
-      contactPhone: body.contact_phone ?? null,
-    });
-    const perfRecord = buildTurnPerfRecord({
-      trace: response.trace,
-      channel,
-      externalUserId: body.user_id,
-      messageId,
-      userMessage: body.text,
-      media,
-      receivedAt,
-      sessionId: body.session_id ?? null,
-      contactPhonePresent: body.contact_phone !== null && body.contact_phone !== undefined,
-      deliveryAction: response.outbound.delivery.action,
-      assistantMessage: response.outbound.text,
-      includeAssistantMessagePreview: config.performance.captureAssistantPreview,
-      structuredMessageKind: response.outbound.structuredMessageKind,
-      retentionDays: config.performance.retentionDays,
-    });
-    let perf: CliPerfSummary | undefined;
-    let perfPersisted = false;
-    try {
-      await runtime.perfStore.saveTurn(perfRecord);
-      perfPersisted = true;
-      if (body.client_mode === 'cli') {
-        perf = toCliPerfSummary(perfRecord, {
-          persisted: perfPersisted,
-          storageTarget: config.performance.tableName ?? null,
+        const receivedAt = body.received_at ?? new Date().toISOString();
+        const media = body.media.map((item) => ({
+          kind: item.type,
+          providerMediaId: item.id,
+          mimeType: item.mime_type,
+          sha256: item.sha256,
+          fileName: item.filename ?? null,
+        }));
+        const response = await runtime.service.handleTurn({
+          channel,
+          externalUserId: body.user_id,
+          text: body.text,
+          messageId,
+          receivedAt,
+          media,
+          sessionId: body.session_id ?? null,
+          contactPhone: body.contact_phone ?? null,
         });
-      }
-    } catch (error) {
-      console.error('Failed to persist perf trace.', error);
-      if (body.client_mode === 'cli') {
-        perf = toCliPerfSummary(perfRecord, {
-          persisted: perfPersisted,
-          storageTarget: config.performance.tableName ?? null,
+        const perfRecord = buildTurnPerfRecord({
+          trace: response.trace,
+          channel,
+          externalUserId: body.user_id,
+          messageId,
+          userMessage: body.text,
+          media,
+          receivedAt,
+          sessionId: body.session_id ?? null,
+          contactPhonePresent: body.contact_phone !== null && body.contact_phone !== undefined,
+          deliveryAction: response.outbound.delivery.action,
+          assistantMessage: response.outbound.text,
+          includeAssistantMessagePreview: config.performance.captureAssistantPreview,
+          structuredMessageKind: response.outbound.structuredMessageKind,
+          retentionDays: config.performance.retentionDays,
         });
-      }
-    }
+        let perf: CliPerfSummary | undefined;
+        let perfPersisted = false;
+        try {
+          await runtime.perfStore.saveTurn(perfRecord);
+          perfPersisted = true;
+          if (body.client_mode === 'cli') {
+            perf = toCliPerfSummary(perfRecord, {
+              persisted: perfPersisted,
+              storageTarget: config.performance.tableName ?? null,
+            });
+          }
+        } catch (error) {
+          console.error('Failed to persist perf trace.', error);
+          if (body.client_mode === 'cli') {
+            perf = toCliPerfSummary(perfRecord, {
+              persisted: perfPersisted,
+              storageTarget: config.performance.tableName ?? null,
+            });
+          }
+        }
 
-    const includeDiagnostics = body.client_mode === 'cli';
+        const includeDiagnostics = body.client_mode === 'cli';
 
-    return respond(200, buildCliResponseBody({
-      response,
-      perf,
-      includeDiagnostics,
-    }), 'success', {
-      deliveryAction: response.outbound.delivery.action,
-      currentNode: response.plan.current_node,
-      traceId: response.trace.trace_id,
-      authenticationExecution: response.trace.authentication_execution_summary,
-      informationOutcomes: response.trace.information_execution_summary,
-      openAiCalls: response.trace.openai_calls,
-      feedbackSignalVersion: perfRecord.feedback_signals.schema_version,
-      decisionSource: perfRecord.feedback_signals.routing.decision_source,
-      ambiguityStatus: perfRecord.feedback_signals.routing.ambiguity_status,
-      modelCallCount: perfRecord.feedback_signals.execution.model_call_count,
-      outputQualityFlagCount: perfRecord.feedback_signals.output.quality_flags.length,
-      spanishPolicyTermHitCount:
-        perfRecord.feedback_signals.output.spanish_policy_term_hits.length,
+        return respond(200, buildCliResponseBody({
+          response,
+          perf,
+          includeDiagnostics,
+        }), 'success', {
+          deliveryAction: response.outbound.delivery.action,
+          currentNode: response.plan.current_node,
+          traceId: response.trace.trace_id,
+          authenticationExecution: response.trace.authentication_execution_summary,
+          informationOutcomes: response.trace.information_execution_summary,
+          openAiCalls: response.trace.openai_calls,
+          feedbackSignalVersion: perfRecord.feedback_signals.schema_version,
+          decisionSource: perfRecord.feedback_signals.routing.decision_source,
+          ambiguityStatus: perfRecord.feedback_signals.routing.ambiguity_status,
+          modelCallCount: perfRecord.feedback_signals.execution.model_call_count,
+          outputQualityFlagCount: perfRecord.feedback_signals.output.quality_flags.length,
+          spanishPolicyTermHitCount:
+            perfRecord.feedback_signals.output.spanish_policy_term_hits.length,
+          responseHeaders: leaseResponseHeaders(leaseWaitMs, leaseAttempts),
+        });
+      },
+      onEvent: (event) => {
+        const metrics = readLeaseAcquisitionMetrics(event);
+        if (metrics) {
+          leaseWaitMs = metrics.waitMs;
+          leaseAttempts = metrics.attempts;
+        }
+      },
     });
   } catch (error) {
+    if (error instanceof ConversationTurnBusyError) return respondConversationTurnBusy();
+    if (error instanceof ConversationTurnUnavailableError) return respondConversationTurnUnavailable();
     return respond(500, {
       error: error instanceof Error ? error.message : 'Unknown server error.',
     }, 'internal_error', { error });
@@ -639,6 +716,74 @@ function getPlanStore(): DynamoPlanStore {
     });
   }
   return planStore;
+}
+
+async function runConversationTurn<T>(args: {
+  requestId: string;
+  hardDeadlineMs: number;
+  identity: {
+    channel: string;
+    externalUserId: string;
+  };
+  operation: () => Promise<T>;
+  onEvent?: (event: ConversationTurnEvent) => void;
+}): Promise<T> {
+  return await runWithConversationTurnLease({
+    coordinator: getConversationTurnCoordinator(),
+    identity: args.identity,
+    hardDeadlineMs: args.hardDeadlineMs,
+    waitMs: config.conversationTurn.waitMs,
+    executionReserveMs: config.conversationTurn.executionReserveMs,
+    expirySafetyMs: config.conversationTurn.expirySafetyMs,
+    pollMs: config.conversationTurn.pollMs,
+    operation: args.operation,
+    onEvent: (event: ConversationTurnEvent) => {
+      logConversationLeaseEvent(args.requestId, event);
+      args.onEvent?.(event);
+    },
+  });
+}
+
+function getConversationTurnCoordinator(): DynamoConversationTurnCoordinator {
+  if (!conversationTurnCoordinator) {
+    conversationTurnCoordinator = new DynamoConversationTurnCoordinator(
+      config.storage.plansTableName,
+      { region: config.aws.region },
+    );
+  }
+  return conversationTurnCoordinator;
+}
+
+function logConversationLeaseEvent(requestId: string, event: ConversationTurnEvent): void {
+  console.info(buildConversationLeaseLog({
+    requestId,
+    name: event.name,
+    outcome: event.outcome,
+    waitMs: event.wait_ms,
+    elapsedMs: event.duration_ms,
+    attemptCount: event.attempts,
+  }));
+}
+
+function readLeaseAcquisitionMetrics(event: ConversationTurnEvent): {
+  waitMs: number;
+  attempts: number;
+} | undefined {
+  if (event.name !== 'acquire' || event.outcome !== 'acquired') return undefined;
+  return {
+    waitMs: Math.max(0, Math.round(event.wait_ms)),
+    attempts: Math.max(0, Math.round(event.attempts)),
+  };
+}
+
+function leaseResponseHeaders(
+  waitMs: number | undefined,
+  attempts: number | undefined,
+): Record<string, string> {
+  return {
+    ...(waitMs === undefined ? {} : { 'x-recap-turn-wait-ms': String(waitMs) }),
+    ...(attempts === undefined ? {} : { 'x-recap-turn-acquire-attempts': String(attempts) }),
+  };
 }
 
 function getAgentParticipationService(): AgentParticipationService {

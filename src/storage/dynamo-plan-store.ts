@@ -11,6 +11,7 @@ import {
 import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import { sessionFocusSchema, type SessionFocus } from '../core/turn-decision';
 import type { PlanStore, SavePlanInput } from './plan-store';
+import { conversationPartitionKey } from './conversation-key';
 
 type StoredItem = {
   pk: string;
@@ -44,6 +45,7 @@ export class DynamoPlanStore implements PlanStore {
           pk: this.pk(channel, externalUserId),
           sk: 'PLAN',
         },
+        ConsistentRead: true,
       }),
     );
 
@@ -68,6 +70,7 @@ export class DynamoPlanStore implements PlanStore {
           pk: this.pk(channel, externalUserId),
           sk: this.sessionFocusSk(sessionId),
         },
+        ConsistentRead: true,
       }),
     );
 
@@ -113,7 +116,7 @@ export class DynamoPlanStore implements PlanStore {
   }
 
   private pk(channel: string, externalUserId: string): string {
-    return `${channel}#${externalUserId}`;
+    return conversationPartitionKey(channel, externalUserId);
   }
 
   private sessionFocusSk(sessionId: string): string {

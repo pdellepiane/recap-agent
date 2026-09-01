@@ -7991,3 +7991,59 @@ No deployment, no npm run eval:behavior-live per offline-only rules. Registry en
 
 **CLAUDIA FIXES COMPLETE**
 
+### 2026-09-01 — Serialize conversation turns at the Lambda boundary
+
+User approved a minimal concurrency fix and explicitly requested inexpensive delegation.
+Two gpt-5.6-luna workers own storage coordination and Lambda integration; the primary
+owns review, key validation, live regression scheduling, and release gates.
+
+**Reason:** distinct messages just outside the caller's eight-second batch can overlap
+and read the same old plan. This is separate from sequential semantic continuity
+failures. Introduce one conditional `TURN_LOCK` item per exact existing conversation
+partition, acquire before all runtime/plan/history work, read plan/session consistently,
+and release only after completion. Resume/overtake writers share the lock. Add only
+PlansTable DeleteItem permission; no new infrastructure resource or prompt instruction.
+
+**Safety decisions:** use a fresh owner per invocation, never message/session IDs.
+Reject `#` in channel to prevent ambiguous existing partition keys. Fixed lease covers
+the actual Lambda hard deadline plus five seconds, not the earlier proposed renewable
+30-second lease, so a paused owner cannot outlive its protection under normal Lambda
+termination/clock assumptions. Bounded wait 45 seconds, execution reserve 30 seconds,
+jittered polls; explicit 503 on contention exhaustion/storage failure; no false success.
+Release failure preserves a completed result and is sanitized in logs.
+
+**Delivery limitation disclosed:** user says the invocator probably does not retry.
+Busy/crash recovery is therefore NOT guaranteed. This change is mutual exclusion,
+not completed-message idempotency, strict FIFO, exactly-once side effects, or response
+delivery ordering. No cached responses, phone-key substitution, or silent drops.
+See `docs/conversation-turn-coordination.md` for scope and release decision.
+
+**Regression:** `live_behavior.concurrent_support_turns_preserve_context` reconstructs
+Claudia/Roger's support interaction with genuine concurrent invocations. The evaluator
+observes the first lock before starting turn two, requires acquisition attempts >=2
+and the first turn's persisted previous node, plus a hard semantic judge. Failure to
+overlap is a failed case, not a sequential substitute. Offline twins cover coordination,
+handler boundaries, key validation, and concurrent evaluation scheduling.
+
+**Minimum disclosure:** coordination metadata only in sanitized logs/numeric response
+headers and evaluation artifacts, never plans/prompts. No prompt/runtime extraction
+changes. Prompt audit passed with zero violations; serialized extractor request remains
+9293 bytes; static comparison remains 732995 -> 340130 bytes (53.6% reduction).
+Identical model-call instruction/input shapes gain zero lock-related bytes; history
+can correctly grow because turn two now sees turn one's committed state.
+
+**Validation/release:** `npm run check` passed: typecheck, lint, 712 tests across
+98 files. `npm run build` passed. Focused evaluator/request-contract tests passed
+18/18, including the new concurrent scheduler; coordination tests cover actual wait,
+bounded retries, unique owners and delayed acquisition. Final review corrected the
+placement of ConsistentRead, removed redundant dynamic event parsing/error unions,
+and added takeover/resume read/write-under-lease tests. AWS identity verified using
+se-dev/us-east-1 as account 684516060775.
+
+**Not deployed / not live-accepted:** after learning the invocator probably does not
+retry errors, asked the owner whether to accept the bounded protection or require
+durable retry before deployment. No answer yet. No deployed revision, live fixture
+outcome, or new evaluation artifact is claimed. The mandatory concurrent case and
+full `npm run eval:behavior-live` remain required after the deployment decision;
+this gate is pending, not skipped or represented as passing. Earlier retained
+evaluation failures are not resolved by the offline lock tests.

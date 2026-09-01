@@ -64,6 +64,13 @@ export type AppConfig = {
   };
   lambda: {
     functionUrl: string | null;
+    runtimeTimeoutMs: number;
+  };
+  conversationTurn: {
+    waitMs: number;
+    executionReserveMs: number;
+    expirySafetyMs: number;
+    pollMs: number;
   };
   performance: {
     tableName: string | null;
@@ -128,6 +135,11 @@ const environmentSchema = z.object({
   AGENT_API_MAX_RETRIES: z.coerce.number().int().min(0).max(5).default(2),
   AGENT_MESSAGE_LOGGING_ENABLED: z.enum(['true', 'false']).default('false'),
   AGENT_FUNCTION_URL: z.string().url().optional(),
+  LAMBDA_RUNTIME_TIMEOUT_MS: z.coerce.number().int().min(1_000).max(900_000).default(90_000),
+  CONVERSATION_TURN_WAIT_MS: z.coerce.number().int().min(0).max(900_000).default(45_000),
+  CONVERSATION_TURN_EXECUTION_RESERVE_MS: z.coerce.number().int().min(0).max(900_000).default(30_000),
+  CONVERSATION_TURN_EXPIRY_SAFETY_MS: z.coerce.number().int().min(0).max(900_000).default(5_000),
+  CONVERSATION_TURN_POLL_MS: z.coerce.number().int().min(1).max(60_000).default(400),
   DEFAULT_INBOUND_CHANNEL: z.string().min(1).default('terminal_whatsapp'),
   PROVIDER_SEARCH_LIMIT: z.coerce.number().int().positive().default(12),
   SEARCH_SUMMARY_WORD_LIMIT: z.coerce.number().int().positive().default(5),
@@ -222,6 +234,13 @@ export function getConfig(): AppConfig {
     },
     lambda: {
       functionUrl: environment.AGENT_FUNCTION_URL ?? null,
+      runtimeTimeoutMs: environment.LAMBDA_RUNTIME_TIMEOUT_MS,
+    },
+    conversationTurn: {
+      waitMs: environment.CONVERSATION_TURN_WAIT_MS,
+      executionReserveMs: environment.CONVERSATION_TURN_EXECUTION_RESERVE_MS,
+      expirySafetyMs: environment.CONVERSATION_TURN_EXPIRY_SAFETY_MS,
+      pollMs: environment.CONVERSATION_TURN_POLL_MS,
     },
     performance: {
       tableName: environment.PERF_TABLE_NAME ?? null,

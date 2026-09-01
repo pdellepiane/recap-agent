@@ -4,6 +4,11 @@ import { inboundMediaKindValues } from '../core/messages';
 import { parseInternationalPhone } from '../runtime/phone';
 
 const whatsAppChannels = new Set(['whatsapp', 'whatsapp_sandbox']);
+// The channel is the first component of the persisted channel#user partition key.
+const channelSchema = z.string().trim().min(1).refine(
+  (value) => !value.includes('#'),
+  'channel must not contain the storage key separator #.',
+);
 const internetMediaTypePattern =
   /^[a-z0-9!#$%&'*+\-.^_`|~]+\/[a-z0-9!#$%&'*+\-.^_`|~]+$/iu;
 
@@ -37,7 +42,7 @@ export const channelRequestSchema = z.object({
   text: z.string().trim().max(16_000).optional().default(''),
   media: z.array(inboundMediaSchema).max(10).optional().default([]),
   user_id: z.string().trim().min(1),
-  channel: z.string().trim().min(1),
+  channel: channelSchema,
   message_id: z.string().trim().min(1).optional(),
   received_at: z.string().datetime({ offset: true }).optional(),
   session_id: z.string().trim().min(1).nullable().optional(),
@@ -72,7 +77,7 @@ export const channelRequestSchema = z.object({
 export type ChannelRequestBody = z.infer<typeof channelRequestSchema>;
 
 export const agentParticipationRequestSchema = z.object({
-  channel: z.string().trim().min(1),
+  channel: channelSchema,
   user_id: z.string().trim().min(1),
   request_id: z.string().trim().min(1),
   requested_at: z.string().datetime({ offset: true }).optional(),

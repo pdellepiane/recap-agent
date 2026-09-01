@@ -1,6 +1,7 @@
 import { normalizeRawPlan, planSchema, type PlanSnapshot } from '../core/plan';
 import { sessionFocusSchema, type SessionFocus } from '../core/turn-decision';
 import type { PlanStore, SavePlanInput } from './plan-store';
+import { conversationPartitionKey } from './conversation-key';
 
 export class InMemoryPlanStore implements PlanStore {
   private readonly items = new Map<string, PlanSnapshot>();
@@ -36,7 +37,7 @@ export class InMemoryPlanStore implements PlanStore {
   }
 
   private key(channel: string, externalUserId: string): string {
-    return `${channel}#${externalUserId}`;
+    return conversationPartitionKey(channel, externalUserId);
   }
 
   private sessionFocusKey(channel: string, externalUserId: string, sessionId: string): string {
