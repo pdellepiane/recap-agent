@@ -1702,13 +1702,16 @@ export class AgentService {
     extraction: ExtractionResult,
   ): boolean {
     const hasExplicitRsvpSelection =
-      (extraction.rsvpAction !== null && extraction.rsvpAction !== undefined) ||
+      (extraction.rsvpAction !== null &&
+        extraction.rsvpAction !== undefined &&
+        extraction.rsvpDecisionSource === 'current_message') ||
       (extraction.rsvpCandidateGuestId !== null &&
         extraction.rsvpCandidateGuestId !== undefined) ||
       extraction.rsvpParty?.plus_one_response === 'yes' ||
       extraction.rsvpParty?.plus_one_response === 'no';
     if (
-      extraction.informationRequests.length > 0 &&
+      (extraction.informationRequests.length > 0 ||
+        plan.information_state.last_completed_request !== null) &&
       plan.rsvp_state.status === 'none' &&
       !hasExplicitRsvpSelection
     ) {
@@ -3092,8 +3095,8 @@ export class AgentService {
       this.isInformationSupportDetailContinuation(plan, extraction, previousNode) ||
       (extraction.actionIntent === null &&
         (plan.information_state.last_completed_request?.kind === 'purchase' ||
-          plan.information_state.last_completed_request?.kind ===
-            'associated_event'))
+          plan.information_state.last_completed_request?.kind === 'associated_event' ||
+          plan.information_state.last_completed_request?.kind === 'faq'))
     );
   }
 

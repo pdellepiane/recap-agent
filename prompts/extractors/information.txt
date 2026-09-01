@@ -2,30 +2,32 @@ Consultas informativas de solo lectura
 
 `informationRequests` conserva el orden y puede coexistir con `actionIntent`.
 
-- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones. `query` debe ser autosuficiente.
-- `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrión o confirmados de un evento asociado. Usa `eventHint` solo si lo identifica y produce `informationRequests.kind=associated_event`.
-- `purchase`: consulta una orden o regalo comprado por la persona. Usa `resource=orders` para órdenes y `resource=gift_purchases` para pago, dedicatoria, tarjeta física, envío o agradecimiento de un regalo.
-- Pedir el destino de Yape o transferencia es `purchase`, no FAQ: usa `gift_purchases`, `payment_status`, `payment_details` y `destination_account`; el runtime exige una compra pendiente.
+- `faq`: pregunta general sobre Sin Envolturas, politicas, comisiones o funciones. `query` autosuficiente.
+- `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrion o confirmados de un evento asociado. Usa `eventHint` solo si lo identifica; emite kind=associated_event.
+- `purchase`: consulta el estado o detalle de una orden o regalo, lo haya comprado el usuario o se lo notifiquen (pago para los celebrados incluido). Usa `resource=orders` para ordenes y `resource=gift_purchases` para pago, dedicatoria, tarjeta fisica, envio o agradecimiento de un regalo.
+- Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; el runtime exige compra pendiente.
 
-Sin número usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
+Ej. "El pago por transferencia para Claudia y Luis Felipe figura en proceso. ¿Cuando se valido?" => informationRequests=[{kind:purchase, resource:orders, aspects:[payment_status,validation_window]}]
 
-En compras llena eventHint/amount solo si explícitos. Validación pago en proceso usa resource=orders con payment_status y validation_window; runtime añade consulta política. No uses payment_details solo para plazo. No infieras. Ej."pago transferencia/Yape pendiente"=>purchase resource=orders aspects=[payment_status,validation_window].
+Sin numero usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
 
-`sensitiveFields` solo contiene datos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
+En compras llena eventHint/amount solo si explicitos. No uses payment_details para estado o plazo (el runtime anade la consulta de politica); citar el metodo (Yape, transferencia) no pide detalles.
 
-Autenticación de consultas personales
+`sensitiveFields` solo contiene datos sensibles pedidos explicitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
 
-Se intenta primero el número actual de WhatsApp; correo y código son respaldo. `phoneConfirmation=no` solo si niega que la cuenta o el número actuales sean suyos: usa `phoneConfirmation=no` y no `decline_authentication`. Usa `yes` solo ante confirmación explícita y `unclear` si es ambiguo.
+Autenticacion de consultas personales
+
+Se intenta primero el numero actual de WhatsApp; correo y codigo son respaldo. `phoneConfirmation=no` solo si niega que la cuenta o numero actuales sean suyos: usa `phoneConfirmation=no` y no `decline_authentication`. Usa `yes` solo con confirmacion explicita y `unclear` si es ambiguo.
 
 Con `information_state.authentication_status=code_requested`, conserva la solicitud y usa:
 
-- `provide_otp` si proporciona el código;
-- `report_otp_not_received` si dice que no llegó;
-- `resend_otp` si pide otro código;
+- `provide_otp` si proporciona el codigo;
+- `report_otp_not_received` si dice que no llego;
+- `resend_otp` si pide otro codigo;
 - `change_email` si corrige el correo;
-- `accountless_user` si compró sin cuenta;
-- `decline_authentication` si rechaza continuar la verificación.
+- `accountless_user` si compro sin cuenta;
+- `decline_authentication` si rechaza continuar la verificacion.
 
-Antes del código usa `provide_email` al recibir el correo. No copies códigos fuera de `authAction` y conserva la consulta pendiente.
+Antes del codigo usa `provide_email` al recibir el correo. No copies codigos fuera de `authAction` y conserva la consulta pendiente.
 
-Una frase que solo informa “ya envié el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografía, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es una solicitud de atención humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas. Ej."Y el evento es Baby Shower Catalina"=>actionIntent=null.
+Una frase que solo informa “ya envie el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografia, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es solicitud de atencion humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas. Ej."Y el evento es Baby Shower Catalina"=>actionIntent=null.

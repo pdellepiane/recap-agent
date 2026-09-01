@@ -431,7 +431,50 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     if (Object.prototype.hasOwnProperty.call(sectionData, extensionKey)) {
       return sectionData[extensionKey];
     }
+    const extensionDigits = extensionKey.split(':')[0]?.replace(/\D/gu, '') ?? '';
+    const concatenatedKey = `${extensionDigits}${phoneNumber}`;
+    if (concatenatedKey && Object.prototype.hasOwnProperty.call(sectionData, concatenatedKey)) {
+      return sectionData[concatenatedKey];
+    }
     return undefined;
+  }
+
+  private buildPhoneLookupKeys(phoneInput: string): string[] {
+    const keys: string[] = [phoneInput];
+    // Try to parse international phone; derive national, extKey, concatenated
+    const normalized = phoneInput.replace(/\D/gu, '');
+    // Attempt splitInternationalPhone logic without importing full parser to avoid circular; simple heuristic
+    // Use the fixture's own normalize path: try known extensions +51, +52, +1
+    const candidates: Array<{ ext: string; national: string }> = [];
+    if (phoneInput.startsWith('+')) {
+      const digits = phoneInput.replace(/\D/gu, '');
+      for (const ext of ['52', '51', '1']) {
+        if (digits.startsWith(ext)) {
+          const national = digits.slice(ext.length);
+          if (national.length >= 7) {
+            candidates.push({ ext: `+${ext}`, national });
+            break;
+          }
+        }
+      }
+    } else if (normalized.length >= 11 && normalized.startsWith('51')) {
+      // Already concatenated form without '+', treat as concatenated directly
+      const national = normalized.slice(2);
+      candidates.push({ ext: '+51', national });
+    }
+    for (const c of candidates) {
+      const national = c.national;
+      const extKey = `${c.ext}:${national}`;
+      const concatenated = `${c.ext.replace(/\D/gu, '')}${national}`;
+      if (!keys.includes(national)) keys.push(national);
+      if (!keys.includes(extKey)) keys.push(extKey);
+      if (concatenated && !keys.includes(concatenated)) keys.push(concatenated);
+    }
+    // Also ensure raw normalized without '+' is probed if not already
+    if (normalized && !keys.includes(normalized)) {
+      keys.push(normalized);
+    }
+    return keys;
   }
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
@@ -454,7 +497,14 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     if (!section) {
       return { status: 'success', messages: [] };
     }
-    const raw = (section)[phoneNumber];
+    const lookupKeys = this.buildPhoneLookupKeys(phoneNumber);
+    let raw: unknown;
+    for (const key of lookupKeys) {
+      if (Object.prototype.hasOwnProperty.call(section, key)) {
+        raw = (section)[key];
+        break;
+      }
+    }
     if (!raw) {
       return { status: 'success', messages: [] };
     }
@@ -776,6 +826,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
     const key = phone.phone_number;
     const extKey = `${phone.phone_extension}:${phone.phone_number}`;
+    const concatenatedKey = `${phone.phone_extension.replace(/\D/gu, '')}${phone.phone_number}`;
     const rsvpSection = this.data?.rsvp;
     let rawData: unknown;
     let httpStatus: number | null = 200;
@@ -783,7 +834,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
     if (rsvpSection) {
       // Try direct phone key lookup for simple fixture shapes
-      const phoneFixture = (rsvpSection[key] ?? rsvpSection[extKey]) as Record<string, unknown> | undefined;
+      const phoneFixture = (rsvpSection[key] ?? rsvpSection[extKey] ?? rsvpSection[concatenatedKey]) as Record<string, unknown> | undefined;
       if (phoneFixture) {
         // phoneFixture may be { responses: [...] } or direct data
         if (Array.isArray((phoneFixture)['responses'])) {

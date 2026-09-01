@@ -22,8 +22,8 @@ describe('purchase prompt policy', () => {
     const bundle = await loader.loadExtractorBundle();
 
     expect(bundle.instructions).toContain(
-      'Pedir el destino de Yape o transferencia es `purchase`, no FAQ',
+      'Pedir el destino de Yape o transferencia es `purchase` con `destination_account`',
     );
-    expect(bundle.instructions).toContain('`payment_details` y `destination_account`');
+    expect(bundle.instructions).toContain('`destination_account`');
   });
 });

@@ -228,7 +228,7 @@ describe('PromptLoader', () => {
     expect(informationBundle.instructions).not.toContain('plan.user_auth');
     expect(informationBundle.instructions).not.toContain('file_search');
     expect(extractorBundle.instructions).toContain(
-      'informationRequests.kind=associated_event',
+      'kind=associated_event',
     );
     expect(extractorBundle.instructions).toContain(
       'report_otp_not_received',
@@ -263,10 +263,10 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain('accountless_user');
     expect(extractorBundle.instructions).toContain('decline_authentication');
     expect(extractorBundle.instructions).toContain(
-      '`phoneConfirmation=no` solo si niega que la cuenta o el número actuales sean suyos',
+      '`phoneConfirmation=no` solo si niega que la cuenta',
     );
     expect(extractorBundle.instructions).toContain(
-      '`decline_authentication` si rechaza continuar la verificación',
+      '`decline_authentication` si rechaza continuar la verificacion',
     );
     expect(extractorBundle.instructions).toContain(
       'usa `phoneConfirmation=no` y no `decline_authentication`',
@@ -274,22 +274,22 @@ describe('PromptLoader', () => {
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
     expect(extractorBundle.instructions).toContain(
-      'una pregunta sobre capacidad no es una solicitud de atención humana',
+      'pregunta sobre capacidad no es solicitud de atencion humana',
     );
     expect(extractorBundle.instructions).toContain(
       'una referencia breve como "el horario"',
     );
     expect(extractorBundle.instructions).toContain(
-      'pregunta si puedes leer una fotografía',
+      'pregunta si puedes leer una fotografia',
     );
     expect(extractorBundle.instructions).toContain(
       '`faq`: pregunta general sobre Sin Envolturas',
     );
     expect(extractorBundle.instructions).toContain(
-      '`purchase`: consulta una orden o regalo comprado por la persona',
+      '`purchase`: consulta el estado o detalle de una orden o regalo',
     );
     expect(extractorBundle.instructions).toContain(
-      'Sin número usa',
+      'Sin numero usa',
     );
     expect(extractorBundle.instructions).toContain('orderId=null');
     expect(extractorBundle.instructions).toContain('COD301816');

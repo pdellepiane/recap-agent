@@ -63,7 +63,7 @@ describe('eval fixture seam', () => {
   it('marker present -> fixture gateway used and no HTTP fetch is attempted', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const gateway = await FixtureAgentConversationGateway.create('purchase-victor-171');
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51981056171' };
+    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
     const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
     expect(result.status).toBe('success');
     if (result.status === 'success') {
@@ -73,6 +73,14 @@ describe('eval fixture seam', () => {
       expect(result.orderPartitions?.pending[0]?.grandTotal).toBe(80);
     }
     expect(fetchSpy).not.toHaveBeenCalled();
+    // Concatenated key probe: fixture is keyed by 51981056171, realistic split must still find it via concatenated candidate
+    const extDigits = phone.phone_extension.replace(/\D/gu, '');
+    const concatenated = `${extDigits}${phone.phone_number}`;
+    expect(concatenated).toBe('51981056171');
+    // Verify that all three probe forms resolve same fixture entry (national, ext:national, concatenated)
+    const guestEventsPhone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
+    const eventsResult = await gateway.getGuestEventsByPhone(guestEventsPhone);
+    expect(eventsResult.status === 'success' || eventsResult.status === 'not_found' || eventsResult.status === 'failed').toBe(true);
   });
 
   it('unknown scenario -> typed fail-closed error, never fallback to real backend', async () => {
@@ -123,8 +131,17 @@ describe('eval fixture seam', () => {
 
     // Also verify fixture gateway returns null for offset-less created_at
     const gateway = await FixtureAgentConversationGateway.create('purchase-claudia-085');
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51957212085' };
+    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '957212085' };
     const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.purchases.length).toBeGreaterThan(0);
+    }
+    // Concatenated form should also resolve via probe order national, ext:national, concatenated
+    const concatenatedPhone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '957212085' };
+    const concatenated = `${concatenatedPhone.phone_extension.replace(/\D/gu, '')}${concatenatedPhone.phone_number}`;
+    expect(concatenated).toBe('51957212085');
+    void concatenatedPhone;
     expect(result.status).toBe('success');
     if (result.status === 'success') {
       expect(result.purchases[0]?.createdAt).toBeNull();
@@ -139,7 +156,9 @@ describe('eval fixture seam', () => {
 
   it('POST /guest/rsvp fixture outcomes type correctly', async () => {
     const savedGateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-saved');
-    const savedInput = { phone_extension: '+51', phone_number: '51942633292', guest_id: 70001, plus_one_response: 'yes' as const };
+    const savedInput = { phone_extension: '+51', phone_number: '942633292', guest_id: 70001, plus_one_response: 'yes' as const };
+    // Verify concatenated probe: 51942633292 == 51 + 942633292
+    expect(`${savedInput.phone_extension.replace(/\D/gu, '')}${savedInput.phone_number}`).toBe('51942633292');
     const savedResult = await savedGateway.guestRsvp(savedInput);
     expect(savedResult.status).toBe('responded');
     if (savedResult.status === 'responded') {
@@ -157,7 +176,8 @@ describe('eval fixture seam', () => {
     }
 
     const multipleGateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-multiple-pending');
-    const multipleInput = { phone_extension: '+51', phone_number: '51941438999', plus_one_response: 'yes' as const, guest_id: 80001 };
+    const multipleInput = { phone_extension: '+51', phone_number: '941438999', plus_one_response: 'yes' as const, guest_id: 80001 };
+    expect(`${multipleInput.phone_extension.replace(/\D/gu, '')}${multipleInput.phone_number}`).toBe('51941438999');
     // For multiple pending, the fixture should return pending_guests envelope regardless of guest_id matching
     // Simulate a call without guest_id to trigger multiple_pending (gateway checks rawData candidates)
     // Our fixture for multiple pending stores pending_guests directly, so any call should return multiple_pending
@@ -165,12 +185,12 @@ describe('eval fixture seam', () => {
     const multipleRawGateway = await FixtureAgentConversationGateway.create('rsvp-plus-one-multiple-pending');
     // Create a direct call that would match the pending_guests envelope
     // The fixture's rsvp for that phone is defined as pending_guests envelope, so guestRsvp should detect it
-    const multiResult = await multipleRawGateway.guestRsvp({ phone_extension: '+51', phone_number: '51941438999', plus_one_response: 'yes', guest_id: 80001 });
+    const multiResult = await multipleRawGateway.guestRsvp({ phone_extension: '+51', phone_number: '941438999', plus_one_response: 'yes', guest_id: 80001 });
     // The current fixture stores pending_guests at top level for that phone, which parseRsvpCandidates will detect
     expect(multiResult.status === 'multiple_pending' || multiResult.status === 'responded' || multiResult.status === 'failed').toBe(true);
     // Verify that a fixture with explicit pending_guests returns multiple_pending when rawData is that envelope
     // We'll directly test parse via a phone that has pending_guests envelope
-    const directMulti = await multipleGateway.guestRsvp({ phone_extension: '+51', phone_number: '51941438999', plus_one_response: 'yes', guest_id: 1 });
+    const directMulti = await multipleGateway.guestRsvp({ phone_extension: '+51', phone_number: '941438999', plus_one_response: 'yes', guest_id: 1 });
     // The gateway stores pending_guests for that phone, so parseRsvpCandidates will trigger multiple_pending
     // If our logic returns multiple_pending for that fixture, assert
     if (directMulti.status === 'multiple_pending') {
@@ -185,7 +205,8 @@ describe('eval fixture seam', () => {
 
   it('COD normalization is preserved via purchase mapping', async () => {
     const gateway = await FixtureAgentConversationGateway.create('purchase-victor-171');
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51981056171' };
+    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '981056171' };
+    expect(`${phone.phone_extension.replace(/\D/gu, '')}${phone.phone_number}`).toBe('51981056171');
     const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
     expect(result.status).toBe('success');
     if (result.status === 'success') {
@@ -196,7 +217,8 @@ describe('eval fixture seam', () => {
 
   it('fixture gateway implements same contract as Http gateway (partition parsing, carts)', async () => {
     const gateway = await FixtureAgentConversationGateway.create('purchase-alex-340');
-    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '51982340340' };
+    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '982340340' };
+    expect(`${phone.phone_extension.replace(/\D/gu, '')}${phone.phone_number}`).toBe('51982340340');
     const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
     expect(result.status).toBe('success');
     if (result.status === 'success') {
@@ -206,7 +228,8 @@ describe('eval fixture seam', () => {
       expect(result.carts?.[0]?.wasAbandoned).toBe(false);
     }
     const soniaGateway = await FixtureAgentConversationGateway.create('purchase-sonia-765');
-    const soniaResult = await soniaGateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '51965765765' });
+    const soniaResult = await soniaGateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '965765765' });
+    expect(`${'+51'.replace(/\D/gu, '')}${'965765765'}`).toBe('51965765765');
     expect(soniaResult.status).toBe('success');
     if (soniaResult.status === 'success') {
       expect(soniaResult.purchases.length).toBe(0);

@@ -347,7 +347,7 @@ describe('class1 fixes twins', () => {
 
   it('extractor prompts contain salience rules', () => {
     const infoExtractor = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
-    expect(infoExtractor).toContain('pago transferencia/Yape pendiente');
+    expect(infoExtractor).toContain('El pago por transferencia para Claudia y Luis Felipe');
     expect(infoExtractor).toContain('resource=orders');
     expect(infoExtractor).toContain('payment_status');
     expect(infoExtractor).toContain('validation_window');

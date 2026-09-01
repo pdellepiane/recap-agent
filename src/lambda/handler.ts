@@ -560,9 +560,56 @@ async function getFixtureRuntime(scenario: string): Promise<{
 }> {
   const shared = await getSharedRuntimeDeps();
   const fixtureGateway = await FixtureAgentConversationGateway.create(scenario);
+  // Under fixture marker, providerGateway.lookupUserEventContext must not hit real backend.
+  // Return deterministic empty typed context (fixture guestEvents drives reconciliation).
+  const rawFixture = (fixtureGateway as unknown as { data?: Record<string, unknown> }).data ?? null;
+  const fixtureProviderContext = rawFixture && typeof rawFixture === 'object' && 'providerUserEvents' in rawFixture
+    ? rawFixture['providerUserEvents']
+    : null;
+  const originalProviderGateway = shared.providerGateway;
+  const fixtureProviderGateway: typeof shared.providerGateway = {
+    listCategories: (...args: Parameters<typeof originalProviderGateway.listCategories>) => originalProviderGateway.listCategories(...args),
+    getCategoryBySlug: (...args: Parameters<typeof originalProviderGateway.getCategoryBySlug>) => originalProviderGateway.getCategoryBySlug(...args),
+    listLocations: (...args: Parameters<typeof originalProviderGateway.listLocations>) => originalProviderGateway.listLocations(...args),
+    searchProviders: (...args: Parameters<typeof originalProviderGateway.searchProviders>) => originalProviderGateway.searchProviders(...args),
+    searchProvidersByKeyword: (...args: Parameters<typeof originalProviderGateway.searchProvidersByKeyword>) => originalProviderGateway.searchProvidersByKeyword(...args),
+    searchProvidersByCategoryLocation: (...args: Parameters<typeof originalProviderGateway.searchProvidersByCategoryLocation>) => originalProviderGateway.searchProvidersByCategoryLocation(...args),
+    searchProvidersByQueryIntent: (...args: Parameters<typeof originalProviderGateway.searchProvidersByQueryIntent>) => originalProviderGateway.searchProvidersByQueryIntent(...args),
+    getRelevantProviders: (...args: Parameters<typeof originalProviderGateway.getRelevantProviders>) => originalProviderGateway.getRelevantProviders(...args),
+    getProviderDetail: (...args: Parameters<typeof originalProviderGateway.getProviderDetail>) => originalProviderGateway.getProviderDetail(...args),
+    getProviderDetailAndTrackView: (...args: Parameters<typeof originalProviderGateway.getProviderDetailAndTrackView>) => originalProviderGateway.getProviderDetailAndTrackView(...args),
+    getRelatedProviders: (...args: Parameters<typeof originalProviderGateway.getRelatedProviders>) => originalProviderGateway.getRelatedProviders(...args),
+    listProviderReviews: (...args: Parameters<typeof originalProviderGateway.listProviderReviews>) => originalProviderGateway.listProviderReviews(...args),
+    getEventVendorContext: (...args: Parameters<typeof originalProviderGateway.getEventVendorContext>) => originalProviderGateway.getEventVendorContext(...args),
+    listEventFavoriteProviders: (...args: Parameters<typeof originalProviderGateway.listEventFavoriteProviders>) => originalProviderGateway.listEventFavoriteProviders(...args),
+    listUserEventsVendorContext: (...args: Parameters<typeof originalProviderGateway.listUserEventsVendorContext>) => originalProviderGateway.listUserEventsVendorContext(...args),
+    lookupUserEventContext: async (input: Parameters<typeof originalProviderGateway.lookupUserEventContext>[0]) => {
+      if (fixtureProviderContext && typeof fixtureProviderContext === 'object' && fixtureProviderContext !== null) {
+        return fixtureProviderContext as Awaited<ReturnType<typeof originalProviderGateway.lookupUserEventContext>>;
+      }
+      return {
+        lookup: input,
+        user: null,
+        events: [],
+        counts: {
+          ownerEvents: 0,
+          guestEvents: 0,
+          hostEvents: 0,
+          celebratedEvents: 0,
+          recentOrders: 0,
+        },
+      };
+    },
+    requestUserLoginCode: (...args: Parameters<typeof originalProviderGateway.requestUserLoginCode>) => originalProviderGateway.requestUserLoginCode(...args),
+    verifyUserLoginCode: (...args: Parameters<typeof originalProviderGateway.verifyUserLoginCode>) => originalProviderGateway.verifyUserLoginCode(...args),
+    lookupAuthenticatedUserEvents: (...args: Parameters<typeof originalProviderGateway.lookupAuthenticatedUserEvents>) => originalProviderGateway.lookupAuthenticatedUserEvents(...args),
+    createQuoteRequest: (...args: Parameters<typeof originalProviderGateway.createQuoteRequest>) => originalProviderGateway.createQuoteRequest(...args),
+    addVendorToEventFavorites: (...args: Parameters<typeof originalProviderGateway.addVendorToEventFavorites>) => originalProviderGateway.addVendorToEventFavorites(...args),
+    createProviderReview: (...args: Parameters<typeof originalProviderGateway.createProviderReview>) => originalProviderGateway.createProviderReview(...args),
+  } as unknown as typeof shared.providerGateway;
   const informationOrchestrator = new InformationOrchestrator({
     knowledgeGateway: shared.knowledgeGateway,
-    providerGateway: shared.providerGateway,
+    providerGateway: fixtureProviderGateway,
     agentGateway: fixtureGateway,
   });
 
@@ -570,7 +617,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
     service: new AgentService({
       planStore: shared.planStore,
       runtime: shared.openAiRuntime,
-      providerGateway: shared.providerGateway,
+      providerGateway: fixtureProviderGateway,
       agentConversationGateway: fixtureGateway,
       informationOrchestrator,
       responseClassifier: shared.responseClassifier,
