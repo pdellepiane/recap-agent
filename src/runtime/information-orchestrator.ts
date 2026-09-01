@@ -1347,8 +1347,13 @@ export class InformationOrchestrator {
     // When the pending partition has exactly one order and the question is a current-payment question,
     // ignore a lone amount selector without eventHint/orderId. Residual edge: an explicit historical-amount
     // question with a single pending order will still resolve to that pending order.
+    // Partition semantics: backend ships pending_orders as pending+declined+error+null, so terminal
+    // payment_status=declined must be excluded from the guard count - otherwise any declined order in the
+    // partition permanently disables the guard for that phone.
     const pendingForGuard = purchases.filter(
-      (purchase) => partitionByOrderId.get(purchase.orderId) === 'pending_orders',
+      (purchase) =>
+        partitionByOrderId.get(purchase.orderId) === 'pending_orders' &&
+        purchase.paymentStatus?.toLocaleLowerCase('es') !== 'declined',
     );
     if (
       !request.orderId &&
@@ -1357,6 +1362,23 @@ export class InformationOrchestrator {
       this.isCurrentPaymentQuestion(request)
     ) {
       return { purchases: pendingForGuard, needsSelection: false };
+    }
+
+    if (hasEventSelector && hasAmountSelector) {
+      const eventMatched = purchases.filter((purchase) =>
+        this.eventMatches(purchase.eventName, request.eventHint ?? ''),
+      );
+      if (eventMatched.length === 1) {
+        const amountMatchesAny = purchases.some((purchase) => {
+          const knownAmounts = [purchase.grandTotal, purchase.payment?.amount].filter(
+            (amount): amount is number => amount !== null && amount !== undefined,
+          );
+          return knownAmounts.some((amount) => Math.abs(amount - (request.amount ?? 0)) < 0.005);
+        });
+        if (!amountMatchesAny) {
+          return { purchases: eventMatched, needsSelection: false };
+        }
+      }
     }
 
     const matches = hasSelector
@@ -1453,6 +1475,19 @@ export class InformationOrchestrator {
       amount !== null &&
       amount !== undefined &&
       this.isCurrentPaymentQuestion(request);
+    if (hasEventSelector && amount !== null && amount !== undefined) {
+      const eventMatched = carts.filter((cart) =>
+        this.eventMatches(cart.eventName, request.eventHint ?? ''),
+      );
+      if (eventMatched.length === 1) {
+        const amountMatchesAny = carts.some(
+          (cart) => typeof cart.subtotal === 'number' && Math.abs(cart.subtotal - amount) < 0.005,
+        );
+        if (!amountMatchesAny) {
+          return eventMatched;
+        }
+      }
+    }
     return carts.filter((cart) => {
       if (
         hasEventSelector &&

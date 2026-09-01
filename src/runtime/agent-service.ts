@@ -3497,8 +3497,15 @@ export class AgentService {
       }
 
       if (operationalNote === null && supportDetailContinuation) {
+        const anchorSource =
+          planForInformation.information_state.last_completed_request ?? lastCompletedRequest ?? null;
+        const topic =
+          anchorSource && typeof anchorSource.query === 'string' && anchorSource.query.trim().length > 0
+            ? anchorSource.query.trim()
+            : anchorSource?.kind ?? 'soporte';
         operationalNote =
-          'El usuario está aportando un dato que se le solicitó en la respuesta anterior. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario. Preserva el nombre del evento/contexto exactamente como lo escribió el usuario, sin reformular ni expandirlo. En turnos de continuidad no repitas explicaciones previas ni cites evidencia FAQ.';
+          'El usuario aporto un dato adicional para el hilo de soporte activo. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario. Cita el nombre del evento o contexto exactamente como lo escribio el usuario, sin traducirlo, reformularlo ni explicar su significado. En turnos de continuidad no repitas explicaciones previas ni cites evidencia FAQ. El hilo de soporte activo continua sobre: ' +
+          topic;
       }
 
       const requiresPhonePurchaseDetailHandoff = requests.some((request) => {

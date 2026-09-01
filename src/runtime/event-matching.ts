@@ -53,6 +53,12 @@ export function eventMatches(
   const eventTokens = normalizeEventTokens(eventName).filter(
     (token) => token !== CANONICAL_CONJUNCTION,
   );
+  if (eventTokens.length === 0) {
+    return false;
+  }
   const eventSet = new Set(eventTokens);
-  return hintTokens.every((token) => eventSet.has(token));
+  const hintSet = new Set(hintTokens);
+  const hintSubsetEvent = hintTokens.every((token) => eventSet.has(token));
+  const eventSubsetHint = eventTokens.every((token) => hintSet.has(token));
+  return hintSubsetEvent || eventSubsetHint;
 }

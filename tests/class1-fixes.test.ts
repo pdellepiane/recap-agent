@@ -231,8 +231,9 @@ describe('class1 fixes twins', () => {
 
   it('d: classifier payment-state report not suppressed in active information thread (prompt guard)', () => {
     const classifierPrompt = fs.readFileSync('prompts/nodes/deteccion_intencion/response_classifier.txt', 'utf8');
-    expect(classifierPrompt).toContain('Reporte de pago con evidencia');
+    expect(classifierPrompt).toContain('active_information_thread');
     expect(classifierPrompt).toContain('no es `acknowledgement_only`');
+    expect(classifierPrompt).toContain('devuelve `respond`');
     // document live coverage via registry case exists (offline twin asserts prompt; live coverage verified via registry)
   });
 

@@ -309,13 +309,19 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
     classifierProfile: ResponseClassifierPromptProfile,
     latestOutboundMessage: AgentConversationMessage | null,
   ): Record<string, unknown> {
+    const activeInformationThread =
+      args.plan.current_node === 'resolver_consultas_informativas' &&
+      ((args.plan.information_state.pending_requests.length ?? 0) > 0 ||
+        args.plan.information_state.last_completed_request != null);
     if (classifierProfile === 'campaign_reply' && latestOutboundMessage) {
       return {
         inbound_message: truncatePreservingEnds(args.inboundText, 1_200),
+        active_information_thread: activeInformationThread,
         decision_context: {
           profile: classifierProfile,
           rsvp_status: args.plan.rsvp_state.status,
           human_help_offer_status: args.plan.conversation_health.help_offer_status,
+          active_information_thread: activeInformationThread,
         },
         campaign_message: {
           direction: latestOutboundMessage.direction,
@@ -326,6 +332,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
     }
     return {
       inbound_message: truncatePreservingEnds(args.inboundText, 1_200),
+      active_information_thread: activeInformationThread,
       plan_context: {
         current_node: args.plan.current_node,
         active_need_category: args.plan.active_need_category,
@@ -333,6 +340,7 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         conversation_health: args.plan.conversation_health,
         rsvp_state: args.plan.rsvp_state,
         conversation_summary: truncatePreservingEnds(args.plan.conversation_summary, 600),
+        active_information_thread: activeInformationThread,
       },
       has_prior_outbound_message: hasPriorOutboundMessage,
       recent_messages: args.messages.slice(-5).map((message) => ({
