@@ -1108,7 +1108,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         action_intent: extraction.actionIntent,
         information_requests: extraction.informationRequests,
         phone_confirmation: extraction.phoneConfirmation ?? null,
-        contact_email: extraction.contactEmail,
+        ...(extraction.contactEmail ? { contact_email: extraction.contactEmail } : {}),
         ambiguity: extraction.ambiguity
           ? {
               status: extraction.ambiguity.status,
@@ -2090,13 +2090,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     if (node === 'resolver_consultas_informativas') {
       return {
         current_node: plan.current_node,
-        contact_email: plan.contact_email,
+        ...(plan.contact_email ? { contact_email: plan.contact_email } : {}),
         information_state: {
           pending_requests: plan.information_state.pending_requests,
           selection_candidates: plan.information_state.selection_candidates,
           authentication_status: plan.user_auth.status,
-          authenticated_email: plan.user_auth.email,
-          failed_code_attempts: plan.user_auth.failed_code_attempts,
+          ...(plan.user_auth.email ? { authenticated_email: plan.user_auth.email } : {}),
+          ...(plan.user_auth.failed_code_attempts !== null && plan.user_auth.failed_code_attempts !== undefined ? { failed_code_attempts: plan.user_auth.failed_code_attempts } : {}),
         },
       };
     }
@@ -2296,7 +2296,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       eventName: source.eventName,
       eventDate: source.eventDate,
       amountDisclosure: source.amountDisclosure,
-      giftsQuantity: source.giftsQuantity,
       createdAt: source.createdAt,
     };
   }
