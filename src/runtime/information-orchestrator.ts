@@ -1343,6 +1343,22 @@ export class InformationOrchestrator {
     const hasDateSelector = Boolean(requestedDate);
     const hasSelector = hasEventSelector || hasAmountSelector || hasDateSelector;
 
+    // Typed guard: a reported payment amount in an active thread is payment evidence, not purchase identity.
+    // When the pending partition has exactly one order and the question is a current-payment question,
+    // ignore a lone amount selector without eventHint/orderId. Residual edge: an explicit historical-amount
+    // question with a single pending order will still resolve to that pending order.
+    const pendingForGuard = purchases.filter(
+      (purchase) => partitionByOrderId.get(purchase.orderId) === 'pending_orders',
+    );
+    if (
+      !request.orderId &&
+      !hasEventSelector &&
+      pendingForGuard.length === 1 &&
+      this.isCurrentPaymentQuestion(request)
+    ) {
+      return { purchases: pendingForGuard, needsSelection: false };
+    }
+
     const matches = hasSelector
       ? purchases.filter((purchase) => {
           if (
@@ -1381,9 +1397,7 @@ export class InformationOrchestrator {
 
     // A unique pending partition is safe to use for a current status/payment
     // question. This is partition semantics, not a recency heuristic.
-    const pending = purchases.filter(
-      (purchase) => partitionByOrderId.get(purchase.orderId) === 'pending_orders',
-    );
+    const pending = pendingForGuard;
     if (pending.length === 1 && this.isCurrentPaymentQuestion(request)) {
       return { purchases: pending, needsSelection: false };
     }
@@ -1430,6 +1444,15 @@ export class InformationOrchestrator {
   ): CartInformation[] {
     const hasEventSelector = Boolean(request.eventHint?.trim());
     const amount = request.amount;
+    // Mirror purchase guard: when the unique pending order is selected, the reported amount is payment
+    // evidence, not cart identity. Do not amount-filter the same-event cart in that typed case.
+    // Amount+eventHint selector behavior remains unchanged. Residual edge documented in filterPurchaseCandidates.
+    const skipAmountFilter =
+      !request.orderId &&
+      !hasEventSelector &&
+      amount !== null &&
+      amount !== undefined &&
+      this.isCurrentPaymentQuestion(request);
     return carts.filter((cart) => {
       if (
         hasEventSelector &&
@@ -1437,7 +1460,7 @@ export class InformationOrchestrator {
       ) {
         return false;
       }
-      if (amount !== null && amount !== undefined) {
+      if (!skipAmountFilter && amount !== null && amount !== undefined) {
         if (typeof cart.subtotal !== 'number' || Math.abs(cart.subtotal - amount) >= 0.005) {
           return false;
         }

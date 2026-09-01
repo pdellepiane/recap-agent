@@ -31,7 +31,7 @@ expectations:
   - id: balance-unknown-no-currency
     type: text_semantic
     rubric: >-
-      The phone lookup returns a pending Alejandra order for 227.76 via Yape and a same-event active cart; currency is null and no balance-due or amount-received fields exist. The answer must be concise, natural Latin American Spanish, report the pending total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and explain that Yape validation can take up to 72 business hours. It must not calculate a balance, invent PEN or soles, or confirm receipt from the voucher image.
+      The phone lookup returns a pending Alejandra order for 227.76 via Yape and a same-event active cart; currency is null and no balance-due or amount-received fields exist. The backend method enum is Yape_o_Plin (combined name from the real API); rendering "Yape o Plin" or naming the registered method family is grounded, covered by the indexed validation-window policy. The answer must be concise, natural Latin American Spanish, report the pending total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and explain that Yape validation can take up to 72 business hours. It must not calculate a balance, invent PEN or soles, or confirm receipt from the voucher image.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0

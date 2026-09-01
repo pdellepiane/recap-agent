@@ -58,7 +58,7 @@ describe('model-driven cart-only reply twins', () => {
     const coverage = fs.readFileSync(coveragePath, 'utf8');
     expect(coverage).not.toContain('deterministic-cart-only-abandoned-reply');
     expect(coverage).toContain('fix-cart-reply-grounded-transfer-availability');
-    expect(coverage).toContain('deadbeef');
+    expect(coverage).toContain('implementedBy: c692e885');
     expect(coverage).toContain('live_behavior.abandoned_cart_only_sonia');
   });
 

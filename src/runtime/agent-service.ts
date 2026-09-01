@@ -3198,13 +3198,16 @@ export class AgentService {
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
     let replayingLastCompletedRequest = false;
+    const hasNewFaqInExtraction = args.extraction.informationRequests.some(
+      (request) => request.kind === 'faq',
+    );
     if (
       requests.length === 0 &&
       args.extraction.actionIntent === null &&
       lastCompletedRequest &&
       (lastCompletedRequest.kind === 'purchase' ||
         lastCompletedRequest.kind === 'associated_event' ||
-        supportDetailContinuation && lastCompletedRequest.kind === 'faq')
+        (supportDetailContinuation && lastCompletedRequest.kind === 'faq' && hasNewFaqInExtraction))
     ) {
       requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
       replayingLastCompletedRequest = true;
@@ -3462,6 +3465,12 @@ export class AgentService {
         if (hasUnverifiableTransactionTime) {
           operationalNote += ' La evidencia canónica no verifica una fecha u hora de pago. Si la persona propone una corrección temporal, reconócela solo como dato aportado por ella; no afirmes que el registro o el backend la confirma.';
         }
+        const hasCustomerTransactionNumber = phonePurchaseResult.purchases.some(
+          (purchase) => Boolean(purchase.customerTransactionNumber),
+        );
+        if (hasCustomerTransactionNumber) {
+          operationalNote += ' La referencia COD permanece en el registro; nunca afirmes que no existe constancia o comprobante; solo la moneda y la fecha/hora local permanecen sin confirmar.';
+        }
         const indexedPaymentOptionsAvailable = informationResults.some(
           (result) =>
             result.requestId === informationPaymentOptionsPolicyRequestId &&
@@ -3489,7 +3498,7 @@ export class AgentService {
 
       if (operationalNote === null && supportDetailContinuation) {
         operationalNote =
-          'El usuario está aportando un dato que se le solicitó en la respuesta anterior. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario.';
+          'El usuario está aportando un dato que se le solicitó en la respuesta anterior. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario. Preserva el nombre del evento/contexto exactamente como lo escribió el usuario, sin reformular ni expandirlo. En turnos de continuidad no repitas explicaciones previas ni cites evidencia FAQ.';
       }
 
       const requiresPhonePurchaseDetailHandoff = requests.some((request) => {
