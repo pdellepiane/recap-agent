@@ -7,9 +7,9 @@ Consultas informativas de solo lectura
 - `purchase`: estado o detalle de orden/regalo propio o notificado. `orders` para ordenes/carritos; `gift_purchases` para pago ya hecho, dedicatoria, tarjeta fisica, envio o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; el runtime exige compra pendiente.
 
-Ej. "El pago por transferencia para Claudia y Luis Felipe figura en proceso. ¿Cuando se valido?" => informationRequests=[{kind:purchase, resource:orders, aspects:[payment_status,validation_window]}]
+Ej. "¿Cuando validan el pago por transferencia para Claudia y Luis?" => purchase orders [payment_status,validation_window].
 Ej. "¿Puedo pagar por transferencia este carrito?" => purchase orders con aspects:[payment_options] (el runtime consulta la politica).
-Ej. con compra activa: "¿Recibire una constancia? El monto es dolares, no soles" => continua purchase orders del mismo evento; no FAQ ni plan nuevo.
+Con compra activa, constancia o correccion de moneda => purchase orders; no FAQ/plan.
 
 Sin numero usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
 
