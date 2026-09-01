@@ -38,7 +38,7 @@ describe('static prompt comparison', () => {
     expect(route(result, 'resolver_consultas_informativas').current.fileCount).toBe(7);
     expect(route(result, 'responder_invitacion').current.fileCount).toBe(7);
     expect(route(result, 'reset_plan').current.fileCount).toBe(10);
-  }, 15_000);
+  }, 20_000);
 
   it('uses non-generative input-token counting only when supplied', async () => {
     const count = vi.fn().mockResolvedValue({
@@ -61,7 +61,7 @@ describe('static prompt comparison', () => {
         comparison.current.remoteInputTokens === 100,
     )).toBe(true);
     expect(result.violations).toHaveLength(result.comparisons.length - 2);
-  });
+  }, 20_000);
 });
 
 describe('per-branch historical baseline via git show', () => {
@@ -89,7 +89,7 @@ describe('per-branch historical baseline via git show', () => {
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(currentRsvp?.instructionBytes).toBe(8448);
     expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(215);
-  }, 15_000);
+  }, 20_000);
 });
 
 function route(

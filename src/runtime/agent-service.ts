@@ -3465,6 +3465,14 @@ export class AgentService {
         if (hasUnverifiableTransactionTime) {
           operationalNote += ' La evidencia canónica no verifica una fecha u hora de pago. Si la persona propone una corrección temporal, reconócela solo como dato aportado por ella; no afirmes que el registro o el backend la confirma.';
         }
+        const hasUnverifiableCurrency = phonePurchaseResult.purchases.some(
+          (purchase) =>
+            purchase.amountDisclosure?.presentation === 'recorded_method_no_currency' ||
+            !purchase.currency,
+        );
+        if (hasUnverifiableCurrency) {
+          operationalNote += ' La evidencia canónica no consigna moneda para esta compra. Si la persona menciona una moneda (por ejemplo USD, dólares, soles, PEN), reconócela solo como dato aportado por ella; indica que la moneda no figura en el registro y permanece sin confirmar; no presentes la moneda mencionada como hecho del registro ni del backend.';
+        }
         const hasCustomerTransactionNumber = phonePurchaseResult.purchases.some(
           (purchase) => Boolean(purchase.customerTransactionNumber),
         );
