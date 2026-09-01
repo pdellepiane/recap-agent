@@ -37,11 +37,11 @@ describe('cart reply attribution and hedge fix', () => {
     expect(contract).not.toContain('informacion disponible es parcial');
   });
 
-  it('registry contains explicit phone attribution entry with deadbeef placeholder', () => {
+  it('registry contains explicit phone attribution entry with valid SHA', () => {
     const coveragePath = path.resolve(process.cwd(), 'evals/live-behavior-coverage.yaml');
     const coverage = fs.readFileSync(coveragePath, 'utf8');
     expect(coverage).toContain('fix-cart-reply-explicit-phone-attribution');
-    expect(coverage).toContain('implementedBy: deadbeef');
+    expect(coverage).toMatch(/fix-cart-reply-explicit-phone-attribution[\s\S]*?implementedBy:\s*[0-9a-f]{7,40}/);
     expect(coverage).toContain('live_behavior.abandoned_cart_only_sonia');
   });
 });

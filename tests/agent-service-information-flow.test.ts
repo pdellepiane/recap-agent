@@ -401,7 +401,7 @@ describe('AgentService first-class information flow', () => {
       providerGateway: providerGateway(),
     });
 
-    await service.handleTurn({
+    const response = await service.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'trusted-cart-recovery-user',
       text: '¿Puedo pagar este carrito por transferencia?',
@@ -410,15 +410,20 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51965765765',
     });
 
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'opción general de pago para regalos',
+    expect(response.outbound.text).toContain(
+      'Al revisar las compras y carritos asociados a tu numero de WhatsApp',
     );
-    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
-      'ruta de recuperación para este carrito',
+    expect(response.outbound.text).toContain(
+      'carrito abandonado para Carlos and Adriana que no se completo',
     );
-    expect(runtime.composeRequests.at(-1)?.errorMessage).not.toContain(
-      'recovery-id',
+    expect(response.outbound.text).toContain(
+      'que ya te enviamos en esta conversacion',
     );
+    expect(response.outbound.text).not.toContain('recovery-id');
+    expect(response.outbound.text).not.toContain('correo');
+    expect(response.outbound.text).not.toContain('https://');
+    expect((response.trace as unknown as { prompt_bundle_id: string }).prompt_bundle_id).toBe('deterministic:cart_only_abandoned');
+    expect(runtime.composeRequests.length).toBe(0);
   });
 
   it('routes an explicit wrong-account statement to email OTP without phone authentication', async () => {
