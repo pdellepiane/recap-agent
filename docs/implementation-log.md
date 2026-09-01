@@ -8054,3 +8054,54 @@ concurrent Claudia/Roger case, and extends the evaluator to collect real content
 evidence. It does not change production prompts or hide any existing regression.
 Coverage registry, loader, and concurrent scheduler verification passed 9/9 after
 registering the real implementation commit. The new case remains active and mandatory.
+
+### 2026-09-01 — Deploy turn coordination and run only its live regression
+
+**Authorization/scope:** owner explicitly requested deployment and a test only for
+this feature after the no-retry limitation was disclosed. This supersedes the prior
+deployment hold and narrows this run to one case; no full-suite pass is claimed.
+Used the deployment checklist and existing Agents SDK app workflow; reused previously
+authorized credentials and the repository's CloudFormation deployment, without adding
+local deployment-manager infrastructure or changing prompts/runtime behavior.
+
+**Deployment:** source `4bac7cd3` (runtime implementation `02ed1c4b`), stack/function
+`recap-agent-runtime`, profile `se-dev`, region `us-east-1`, STS account verified
+`684516060775`. Build and CloudFormation update succeeded. Provider-sync stack was
+intentionally not deployed. Lambda is Active with LastUpdateStatus Successful,
+timeout 90 seconds, LastModified `2026-09-01T21:25:11.000+0000`, revision
+`514501c0-ec6d-4595-a05f-5eeee93519b8`, CodeSha256
+`9W0g1ugLZ2naOT1RPynHTWDUjX63fjLoFOXqllvt20s=`.
+Previous revision was `4fef79d2-dfbc-4455-bcae-824b8b709c8b`.
+
+**Only live invocation:**
+`npm run eval:behavior-live -- --case live_behavior.concurrent_support_turns_preserve_context`.
+Artifact: `.eval-runs/eval-2026-09-01T21-26-01-332Z-02950e38/report.json`.
+One case, two overlapping turns; zero skipped/errored cases, one failed case.
+The evaluator and mandatory judge ran once; no repeated attempts or weakened rubric.
+
+**Concurrency evidence passed (4/4 hard structural assertions):** first turn acquired
+in 41 ms with one attempt; second acquired after 8453 ms with 27 attempts. Both plans
+were persisted. Second previous/next node was
+`resolver_consultas_informativas -> resolver_consultas_informativas`, proving it loaded
+the first turn's saved support state rather than starting from `contacto_inicial`.
+Request durations were 13357 ms and 18136 ms. The expected FAQ tool check also passed.
+
+**Remaining semantic failure, not a lock failure:** judge score 0.25 against required
+0.9. The second reply did not restart or address the caller as Roger, but asked for
+the email used to register rather than acknowledging the affected guest and event.
+Its information execution was `associated_event / needs_input /
+awaiting_authentication`. Thus support details still entered an inappropriate
+authenticated information path in this run. No routing/prompt correction was made
+as part of the deployment-only request. The feature is deployed with demonstrated
+serialization, but the overall interaction regression remains RED.
+
+**Model context evidence:** no lock fields or instructions were added. Observed
+instruction/input bytes for turn 0: classifier 9227/714, extractor 11552/1590,
+reply 13311/2576; turn 1: classifier 9227/735, extractor 11552/1576,
+reply 13311/1307. These are observed live sizes, not a before/after experiment.
+All model stages used gpt-5.6-luna with one attempt each. The earlier local gate
+remains 712/712 across 98 files; it was not rerun for this documentation-only update.
+
+**Still limited:** no durable recovery after wait exhaustion/crash if the caller
+does not retry; no completed-message idempotency, FIFO/delivery ordering, or guarantee
+against unrelated LLM misinterpretation. Full-suite evaluation was not run, per owner.

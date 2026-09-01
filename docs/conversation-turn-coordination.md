@@ -58,7 +58,9 @@ assistant message or a successful acknowledgement.
 The owner reports that the invocator probably does **not** retry non-200 results.
 Therefore this lock-only implementation cannot guarantee a response to a message
 whose wait expires, nor recover a message after Lambda crashes. Deployment
-acceptance must acknowledge that limitation or add durable delivery/retry first.
+was authorized on 2026-09-01 with this limitation explicitly disclosed. The owner
+requested deployment and a test only for this feature; durable retry remains outside
+this release.
 The lock prevents concurrent processing; it does **not** deduplicate a repeated
 message ID after the first invocation completes, cache/replay responses, or
 guarantee exactly-once RSVP/escalation side effects. Do not claim otherwise.
@@ -91,12 +93,24 @@ input schema byte delta is zero for an otherwise identical model call.
    A run that fails to overlap must fail, not substitute sequential coverage.
 3. Run typecheck/lint/all tests and prompt audits. Deploy through existing
    CloudFormation (only added permission: DeleteItem on PlansTable) using se-dev,
-   us-east-1, verified account 684516060775. Run the complete live behavior gate.
+   us-east-1, verified account 684516060775. For the owner-authorized scoped release,
+   run only `live_behavior.concurrent_support_turns_preserve_context` through
+   `npm run eval:behavior-live -- --case`; do not claim a fresh full-suite pass.
 4. Record revision, artifacts, counts, and unresolved semantic failures in the
    implementation log. Do not treat this focused lock as a fix for every earlier
    conversation failure. If rolling back, restore the prior runtime through the
    existing deployment procedure and avoid mixed old/new writers during rollout;
    old code does not honor the lock. No plan migration is needed.
+
+## Scoped release result — 2026-09-01
+
+Deployed revision `514501c0-ec6d-4595-a05f-5eeee93519b8`. The single live regression
+proved actual contention: turn two waited 8453 ms / 27 acquisition attempts and
+loaded turn one's saved support node. All four structural assertions passed.
+The mandatory semantic assertion failed (0.25/0.9): support details triggered an
+account-email request instead of acknowledgement. The lock is operational, but the
+complete interaction test is not green. No unrelated fixes or full-suite rerun were
+performed. See `docs/implementation-log.md` for the artifact and remaining limitations.
 
 ## Sources
 
