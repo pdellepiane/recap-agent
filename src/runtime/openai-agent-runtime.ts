@@ -86,7 +86,12 @@ type ReplyTurnEvidence = {
   plan: Record<string, unknown>;
   information_results: unknown[];
   rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
-  rsvp_party: { scope: string; mentioned_names: string[] } | null;
+  rsvp_party: {
+    scope: string;
+    mentioned_names: string[];
+    companion_count: 'one' | 'multiple' | 'unknown';
+    plus_one_response: 'yes' | 'no' | 'unknown';
+  } | null;
   turn_state: {
     focus_need_category: PersistedPlan['active_need_category'];
     missing_fields: string[];
@@ -283,6 +288,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         resource: request.resource,
         query: request.query,
         orderId: normalizeExtractedOrderReference(request.orderId),
+        ...(request.eventHint ? { eventHint: request.eventHint.trim() } : {}),
+        ...(request.amount !== null && request.amount !== undefined
+          ? { amount: request.amount }
+          : {}),
         aspects:
           request.aspects.length > 0 ? request.aspects : ['summary'],
         sensitiveFields: request.sensitiveFields,
@@ -977,9 +986,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ),
       rsvp_phone_evidence: args.request.rsvpPhoneEvidence ?? null,
       rsvp_party: args.request.currentNode === 'responder_invitacion' && args.request.extraction.rsvpParty
-        ? {
+          ? {
             scope: args.request.extraction.rsvpParty.scope,
             mentioned_names: args.request.extraction.rsvpParty.mentioned_names,
+            companion_count: args.request.extraction.rsvpParty.companion_count ?? 'unknown',
+            plus_one_response: args.request.extraction.rsvpParty.plus_one_response ?? 'unknown',
           }
         : null,
       turn_state: {
@@ -1008,6 +1019,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ? {
             scope: extraction.rsvpParty.scope,
             mentioned_names: extraction.rsvpParty.mentioned_names,
+            companion_count: extraction.rsvpParty.companion_count ?? 'unknown',
+            plus_one_response: extraction.rsvpParty.plus_one_response ?? 'unknown',
           }
         : null,
       ambiguity: extraction.ambiguity
@@ -1110,6 +1123,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           ? {
               scope: extraction.rsvpParty.scope,
               mentioned_names: extraction.rsvpParty.mentioned_names,
+              companion_count: extraction.rsvpParty.companion_count ?? 'unknown',
+              plus_one_response: extraction.rsvpParty.plus_one_response ?? 'unknown',
             }
           : null,
         ambiguity: extraction.ambiguity
@@ -2169,6 +2184,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private projectInformationResultForReply(result: InformationTaskResult): unknown {
+    if (result.status === 'completed' && result.kind === 'faq') {
+      return {
+        requestId: result.requestId,
+        kind: result.kind,
+        status: result.status,
+        evidence: result.evidence.slice(0, 3).map((entry) => ({
+          filename: entry.filename,
+          text: this.truncateText(entry.text, 1_200),
+        })),
+      };
+    }
     if (result.status !== 'completed' || result.kind !== 'purchase') {
       return this.stripRawFields(result);
     }

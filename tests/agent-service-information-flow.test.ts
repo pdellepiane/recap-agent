@@ -49,6 +49,140 @@ const renderers = {
 };
 
 describe('AgentService first-class information flow', () => {
+  it("does not replace the channel user's name with a third-party guest name", async () => {
+    const planStore = new InMemoryPlanStore();
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'identity-guard',
+        channel: 'whatsapp',
+        externalUserId: 'identity-guard-user',
+      }),
+      {
+        contact_name: 'Claudia',
+        current_node: 'resolver_consultas_informativas',
+      },
+    );
+    await planStore.save({ plan, reason: 'fixture' });
+    const runtime = new InformationRuntime([
+      {
+        ...extraction([]),
+        contactName: 'Roger Abanto',
+      },
+    ]);
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'identity-guard-user',
+      text: 'El nombre es Roger Abanto',
+      messageId: 'identity-guard-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.contact_name).toBe('Claudia');
+  });
+
+  it('keeps structured support details in the information flow without renaming the user', async () => {
+    const planStore = new InMemoryPlanStore();
+    const runtime = new InformationRuntime([
+      extraction([{ kind: 'faq', query: 'Problema de tarjeta de un invitado.' }]),
+      { ...extraction([]), contactName: 'Roger Abanto' },
+      { ...extraction([]), eventType: 'baby_shower' },
+    ]);
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: new FakePurchaseGateway(),
+      providerGateway: providerGateway(),
+      planStore,
+    });
+    const base = {
+      channel: 'whatsapp',
+      externalUserId: 'support-detail-user',
+      contactPhone: '+51985101461',
+      receivedAt: new Date().toISOString(),
+    } as const;
+
+    const supportQuestion = await service.handleTurn({
+      ...base,
+      text: '¿Hay problemas con tarjetas de crédito?',
+      messageId: 'support-detail-1',
+    });
+    expect(supportQuestion.plan.information_state.last_completed_request).toEqual({
+      kind: 'faq',
+      query: 'Problema de tarjeta de un invitado.',
+    });
+    const namedGuest = await service.handleTurn({
+      ...base,
+      text: 'El nombre es Roger Abanto',
+      messageId: 'support-detail-2',
+    });
+    const namedEvent = await service.handleTurn({
+      ...base,
+      text: 'Y el evento es Baby Shower Catalina',
+      messageId: 'support-detail-3',
+    });
+
+    expect(namedGuest.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(namedGuest.plan.contact_name).toBeNull();
+    expect(namedEvent.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(namedEvent.plan.contact_name).toBeNull();
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'no repitas la explicación anterior',
+    );
+  });
+
+  it('resumes a completed purchase information thread for a contextual correction', async () => {
+    const runtime = new InformationRuntime([
+      extraction([purchaseRequest(null)]),
+      extraction([]),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
+    };
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'contextual-correction-user',
+      contactPhone: '+51999999999',
+      text: 'Quiero revisar el estado de mi regalo',
+      messageId: 'contextual-correction-1',
+      receivedAt: new Date().toISOString(),
+    });
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'contextual-correction-user',
+      contactPhone: '+51999999999',
+      text: 'Pero hoy es 30 de agosto, no 31',
+      messageId: 'contextual-correction-2',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(runtime.composeRequests.at(-1)?.currentNode).toBe(
+      'resolver_consultas_informativas',
+    );
+    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
+      kind: 'purchase',
+      status: 'completed',
+    });
+  });
+
   it('answers FAQ evidence while preserving a purchase request blocked on email', async () => {
     const runtime = new InformationRuntime([
       extraction([
@@ -1140,6 +1274,82 @@ describe('AgentService first-class information flow', () => {
     });
   });
 
+  it('retrieves the indexed validation policy exactly once for a pending-payment window question', async () => {
+    const request = purchaseRequest(null);
+    request.resource = 'orders';
+    request.query = '¿Cuánto tarda en validarse mi pago en proceso?';
+    request.aspects = ['payment_status', 'validation_window'];
+    const runtime = new InformationRuntime([extraction([request])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [{
+        ...purchase('ORD-PENDING-72H'),
+        partition: 'pending_orders',
+        paymentStatus: 'pending',
+        paymentMethod: 'PayPal',
+        currency: null,
+      }],
+      orderPartitions: {
+        pending: [{
+          ...purchase('ORD-PENDING-72H'),
+          partition: 'pending_orders',
+          paymentStatus: 'pending',
+          paymentMethod: 'PayPal',
+          currency: null,
+        }],
+        completed: [],
+      },
+      carts: [],
+    };
+    const knowledgeGateway = new FakeKnowledgeGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'pending-validation-user',
+      text: '¿Cuánto tarda en validarse mi pago en proceso?',
+      messageId: 'pending-validation-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(knowledgeGateway.calls).toBe(1);
+    expect(knowledgeGateway.lastQuery).toBe(
+      'Plazo de validación de pagos en proceso por método de pago',
+    );
+    expect(runtime.composeRequests[0]?.informationResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ kind: 'faq', status: 'completed' }),
+        expect.objectContaining({
+          kind: 'purchase',
+          status: 'completed',
+          purchases: [expect.objectContaining({
+            currency: null,
+            amountDisclosure: {
+              total: null,
+              paid: null,
+              currency: null,
+              paymentMethod: null,
+              presentation: 'recorded_method_no_currency',
+            },
+            paymentValidationExpectation: {
+              maxBusinessHours: 72,
+              appliesTo: 'indexed_validation_methods',
+            },
+          })],
+        }),
+      ]),
+    );
+  });
+
   it('honors an explicit verification refusal and clears the protected request without another prompt', async () => {
     const declinedRequest = purchaseRequest(null);
     declinedRequest.authAction = 'decline_authentication';
@@ -1557,9 +1767,11 @@ class InformationRuntime implements AgentRuntime {
 
 class FakeKnowledgeGateway implements KnowledgeRetrievalGateway {
   public calls = 0;
+  public lastQuery: string | null = null;
 
-  async search(): Promise<KnowledgeRetrievalResult> {
+  async search(query: string): Promise<KnowledgeRetrievalResult> {
     this.calls += 1;
+    this.lastQuery = query;
     return {
       status: 'success',
       evidence: [

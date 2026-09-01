@@ -2,10 +2,12 @@ import crypto from 'node:crypto';
 
 import {
   createInformationAuthGuidance,
+  type CartInformation,
   type InformationAuthGuidance,
   type InformationExecutionSummary,
   type InformationTaskResult,
   type PendingInformationRequest,
+  type PurchasePartition,
   type PurchaseInformation,
   type SensitivePurchaseField,
 } from '../core/information';
@@ -22,8 +24,8 @@ import type {
 import type { KnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import type { ProviderGateway, UserEventLookupResult } from './provider-gateway';
 import {
-  canDisclosePaymentDestination,
   hasPhysicalFulfillment,
+  pendingPaymentValidationExpectation,
 } from './purchase-disclosure-policy';
 
 type PurchaseRequest = Extract<
@@ -60,7 +62,34 @@ type EventDetailCache = Map<string, Promise<PhoneEventDetailResult>>;
 type PhoneContextSnapshot = {
   purchasesByOrderId: Map<string, PurchaseInformation>;
   purchaseSourceByOrderId: Map<string, 'orders' | 'gift_purchases' | 'event'>;
+  purchasePartitionByOrderId: Map<string, PurchasePartition>;
+  cartsById: Map<string, CartInformation>;
   inconsistentOrderIds: Set<string>;
+};
+
+/**
+ * Partition metadata is kept outside PurchaseInformation so it cannot leak
+ * into the reply projection. Gateways may expose either the camel-case or
+ * snake-case envelope while the endpoint rollout is in progress.
+ */
+type PartitionedPurchaseLookup = {
+  purchases: PurchaseInformation[];
+  partitionByOrderId: Map<string, PurchasePartition>;
+  carts: CartInformation[];
+  hasPartitions: boolean;
+  conflictingOrderIds: Set<string>;
+};
+
+type SuccessfulPurchaseLookup =
+  | Extract<AgentPhonePurchaseLookupResult, { status: 'success' }>
+  | Extract<AgentPurchaseLookupResult, { status: 'success' }>;
+
+type PurchaseTaskResult = Extract<
+  InformationTaskResult,
+  { kind: 'purchase'; status: 'completed' }
+> & {
+  /** Optional because authenticated legacy lookups do not carry carts. */
+  carts?: CartInformation[];
 };
 
 export type InformationAuthentication = {
@@ -104,6 +133,8 @@ export class InformationOrchestrator {
     const phoneContext: PhoneContextSnapshot = {
       purchasesByOrderId: new Map(),
       purchaseSourceByOrderId: new Map(),
+      purchasePartitionByOrderId: new Map(),
+      cartsById: new Map(),
       inconsistentOrderIds: new Set(),
     };
     const guestEventsPromise =
@@ -375,12 +406,11 @@ export class InformationOrchestrator {
       };
     }
 
-    if (
-      lookup.status === 'success' &&
-      !request.orderId &&
-      lookup.purchases.length === 1
-    ) {
-      const onlyOrder = lookup.purchases[0];
+    const initialEvidence = lookup.status === 'success'
+      ? this.partitionedPurchaseLookup(lookup)
+      : null;
+    if (!request.orderId && initialEvidence?.purchases.length === 1) {
+      const onlyOrder = initialEvidence.purchases[0];
       if (onlyOrder) {
         lookup =
           await this.lookupPurchase(
@@ -392,16 +422,26 @@ export class InformationOrchestrator {
     }
 
     if (lookup.status === 'success') {
+      const evidence = this.partitionedPurchaseLookup(lookup);
+      const candidates = this.filterPurchaseCandidates(
+        evidence.purchases,
+        request,
+        evidence.partitionByOrderId,
+      );
+      const carts = this.filterCartCandidates(evidence.carts, request);
       return {
         requestId: request.requestId,
         kind: 'purchase',
         status: 'completed',
         resource: request.resource,
         lookupResource: request.resource,
-        purchases: lookup.purchases.map((purchase) =>
+        purchases: candidates.purchases.map((purchase) =>
           this.projectPurchase(purchase, request),
         ),
-        needsSelection: !request.orderId && lookup.purchases.length > 1,
+        needsSelection: !request.orderId && candidates.needsSelection,
+        coverage: carts.length > 0 && candidates.purchases.length === 0
+          ? 'partial'
+          : 'complete',
       };
     }
 
@@ -755,6 +795,44 @@ export class InformationOrchestrator {
       .trim();
   }
 
+  private partitionedPurchaseLookup(
+    result: SuccessfulPurchaseLookup,
+  ): PartitionedPurchaseLookup {
+    const phoneResult = 'orderPartitions' in result || 'carts' in result ? result : null;
+    const pending = phoneResult?.orderPartitions?.pending ?? [];
+    const completed = phoneResult?.orderPartitions?.completed ?? [];
+    const carts = phoneResult?.carts ?? [];
+    const hasPartitions = phoneResult?.orderPartitions !== undefined ||
+      phoneResult?.carts !== undefined;
+    const purchases: PurchaseInformation[] = [];
+    const partitionByOrderId = new Map<string, PurchasePartition>();
+    const conflictingOrderIds = new Set<string>();
+
+    const add = (entries: PurchaseInformation[], partition: PurchasePartition): void => {
+      for (const purchase of entries) {
+        const existingPartition = partitionByOrderId.get(purchase.orderId);
+        if (existingPartition) {
+          if (existingPartition !== (purchase.partition ?? partition)) {
+            conflictingOrderIds.add(purchase.orderId);
+          }
+          continue;
+        }
+        purchases.push(purchase);
+        partitionByOrderId.set(purchase.orderId, purchase.partition ?? partition);
+      }
+    };
+    add(pending, 'pending_orders');
+    add(completed, 'completed_orders');
+
+    // Legacy `purchases` is a compatibility fallback only. Once a partition
+    // envelope is present it must not reintroduce records omitted by the
+    // selected partitions.
+    if (!hasPartitions) {
+      add(result.purchases, 'legacy_orders');
+    }
+    return { purchases, partitionByOrderId, carts, hasPartitions, conflictingOrderIds };
+  }
+
   private async executePhonePurchaseRequest(
     request: PurchaseRequest,
     trustedPhone: AgentAuthByPhoneInput,
@@ -802,7 +880,37 @@ export class InformationOrchestrator {
     }
 
     if (lookup.result.status === 'success') {
-      const purchases = lookup.result.purchases;
+      const evidence = this.partitionedPurchaseLookup(lookup.result);
+      for (const orderId of evidence.conflictingOrderIds) {
+        phoneContext.inconsistentOrderIds.add(orderId);
+      }
+      for (const cart of evidence.carts) {
+        phoneContext.cartsById.set(cart.cartId, cart);
+      }
+      const carts = this.filterCartCandidates(evidence.carts, request);
+      const candidates = this.filterPurchaseCandidates(
+        evidence.purchases,
+        request,
+        evidence.partitionByOrderId,
+      );
+      const purchases = candidates.purchases;
+      // An empty order partition is not a global absence of information: an
+      // active or abandoned cart is valid phone-scoped checkout evidence.
+      if (purchases.length === 0 && carts.length > 0) {
+        const result: PurchaseTaskResult = {
+          requestId: request.requestId,
+          kind: 'purchase',
+          status: 'completed',
+          resource: request.resource,
+          lookupResource: lookup.sourceResource,
+          purchases: [],
+          needsSelection: false,
+          accessMethod: 'trusted_phone_purchase',
+          coverage: 'partial',
+          carts: carts.map((cart) => this.projectCart(cart)),
+        };
+        return result;
+      }
       if (purchases.length === 0) {
         return {
           requestId: request.requestId,
@@ -819,9 +927,10 @@ export class InformationOrchestrator {
           phoneContext,
           purchase,
           lookup.sourceResource,
+          evidence.partitionByOrderId.get(purchase.orderId),
         );
       }
-      return {
+      const result: PurchaseTaskResult = {
         requestId: request.requestId,
         kind: 'purchase',
         status: 'completed',
@@ -831,11 +940,10 @@ export class InformationOrchestrator {
           this.projectPurchase(purchase, request),
         ),
         needsSelection:
-          lookup.referenceResolution === 'unavailable' ||
-          (!request.orderId && purchases.length > 1) ||
-          (lookup.referenceResolution === 'matched' && purchases.length > 1),
+          lookup.referenceResolution === 'unavailable' || candidates.needsSelection,
         accessMethod: 'trusted_phone_purchase',
         coverage: lookup.coverage,
+        carts: carts.map((cart) => this.projectCart(cart)),
         ...(lookup.referenceResolution === 'not_requested'
           ? {}
           : {
@@ -844,6 +952,7 @@ export class InformationOrchestrator {
                 lookup.requestedCustomerTransactionNumber,
             }),
       };
+      return result;
     }
 
     if (lookup.result.status === 'not_found') {
@@ -1008,10 +1117,18 @@ export class InformationOrchestrator {
         requestedCustomerTransactionNumber,
       };
     }
+    const partitioned = this.partitionedPurchaseLookup(result);
+    const availablePurchases = partitioned.purchases;
     const purchasesWithCustomerReference = result.purchases.filter(
       (purchase) => Boolean(purchase.customerTransactionNumber),
     );
-    if (purchasesWithCustomerReference.length === 0) {
+    const partitionedReferences = availablePurchases.filter(
+      (purchase) => Boolean(purchase.customerTransactionNumber),
+    );
+    const references = partitioned.hasPartitions
+      ? partitionedReferences
+      : purchasesWithCustomerReference;
+    if (references.length === 0) {
       return {
         result,
         coverage: 'partial',
@@ -1020,7 +1137,7 @@ export class InformationOrchestrator {
         requestedCustomerTransactionNumber,
       };
     }
-    const matches = purchasesWithCustomerReference.filter(
+    const matches = references.filter(
       (purchase) =>
         purchase.customerTransactionNumber === requestedCustomerTransactionNumber,
     );
@@ -1068,12 +1185,14 @@ export class InformationOrchestrator {
     snapshot: PhoneContextSnapshot,
     incoming: PurchaseInformation,
     source: 'orders' | 'gift_purchases' | 'event',
+    partition: PurchasePartition = 'legacy_orders',
   ): void {
     const current = snapshot.purchasesByOrderId.get(incoming.orderId);
     const currentSource = snapshot.purchaseSourceByOrderId.get(incoming.orderId);
     if (!current || !currentSource) {
       snapshot.purchasesByOrderId.set(incoming.orderId, incoming);
       snapshot.purchaseSourceByOrderId.set(incoming.orderId, source);
+      snapshot.purchasePartitionByOrderId.set(incoming.orderId, partition);
       return;
     }
     if (this.purchaseRecordsConflict(current, incoming)) {
@@ -1090,6 +1209,13 @@ export class InformationOrchestrator {
       incoming.orderId,
       priority[source] >= priority[currentSource] ? source : currentSource,
     );
+    const currentPartition = snapshot.purchasePartitionByOrderId.get(incoming.orderId);
+    snapshot.purchasePartitionByOrderId.set(
+      incoming.orderId,
+      priority[source] >= priority[currentSource]
+        ? partition
+        : currentPartition ?? 'legacy_orders',
+    );
   }
 
   private mergePurchaseRecords(
@@ -1099,6 +1225,8 @@ export class InformationOrchestrator {
     return {
       ...fallback,
       ...preferred,
+      eventId: preferred.eventId ?? fallback.eventId ?? null,
+      currency: preferred.currency ?? fallback.currency ?? null,
       paymentStatus: preferred.paymentStatus ?? fallback.paymentStatus,
       customerTransactionNumber:
         preferred.customerTransactionNumber ?? fallback.customerTransactionNumber,
@@ -1111,6 +1239,8 @@ export class InformationOrchestrator {
       createdAt: preferred.createdAt ?? fallback.createdAt,
       items: preferred.items.length > 0 ? preferred.items : fallback.items,
       payment: preferred.payment ?? fallback.payment,
+      paymentValidationExpectation:
+        preferred.paymentValidationExpectation ?? fallback.paymentValidationExpectation ?? null,
       declineCode: preferred.declineCode ?? fallback.declineCode,
       adminComment: preferred.adminComment ?? fallback.adminComment,
       dedication: preferred.dedication ?? fallback.dedication,
@@ -1189,6 +1319,127 @@ export class InformationOrchestrator {
     );
   }
 
+  private filterPurchaseCandidates(
+    purchases: PurchaseInformation[],
+    request: PurchaseRequest,
+    partitionByOrderId: ReadonlyMap<string, PurchasePartition> = new Map(),
+  ): { purchases: PurchaseInformation[]; needsSelection: boolean } {
+    const hasEventSelector = Boolean(request.eventHint?.trim());
+    const hasAmountSelector = request.amount !== null && request.amount !== undefined;
+    const requestedDate = this.requestDateSelector(request);
+    const hasDateSelector = Boolean(requestedDate);
+    const hasSelector = hasEventSelector || hasAmountSelector || hasDateSelector;
+    const normalizedEvent = hasEventSelector
+      ? this.normalizeEventReference(request.eventHint ?? '')
+      : '';
+
+    const matches = hasSelector
+      ? purchases.filter((purchase) => {
+          if (
+            normalizedEvent &&
+            !this.eventMatches(purchase.eventName, normalizedEvent)
+          ) {
+            return false;
+          }
+          if (hasAmountSelector) {
+            const knownAmounts = [purchase.grandTotal, purchase.payment?.amount]
+              .filter((amount): amount is number => amount !== null && amount !== undefined);
+            if (
+              knownAmounts.length === 0 ||
+              !knownAmounts.some((amount) => Math.abs(amount - (request.amount ?? 0)) < 0.005)
+            ) {
+              return false;
+            }
+          }
+          if (requestedDate && !this.dateMatches(purchase.eventDate, requestedDate)) {
+            return false;
+          }
+          return true;
+        })
+      : purchases;
+
+    // Explicit typed evidence is authoritative. Never widen a failed match
+    // back to the complete phone history, since that can expose an unrelated
+    // historical purchase. An unresolved explicit reference is represented as
+    // an empty, non-definitive result by the caller.
+    if (hasSelector) {
+      return {
+        purchases: matches,
+        needsSelection: matches.length > 1,
+      };
+    }
+
+    // A unique pending partition is safe to use for a current status/payment
+    // question. This is partition semantics, not a recency heuristic.
+    const pending = purchases.filter(
+      (purchase) => partitionByOrderId.get(purchase.orderId) === 'pending_orders',
+    );
+    if (pending.length === 1 && this.isCurrentPaymentQuestion(request)) {
+      return { purchases: pending, needsSelection: false };
+    }
+    return {
+      purchases,
+      needsSelection: purchases.length > 1,
+    };
+  }
+
+  private isCurrentPaymentQuestion(request: PurchaseRequest): boolean {
+    return request.aspects.some((aspect) =>
+      aspect === 'payment_status' || aspect === 'payment_details' || aspect === 'summary',
+    );
+  }
+
+  private requestDateSelector(request: PurchaseRequest): string | null {
+    const candidate = request as PurchaseRequest & {
+      date?: string | null;
+      eventDate?: string | null;
+    };
+    const value = candidate.eventDate ?? candidate.date;
+    return typeof value === 'string' && value.trim() ? this.dateReference(value) : null;
+  }
+
+  private dateMatches(eventDate: string | null, requestedDate: string): boolean {
+    return eventDate ? this.dateReference(eventDate) === requestedDate : false;
+  }
+
+  private dateReference(value: string): string {
+    const isoDate = value.match(/\b\d{4}-\d{2}-\d{2}\b/u)?.[0];
+    return isoDate ?? value.trim().toLocaleLowerCase('es');
+  }
+
+  private eventMatches(eventName: string | null | undefined, normalizedHint: string): boolean {
+    if (!eventName) return false;
+    const normalizedName = this.normalizeEventReference(eventName);
+    return normalizedName === normalizedHint ||
+      normalizedName.includes(normalizedHint) ||
+      normalizedHint.includes(normalizedName);
+  }
+
+  private filterCartCandidates(
+    carts: CartInformation[],
+    request: PurchaseRequest,
+  ): CartInformation[] {
+    const normalizedEvent = request.eventHint?.trim()
+      ? this.normalizeEventReference(request.eventHint)
+      : '';
+    const amount = request.amount;
+    return carts.filter((cart) => {
+      if (normalizedEvent && !this.eventMatches(cart.eventName, normalizedEvent)) {
+        return false;
+      }
+      if (amount !== null && amount !== undefined) {
+        if (typeof cart.subtotal !== 'number' || Math.abs(cart.subtotal - amount) >= 0.005) {
+          return false;
+        }
+      }
+      const requestedDate = this.requestDateSelector(request);
+      if (requestedDate && (!cart.eventDate || this.dateReference(cart.eventDate) !== requestedDate)) {
+        return false;
+      }
+      return true;
+    });
+  }
+
   private isRetryableLookupFailure(
     lookup: AgentPhonePurchaseLookupResult,
   ): boolean {
@@ -1235,9 +1486,33 @@ export class InformationOrchestrator {
     const sensitive = new Set<SensitivePurchaseField>(request.sensitiveFields);
     const includePayment = aspectSet.has('payment_details');
     const physicalFulfillment = hasPhysicalFulfillment(purchase);
+    const includeAmount = aspectSet.has('summary') || includePayment;
+    const disclosedTotal = includeAmount ? purchase.grandTotal : null;
+    const disclosedPaid = includePayment ? purchase.payment?.amount ?? null : null;
+    const disclosedMethod = includeAmount
+      ? purchase.paymentMethod ?? purchase.payment?.method ?? null
+      : null;
+    const shouldDiscloseAmount =
+      disclosedTotal !== null ||
+      disclosedPaid !== null ||
+      aspectSet.has('validation_window') ||
+      aspectSet.has('payment_status');
+    const amountDisclosure = shouldDiscloseAmount
+      ? {
+          total: disclosedTotal,
+          paid: disclosedPaid,
+          currency: purchase.currency ?? null,
+          paymentMethod: disclosedMethod,
+          presentation: purchase.currency
+            ? 'explicit_currency' as const
+            : 'recorded_method_no_currency' as const,
+        }
+      : null;
 
     return {
       orderId: purchase.orderId,
+      eventId: purchase.eventId ?? null,
+      currency: null,
       customerTransactionNumber: purchase.customerTransactionNumber ?? null,
       paymentStatus:
         aspectSet.has('summary') || aspectSet.has('payment_status') || aspectSet.has('decline')
@@ -1248,8 +1523,10 @@ export class InformationOrchestrator {
         (aspectSet.has('summary') || aspectSet.has('shipping'))
           ? purchase.shippingStatus
           : null,
-      grandTotal: aspectSet.has('summary') || includePayment ? purchase.grandTotal : null,
-      paymentMethod: includePayment ? purchase.paymentMethod : null,
+      grandTotal: null,
+      paymentMethod: null,
+      amountDisclosure,
+      paymentValidationExpectation: pendingPaymentValidationExpectation(purchase),
       eventName: purchase.eventName,
       eventDate: purchase.eventDate,
       eventUrl: purchase.eventUrl,
@@ -1259,8 +1536,8 @@ export class InformationOrchestrator {
         ? {
             payment: purchase.payment
               ? {
-                  method: purchase.payment.method,
-                  amount: purchase.payment.amount,
+                  method: null,
+                  amount: null,
                   paidAt: purchase.payment.paidAt,
                   ...(sensitive.has('payment_id')
                     ? { paymentId: purchase.payment.paymentId ?? null }
@@ -1274,19 +1551,8 @@ export class InformationOrchestrator {
                   ...(sensitive.has('operation_code')
                     ? { operationCode: purchase.payment.operationCode ?? null }
                     : {}),
-                  ...(sensitive.has('origin_bank')
-                    ? { originBank: purchase.payment.originBank ?? null }
-                    : {}),
-                  ...(sensitive.has('destination_account') &&
-                  canDisclosePaymentDestination(purchase)
-                    ? {
-                        destinationAccount:
-                          purchase.payment.destinationAccount ?? null,
-                      }
-                    : {}),
-                  ...(sensitive.has('voucher_image')
-                    ? { voucherImage: purchase.payment.voucherImage ?? null }
-                    : {}),
+                  // Bank routing identifiers and uploaded vouchers are never
+                  // part of the model-facing evidence, even when requested.
                 }
               : null,
           }
@@ -1315,6 +1581,37 @@ export class InformationOrchestrator {
             isThanked: purchase.isThanked ?? null,
           }
         : {}),
+    };
+  }
+
+  private projectCart(cart: CartInformation): CartInformation {
+    return {
+      cartId: cart.cartId,
+      status: cart.status,
+      wasAbandoned: cart.wasAbandoned,
+      eventId: cart.eventId ?? null,
+      eventName: cart.eventName ?? null,
+      eventDate: cart.eventDate ?? null,
+      subtotal: null,
+      amountDisclosure: typeof cart.subtotal === 'number'
+        ? {
+            total: cart.subtotal,
+            paid: null,
+            currency: null,
+            paymentMethod: null,
+            presentation: 'recorded_method_no_currency',
+          }
+        : null,
+      giftsQuantity: cart.giftsQuantity ?? null,
+      // Offset-less timestamps are normalized to null by the gateway.
+      createdAt: cart.createdAt ?? null,
+      items: cart.items.map((item) => ({
+        giftName: item.giftName ?? null,
+        quantity: item.quantity ?? null,
+        amount: item.amount ?? null,
+        rowTotal: item.rowTotal ?? null,
+        type: item.type ?? null,
+      })),
     };
   }
 

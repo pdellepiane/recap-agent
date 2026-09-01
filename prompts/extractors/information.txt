@@ -1,23 +1,23 @@
 Consultas informativas de solo lectura
 
-`informationRequests` conserva el orden y puede coexistir con `actionIntent`. Completa campos con null o [].
+`informationRequests` conserva el orden y puede coexistir con `actionIntent`.
 
-- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones, funciones o capacidades. `query` debe ser autosuficiente; los campos de compra y evento quedan neutrales.
+- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones. `query` debe ser autosuficiente.
 - `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrión o confirmados de un evento asociado. Usa `eventHint` solo si lo identifica y produce `informationRequests.kind=associated_event`.
 - `purchase`: consulta una orden o regalo comprado por la persona. Usa `resource=orders` para órdenes y `resource=gift_purchases` para pago, dedicatoria, tarjeta física, envío o agradecimiento de un regalo.
 - Pedir el destino de Yape o transferencia es `purchase`, no FAQ: usa `gift_purchases`, `payment_status`, `payment_details` y `destination_account`; el runtime exige una compra pendiente.
 
-“¿Cómo funciona la lista de regalos?” es FAQ; “¿Cuál es el estado del regalo que compré?” es purchase. Si política y operación propia son indistinguibles, pide aclaración.
-
 Sin número usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
+
+En compras, llena `eventHint` y `amount` solo si son explícitos. Para una pregunta sobre cuánto tarda la validación de un pago en proceso usa `resource=orders` e incluye `payment_status` y `validation_window`; el runtime añadirá una sola consulta a la política indexada. No uses `payment_details` solo para pedir ese plazo. No infieras selectores.
 
 `sensitiveFields` solo contiene datos sensibles pedidos explícitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
 
 Autenticación de consultas personales
 
-Primero se intenta automáticamente el número actual de WhatsApp; correo y código son respaldo. `phoneConfirmation=no` solo si niega que la cuenta o el número actuales sean suyos; `yes` exige confirmación explícita y `unclear` cubre referencias ambiguas. Una negación de la cuenta o del número usa `phoneConfirmation=no` y no `decline_authentication`: todavía puede continuar por correo.
+Se intenta primero el número actual de WhatsApp; correo y código son respaldo. `phoneConfirmation=no` solo si niega que la cuenta o el número actuales sean suyos: usa `phoneConfirmation=no` y no `decline_authentication`. Usa `yes` solo ante confirmación explícita y `unclear` si es ambiguo.
 
-Una respuesta breve continúa la solicitud protegida pendiente. Con `information_state.authentication_status=code_requested`, consérvala y usa:
+Con `information_state.authentication_status=code_requested`, conserva la solicitud y usa:
 
 - `provide_otp` si proporciona el código;
 - `report_otp_not_received` si dice que no llegó;
@@ -26,7 +26,6 @@ Una respuesta breve continúa la solicitud protegida pendiente. Con `information
 - `accountless_user` si compró sin cuenta;
 - `decline_authentication` si rechaza continuar la verificación.
 
-Antes del código usa `provide_email` al recibir el correo. No copies códigos fuera de `authAction`.
-Conserva la consulta pendiente con las dos últimas acciones.
+Antes del código usa `provide_email` al recibir el correo. No copies códigos fuera de `authAction` y conserva la consulta pendiente.
 
 Una frase que solo informa “ya envié el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografía, captura o imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es una solicitud de atención humana. Si pide hablar con una persona, `actionIntent=solicitar_humano` puede coexistir con las consultas.

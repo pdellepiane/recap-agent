@@ -424,6 +424,136 @@ describe('AgentConversationGateway', () => {
     );
   });
 
+  it('maps completed, pending, and cart partitions independently and ignores legacy orders', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        // This is deliberately malformed. New partitions are authoritative;
+        // a legacy record must not poison or enter the typed result.
+        orders: [{ id: 123 }],
+        pending_orders: [{
+          id: 'ORD-PENDING',
+          increment_id: 'COD301816',
+          payment_status: 'declined',
+          shipping_status: null,
+          grand_total: 63.85,
+          payment_method: 'Transferencia',
+          currency: null,
+          event_id: 44,
+          event_name: 'Isa and Lu',
+          event_date: '2026-09-20',
+          items: [],
+          created_at: '2026-08-28 14:00:00',
+        }],
+        completed_orders: [{
+          id: 'ORD-COMPLETED',
+          increment_id: 301817,
+          payment_status: 'refunded',
+          shipping_status: 'delivered',
+          grand_total: 88.18,
+          payment_method: 'Yape',
+          event_name: 'Josue y Paola',
+          event_date: '2025-04-16',
+          items: [],
+          created_at: '2025-04-16',
+        }],
+        carts: [{
+          cart_id: 9001,
+          status: 'active',
+          was_abandoned: false,
+          event_id: 44,
+          event_name: 'Isa and Lu',
+          event_date: '2026-09-20',
+          subtotal: 63.85,
+          gifts_quantity: 1,
+          items: [{ gift_name: 'Aporte', quantity: 1, amount: 63.85, row_total: 63.85, type: 'cash' }],
+          created_at: '2026-08-28',
+        }],
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.getGuestOrdersByPhone({
+      phone_extension: '+51',
+      phone_number: '987654321',
+    })).resolves.toEqual({
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        expect.objectContaining({
+          orderId: 'ORD-PENDING',
+          partition: 'pending_orders',
+          customerTransactionNumber: '301816',
+          paymentStatus: 'declined',
+          currency: null,
+          paymentMethod: 'Transferencia',
+            createdAt: null,
+        }),
+        expect.objectContaining({
+          orderId: 'ORD-COMPLETED',
+          partition: 'completed_orders',
+          customerTransactionNumber: '301817',
+          paymentStatus: 'refunded',
+        }),
+      ],
+      orderPartitions: {
+        pending: [expect.objectContaining({ orderId: 'ORD-PENDING' })],
+        completed: [expect.objectContaining({ orderId: 'ORD-COMPLETED' })],
+      },
+      carts: [{
+        cartId: '9001',
+        status: 'active',
+        wasAbandoned: false,
+        eventId: 44,
+        eventName: 'Isa and Lu',
+        eventDate: '2026-09-20',
+        eventUrl: null,
+        subtotal: 63.85,
+        giftsQuantity: 1,
+        createdAt: '2026-08-28',
+        items: [{ giftName: 'Aporte', quantity: 1, amount: 63.85, rowTotal: 63.85, type: 'cash' }],
+      }],
+    });
+  });
+
+  it('fails closed when any explicit order partition is malformed', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        pending_orders: [{ id: 'ORD-PENDING' }],
+        completed_orders: 'not-an-array',
+        carts: [],
+      },
+      errors: null,
+      error: null,
+    })));
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.getGuestOrdersByPhone({
+      phone_extension: '+51',
+      phone_number: '987654321',
+    })).resolves.toEqual({
+      status: 'invalid_response',
+      resource: 'orders',
+      error: 'Agent API orders response had an unexpected shape.',
+    });
+  });
+
   it('retrieves rich accountless gift purchases and maps documented phone failures', async () => {
     const fetchMock = vi.fn()
       .mockResolvedValueOnce(jsonResponse(200, {
@@ -431,11 +561,18 @@ describe('AgentConversationGateway', () => {
         data: {
           purchases: [{
             id: 'ORD-000883',
+            event_id: 88,
+            currency: 'USD',
             payment_status: 'approved',
             shipping_status: 'pending',
             grand_total: 275,
             event_name: 'Boda Lima',
             items: [],
+            payment: {
+              method: 'Transferencia',
+              amount: 275,
+              paid_at: '2026-08-31 02:31:27',
+            },
             dedication: { message: 'Felicidades', send_physical: true },
             thanks: { message: null, send_method: 'whatsapp' },
           }],
@@ -482,6 +619,9 @@ describe('AgentConversationGateway', () => {
       resource: 'gift_purchases',
       purchases: [{
         orderId: 'ORD-000883',
+        eventId: 88,
+        currency: 'USD',
+        payment: { paidAt: null },
         dedication: { message: 'Felicidades' },
       }],
     });
@@ -1021,6 +1161,7 @@ describe('AgentConversationGateway', () => {
       guestId: 481,
       eventName: 'Matrimonio de Ana y Luis',
       eventDate: null,
+      plusOne: null,
     });
     expect(fetchMock).toHaveBeenCalledWith(
       'https://api.example.test/api/agent/guest/rsvp',
@@ -1038,6 +1179,166 @@ describe('AgentConversationGateway', () => {
         }),
       }),
     );
+  });
+
+  it('records a combined RSVP and configured plus-one outcome', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        rsvp: {
+          guest_id: 481,
+          will_attend: true,
+          event_name: 'Matrimonio de Ana y Luis',
+        },
+        plus_one: { saved: true, response: 'yes', reason: null },
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 481,
+      plus_one_response: 'yes',
+      plus_one_name: 'Ana Pérez',
+      plus_one_email: 'ana@example.com',
+    })).resolves.toEqual({
+      status: 'responded',
+      action: 'attending',
+      willAttend: true,
+      guestId: 481,
+      eventName: 'Matrimonio de Ana y Luis',
+      eventDate: null,
+      plusOne: { saved: true, response: 'yes', reason: null },
+    });
+    expect(fetchMock).toHaveBeenCalledWith(
+      'https://api.example.test/api/agent/guest/rsvp',
+      expect.objectContaining({
+        body: JSON.stringify({
+          phone_extension: '+51',
+          phone_number: '973296571',
+          action: 'attending',
+          guest_id: 481,
+          plus_one_response: 'yes',
+          plus_one_name: 'Ana Pérez',
+          plus_one_email: 'ana@example.com',
+        }),
+      }),
+    );
+  });
+
+  it('supports a plus-one-only RSVP and preserves a saved-false reason', async () => {
+    const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
+      status: true,
+      data: {
+        plus_one: { saved: false, response: 'yes', reason: 'not_eligible' },
+      },
+      errors: null,
+      error: null,
+    }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      guest_id: 481,
+      plus_one_response: 'yes',
+    })).resolves.toEqual({
+      status: 'responded',
+      action: null,
+      willAttend: null,
+      guestId: 481,
+      eventName: null,
+      eventDate: null,
+      plusOne: { saved: false, response: 'yes', reason: 'not_eligible' },
+    });
+  });
+
+  it('rejects incomplete plus-one requests before making an HTTP call', async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+
+    await expect(gateway.guestRsvp({
+      phone_extension: '+51',
+      phone_number: '973296571',
+      plus_one_response: 'yes',
+    })).resolves.toMatchObject({ status: 'failed', retryable: false });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it('keeps RSVP authorization, validation, and server failures typed', async () => {
+    const fetchMock = vi.fn()
+      .mockResolvedValueOnce(jsonResponse(401, {
+        status: false,
+        data: null,
+        errors: null,
+        error: 'Invalid agent key.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(422, {
+        status: false,
+        data: null,
+        errors: { code: 'invalid_request' },
+        error: 'Invalid RSVP.',
+      }))
+      .mockResolvedValueOnce(jsonResponse(500, {
+        status: false,
+        data: null,
+        errors: null,
+        error: 'Temporary failure.',
+      }));
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = new HttpAgentConversationGateway({
+      baseUrl: 'https://api.example.test/api/agent',
+      apiKey: 'secret-key',
+      timeoutMs: 1_000,
+      maxRetries: 0,
+      messageLoggingEnabled: false,
+    });
+    const input = {
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending' as const,
+    };
+
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API request failed with 401: Invalid agent key.',
+      retryable: false,
+    });
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API request failed with 422: Invalid RSVP.',
+      retryable: false,
+    });
+    await expect(gateway.guestRsvp(input)).resolves.toEqual({
+      status: 'failed',
+      error: 'Agent API request failed with 500: Temporary failure.',
+      retryable: true,
+    });
   });
 
   it('maps multiple pending RSVP candidates and terminal failures', async () => {
@@ -1154,6 +1455,7 @@ describe('AgentConversationGateway', () => {
       guestId: 584353,
       eventName: 'Otra celebración prueba',
       eventDate: null,
+      plusOne: null,
     });
   });
 

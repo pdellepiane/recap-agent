@@ -19,6 +19,7 @@ import {
   type InformationExecutionSummary,
   type InformationSelectionCandidate,
   type InformationTaskResult,
+  type CompletedInformationRequest,
   type PendingInformationRequest,
 } from '../core/information';
 import {
@@ -866,7 +867,7 @@ export class AgentService {
       });
     }
     if (
-      this.hasInformationWork(workingPlan, extraction) &&
+      this.hasInformationWork(workingPlan, extraction, previousNode) &&
       extraction.actionIntent !== 'pausar' &&
       extraction.actionIntent !== 'solicitar_humano'
     ) {
@@ -1703,7 +1704,9 @@ export class AgentService {
     const hasExplicitRsvpSelection =
       (extraction.rsvpAction !== null && extraction.rsvpAction !== undefined) ||
       (extraction.rsvpCandidateGuestId !== null &&
-        extraction.rsvpCandidateGuestId !== undefined);
+        extraction.rsvpCandidateGuestId !== undefined) ||
+      extraction.rsvpParty?.plus_one_response === 'yes' ||
+      extraction.rsvpParty?.plus_one_response === 'no';
     if (
       extraction.informationRequests.length > 0 &&
       plan.rsvp_state.status === 'none' &&
@@ -1741,14 +1744,30 @@ export class AgentService {
     const validatedRsvpAction = decisionSource === 'current_message' ? rawRsvpAction : null;
     const action = validatedRsvpAction
       ?? (pendingState.status === 'awaiting_event_selection' ? pendingState.pending_action : null);
+    const extractedPlusOneResponse = args.extraction.rsvpParty?.plus_one_response;
+    const plusOneResponse = extractedPlusOneResponse === 'yes' || extractedPlusOneResponse === 'no'
+      ? extractedPlusOneResponse
+      : pendingState.status === 'awaiting_event_selection'
+        ? pendingState.pending_plus_one_response ?? null
+        : null;
     let result: AgentGuestRsvpResult | null = null;
     let operationalNote: string;
     let nextRsvpState = pendingState;
     let deterministicReplyText: string | null = null;
     let deterministicIsDecliningOffer = false;
+    let deterministicReplyIsComplete = false;
 
-    const handoffParty = args.extraction.rsvpParty as { scope: string; mentioned_names: string[] } | null | undefined;
-    if (handoffParty?.scope === 'self_and_others') {
+    const handoffParty = args.extraction.rsvpParty;
+    const hasExplicitSingleCompanionEvidence = handoffParty?.companion_count === 'one' || (
+      (handoffParty?.plus_one_response === 'yes' || handoffParty?.plus_one_response === 'no') &&
+      handoffParty.mentioned_names.length <= 1
+    );
+    const requiresMultiCompanionHandoff = handoffParty?.scope === 'self_and_others' && (
+      handoffParty.companion_count === 'multiple' ||
+      handoffParty.mentioned_names.length > 1 ||
+      !hasExplicitSingleCompanionEvidence
+    );
+    if (requiresMultiCompanionHandoff && handoffParty) {
       const handoffFragment = this.renderRsvpHandoffFragment(handoffParty);
       const handoffPhoneNumber = this.resolveEscalationPhone(args.inbound, args.workingPlan);
       const dedupeKey = `rsvp_handoff:${args.workingPlan.conversation_id ?? args.workingPlan.plan_id}`;
@@ -2070,6 +2089,7 @@ export class AgentService {
       nextRsvpState = {
         status: 'awaiting_event_selection',
         pending_action: action,
+        pending_plus_one_response: plusOneResponse,
         candidates: invitations.map((invitation) => ({
           guest_id: invitation.guestId as number,
           event_name: invitation.eventName,
@@ -2091,7 +2111,10 @@ export class AgentService {
           ? 'declining'
           : null;
 
-      if (!action) {
+      const actionToSubmit = action && currentAction !== action ? action : null;
+      const hasRequestedMutation = actionToSubmit !== null || plusOneResponse !== null;
+
+      if (!action && plusOneResponse === null) {
         if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
           deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, true);
           deterministicIsDecliningOffer = selectedInvitation.state === 'declining';
@@ -2100,7 +2123,7 @@ export class AgentService {
         nextRsvpState = selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining'
           ? this.awaitingRsvpActionState(selectedInvitation, 'attending')
           : this.emptyRsvpState();
-      } else if (currentAction === action) {
+      } else if (!hasRequestedMutation && action && currentAction === action) {
         if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
           deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, false);
           deterministicIsDecliningOffer = false;
@@ -2116,7 +2139,8 @@ export class AgentService {
         args.toolUsage.inputs.push({
           tool: 'guest_rsvp',
           input: JSON.stringify({
-            action,
+            action: actionToSubmit,
+            plus_one_response: plusOneResponse,
             guest_id: selectedInvitation.guestId,
             trusted_phone_present: true,
             previous_state: selectedInvitation.state,
@@ -2125,8 +2149,9 @@ export class AgentService {
         result = await args.gateway.guestRsvp({
           phone_extension: phoneExtension,
           phone_number: phoneNumber,
-          action,
+          ...(actionToSubmit ? { action: actionToSubmit } : {}),
           guest_id: selectedInvitation.guestId,
+          ...(plusOneResponse ? { plus_one_response: plusOneResponse } : {}),
         });
         args.timingMs.rsvp_execution += Date.now() - executionStartedAt;
         args.toolUsage.outputs.push({
@@ -2142,7 +2167,8 @@ export class AgentService {
           : null;
         operationalNote = this.rsvpOperationalNote(
           result,
-          action,
+          actionToSubmit,
+          plusOneResponse,
           {
             guest_id: selectedInvitation.guestId,
             event_name: selectedInvitation.eventName,
@@ -2150,7 +2176,27 @@ export class AgentService {
           },
           null,
         );
-        nextRsvpState = this.emptyRsvpState();
+        deterministicReplyText = this.renderRsvpMutationResultDeterministically({
+          result,
+          eventName: selectedInvitation.eventName,
+          action: actionToSubmit,
+          plusOneResponse,
+        });
+        deterministicReplyIsComplete = deterministicReplyText !== null;
+        nextRsvpState = result.status === 'multiple_pending'
+          ? {
+              status: 'awaiting_event_selection',
+              pending_action: actionToSubmit,
+              pending_plus_one_response: plusOneResponse,
+              candidates: result.candidates.map((candidate) => ({
+                guest_id: candidate.guestId,
+                event_name: candidate.eventName,
+                event_date: candidate.eventDate,
+              })),
+              requested_at: new Date().toISOString(),
+              selection_attempts: 0,
+            }
+          : this.emptyRsvpState();
       }
     }
 
@@ -2192,7 +2238,7 @@ export class AgentService {
     args.timingMs.compose_reply += Date.now() - composeStartedAt;
     if (deterministicReplyText !== null) {
       const fragment = deterministicReplyText;
-      if (deterministicIsDecliningOffer) {
+      if (deterministicIsDecliningOffer || deterministicReplyIsComplete) {
         reply.text = fragment;
         reply.structuredMessage = undefined;
       } else {
@@ -2278,6 +2324,13 @@ export class AgentService {
         guest_id: result.guestId,
         event_name: result.eventName,
         event_date: result.eventDate,
+        plus_one: result.plusOne
+          ? {
+              saved: result.plusOne.saved,
+              response: result.plusOne.response,
+              reason_present: Boolean(result.plusOne.reason),
+            }
+          : null,
       };
     }
     if (result.status === 'multiple_pending') {
@@ -2777,6 +2830,7 @@ export class AgentService {
     return {
       status: 'awaiting_action',
       pending_action: action,
+      pending_plus_one_response: null,
       candidates: [{
         guest_id: invitation.guestId,
         event_name: invitation.eventName,
@@ -2791,6 +2845,7 @@ export class AgentService {
     return {
       status: 'none',
       pending_action: null,
+      pending_plus_one_response: null,
       candidates: [],
       requested_at: null,
       selection_attempts: 0,
@@ -2871,6 +2926,36 @@ export class AgentService {
     return this.rsvpCurrentStateNote(invitation, offerAction);
   }
 
+  private renderRsvpMutationResultDeterministically(args: {
+    result: AgentGuestRsvpResult;
+    eventName: string | null;
+    action: 'attending' | 'declining' | null;
+    plusOneResponse: 'yes' | 'no' | null;
+  }): string | null {
+    if (args.result.status !== 'responded') {
+      return null;
+    }
+    const eventName = args.result.eventName ?? args.eventName ?? 'el evento';
+    const parts: string[] = [];
+    if (args.action !== null && args.result.action !== null) {
+      parts.push(
+        args.result.action === 'attending'
+          ? `Listo, tu asistencia a ${eventName} quedó confirmada.`
+          : `Listo, registré que no asistirás a ${eventName}.`,
+      );
+    }
+    if (args.plusOneResponse !== null) {
+      if (args.result.plusOne?.saved && args.result.plusOne.response === 'yes') {
+        parts.push(`También quedó registrado que tu acompañante asistirá a ${eventName}.`);
+      } else if (args.result.plusOne?.saved && args.result.plusOne.response === 'no') {
+        parts.push(`También quedó registrado que tu acompañante no asistirá a ${eventName}.`);
+      } else {
+        parts.push('La respuesta de tu acompañante no quedó guardada para esta invitación. No la consideraré confirmada; si deseas, el equipo de apoyo puede revisarla.');
+      }
+    }
+    return parts.length > 0 ? parts.join(' ') : null;
+  }
+
   private renderRsvpHandoffFragment(
     party: { scope: string; mentioned_names: string[] } | null | undefined,
   ): string {
@@ -2894,15 +2979,21 @@ export class AgentService {
 
   private rsvpOperationalNote(
     result: AgentGuestRsvpResult,
-    action: 'attending' | 'declining',
+    action: 'attending' | 'declining' | null,
+    plusOneResponse: 'yes' | 'no' | null,
     selectedCandidate: PlanSnapshot['rsvp_state']['candidates'][number] | null,
     groundedCampaignEvent: string | null,
   ): string {
     if (result.status === 'responded') {
       void selectedCandidate;
-      return action === 'attending'
-        ? 'La actualización se completó. Comunica el estado final sin pedir otra confirmación.'
-        : 'La actualización se completó. Comunica el estado final sin pedir otra confirmación.';
+      if (plusOneResponse !== null && result.plusOne?.saved === false) {
+        return 'La respuesta principal se procesó, pero el servicio indicó que la respuesta del acompañante no quedó guardada. No afirmes que el acompañante quedó confirmado o rechazado; ofrece apoyo humano para revisarlo.';
+      }
+      if (plusOneResponse !== null && result.plusOne === null) {
+        return 'El servicio respondió, pero no devolvió evidencia de que la respuesta del acompañante se haya guardado. No la presentes como confirmada; ofrece apoyo humano para revisarla.';
+      }
+      void action;
+      return 'La actualización se completó. Comunica únicamente los estados finales que el resultado confirmó y no pidas otra confirmación.';
     }
     if (result.status === 'multiple_pending') {
       return 'El servicio encontró varias invitaciones pendientes. Presenta únicamente los candidatos visibles y pregunta a cuál evento desea responder. No afirmes que ya se registró una respuesta.';
@@ -2993,10 +3084,34 @@ export class AgentService {
   private hasInformationWork(
     plan: PlanSnapshot,
     extraction: ExtractionResult,
+    previousNode: DecisionNode = plan.current_node,
   ): boolean {
     return (
       extraction.informationRequests.length > 0 ||
-      plan.information_state.pending_requests.length > 0
+      plan.information_state.pending_requests.length > 0 ||
+      this.isInformationSupportDetailContinuation(plan, extraction, previousNode) ||
+      (extraction.actionIntent === null &&
+        (plan.information_state.last_completed_request?.kind === 'purchase' ||
+          plan.information_state.last_completed_request?.kind ===
+            'associated_event'))
+    );
+  }
+
+  private isInformationSupportDetailContinuation(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+    previousNode: DecisionNode,
+  ): boolean {
+    return (
+      previousNode === 'resolver_consultas_informativas' &&
+      plan.information_state.last_completed_request?.kind === 'faq' &&
+      extraction.actionIntent === null &&
+      extraction.informationRequests.length === 0 &&
+      Boolean(
+        extraction.contactName ||
+        extraction.contactEmail ||
+        extraction.eventType,
+      )
     );
   }
 
@@ -3034,20 +3149,39 @@ export class AgentService {
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const supportDetailContinuation = this.isInformationSupportDetailContinuation(
+      args.workingPlan,
+      args.extraction,
+      args.previousNode,
+    );
     const resumeNode =
       args.workingPlan.current_node === currentNode
         ? args.workingPlan.information_state.resume_node
         : args.workingPlan.current_node;
     const planWithContact = mergePlan(args.workingPlan, {
       contact_email:
-        args.extraction.contactEmail && this.isValidEmail(args.extraction.contactEmail)
+        !supportDetailContinuation &&
+        args.extraction.contactEmail &&
+        this.isValidEmail(args.extraction.contactEmail)
           ? args.extraction.contactEmail
           : args.workingPlan.contact_email,
     });
-    const requests = this.mergeInformationRequests(
+    let requests = this.mergeInformationRequests(
       planWithContact.information_state.pending_requests,
       args.extraction.informationRequests,
     );
+    const lastCompletedRequest =
+      planWithContact.information_state.last_completed_request;
+    if (
+      requests.length === 0 &&
+      args.extraction.actionIntent === null &&
+      lastCompletedRequest &&
+      (lastCompletedRequest.kind === 'purchase' ||
+        lastCompletedRequest.kind === 'associated_event' ||
+        supportDetailContinuation && lastCompletedRequest.kind === 'faq')
+    ) {
+      requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
+    }
     let planForInformation = mergePlan(planWithContact, {
       current_node: currentNode,
       information_state: {
@@ -3055,6 +3189,7 @@ export class AgentService {
         pending_requests: requests,
         selection_candidates:
           planWithContact.information_state.selection_candidates,
+        last_completed_request: lastCompletedRequest ?? null,
       },
     });
 
@@ -3129,6 +3264,8 @@ export class AgentService {
           ...planForInformation.information_state,
           pending_requests:
             planWithContact.information_state.pending_requests,
+          last_completed_request:
+            planForInformation.information_state.last_completed_request ?? null,
         },
       });
     } else {
@@ -3261,6 +3398,21 @@ export class AgentService {
           : phonePurchaseResult.coverage === 'inconsistent'
             ? 'Las fuentes asociadas al número confiable discreparon. Usa únicamente los valores canónicos proyectados, indica que se requiere revisión para cualquier campo no concluyente y no muestres versiones contradictorias ni pidas correo o código.'
             : 'La consulta de compra se resolvió directamente con el número confiable. Responde solo con los campos solicitados del resultado y no pidas correo ni código.';
+        if (
+          phonePurchaseResult.purchases.some(
+            (purchase) => purchase.amountDisclosure?.presentation === 'recorded_method_no_currency',
+          ) ||
+          phonePurchaseResult.carts?.some(
+            (cart) => cart.amountDisclosure?.presentation === 'recorded_method_no_currency',
+          )
+        ) {
+          operationalNote += ' Para amountDisclosure con presentation=recorded_method_no_currency, comunica “monto [valor] mediante [método registrado]”. No añadas símbolo ni nombre de moneda; si falta el método, di solo “monto [valor]”.';
+        }
+      }
+
+      if (operationalNote === null && supportDetailContinuation) {
+        operationalNote =
+          'El usuario está aportando un dato que se le solicitó en la respuesta anterior. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario.';
       }
 
       const requiresPhonePurchaseDetailHandoff = requests.some((request) => {
@@ -3312,6 +3464,10 @@ export class AgentService {
           resume_node: resumeNode,
           pending_requests: nextState.pendingRequests,
           selection_candidates: nextState.selectionCandidates,
+          last_completed_request:
+            nextState.lastCompletedRequest ??
+            planForInformation.information_state.last_completed_request ??
+            null,
         },
       });
     }
@@ -3470,6 +3626,21 @@ export class AgentService {
         requestId,
       } as PendingInformationRequest);
       nextId += 1;
+    }
+
+    const needsIndexedValidationPolicy = merged.some(
+      (request) => request.kind === 'purchase' && request.aspects.includes('validation_window'),
+    );
+    const validationPolicyRequestId = 'information-validation-policy';
+    const hasValidationPolicyRequest = merged.some(
+      (request) => request.requestId === validationPolicyRequestId,
+    );
+    if (needsIndexedValidationPolicy && !hasValidationPolicyRequest) {
+      merged.push({
+        requestId: validationPolicyRequestId,
+        kind: 'faq',
+        query: 'Plazo de validación de pagos en proceso por método de pago',
+      });
     }
 
     return merged;
@@ -4360,12 +4531,14 @@ export class AgentService {
   ): {
     pendingRequests: PendingInformationRequest[];
     selectionCandidates: InformationSelectionCandidate[];
+    lastCompletedRequest: CompletedInformationRequest | null;
   } {
     const resultsByRequest = new Map(
       results.map((result) => [result.requestId, result]),
     );
     const pendingRequests: PendingInformationRequest[] = [];
     const selectionCandidates: InformationSelectionCandidate[] = [];
+    let lastCompletedRequest: CompletedInformationRequest | null = null;
 
     for (const request of requests) {
       const result = resultsByRequest.get(request.requestId);
@@ -4393,10 +4566,14 @@ export class AgentService {
             paymentStatus: purchase.paymentStatus,
           })),
         });
+        continue;
       }
+      const { requestId: _requestId, ...completedRequest } = request;
+      void _requestId;
+      lastCompletedRequest = completedRequest;
     }
 
-    return { pendingRequests, selectionCandidates };
+    return { pendingRequests, selectionCandidates, lastCompletedRequest };
   }
 
   private informationToolName(
@@ -6281,7 +6458,14 @@ export class AgentService {
           this.describePhoneValidationError(inferredPhoneCandidate);
 
     const nextEmail = guardedExtraction.contactEmail ?? plan.contact_email;
-    const nextName = guardedExtraction.contactName ?? plan.contact_name;
+    const informationSupportFlow =
+      plan.current_node === 'resolver_consultas_informativas' ||
+      plan.information_state.pending_requests.length > 0;
+    // A name supplied while resolving a support request may identify a guest,
+    // order holder, or other third party. Keep the channel user's identity
+    // unless a planning/identity flow explicitly establishes it.
+    const nextName = plan.contact_name ??
+      (informationSupportFlow ? null : guardedExtraction.contactName);
 
     const candidate = mergePlan(plan, {
       current_node: extractionNode,

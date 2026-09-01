@@ -283,10 +283,10 @@ describe('PromptLoader', () => {
       'pregunta si puedes leer una fotografía',
     );
     expect(extractorBundle.instructions).toContain(
-      '“¿Cómo funciona la lista de regalos?” es FAQ',
+      '`faq`: pregunta general sobre Sin Envolturas',
     );
     expect(extractorBundle.instructions).toContain(
-      '“¿Cuál es el estado del regalo que compré?” es purchase',
+      '`purchase`: consulta una orden o regalo comprado por la persona',
     );
     expect(extractorBundle.instructions).toContain(
       'Sin número usa',

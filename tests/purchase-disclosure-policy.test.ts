@@ -14,11 +14,12 @@ import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import {
   canDisclosePaymentDestination,
   hasPhysicalFulfillment,
+  pendingPaymentValidationExpectation,
 } from '../src/runtime/purchase-disclosure-policy';
 
 describe('purchase disclosure policy', () => {
-  it('allows destination account details only for a pending purchase', () => {
-    expect(canDisclosePaymentDestination(purchase({ paymentStatus: 'pending' }))).toBe(true);
+  it('never allows destination account details into customer-facing evidence', () => {
+    expect(canDisclosePaymentDestination(purchase({ paymentStatus: 'pending' }))).toBe(false);
     expect(canDisclosePaymentDestination(purchase({ paymentStatus: 'approved' }))).toBe(false);
     expect(canDisclosePaymentDestination(purchase({ paymentStatus: null }))).toBe(false);
   });
@@ -34,7 +35,36 @@ describe('purchase disclosure policy', () => {
     ).toBe(true);
   });
 
-  it('removes destination accounts and shipping before non-qualifying evidence reaches the reply model', async () => {
+  it('adds the 72-business-hour expectation only for methods covered by the indexed article', () => {
+    expect(pendingPaymentValidationExpectation(purchase({
+      paymentStatus: 'pending',
+      paymentMethod: 'Transferencia',
+    }))).toEqual({
+      maxBusinessHours: 72,
+      appliesTo: 'indexed_validation_methods',
+    });
+    expect(pendingPaymentValidationExpectation(purchase({
+      paymentStatus: 'pending',
+      paymentMethod: 'Visa',
+    }))).toBeNull();
+    expect(pendingPaymentValidationExpectation(purchase({
+      paymentStatus: 'pending',
+      paymentMethod: null,
+    }))).toBeNull();
+    expect(pendingPaymentValidationExpectation(purchase({
+      paymentStatus: 'pending',
+      paymentMethod: 'PayPal',
+    }))).toEqual({
+      maxBusinessHours: 72,
+      appliesTo: 'indexed_validation_methods',
+    });
+    expect(pendingPaymentValidationExpectation(purchase({
+      paymentStatus: 'pending',
+      paymentMethod: 'cash',
+    }))).toBeNull();
+  });
+
+  it('removes destination accounts and shipping before evidence reaches the reply model', async () => {
     const approvedCashPurchase = purchase({
       paymentStatus: 'approved',
       itemType: 'cash',
@@ -43,9 +73,11 @@ describe('purchase disclosure policy', () => {
 
     expect(result.shippingStatus).toBeNull();
     expect(result.payment?.destinationAccount).toBeUndefined();
+    expect(result.payment?.originBank).toBeUndefined();
+    expect(result.payment?.voucherImage).toBeUndefined();
   });
 
-  it('preserves destination and shipping evidence for a pending physical purchase', async () => {
+  it('preserves shipping evidence but never destination identifiers for a pending physical purchase', async () => {
     const pendingPhysicalPurchase = purchase({
       paymentStatus: 'pending',
       itemType: 'product',
@@ -53,9 +85,7 @@ describe('purchase disclosure policy', () => {
     const result = await executePurchase(pendingPhysicalPurchase);
 
     expect(result.shippingStatus).toBe('preparing');
-    expect(result.payment?.destinationAccount).toEqual(
-      pendingPhysicalPurchase.payment?.destinationAccount,
-    );
+    expect(result.payment?.destinationAccount).toBeUndefined();
   });
 });
 
@@ -105,6 +135,7 @@ async function executePurchase(
 
 function purchase(overrides: {
   paymentStatus: string | null;
+  paymentMethod?: string | null;
   itemType?: string | null;
   sendPhysical?: boolean | null;
 }): PurchaseInformation {
@@ -113,7 +144,9 @@ function purchase(overrides: {
     paymentStatus: overrides.paymentStatus,
     shippingStatus: 'preparing',
     grandTotal: 250,
-    paymentMethod: 'Transferencia',
+    paymentMethod: overrides.paymentMethod === undefined
+      ? 'Transferencia'
+      : overrides.paymentMethod,
     eventName: 'Boda',
     eventDate: '2026-09-15',
     eventUrl: null,
@@ -128,7 +161,9 @@ function purchase(overrides: {
       },
     ],
     payment: {
-      method: 'Transferencia',
+      method: overrides.paymentMethod === undefined
+        ? 'Transferencia'
+        : overrides.paymentMethod,
       amount: 250,
       paidAt: null,
       destinationAccount: {

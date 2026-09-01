@@ -16,6 +16,8 @@ export const rsvpPartySchema = z
   .object({
     scope: z.enum(rsvpPartyScopeValues),
     mentioned_names: z.array(z.string().trim().min(1)),
+    companion_count: z.enum(['one', 'multiple', 'unknown']).nullable().optional(),
+    plus_one_response: z.enum(['yes', 'no', 'unknown']).nullable().optional(),
   })
   .strict();
 
@@ -30,6 +32,7 @@ export const rsvpCandidateStateSchema = z.object({
 export const rsvpStateSchema = z.object({
   status: z.enum(['none', 'awaiting_action', 'awaiting_event_selection']),
   pending_action: z.enum(rsvpActionValues).nullable(),
+  pending_plus_one_response: z.enum(['yes', 'no']).nullable().optional(),
   candidates: z.array(rsvpCandidateStateSchema),
   requested_at: z.string().nullable(),
   selection_attempts: z.number().int().min(0),

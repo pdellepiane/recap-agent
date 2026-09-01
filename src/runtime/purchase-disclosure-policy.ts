@@ -1,4 +1,7 @@
-import type { PurchaseInformation } from '../core/information';
+import type {
+  PendingPaymentValidationExpectation,
+  PurchaseInformation,
+} from '../core/information';
 
 const physicalItemTypeValues = new Set([
   'physical',
@@ -11,7 +14,31 @@ const physicalItemTypeValues = new Set([
 export function canDisclosePaymentDestination(
   purchase: PurchaseInformation,
 ): boolean {
-  return purchase.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending';
+  // Destination accounts are internal payment-routing data. They are never
+  // customer-facing evidence, even when a purchase is pending.
+  void purchase;
+  return false;
+}
+
+export function pendingPaymentValidationExpectation(
+  purchase: PurchaseInformation,
+): PendingPaymentValidationExpectation | null {
+  if (purchase.paymentStatus?.trim().toLocaleLowerCase('en') !== 'pending') return null;
+  const method = `${purchase.paymentMethod ?? ''} ${purchase.payment?.method ?? ''}`
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/gu, '')
+    .toLocaleLowerCase('en');
+  if (!method) return null;
+  if (method.includes('card') || method.includes('tarjeta') || method.includes('visa') ||
+    method.includes('mastercard') || method.includes('niubiz') || method.includes('payu')) {
+    return null;
+  }
+  // This is deliberately allow-listed to the methods covered by the indexed
+  // validation article. An unknown method must not inherit a generic window.
+  const indexedMethod = method.includes('transfer') || method.includes('yape') ||
+    method.includes('plin') || method.includes('paypal');
+  if (!indexedMethod) return null;
+  return { maxBusinessHours: 72, appliesTo: 'indexed_validation_methods' };
 }
 
 export function hasPhysicalFulfillment(

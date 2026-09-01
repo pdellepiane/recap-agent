@@ -102,6 +102,7 @@ export const openAiInformationRequestSchema = z.object({
   eventHint: z.string().nullable(),
   resource: z.enum(purchaseResourceValues).nullable(),
   orderId: z.string().nullable(),
+  amount: z.number().nonnegative().nullable(),
   aspects: z.array(z.enum(purchaseAspectValues)),
   sensitiveFields: z.array(z.enum(sensitivePurchaseFieldValues)),
   authAction: z.enum(purchaseAuthActionValues).nullable(),

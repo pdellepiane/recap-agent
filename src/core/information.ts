@@ -6,10 +6,19 @@ import { decisionNodeSchema } from './decision-nodes';
 export const purchaseResourceValues = ['orders', 'gift_purchases'] as const;
 export type PurchaseResource = (typeof purchaseResourceValues)[number];
 
+/** Provenance of an order record in the phone-scoped orders response. */
+export const purchasePartitionValues = [
+  'pending_orders',
+  'completed_orders',
+  'legacy_orders',
+] as const;
+export type PurchasePartition = (typeof purchasePartitionValues)[number];
+
 export const purchaseAspectValues = [
   'summary',
   'payment_status',
   'payment_details',
+  'validation_window',
   'shipping',
   'dedication',
   'thanks',
@@ -62,6 +71,9 @@ export const purchaseInformationRequestSchema = z.object({
   aspects: z.array(z.enum(purchaseAspectValues)).min(1),
   sensitiveFields: z.array(z.enum(sensitivePurchaseFieldValues)),
   authAction: z.enum(purchaseAuthActionValues),
+  // Typed selectors are populated only when the user states them explicitly.
+  eventHint: z.string().nullable().optional(),
+  amount: z.number().nonnegative().nullable().optional(),
 });
 
 export const extractedInformationRequestSchema = z.discriminatedUnion('kind', [
@@ -90,6 +102,11 @@ export type PendingInformationRequest = z.infer<
   typeof pendingInformationRequestSchema
 >;
 
+export const completedInformationRequestSchema = extractedInformationRequestSchema;
+export type CompletedInformationRequest = z.infer<
+  typeof completedInformationRequestSchema
+>;
+
 export const informationSelectionCandidateSchema = z.object({
   requestId: z.string().min(1),
   resource: z.enum(purchaseResourceValues),
@@ -112,6 +129,7 @@ export const informationStateSchema = z.object({
   resume_node: decisionNodeSchema.nullable(),
   pending_requests: z.array(pendingInformationRequestSchema),
   selection_candidates: z.array(informationSelectionCandidateSchema),
+  last_completed_request: completedInformationRequestSchema.nullable().optional(),
 });
 
 export type InformationState = z.infer<typeof informationStateSchema>;
@@ -158,6 +176,22 @@ export type PurchaseItem = {
   type: string | null;
 };
 
+/** A phone-scoped cart is deliberately not a purchase/order. */
+export type CartInformation = {
+  cartId: string;
+  status: string;
+  wasAbandoned: boolean;
+  eventId?: number | string | null;
+  eventName?: string | null;
+  eventDate?: string | null;
+  eventUrl?: string | null;
+  subtotal?: number | null;
+  amountDisclosure?: PurchaseAmountDisclosure | null;
+  giftsQuantity?: number | null;
+  createdAt?: string | null;
+  items: PurchaseItem[];
+};
+
 export type PurchasePaymentDetails = {
   method: string | null;
   amount: number | null;
@@ -177,8 +211,25 @@ export type PurchasePaymentDetails = {
   voucherImage?: string | string[] | null;
 };
 
+export type PendingPaymentValidationExpectation = {
+  maxBusinessHours: 72;
+  appliesTo: 'indexed_validation_methods';
+};
+
+export type PurchaseAmountDisclosure = {
+  total: number | null;
+  paid: number | null;
+  currency: string | null;
+  paymentMethod: string | null;
+  presentation: 'explicit_currency' | 'recorded_method_no_currency';
+};
+
 export type PurchaseInformation = {
   orderId: string;
+  /** Partition provenance is present for phone-scoped order candidates. */
+  partition?: PurchasePartition;
+  eventId?: number | string | null;
+  currency?: string | null;
   /** Customer-visible numeric transaction reference, displayed as COD<number>. */
   customerTransactionNumber?: string | null;
   paymentStatus: string | null;
@@ -191,6 +242,9 @@ export type PurchaseInformation = {
   createdAt: string | null;
   items: PurchaseItem[];
   payment?: PurchasePaymentDetails | null;
+  paymentValidationExpectation?: PendingPaymentValidationExpectation | null;
+  /** Single reconciled amount representation intended for model disclosure. */
+  amountDisclosure?: PurchaseAmountDisclosure | null;
   declineCode?: string | null;
   adminComment?: string | null;
   dedication?: {
@@ -343,6 +397,8 @@ export type InformationTaskResult =
       resource: PurchaseResource;
       lookupResource?: PurchaseResource;
       purchases: PurchaseInformation[];
+      /** Carts remain distinct checkout evidence and are never coerced into orders. */
+      carts?: CartInformation[];
       needsSelection: boolean;
       accessMethod?:
         | 'authenticated_account'

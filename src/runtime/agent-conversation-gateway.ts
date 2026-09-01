@@ -1,6 +1,8 @@
 import { z } from 'zod';
 
 import type {
+  CartInformation,
+  PurchasePartition,
   PurchaseInformation,
   PurchaseResource,
 } from '../core/information';
@@ -100,6 +102,12 @@ export type AgentPhonePurchaseLookupResult =
       status: 'success';
       resource: PurchaseResource;
       purchases: PurchaseInformation[];
+      /** New phone-order responses keep order provenance and carts separate. */
+      orderPartitions?: {
+        pending: PurchaseInformation[];
+        completed: PurchaseInformation[];
+      };
+      carts?: CartInformation[];
     }
   | {
       status: 'not_found';
@@ -254,18 +262,28 @@ export type RsvpCandidate = {
 };
 
 export type AgentGuestRsvpInput = AgentAuthByPhoneInput & {
-  action: RsvpAction;
+  action?: RsvpAction;
   guest_id?: number;
+  plus_one_response?: 'yes' | 'no';
+  plus_one_name?: string | null;
+  plus_one_email?: string | null;
+  plus_one_phone_no?: string | null;
+  plus_one_phone_ext?: string | null;
 };
 
 export type AgentGuestRsvpResult =
   | {
       status: 'responded';
-      action: RsvpAction;
-      willAttend: boolean;
+      action: RsvpAction | null;
+      willAttend: boolean | null;
       guestId: number | null;
       eventName: string | null;
       eventDate: string | null;
+      plusOne?: {
+        saved: boolean;
+        response: 'yes' | 'no' | null;
+        reason: string | null;
+      } | null;
     }
   | {
       status: 'multiple_pending';
@@ -274,7 +292,7 @@ export type AgentGuestRsvpResult =
   | {
       status: 'already_responded';
       currentAction: RsvpAction | null;
-      requestedAction: RsvpAction;
+      requestedAction: RsvpAction | null;
       guestId: number | null;
       eventName: string | null;
       eventDate: string | null;
@@ -486,6 +504,20 @@ const rsvpResponseDataSchema = z.object({
   event_name: z.string().trim().min(1).nullable().optional(),
   event_date: z.string().trim().min(1).nullable().optional(),
   event: rsvpEventSchema.nullable().optional(),
+  plus_one: z.object({
+    saved: z.boolean(),
+    response: z.enum(['yes', 'no']).nullable().optional(),
+    reason: z.string().trim().min(1).nullable().optional(),
+  }).nullable().optional(),
+}).passthrough();
+
+const rsvpCombinedResponseDataSchema = z.object({
+  rsvp: rsvpResponseDataSchema.nullable().optional(),
+  plus_one: z.object({
+    saved: z.boolean(),
+    response: z.enum(['yes', 'no']).nullable().optional(),
+    reason: z.string().trim().min(1).nullable().optional(),
+  }).nullable().optional(),
 }).passthrough();
 
 const rsvpCandidateSchema = z.object({
@@ -641,9 +673,24 @@ const orderSchema = z.object({
   grand_total: nullableNumberSchema,
   payment_method: nullableStringSchema,
   event_id: z.union([z.number(), z.string()]).nullable().optional(),
+  currency: nullableStringSchema.optional(),
   event_name: nullableStringSchema,
   event_date: nullableStringSchema,
   event_url: nullableStringSchema,
+  items: z.array(purchaseItemSchema).default([]),
+  created_at: nullableStringSchema,
+});
+
+const cartSchema = z.object({
+  cart_id: z.union([z.string().trim().min(1), z.number().int().positive()]),
+  status: z.string().trim().min(1),
+  was_abandoned: z.boolean(),
+  event_id: z.union([z.number(), z.string()]).nullable().optional(),
+  event_name: nullableStringSchema,
+  event_date: nullableStringSchema,
+  event_url: nullableStringSchema,
+  subtotal: nullableNumberSchema,
+  gifts_quantity: nullableNumberSchema,
   items: z.array(purchaseItemSchema).default([]),
   created_at: nullableStringSchema,
 });
@@ -659,6 +706,7 @@ const giftPurchaseSchema = z.object({
   decline_code: nullableStringSchema,
   admin_comment: nullableStringSchema,
   event_id: z.union([z.number(), z.string()]).nullable().optional(),
+  currency: nullableStringSchema.optional(),
   event_name: nullableStringSchema,
   event_date: nullableStringSchema,
   event_url: nullableStringSchema,
@@ -686,6 +734,16 @@ const ordersDataSchema = z.object({
   orders: z.array(orderSchema),
 });
 
+const partitionedOrdersDataSchema = z.object({
+  // The partition parser validates each key below independently. Keeping
+  // these unknown here is important: malformed legacy `orders` must not make
+  // an otherwise valid partitioned response unusable.
+  orders: z.unknown().optional(),
+  completed_orders: z.unknown().optional(),
+  pending_orders: z.unknown().optional(),
+  carts: z.unknown().optional(),
+});
+
 const giftPurchasesDataSchema = z.object({
   purchases: z.array(giftPurchaseSchema),
 });
@@ -698,6 +756,7 @@ const eventDetailDataSchema = z.object({
 
 type OrderWire = z.infer<typeof orderSchema>;
 type GiftPurchaseWire = z.infer<typeof giftPurchaseSchema>;
+type CartWire = z.infer<typeof cartSchema>;
 
 function normalizePhoneInput(
   input: AgentAuthByPhoneInput,
@@ -711,6 +770,20 @@ function normalizePhoneInput(
     phone_extension: `+${extensionDigits}`,
     phone_number: phoneDigits,
   };
+}
+
+function normalizePurchaseTimestamp(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return trimmed;
+  if (/(?:Z|[+-]\d{2}:?\d{2})$/u.test(trimmed)) return trimmed;
+  // Offset-less datetimes are intentionally omitted until the backend
+  // timezone convention is confirmed. Never assign a timezone or forward
+  // a naive timestamp toward a model; return null to mark it unavailable.
+  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/u.test(trimmed)) {
+    return null;
+  }
+  return null;
 }
 
 export class HttpAgentConversationGateway implements AgentConversationGateway {
@@ -1180,13 +1253,45 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         retryable: false,
       };
     }
+    if (!input.action && !input.plus_one_response) {
+      return {
+        status: 'failed',
+        error: 'Agent API RSVP requires an attendance or plus-one decision.',
+        retryable: false,
+      };
+    }
+    if (input.plus_one_response &&
+      (input.guest_id === undefined ||
+        !Number.isInteger(input.guest_id) ||
+        input.guest_id <= 0)) {
+      return {
+        status: 'failed',
+        error: 'Agent API plus-one RSVP requires a valid guest id.',
+        retryable: false,
+      };
+    }
     const response = await this.request('/guest/rsvp', {
       method: 'POST',
       body: {
         phone_extension: phone.phone_extension,
         phone_number: phone.phone_number,
-        action: input.action,
+        ...(input.action ? { action: input.action } : {}),
         ...(input.guest_id !== undefined ? { guest_id: input.guest_id } : {}),
+        ...(input.plus_one_response
+          ? { plus_one_response: input.plus_one_response }
+          : {}),
+        ...(input.plus_one_name !== undefined
+          ? { plus_one_name: input.plus_one_name }
+          : {}),
+        ...(input.plus_one_email !== undefined
+          ? { plus_one_email: input.plus_one_email }
+          : {}),
+        ...(input.plus_one_phone_no !== undefined
+          ? { plus_one_phone_no: input.plus_one_phone_no }
+          : {}),
+        ...(input.plus_one_phone_ext !== undefined
+          ? { plus_one_phone_ext: input.plus_one_phone_ext }
+          : {}),
       },
     });
 
@@ -1198,11 +1303,34 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           candidates,
         };
       }
-      const parsed = rsvpResponseDataSchema.safeParse(response.data);
+      const rawData = response.data;
+      const combined = rsvpCombinedResponseDataSchema.safeParse(rawData);
+      const isCombined =
+        rawData !== null &&
+        typeof rawData === 'object' &&
+        !Array.isArray(rawData) &&
+        ('rsvp' in rawData || 'plus_one' in rawData);
+      const parsed = rsvpResponseDataSchema.safeParse(
+        isCombined && combined.success
+          ? {
+              ...(combined.data.rsvp ??
+                (rawData as Record<string, unknown>)),
+              plus_one: combined.data.plus_one ?? null,
+            }
+          : rawData,
+      );
       if (!parsed.success) {
         return {
           status: 'failed',
           error: 'Agent API RSVP response had an unexpected shape.',
+          retryable: false,
+        };
+      }
+      const plusOne = parsed.data.plus_one ?? null;
+      if (input.plus_one_response && !plusOne) {
+        return {
+          status: 'failed',
+          error: 'Agent API RSVP response did not confirm the plus-one state.',
           retryable: false,
         };
       }
@@ -1212,7 +1340,8 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         : parsed.data.will_attend === false || parsed.data.will_attend === 0
           ? false
           : null;
-      if (returnedWillAttend === null || returnedWillAttend !== expectedWillAttend) {
+      if (input.action &&
+        (returnedWillAttend === null || returnedWillAttend !== expectedWillAttend)) {
         return {
           status: 'failed',
           error: 'Agent API RSVP response did not confirm the requested attendance state.',
@@ -1221,7 +1350,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       }
       return {
         status: 'responded',
-        action: parsed.data.action ?? input.action,
+        action: parsed.data.action ?? input.action ?? null,
         willAttend: returnedWillAttend,
         guestId: parsed.data.guest_id ?? input.guest_id ?? null,
         eventName:
@@ -1234,6 +1363,13 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           parsed.data.event?.date ??
           parsed.data.event?.event_date ??
           null,
+        plusOne: plusOne
+          ? {
+              saved: plusOne.saved,
+              response: plusOne.response ?? input.plus_one_response ?? null,
+              reason: plusOne.reason ?? null,
+            }
+          : null,
       };
     }
 
@@ -1261,7 +1397,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       return {
         status: 'already_responded',
         currentAction: null,
-        requestedAction: input.action,
+        requestedAction: input.action ?? null,
         guestId: input.guest_id ?? null,
         eventName: null,
         eventDate: null,
@@ -1308,12 +1444,87 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     if (!parsed.success) {
       return null;
     }
-    return parsed.data.orders.map((order) => this.mapOrder(order));
+    return parsed.data.orders.map((order) => this.mapOrder(order, 'legacy_orders'));
   }
 
-  private mapOrder(order: OrderWire): PurchaseInformation {
+  /**
+   * Parse the phone-scoped response without allowing the legacy `orders` array
+   * to compete with the partitioned source. The legacy array is retained only
+   * when no new partition key is present, for transport compatibility.
+   */
+  private parseGuestOrders(data: unknown): {
+    purchases: PurchaseInformation[];
+    orderPartitions: {
+      pending: PurchaseInformation[];
+      completed: PurchaseInformation[];
+    };
+    carts: CartInformation[];
+    partitioned: boolean;
+  } | null {
+    const parsed = partitionedOrdersDataSchema.safeParse(data);
+    if (!parsed.success || !data || typeof data !== 'object' || Array.isArray(data)) {
+      return null;
+    }
+    const source = data as Record<string, unknown>;
+    const partitioned =
+      Object.prototype.hasOwnProperty.call(source, 'completed_orders') ||
+      Object.prototype.hasOwnProperty.call(source, 'pending_orders') ||
+      Object.prototype.hasOwnProperty.call(source, 'carts');
+    if (!partitioned) {
+      if (!Object.prototype.hasOwnProperty.call(source, 'orders')) {
+        return null;
+      }
+      const legacy = ordersDataSchema.safeParse(data);
+      if (!legacy.success) return null;
+      const purchases = legacy.data.orders.map((order) =>
+        this.mapOrder(order, 'legacy_orders'),
+      );
+      return {
+        purchases,
+        orderPartitions: { pending: [], completed: [] },
+        carts: [],
+        partitioned: false,
+      };
+    }
+
+    // An explicitly supplied partition must be an array. Each partition is
+    // validated independently and legacy orders are intentionally ignored.
+    const pendingParsed = Object.prototype.hasOwnProperty.call(source, 'pending_orders')
+      ? z.array(orderSchema).safeParse(source.pending_orders)
+      : { success: true as const, data: [] as OrderWire[] };
+    const completedParsed = Object.prototype.hasOwnProperty.call(source, 'completed_orders')
+      ? z.array(orderSchema).safeParse(source.completed_orders)
+      : { success: true as const, data: [] as OrderWire[] };
+    const cartsParsed = Object.prototype.hasOwnProperty.call(source, 'carts')
+      ? z.array(cartSchema).safeParse(source.carts)
+      : { success: true as const, data: [] as CartWire[] };
+    if (!pendingParsed.success || !completedParsed.success || !cartsParsed.success) {
+      return null;
+    }
+    const pending = pendingParsed.data.map((order) =>
+      this.mapOrder(order, 'pending_orders'),
+    );
+    const completed = completedParsed.data.map((order) =>
+      this.mapOrder(order, 'completed_orders'),
+    );
+    const carts = cartsParsed.data.map((cart) => this.mapCart(cart));
+    return {
+      purchases: [...pending, ...completed],
+      orderPartitions: { pending, completed },
+      carts,
+      partitioned: true,
+    };
+  }
+
+  private mapOrder(
+    order: OrderWire,
+    partition: PurchasePartition,
+  ): PurchaseInformation {
     return {
       orderId: order.id,
+      partition,
+      eventId: order.event_id ?? null,
+      currency: order.currency ?? null,
       customerTransactionNumber: normalizeBackendCustomerTransactionNumber(
         order.increment_id,
       ),
@@ -1324,8 +1535,30 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       eventName: order.event_name ?? null,
       eventDate: order.event_date ?? null,
       eventUrl: order.event_url ?? null,
-      createdAt: order.created_at ?? null,
+      createdAt: normalizePurchaseTimestamp(order.created_at),
       items: order.items.map((item) => ({
+        giftName: item.gift_name ?? null,
+        quantity: item.quantity ?? null,
+        amount: item.amount ?? null,
+        rowTotal: item.row_total ?? null,
+        type: item.type ?? null,
+      })),
+    };
+  }
+
+  private mapCart(cart: CartWire): CartInformation {
+    return {
+      cartId: String(cart.cart_id),
+      status: cart.status,
+      wasAbandoned: cart.was_abandoned,
+      eventId: cart.event_id ?? null,
+      eventName: cart.event_name ?? null,
+      eventDate: cart.event_date ?? null,
+      eventUrl: cart.event_url ?? null,
+      subtotal: cart.subtotal ?? null,
+      giftsQuantity: cart.gifts_quantity ?? null,
+      createdAt: normalizePurchaseTimestamp(cart.created_at),
+      items: cart.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
         amount: item.amount ?? null,
@@ -1346,6 +1579,8 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   private mapGiftPurchase(purchase: GiftPurchaseWire): PurchaseInformation {
     return {
       orderId: purchase.id,
+      eventId: purchase.event_id ?? null,
+      currency: purchase.currency ?? null,
       customerTransactionNumber: normalizeBackendCustomerTransactionNumber(
         purchase.increment_id,
       ),
@@ -1356,7 +1591,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       eventName: purchase.event_name ?? null,
       eventDate: purchase.event_date ?? null,
       eventUrl: purchase.event_url ?? null,
-      createdAt: purchase.created_at ?? null,
+      createdAt: normalizePurchaseTimestamp(purchase.created_at),
       items: purchase.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1368,7 +1603,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         ? {
             method: purchase.payment.method ?? null,
             amount: purchase.payment.amount ?? null,
-            paidAt: purchase.payment.paid_at ?? null,
+            paidAt: normalizePurchaseTimestamp(purchase.payment.paid_at),
             paymentId: purchase.payment.payment_id ?? null,
             transactionStatus: purchase.payment.transaction_status ?? null,
             gatewayMessage: purchase.payment.gateway_message ?? null,
@@ -1455,14 +1690,30 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       };
     }
 
+    const guestOrders = resource === 'orders'
+      ? this.parseGuestOrders(response.data)
+      : null;
     const purchases = resource === 'orders'
-      ? this.parseOrders(response.data)
+      ? guestOrders?.purchases ?? null
       : this.parseGiftPurchases(response.data);
     if (!purchases) {
       return {
         status: 'invalid_response',
         resource,
         error: `Agent API ${resource === 'orders' ? 'orders' : 'gift-purchases'} response had an unexpected shape.`,
+      };
+    }
+    if (resource === 'orders' && guestOrders) {
+      return {
+        status: 'success',
+        resource,
+        purchases,
+        ...(guestOrders.partitioned
+          ? {
+              orderPartitions: guestOrders.orderPartitions,
+              carts: guestOrders.carts,
+            }
+          : {}),
       };
     }
     return { status: 'success', resource, purchases };

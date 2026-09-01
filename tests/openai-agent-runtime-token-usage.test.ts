@@ -310,6 +310,51 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       authAction: 'report_otp_not_received',
     }]);
   });
+
+  it('normalizes only explicit typed purchase selectors', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const typedRuntime = runtime as unknown as {
+      normalizeExtraction: (input: {
+        informationRequests: Array<{
+          kind: 'purchase';
+          query: string;
+          eventHint: string | null;
+          resource: 'orders';
+          orderId: null;
+          amount: number | null;
+          aspects: ['payment_status'];
+          sensitiveFields: [];
+          authAction: 'none';
+        }>;
+      }) => ComposeReplyRequest['extraction'];
+    };
+
+    const normalized = typedRuntime.normalizeExtraction({
+      informationRequests: [{
+        kind: 'purchase',
+        query: 'Estado del regalo de Samuel Josué por S/ 80.',
+        eventHint: ' Samuel Josué ',
+        resource: 'orders',
+        orderId: null,
+        amount: 80,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+    });
+
+    expect(normalized.informationRequests).toEqual([{
+      kind: 'purchase',
+      query: 'Estado del regalo de Samuel Josué por S/ 80.',
+      resource: 'orders',
+      orderId: null,
+      eventHint: 'Samuel Josué',
+      amount: 80,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }]);
+  });
 });
 
 describe('OpenAiAgentRuntime capability context', () => {
@@ -693,6 +738,46 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('user_auth');
     expect(input).not.toContain('consultar_evento_invitado');
     expect(input).not.toContain('invited_event_lookup');
+  });
+
+  it('projects only bounded indexed FAQ evidence without retrieval identifiers or scores', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.informationResults = [{
+      requestId: 'information-validation-policy',
+      kind: 'faq',
+      status: 'completed',
+      evidence: [{
+        fileId: 'sensitive-vector-file-id',
+        filename: 'atc_template_regalo_en_validacion_anfitriones.md',
+        score: 0.98765,
+        text: `Los pagos por transferencia, Yape, Plin y PayPal pueden tardar hasta 72 horas hábiles. ${'detalle '.repeat(300)}`,
+      }],
+    }];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (
+        request: ComposeReplyRequest,
+        recommendationFunnel: {
+          available_candidates: number;
+          context_candidates: number;
+          context_candidate_ids: number[];
+          presentation_limit: number;
+        },
+      ) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, {
+      available_candidates: 0,
+      context_candidates: 0,
+      context_candidate_ids: [],
+      presentation_limit: 0,
+    });
+
+    expect(input).toContain('72 horas hábiles');
+    expect(input).toContain('PayPal');
+    expect(input).not.toContain('sensitive-vector-file-id');
+    expect(input).not.toContain('0.98765');
+    expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(18_000);
   });
 
   it('omits shipping evidence from the model projection for cash-only gifts', () => {

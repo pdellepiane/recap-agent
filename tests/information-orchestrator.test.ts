@@ -229,9 +229,16 @@ describe('InformationOrchestrator', () => {
       throw new Error('Expected a completed purchase result.');
     }
     expect(defaultResult.purchases[0]?.payment).toEqual({
-      method: 'Transferencia',
-      amount: 300,
+      method: null,
+      amount: null,
       paidAt: '2026-07-10',
+    });
+    expect(defaultResult.purchases[0]?.amountDisclosure).toEqual({
+      total: 300,
+      paid: 300,
+      currency: null,
+      paymentMethod: 'Transferencia',
+      presentation: 'recorded_method_no_currency',
     });
     expect(defaultResult.purchases[0]?.payment).not.toHaveProperty(
       'operationCode',
@@ -847,6 +854,176 @@ describe('InformationOrchestrator', () => {
     });
   });
 
+  it('selects the current pending purchase from explicit typed evidence without dropping older records', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [
+        {
+          ...giftPurchase(),
+          orderId: 'ORD-current',
+          eventName: 'Samuel Josué',
+          grandTotal: 80,
+          paymentStatus: 'pending',
+          createdAt: '2026-08-29',
+          currency: null,
+          payment: null,
+        },
+        {
+          ...giftPurchase(),
+          orderId: 'ORD-old',
+          eventName: 'Josué y Paola',
+          grandTotal: 88.18,
+          paymentStatus: 'approved',
+          createdAt: '2025-04-16',
+          currency: null,
+          payment: null,
+        },
+      ],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'victor-current-payment',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'Estado del regalo para Samuel Josué por S/ 80.',
+        orderId: null,
+        eventHint: 'Samuel Josué',
+        amount: 80,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '981056171' },
+    });
+
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      needsSelection: false,
+      purchases: [{
+        orderId: 'ORD-current',
+        eventName: 'Samuel Josué',
+        grandTotal: null,
+        paymentStatus: 'pending',
+      }],
+    });
+  });
+
+  it('treats a cart-only phone response as valid partial coverage', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [],
+      carts: [{
+        cartId: 'cart-sonia-1',
+        eventName: 'Carlos y Adriana',
+        status: 'abandoned',
+        wasAbandoned: true,
+        subtotal: 120,
+        giftsQuantity: 1,
+        items: [],
+      }],
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'cart-only',
+        kind: 'purchase',
+        resource: 'orders',
+        query: '¿Qué pasó con mi carrito?',
+        orderId: null,
+        aspects: ['summary'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
+    });
+
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      coverage: 'partial',
+      needsSelection: false,
+      purchases: [],
+    });
+    expect(execution.results[0]).not.toMatchObject({ failureKind: 'not_found' });
+  });
+
+  it('uses pending and completed partitions instead of a legacy flattened list', async () => {
+    const agentGateway = new FakeAgentGateway();
+    agentGateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      // This compatibility list intentionally contains only an unrelated old
+      // record; partitioned evidence is authoritative for the new flow.
+      purchases: [{ ...giftPurchase(), orderId: 'ORD-legacy-old', eventName: 'AMORCITOS' }],
+      orderPartitions: {
+        pending: [{
+          ...giftPurchase(),
+          orderId: 'ORD-pending-current',
+          eventName: 'Isa y Lu',
+          grandTotal: 63.85,
+          paymentStatus: 'pending',
+        }],
+        completed: [{
+          ...giftPurchase(),
+          orderId: 'ORD-completed-old',
+          eventName: 'AMORCITOS',
+          grandTotal: 98.14,
+          paymentStatus: 'declined',
+        }],
+      },
+    };
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway,
+    });
+
+    const execution = await orchestrator.execute({
+      requests: [{
+        requestId: 'partition-current',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'Estado de Isa y Lu por 63.85',
+        orderId: null,
+        eventHint: 'Isa y Lu',
+        amount: 63.85,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '999999999' },
+    });
+
+    expect(execution.results[0]).toMatchObject({
+      status: 'completed',
+      purchases: [{ orderId: 'ORD-pending-current', eventName: 'Isa y Lu' }],
+      needsSelection: false,
+    });
+    expect(execution.results[0]).not.toMatchObject({ purchases: [
+      expect.objectContaining({ orderId: 'ORD-legacy-old' }),
+    ] });
+  });
+
   it('retains a known guest event when enriched detail returns 500 and public detail succeeds', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestEventsResult = {
@@ -1135,7 +1312,11 @@ describe('InformationOrchestrator', () => {
     if (!paymentDetailsResult || paymentDetailsResult.status !== 'completed' || paymentDetailsResult.kind !== 'purchase') {
       throw new Error('Expected completed purchase for payment_details aspect.');
     }
-    expect(paymentDetailsResult.purchases[0]?.paymentMethod).toBe('Transferencia');
+    expect(paymentDetailsResult.purchases[0]?.paymentMethod).toBeNull();
+    expect(paymentDetailsResult.purchases[0]?.amountDisclosure).toMatchObject({
+      paymentMethod: 'Transferencia',
+      presentation: 'recorded_method_no_currency',
+    });
   });
 });
 

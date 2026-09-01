@@ -179,7 +179,12 @@ describe('rsvpParty projection wiring', () => {
       recommendationFunnel: null,
       authenticationOnlyReply: false,
     });
-    expect(evidence.rsvp_party).toEqual({ scope: 'self_and_others', mentioned_names: ['Maria', 'Carlos'] });
+    expect(evidence.rsvp_party).toEqual({
+      scope: 'self_and_others',
+      mentioned_names: ['Maria', 'Carlos'],
+      companion_count: 'unknown',
+      plus_one_response: 'unknown',
+    });
     expect(evidence.extraction).toMatchObject({ rsvp_party: { scope: 'self_and_others', mentioned_names: ['Maria', 'Carlos'] } });
   });
 

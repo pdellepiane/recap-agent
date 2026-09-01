@@ -156,6 +156,7 @@ export const planSchema = z.object({
   rsvp_state: rsvpStateSchema.default({
     status: 'none',
     pending_action: null,
+    pending_plus_one_response: null,
     candidates: [],
     requested_at: null,
     selection_attempts: 0,
@@ -299,10 +300,12 @@ export function createEmptyPlan(args: {
       resume_node: null,
       pending_requests: [],
       selection_candidates: [],
+      last_completed_request: null,
     },
     rsvp_state: {
       status: 'none',
       pending_action: null,
+      pending_plus_one_response: null,
       candidates: [],
       requested_at: null,
       selection_attempts: 0,

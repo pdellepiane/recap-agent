@@ -92,6 +92,125 @@ describe('AgentService RSVP flow', () => {
     });
   });
 
+  it('records one companion together with the guest without human escalation', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({
+      action: 'attending',
+      party: {
+        scope: 'self_and_others',
+        mentioned_names: ['María'],
+        companion_count: 'one',
+        plus_one_response: 'yes',
+      },
+    })]);
+    const gateway = new RsvpGateway([{
+      status: 'responded',
+      action: 'attending',
+      willAttend: true,
+      guestId: 41,
+      eventName: 'Matrimonio de Ana y Luis',
+      eventDate: '2026-09-12',
+      plusOne: { saved: true, response: 'yes', reason: null },
+    }]);
+    const service = createService(runtime, gateway);
+
+    const result = await service.handleTurn(inbound('Confirmo mi asistencia y la de mi esposa María'));
+
+    expect(gateway.inputs).toEqual([{
+      phone_extension: '+51',
+      phone_number: '973296571',
+      action: 'attending',
+      guest_id: 41,
+      plus_one_response: 'yes',
+    }]);
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+    expect(result.outbound.text).toContain('tu asistencia a Matrimonio de Ana y Luis quedó confirmada');
+    expect(result.outbound.text).toContain('tu acompañante asistirá');
+  });
+
+  it('does not claim companion success when the backend declines to save it', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({
+      action: null,
+      party: {
+        scope: 'self_and_others',
+        mentioned_names: [],
+        companion_count: 'one',
+        plus_one_response: 'yes',
+      },
+    })]);
+    const gateway = new RsvpGateway([{
+      status: 'responded',
+      action: null,
+      willAttend: null,
+      guestId: 41,
+      eventName: 'Matrimonio de Ana y Luis',
+      eventDate: '2026-09-12',
+      plusOne: { saved: false, response: 'yes', reason: 'not_eligible' },
+    }]);
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), [
+      rsvpLookupInvitation({ hasResponded: true, willAttend: true }),
+    ]);
+
+    const result = await service.handleTurn(inbound('También irá mi acompañante'));
+
+    expect(gateway.inputs).toEqual([{
+      phone_extension: '+51',
+      phone_number: '973296571',
+      guest_id: 41,
+      plus_one_response: 'yes',
+    }]);
+    expect(result.outbound.text).toContain('no quedó guardada');
+    expect(result.outbound.text).not.toContain('quedó confirmado tu acompañante');
+    expect(result.trace.tools_called).not.toContain('request_human_takeover');
+  });
+
+  it('preserves a companion response across one bounded event-selection turn', async () => {
+    const runtime = new RsvpRuntime([
+      rsvpExtraction({
+        action: null,
+        party: {
+          scope: 'self_and_others',
+          mentioned_names: [],
+          companion_count: 'one',
+          plus_one_response: 'yes',
+        },
+      }),
+      rsvpExtraction({
+        action: null,
+        candidateGuestId: 42,
+        eventReference: 'Cumpleaños de Marta',
+      }),
+    ]);
+    const gateway = new RsvpGateway([{
+      status: 'responded',
+      action: null,
+      willAttend: null,
+      guestId: 42,
+      eventName: 'Cumpleaños de Marta',
+      eventDate: null,
+      plusOne: { saved: true, response: 'yes', reason: null },
+    }]);
+    const store = new InMemoryPlanStore();
+    const service = createService(runtime, gateway, store, [
+      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis' }),
+      rsvpLookupInvitation({ guestId: 42, eventName: 'Cumpleaños de Marta' }),
+    ]);
+
+    const first = await service.handleTurn(inbound('También asistirá mi acompañante'));
+    const second = await service.handleTurn(inbound('Al cumpleaños de Marta'));
+
+    expect(first.plan.rsvp_state).toMatchObject({
+      status: 'awaiting_event_selection',
+      pending_plus_one_response: 'yes',
+    });
+    expect(gateway.inputs).toEqual([{
+      phone_extension: '+51',
+      phone_number: '973296571',
+      guest_id: 42,
+      plus_one_response: 'yes',
+    }]);
+    expect(second.outbound.text).toContain('tu acompañante asistirá a Cumpleaños de Marta');
+  });
+
   it('persists multiple pending candidates and re-calls with only a validated selection', async () => {
     const runtime = new RsvpRuntime([
       rsvpExtraction({ action: 'attending' }),
@@ -642,6 +761,12 @@ function rsvpExtraction(args: {
   decisionSource?: 'current_message' | 'plan_state' | null;
   candidateGuestId?: number | null;
   eventReference?: string | null;
+  party?: {
+    scope: 'self' | 'self_and_others';
+    mentioned_names: string[];
+    companion_count?: 'one' | 'multiple' | 'unknown';
+    plus_one_response?: 'yes' | 'no' | 'unknown';
+  } | null;
 }): ExtractionResult {
   return {
     actionIntent: 'responder_invitacion',
@@ -650,6 +775,7 @@ function rsvpExtraction(args: {
     rsvpDecisionSource: args.decisionSource ?? (args.action ? 'current_message' : 'plan_state'),
     rsvpCandidateGuestId: args.candidateGuestId ?? null,
     rsvpEventReference: args.eventReference ?? null,
+    rsvpParty: args.party ?? null,
     intentConfidence: 0.98,
     ambiguity: {
       status: 'clear',
