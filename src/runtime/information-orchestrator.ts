@@ -1603,15 +1603,7 @@ export class InformationOrchestrator {
       eventName: cart.eventName ?? null,
       eventDate: cart.eventDate ?? null,
       subtotal: null,
-      amountDisclosure: typeof cart.subtotal === 'number'
-        ? {
-            total: cart.subtotal,
-            paid: null,
-            currency: null,
-            paymentMethod: null,
-            presentation: 'recorded_method_no_currency',
-          }
-        : null,
+      amountDisclosure: null,
       giftsQuantity: cart.giftsQuantity ?? null,
       // Offset-less timestamps are normalized to null by the gateway.
       createdAt: cart.createdAt ?? null,

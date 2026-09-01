@@ -7650,3 +7650,81 @@ Each purchase fixture covers GET /guest/orders partitions and GET /guest/gift-pu
 
 **Note:** Live re-validation happens at final T8 attempt via npm run eval:behavior-live after redeploy; this offline batch guarantees deterministic fixture resolution, correct information vs RSVP routing, and zero provider leakage.
 
+
+### plan-2026-08-31-consolidated-reported-interactions wave C5 owner fix thread
+
+**Reason:** canary eval-2026-09-01T13-13-21-440Z-aa6b7184 exposed conjunction matching and case-spec conflicts; owner implemented parallel fix thread on top of ddab9175 (12 commits to 0852a24c). This entry restores the missing implementation-log record per repo convention (every code change gets a log entry). No source, prompt, test, or eval file edited in this commit; this log append is the sole change.
+
+**12 commits landed on top of ddab9175 (HEAD 0852a24c):**
+- 03f617cb fix(runtime): reconcile event names across phone purchase context (src/runtime/event-matching.ts, conjunction/accent canonical matching)
+- d49f37ce test(eval): register event identity canary coverage (evals/live-behavior-coverage.yaml)
+- 1e7f6ab9 fix(runtime): preserve typed purchase context across policy lookups (src/runtime/agent-service.ts, src/core/information.ts, prompts/extractors/information.txt)
+- da8ad30e test(eval): register typed purchase policy coverage (evals/live-behavior-coverage.yaml)
+- a8baf5ce fix(runtime): ground purchase corrections in canonical evidence (src/runtime/agent-service.ts, prompts/nodes/resolver_consultas_informativas/response_contract.txt)
+- 6bf7d924 test(eval): reconstruct Sonia recovery context (evals/fixtures/purchase-sonia-765.json +14 lines)
+- 9c3321b4 test(eval): register grounded correction coverage (evals/live-behavior-coverage.yaml)
+- 613bda93 fix(prompts): keep purchase continuation extraction bounded (prompts/extractors/information.txt)
+- e27cb4f6 test(runtime): assert typed purchase evidence limits (tests/class1-fixes.test.ts)
+- eda1c694 fix(runtime): separate cart recovery from payment policy (src/runtime/agent-service.ts, openai-agent-runtime.ts)
+- 60243611 test(eval): include trusted Sonia recovery URL (evals/fixtures/purchase-sonia-765.json)
+- 0852a24c test(eval): register cart recovery policy coverage (evals/live-behavior-coverage.yaml)
+
+**Claudia mustCall ruling:** orders pending partition per plan request_policy. Case live_behavior.purchase_pending_transfer_continuity now asserts mustCall lookup_guest_orders_by_phone (orders pending partition) matching the extraction example where asking for validation window emits informationRequests kind purchase resource orders aspects payment_status+validation_window; the correct tool is orders pending, not gift purchase or carts.
+
+**Sonia recovery-path design:** boolean recovery-path fact derived from a validated trusted /cart/recover URL found in outbound history (not in cart payload). Runtime projects hasRecoveryPath=true only when URL is present, trusted origin, and path is /cart/recover; transfer/payment options are then labeled as general indexed gift-checkout policy via indexed knowledge article, never as a cart property or cart payment property.
+
+**Additional runtime details in this thread:** src/runtime/event-matching.ts adds canonical conjunction/accent-insensitive matching for Y vs y and accented names so purchase continuity survives "Claudia y Luis Felipe" vs "Claudia Y Luis Felipe" variants; typed purchase context is preserved across derived policy lookups so primary purchase identity is not lost when policy questions are appended; purchase corrections (receipt/currency follow-ups) are grounded in canonical purchase evidence rather than re-extracted hints; prompts/extractors/information.txt bounds purchase-continuation extraction to avoid over-extraction; cart recovery is separated from payment policy in runtime so abandoned carts do not incorrectly project payment fields.
+
+**Registry:** 4 coverage groups landed with 0 pending implementedBy: event identity canary (d49f37ce, 2 entries: reconcile-event-conjunctions-in-phone-purchase-selection, preserve-cart-only-coverage-across-event-name-variants, both 03f617cb), typed purchase policy (da8ad30e, 3 entries: route-cart-payment-options-through-orders-and-indexed-policy, preserve-primary-purchase-across-derived-policy-continuations, project-derived-purchase-policies-with-minimum-disclosure, all 1e7f6ab9), grounded correction (9c3321b4, 3 entries: classify-receipt-and-currency-corrections-as-purchase-continuations, preserve-reextracted-purchase-identity-across-corrections, project-unverifiable-purchase-currency-and-time-as-typed-limits, all a8baf5ce), cart recovery policy (0852a24c, 2 entries: validate-trusted-cart-recovery-path-from-outbound-context, scope-indexed-payment-options-as-general-gift-policy, both eda1c694). Total 10 behaviorChanges added; all implementedBy reachable via git merge-base --is-ancestor; npx vitest run tests/live-behavior-coverage.test.ts PASS 1/1.
+
+**Offline gates verified before this log restore (step 1, merged state 0852a24c):** git status --short shows only M .continues-handoff.md; git log --oneline -13 HEAD 0852a24c on top of ddab9175 verified; npm run typecheck PASS 0 errors; npm run lint PASS 0 errors; npm test PASS 661/661 across 89 files (was 654/654 across 88 files before thread, +7 tests, +1 file); npm run audit:prompts PASS 0 violations; npm run audit:prompts:compare PASS 732995 -> 339523 = 53.68% reduction; npx vitest run tests/live-behavior-coverage.test.ts PASS 1/1. No deployment or live eval in this offline verification step per instructions.
+
+**Verification:** this log append is the only file write in this commit; no source, prompt, test, or eval file touched; .continues-handoff.md untouched except its pre-existing M state; git index remains as expected.
+
+### plan-2026-08-31-consolidated-reported-interactions wave C5 canary-2 semantic fixes
+
+**Reason:** canary run eval-2026-09-01T15-36-15-712Z-3918c0eb deployed revision 15898235 HEAD 0852a24c: ALL structural expectations PASS (tool_usage lookup_guest_orders_by_phone PASS, node_transition PASS both cases) but exactly two hard text_semantic failures remain; offline state fully green (typecheck 0, lint 0, npm test 661/661 across 89 files, prompt audits green, coverage green). Task requires evidence citation before any change and byte-budgeted fixes for the two failures.
+
+**Evidence (a) monto 150:**
+- Fixture evals/fixtures/purchase-sonia-765.json line 16: `"subtotal": 150` inside carts[0] cart-sonia-001 for phone 51965765765 event Carlos and Adriana.
+- Case YAML evals/cases/live-behavior-abandoned-cart-sonia.yaml line 9 inputs[0].text: `"Tengo un carrito abandonado de Carlos y Adriana. Quiero saber si puedo pagar por transferencia."` -- no "150" present.
+- Live artifact .eval-runs/eval-2026-09-01T15-36-15-712Z-3918c0eb/artifacts/live_lambda/live_behavior.abandoned_cart_only_sonia.json line 99 outputText: `"Para el carrito de Carlos y Adriana, encontré un monto de 150, ..."`; line 358 turn_decision.persistReason and line 368 operational_note contain the amountDisclosure instruction `"Para amountDisclosure con presentation=recorded_method_no_currency, comunica "monto [valor] mediante [metodo registrado]".` showing the reply model received amountDisclosure projected from cart subtotal.
+- Verdict line 44 message: `"introduce un monto de 150 no respaldado por la informacion disponible."` -- 150 came from fixture cart subtotal via projection, not from conversation text, and is not needed to answer the transfer-availability question. Branch: exists in fixture but must not be volunteered per plan Sonia expected behavior: recognize cart coverage, explain recovery through trusted path, never claim an order, never invent amounts.
+
+**Evidence (b) recovery path:**
+- Fixture evals/fixtures/purchase-sonia-765.json lines 34-44 recentMessages[0].body: `"Hola Sonia Maribel, hiciste un regalo para Carlos & Adriana pero no terminaste el proceso. Puedes completarlo aqui: https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da"` -- trusted /cart/recover URL present with message id 1 outbound campaign.
+- Case YAML evals/cases/live-behavior-abandoned-cart-sonia.yaml before fix: no context section, no recentMessages reconstruction, no notes field; only inputs/backendFixture/expectations/budget present. Judge context builder src/evals/runner.ts:buildSemanticJudgeContext uses only turns' userInput/plan/toolsCalled, not fixture recentMessages; thus judge never sees the recovery URL and correctly reports line 44 `"afirma que se envio anteriormente un enlace de recuperacion, aunque ese enlace o ruta no aparece en el contexto confiable"`.
+- Artifact trace lines 472-484 message_context history_status available, retrieved_message_count 1, directions outbound, sources campaign, entry_source campaign -- runtime did validate trusted path and set operational_note line 368 `"El historial saliente confiable contiene una ruta de recuperacion para este carrito. Indica que puede retomarlo desde el enlace de recuperacion ya enviado, sin inventar ni repetir la URL."` confirming boolean fact present.
+- Branch: fixture contains URL, runtime boolean present, but case YAML context lacked explicit reconstruction, so judge could not verify. Fix is to complete reconstructed context in YAML, not weaken rubric.
+
+**Evidence (c) Claudia method naming:**
+- Fixture evals/fixtures/purchase-claudia-085.json lines 3-24 guestOrders pending_orders[0] payment_method "Transferencia" and guestGiftPurchases purchases[0].payment.method "Transferencia" for event Claudia and Luis Felipe.
+- Live artifact .eval-runs/eval-2026-09-01T15-36-15-712Z-3918c0eb/artifacts/live_lambda/live_behavior.purchase_pending_transfer_continuity.json turn 0 line 117 outputText: `"El pago para Claudia y Luis Felipe figura en proceso. La validacion puede tardar hasta 72 horas habiles; recibiras la confirmacion cuando finalice"` -- states 72h window but omits "transferencia".
+- Turn 1 line 557 outputText: `"La compra COD... figura como pendiente, por un monto de ...89 mediante Transferencia. La validacion puede tardar hasta 72 horas habiles."` and turn 2 line 937 similar -- turns 1-2 do name transferencia, proving projection did include paymentMethod Transferencia via amountDisclosure/paymentValidationExpectation.
+- Case YAML evals/cases/live-behavior-purchase-pending-transfer-continuity.yaml lines 35-38 rubric: `"The trusted-phone purchase evidence identifies the Claudia & Luis Felipe gift as pending and paid by bank transfer. The answer must be concise, natural, and entirely in Spanish; explain that validation for a pending non-card/non-PayPal payment can take up to 72 business hours."` Judge message line 46: `"omite mencionar explicitamente que se trata de un pago por transferencia bancaria o de un medio no perteneciente a tarjeta/PayPal."` -- rubric requires naming transferencia in same sentence as window per indexed policy (validation_window applies to methods other than card or PayPal: transfer/Yape/Plin). Fix C is to add byte-budgeted Spanish line naming the recorded method in same sentence.
+
+**Fixes applied:**
+
+Fix A - Sonia monto 150: projection tightened to not volunteer cart amount. src/runtime/information-orchestrator.ts projectCart now sets `subtotal: null` and `amountDisclosure: null` unconditionally instead of exposing subtotal 150 via amountDisclosure total 150 presentation recorded_method_no_currency. src/runtime/openai-agent-runtime.ts projectCartForReply now emits amountDisclosure null (whitelisted but null) so JSON never contains 150. Added deterministic twin tests/cart-amount-not-volunteered.test.ts 2 tests: orchestrator never exposes 150 and projector never emits it when amountDisclosure null. No change to case conversation text.
+
+Fix B - Sonia recovery-path context: evals/cases/live-behavior-abandoned-cart-sonia.yaml completed reconstructed context by adding notes field with explicit trusted outbound recovery message id 1 and URL https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da with valid /cart/recover path. Keeps reply expectation strict: link may be referenced only as previously sent recovery path from trusted context, never invented nor freshly generated, never repeating URL textually. Runtime boolean fact already present via src/runtime/agent-service.ts hasTrustedCartRecoveryPath validated URL origin sinenvolturas.com and pathname /^\/cart\/recover\/[^/]+\/?$/; provenance recorded via recentMessages message_context (retrieved_message_count 1 outbound campaign) and operational_note.
+
+Fix C - Claudia method naming: prompts/nodes/resolver_consultas_informativas/response_contract.txt added one Spanish line after the transaction-identifier bullet: `Cuando informes la ventana de validacion de hasta 72 horas habiles para un pago pendiente, nombra en la misma frase el metodo registrado que la activa (transferencia, Yape o Plin segun la politica indexada).` Byte budget: file 3854 -> 404? actually 339523 -> 339734 total serialized +211B (audit:prompts:compare 732995 -> 339734 = 53.65% reduction, still green, 0 violations). Existing evidence-safety bullets about not inventing currency/time remain intact; system.txt and information-orchestrator normalization of offset-less paidAt to null preserved.
+
+**Files changed (ownership respected):**
+- src/runtime/information-orchestrator.ts (projectCart amountDisclosure null)
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt (+1 line)
+- evals/cases/live-behavior-abandoned-cart-sonia.yaml (notes reconstructed context)
+- tests/cart-amount-not-volunteered.test.ts (new twin)
+- docs/implementation-log.md (this entry, append only)
+Did not touch .continues-handoff.md, did not weaken hard expectations, no git write commands executed.
+
+**Gates (offline only, no live eval, no AWS):**
+- npm run typecheck: PASS 0 errors
+- npm run lint: PASS 0 errors (90 files)
+- npm test: PASS 663/663 across 90 files (was 661/661 across 89 files, +2 twin tests)
+- npm run audit:prompts: PASS 0 violations
+- npm run audit:prompts:compare: PASS 732995 -> 339734 serialized 53.65% reduction (baseline 732995, current 339734, +211B justified)
+- npx vitest run tests/live-behavior-coverage.test.ts: PASS 1/1
+No deployment, no npm run eval:behavior-live per rules of engagement. Live re-validation happens at the next canary.
+
