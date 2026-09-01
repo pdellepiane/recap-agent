@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.abandoned_cart_only_sonia
+suite: live_behavior_regression
+version: 1
+description: Sonia cart-only abandoned checkout is valid phone coverage; purchase not_found must not occur.
+tags: [live, behavior, purchase, cart, abandoned, reported-interaction, sonia]
+targetModes: [live_lambda]
+inputs:
+  - text: Tengo un carrito abandonado de Carlos y Adriana. Quiero saber si puedo pagar por transferencia.
+    channel: whatsapp
+    contactPhone: "+51965765765"
+    sessionId: live-abandoned-cart-sonia-session
+expectations:
+  - id: abandoned-cart-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: abandoned-cart-uses-phone-partitions
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: abandoned-cart-recognized
+    type: text_semantic
+    rubric: >-
+      The trusted phone lookup returns no pending or completed orders and one abandoned cart for Carlos and Adriana. The answer must be concise, natural Latin American Spanish, recognize the abandoned cart as valid phone-scoped coverage, and explain that it can be recovered through the existing recovery path only if that path is present in trusted context, without inventing a link. It must not answer that no purchase exists or that nothing was found solely because orders are empty, must not claim the cart is an approved order, and must not request email or OTP.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: no-purchase-not-found
+    type: text_not_contains
+    phrases: ["no encontramos ninguna compra", "no se encontró ningún pedido", "no existe"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 200

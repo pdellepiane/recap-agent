@@ -1,0 +1,48 @@
+template: template.base-live
+id: live_behavior.pending_balance_validation_luis
+suite: live_behavior_regression
+version: 1
+description: Luis pending Alejandra order and cart with null currency; balance reported as unknown and validation window applied.
+tags: [live, behavior, purchase, balance, validation, reported-interaction, luis]
+targetModes: [live_lambda]
+inputs:
+  - text: Consulta por Alejandra. El pedido figura pendiente por Yape. Cuanto me falta?
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-pending-balance-luis-session
+  - text: Ya envié los 13.76 que faltaban, tengo el voucher.
+    channel: whatsapp
+    contactPhone: "+51938389389"
+    sessionId: live-pending-balance-luis-session
+expectations:
+  - id: pending-balance-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 0
+    severity: hard
+  - id: pending-balance-uses-phone-partitions
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: balance-unknown-no-currency
+    type: text_semantic
+    rubric: >-
+      The phone lookup returns a pending Alejandra order for 227.76 via Yape and a same-event active cart; currency is null and no balance-due or amount-received fields exist. The answer must be concise, natural Latin American Spanish, report the pending total with method without adding a currency symbol, state that the remaining balance cannot be confirmed from the available record, and explain that Yape validation can take up to 72 business hours. It must not calculate a balance, invent PEN or soles, or confirm receipt from the voucher image.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: voucher-does-not-confirm
+    type: text_semantic
+    rubric: >-
+      This is the same Alejandra thread; the user reports sending the shortfall with a voucher image. The answer must stay on that pending order, acknowledge the report, restate that receipt cannot be confirmed from an image and the order remains pending pending backend validation, and repeat the 72 business hour window. It must not restart with a generic welcome, claim the payment was validated, or present a currency that the backend did not supply.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 240

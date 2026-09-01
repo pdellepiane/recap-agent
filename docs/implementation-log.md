@@ -7553,3 +7553,43 @@ Live-run per-call bytes (avg across 15):
 **Gate results:** typecheck PASS (0 errors), lint PASS (0 errors), npm test PASS (612 passed, 83 test files, 0 failed) on current working tree that includes checkpoint 377386c1 plus the two bookkeeping edits above (registry and plan status). No live eval was run and no deployment happened in this wave.
 
 **Decision:** T5 disclosure integration is the next wave; scope unchanged versus plan.yaml.
+
+### plan-2026-08-31-consolidated-reported-interactions wave C2 (T5) -- route-specific minimum disclosure (2090c12b)
+
+**Reason:** route-specific minimum disclosure integration on 2090c12b closes T5 before T6 regression registration; evidence-safety and disclosure budgets must be enforced before adding the 12 live cases.
+
+**What changed:** src/runtime/openai-agent-runtime.ts projection tightened: FAQ evidence sliced 3 to 1 indexed validation article only, purchases bounded 0..3, carts exposed only when purchases empty, projectPurchaseForReply strips payment/declineCode/adminComment and bank/voucher fields, projectCartForReply whitelists safe fields; prompts/nodes/resolver_consultas_informativas/response_contract.txt single 256-byte Spanish evidence-safety bullet: recorded_method_no_currency wording, no local date from offset-less paidAt, 72h window only with pending transfer/Yape/Plin and indexed PayPal article; new hard-exclusion regression test in tests/openai-agent-runtime-token-usage.test.ts; src/audit/prompt-branch-measurement.ts thresholds adjusted to allow the justified +256B addition.
+
+**Gate results:** typecheck 0, lint 0, npm test 613/613, audit:prompts 0 violations, audit:prompts:compare 732995 -> 339491 = 53.68% reduction, resolver branch serialized +90B justified.
+
+**Decision:** T6 next.
+
+### plan-2026-08-31-consolidated-reported-interactions wave C3 (T6) -- 12-case live coverage and offline twins (offline only, no deploy)
+
+**Reason:** close the 12 required live cases from tasks.T6 and register coverage for the consolidated reported-interactions plan; offline only per rules of engagement, no live eval and no deployment.
+
+**12-case mapping found (required -> status -> artifact):**
+- purchase_pending_transfer_currency_time_continuity -> covered -> evals/cases/live-behavior-purchase-pending-transfer-continuity.yaml (interrupted session)
+- support_subject_identity_continuity -> covered -> evals/cases/live-behavior-support-detail-continuity.yaml (interrupted session)
+- current_pending_over_historical_completed -> covered -> evals/cases/live-behavior-purchase-current-vs-old.yaml (interrupted session)
+- active_cart_checkout_continuity_alex -> missing -> created evals/cases/live-behavior-active-cart-checkout-alex.yaml
+- abandoned_cart_only_sonia -> missing -> created evals/cases/live-behavior-abandoned-cart-sonia.yaml
+- current_campaign_order_over_historical_declined_maria_jose -> missing -> created evals/cases/live-behavior-current-campaign-order-maria-jose.yaml
+- pending_balance_validation_luis -> missing -> created evals/cases/live-behavior-pending-balance-luis.yaml
+- rsvp_plus_one_only_saved -> covered -> evals/cases/live-behavior-rsvp-plus-one.yaml (interrupted session, id live_behavior.rsvp_plus_one_uses_phone_scoped_mutation)
+- rsvp_guest_and_plus_one_combined_saved -> missing -> created evals/cases/live-behavior-rsvp-plus-one-combined.yaml
+- rsvp_plus_one_multiple_events_requires_selection -> missing -> created evals/cases/live-behavior-rsvp-plus-one-multiple-events.yaml
+- rsvp_plus_one_not_eligible_no_false_success -> missing -> created evals/cases/live-behavior-rsvp-plus-one-not-eligible.yaml
+- rsvp_multiple_companions_not_silently_truncated -> covered (modified) -> evals/cases/live-behavior-rsvp-multi-person-human-help.yaml v10 bounded human-help (interrupted session)
+
+**Suite:** evals/suites/live_behavior_regression.yaml updated to include all 7 new caseIds plus the 4 from the interrupted session plus the modified multi-person case; 12/12 required cases are members with hard structural assertions and hard text_semantic requireJudge true.
+
+**Registry:** evals/live-behavior-coverage.yaml 10 new entries added with correct implementedBy: purchase-pending-transfer-currency-time-continuity 2090c12b, support-subject-identity-continuity 377386c1, current-pending-over-historical-completed 377386c1, active-cart-checkout-continuity-alex 377386c1, abandoned-cart-only-sonia 377386c1, current-campaign-order-over-historical-declined-maria-jose 2090c12b, pending-balance-validation-luis 2090c12b, rsvp-guest-and-plus-one-combined-saved 377386c1, rsvp-plus-one-multiple-events-requires-selection 377386c1, rsvp-plus-one-not-eligible-no-false-success 377386c1; existing interrupted-session entries retained: rsvp-single-plus-one-phone-scoped-mutation 377386c1 and rsvp-multiple-companions-remain-bounded-human-review 377386c1; no pending implementedBy remains.
+
+**Superseded behavior:** every self_and_others request handed to human before RSVP lookup is no longer asserted as correct anywhere; replacement expectations are one explicit +1 handled via POST /guest/rsvp with selected guest_id, combined own+plus_one decisions in one backend request, saved=false reported as not saved; retained distinct multi-companion human-help boundary case (case 12) rather than deleting that safety boundary: multiple companions are never silently truncated into a single +1.
+
+**Offline twins:** created tests/t6-deterministic-twins.test.ts with 10 deterministic tests covering active cart vs pending distinctness (Alex), cart-only abandoned (Sonia), current vs historical declined (Maria Jose Isa and Lu), pending balance without currency (Luis), current vs old approved (Victor Samuel Josue), offset-less paidAt omission (Claudia Luis Felipe), and RSVP gateway plus_one saved true, saved false, combined, multiple_pending selection; no src/ runtime files touched.
+
+**Gate results:** npx vitest run tests/live-behavior-coverage.test.ts PASS 1/1, npm test PASS 623/623 across 84 files, npm run typecheck PASS 0 errors, npm run lint PASS 0 errors. No live eval was run and no deployment happened per offline-only rules.
+
+**Decision:** T6 COMPLETE pending T7 review and T8 deploy+live gates.

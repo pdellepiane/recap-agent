@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.rsvp_plus_one_not_eligible_no_false_success
+suite: live_behavior_regression
+version: 1
+description: Plus-one not eligible returns saved false and is reported honestly without false success.
+tags: [live, behavior, rsvp, plus-one, eligibility, spanish]
+targetModes: [live_lambda]
+inputs:
+  - text: Quiero llevar a mi acompañante a Michelle & Jorge
+    channel: whatsapp
+    contactPhone: "+51942633292"
+    sessionId: live-rsvp-plus-one-not-eligible-session
+expectations:
+  - id: enters-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: phone-scoped-mutation-attempted
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations, guest_rsvp]
+    mustNotCall: [request_human_takeover, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: not-eligible-reported-honestly
+    type: text_semantic
+    rubric: >-
+      The trusted-phone RSVP mutation returns plus_one.saved false with a reason, meaning the companion cannot be added for this guest or event. The answer must be concise, natural Latin American Spanish, clearly state that the companion response was not saved, give the sanitized reason, and offer human support as an option. It must never claim the companion was registered, never imply success, never expose guest_id or raw API fields, and never request email or OTP.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: no-false-success
+    type: text_not_contains
+    phrases: ["registrado con éxito", "acompañante registrado", "saved=true"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 180

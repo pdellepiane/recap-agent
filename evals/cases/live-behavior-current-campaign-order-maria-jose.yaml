@@ -1,0 +1,48 @@
+template: template.base-live
+id: live_behavior.current_campaign_order_over_historical_declined_maria_jose
+suite: live_behavior_regression
+version: 1
+description: Maria Jose current pending Isa and Lu order is selected over old declined AMORCITOS; balance is not recomputed.
+tags: [live, behavior, purchase, selection, campaign, reported-interaction, maria-jose]
+targetModes: [live_lambda]
+inputs:
+  - text: Consulta por Isa y Lu. El monto pendiente es 63.85 por transferencia del 28 de agosto. No me hables de AMORCITOS.
+    channel: whatsapp
+    contactPhone: "+51987554554"
+    sessionId: live-maria-jose-current-vs-declined-session
+  - text: Ya pague los 3.85 que faltaban. Confirmame que ya esta aprobado.
+    channel: whatsapp
+    contactPhone: "+51987554554"
+    sessionId: live-maria-jose-current-vs-declined-session
+expectations:
+  - id: current-order-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 0
+    severity: hard
+  - id: current-order-uses-phone-partitions
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: current-pending-suppresses-historical-declined
+    type: text_semantic
+    rubric: >-
+      The phone lookup returns a current pending Isa and Lu order for 63.85 via transfer, a same-event active cart, and an old declined AMORCITOS order. The user's explicit Isa and Lu evidence grounds the current thread. The response must be concise, natural Latin American Spanish, report the current pending Isa and Lu order, and suppress AMORCITOS entirely. It must not expose the declined record, calculate a balance, claim the amount matched, or ask for email/OTP.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: shortfall-remains-pending
+    type: text_semantic
+    rubric: >-
+      After the user reports paying the shortfall for the same Isa and Lu order, the backend still reports the order as pending and provides no received-amount or balance fields; only a 72 business hour policy for transfer/Yape/Plin applies. The answer must be concise, natural Latin American Spanish, say the order remains pending and that validation can take up to 72 business hours, without claiming approval, denying receipt, calculating currency, or inventing a balance. It must not mention AMORCITOS or restart with a generic welcome.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 240
