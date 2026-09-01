@@ -63,4 +63,10 @@ await cp(path.join(root, 'prompts'), path.join(distDir, 'prompts'), {
   recursive: true,
 });
 
+await cp(path.join(root, 'evals', 'fixtures'), path.join(distDir, 'evals', 'fixtures'), {
+  recursive: true,
+}).catch(() => {
+  // No fixtures yet; ignore
+});
+
 console.log('Build completed.');

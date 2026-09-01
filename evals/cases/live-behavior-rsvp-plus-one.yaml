@@ -10,6 +10,8 @@ inputs:
     channel: whatsapp
     contactPhone: "+51942633292"
     sessionId: live-rsvp-plus-one-phone-session
+backendFixture:
+  scenario: rsvp-plus-one-saved
 expectations:
   - id: enters-rsvp-node
     type: node_transition
@@ -23,7 +25,7 @@ expectations:
   - id: saved-outcome-only
     type: text_semantic
     rubric: >-
-      The user explicitly says that one companion will attend Michelle & Jorge. The answer must be concise, natural Latin American Spanish and reflect only the typed POST /guest/rsvp plus_one result. If plus_one.saved is true, it may say the companion was registered as attending. If plus_one.saved is false or the result lacks saved evidence, it must clearly say the companion response was not saved and may offer support. It must never claim success without saved=true, never request email or OTP, never expose guest_id or raw API fields, and never restart with a generic welcome.
+      The user explicitly says that one companion will attend Michelle & Jorge. The fixture guarantees POST /guest/rsvp returns plus_one.saved true with the documented shape (200, saved true). The answer must be concise, natural Latin American Spanish, explicitly confirm that the companion was registered as attending (for example "tu acompañante fue registrado", "acompañante confirmado", or similar success confirmation with the event name), and reflect only the typed saved outcome. It must not say the companion was not saved, must not offer a vague pending state, must never claim success without saved=true (now guaranteed), never request email or OTP, never expose guest_id or raw API fields, and never restart with a generic welcome.
     minScore: 0.9
     requireJudge: true
     severity: hard

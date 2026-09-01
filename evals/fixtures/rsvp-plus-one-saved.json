@@ -1,0 +1,138 @@
+{
+  "scenario": "rsvp-plus-one-saved",
+  "guestOrders": {
+    "51942633292": {
+      "pending_orders": [],
+      "completed_orders": [],
+      "carts": []
+    }
+  },
+  "guestEvents": {
+    "51942633292": {
+      "events": [
+        {
+          "event_id": 7001,
+          "name": "Michelle & Jorge",
+          "slug": "michelle-jorge",
+          "url": "https://example.com/michelle-jorge",
+          "datetime": "2026-10-10T20:15:00.000Z",
+          "type": "matrimonio",
+          "type_detail": null,
+          "stage": null,
+          "city": "Lima",
+          "country": "Peru",
+          "currency": "PEN",
+          "role": "guest"
+        }
+      ]
+    }
+  },
+  "eventDetails": {
+    "7001": {
+      "event": {
+        "event_id": 7001,
+        "name": "Michelle & Jorge",
+        "slug": "michelle-jorge",
+        "url": "https://example.com/michelle-jorge",
+        "type": "matrimonio",
+        "type_detail": null,
+        "datetime": "2026-10-10T20:15:00.000Z",
+        "with_time": true,
+        "timezone": "America/Lima",
+        "city": "Lima",
+        "country": {
+          "id": 1,
+          "name": "Peru",
+          "short_code": "PE"
+        },
+        "currency": "PEN",
+        "stage": null,
+        "celebrateds": [
+          {
+            "name": "Michelle",
+            "type": "novia"
+          },
+          {
+            "name": "Jorge",
+            "type": "novio"
+          }
+        ],
+        "moments": [],
+        "dresscode": null,
+        "common_asked": [],
+        "contact_info": []
+      },
+      "attendance": {
+        "guest_id": 70001,
+        "name": "Invitado Test",
+        "has_responded": false,
+        "will_attend": null,
+        "response_date": null
+      },
+      "purchases": []
+    }
+  },
+  "rsvp": {
+    "51942633292": {
+      "responses": [
+        {
+          "match": {
+            "guest_id": 70001,
+            "plus_one_response": "yes"
+          },
+          "response": {
+            "httpStatus": 200,
+            "data": {
+              "guest_id": 70001,
+              "action": "attending",
+              "will_attend": true,
+              "event_name": "Michelle & Jorge",
+              "event_date": "2026-10-10T20:15:00.000Z",
+              "plus_one": {
+                "saved": true,
+                "response": "yes",
+                "reason": null
+              }
+            }
+          }
+        },
+        {
+          "match": {
+            "guest_id": 70001,
+            "action": "attending",
+            "plus_one_response": "yes"
+          },
+          "response": {
+            "httpStatus": 200,
+            "data": {
+              "guest_id": 70001,
+              "action": "attending",
+              "will_attend": true,
+              "event_name": "Michelle & Jorge",
+              "event_date": "2026-10-10T20:15:00.000Z",
+              "plus_one": {
+                "saved": true,
+                "response": "yes",
+                "reason": null
+              }
+            }
+          }
+        }
+      ],
+      "default": {
+        "httpStatus": 200,
+        "data": {
+          "guest_id": 70001,
+          "will_attend": true,
+          "plus_one": {
+            "saved": true,
+            "response": "yes",
+            "reason": null
+          },
+          "event_name": "Michelle & Jorge",
+          "event_date": "2026-10-10T20:15:00.000Z"
+        }
+      }
+    }
+  }
+}

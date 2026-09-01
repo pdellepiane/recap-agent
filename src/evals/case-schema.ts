@@ -311,6 +311,10 @@ const cliPerfSummarySchema = z.object({
   storage_target: z.string().nullable().default(null),
 });
 
+export const backendFixtureInputSchema = z.object({
+  scenario: z.string().trim().min(1).max(128),
+}).strict();
+
 const turnInputSchema = z.object({
   text: z.string().min(1),
   channel: z.string().optional(),
@@ -318,6 +322,7 @@ const turnInputSchema = z.object({
   receivedAt: z.string().optional(),
   sessionId: z.string().optional(),
   contactPhone: z.string().nullable().optional(),
+  backendFixture: backendFixtureInputSchema.optional(),
 });
 
 const turnOutcomeSchema = <T extends z.ZodTypeAny>(inner: T) =>
@@ -640,6 +645,7 @@ export const evalCaseSchema = z.object({
   scorers: z.array(scorerSchema).default([]),
   budget: budgetSchema.optional(),
   rsvpIsolation: rsvpIsolationHooksSchema.optional(),
+  backendFixture: backendFixtureInputSchema.optional(),
   notes: z.array(z.string()).default([]),
 }).strict();
 export type EvalCase = z.infer<typeof evalCaseSchema>;

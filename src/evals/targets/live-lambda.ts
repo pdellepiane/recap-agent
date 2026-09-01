@@ -81,6 +81,7 @@ export async function runLiveLambdaCase(args: {
 
   for (const [turnIndex, input] of args.currentCase.inputs.entries()) {
     const startedAt = Date.now();
+    const effectiveFixture = input.backendFixture ?? args.currentCase.backendFixture ?? null;
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -96,6 +97,7 @@ export async function runLiveLambdaCase(args: {
         session_id: input.sessionId ?? args.currentCase.id,
         contact_phone: resolveConfiguredContactPhone(input.contactPhone),
         client_mode: 'cli',
+        ...(effectiveFixture ? { backendFixture: effectiveFixture } : {}),
       }),
       signal: AbortSignal.timeout(95_000),
     });

@@ -29,6 +29,10 @@ const inboundMediaSchema = z.object({
   }
 });
 
+export const backendFixtureSchema = z.object({
+  scenario: z.string().trim().min(1).max(128),
+}).strict();
+
 export const channelRequestSchema = z.object({
   text: z.string().trim().max(16_000).optional().default(''),
   media: z.array(inboundMediaSchema).max(10).optional().default([]),
@@ -39,6 +43,7 @@ export const channelRequestSchema = z.object({
   session_id: z.string().trim().min(1).nullable().optional(),
   client_mode: z.enum(['cli', 'channel']).optional(),
   contact_phone: z.string().trim().min(1).nullable().optional(),
+  backendFixture: backendFixtureSchema.optional(),
 }).superRefine((value, context) => {
   if (!value.text && value.media.length === 0) {
     context.addIssue({

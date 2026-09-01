@@ -14,6 +14,7 @@ import { SinEnvolturasGateway } from '../runtime/sinenvolturas-gateway';
 import {
   HttpAgentConversationGateway,
 } from '../runtime/agent-conversation-gateway';
+import { FixtureAgentConversationGateway } from '../runtime/eval-fixture-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import type { HandleTurnResponse } from '../runtime/agent-service';
@@ -61,6 +62,18 @@ let runtimePromise: Promise<{
 let channelApiKeysPromise: Promise<string[]> | null = null;
 let planStore: DynamoPlanStore | null = null;
 let agentParticipationService: AgentParticipationService | null = null;
+
+type SharedRuntimeDeps = {
+  promptLoader: PromptLoader;
+  providerGateway: SinEnvolturasGateway;
+  knowledgeGateway: OpenAiKnowledgeRetrievalGateway | NoopKnowledgeRetrievalGateway;
+  openAiRuntime: OpenAiAgentRuntime;
+  responseClassifier: OpenAiMessageResponseClassifier;
+  planStore: DynamoPlanStore;
+  perfStore: PerfStore;
+};
+
+let sharedRuntimeDepsPromise: Promise<SharedRuntimeDeps> | null = null;
 
 export async function handler(
   event: APIGatewayProxyEventV2,
@@ -285,7 +298,10 @@ async function handleRequest(
       providerMediaIds: body.media.map((item) => item.id),
     };
 
-    const runtime = await getRuntime();
+    const hasFixture = Boolean(body.backendFixture?.scenario);
+    const runtime = hasFixture
+      ? await getFixtureRuntime(body.backendFixture?.scenario as string)
+      : await getRuntime();
 
     const receivedAt = body.received_at ?? new Date().toISOString();
     const media = body.media.map((item) => ({
@@ -409,22 +425,15 @@ async function getChannelApiKeys(): Promise<string[]> {
   return channelApiKeysPromise;
 }
 
-async function getRuntime(): Promise<{
-  service: AgentService;
-  perfStore: PerfStore;
-}> {
-  if (!runtimePromise) {
-    runtimePromise = (async () => {
+async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
+  if (!sharedRuntimeDepsPromise) {
+    sharedRuntimeDepsPromise = (async () => {
       const apiKey = await resolveOpenAiApiKey({
         directApiKey: config.openAi.apiKey,
         secretId: config.openAi.secretId,
         region: config.aws.region,
       });
       process.env.OPENAI_API_KEY = apiKey;
-      const seApiKey = await resolveSeApiKey({
-        secretId: config.agentApi.secretId,
-        region: config.aws.region,
-      });
 
       const promptLoader = new PromptLoader(config.prompts.dir);
       const providerVectorSearchGateway =
@@ -446,13 +455,6 @@ async function getRuntime(): Promise<{
         searchMode: config.providerApi.searchMode,
         vectorSearchGateway: providerVectorSearchGateway,
       });
-      const agentConversationGateway = new HttpAgentConversationGateway({
-        baseUrl: config.agentApi.baseUrl,
-        apiKey: seApiKey,
-        timeoutMs: config.agentApi.timeoutMs,
-        maxRetries: config.agentApi.maxRetries,
-        messageLoggingEnabled: config.agentApi.messageLoggingEnabled,
-      });
       const knowledgeGateway =
         config.knowledgeBase.enabled && config.knowledgeBase.vectorStoreId
           ? new OpenAiKnowledgeRetrievalGateway({
@@ -463,12 +465,7 @@ async function getRuntime(): Promise<{
               timeoutMs: config.openAi.timeoutsMs.retrieval,
             })
           : new NoopKnowledgeRetrievalGateway();
-      const informationOrchestrator = new InformationOrchestrator({
-        knowledgeGateway,
-        providerGateway,
-        agentGateway: agentConversationGateway,
-      });
-      const runtime = new OpenAiAgentRuntime({
+      const openAiRuntime = new OpenAiAgentRuntime({
         apiKey,
         replyModel: config.openAi.models.reply,
         extractorModel: config.openAi.models.extractor,
@@ -496,26 +493,96 @@ async function getRuntime(): Promise<{
         : new NoopPerfStore();
 
       return {
+        promptLoader,
+        providerGateway,
+        knowledgeGateway,
+        openAiRuntime,
+        responseClassifier,
+        planStore: runtimePlanStore,
+        perfStore,
+      };
+    })();
+  }
+  return sharedRuntimeDepsPromise;
+}
+
+async function getRuntime(): Promise<{
+  service: AgentService;
+  perfStore: PerfStore;
+}> {
+  if (!runtimePromise) {
+    runtimePromise = (async () => {
+      const shared = await getSharedRuntimeDeps();
+      const seApiKey = await resolveSeApiKey({
+        secretId: config.agentApi.secretId,
+        region: config.aws.region,
+      });
+
+      const agentConversationGateway = new HttpAgentConversationGateway({
+        baseUrl: config.agentApi.baseUrl,
+        apiKey: seApiKey,
+        timeoutMs: config.agentApi.timeoutMs,
+        maxRetries: config.agentApi.maxRetries,
+        messageLoggingEnabled: config.agentApi.messageLoggingEnabled,
+      });
+      const informationOrchestrator = new InformationOrchestrator({
+        knowledgeGateway: shared.knowledgeGateway,
+        providerGateway: shared.providerGateway,
+        agentGateway: agentConversationGateway,
+      });
+
+      return {
         service: new AgentService({
-          planStore: runtimePlanStore,
-          runtime,
-          providerGateway,
+          planStore: shared.planStore,
+          runtime: shared.openAiRuntime,
+          providerGateway: shared.providerGateway,
           agentConversationGateway,
           informationOrchestrator,
-          responseClassifier,
-          promptLoader,
+          responseClassifier: shared.responseClassifier,
+          promptLoader: shared.promptLoader,
           renderers: {
             whatsapp: new WhatsAppMessageRenderer(),
             webchat: new WebChatMessageRenderer(),
             terminal_whatsapp: new WhatsAppMessageRenderer(),
           },
         }),
-        perfStore,
+        perfStore: shared.perfStore,
       };
     })();
   }
 
   return runtimePromise;
+}
+
+async function getFixtureRuntime(scenario: string): Promise<{
+  service: AgentService;
+  perfStore: PerfStore;
+}> {
+  const shared = await getSharedRuntimeDeps();
+  const fixtureGateway = await FixtureAgentConversationGateway.create(scenario);
+  const informationOrchestrator = new InformationOrchestrator({
+    knowledgeGateway: shared.knowledgeGateway,
+    providerGateway: shared.providerGateway,
+    agentGateway: fixtureGateway,
+  });
+
+  return {
+    service: new AgentService({
+      planStore: shared.planStore,
+      runtime: shared.openAiRuntime,
+      providerGateway: shared.providerGateway,
+      agentConversationGateway: fixtureGateway,
+      informationOrchestrator,
+      responseClassifier: shared.responseClassifier,
+      promptLoader: shared.promptLoader,
+      renderers: {
+        whatsapp: new WhatsAppMessageRenderer(),
+        webchat: new WebChatMessageRenderer(),
+        terminal_whatsapp: new WhatsAppMessageRenderer(),
+      },
+    }),
+    perfStore: shared.perfStore,
+  };
 }
 
 function getPlanStore(): DynamoPlanStore {
