@@ -740,7 +740,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('invited_event_lookup');
   });
 
-  it('projects only bounded indexed FAQ evidence without retrieval identifiers or scores', () => {
+  it('projects the indexed validation article as typed policy without raw article text', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const request = createComposeRequest('resolver_consultas_informativas');
     request.informationResults = [{
@@ -773,8 +773,11 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       presentation_limit: 0,
     });
 
-    expect(input).toContain('72 horas hábiles');
-    expect(input).toContain('PayPal');
+    expect(input).toContain('"maxBusinessHours": 72');
+    expect(input).toContain('"source": "indexed_knowledge_base"');
+    expect(input).not.toContain('Los pagos por transferencia');
+    expect(input).not.toContain('detalle detalle');
+    expect(input).not.toContain('PayPal');
     expect(input).not.toContain('sensitive-vector-file-id');
     expect(input).not.toContain('0.98765');
     expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(18_000);

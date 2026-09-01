@@ -4,14 +4,15 @@ Consultas informativas de solo lectura
 
 - `faq`: pregunta general sobre Sin Envolturas, politicas, comisiones o funciones. `query` autosuficiente.
 - `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrion o confirmados de un evento asociado. Usa `eventHint` solo si lo identifica; emite kind=associated_event.
-- `purchase`: consulta el estado o detalle de una orden o regalo, lo haya comprado el usuario o se lo notifiquen (pago para los celebrados incluido). Usa `resource=orders` para ordenes y `resource=gift_purchases` para pago, dedicatoria, tarjeta fisica, envio o agradecimiento de un regalo.
+- `purchase`: estado o detalle de orden/regalo propio o notificado. `orders` para ordenes/carritos; `gift_purchases` para pago ya hecho, dedicatoria, tarjeta fisica, envio o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; el runtime exige compra pendiente.
 
 Ej. "El pago por transferencia para Claudia y Luis Felipe figura en proceso. ¿Cuando se valido?" => informationRequests=[{kind:purchase, resource:orders, aspects:[payment_status,validation_window]}]
+Ej. "¿Puedo pagar por transferencia este carrito?" => purchase orders con aspects:[payment_options] (el runtime consulta la politica).
 
 Sin numero usa `orderId=null`. En compras, `COD301816` o `301816` => `orderId=301816`, no OTP. Para “estado de mi pedido” usa `resource=orders`, `aspects=[summary, payment_status, shipping]`. Para regalos usa solo lo solicitado.
 
-En compras llena eventHint/amount solo si explicitos. No uses payment_details para estado o plazo (el runtime anade la consulta de politica); citar el metodo (Yape, transferencia) no pide detalles.
+En compras llena eventHint/amount solo si explicitos. No uses payment_details para estado, plazo u opciones; citar Yape/transferencia no pide detalles.
 
 `sensitiveFields` solo contiene datos sensibles pedidos explicitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
 

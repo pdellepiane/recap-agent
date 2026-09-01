@@ -1311,7 +1311,7 @@ describe('AgentService first-class information flow', () => {
       providerGateway: providerGateway(),
     });
 
-    await service.handleTurn({
+    const firstResponse = await service.handleTurn({
       channel: 'whatsapp',
       externalUserId: 'pending-validation-user',
       text: '¿Cuánto tarda en validarse mi pago en proceso?',
@@ -1325,6 +1325,11 @@ describe('AgentService first-class information flow', () => {
     expect(knowledgeGateway.lastQuery).toBe(
       'Plazo de validación de pagos en proceso por método de pago',
     );
+    expect(firstResponse.plan.information_state.last_completed_request).toMatchObject({
+      kind: 'purchase',
+      resource: 'orders',
+      aspects: ['payment_status', 'validation_window'],
+    });
     expect(runtime.composeRequests[0]?.informationResults).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ kind: 'faq', status: 'completed' }),
@@ -1348,6 +1353,79 @@ describe('AgentService first-class information flow', () => {
         }),
       ]),
     );
+  });
+
+  it('replays the primary purchase after a derived policy lookup on an ambiguous correction', async () => {
+    const request = purchaseRequest(null);
+    request.resource = 'orders';
+    request.query = 'Estado del pago para Claudia y Luis Felipe.';
+    request.eventHint = 'Claudia y Luis Felipe';
+    request.aspects = ['payment_status', 'validation_window'];
+    const ambiguousCorrection = extraction([]);
+    ambiguousCorrection.ambiguity = {
+      status: 'ambiguous',
+      clarificationQuestion: '¿Te refieres al pago o a un evento?',
+      interpretations: ['Corrección de moneda del pago', 'Presupuesto del evento'],
+    };
+    const runtime = new InformationRuntime([
+      extraction([request]),
+      ambiguousCorrection,
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-CONTINUITY')],
+      orderPartitions: {
+        pending: [{
+          ...purchase('ORD-CONTINUITY'),
+          partition: 'pending_orders',
+          paymentStatus: 'pending',
+          paymentMethod: 'Transferencia',
+          eventName: 'Claudia and Luis Felipe',
+        }],
+        completed: [],
+      },
+      carts: [],
+    };
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+    const base = {
+      channel: 'whatsapp',
+      externalUserId: 'purchase-policy-continuity-user',
+      contactPhone: '+51957212085',
+      receivedAt: new Date().toISOString(),
+    } as const;
+
+    await service.handleTurn({
+      ...base,
+      text: '¿Cuándo se valida el pago para Claudia y Luis Felipe?',
+      messageId: 'purchase-policy-continuity-1',
+    });
+    const correction = await service.handleTurn({
+      ...base,
+      text: 'El monto es en dólares, no en soles.',
+      messageId: 'purchase-policy-continuity-2',
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(2);
+    expect(correction.trace.extraction_summary.ambiguity_status).toBe('clear');
+    expect(runtime.composeRequests[1]?.informationResults).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'purchase',
+          status: 'completed',
+        }),
+      ]),
+    );
+    expect(correction.plan.information_state.last_completed_request).toMatchObject({
+      kind: 'purchase',
+      eventHint: 'Claudia y Luis Felipe',
+    });
   });
 
   it('honors an explicit verification refusal and clears the protected request without another prompt', async () => {

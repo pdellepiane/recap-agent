@@ -14,6 +14,8 @@ import type {
 } from '../core/messages';
 import {
   createInformationAuthGuidance,
+  informationPaymentOptionsPolicyRequestId,
+  informationValidationPolicyRequestId,
   type ExtractedInformationRequest,
   type InformationAuthReason,
   type InformationExecutionSummary,
@@ -3194,6 +3196,7 @@ export class AgentService {
     );
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
+    let replayingLastCompletedRequest = false;
     if (
       requests.length === 0 &&
       args.extraction.actionIntent === null &&
@@ -3203,6 +3206,7 @@ export class AgentService {
         supportDetailContinuation && lastCompletedRequest.kind === 'faq')
     ) {
       requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
+      replayingLastCompletedRequest = true;
     }
     let planForInformation = mergePlan(planWithContact, {
       current_node: currentNode,
@@ -3227,13 +3231,19 @@ export class AgentService {
       );
     const hasAmbiguity =
       args.extraction.ambiguity?.status === 'ambiguous' &&
+      !replayingLastCompletedRequest &&
       !isRetiredPhoneConfirmationRecovery;
-    const informationExtraction = isRetiredPhoneConfirmationRecovery
+    const informationExtraction = isRetiredPhoneConfirmationRecovery ||
+      replayingLastCompletedRequest
       ? {
           ...args.extraction,
-          conversationSummary: `Consulta pendiente recuperada: ${requests
-            .map((request) => request.query)
-            .join(' | ')}`,
+          ...(isRetiredPhoneConfirmationRecovery
+            ? {
+                conversationSummary: `Consulta pendiente recuperada: ${requests
+                  .map((request) => request.query)
+                  .join(' | ')}`,
+              }
+            : {}),
           ambiguity: {
             status: 'clear' as const,
             clarificationQuestion: null,
@@ -3564,7 +3574,7 @@ export class AgentService {
           args.previousNode === currentNode
             ? [currentNode]
             : [args.previousNode, currentNode],
-        extraction: args.extraction,
+        extraction: informationExtraction,
         missingFields: [],
         searchReady: false,
         promptBundleId: bundle.id,
@@ -3653,15 +3663,28 @@ export class AgentService {
     const needsIndexedValidationPolicy = merged.some(
       (request) => request.kind === 'purchase' && request.aspects.includes('validation_window'),
     );
-    const validationPolicyRequestId = 'information-validation-policy';
     const hasValidationPolicyRequest = merged.some(
-      (request) => request.requestId === validationPolicyRequestId,
+      (request) => request.requestId === informationValidationPolicyRequestId,
     );
     if (needsIndexedValidationPolicy && !hasValidationPolicyRequest) {
       merged.push({
-        requestId: validationPolicyRequestId,
+        requestId: informationValidationPolicyRequestId,
         kind: 'faq',
         query: 'Plazo de validación de pagos en proceso por método de pago',
+      });
+    }
+
+    const needsPaymentOptionsPolicy = merged.some(
+      (request) => request.kind === 'purchase' && request.aspects.includes('payment_options'),
+    );
+    const hasPaymentOptionsPolicyRequest = merged.some(
+      (request) => request.requestId === informationPaymentOptionsPolicyRequestId,
+    );
+    if (needsPaymentOptionsPolicy && !hasPaymentOptionsPolicyRequest) {
+      merged.push({
+        requestId: informationPaymentOptionsPolicyRequestId,
+        kind: 'faq',
+        query: 'Medios de pago disponibles para completar un regalo',
       });
     }
 
@@ -4592,7 +4615,12 @@ export class AgentService {
       }
       const { requestId: _requestId, ...completedRequest } = request;
       void _requestId;
-      lastCompletedRequest = completedRequest;
+      if (
+        request.requestId !== informationValidationPolicyRequestId &&
+        request.requestId !== informationPaymentOptionsPolicyRequestId
+      ) {
+        lastCompletedRequest = completedRequest;
+      }
     }
 
     return { pendingRequests, selectionCandidates, lastCompletedRequest };

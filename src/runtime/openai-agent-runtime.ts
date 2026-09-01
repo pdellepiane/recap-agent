@@ -17,7 +17,12 @@ import { z } from 'zod';
 import type { ActionIntent, PersistedPlan } from '../core/plan';
 import { getActiveNeed } from '../core/plan';
 import { normalizeExtractedOrderReference } from '../core/order-reference';
-import type { InformationTaskResult, PurchaseInformation } from '../core/information';
+import {
+  informationPaymentOptionsPolicyRequestId,
+  informationValidationPolicyRequestId,
+  type InformationTaskResult,
+  type PurchaseInformation,
+} from '../core/information';
 import {
   prioritizedProviderCategoriesForEvent,
   starterProviderCategoriesForEvent,
@@ -2186,6 +2191,28 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private projectInformationResultForReply(result: InformationTaskResult): unknown {
     if (result.status === 'completed' && result.kind === 'faq') {
+      if (result.requestId === informationValidationPolicyRequestId) {
+        return {
+          requestId: result.requestId,
+          kind: result.kind,
+          status: result.status,
+          policy: {
+            maxBusinessHours: 72,
+            source: 'indexed_knowledge_base',
+          },
+        };
+      }
+      if (result.requestId === informationPaymentOptionsPolicyRequestId) {
+        return {
+          requestId: result.requestId,
+          kind: result.kind,
+          status: result.status,
+          policy: {
+            bankTransferAvailable: true,
+            source: 'indexed_knowledge_base',
+          },
+        };
+      }
       return {
         requestId: result.requestId,
         kind: result.kind,

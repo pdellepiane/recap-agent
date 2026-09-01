@@ -106,7 +106,12 @@ function orchestrator(result: AgentPhonePurchaseLookupResult): InformationOrches
   });
 }
 
-function purchaseRequest(eventHint: string): PendingInformationRequest {
+function purchaseRequest(
+  eventHint: string,
+  aspects: Extract<PendingInformationRequest, { kind: 'purchase' }>['aspects'] = [
+    'payment_status',
+  ],
+): PendingInformationRequest {
   return {
     requestId: 'purchase-request',
     kind: 'purchase',
@@ -115,7 +120,7 @@ function purchaseRequest(eventHint: string): PendingInformationRequest {
     orderId: null,
     eventHint,
     amount: null,
-    aspects: ['payment_status'],
+    aspects,
     sensitiveFields: [],
     authAction: 'none',
   };
@@ -179,7 +184,7 @@ describe('event identity matching canary fixes', () => {
       orderPartitions: { pending: [], completed: [] },
       carts: [cart('Carlos and Adriana')],
     }).execute({
-      requests: [purchaseRequest('Carlos y Adriana')],
+      requests: [purchaseRequest('Carlos y Adriana', ['payment_options'])],
       authentication: null,
       authBlock: null,
       trustedPhone: { phone_extension: '+51', phone_number: '965765765' },

@@ -286,7 +286,7 @@ describe('PromptLoader', () => {
       '`faq`: pregunta general sobre Sin Envolturas',
     );
     expect(extractorBundle.instructions).toContain(
-      '`purchase`: consulta el estado o detalle de una orden o regalo',
+      '`purchase`: estado o detalle de orden/regalo propio o notificado',
     );
     expect(extractorBundle.instructions).toContain(
       'Sin numero usa',

@@ -18,6 +18,7 @@ export const purchaseAspectValues = [
   'summary',
   'payment_status',
   'payment_details',
+  'payment_options',
   'validation_window',
   'shipping',
   'dedication',
@@ -25,6 +26,9 @@ export const purchaseAspectValues = [
   'decline',
 ] as const;
 export type PurchaseAspect = (typeof purchaseAspectValues)[number];
+
+export const informationValidationPolicyRequestId = 'information-validation-policy';
+export const informationPaymentOptionsPolicyRequestId = 'information-payment-options-policy';
 
 export const sensitivePurchaseFieldValues = [
   'payment_id',
