@@ -1,0 +1,62 @@
+template: template.base-live
+id: live_behavior.purchase_pending_transfer_continuity
+suite: live_behavior_regression
+version: 1
+description: A pending transfer keeps its purchase context, uses the verified validation window, and never invents currency or local time from incomplete backend fields.
+tags: [live, behavior, purchase, transfer, timezone, currency, continuity, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: El pago por transferencia para Claudia & Luis Felipe figura en proceso. ¿Cuándo sabré que ya se validó?
+    channel: whatsapp
+    contactPhone: "+51957212085"
+    sessionId: live-pending-transfer-continuity-session
+  - text: ¿Recibiré una constancia? El monto es en dólares, no en soles.
+    channel: whatsapp
+    contactPhone: "+51957212085"
+    sessionId: live-pending-transfer-continuity-session
+  - text: Además, lo hice el 30 de agosto a las 9:31 p. m.; el registro sin zona horaria parece decir 31 a las 2:31 a. m.
+    channel: whatsapp
+    contactPhone: "+51957212085"
+    sessionId: live-pending-transfer-continuity-session
+expectations:
+  - id: pending-transfer-stays-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 0
+    severity: hard
+  - id: pending-transfer-uses-phone-detail
+    type: tool_usage
+    mustCall: [lookup_guest_gift_purchases_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: pending-transfer-explains-window
+    type: text_semantic
+    rubric: >-
+      The trusted-phone purchase evidence identifies the Claudia & Luis Felipe gift as pending and paid by bank transfer. The answer must be concise, natural, and entirely in Spanish; explain that validation for a pending non-card/non-PayPal payment can take up to 72 business hours. It must not claim an exact approval time, ask for email or an OTP, or expose payment identifiers, bank data, or an internal order id.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: currency-correction-stays-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 1
+    severity: hard
+  - id: ambiguous-backend-time-does-not-reset
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 2
+    severity: hard
+  - id: currency-time-claims-remain-grounded
+    type: text_semantic
+    rubric: >-
+      This is a contextual correction to the same Claudia & Luis Felipe purchase, not a new event-planning conversation. The available purchase response does not supply a currency and its paid_at value has no time-zone offset. The answer must remain on that purchase, acknowledge the user's correction, and avoid claiming that the backend independently verifies USD or an exact Lima date/time. It may explain that those two details cannot be confirmed from the available record. It must not greet the user as a new conversation, ask what event they are planning, repeat a generic Sin Envolturas introduction, ask for email/OTP, or invent a currency or time zone.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 2
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 240

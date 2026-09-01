@@ -1,12 +1,12 @@
 template: template.base-live
 id: live_behavior.rsvp_multi_person_offers_human_help
 suite: live_behavior_regression
-version: 9
-description: Multi-person RSVP triggers single-sentence backend-registered handoff to human support (request_human_takeover), no RSVP mutation, no enumeration or selection. Seed phone mirrors jose/cinthya pattern for resolveEscalationPhone.
+version: 10
+description: RSVP for more than one additional companion remains a bounded human-review case; the single +1 case is handled separately through POST /guest/rsvp.
 tags: [live, behavior, rsvp, multi-person, human-help, spanish]
 targetModes: [live_lambda]
 inputs:
-  - text: Hola, confirmo mi asistencia y la de mi esposa Maria para el evento del sabado
+  - text: Hola, confirmo mi asistencia y la de Maria y Carlos para el evento del sabado
     channel: whatsapp
     contactPhone: "+51941438449"
     sessionId: live-rsvp-multi-person-human-help-session
@@ -26,7 +26,7 @@ expectations:
   - id: multi-person-offers-human-help
     type: text_semantic
     rubric: >-
-      The user confirms attendance for themselves and a companion (partner Maria). The response must be entirely in natural Latin American Spanish, warmly acknowledge the request for both people, and clearly state that the human support team will help confirm attendance for the companion/named people (e.g., "nuestro equipo de apoyo humano te ayudará" for Maria / "tu acompañante" fallback). It must NOT enumerate events, NOT ask to select an event, NOT claim any attendance was already registered or mutated, NOT use "aplicar la confirmación" phrasing, and NOT imply that any registration happened. A reply that enumerates events, asks "¿Para cuál de estos eventos deseas registrar tu asistencia?", claims companion registration, or says "aplicar la confirmación" violates the handoff contract and must fail. The reply must be the single handoff sentence (one sentence, code-composed) and be warm and helpful in Spanish.
+      The user asks to confirm attendance for themselves and two additional people, Maria and Carlos. The current API supports only one +1, so the response must be entirely in natural Latin American Spanish, acknowledge the request, and state that human support will help. It must NOT silently truncate the request to one companion, enumerate events, ask to select an event, claim any attendance was already registered, or call the RSVP mutation. The reply must be one concise code-composed handoff sentence.
     minScore: 0.9
     requireJudge: true
     severity: hard

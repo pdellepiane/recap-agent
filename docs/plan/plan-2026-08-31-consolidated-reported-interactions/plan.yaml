@@ -1,0 +1,978 @@
+plan_id: plan-2026-08-31-consolidated-reported-interactions
+status: implementation_in_progress
+created_at: 2026-08-31
+created_by: codex
+baseline_commit: 7d57ad61
+objective: >-
+  Consolidate the fixes for every reported RSVP, phone-scoped purchase, transaction-code,
+  abandoned-cart, payment-validation, and conversational-continuity interaction into one
+  evidence-gated implementation. Improve shared reliability where a typed redesign is justified,
+  without extending behavior beyond the reported domains or assuming undocumented backend,
+  channel, payment, currency, time-zone, or message-delivery semantics.
+
+attachment_audit:
+  status: complete_for_supplied_thread_evidence
+  method: >-
+    Review every interaction screenshot supplied in this thread, group byte-identical clipboard
+    copies as duplicates, and map each unique interaction to a failure class and regression case.
+    The endpoint screenshots and markdown documents are treated as contract evidence, not as
+    implementation instructions.
+  grouped_interactions:
+    rsvp_identity_and_selection: [Cristian, Paolo_and_Mariana]
+    accountless_phone_purchase_access: [Kiara, Joaquin, Martha, Delia]
+    transaction_reference_normalization: [customer_transaction_code]
+    payment_currency_time_and_continuity: [Claudia_and_Luis_Felipe]
+    support_subject_and_conversation_continuity: [Claudia_Roger_Baby_Shower_Catalina]
+    current_purchase_over_historical_purchase: [Victor_Samuel_Josue, Maria_Jose_Isa_and_Lu]
+    active_or_abandoned_cart_continuity: [Alex, Sonia]
+    pending_balance_validation: [Luis_Alejandra]
+    rsvp_plus_one: [existing_self_and_others_handoff_behavior]
+  duplicate_policy: >-
+    Duplicate screenshots are evidence references only and do not create additional failure cases
+    or inflate acceptance counts.
+
+execution_hold:
+  reason: >-
+    Implementation was explicitly approved on 2026-08-31. The experimental draft is retained only
+    as source material and must pass the same typed-boundary, regression, deployment, and live-eval
+    gates as the rest of this plan.
+  prohibited_until_approved: []
+
+notion_tracking:
+  consolidated_incident:
+    url: https://app.notion.com/p/3c7d5d1094a681098597d8e43ecfda9a
+    update: failure_taxonomy_faq_audit_and_safety_decisions_added
+  existing_tickets:
+    repeated_welcome:
+      url: https://app.notion.com/p/3bcd5d1094a681669a00e0c31e954899
+      status: En_progreso
+      update: new_continuity_cases_added_without_claiming_root_cause
+    payment_disclosure:
+      url: https://app.notion.com/p/3b9d5d1094a681da83efc18e439d13f8
+      status: En_progreso
+      update: partition_currency_timestamp_and_faq_boundaries_added
+    own_rsvp:
+      url: https://app.notion.com/p/3b1d5d1094a681d68e0ffe2a400fe159
+      status: Completado
+      update: kept_closed_and_linked_to_separate_plus_one_scope
+  planned_tickets:
+    order_partitions:
+      url: https://app.notion.com/p/3ced5d1094a681c395a3e4a1503a1eb2
+      status: Planeado
+    rsvp_plus_one:
+      url: https://app.notion.com/p/3ced5d1094a68130a541f25e970fa032
+      status: Planeado
+    continuity_diagnosis:
+      url: https://app.notion.com/p/3ced5d1094a68152afd9c5a5e1799876
+      status: Planeado
+
+verified_evidence:
+  repository:
+    - >-
+      The current GET /guest/orders parser accepts only data.orders. It does not consume
+      data.completed_orders, data.pending_orders, or data.carts.
+    - >-
+      Raw Agent API payloads are intended to pass through Zod validation and typed mapping before
+      information orchestration. This boundary must be preserved and strengthened.
+    - >-
+      Existing message context retains a bounded latest admin_campaign anchor, but campaign
+      handling is specialized for RSVP. No verified typed purchase/cart campaign anchor exists.
+    - >-
+      Existing purchase types do not represent cart identity, partition provenance, balance due,
+      transferred amount, currency confidence, time-zone confidence, or evidence provenance.
+    - >-
+      Existing information projection can expose multiple phone purchases to the reply model when
+      a request does not resolve a single candidate.
+    - >-
+      The current RSVP runtime short-circuits every extracted rsvpParty.scope=self_and_others into
+      request_human_takeover before event selection or POST /guest/rsvp. Existing deterministic and
+      live regressions encode that now-superseded behavior.
+  read_only_api_probes:
+    contract:
+      top_level_arrays: [orders, completed_orders, pending_orders, carts]
+      legacy_orders_policy: >-
+        orders remains for transport compatibility but must not drive new conversational decisions.
+      completed_orders_semantics: approved_or_refunded
+      pending_orders_semantics: pending_declined_error_or_null
+      cart_fields_observed:
+        - cart_id
+        - created_at
+        - event_date
+        - event_id
+        - event_name
+        - event_url
+        - gifts_quantity
+        - items
+        - status
+        - subtotal
+        - was_abandoned
+      order_currency_observed: null
+      gift_purchase_paid_at_observed: timestamp_without_offset
+    sanitized_case_results:
+      victor_suffix_171:
+        pending_orders:
+          - { event: Samuel Josue, amount: 80, status: pending, created_at: 2026-08-29 }
+        completed_orders:
+          - { event: Josue y Paola, amount: 88.18, status: approved, created_at: 2025-04-16 }
+      claudia_luis_felipe_suffix_085:
+        pending_orders:
+          - { event: Claudia and Luis Felipe, amount: 1042.89, status: pending, method: Transferencia }
+        currency: null
+        paid_at: offset_missing
+      alex_suffix_340:
+        pending_orders:
+          - { event: Luis Raul and Carmen del Rosario, amount: 250, status: pending, method: Yape_o_Plin }
+        carts:
+          - { event: Luis Raul and Carmen del Rosario, status: active }
+      sonia_suffix_765:
+        pending_orders: []
+        completed_orders: []
+        carts:
+          - { event: Carlos and Adriana, status: abandoned }
+      maria_jose_suffix_554:
+        pending_orders:
+          - { event: Isa and Lu, amount: 63.85, status: pending, method: Transferencia, created_at: 2026-08-28 }
+          - { event: AMORCITOS_WEDDING, amount: 98.14, status: declined, method: Transferencia, created_at: 2023-11-11 }
+        carts:
+          - { event: Isa and Lu, status: active }
+        currency: null
+      luis_suffix_389:
+        pending_orders:
+          - { event: Alejandra, amount: 227.76, status: pending, method: Yape_o_Plin }
+        carts:
+          - { event: Alejandra, status: active }
+        currency: null
+  faq_vector_store_audit:
+    audited_at: 2026-08-31
+    mode: read_only
+    configured_file_count: 79
+    validation_window:
+      source_present: true
+      indexed: true
+      top_result: atc_template_regalo_en_validacion_anfitriones
+      supported_policy: >-
+        Up to 72 business hours for the documented validation methods, including Yape, Plin,
+        transfer, and the indexed PayPal variant.
+      conclusion: >-
+        The reported missing-window answers were not caused by absent FAQ knowledge. They were
+        caused by failing to request or reconcile general FAQ policy with the selected pending
+        order state.
+      policy_conflict:
+        stakeholder_statement: >-
+          The validation window applies to methods other than card or PayPal.
+        indexed_corpus: >-
+          Transfer, Yape, and Plin are consistently covered; one indexed ATC variant also includes
+          PayPal.
+        status: resolved_for_this_implementation
+        decision: >-
+          The user selected the indexed article as authoritative for this implementation. Retrieve
+          and project the indexed validation-window article for questions in this space, including
+          its PayPal guidance, while keeping the order-specific payment method and state separate
+          from the general policy evidence.
+    payment_methods:
+      source_present: true
+      indexed: true
+      restriction: >-
+        Generic payment-method guidance cannot establish a specific order's currency, received
+        amount, balance, settlement, or payment confirmation.
+    transaction_code:
+      source_present: true
+      evidence: ATC templates use CODxxx placeholders.
+      conclusion: COD recognition is a structured normalization concern, not a retrieval concern.
+    rsvp_plus_one:
+      direct_operational_contract_indexed: false
+      generic_rsvp_management_article_indexed: true
+      conclusion: >-
+        Generic RSVP documentation is insufficient for a +1 mutation. The phone-scoped RSVP
+        endpoint, selected guest_id, and typed saved result are authoritative.
+    unavailable_as_faq_truth:
+      - current_order_or_cart_state
+      - received_amount
+      - balance_due
+      - purchase_currency_when_api_currency_is_null
+      - backend_timestamp_timezone
+      - payment_receipt_verification
+      - current_payment_outage_or_processor_cause
+      - plus_one_eligibility_for_a_specific_guest
+  documented_rsvp_plus_one_contract:
+    source: AGENT_ENDPOINTS_5_section_9
+    endpoint: POST_guest_rsvp
+    identity: trusted_phone_extension_and_phone_number
+    request:
+      action: optional_attending_or_declining
+      guest_id: required_for_plus_one_and_for_multiple_pending_selection
+      plus_one_response: optional_yes_or_no
+      optional_plus_one_details:
+        - plus_one_name
+        - plus_one_email
+        - plus_one_phone_no
+        - plus_one_phone_ext
+      minimum_decision: at_least_one_of_action_or_plus_one_response
+    eligibility:
+      - guest_has_couple_true
+      - event_has_couple_confirmation_config
+    outcomes:
+      saved:
+        http: 200
+        evidence: plus_one.saved_true
+      not_eligible:
+        http: 200
+        evidence: plus_one.saved_false_with_reason
+      multiple_pending:
+        http: 200
+        evidence: code_multiple_pending_with_pending_guests
+      forbidden_phone_guest_mismatch: 403
+      no_guest_or_guest_id: 404
+      invalid_request: 422
+      unauthorized_agent_key: 401
+    verified_limit: >-
+      This contract represents one configured +1. It does not prove support for multiple named
+      companions or a general group RSVP mutation.
+  screenshot_only_evidence:
+    - >-
+      Outbound campaigns in the screenshots contain event-specific recovery or balance language.
+      The screenshots do not prove that equivalent structured campaign metadata is available to
+      the runtime.
+    - >-
+      User-supplied payment receipts show claimed transfers. A screenshot is not backend payment
+      confirmation and must not be converted into approved status.
+    - >-
+      Maria Jose's campaign says USD 3.85 remains, while the orders endpoint only exposes a current
+      pending total of 63.85 and an old declined purchase. The orders endpoint does not expose the
+      received amount or balance due.
+    - >-
+      Luis's campaign says PEN 13.76 remains, while the endpoint exposes a pending order total and
+      an active cart. The endpoint does not document a balance-due field.
+
+unverified_hypotheses:
+  - >-
+    Generic restarts may come from empty plan state, an extraction transition, concurrent plan
+    creation, or duplicate webhook delivery. Do not attribute them to the LLM until per-case traces
+    identify the transition and plan/message identity.
+  - >-
+    The offset-less paid_at values may be stored as UTC. A system stakeholder reports that
+    subtracting five hours matches the observed Lima time, but the backend contract does not yet
+    confirm this. America/Lima is UTC-05:00, so converting a UTC timestamp to Lima subtracts five
+    hours and may change the calendar date. Carry this as a provisional design assumption only;
+    do not expose a converted time until the backend owner confirms the storage convention.
+  - >-
+    A pending order and same-event cart may represent one checkout lifecycle, but the relationship
+    is not documented. Keep both records and reconcile only through verified IDs or explicitly
+    documented rules.
+  - >-
+    A campaign body may correspond to a structured campaign record, but only the visible text is
+    currently proven. Inspect the channel API/storage contract before designing the anchor source.
+
+failure_taxonomy:
+  order_partition_parsing_and_reconciliation:
+    definition: >-
+      The required evidence exists in completed_orders, pending_orders, or carts but is currently
+      ignored, flattened, or shown alongside unrelated records.
+    cases:
+      - Kiara
+      - Delia
+      - Victor_Samuel_Josue
+      - Alex
+      - Sonia
+      - Maria_Jose_Isa_and_Lu
+      - Luis_Alejandra
+      - Claudia_and_Luis_Felipe_partial
+    fixed_by:
+      - Parse the three new partitions independently.
+      - Keep cart and order identities distinct.
+      - Resolve one subject from campaign, event, order, cart, or explicit user evidence.
+      - Project only the selected record and requested fields.
+  endpoint_information_absent:
+    definition: >-
+      The agent cannot answer safely because no authoritative endpoint field supplies the fact.
+    cases:
+      - case: Maria_Jose_balance
+        missing: [amount_received, balance_due, currency_for_each_operand]
+      - case: Luis_Alejandra_balance
+        missing: [amount_received, balance_due, currency_for_each_operand]
+      - case: Claudia_and_Luis_Felipe_currency
+        missing: [currency]
+      - case: payment_local_time
+        missing: [timestamp_offset_or_confirmed_storage_timezone]
+      - case: receipt_validation
+        missing: [backend_receipt_match_and_settlement_result]
+      - case: card_rejection_or_outage_reason
+        missing: [specific_processor_reason_or_service_health]
+      - case: Martha_invitation
+        missing: [phone_association_for_the_expected_invitation]
+    behavior: >-
+      State only existing facts. Keep missing facts unknown, avoid calculating or contradicting a
+      campaign amount, and offer the approved next step when the fact is unavailable.
+  llm_or_runtime_misinterpretation:
+    definition: >-
+      Sufficient evidence existed, but routing, reconciliation, selection, or response composition
+      drew an unsupported conclusion or exposed contradictory evidence.
+    cases:
+      - { case: Cristian, error: no_pending_was_treated_as_no_invitation }
+      - { case: Paolo_and_Mariana, error: resolved_event_was_followed_by_unrelated_candidate_list }
+      - { case: current_vs_historical_purchase, error: unrelated_old_record_competed_with_grounded_current_record }
+      - { case: customer_transaction_code, error: COD_prefixed_reference_was_not_normalized }
+      - { case: currency_and_time_rendering, error: nullable_or_offsetless_fields_became_definitive_facts }
+      - { case: repeated_generic_welcome, error: active_support_context_fell_through_to_onboarding }
+  faq_knowledge_absent_or_not_sufficient:
+    definition: >-
+      A policy question cannot be answered from the indexed corpus, or retrieved policy is too
+      generic to establish a user-specific fact.
+    cases:
+      - case: rsvp_plus_one_mutation
+        status: operational_contract_not_in_faq
+        authoritative_source: phone_scoped_rsvp_endpoint
+      - case: exact_balance_or_received_amount
+        status: not_a_faq_fact
+        authoritative_source: future_typed_payment_reconciliation_fields
+      - case: timestamp_storage_timezone
+        status: not_documented_or_indexed
+        authoritative_source: backend_contract
+      - case: specific_card_failure_or_system_outage
+        status: generic_alternatives_indexed_but_specific_cause_absent
+        authoritative_source: processor_or_service_health_contract
+    explicitly_not_missing:
+      - validation_window_up_to_72_business_hours
+      - generic_Yape_Plin_transfer_and_PayPal_validation_guidance
+      - generic_payment_method_guidance
+      - COD_placeholder_examples
+  conversation_continuity_or_delivery:
+    definition: >-
+      The symptom is a restart, duplicate greeting, repeated answer, or loss of the active subject.
+      Screenshots alone do not distinguish duplicated delivery, concurrent plan writes, missing
+      recent-message context, or an incorrect state transition.
+    current_cases:
+      - Claudia_and_Luis_Felipe
+      - Claudia_Roger_Baby_Shower_Catalina
+      - Alex
+      - Maria_Jose_Isa_and_Lu
+      - Sonia
+    verified_historical_evidence: >-
+      A prior retained WhatsApp FAQ audit found ten native message identifiers processed twice,
+      and some duplicate pairs produced different answers. This proves duplicate processing has
+      occurred historically, but not that it caused the new screenshots.
+    required_diagnosis: >-
+      Correlate inbound message_id, conversation identity, Lambda request IDs, plan revision,
+      classifier/extractor decisions, recent-message retrieval, outbound IDs, and conditional-write
+      outcomes before selecting a fix.
+    conditional_fixes:
+      duplicate_delivery: idempotency_by_native_message_id
+      concurrent_processing: per_conversation_serialization_or_revision_guard
+      missing_context: typed_campaign_and_active_subject_anchor
+      wrong_transition: continuity_state_machine_fix
+
+new_endpoint_impact:
+  pending_completed_and_carts_partitions:
+    fully_or_materially_fixes:
+      - Kiara
+      - Delia
+      - Victor_Samuel_Josue
+      - Alex
+      - Sonia
+      - Maria_Jose_Isa_and_Lu_selection
+      - Luis_Alejandra_selection
+    partial_only:
+      - case: Claudia_and_Luis_Felipe
+        provides: [pending_status, amount, payment_method, event]
+        still_missing: [currency, confirmed_local_time]
+      - case: Maria_Jose_Isa_and_Lu
+        provides: [current_pending_order, old_declined_order, cart]
+        still_missing: [amount_received, balance_due]
+      - case: Luis_Alejandra
+        provides: [pending_order, cart]
+        still_missing: [receipt_match, amount_received, balance_due]
+  phone_enriched_event_and_rsvp:
+    fixes:
+      - Cristian_event_and_authoritative_attendance_reconciliation
+      - Paolo_and_Mariana_resolved_event_suppression
+  rsvp_plus_one_fields:
+    fixes:
+      - supported_single_plus_one_without_default_handoff
+      - combined_guest_and_plus_one_mutation
+    does_not_fix:
+      - multiple_companions
+      - inferred_plus_one_decision
+      - unavailable_or_ineligible_plus_one_reported_as_success
+
+case_disposition_summary:
+  - case: Cristian
+    primary_class: llm_or_runtime_misinterpretation
+    finding: no_pending_was_incorrectly_treated_as_no_invitation
+    planned_fix: reconcile_phone_event_association_with_enriched_attendance_before_projection
+  - case: Paolo_and_Mariana
+    primary_class: llm_or_runtime_misinterpretation
+    finding: a_resolved_event_was_followed_by_an_unrelated_pending_candidate_list
+    planned_fix: resolved_single_state_and_contradictory_candidate_suppression
+  - case: Kiara
+    primary_class: order_partition_parsing_and_reconciliation
+    finding: phone_scoped_pending_purchase_existed_but_legacy_auth_was_requested
+    planned_fix: parse_pending_orders_and_skip_email_otp_for_phone_supported_questions
+  - case: Joaquin
+    primary_class: llm_or_runtime_misinterpretation
+    finding: accountless_purchase_was_treated_as_if_registered_account_authentication_were_required
+    planned_fix: use_phone_scoped_gift_purchase_detail_after_order_or_event_selection
+  - case: Martha
+    primary_class: endpoint_information_absent
+    secondary_class: llm_or_runtime_misinterpretation
+    finding: expected_invitation_was_not_phone_associated_and_the_agent_repeated_an_impossible_email_flow
+    planned_fix: use_available_cart_event_or_order_evidence_then_report_the_missing_association_once
+  - case: Delia
+    primary_class: order_partition_parsing_and_reconciliation
+    finding: phone_order_state_was_available_but_not_selected_before_authentication
+    planned_fix: deterministic_partition_selection_without_otp
+  - case: customer_transaction_code
+    primary_class: llm_or_runtime_misinterpretation
+    finding: customer_COD_prefix_and_backend_numeric_reference_were_not_canonicalized
+    planned_fix: typed_reference_normalization_preserving_backend_order_id_separately
+  - case: Claudia_and_Luis_Felipe
+    primary_class: endpoint_information_absent
+    secondary_classes: [faq_reconciliation, conversation_continuity_or_delivery]
+    finding: pending_state_and_method_exist_but_currency_and_timestamp_zone_do_not
+    planned_fix: combine_selected_pending_transfer_with_indexed_policy_and_omit_unknown_currency_time
+  - case: Claudia_Roger_Baby_Shower_Catalina
+    primary_class: conversation_continuity_or_delivery
+    secondary_class: faq_knowledge_not_sufficient_for_specific_outage
+    finding: support_subject_was_lost_and_generic_card_policy_cannot_prove_a_live_processor_issue
+    planned_fix: preserve_typed_support_subject_and_use_only_generic_payment_alternatives_unless_health_evidence_exists
+  - case: Victor_Samuel_Josue
+    primary_class: order_partition_parsing_and_reconciliation
+    finding: current_pending_and_historical_completed_records_competed_in_one_model_context
+    planned_fix: select_grounded_current_record_and_suppress_unrelated_history
+  - case: Alex
+    primary_class: order_partition_parsing_and_reconciliation
+    secondary_class: conversation_continuity_or_delivery
+    finding: same_event_pending_order_and_active_cart_were_flattened_and_the_flow_restarted
+    planned_fix: preserve_distinct_lifecycle_records_and_active_subject
+  - case: Sonia
+    primary_class: order_partition_parsing_and_reconciliation
+    secondary_class: conversation_continuity_or_delivery
+    finding: cart_only_coverage_became_purchase_not_found_then_context_was_recovered_manually
+    planned_fix: treat_cart_as_valid_phone_coverage_without_calling_it_an_order
+  - case: Maria_Jose_Isa_and_Lu
+    primary_class: order_partition_parsing_and_reconciliation
+    secondary_classes: [endpoint_information_absent, conversation_continuity_or_delivery]
+    finding: old_declined_purchase_competed_with_current_pending_order_and_balance_evidence_was_missing
+    planned_fix: select_current_grounded_subject_and_refuse_to_recompute_or_contradict_balance
+  - case: Luis_Alejandra
+    primary_class: endpoint_information_absent
+    secondary_classes: [order_partition_parsing_and_reconciliation, faq_reconciliation]
+    finding: pending_order_and_cart_exist_but_receipt_match_received_amount_and_balance_do_not
+    planned_fix: preserve_pending_state_and_apply_validation_policy_without_confirming_receipt_or_balance
+  - case: rsvp_plus_one
+    primary_class: llm_or_runtime_misinterpretation
+    secondary_class: faq_contract_absent
+    finding: runtime_forces_human_handoff_before_using_the_documented_phone_scoped_contract
+    planned_fix: typed_single_plus_one_path_with_event_selection_and_saved_outcome_validation
+
+invariants:
+  minimum_disclosure:
+    - Never send a raw Agent API response or raw partition envelope to a model.
+    - Validate each endpoint and partition independently.
+    - Reconcile into typed canonical state before response composition.
+    - Project only the selected subject and fields required by the current question.
+    - Omit duplicate evidence and internal source payloads.
+    - Measure serialized instruction and input bytes for every changed model call.
+  evidence_safety:
+    - Missing currency remains unknown; never infer PEN, soles, USD, or dollars from amount or country.
+    - A payment method such as Yape, Plin, transfer, or PayPal does not prove currency.
+    - >-
+      When amount and payment method are verified but currency is null, render only the numeric
+      amount and method, for example "monto 63.85 mediante transferencia". Do not add a currency
+      symbol or denomination.
+    - A timestamp without Z or numeric offset is unavailable for customer-facing date/time claims.
+    - A user claim or receipt image is not equivalent to backend payment confirmation.
+    - A system campaign may ground only fields that are present in a verified trusted campaign anchor.
+    - A 404 means not associated with this phone/scope, never global nonexistence.
+    - Do not calculate or state a balance unless all operands have the same explicit currency,
+      verified order/event identity, and documented provenance.
+  routing_safety:
+    - No keyword or exact-string flow routing.
+    - Use structured extraction and typed persisted state.
+    - A support subject name must never overwrite the trusted channel user's identity.
+    - Contextual corrections and requested support details must not restart planning or welcome flow.
+    - Cart-only evidence is valid information coverage and must not become purchase not_found.
+    - A supported single +1 request must not default to human takeover merely because party scope
+      is self_and_others.
+  selection_safety:
+    - Partition provenance and payment_status are separate facts.
+    - pending_orders does not imply payment_status=pending.
+    - completed_orders does not imply payment_status=approved because refunded is also valid.
+    - Recency alone cannot select a record.
+    - Resolve automatically only from a unique typed identity or convergent evidence.
+    - If multiple candidates remain plausible, ask one concise selection question.
+    - If sources conflict for the same identity, mark coverage inconsistent and avoid a definitive claim.
+
+target_design:
+  phone_context_snapshot:
+    description: >-
+      One immutable per-turn canonical snapshot assembled outside the model from the minimum set of
+      phone-scoped calls required by the structured request.
+    shape:
+      phone_identity: trusted_channel_only
+      orders:
+        pending_partition: typed_order_candidates
+        completed_partition: typed_order_candidates
+      carts: typed_cart_candidates
+      detailed_gift_purchases: optional_typed_enrichment
+      events: optional_typed_event_evidence
+      campaign_anchor: optional_typed_trusted_outbound_context
+      coverage: complete_or_partial_or_inconsistent
+      failures: sanitized_typed_outcomes
+  order_candidate:
+    required:
+      - backend_order_id
+      - partition
+      - payment_status
+    optional:
+      - customer_transaction_number
+      - event_id
+      - event_name
+      - event_date
+      - amount
+      - currency
+      - payment_method
+      - created_at
+    restrictions:
+      - Preserve exact status separately from partition.
+      - Do not attach a local time without verified offset.
+  cart_candidate:
+    required:
+      - cart_id
+      - status
+      - was_abandoned
+    optional:
+      - event_id
+      - event_name
+      - event_date
+      - subtotal
+      - gifts_quantity
+      - safe_item_summary
+      - created_at
+    restrictions:
+      - Never coerce a cart into an order.
+      - Never claim a cart payment exists.
+  campaign_anchor:
+    required:
+      - source
+      - campaign_type
+      - sent_at
+    optional:
+      - event_id
+      - event_name
+      - backend_order_id
+      - cart_id
+      - amount_due
+      - currency
+      - recovery_url
+    source_decision: >-
+      First inspect whether the channel/conversation API supplies structured campaign metadata. If
+      it does, validate that metadata. If it does not, propose a storage change at campaign-send
+      time. Do not introduce body-keyword parsing as a substitute.
+  datetime_projection:
+    raw_input_policy: Never send an offset-less backend timestamp to the response model.
+    provisional_source_assumption: UTC_pending_backend_confirmation
+    target_display_zone: America_Lima_UTC_minus_05_00
+    deterministic_boundary: >-
+      Once the backend owner confirms that offset-less values are UTC, parse and convert them to
+      America/Lima before model projection. UTC-to-Lima subtracts five hours and may change the
+      calendar date. The model never performs the conversion.
+    activation_gate: >-
+      Until storage semantics are documented, omit the local date/time rather than presenting the
+      raw value or guessing its zone.
+  resolution_states:
+    - resolved_single
+    - needs_subject_selection
+    - unavailable
+    - inconsistent
+  model_projection:
+    description: >-
+      A route-specific object containing resolution, coverage, one selected order/cart/event or a
+      bounded candidate list, and only the requested safe fields. Raw endpoint objects, unused
+      partitions, old unrelated records, payment identifiers, bank details, vouchers, and internal
+      reconciliation traces remain absent.
+  rsvp_plus_one:
+    scope_boundary:
+      representable:
+        - guest_plus_one_only_yes_or_no
+        - guest_own_rsvp_plus_one_yes_or_no
+        - one_optional_plus_one_identity
+      not_representable:
+        - multiple_companions
+        - group_or_household_mutation_beyond_one_plus_one
+        - inferred_plus_one_decision_without_explicit_user_evidence
+    typed_state:
+      own_action: attending_or_declining_or_absent
+      plus_one_response: yes_or_no_or_absent
+      companion_count: zero_or_one_or_many_or_unknown
+      guest_id: selected_backend_identifier_or_absent
+      event_resolution: resolved_single_or_needs_event_selection_or_unavailable
+      mutation_outcome: saved_or_not_eligible_or_invalid_or_forbidden_or_not_found_or_retryable_failure
+    execution:
+      - Preserve the existing structured party extractor's precision; do not introduce keyword routing.
+      - Resolve one event and guest_id before any +1 mutation.
+      - Send one combined request when both the guest decision and +1 decision are explicit.
+      - Send a +1-only request when the guest decision is absent or already recorded.
+      - Do not ask for name, email, or phone because those fields are optional unless a separately
+        verified business rule later makes one necessary.
+      - Render saved=true deterministically as success.
+      - Render saved=false as an honest eligibility result using a sanitized reason; never claim saved.
+      - Preserve selection state on ambiguous events and ask one bounded event question.
+      - Reserve human takeover for an explicit human request or a genuine unsupported/failure path,
+        not as the default for one representable +1.
+    minimum_disclosure_projection:
+      - selected_event_identity
+      - guest_own_decision_when_present
+      - plus_one_decision_when_present
+      - sanitized_mutation_outcome
+    excluded_from_model:
+      - raw_rsvp_response
+      - raw_pending_guests_envelope
+      - trusted_phone
+      - unused_companion_contact_fields
+      - backend_or_authorization_diagnostics
+
+request_policy:
+  cart_or_checkout_question:
+    primary: guest_orders_carts_partition
+    answerable_from_cart_only: true
+    must_not_do:
+      - Return purchase not_found merely because no order exists.
+      - Ask for email or OTP when the trusted phone cart is available.
+  pending_or_current_payment_question:
+    primary: guest_orders_pending_partition
+    detail_call: guest_gift_purchases_only_if_requested_or_required
+    selection: explicit_order_or_campaign_anchor_or_event_or_amount_then_single_candidate
+  historical_completed_question:
+    primary: guest_orders_completed_partition
+  dedication_thanks_or_payment_detail:
+    primary: guest_gift_purchases
+  event_or_rsvp_question:
+    primary: existing_phone_event_flow
+    restriction: >-
+      Preserve existing own-RSVP state behavior and extend only the documented single-plus-one
+      mutation path after one guest_id is grounded.
+  rsvp_plus_one_question:
+    primary: phone_scoped_guest_rsvp
+    event_resolution: existing_phone_event_flow
+    human_takeover_policy: >-
+      Do not call request_human_takeover for a single representable +1. Escalation remains possible
+      for explicit human requests, multiple companions, or a failure whose approved recovery path
+      genuinely requires support.
+  call_deduplication:
+    key: phone_resource_order_event_per_turn
+    rule: Reuse partitioned orders and event-scoped purchases already present in the snapshot.
+
+reported_case_matrix:
+  already_covered_regressions_to_preserve:
+    - case: Cristian
+      expected: Phone event association prevents false no-invitation; RSVP state claimed only from enriched attendance.
+    - case: Paolo_and_Mariana
+      expected: A resolved RSVP exposes one event and never follows with a broad contradictory candidate list.
+    - case: Kiara
+      expected: Pending phone purchase is answerable without an OTP loop.
+    - case: Joaquin
+      expected: Detailed gift/dedication is selected by phone without requiring a registered account.
+    - case: Martha
+      expected: Accountless/cart or event evidence is used before asking for private account authentication.
+    - case: Delia
+      expected: Phone order status is selected deterministically and does not fall into legacy auth.
+    - case: customer_transaction_code
+      expected: COD-prefixed and numeric references normalize to the same customer transaction number.
+    - case: existing_self_and_others_handoff_behavior
+      current_behavior: All self_and_others requests are handed to a human before RSVP lookup.
+      replacement_behavior:
+        - One explicit +1 is handled through POST /guest/rsvp with selected guest_id.
+        - Combined own and +1 decisions use one backend request.
+        - Multiple companions remain outside the one-plus-one contract and are not silently truncated.
+        - saved=false is reported as not saved, without a false success claim.
+  new_or_consolidated_regressions:
+    - case: Claudia_and_Luis_Felipe
+      evidence: One pending transfer; currency null; paid_at has no offset.
+      expected:
+        - Explain up to 72 business hours from the indexed transfer-validation policy.
+        - If amount and method are needed, say the numeric amount and transfer method without a currency.
+        - Do not state a local payment time from the endpoint until the UTC storage assumption is confirmed.
+        - Preserve the purchase thread across corrections; no generic restart.
+    - case: Claudia_Roger_Baby_Shower_Catalina
+      expected:
+        - Treat Roger as the affected support subject, not the channel user.
+        - Treat Baby Shower Catalina as support context, not a new planning request.
+        - Do not repeat the full prior card explanation.
+    - case: Victor_Samuel_Josue
+      evidence: Current pending amount 80 and historical completed amount 88.18 are in distinct partitions.
+      expected:
+        - Select Samuel Josue when the current question or trusted anchor grounds it.
+        - Do not expose or ask about the historical purchase unless it remains plausibly relevant.
+    - case: Alex
+      evidence: Same-event pending order and active cart.
+      expected:
+        - A payment/checkout continuation stays in information flow.
+        - No repeated generic introduction.
+        - Select the cart or order according to the structured question; do not flatten them.
+    - case: Sonia
+      evidence: Cart-only abandoned checkout for Carlos and Adriana.
+      expected:
+        - Recognize the cart as phone-scoped coverage.
+        - Explain that transfer can be selected through the existing recovery path only if that path is present in trusted context.
+        - Never answer purchase not_found solely because orders are empty.
+    - case: Maria_Jose_Isa_and_Lu
+      evidence: Current pending Isa and Lu order, same-event active cart, historical declined AMORCITOS record.
+      expected:
+        - Ground the current Isa and Lu thread from a verified campaign anchor or explicit user evidence.
+        - Suppress AMORCITOS unless the user explicitly asks about it.
+        - Do not assert that the amount matched or did not match because the endpoint lacks received-amount and balance fields.
+        - After the user reports paying the shortfall, say the order remains pending and apply the verified validation window; do not claim approval or deny receipt.
+    - case: Luis_Alejandra
+      evidence: Current pending Alejandra order and same-event active cart; endpoint currency null.
+      expected:
+        - Preserve the campaign/order context when the user reports sending the balance.
+        - Do not confirm receipt from an image or calculate/display currency without typed evidence.
+        - State the up-to-72-business-hour validation window when method/status evidence supports it.
+
+conditional_reliability_investigations:
+  duplicate_or_reset_messages:
+    prior_evidence: >-
+      A retained historical WhatsApp audit found ten native message IDs processed twice and some
+      duplicate pairs produced different answers. This establishes a real duplicate-processing
+      risk, but does not identify the cause of the newly supplied screenshots.
+    required_evidence:
+      - inbound_message_id
+      - channel_and_external_user_hash
+      - lambda_request_ids
+      - plan_id_before_and_after
+      - previous_and_next_node
+      - response_classifier_decision
+      - structured_extraction
+      - outbound_message_ids
+    implementation_gate: >-
+      Add message-level conditional-write deduplication or per-user serialization only if traces
+      prove duplicate delivery, concurrent processing, or plan creation races. Otherwise fix the
+      typed continuity transition only. Do not redesign storage from screenshots alone.
+  campaign_grounding:
+    required_evidence:
+      - channel_message_contract
+      - stored_admin_campaign_fields
+      - campaign_send_path
+      - whether order_id_cart_id_event_id_and_amount_due_exist_as_metadata
+    implementation_gate: >-
+      If typed campaign metadata exists, validate and persist it. If it does not, add metadata at
+      send time as a separately reviewed design. Never parse flow from exact campaign text.
+  balance_reconciliation:
+    required_backend_contract:
+      - total_due
+      - amount_received
+      - balance_due
+      - currency_for_each_operand
+      - payment_validation_status
+      - timestamp_with_offset
+    implementation_gate: >-
+      Until these fields are documented and returned, the agent may relay a typed campaign
+      amount_due but may not recompute or contradict it from order totals.
+
+tasks:
+  - id: T0
+    title: Freeze the baseline and disposition the experimental draft
+    wave: 0
+    owner: primary
+    status: completed
+    deliverables:
+      - User decision to discard the draft or retain it only as review material.
+      - Clean, named git baseline before production edits.
+      - No accidental inclusion of exploratory prompt/test edits.
+    acceptance:
+      - git status and baseline commit recorded.
+      - No user or external edits are removed.
+  - id: T1
+    title: Complete read-only trace and contract audit
+    wave: 1
+    owner: cheap_worker_a
+    status: completed
+    scope:
+      - Retrieve exact traces for reset/repetition cases.
+      - Inspect structured campaign metadata availability.
+      - Capture sanitized partition schemas and response outcomes.
+      - Classify every reported case as partition parsing, absent endpoint data, model/runtime
+        interpretation, FAQ coverage, or continuity/delivery; allow more than one class when proven.
+      - Correlate every restart or repeated response before selecting an idempotency, serialization,
+        context-anchor, or state-transition change.
+    no_code_changes: true
+    acceptance:
+      - Each root cause marked verified, disproven, or unresolved.
+      - FAQ source presence, retrieval result, and user-specific API evidence are reported separately.
+      - No raw phone, token, payment payload, or bank data in the artifact.
+  - id: T2
+    title: Specify canonical phone context and disclosure contracts
+    wave: 1
+    owner: cheap_worker_b
+    status: completed
+    scope:
+      - Define order/cart/campaign/source types and resolution states.
+      - Define precedence, inconsistency, and selection truth tables.
+      - Define model-visible projections per question class.
+      - Define single-plus-one extraction, selection, mutation, and failure truth tables.
+      - Define currency-null and timestamp-source truth tables before response wording is designed.
+    no_code_changes: true
+    acceptance:
+      - Ambiguous and conflicting examples have deterministic outcomes.
+      - Raw API response exclusion is testable.
+      - Currency/time/balance unknowns remain unknown.
+      - Payment method never supplies a missing currency.
+      - Offset-less timestamps are absent from model input; deterministic Lima conversion remains
+        gated on backend confirmation that the source is UTC.
+      - One +1 is distinguished from multiple companions without keyword routing.
+  - id: T3
+    title: Implement partitioned gateway parsing and canonical snapshot
+    wave: 2
+    owner: cheap_worker_a
+    status: completed
+    depends_on: [T0, T1, T2]
+    file_ownership:
+      - src/runtime/agent-conversation-gateway.ts
+      - src/core/information.ts
+      - src/runtime/rsvp_gateway_contract_to_be_confirmed
+      - gateway_contract_tests
+    acceptance:
+      - Parse completed_orders, pending_orders, and carts independently.
+      - Retain legacy orders only for contract comparison, never decision input.
+      - Distinguish partition from exact status.
+      - Reject malformed partitions with typed invalid_response.
+      - No raw payload can reach a reply model input fixture.
+      - RSVP requests and responses include typed optional +1 fields and validate saved true/false,
+        multiple_pending, 401, 403, 404, 422, malformed success, and retryable failure.
+  - id: T4
+    title: Implement typed selection, reconciliation, and continuity
+    wave: 2
+    owner: cheap_worker_b
+    status: completed
+    depends_on: [T0, T1, T2]
+    file_ownership:
+      - src/runtime/information-orchestrator.ts
+      - typed_continuity_module_to_be_selected_after_T1
+      - offline_behavior_tests
+    acceptance:
+      - Cart-only, order-only, and order-plus-cart cases remain distinct.
+      - Current/historical ambiguity follows the truth table, not list order.
+      - Third-party support identity cannot replace channel identity.
+      - Contextual corrections stay in information flow.
+      - No exact-string routing.
+      - A single representable +1 reaches event selection and guest_rsvp without default takeover.
+      - Multiple companions are not coerced into a single +1.
+      - Combined own and +1 decisions produce at most one mutation call.
+  - id: T5
+    title: Integrate route-specific minimum disclosure
+    wave: 3
+    owner: primary
+    status: pending
+    depends_on: [T3, T4]
+    scope:
+      - Compose PhoneContextSnapshot once per turn.
+      - Select the minimum endpoint set and deduplicate calls.
+      - Build state-specific model projection or deterministic renderer.
+      - Add only the smallest Spanish prompt change that cannot be encoded in state.
+      - Combine a selected pending order with only the applicable retrieved FAQ policy; do not send
+        unrelated FAQ passages, completed records, carts, or raw retrieval results to the model.
+    acceptance:
+      - Prompt input excludes unused partitions, candidates, and raw evidence.
+      - Serialized prompt bytes measured and within existing relevance/size gates.
+      - Existing RSVP, OTP, COD, and provider-planning regressions remain unchanged.
+      - The RSVP +1 branch projects only selected event, explicit decisions, and sanitized outcome.
+      - Bank destinations, payment identifiers, vouchers, internal processor data, and unsupported
+        currency/time claims remain excluded.
+  - id: T6
+    title: Add permanent interaction regressions and coverage entries
+    wave: 3
+    owner: primary
+    status: in_progress
+    depends_on: [T3, T4]
+    required_live_cases:
+      - purchase_pending_transfer_currency_time_continuity
+      - support_subject_identity_continuity
+      - current_pending_over_historical_completed
+      - active_cart_checkout_continuity_alex
+      - abandoned_cart_only_sonia
+      - current_campaign_order_over_historical_declined_maria_jose
+      - pending_balance_validation_luis
+      - rsvp_plus_one_only_saved
+      - rsvp_guest_and_plus_one_combined_saved
+      - rsvp_plus_one_multiple_events_requires_selection
+      - rsvp_plus_one_not_eligible_no_false_success
+      - rsvp_multiple_companions_not_silently_truncated
+    requirements:
+      - Every case in live_behavior_regression.
+      - Hard structural assertions.
+      - Hard text_semantic with requireJudge true.
+      - Offline twin for deterministic behavior.
+      - Separate live-behavior-coverage entry per behavior change.
+      - Replace the superseded human-handoff expectation for one +1; retain a distinct unsupported
+        multi-companion case rather than deleting that safety boundary.
+  - id: T7
+    title: Independent review and regression gate
+    wave: 4
+    owner: reviewer
+    status: pending
+    depends_on: [T5, T6]
+    acceptance:
+      - Review selection truth table and disclosure projections.
+      - Verify no scope expansion into payment verification, OCR, or unrelated planning behavior.
+      - Typecheck, lint, full local tests, prompt audit, and coverage registry pass.
+      - Blocking findings return implementation to revision; no deploy over a failed review.
+  - id: T8
+    title: Deploy once and run bounded then complete live gates
+    wave: 5
+    owner: primary
+    status: pending
+    depends_on: [T7]
+    acceptance:
+      - STS confirms account 684516060775 using se-dev in us-east-1.
+      - Development Lambda deployed through the existing CloudFormation pipeline.
+      - Run the seven new named cases first, fail closed.
+      - Run the five RSVP +1 cases in the bounded gate before the complete suite.
+      - Run the complete live_behavior_regression suite after the bounded gate passes.
+      - Missing judge key, skipped case, evaluator error, or failed hard expectation fails the gate.
+      - Record prompt bytes, deployment revision, sanitized fixture outcomes, and eval artifacts in docs/implementation-log.md.
+
+orchestration:
+  maximum_concurrent_workers: 2
+  worker_model: gpt-5.6-luna
+  child_agents_allowed: false
+  rules:
+    - Use workers only for disjoint bounded ownership.
+    - Primary integrates and reviews cross-cutting state transitions.
+    - Do not run two workers against the same runtime file.
+    - Do not begin an implementation wave until its evidence/spec dependencies are complete.
+
+acceptance_criteria:
+  - >-
+    Every reported case is mapped to one or more explicit evidence classes: partition parsing,
+    absent endpoint data, model/runtime interpretation, FAQ coverage, or continuity/delivery.
+  - New guest-order partitions, cart-only users, and mixed order/cart users are handled without legacy orders decisions.
+  - No raw API response is included in any model input.
+  - No currency, local timestamp, balance, approval, or receipt confirmation is inferred from missing fields.
+  - The indexed 72-business-hour policy is combined only with a selected pending transfer, Yape,
+    or Plin case. PayPal remains gated until its conflicting policy sources are resolved.
+  - When currency is null, customer-facing output contains no currency symbol or denomination;
+    a verified numeric amount may be paired with its verified payment method.
+  - Offset-less timestamps never reach the model. UTC-to-America/Lima conversion is deterministic
+    and enabled only after backend confirmation of the source storage convention.
+  - Current and historical records are not conflated; unresolved ambiguity produces one bounded question.
+  - Campaign-grounded follow-ups and support details do not reset or rename the channel user.
+  - No duplicate-delivery, serialization, or plan-store redesign is implemented until trace
+    correlation verifies the applicable continuity failure mode.
+  - Existing RSVP, accountless-phone, OTP, COD, and purchase-detail behavior remains green.
+  - A single explicit +1 no longer triggers default human takeover and is reported successful only
+    when plus_one.saved is true.
+  - A plus_one.saved false result remains a valid typed outcome and never becomes a success claim.
+  - Multiple companions are not collapsed into the backend's single +1 representation.
+  - Prompt/model context is smaller or any increase is explicitly justified by measured branch relevance.
+  - One reviewed development deployment and all required live gates pass before completion is claimed.
+
+explicit_non_goals:
+  - Reading or validating payment receipt images.
+  - Approving, rejecting, refunding, or mutating payments.
+  - Inferring bank settlement from a user message.
+  - Inventing missing backend fields or time-zone rules.
+  - General provider-planning redesign.
+  - General plan-store redesign without trace evidence connecting it to these failures.
+  - Backward-compatible conversational decisions based on the legacy orders array.
+  - General group, family, or household RSVP mutation beyond the documented single +1.
+  - Inferring +1 eligibility before the backend returns a typed result.

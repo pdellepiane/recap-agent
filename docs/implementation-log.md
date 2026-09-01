@@ -7537,3 +7537,19 @@ Live-run per-call bytes (avg across 15):
 
 
 
+
+### plan-2026-08-31-consolidated-reported-interactions wave C1 -- registry and plan status sync (T3/T4 checkpoint 377386c1)
+
+**Reason:** interrupted Codex session (01a03e8f) left T3/T4 implementation uncommitted; continuation re-validated both against plan acceptance before checkpoint.
+
+**T3 terminal state:** 7/7 acceptance criteria verified at commit 377386c1; partitions completed_orders/pending_orders/carts parsed independently; legacy orders ignored as decision input when partitions present; partition separated from exact payment_status (declined under pending partition, refunded under completed partition); malformed explicit partitions fail closed as typed invalid_response; no raw payload reaches reply model fixtures; RSVP contract validates plus_one saved true/false, multiple_pending, 401, 403, 404, 422, malformed success, retryable failure; offset-less timestamps (createdAt, paidAt) intentionally omitted as null pending backend UTC confirmation; normalizePurchaseTimestamp no longer converts to America/Lima.
+
+**T4 terminal state:** 10/10 acceptance criteria verified; cart-only/order-only/order-plus-cart lifecycles distinct; truth-table selection not recency; support details cannot rename channel user (contact_name null guard); contextual corrections stay in information flow via hasInformationWork/last_completed_request replay; structured extraction for companion_count and plus_one_response with no keyword routing; single companion_count=one reaches guestRsvp plus_one_response without human takeover; multiple companions still hand off to human help; combined action+plus_one_response produces at most one mutation call; plus_one.saved=false rendered as honest non-confirmed outcome; COD and numeric customer references match backend increment ids so single-purchase referenceResolution is matched, not unavailable, covering the purchase_delia path; projectPurchase emits amountDisclosure with recorded_method_no_currency and the 72h validation expectation even when grandTotal is null.
+
+**Integration gate fixes recorded:** rsvpPartySchema companion_count and plus_one_response changed to nullable optional for OpenAI structured schema compatibility; three lint errors fixed in agent-service.ts and its tests; prompts/extractors/rsvp.txt compressed 3234 to 2537 bytes to satisfy the prompt-audit serialized size gate while preserving all required precision substrings.
+
+**Registry:** evals/live-behavior-coverage.yaml entries rsvp-single-plus-one-phone-scoped-mutation and rsvp-multiple-companions-remain-bounded-human-review implementedBy filled with checkpoint commit 377386c1; plan.yaml task statuses synced (T0-T4 completed, T6 in_progress).
+
+**Gate results:** typecheck PASS (0 errors), lint PASS (0 errors), npm test PASS (612 passed, 83 test files, 0 failed) on current working tree that includes checkpoint 377386c1 plus the two bookkeeping edits above (registry and plan status). No live eval was run and no deployment happened in this wave.
+
+**Decision:** T5 disclosure integration is the next wave; scope unchanged versus plan.yaml.

@@ -1,0 +1,33 @@
+template: template.base-live
+id: live_behavior.purchase_current_pending_over_old_approved
+suite: live_behavior_regression
+version: 1
+description: Explicit event, amount, date, and status select Victor's current pending gift instead of an older approved purchase.
+tags: [live, behavior, purchase, selection, contradiction, reported-interaction, victor]
+targetModes: [live_lambda]
+inputs:
+  - text: Revisa el regalo de S/ 80 para Samuel Josué que hice por Yape el 29 de agosto de 2026. ¿Ya está aprobado o sigue pendiente?
+    channel: whatsapp
+    contactPhone: "+51981056171"
+    sessionId: live-purchase-current-vs-old-session
+expectations:
+  - id: current-purchase-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: current-purchase-uses-phone-orders
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: current-pending-wins-over-old-approved
+    type: text_semantic
+    rubric: >-
+      The phone lookup returns two purchases: a current Samuel Josué purchase for PEN 80 created on 2026-08-29 with pending status, and an older Josué y Paola purchase for PEN 88.18 with approved status. The user's explicit event, amount, date, and requested status identify the current Samuel Josué purchase. The response must be concise, natural, and entirely in Spanish; say that this S/ 80 purchase is pending. It must not report the older S/ 88.18 purchase as the answer, claim the current gift is approved, list contradictory statuses, ask the user to choose when the typed evidence resolves one record, or request email/OTP.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 220
