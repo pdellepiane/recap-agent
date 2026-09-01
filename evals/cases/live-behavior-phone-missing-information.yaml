@@ -1,0 +1,60 @@
+template: template.base-live
+id: live_behavior.phone_purchase_missing_hands_off_once
+suite: live_behavior_regression
+version: 1
+description: Empty trusted-phone orders and carts preserve a purchase query and request human help once, without automatic email verification.
+tags: [live, behavior, purchase, phone, human-handoff, reported-interaction]
+targetModes: [live_lambda]
+inputs:
+  - text: Quiero consultar si mi compra está confirmada. No tengo una cuenta registrada.
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-phone-missing-purchase
+  - text: Gracias, espero al equipo.
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-phone-missing-purchase
+backendFixture:
+  scenario: support-continuity
+expectations:
+  - id: scoped-lookup-and-handoff
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone, request_human_takeover]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: manual-help-requested
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    turnIndex: 0
+    severity: hard
+  - id: purchase-query-retained
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected:
+      - kind: purchase
+    turnIndex: 0
+    severity: hard
+  - id: no-repeat-handoff-or-otp
+    type: tool_usage
+    mustNotCall: [request_human_takeover, request_user_login_code, verify_user_login_code, lookup_guest_orders_by_phone]
+    turnIndex: 1
+    severity: hard
+  - id: scoped-missing-data-handoff-not-account-login
+    type: text_semantic
+    rubric: >-
+      The user asks whether their purchase is confirmed and has no registered account.
+      The trusted-phone fixture has no orders or carts, and human takeover succeeds.
+      Reply in Spanish that the requested information was not found associated with
+      this number and human support was requested to continue the purchase query.
+      Do not ask for email or OTP, globally deny that a purchase exists, claim a payment
+      status, or promise a guaranteed response time. Preserve the user's purchase question.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 220

@@ -32,7 +32,7 @@ expectations:
     severity: hard
   - id: second-turn-remains-support
     type: node_transition
-    to: resolver_consultas_informativas
+    to: solicitar_agente_humano
     turnIndex: 1
     severity: hard
   - id: second-turn-loads-first-turn-plan
@@ -41,15 +41,30 @@ expectations:
     expected: resolver_consultas_informativas
     turnIndex: 1
     severity: hard
+  - id: phone-lookup-precedes-manual-support-without-email-loop
+    type: tool_usage
+    mustCall: [lookup_guest_events_by_phone, request_human_takeover]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, search_providers_from_plan]
+    turnIndex: 1
+    severity: hard
+  - id: manual-support-state-persisted
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    turnIndex: 1
+    severity: hard
   - id: no-restart-or-identity-overwrite-after-overlap
     type: text_semantic
     rubric: >-
       The second reply must continue the same card-payment support conversation in Spanish,
       acknowledge Roger Abanto as the affected invited purchaser and Baby Shower Catalina
-      as the associated event, and offer only the next necessary support step.
+      as the user-reported event. The phone guest-event fixture returns no records:
+      explain that the requested information was not found associated with this number
+      and that human help has been requested to continue the same query.
       It must not address the channel user as Roger, restart with a generic welcome,
       switch to provider planning, repeat the entire payment explanation, or claim a
-      verified purchase or completed escalation without supporting evidence.
+      verified purchase, verified invitation, or email/OTP prerequisite.
+      The fixture takeover succeeds, so claiming that help was requested is supported.
     minScore: 0.9
     requireJudge: true
     turnIndex: 1
