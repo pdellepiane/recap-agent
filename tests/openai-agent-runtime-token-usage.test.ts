@@ -999,6 +999,60 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(5_000);
   });
 
+  it('excludes hard payment and temporal provenance from purchase model input', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.informationResults = [{
+      requestId: 'hard-exclusions',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'gift_purchases',
+      needsSelection: false,
+      purchases: [{
+        orderId: 'ORD-SECRET',
+        paymentStatus: 'approved',
+        shippingStatus: null,
+        grandTotal: null,
+        paymentMethod: null,
+        eventName: 'Boda Test',
+        eventDate: '2026-09-15',
+        eventUrl: null,
+        createdAt: '2026-07-10T12:00:00.000Z',
+        items: [],
+        amountDisclosure: {
+          total: 63.85,
+          paid: null,
+          currency: null,
+          paymentMethod: 'Transferencia',
+          presentation: 'recorded_method_no_currency',
+        },
+        paymentValidationExpectation: { maxBusinessHours: 72, appliesTo: 'indexed_validation_methods' },
+      }],
+    } as unknown as InformationTaskResult];
+    request.toolUsage.outputs = [{
+      tool: 'agent_api_purchase_lookup',
+      output: JSON.stringify({ raw: 'should be stripped', paymentId: 'pay_123', destinationAccount: 'CCI 123', voucher: 'voucher.png', originBank: 'BCP' }),
+    }];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (r: ComposeReplyRequest, f: ReturnType<typeof emptyFunnel>) => string;
+    };
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+    expect(input).not.toContain('paymentId');
+    expect(input).not.toContain('destinationAccount');
+    expect(input).not.toContain('voucher');
+    expect(input).not.toContain('originBank');
+    expect(input).not.toContain('gatewayMessage');
+    expect(input).not.toContain('pay_123');
+    expect(input).not.toContain('CCI');
+    expect(input).not.toContain('"raw"');
+    expect(input).not.toContain('trusted_phone');
+    expect(input).toContain('recorded_method_no_currency');
+    expect(input).toContain('63.85');
+    expect(input).not.toContain('PEN');
+    expect(input).not.toContain('S/');
+    expect(input).not.toContain('$');
+  });
+
   it('gives the RSVP model one minimal reconciled phone-evidence projection', () => {
     const runtime = createRuntimeForTokenUsageTests();
     const request = createComposeRequest('responder_invitacion');

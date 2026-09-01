@@ -2189,7 +2189,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         requestId: result.requestId,
         kind: result.kind,
         status: result.status,
-        evidence: result.evidence.slice(0, 3).map((entry) => ({
+        evidence: result.evidence.slice(0, 1).map((entry) => ({
           filename: entry.filename,
           text: this.truncateText(entry.text, 1_200),
         })),
@@ -2199,11 +2199,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return this.stripRawFields(result);
     }
 
+    const boundedPurchases = result.purchases.slice(0, 3).map((purchase) =>
+      this.projectPurchaseForReply(purchase),
+    );
+    const carts = result.carts ?? [];
+    const shouldExposeCarts = boundedPurchases.length === 0 && carts.length > 0;
+    const boundedCarts = shouldExposeCarts
+      ? carts.slice(0, 3).map((cart) => this.projectCartForReply(cart))
+      : undefined;
     return this.stripRawFields({
       ...result,
-      purchases: result.purchases.map((purchase) =>
-        this.projectPurchaseForReply(purchase),
-      ),
+      purchases: boundedPurchases,
+      ...(boundedCarts ? { carts: boundedCarts } : { carts: undefined }),
     });
   }
 
@@ -2211,27 +2218,38 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const cashOnly = purchase.items.length > 0 && purchase.items.every(
       (item) => item.type?.trim().toLowerCase() === 'cash',
     );
-    if (!cashOnly) {
-      return purchase;
-    }
-
-    const withoutShipping = Object.fromEntries(
-      Object.entries(purchase).filter(([key]) => key !== 'shippingStatus'),
-    );
-    const dedication = purchase.dedication
-      ? Object.fromEntries(
-          Object.entries(purchase.dedication).filter(
+    const sanitized: Record<string, unknown> = { ...purchase };
+    if (cashOnly) {
+      delete sanitized.shippingStatus;
+      if (sanitized.dedication && typeof sanitized.dedication === 'object') {
+        const dedication = sanitized.dedication as Record<string, unknown>;
+        const nextDedication = Object.fromEntries(
+          Object.entries(dedication).filter(
             ([key]) => key !== 'sendPhysical' && key !== 'physicalStatus',
           ),
-        )
-      : null;
+        );
+        sanitized.dedication = nextDedication;
+      }
+    }
+    delete sanitized.payment;
+    delete sanitized.declineCode;
+    delete sanitized.adminComment;
+    return sanitized;
+  }
+
+  private projectCartForReply(cart: unknown): unknown {
+    if (!cart || typeof cart !== 'object') return cart;
+    const source = cart as Record<string, unknown>;
     return {
-      ...withoutShipping,
-      ...(dedication
-        ? {
-            dedication,
-          }
-        : {}),
+      cartId: source.cartId,
+      status: source.status,
+      wasAbandoned: source.wasAbandoned,
+      eventId: source.eventId,
+      eventName: source.eventName,
+      eventDate: source.eventDate,
+      amountDisclosure: source.amountDisclosure,
+      giftsQuantity: source.giftsQuantity,
+      createdAt: source.createdAt,
     };
   }
 
