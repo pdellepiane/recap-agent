@@ -78,6 +78,7 @@ import type { OpenAiCallRef } from './contracts';
 import { extractOtpCode } from './otp-normalization';
 import { normalizeExtractedOrderReference } from '../core/order-reference';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
+import { eventMatches } from './event-matching';
 import {
   NoopAgentConversationGateway,
   type AgentConversationGateway,
@@ -3208,6 +3209,18 @@ export class AgentService {
       requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
       replayingLastCompletedRequest = true;
     }
+    const continuingLastCompletedRequest = Boolean(
+      !replayingLastCompletedRequest &&
+      args.extraction.actionIntent === null &&
+      lastCompletedRequest &&
+      (lastCompletedRequest.kind === 'purchase' ||
+        lastCompletedRequest.kind === 'associated_event') &&
+      args.extraction.informationRequests.some((request) =>
+        this.sameInformationThread(lastCompletedRequest, request),
+      ),
+    );
+    const preservingLastCompletedContext =
+      replayingLastCompletedRequest || continuingLastCompletedRequest;
     let planForInformation = mergePlan(planWithContact, {
       current_node: currentNode,
       information_state: {
@@ -3231,10 +3244,10 @@ export class AgentService {
       );
     const hasAmbiguity =
       args.extraction.ambiguity?.status === 'ambiguous' &&
-      !replayingLastCompletedRequest &&
+      !preservingLastCompletedContext &&
       !isRetiredPhoneConfirmationRecovery;
     const informationExtraction = isRetiredPhoneConfirmationRecovery ||
-      replayingLastCompletedRequest
+      preservingLastCompletedContext
       ? {
           ...args.extraction,
           ...(isRetiredPhoneConfirmationRecovery
@@ -3439,6 +3452,15 @@ export class AgentService {
           )
         ) {
           operationalNote += ' Para amountDisclosure con presentation=recorded_method_no_currency, comunica “monto [valor] mediante [método registrado]”. No añadas símbolo ni nombre de moneda; si falta el método, di solo “monto [valor]”.';
+        }
+        const hasUnverifiableTransactionTime = phonePurchaseResult.purchases.some(
+          (purchase) =>
+            purchase.paymentValidationExpectation !== undefined &&
+            purchase.paymentValidationExpectation !== null &&
+            !purchase.payment?.paidAt,
+        );
+        if (hasUnverifiableTransactionTime) {
+          operationalNote += ' La evidencia canónica no verifica una fecha u hora de pago. Si la persona propone una corrección temporal, reconócela solo como dato aportado por ella; no afirmes que el registro o el backend la confirma.';
         }
       }
 
@@ -3869,14 +3891,30 @@ export class AgentService {
   }
 
   private sameInformationThread(
-    pending: PendingInformationRequest,
+    pending: ExtractedInformationRequest,
     extracted: ExtractedInformationRequest,
   ): boolean {
     if (pending.kind !== extracted.kind) {
       return false;
     }
     if (pending.kind === 'purchase' && extracted.kind === 'purchase') {
-      return pending.resource === extracted.resource;
+      if (pending.resource !== extracted.resource) {
+        return false;
+      }
+      const pendingOrderId = normalizeExtractedOrderReference(pending.orderId);
+      const extractedOrderId = normalizeExtractedOrderReference(extracted.orderId);
+      if (pendingOrderId && extractedOrderId && pendingOrderId !== extractedOrderId) {
+        return false;
+      }
+      if (
+        pending.eventHint &&
+        extracted.eventHint &&
+        !eventMatches(pending.eventHint, extracted.eventHint) &&
+        !eventMatches(extracted.eventHint, pending.eventHint)
+      ) {
+        return false;
+      }
+      return true;
     }
     if (pending.kind === 'associated_event') {
       return true;

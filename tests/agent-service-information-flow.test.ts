@@ -1361,7 +1361,7 @@ describe('AgentService first-class information flow', () => {
     request.query = 'Estado del pago para Claudia y Luis Felipe.';
     request.eventHint = 'Claudia y Luis Felipe';
     request.aspects = ['payment_status', 'validation_window'];
-    const ambiguousCorrection = extraction([]);
+    const ambiguousCorrection = extraction([{ ...request }]);
     ambiguousCorrection.ambiguity = {
       status: 'ambiguous',
       clarificationQuestion: '¿Te refieres al pago o a un evento?',

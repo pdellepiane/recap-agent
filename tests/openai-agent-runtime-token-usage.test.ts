@@ -1050,6 +1050,8 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('"raw"');
     expect(input).not.toContain('trusted_phone');
     expect(input).toContain('recorded_method_no_currency');
+    expect(input).toContain('"currency": "not_reported"');
+    expect(input).toContain('"transactionTime": "not_verifiable"');
     expect(input).toContain('63.85');
     expect(input).not.toContain('PEN');
     expect(input).not.toContain('S/');

@@ -2254,7 +2254,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const cashOnly = purchase.items.length > 0 && purchase.items.every(
       (item) => item.type?.trim().toLowerCase() === 'cash',
     );
-    const sanitized: Record<string, unknown> = { ...purchase };
+    const evidenceLimits = {
+      ...(purchase.amountDisclosure?.presentation === 'recorded_method_no_currency'
+        ? { currency: 'not_reported' }
+        : {}),
+      ...(purchase.paymentValidationExpectation && !purchase.payment?.paidAt
+        ? { transactionTime: 'not_verifiable' }
+        : {}),
+    };
+    const sanitized: Record<string, unknown> = {
+      ...purchase,
+      ...(Object.keys(evidenceLimits).length > 0 ? { evidenceLimits } : {}),
+    };
     if (cashOnly) {
       delete sanitized.shippingStatus;
       if (sanitized.dedication && typeof sanitized.dedication === 'object') {
