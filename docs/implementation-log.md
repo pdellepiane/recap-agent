@@ -8047,3 +8047,10 @@ outcome, or new evaluation artifact is claimed. The mandatory concurrent case an
 full `npm run eval:behavior-live` remain required after the deployment decision;
 this gate is pending, not skipped or represented as passing. Earlier retained
 evaluation failures are not resolved by the offline lock tests.
+
+**Atomic implementation commit:** `02ed1c4b`. The subsequent regression commit
+registers this change in `evals/live-behavior-coverage.yaml`, adds the mandatory
+concurrent Claudia/Roger case, and extends the evaluator to collect real contention
+evidence. It does not change production prompts or hide any existing regression.
+Coverage registry, loader, and concurrent scheduler verification passed 9/9 after
+registering the real implementation commit. The new case remains active and mandatory.

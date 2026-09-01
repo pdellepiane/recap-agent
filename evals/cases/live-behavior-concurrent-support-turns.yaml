@@ -1,0 +1,60 @@
+template: template.base-live
+id: live_behavior.concurrent_support_turns_preserve_context
+suite: live_behavior_regression
+version: 1
+description: Claudia's overlapping card-support message and guest details must serialize before plan/history loading.
+tags: [live, behavior, concurrency, continuity, identity, reported-interaction, claudia-roger]
+targetModes: [live_lambda]
+concurrentFirstTwoTurns: true
+inputs:
+  - text: Un amigo no puede usar su tarjeta de crédito para comprar un regalo. ¿Hay problemas con tarjetas?
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-concurrent-support-session
+  - text: El nombre del invitado afectado es Roger Abanto. Y el evento es Baby Shower Catalina.
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-concurrent-support-session
+backendFixture:
+  scenario: support-continuity
+expectations:
+  - id: first-support-question
+    type: tool_usage
+    mustCall: [knowledge_base_search]
+    mustNotCall: [search_providers_from_plan, auth_by_phone, request_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: second-turn-actually-contended
+    type: trace_field_number
+    path: turn_coordination.attempts
+    min: 2
+    turnIndex: 1
+    severity: hard
+  - id: second-turn-remains-support
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 1
+    severity: hard
+  - id: second-turn-loads-first-turn-plan
+    type: trace_field_equals
+    path: previous_node
+    expected: resolver_consultas_informativas
+    turnIndex: 1
+    severity: hard
+  - id: no-restart-or-identity-overwrite-after-overlap
+    type: text_semantic
+    rubric: >-
+      The second reply must continue the same card-payment support conversation in Spanish,
+      acknowledge Roger Abanto as the affected invited purchaser and Baby Shower Catalina
+      as the associated event, and offer only the next necessary support step.
+      It must not address the channel user as Roger, restart with a generic welcome,
+      switch to provider planning, repeat the entire payment explanation, or claim a
+      verified purchase or completed escalation without supporting evidence.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 220

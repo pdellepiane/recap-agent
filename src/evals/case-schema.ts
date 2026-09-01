@@ -84,6 +84,10 @@ const contactFieldPresenceSchema = z.object({
 });
 
 const turnTraceSchema = z.object({
+  turn_coordination: z.object({
+    wait_ms: z.number().int().nonnegative(),
+    attempts: z.number().int().positive(),
+  }).optional(),
   trace_id: z.string(),
   conversation_id: z.string().nullable(),
   plan_id: z.string(),
@@ -614,6 +618,7 @@ const budgetSchema = z.object({
 });
 
 export const evalCaseSchema = z.object({
+  concurrentFirstTwoTurns: z.boolean().optional(),
   id: z.string().min(1),
   suite: z.string().min(1),
   version: z.union([z.string().min(1), z.number().int().positive()]),

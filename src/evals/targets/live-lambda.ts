@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import { CloudFormationClient, DescribeStacksCommand } from '@aws-sdk/client-cloudformation';
+import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
+import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 
 import { configureRequiredLocalAwsProfile } from '../../aws/local-profile';
 
@@ -15,6 +17,8 @@ import {
   projectSafeTrace,
 } from '../../runtime/artifact-redaction';
 import { attachEvaluationState } from '../evaluation-state';
+import { conversationPartitionKey } from '../../storage/conversation-key';
+import { parseTurnCoordinationHeaders, runOverlappingTurns } from '../concurrent-turns';
 
 export async function runLiveLambdaCase(args: {
   currentCase: EvalCase;
@@ -77,9 +81,9 @@ export async function runLiveLambdaCase(args: {
       );
     }
   }
-  const turns: EvalTurnResult[] = [];
-
-  for (const [turnIndex, input] of args.currentCase.inputs.entries()) {
+  const runTurn = async (turnIndex: number): Promise<EvalTurnResult> => {
+    const input = args.currentCase.inputs[turnIndex];
+    if (!input) throw new Error('Missing live evaluation turn.');
     const startedAt = Date.now();
     const effectiveFixture = input.backendFixture ?? args.currentCase.backendFixture ?? null;
     const response = await fetch(functionUrl, {
@@ -112,6 +116,8 @@ export async function runLiveLambdaCase(args: {
     const raw = await response.json();
     const parsed = lambdaTurnResponseSchema.parse(raw);
     const typedTrace = lambdaTurnResponseSchema.shape.trace.parse(parsed.trace);
+    const coordination = parseTurnCoordinationHeaders(response.headers);
+    if (coordination) typedTrace.turn_coordination = coordination;
     const typedPerf = parsed.perf === undefined || parsed.perf === null
       ? parsed.perf
       : lambdaTurnResponseSchema.shape.perf.parse(parsed.perf);
@@ -155,7 +161,39 @@ export async function runLiveLambdaCase(args: {
       input,
       outputText: parsed.message ?? '',
     });
-    turns.push(turn);
+    return turn;
+  };
+
+  const turns: EvalTurnResult[] = [];
+  if (args.currentCase.concurrentFirstTwoTurns) {
+    const [first, second] = args.currentCase.inputs;
+    if (!first || !second
+      || (first.channel ?? channel) !== (second.channel ?? channel)
+      || (first.externalUserId ?? externalUserId) !== (second.externalUserId ?? externalUserId)) {
+      throw new Error('Concurrent live cases require two turns for the same conversation.');
+    }
+    const lockClient = DynamoDBDocumentClient.from(new DynamoDBClient({ region: liveDefaults.region }));
+    try {
+      turns.push(...await runOverlappingTurns({
+        first: () => runTurn(0),
+        second: () => runTurn(1),
+        firstLockIsHeld: async () => {
+          const result = await lockClient.send(new GetCommand({
+            TableName: liveDefaults.plansTableName,
+            Key: { pk: conversationPartitionKey(seedChannel, seedExternalUserId), sk: 'TURN_LOCK' },
+            ConsistentRead: true,
+            ProjectionExpression: 'lease_until_ms',
+          }));
+          const expiry: unknown = result.Item?.lease_until_ms;
+          return typeof expiry === 'number' && expiry > Date.now();
+        },
+      }));
+    } finally {
+      lockClient.destroy();
+    }
+  }
+  for (let index = turns.length; index < args.currentCase.inputs.length; index += 1) {
+    turns.push(await runTurn(index));
   }
 
   return {
