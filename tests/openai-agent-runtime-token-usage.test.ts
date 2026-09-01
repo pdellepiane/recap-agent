@@ -783,6 +783,33 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(18_000);
   });
 
+  it('projects indexed payment options as a scoped typed policy', () => {
+    const runtime = createRuntimeWithKnowledgeBase();
+    const request = createComposeRequest('resolver_consultas_informativas');
+    request.informationResults = [{
+      requestId: 'information-payment-options-policy',
+      kind: 'faq',
+      status: 'completed',
+      evidence: [{
+        fileId: 'payment-policy-file',
+        filename: 'medios-de-pago.md',
+        score: 0.99,
+        text: 'Contenido completo que no debe llegar al modelo.',
+      }],
+    }];
+    const typedRuntime = runtime as unknown as {
+      composeConversationInput: (r: ComposeReplyRequest, f: ReturnType<typeof emptyFunnel>) => string;
+    };
+
+    const input = typedRuntime.composeConversationInput(request, emptyFunnel());
+
+    expect(input).toContain('"bankTransferAvailable": true');
+    expect(input).toContain('"scope": "general_gift_checkout"');
+    expect(input).toContain('"source": "indexed_knowledge_base"');
+    expect(input).not.toContain('Contenido completo');
+    expect(input).not.toContain('payment-policy-file');
+  });
+
   it('omits shipping evidence from the model projection for cash-only gifts', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const request = createComposeRequest('resolver_consultas_informativas');

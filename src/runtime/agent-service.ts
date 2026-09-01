@@ -3462,6 +3462,23 @@ export class AgentService {
         if (hasUnverifiableTransactionTime) {
           operationalNote += ' La evidencia canónica no verifica una fecha u hora de pago. Si la persona propone una corrección temporal, reconócela solo como dato aportado por ella; no afirmes que el registro o el backend la confirma.';
         }
+        const indexedPaymentOptionsAvailable = informationResults.some(
+          (result) =>
+            result.requestId === informationPaymentOptionsPolicyRequestId &&
+            result.status === 'completed',
+        );
+        if (indexedPaymentOptionsAvailable) {
+          operationalNote += ' La transferencia está respaldada únicamente como opción general de pago para regalos según la política indexada; no afirmes que el carrito devolvió o confirmó ese método.';
+        }
+        const hasAbandonedCart = phonePurchaseResult.carts?.some(
+          (cart) => cart.wasAbandoned,
+        ) ?? false;
+        if (
+          hasAbandonedCart &&
+          this.hasTrustedCartRecoveryPath(args.messageContext)
+        ) {
+          operationalNote += ' El historial saliente confiable contiene una ruta de recuperación para este carrito. Indica que puede retomarlo desde el enlace de recuperación ya enviado, sin inventar ni repetir la URL.';
+        }
       }
 
       if (operationalNote === null && supportDetailContinuation) {
@@ -3923,6 +3940,31 @@ export class AgentService {
       ? pending.query.trim().toLocaleLowerCase('es') ===
           extracted.query.trim().toLocaleLowerCase('es')
       : false;
+  }
+
+  private hasTrustedCartRecoveryPath(messageContext: TurnMessageContext): boolean {
+    for (const message of messageContext.recentMessages) {
+      if (message.direction !== 'outbound') {
+        continue;
+      }
+      const candidates = message.body.match(/https?:\/\/[^\s<>]+/giu) ?? [];
+      for (const candidate of candidates) {
+        const trimmed = candidate.replace(/[),.;!?]+$/gu, '');
+        try {
+          const url = new URL(trimmed);
+          const hostname = url.hostname.toLocaleLowerCase('en');
+          if (
+            (hostname === 'sinenvolturas.com' || hostname.endsWith('.sinenvolturas.com')) &&
+            /^\/cart\/recover\/[^/]+\/?$/u.test(url.pathname)
+          ) {
+            return true;
+          }
+        } catch {
+          // Ignore malformed or non-URL text from conversation history.
+        }
+      }
+    }
+    return false;
   }
 
   private async resolveInformationAuthentication(args: {

@@ -363,6 +363,64 @@ describe('AgentService first-class information flow', () => {
     });
   });
 
+  it('projects a trusted cart recovery path separately from general payment policy', async () => {
+    const request = purchaseRequest(null);
+    request.resource = 'orders';
+    request.eventHint = 'Carlos y Adriana';
+    request.aspects = ['payment_options'];
+    const runtime = new InformationRuntime([extraction([request])]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [],
+      orderPartitions: { pending: [], completed: [] },
+      carts: [{
+        cartId: 'cart-sonia',
+        status: 'abandoned',
+        wasAbandoned: true,
+        eventName: 'Carlos and Adriana',
+        subtotal: 150,
+        items: [],
+      }],
+    };
+    gateway.recentMessages = [{
+      id: 1,
+      direction: 'outbound',
+      source: 'admin_campaign',
+      body: 'Retoma tu compra: https://sinenvolturas.com/cart/recover/recovery-id',
+      status: 'sent',
+      whatsappMessageId: null,
+      sentAt: '2026-08-31T19:10:00-05:00',
+      createdAt: null,
+    }];
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'trusted-cart-recovery-user',
+      text: '¿Puedo pagar este carrito por transferencia?',
+      messageId: 'trusted-cart-recovery-1',
+      receivedAt: new Date().toISOString(),
+      contactPhone: '+51965765765',
+    });
+
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'opción general de pago para regalos',
+    );
+    expect(runtime.composeRequests.at(-1)?.errorMessage).toContain(
+      'ruta de recuperación para este carrito',
+    );
+    expect(runtime.composeRequests.at(-1)?.errorMessage).not.toContain(
+      'recovery-id',
+    );
+  });
+
   it('routes an explicit wrong-account statement to email OTP without phone authentication', async () => {
     const runtime = new InformationRuntime([
       extraction([purchaseRequest(null)], null, 'fallback@example.com', 'no'),

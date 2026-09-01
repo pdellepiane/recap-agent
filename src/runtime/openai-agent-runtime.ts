@@ -2209,6 +2209,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           status: result.status,
           policy: {
             bankTransferAvailable: true,
+            scope: 'general_gift_checkout',
             source: 'indexed_knowledge_base',
           },
         };
