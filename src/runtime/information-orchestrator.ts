@@ -27,6 +27,9 @@ import {
   hasPhysicalFulfillment,
   pendingPaymentValidationExpectation,
 } from './purchase-disclosure-policy';
+import {
+  eventMatches as sharedEventMatches,
+} from './event-matching';
 
 type PurchaseRequest = Extract<
   PendingInformationRequest,
@@ -682,17 +685,9 @@ export class InformationOrchestrator {
     if (!eventHint) {
       return null;
     }
-    const normalizedHint = this.normalizeEventReference(eventHint);
-    if (!normalizedHint) {
-      return null;
-    }
     const matches = events.filter((event) => {
-      const normalizedName = this.normalizeEventReference(event.name);
-      const normalizedSlug = this.normalizeEventReference(event.slug);
-      return normalizedName === normalizedHint ||
-        normalizedSlug === normalizedHint ||
-        normalizedName.includes(normalizedHint) ||
-        normalizedHint.includes(normalizedName);
+      return sharedEventMatches(event.name, eventHint) ||
+        sharedEventMatches(event.slug, eventHint);
     });
     return matches.length === 1 ? matches[0] ?? null : null;
   }
@@ -793,15 +788,6 @@ export class InformationOrchestrator {
         recentOrders: purchases.length,
       },
     };
-  }
-
-  private normalizeEventReference(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/gu, '')
-      .toLocaleLowerCase('es')
-      .replace(/[^a-z0-9]+/gu, ' ')
-      .trim();
   }
 
   private partitionedPurchaseLookup(
@@ -1356,15 +1342,12 @@ export class InformationOrchestrator {
     const requestedDate = this.requestDateSelector(request);
     const hasDateSelector = Boolean(requestedDate);
     const hasSelector = hasEventSelector || hasAmountSelector || hasDateSelector;
-    const normalizedEvent = hasEventSelector
-      ? this.normalizeEventReference(request.eventHint ?? '')
-      : '';
 
     const matches = hasSelector
       ? purchases.filter((purchase) => {
           if (
-            normalizedEvent &&
-            !this.eventMatches(purchase.eventName, normalizedEvent)
+            hasEventSelector &&
+            !this.eventMatches(purchase.eventName, request.eventHint ?? '')
           ) {
             return false;
           }
@@ -1434,24 +1417,24 @@ export class InformationOrchestrator {
     return isoDate ?? value.trim().toLocaleLowerCase('es');
   }
 
-  private eventMatches(eventName: string | null | undefined, normalizedHint: string): boolean {
-    if (!eventName) return false;
-    const normalizedName = this.normalizeEventReference(eventName);
-    return normalizedName === normalizedHint ||
-      normalizedName.includes(normalizedHint) ||
-      normalizedHint.includes(normalizedName);
+  private eventMatches(
+    eventName: string | null | undefined,
+    hint: string | null | undefined,
+  ): boolean {
+    return sharedEventMatches(eventName, hint);
   }
 
   private filterCartCandidates(
     carts: CartInformation[],
     request: PurchaseRequest,
   ): CartInformation[] {
-    const normalizedEvent = request.eventHint?.trim()
-      ? this.normalizeEventReference(request.eventHint)
-      : '';
+    const hasEventSelector = Boolean(request.eventHint?.trim());
     const amount = request.amount;
     return carts.filter((cart) => {
-      if (normalizedEvent && !this.eventMatches(cart.eventName, normalizedEvent)) {
+      if (
+        hasEventSelector &&
+        !this.eventMatches(cart.eventName, request.eventHint ?? '')
+      ) {
         return false;
       }
       if (amount !== null && amount !== undefined) {

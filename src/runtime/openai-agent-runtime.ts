@@ -64,6 +64,7 @@ import { buildModelVisibleConversationHistory } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
+import { areEventNamesEquivalent } from './event-matching';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
 
@@ -2276,7 +2277,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const source = cart as Record<string, unknown>;
     const cartEventId = source.eventId;
     const cartEventName = typeof source.eventName === 'string' ? source.eventName : null;
-    const normalizedCartName = cartEventName ? this.normalizeEventNameForCartMatch(cartEventName) : '';
     return purchases.some((purchase) => {
       const purchaseEventId = purchase.eventId;
       if (cartEventId !== null && cartEventId !== undefined && purchaseEventId !== null && purchaseEventId !== undefined) {
@@ -2284,18 +2284,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       }
       const purchaseEventName = typeof purchase.eventName === 'string' ? purchase.eventName : null;
       if (!purchaseEventName || !cartEventName) return false;
-      const normalizedPurchaseName = this.normalizeEventNameForCartMatch(purchaseEventName);
-      return normalizedPurchaseName !== '' && normalizedCartName !== '' && normalizedPurchaseName === normalizedCartName;
+      return areEventNamesEquivalent(purchaseEventName, cartEventName);
     });
-  }
-
-  private normalizeEventNameForCartMatch(value: string): string {
-    return value
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/gu, '')
-      .toLocaleLowerCase('en')
-      .replace(/[^a-z0-9]+/gu, ' ')
-      .trim();
   }
 
   private truncateText(value: string, maxLength: number): string {
