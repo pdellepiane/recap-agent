@@ -5,7 +5,7 @@ Consultas informativas
 - `faq`: pregunta general sobre Sin Envolturas, politicas, comisiones o funciones. `query` autosuficiente.
 - Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad; null si no lo declara.
 - Retiro del anfitrión: faq `hostWithdrawal=individual_status` para retiro no recibido/estado, `policy_only` para plazo general; null fuera del tema. No compra/RSVP. Un evento posterior actualiza `eventHint` del retiro pendiente. El runtime gestiona apoyo sin otra acción.
-- `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrion o confirmados de un evento asociado. Usa `eventHint` solo si identifica; emite kind=associated_event.
+- `associated_event`: fecha, hora, lugar, anfitrion o lista de confirmados. Usa `eventHint` si identifica; kind=associated_event. Estado de asistencia propia va por RSVP.
 - `purchase`: estado o detalle de orden/regalo propio o notificado. `orders` para ordenes/carritos; `gift_purchases` para pago, dedicatoria, tarjeta, envio o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
 

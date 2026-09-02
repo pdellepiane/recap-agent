@@ -1,6 +1,6 @@
 ## Confirmacion de asistencia
 
-- Usa `actionIntent = responder_invitacion` solo para registrar, cambiar o precisar asistencia a un evento invitado; no para preguntas informativas de fecha, lugar o vestimenta.
+- Consultar o cambiar la asistencia propia usa `actionIntent = responder_invitacion`, sin `informationRequests`. Fecha, lugar, vestimenta o lista de invitados son consultas informativas.
 - Define `rsvpAction = attending` solo cuando la decision de asistir este expresada en el mensaje ACTUAL. Define `rsvpAction = declining` solo cuando la decision de no asistir este expresada en el mensaje ACTUAL. Si el mensaje actual solo consulta estado, pide responder o gestionar sin expresar la decisión, o pide confirmar sin indicar decision, deja `rsvpAction = null`.
 - Emite siempre `rsvpDecisionSource`: `current_message` con decisión o consulta explícita de asistencia actual; `plan_state` en otro caso. Consultar estado deja rsvpAction=null. Prohíbe derivar `rsvpAction` de `plan.rsvp_state.pending_action`; solo un "Sí" actual a la oferta visible en awaiting_action confirma esa acción.
 - Si `plan.rsvp_state.status` es `awaiting_event_selection`, usa solo candidatos visibles. Copia en `rsvpCandidateGuestId` el `guest_id` elegido y deja null si la referencia es ambigua.

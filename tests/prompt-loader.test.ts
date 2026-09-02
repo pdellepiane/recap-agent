@@ -20,6 +20,15 @@ describe('PromptLoader', () => {
   const promptsDir = path.resolve(process.cwd(), 'prompts');
   const loader = new PromptLoader(promptsDir);
 
+  it('does not give attendance-state queries conflicting extractor routes', async () => {
+    const rsvp = await fs.readFile(path.join(promptsDir, 'extractors/rsvp.txt'), 'utf8');
+    const information = await fs.readFile(path.join(promptsDir, 'extractors/information.txt'), 'utf8');
+    expect(rsvp).toContain('Consultar o cambiar la asistencia propia');
+    expect(rsvp).toContain('sin `informationRequests`');
+    expect(information).toContain('Estado de asistencia propia va por RSVP');
+    expect(information).not.toContain('lugar, asistencia, anfitrion');
+  });
+
   it('loads a deterministic bundle for every decision node', async () => {
     for (const node of decisionNodes) {
       const first = await loader.loadNodeBundle(node);

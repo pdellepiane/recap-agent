@@ -8262,3 +8262,16 @@ Review caught and corrected stale prompt assertions, an unmapped deterministic
 template, the old weak-RSVP-signal guard regression, and prompt-size growth.
 The existing prompt byte ceilings remain unchanged. Deployment and final test
 results follow below; no full historical live suite is claimed by this scoped pass.
+
+The first deployment (`5d891216-7e0f-4fcf-986b-5f27aa1455f8`, package SHA
+`RDDpNY778B4JOpv/ojANIMkhVONlgXdT+kNTMkotDNk=`) passed four of five focused
+live cases: `.eval-runs/eval-2026-09-02T19-33-52-892Z-dcbebb40/report.json`.
+Diana, general policy, pending event continuation, and unavailable event identity
+passed. The explicit RSVP topic switch failed all three hard expectations: the
+extractor emitted an associated-event information request, and the old pending
+host request took precedence. Review found contradictory extractor instructions:
+the information section owned attendance, while the RSVP section excluded pure
+state queries from its action intent. Removed that overlap: personal attendance
+state and changes use RSVP, with no mutation for a state query; event logistics
+and guest lists remain information requests. Added a prompt-contract regression;
+no hard assertion was weakened and no model routing keyword was introduced.
