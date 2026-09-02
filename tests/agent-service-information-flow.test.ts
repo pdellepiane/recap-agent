@@ -49,6 +49,113 @@ const renderers = {
 };
 
 describe('AgentService first-class information flow', () => {
+  const hostRequest = (hostWithdrawal: 'individual_status' | 'policy_only' = 'individual_status'): ExtractedInformationRequest => ({
+    kind: 'faq', query: 'Retiro de fondos del evento aún no recibido', hostWithdrawal,
+    eventHint: 'Diana y Fernando',
+  });
+  const hostKnowledge = () => {
+    const gateway = new FakeKnowledgeGateway();
+    const search = vi.spyOn(gateway, 'search').mockResolvedValue({ status: 'success', evidence: [{
+      fileId: 'host-policy', filename: 'atc-template-new-solicitud-de-fondos.md', score: 0.9,
+      text: 'template_status: "Vigente"\nLas solicitudes se procesan en hasta 72 horas hábiles.\nComisión USD5. Retiro recibido mañana. Cuenta privada.',
+    }] });
+    return { gateway, search };
+  };
+
+  it('answers host withdrawal policy and hands off once, retaining the full pending topic without buyer/RSVP/OTP work', async () => {
+    const runtime = new InformationRuntime([
+      { ...extraction([]), conversationSummary: 'La usuaria es la novia, no compradora.' },
+      extraction([hostRequest()], 'solicitar_humano'),
+    ]);
+    const knowledge = hostKnowledge();
+    const gateway = new FakePurchaseGateway();
+    const takeover = vi.spyOn(gateway, 'requestHumanTakeover').mockResolvedValue({ status: 'success', message: null });
+    const provider = providerGateway();
+    const service = createService({ runtime, knowledgeGateway: knowledge.gateway,
+      purchaseGateway: gateway, providerGateway: provider });
+    const inbound = { channel: 'whatsapp', externalUserId: 'host-diana', contactPhone: '+51999999999', receivedAt: new Date().toISOString() };
+    await service.handleTurn({ ...inbound, messageId: 'role', text: 'Hola, no hice ningún regalo. Yo soy la novia.' });
+    const answer = await service.handleTurn({ ...inbound, messageId: 'withdrawal', text: 'Hice un retiro de dinero de mi evento y aún no lo recibo.' });
+    expect(knowledge.search).toHaveBeenCalledTimes(1);
+    expect(knowledge.search).toHaveBeenCalledWith(expect.stringContaining('fondos al anfitrión'), { rewriteQuery: false });
+    expect(takeover).toHaveBeenCalledTimes(1);
+    expect(answer.plan.human_escalation.status).toBe('requested');
+    expect(answer.plan.information_state.pending_requests).toMatchObject([hostRequest()]);
+    expect(JSON.stringify(answer.outbound)).toContain('72 horas hábiles');
+    expect(JSON.stringify(answer.outbound)).toContain('No tengo disponible el estado de tu retiro');
+    expect(JSON.stringify(answer.outbound)).not.toMatch(/USD5|mañana|Cuenta privada/u);
+    const followup = await service.handleTurn({ ...inbound, messageId: 'event', text: 'Evento: Diana y Fernando' });
+    expect(followup.trace.prompt_bundle_id).toBe('deterministic:human_escalation_soft_pause');
+    expect(takeover).toHaveBeenCalledTimes(1);
+    expect(runtime.extractRequests).toHaveLength(2);
+    expect(runtime.composeRequests).toHaveLength(1); // Initial role response only; no policy reply-model call.
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.guestEventCalls + gateway.authByPhoneCalls).toBe(0);
+    expect(provider.requestCodeCalls + provider.verifyCodeCalls + provider.eventLookupCalls).toBe(0);
+  });
+
+  it('answers general host policy without requesting human help or exposing irrelevant context to a reply model', async () => {
+    const runtime = new InformationRuntime([extraction([hostRequest('policy_only')])]);
+    const knowledge = hostKnowledge();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({ runtime, knowledgeGateway: knowledge.gateway, purchaseGateway: gateway, providerGateway: providerGateway() });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'general-host-policy',
+      text: '¿Cuánto demora un retiro de fondos?', messageId: 'policy', receivedAt: new Date().toISOString() });
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(result.plan.information_state.pending_requests).toEqual([]);
+    expect(runtime.composeRequests).toEqual([]);
+    expect(JSON.stringify(result.outbound)).toContain('72 horas hábiles');
+  });
+
+  it('retains pending support and does not enter RSVP for a bare event reference after failed handoff', async () => {
+    const store = new InMemoryPlanStore();
+    await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'pending-host', channel: 'whatsapp', externalUserId: 'pending-host' }), {
+      current_node: 'resolver_consultas_informativas', information_state: {
+        resume_node: null, pending_requests: [{ ...hostRequest(), requestId: 'host' }],
+        selection_candidates: [], last_completed_request: null,
+      },
+    }) });
+    const runtime = new InformationRuntime([{ ...extraction([]), rsvpEventReference: 'Diana y Fernando' }]);
+    const gateway = new FakePurchaseGateway();
+    vi.spyOn(gateway, 'requestHumanTakeover').mockResolvedValue({ status: 'failed', retryable: true, error: 'unavailable' });
+    const service = createService({ runtime, knowledgeGateway: hostKnowledge().gateway, purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'pending-host', contactPhone: '+51999999999',
+      text: 'Evento: Diana y Fernando', messageId: 'event', receivedAt: new Date().toISOString() });
+    expect(result.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(result.plan.human_escalation.status).toBe('none');
+    expect(result.plan.information_state.pending_requests).toHaveLength(1);
+    expect(JSON.stringify(result.outbound)).toContain('No pude registrar');
+    expect(gateway.guestEventCalls + gateway.guestOrdersCalls).toBe(0);
+  });
+
+  it('does not invent a processing window if FAQ retrieval fails, but still attempts individual-status support', async () => {
+    const runtime = new InformationRuntime([extraction([hostRequest()])]);
+    const knowledge = hostKnowledge();
+    knowledge.search.mockResolvedValue({ status: 'failed', reason: 'request_failed', retryable: true, error: 'offline' });
+    const gateway = new FakePurchaseGateway();
+    const service = createService({ runtime, knowledgeGateway: knowledge.gateway, purchaseGateway: gateway, providerGateway: providerGateway() });
+    const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'no-policy', contactPhone: '+51999999999',
+      text: 'No recibí mi retiro', messageId: 'missing', receivedAt: new Date().toISOString() });
+    expect(JSON.stringify(result.outbound)).not.toContain('72');
+    expect(JSON.stringify(result.outbound)).toContain('No pude verificar');
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(runtime.composeRequests).toEqual([]);
+  });
+
+  it('does not act on an ambiguous host-withdrawal extraction', async () => {
+    const runtime = new InformationRuntime([{ ...extraction([hostRequest()]), ambiguity: {
+      status: 'ambiguous', clarificationQuestion: '¿Te refieres a retirar fondos de tu evento o a un regalo?',
+      interpretations: ['Retiro de fondos', 'Regalo comprado'],
+    } }]);
+    const knowledge = hostKnowledge();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({ runtime, knowledgeGateway: knowledge.gateway, purchaseGateway: gateway, providerGateway: providerGateway() });
+    await service.handleTurn({ channel: 'whatsapp', externalUserId: 'ambiguous-host',
+      text: 'Quiero ver lo que retiré', messageId: 'ambiguous', receivedAt: new Date().toISOString() });
+    expect(gateway.takeoverCalls).toBe(0);
+    expect(knowledge.search).not.toHaveBeenCalled();
+    expect(runtime.composeRequests).toHaveLength(1);
+  });
+
   it("does not replace the channel user's name with a third-party guest name", async () => {
     const planStore = new InMemoryPlanStore();
     const plan = mergePlan(

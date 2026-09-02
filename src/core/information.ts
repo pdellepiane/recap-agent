@@ -58,6 +58,8 @@ export type PurchaseAuthAction = (typeof purchaseAuthActionValues)[number];
 export const faqInformationRequestSchema = z.object({
   kind: z.literal('faq'),
   query: z.string().min(1),
+  hostWithdrawal: z.enum(['policy_only', 'individual_status']).nullable().optional(),
+  eventHint: z.string().nullable().optional(),
 });
 
 export const associatedEventInformationRequestSchema = z.object({
@@ -386,6 +388,7 @@ export type InformationTaskResult =
       kind: 'faq';
       status: 'completed';
       evidence: KnowledgeEvidence[];
+      hostWithdrawalPolicy?: { maxBusinessHours: number } | null;
     }
   | {
       requestId: string;

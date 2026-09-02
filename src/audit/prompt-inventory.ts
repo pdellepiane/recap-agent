@@ -10,7 +10,7 @@ import {
 import { extractorAuditProfiles } from './prompt-audit';
 
 export type PromptInventoryConsumer = {
-  callType: 'classifier' | 'extraction' | 'reply';
+  callType: 'classifier' | 'extraction' | 'reply' | 'deterministic_reply';
   nodes: string[];
   profiles: string[];
   transitions: string[];
@@ -58,7 +58,7 @@ export async function buildPromptInventory(args: {
     anchorRef: args.anchorRef ?? null,
     totalFiles: allFiles.length,
     totalNodes: decisionNodes.length,
-    callTypes: ['classifier', 'extraction', 'reply'],
+    callTypes: ['classifier', 'extraction', 'reply', 'deterministic_reply'],
     entries: entries.sort((a, b) => a.filePath.localeCompare(b.filePath)),
     unmappedFiles,
   };
@@ -66,6 +66,13 @@ export async function buildPromptInventory(args: {
 
 function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   const consumers: PromptInventoryConsumer[] = [];
+  if (filePath === 'nodes/resolver_consultas_informativas/host-withdrawal.json') {
+    consumers.push({
+      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
+      profiles: [], transitions: ['information:host_withdrawal_policy_and_support'],
+      loader: 'PromptLoader.loadHostWithdrawalMessages -> AgentService.handleHostWithdrawalInformation (no model call)',
+    });
+  }
 
   if (filePath.startsWith('shared/')) {
     const nodes = decisionNodes.filter((node) =>

@@ -872,7 +872,9 @@ export class AgentService {
     if (
       this.hasInformationWork(workingPlan, extraction, previousNode) &&
       extraction.actionIntent !== 'pausar' &&
-      extraction.actionIntent !== 'solicitar_humano'
+      (extraction.actionIntent !== 'solicitar_humano' ||
+        extraction.informationRequests.some((request) =>
+          request.kind === 'faq' && request.hostWithdrawal))
     ) {
       return await this.handleInformationFlow({
         inbound,
@@ -1705,6 +1707,8 @@ export class AgentService {
     extraction: ExtractionResult,
   ): boolean {
     const hasExplicitRsvpSelection =
+      (extraction.actionIntent === 'responder_invitacion' &&
+        extraction.rsvpDecisionSource === 'current_message' && extraction.informationRequests.length === 0) ||
       (extraction.rsvpAction !== null &&
         extraction.rsvpAction !== undefined &&
         extraction.rsvpDecisionSource === 'current_message') ||
@@ -1714,6 +1718,7 @@ export class AgentService {
       extraction.rsvpParty?.plus_one_response === 'no';
     if (
       (extraction.informationRequests.length > 0 ||
+        plan.information_state.pending_requests.length > 0 ||
         plan.information_state.last_completed_request !== null) &&
       plan.rsvp_state.status === 'none' &&
       !hasExplicitRsvpSelection
@@ -2498,6 +2503,7 @@ export class AgentService {
         associatedEvents,
       );
       const sourceFailed =
+        authoritativeInvitations.some((invitation) => !this.hasRsvpEventIdentity(invitation)) ||
         !gateway.getGuestEventsByPhone ||
         userContextOutcome.status === 'rejected' ||
         guestEventsOutcome.status === 'rejected' ||
@@ -3235,6 +3241,19 @@ export class AgentService {
       },
     });
 
+    const hostWithdrawalRequests = requests.filter((request) =>
+      request.kind === 'faq' && request.hostWithdrawal);
+    if (
+      hostWithdrawalRequests.length > 0 &&
+      args.extraction.ambiguity?.status !== 'ambiguous' &&
+      (args.extraction.actionIntent === null || args.extraction.actionIntent === 'solicitar_humano') &&
+      (hostWithdrawalRequests.length === requests.length ||
+        hostWithdrawalRequests.some((request) =>
+          request.kind === 'faq' && request.hostWithdrawal === 'individual_status'))
+    ) {
+      return this.handleHostWithdrawalInformation(args, planForInformation, requests);
+    }
+
     const hasActionConflict =
       args.extraction.actionIntent !== null &&
       requests.length > 0;
@@ -3695,6 +3714,100 @@ export class AgentService {
     };
   }
 
+  private async handleHostWithdrawalInformation(
+    args: Parameters<AgentService['handleInformationFlow']>[0],
+    plan: PlanSnapshot,
+    requests: PendingInformationRequest[],
+  ): Promise<HandleTurnResponse> {
+    const hostRequests = requests.filter((request) =>
+      request.kind === 'faq' && request.hostWithdrawal);
+    const first = hostRequests[0];
+    if (!first) throw new Error('Host withdrawal requires typed request evidence.');
+    const needsReview = hostRequests.some((request) =>
+      request.kind === 'faq' && request.hostWithdrawal === 'individual_status');
+    const needsHandoff = needsReview || args.extraction.actionIntent === 'solicitar_humano';
+    const gateway = this.dependencies.agentConversationGateway ??
+      new NoopAgentConversationGateway('not_configured');
+    const orchestrator = this.dependencies.informationOrchestrator ?? new InformationOrchestrator({
+      knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
+      providerGateway: this.dependencies.providerGateway, agentGateway: gateway,
+    });
+    this.recordDeterministicToolInput(args.toolUsage, 'knowledge_base_search', {
+      subject: 'host_withdrawal', query_present: true,
+    });
+    const startedAt = Date.now();
+    // All host-status requests share one general policy; personal status is unsupported.
+    const execution = await orchestrator.execute({
+      requests: [first], authentication: null, authBlock: null,
+    });
+    args.timingMs.information_execution += Date.now() - startedAt;
+    this.recordInformationExecutionTrace(args.toolUsage, execution.summaries);
+    const result = execution.results[0];
+    const policy = result?.status === 'completed' && result.kind === 'faq'
+      ? result.hostWithdrawalPolicy : null;
+    const messages = await this.dependencies.promptLoader.loadHostWithdrawalMessages();
+    const parts = [policy
+      ? messages.policy.replace('{hours}', String(policy.maxBusinessHours))
+      : messages.unavailable];
+    let handoff: AgentGatewayResult | null = null;
+    const phone = this.resolveEscalationPhone(args.inbound, plan);
+    if (needsHandoff) {
+      if (needsReview) parts.push(messages.statusUnavailable);
+      handoff = phone
+        ? await this.requestHumanTakeoverWithTrace(gateway, phone, args.toolUsage)
+        : this.missingPhoneEscalationResult();
+      parts.push(handoff.status === 'success' ? messages.handoffSuccess : messages.handoffFailure);
+    }
+    const eventHint = hostRequests.find((request) => request.kind === 'faq' && request.eventHint);
+    if (eventHint?.kind === 'faq' && eventHint.eventHint) {
+      parts.push(messages.event.replace('{event}', eventHint.eventHint));
+    }
+    const handedOff = handoff?.status === 'success';
+    const currentNode: DecisionNode = handedOff
+      ? 'solicitar_agente_humano' : 'resolver_consultas_informativas';
+    const planToSave = mergePlan(plan, {
+      current_node: currentNode,
+      ...(handedOff ? { intent: 'solicitar_humano' as const } : {}),
+      information_state: {
+        ...plan.information_state,
+        pending_requests: needsHandoff || !policy ? requests : [],
+        ...(!needsHandoff && policy ? { last_completed_request: first } : {}),
+      },
+      ...(handoff ? { human_escalation: {
+        status: handedOff ? 'requested' as const : 'none' as const,
+        requested_at: handedOff ? new Date().toISOString() : null,
+        phone_number: phone,
+        last_error: handoff.status === 'failed' ? handoff.error
+          : handoff.status === 'skipped' ? handoff.message : null,
+      } } : {}),
+    });
+    await this.dependencies.planStore.save({ plan: planToSave, reason: 'host_withdrawal_policy_and_support' });
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    return {
+      plan: planToSave,
+      outbound: this.renderOutbound({ text: parts.join('\n\n') }, [], args.inbound.channel,
+        planToSave.conversation_id, planToSave),
+      trace: this.buildTrace({
+        plan: planToSave, previousNode: args.previousNode, currentNode,
+        nodePath: [args.previousNode, currentNode], extraction: args.extraction,
+        missingFields: [], searchReady: false,
+        promptBundleId: 'deterministic:host_withdrawal_policy_and_support',
+        promptFilePaths: ['nodes/resolver_consultas_informativas/host-withdrawal.json'],
+        toolUsage: args.toolUsage, providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true, planPersistReason: 'host_withdrawal_policy_and_support',
+        timingMs: args.timingMs, tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext, responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision: handedOff ? this.humanEscalationTurnDecision('host_withdrawal_status_unsupported')
+          : this.informationTurnDecision('host_withdrawal_policy_and_support'),
+        informationExecution: execution.summaries,
+        operationalNote: `Host withdrawal policy ${policy ? 'available' : 'unavailable'}; individual status unsupported; handoff ${handoff?.status ?? 'not_required'}.`,
+      }),
+    };
+  }
+
   private mergeInformationRequests(
     pending: PendingInformationRequest[],
     extracted: ExtractedInformationRequest[],
@@ -4002,6 +4115,11 @@ export class AgentService {
     }
     if (pending.kind === 'associated_event') {
       return true;
+    }
+    if (pending.kind === 'faq' && extracted.kind === 'faq' &&
+      pending.hostWithdrawal && extracted.hostWithdrawal) {
+      return !pending.eventHint || !extracted.eventHint ||
+        eventMatches(pending.eventHint, extracted.eventHint);
     }
     return pending.kind === 'faq' && extracted.kind === 'faq'
       ? pending.query.trim().toLocaleLowerCase('es') ===

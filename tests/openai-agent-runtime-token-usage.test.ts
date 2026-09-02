@@ -28,6 +28,32 @@ function createRuntimeForTokenUsageTests(
   });
 }
 
+describe('host withdrawal minimum disclosure and role correction', () => {
+  it('allows a generic role-correction response without removing the normal welcome contract', () => {
+    const runtime = createRuntimeForTokenUsageTests() as unknown as {
+      resolveOutputSchema: (request: ComposeReplyRequest) => { safeParse: (value: unknown) => { success: boolean } };
+    };
+    const request = createComposeRequest('entrevista');
+    request.extraction.reportedEventRole = 'host';
+    expect(runtime.resolveOutputSchema(request).safeParse({ type: 'generic', paragraphs_es: ['Entiendo, eres la novia. ¿En qué te ayudo?'] }).success).toBe(true);
+    const welcome = createComposeRequest('contacto_inicial');
+    expect(runtime.resolveOutputSchema(welcome).safeParse({ type: 'welcome', greeting_es: 'Hola', scope_es: 'Te ayudo con tu evento', ask_es: '¿Qué necesitas?' }).success).toBe(true);
+  });
+
+  it('projects a typed policy without source article content, irrelevant instructions, or duplicate evidence', () => {
+    const runtime = createRuntimeForTokenUsageTests() as unknown as {
+      projectInformationResultForReply: (result: InformationTaskResult) => unknown;
+    };
+    const result = runtime.projectInformationResultForReply({ kind: 'faq', status: 'completed', requestId: 'host',
+      hostWithdrawalPolicy: { maxBusinessHours: 72 }, evidence: [{ fileId: 'private', filename: 'article', score: 1,
+        text: 'Raw operational example: account 123; USD5 fee; payment approved; delivery tomorrow.' }] });
+    expect(result).toEqual({ requestId: 'host', kind: 'faq', status: 'completed', subject: 'host_withdrawal',
+      processingPolicy: { maxBusinessHours: 72 }, individualStatus: 'not_available' });
+    expect(Buffer.byteLength(JSON.stringify(result))).toBeLessThan(210);
+    expect(JSON.stringify(result)).not.toMatch(/Raw|123|USD5|approved|tomorrow|evidence|private/u);
+  });
+});
+
 function extractTokenUsageFrom(runtime: OpenAiAgentRuntime, value: unknown): TokenUsage | null {
   return (
     runtime as unknown as {

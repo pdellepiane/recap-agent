@@ -106,6 +106,7 @@ export const openAiInformationRequestSchema = z.object({
   aspects: z.array(z.enum(purchaseAspectValues)),
   sensitiveFields: z.array(z.enum(sensitivePurchaseFieldValues)),
   authAction: z.enum(purchaseAuthActionValues).nullable(),
+  hostWithdrawal: z.enum(['policy_only', 'individual_status']).nullable().optional(),
 });
 
 export type OpenAiInformationRequest = z.infer<
@@ -113,6 +114,7 @@ export type OpenAiInformationRequest = z.infer<
 >;
 
 export const extractionSchema = z.object({
+  reportedEventRole: z.enum(['host', 'guest']).nullable().optional(),
   actionIntent: z.enum(actionIntentValues).nullable(),
   informationRequests: z.array(openAiInformationRequestSchema).default([]),
   phoneConfirmation: z.enum(phoneConfirmationValues).nullable().default(null),
@@ -180,6 +182,7 @@ export function createDynamicExtractionSchema(args: {
     ...(args.capabilities.information
       ? {
           informationRequests: extractionSchema.shape.informationRequests,
+          reportedEventRole: extractionSchema.shape.reportedEventRole,
           phoneConfirmation: extractionSchema.shape.phoneConfirmation,
         }
       : {}),

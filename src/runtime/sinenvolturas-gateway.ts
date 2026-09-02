@@ -1417,7 +1417,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
       eventId,
       slug: event ? this.stringField(event, 'slug') : null,
       url: event ? this.buildEventUrl(this.stringField(event, 'slug')) : null,
-      name: event ? this.stringField(event, 'name') : this.stringField(source, 'name'),
+      name: event ? this.stringField(event, 'name') : null,
       place: this.resolveEventPlace(event, source),
       type: event ? this.stringField(event, 'type') : null,
       datetime: event ? this.stringField(event, 'datetime') : null,

@@ -14,6 +14,7 @@ import {
 } from './prompt-manifest';
 import type { ExtractionCapabilityProfile } from './extraction-schemas';
 import type { InformationAuthReason } from '../core/information';
+import { hostWithdrawalMessagesSchema } from './host-withdrawal-policy';
 
 export type PromptLoadContext = {
   informationAuthReasons?: readonly InformationAuthReason[];
@@ -31,6 +32,12 @@ export type PromptBundle = {
 
 export class PromptLoader {
   constructor(private readonly promptsDir: string) {}
+
+  async loadHostWithdrawalMessages() {
+    const content = await fs.readFile(path.join(this.promptsDir,
+      'nodes/resolver_consultas_informativas/host-withdrawal.json'), 'utf8');
+    return hostWithdrawalMessagesSchema.parse(JSON.parse(content) as unknown);
+  }
 
   async loadNodeBundle(
     node: DecisionNode,

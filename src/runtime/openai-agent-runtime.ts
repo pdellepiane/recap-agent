@@ -228,6 +228,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   ): ExtractResult['extraction'] {
     return {
       actionIntent: extraction.actionIntent ?? null,
+      reportedEventRole: extraction.reportedEventRole ?? null,
       informationRequests: (extraction.informationRequests ?? []).flatMap((request) =>
         this.normalizeInformationRequest(request),
       ),
@@ -273,7 +274,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     request: OpenAiInformationRequest,
   ): ExtractResult['extraction']['informationRequests'] {
     if (request.kind === 'faq') {
-      return [{ kind: 'faq', query: request.query }];
+      return [{ kind: 'faq', query: request.query,
+        ...(request.hostWithdrawal ? {
+          hostWithdrawal: request.hostWithdrawal,
+          eventHint: request.eventHint,
+        } : {}),
+      }];
     }
     if (request.kind === 'associated_event') {
       return [
@@ -1230,6 +1236,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     const node = request.currentNode;
+    if ((node === 'contacto_inicial' || node === 'entrevista') && request.extraction.reportedEventRole) {
+      return genericMessageSchema;
+    }
     if (node === 'contacto_inicial') {
       return welcomeMessageSchema;
     }
@@ -2191,6 +2200,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private projectInformationResultForReply(result: InformationTaskResult): unknown {
     if (result.status === 'completed' && result.kind === 'faq') {
+      if (result.hostWithdrawalPolicy !== undefined) {
+        return {
+          requestId: result.requestId, kind: result.kind, status: result.status,
+          subject: 'host_withdrawal',
+          processingPolicy: result.hostWithdrawalPolicy,
+          individualStatus: 'not_available',
+        };
+      }
       if (result.requestId === informationValidationPolicyRequestId) {
         return {
           requestId: result.requestId,

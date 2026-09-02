@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { hostWithdrawalPolicyQuery, parseHostWithdrawalPolicy } from './host-withdrawal-policy';
 
 import {
   createInformationAuthGuidance,
@@ -278,8 +279,17 @@ export class InformationOrchestrator {
     phoneContext: PhoneContextSnapshot,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
-      const retrieval = await this.dependencies.knowledgeGateway.search(request.query);
+      const retrieval = request.hostWithdrawal
+        ? await this.dependencies.knowledgeGateway.search(hostWithdrawalPolicyQuery, { rewriteQuery: false })
+        : await this.dependencies.knowledgeGateway.search(request.query);
       if (retrieval.status === 'success') {
+        if (request.hostWithdrawal) {
+          const parsed = parseHostWithdrawalPolicy(retrieval.evidence);
+          return {
+            requestId: request.requestId, kind: 'faq', status: 'completed',
+            evidence: parsed.evidence, hostWithdrawalPolicy: parsed.policy,
+          };
+        }
         return {
           requestId: request.requestId,
           kind: 'faq',

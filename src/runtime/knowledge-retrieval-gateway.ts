@@ -16,7 +16,7 @@ export type KnowledgeRetrievalResult =
     };
 
 export interface KnowledgeRetrievalGateway {
-  search(query: string): Promise<KnowledgeRetrievalResult>;
+  search(query: string, options?: { rewriteQuery: boolean }): Promise<KnowledgeRetrievalResult>;
 }
 
 export class NoopKnowledgeRetrievalGateway implements KnowledgeRetrievalGateway {
@@ -59,7 +59,7 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
     timeoutMs?: number;
   };
 
-  async search(query: string): Promise<KnowledgeRetrievalResult> {
+  async search(query: string, options?: { rewriteQuery: boolean }): Promise<KnowledgeRetrievalResult> {
     try {
       const page = await executeOpenAiStage({
         stage: 'knowledge_retrieval',
@@ -70,7 +70,7 @@ export class OpenAiKnowledgeRetrievalGateway implements KnowledgeRetrievalGatewa
           {
             query,
             max_num_results: this.options.maxResults,
-            rewrite_query: true,
+            rewrite_query: options?.rewriteQuery ?? true,
             ranking_options: {
               ranker: 'auto',
               score_threshold: this.options.scoreThreshold,

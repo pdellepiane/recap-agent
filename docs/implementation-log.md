@@ -8165,3 +8165,100 @@ The first unrestricted run exposed two stale wording assertions and a 15-second
 historical prompt-measurement timeout. The assertions were updated to the scoped
 message, and the unchanged timing test passed with lower test concurrency; no
 tests were skipped or timeout limits increased. Prompt audit: zero violations.
+
+### 2026-09-02 — Retained results for the scoped phone-miss deployment
+
+Runtime source `576a381c`; regression registration `e1526687`. Development
+deployment completed on September 1 through CloudFormation using `se-dev` in
+`us-east-1`, verified account `684516060775`. Lambda revision
+`68df395d-add0-4989-b2f6-0238493debe0`, LastModified
+`2026-09-01T22:12:24.000+0000`, CodeSha256
+`9t+r2rxoLVz0ohiC70ighYbl5Rx1ur0T4hyBYh9Dp2I=`; Active/Successful.
+Provider sync was not deployed. The new case was explicitly added to the mandatory
+suite after the coverage validator caught the missing registration; it then passed.
+
+Focused live command: `npm run eval:behavior-live -- --case
+live_behavior.concurrent_support_turns_preserve_context --case
+live_behavior.phone_purchase_missing_hands_off_once`.
+Retained artifact: `.eval-runs/eval-2026-09-01T22-13-13-503Z-3e10ac17/report.json`.
+Two cases: one passed, one failed, no errors. Results were inspected without
+rerunning model calls after the terminal session ended.
+
+- Empty phone purchase: all five hard assertions passed, semantic score 1.0.
+  The actual sequence was guest orders -> scoped not_found -> human takeover;
+  the question remained pending. No OTP/email request or reply-model call occurred.
+  The follow-up performed no repeated lookup, takeover, or model call.
+- Overlapping support: serialization and previous-plan loading passed again;
+  the second turn waited 8194 ms with 27 attempts. Unlike the prior run, extraction
+  took the existing support-detail continuation branch, producing no information
+  lookup and no email request. It acknowledged Roger as the guest and the event,
+  then asked for the specific card problem. The new unconditional phone-read and
+  handoff assertions failed, as did the handoff rubric (0.08). Thus this run does
+  not exercise the empty guest-event branch; it is not evidence that the lock or
+  scoped-miss policy failed. The overall gate is still RED, not a full acceptance.
+  Follow-up test design should separate continuation from a forced event-information
+  lookup rather than assuming every support detail requires an API call.
+
+Observed instruction/input bytes: concurrency turn 0 classifier 9227/714,
+extractor 11552/1590, reply 13311/2576; turn 1 classifier 9227/735,
+extractor 11552/1576, reply 13311/2251. Empty purchase turn 0 classifier
+9227/694, extractor 11552/1570, reply absent (0/0); follow-up all absent.
+This preserves instruction sizes and removes the reply call only on the terminal
+miss branch. Existing OTP paths passed offline, not a new live OTP run. No
+full live suite or real customer takeover was run. No prompts changed in this pass.
+
+### 2026-09-02 — Host-withdrawal interaction audited, implementation held
+
+Recorded the verified three-turn Diana interaction and bounded proposed fix in
+`docs/plan/2026-09-02-host-withdrawal-diagnosis.md`. Read-only traces show that role,
+history, and the pending withdrawal question reached extraction; the question was
+misclassified as a buyer purchase and its event-name follow-up diverted into RSVP.
+The reply received incorrectly labeled canonical invitation evidence. Source
+inspection identified the unsafe guest-name fallback and the pending-request gap
+in RSVP routing. Current FAQ retrieval confirms an indexed host-funds processing
+window; the interaction never searched it. No individual withdrawal-status API
+capability was established. No source, prompt, infrastructure, or runtime change
+was made for this new case, and no extra live evaluation was run. Proposed tests
+and disclosure boundaries are recorded, not claimed as implemented or passing.
+
+### 2026-09-02 — Implement host-withdrawal policy and support after approval
+
+The owner approved implementation of the Diana diagnosis. Added a typed FAQ
+subject (`hostWithdrawal`: policy-only or individual-status) and a reported event
+role that is explicitly not ownership verification. Host withdrawals use one
+focused search of the existing index, with query rewriting disabled. Only the
+active audited host-funds article and its explicit processing-window sentence
+can populate the canonical policy. Missing/stale/conflicting evidence yields no
+numeric promise. No raw article, bank fields, fee examples, buyer orders, or
+withdrawal-status claim is disclosed to the response model.
+
+The host-specific response is rendered deterministically from git-tracked Spanish
+templates. General policy questions require neither authentication nor handoff;
+individual-status questions combine available policy with one attempted human
+takeover and retain the pending topic. Takeover failure is reported honestly and
+does not mark support requested or freeze the conversation. Successful takeover
+uses the existing soft pause: later event-name messages remain in channel history
+for the team, without another model call or invitation list. They are not newly
+extracted into a typed event anchor after that pause.
+
+Pending information now prevents a bare event reference from starting RSVP.
+Explicit current-message attendance intent can still switch topics, without
+authorizing a mutation when no attendance decision was given. The guest-context
+parser no longer falls back to a person's name as an event name; guest records
+without usable event identity count as unavailable evidence, not proof of absence.
+The initial role-correction case also exposed a forced welcome-only output schema;
+a structured reported role now permits a generic acknowledgment while retaining
+the normal greeting contract for greetings without that evidence.
+
+Added offline checks for policy projection, retrieval failure, takeover failure,
+one-time successful takeover, pending-topic routing, explicit RSVP switches,
+missing event identity, role output contracts, and minimal model projection.
+Added mandatory live specifications for the full Diana exchange, its seeded
+event-name follow-up, general policy, explicit attendance topic switch, and missing
+event identity. These use fixture backends for customer operations and the real
+FAQ index/model path; no real customer's attendance or support status is mutated.
+
+Review caught and corrected stale prompt assertions, an unmapped deterministic
+template, the old weak-RSVP-signal guard regression, and prompt-size growth.
+The existing prompt byte ceilings remain unchanged. Deployment and final test
+results follow below; no full historical live suite is claimed by this scoped pass.

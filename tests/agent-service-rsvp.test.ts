@@ -31,6 +31,33 @@ import type {
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 
 describe('AgentService RSVP flow', () => {
+  it('allows an explicit RSVP topic switch despite a pending host-support question', async () => {
+    const store = new InMemoryPlanStore();
+    const input = inbound('Ahora quiero consultar mi asistencia a Matrimonio de Ana y Luis');
+    await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({
+      planId: 'host-to-rsvp', channel: input.channel, externalUserId: input.externalUserId,
+    }), { current_node: 'resolver_consultas_informativas', information_state: {
+      resume_node: null, pending_requests: [{ requestId: 'host', kind: 'faq',
+        query: 'Retiro de fondos no recibido', hostWithdrawal: 'individual_status' }],
+      selection_candidates: [], last_completed_request: null,
+    } }) });
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null, decisionSource: 'current_message', eventReference: 'Matrimonio de Ana y Luis' })]);
+    const gateway = new RsvpGateway([]);
+    const result = await createService(runtime, gateway, store).handleTurn(input);
+    expect(result.trace.route_kind).toBe('rsvp');
+    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+  });
+
+  it('treats guest records with no event identity as unavailable, not as no invitation', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
+    const gateway = new RsvpGateway([]);
+    const result = await createService(runtime, gateway, new InMemoryPlanStore(), [
+      { ...rsvpLookupInvitation({}), eventId: null, name: null },
+    ]).handleTurn(inbound('¿Cuál es el estado de mis invitaciones?'));
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('No fue posible consultar');
+  });
   it('keeps immediate RSVP changes in the RSVP-only prompt bundle', () => {
     const systemPrompt = fs.readFileSync(
       path.resolve(process.cwd(), 'prompts/nodes/responder_invitacion/system.txt'),

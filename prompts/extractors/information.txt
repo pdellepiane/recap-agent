@@ -1,16 +1,17 @@
-Consultas informativas de solo lectura
+Consultas informativas
 
 `informationRequests` conserva el orden y puede coexistir con `actionIntent`.
 
 - `faq`: pregunta general sobre Sin Envolturas, politicas, comisiones o funciones. `query` autosuficiente.
+- Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad; null si no lo declara.
+- Retiro del anfitrión: faq `hostWithdrawal=individual_status` para retiro no recibido/estado, `policy_only` para plazo general; null fuera del tema. No compra/RSVP. Un evento posterior actualiza `eventHint` del retiro pendiente. El runtime gestiona apoyo sin otra acción.
 - `associated_event`: consulta fecha, hora, lugar, asistencia, anfitrion o confirmados de un evento asociado. Usa `eventHint` solo si identifica; emite kind=associated_event.
 - `purchase`: estado o detalle de orden/regalo propio o notificado. `orders` para ordenes/carritos; `gift_purchases` para pago, dedicatoria, tarjeta, envio o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
 
-Ej. "¿Cuando validan el pago por transferencia para Claudia y Luis?" => purchase orders [payment_status,validation_window].
-Ej. "¿Puedo pagar por transferencia este carrito?" => purchase orders con aspects:[payment_options] (el runtime consulta la politica).
+Plazo de validación => purchase orders [payment_status,validation_window]; opciones de carrito => orders [payment_options].
 Con compra activa, constancia o correccion de moneda => purchase orders; no FAQ/plan.
-Ej. "Consulta por Isa y Lu. El monto pendiente es 63.85 por transferencia" => informationRequests=[{kind:purchase,resource:orders,aspects:[summary,payment_status]}] con eventHint y amount.
+"Monto pendiente 63.85 por transferencia para Isa y Lu" => purchase orders [summary,payment_status], eventHint y amount.
 
 Sin numero usa `orderId=null`. `COD301816`/`301816`=>`orderId=301816`, no OTP. "estado de mi pedido"=>`resource=orders`, `aspects=[summary, payment_status, shipping]`. Regalos solo lo pedido.
 
@@ -20,7 +21,7 @@ En compras llena eventHint/amount si explicitos. No uses payment_details para es
 
 Autenticacion de consultas personales
 
-Prueba primero numero WhatsApp; correo/codigo respaldo. `phoneConfirmation=no` solo si niega que la cuenta o numero actuales sean suyos: usa `phoneConfirmation=no` y no `decline_authentication`. `yes` solo si confirmacion explicita, `unclear` si ambiguo.
+Compras/eventos usan número confiable. `phoneConfirmation=no` solo si niega que la cuenta o número sean suyos: usa `phoneConfirmation=no` y no `decline_authentication`; `yes` con confirmación explícita, `unclear` si ambiguo.
 
 Con `information_state.authentication_status=code_requested`, conserva la solicitud y usa:
 
@@ -33,4 +34,4 @@ Con `information_state.authentication_status=code_requested`, conserva la solici
 
 Antes del codigo usa `provide_email` al recibir correo. No copies codigos fuera de `authAction` y conserva consulta pendiente.
 
-Una frase que informa “ya envie el regalo” sin pregunta ni pedido no crea consulta ni cierra el plan. Si el usuario pregunta si puedes leer una fotografia, captura/imagen, crea FAQ sobre esa capacidad; una pregunta sobre capacidad no es solicitud de atencion humana. Si pide hablar con persona, `actionIntent=solicitar_humano` puede coexistir con consultas. Ej."Y el evento es Baby Shower Catalina"=>actionIntent=null.
+“Ya envié el regalo” sin pedido no crea consulta ni cierre. Si pregunta si puedes leer una fotografia, crea FAQ; una pregunta sobre capacidad no es solicitud de atencion humana. Pedir persona => solicitar_humano; “Y el evento es Baby Shower Catalina” => actionIntent=null.

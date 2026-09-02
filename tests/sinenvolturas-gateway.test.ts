@@ -160,6 +160,22 @@ describe('SinEnvolturasGateway strict search mapping', () => {
     expect(result).not.toHaveProperty('guest_in_events');
   });
 
+  it('never substitutes a guest name for missing event metadata', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({
+      ok: true, json: async () => ({ status: true, data: {
+        guest_in_events: [{ id: 312, name: 'Guest name, not an event', has_responded: 1,
+          will_attend: 1, event_id: 205, event: null }],
+      } }),
+    }));
+    const gateway = new SinEnvolturasGateway({
+      baseUrl: 'https://api.example.test/vendor', guestServiceBaseUrl: 'https://api.example.test/guest-service',
+      persistedSearchLimit: 5, summarySearchWordLimit: 10,
+    });
+    const result = await gateway.lookupUserEventContext({ email: null, phone: 'test-phone' });
+    expect(result?.events[0]).toMatchObject({ eventId: 205, guestId: 312, name: null });
+    expect(JSON.stringify(result?.events)).not.toContain('Guest name, not an event');
+  });
+
   it('looks up user event context by phone through the guest service endpoint', async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,

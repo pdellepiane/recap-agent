@@ -43,6 +43,7 @@ export type OpenAiCallRef = {
 };
 
 export type ExtractionResult = {
+  reportedEventRole?: 'host' | 'guest' | null;
   actionIntent: ActionIntent | null;
   informationRequests: ExtractedInformationRequest[];
   phoneConfirmation?: PhoneConfirmation | null;
