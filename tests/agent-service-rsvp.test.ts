@@ -31,6 +31,27 @@ import type {
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 
 describe('AgentService RSVP flow', () => {
+  it('a current state query neither inherits an old action nor offers another mutation', async () => {
+    const store = new InMemoryPlanStore();
+    const input = inbound('Consulta mi asistencia; no cambies mi respuesta');
+    await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({
+      planId: 'read-only-rsvp', channel: input.channel, externalUserId: input.externalUserId,
+    }), { current_node: 'responder_invitacion', rsvp_state: {
+      status: 'awaiting_event_selection', pending_action: 'attending', pending_plus_one_response: 'yes',
+      candidates: [{ guest_id: 41, event_name: 'Matrimonio de Ana y Luis', event_date: null }],
+      requested_at: '2026-09-01T15:00:00.000Z', selection_attempts: 0,
+    } }) });
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null, decisionSource: 'current_message', eventReference: 'Matrimonio de Ana y Luis' })]);
+    const result = await createService(runtime, new RsvpGateway([]), store, [
+      rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis', hasResponded: false }),
+    ]).handleTurn(input);
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(result.plan.rsvp_state.status).toBe('none');
+    expect(result.plan.rsvp_state.pending_action).toBeNull();
+    expect(result.plan.rsvp_state.pending_plus_one_response).toBeNull();
+    expect(runtime.composeRequests[0]?.errorMessage).not.toContain('Pregunta');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('estado pendiente');
+  });
   it('allows an explicit RSVP topic switch despite a pending host-support question', async () => {
     const store = new InMemoryPlanStore();
     const input = inbound('Ahora quiero consultar mi asistencia a Matrimonio de Ana y Luis');

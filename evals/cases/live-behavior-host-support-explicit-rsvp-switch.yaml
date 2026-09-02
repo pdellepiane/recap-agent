@@ -43,4 +43,9 @@ expectations:
     minScore: 0.9
     requireJudge: true
     severity: hard
+  - id: read-only-query-does-not-stage-a-future-mutation
+    type: plan_field_equals
+    path: rsvp_state.pending_action
+    expected: null
+    severity: hard
 budget: {maxTurns: 1, estimatedPromptTokensPerTurn: 1700, estimatedCompletionTokensPerTurn: 180}

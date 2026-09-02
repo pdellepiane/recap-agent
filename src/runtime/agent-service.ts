@@ -1753,12 +1753,14 @@ export class AgentService {
     const rawRsvpAction = args.extraction.rsvpAction ?? null;
     const decisionSource = args.extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state';
     const validatedRsvpAction = decisionSource === 'current_message' ? rawRsvpAction : null;
-    const action = validatedRsvpAction
-      ?? (pendingState.status === 'awaiting_event_selection' ? pendingState.pending_action : null);
     const extractedPlusOneResponse = args.extraction.rsvpParty?.plus_one_response;
+    const isReadOnlyStateQuery = decisionSource === 'current_message' && rawRsvpAction === null &&
+      extractedPlusOneResponse !== 'yes' && extractedPlusOneResponse !== 'no';
+    const action = validatedRsvpAction
+      ?? (!isReadOnlyStateQuery && pendingState.status === 'awaiting_event_selection' ? pendingState.pending_action : null);
     const plusOneResponse = extractedPlusOneResponse === 'yes' || extractedPlusOneResponse === 'no'
       ? extractedPlusOneResponse
-      : pendingState.status === 'awaiting_event_selection'
+      : !isReadOnlyStateQuery && pendingState.status === 'awaiting_event_selection'
         ? pendingState.pending_plus_one_response ?? null
         : null;
     let result: AgentGuestRsvpResult | null = null;
@@ -2126,12 +2128,13 @@ export class AgentService {
       const hasRequestedMutation = actionToSubmit !== null || plusOneResponse !== null;
 
       if (!action && plusOneResponse === null) {
+        const offerAction = !isReadOnlyStateQuery;
         if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
-          deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, true);
-          deterministicIsDecliningOffer = selectedInvitation.state === 'declining';
+          deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, offerAction);
+          deterministicIsDecliningOffer = selectedInvitation.state === 'declining' && offerAction;
         }
-        operationalNote = this.rsvpCurrentStateNote(selectedInvitation, true);
-        nextRsvpState = selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining'
+        operationalNote = this.rsvpCurrentStateNote(selectedInvitation, offerAction);
+        nextRsvpState = offerAction && (selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining')
           ? this.awaitingRsvpActionState(selectedInvitation, 'attending')
           : this.emptyRsvpState();
       } else if (!hasRequestedMutation && action && currentAction === action) {

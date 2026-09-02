@@ -8275,3 +8275,28 @@ state queries from its action intent. Removed that overlap: personal attendance
 state and changes use RSVP, with no mutation for a state query; event logistics
 and guest lists remain information requests. Added a prompt-contract regression;
 no hard assertion was weakened and no model routing keyword was introduced.
+
+Final local gate after the extraction correction: typecheck and lint PASS;
+732/732 tests across 99 files PASS, including the mandatory live-coverage check.
+The registry check caught an all-numeric commit hash parsed as a YAML number;
+quoting that reference restored the gate without changing its validation.
+Prompt audit: zero violations with unchanged ceilings. The measured full active
+extractor is 11,962 instruction bytes versus 11,981 before this feature. Branch
+measurements are saved in `.eval-runs/host-withdrawal-prompt-branches-final.json`.
+
+The next focused run (`eval-2026-09-02T19-39-06-272Z-1ecaf776`) passed Diana again.
+The explicit attendance switch passed its routing/read-only tool assertions but
+failed semantics because the runtime still supplied an unconditional confirmation
+offer. A current-message state query now clears inherited mutation intent, never
+stages a future attendance change, and does not ask for confirmation. Generic
+RSVP action selection retains its existing offer behavior. This uses the existing
+typed decision source and null action, not message matching. The RSVP instruction
+now defers offers to the actual operational outcome, reducing it by 27 bytes.
+An offline regression covers an old pending action and companion response; the
+live case additionally requires no pending mutation.
+
+That run also produced no turns for three cases and failed their hard assertions;
+they are not counted as passes. The live target can return no turns when stack
+discovery yields no function URL. Fresh read-only CLI and SDK checks found the
+stack healthy. Final validation will use explicit, verified function/table values
+to remove repeated discovery from the test path; no backend or judge is disabled.

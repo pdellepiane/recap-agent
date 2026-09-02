@@ -85,10 +85,10 @@ describe('per-branch historical baseline via git show', () => {
     const anchorRsvp = historical.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
     expect(anchorRsvp?.instructionBytes).toBe(8233);
     expect(anchorRsvp?.fileCount).toBe(7);
-    // Current after T5 tightening (F2,F3,F5,F6, RSVP contract dedupe): net +215 vs anchor 78ae24e (down from +1541) — removed duplicate tissue/pending/selection/availability prose from responder_invitacion response_contract (keep system as source), plus F2/F3/F5/F6 reductions; handoff code-composed
+    // Read-only RSVP offer guidance removes 27 bytes from the prior 8448-byte bundle.
     const currentRsvp = current.find((branch) => branch.branchId === 'responder_invitacion:resolved_single');
-    expect(currentRsvp?.instructionBytes).toBe(8448);
-    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(215);
+    expect(currentRsvp?.instructionBytes).toBe(8421);
+    expect((currentRsvp?.instructionBytes ?? 0) - (anchorRsvp?.instructionBytes ?? 0)).toBe(188);
   }, 20_000);
 });
 
