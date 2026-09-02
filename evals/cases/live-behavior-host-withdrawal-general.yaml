@@ -1,0 +1,34 @@
+template: template.base-live
+id: live_behavior.host_withdrawal_general_policy_only
+suite: live_behavior_regression
+version: 1
+description: General host withdrawal timing needs sourced FAQ policy, not account lookups or a mandatory handoff.
+tags: [live, behavior, faq, host-withdrawal, boundary]
+targetModes: [live_lambda]
+inputs:
+  - text: En general, ¿cuánto demoran en procesarse las solicitudes de retiro de fondos de un evento? No estoy consultando un retiro particular.
+    channel: whatsapp
+    contactPhone: "+51985101461"
+backendFixture: {scenario: support-continuity}
+expectations:
+  - id: only-general-policy-work
+    type: tool_usage
+    mustCall: [knowledge_base_search]
+    mustNotCall: [request_human_takeover, lookup_guest_orders_by_phone, lookup_guest_events_by_phone, lookup_rsvp_invitations, auth_by_phone, request_user_login_code]
+    severity: hard
+  - id: no-handoff-required
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: none
+    severity: hard
+  - id: sourced-general-window
+    type: text_semantic
+    rubric: >-
+      Explain in Spanish the general policy of up to 72 business hours for processing
+      host withdrawal requests. Do not claim to have verified an individual withdrawal,
+      require account information, request human help, discuss guest payment validation,
+      or introduce unrelated fees or specific arrival deadlines.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget: {maxTurns: 1, estimatedPromptTokensPerTurn: 1700, estimatedCompletionTokensPerTurn: 180}

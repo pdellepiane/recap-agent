@@ -1,0 +1,48 @@
+template: template.base-live
+id: live_behavior.host_withdrawal_pending_event_followup
+suite: live_behavior_regression
+version: 1
+description: Reconstruct the pending withdrawal topic at Diana's event-name follow-up; the name must not start RSVP.
+tags: [live, behavior, faq, host-withdrawal, continuity, reported-interaction, diana]
+targetModes: [live_lambda]
+inputs:
+  - text: "Evento: Diana y Fernando"
+    channel: whatsapp
+    contactPhone: "+51985101461"
+seedPlan:
+  current_node: resolver_consultas_informativas
+  conversation_summary: La usuaria aclaró que es la novia, no compradora. Solicitó revisar un retiro de dinero de su evento que aún no recibe y ahora aporta el nombre del evento.
+  information_state:
+    resume_node: entrevista
+    pending_requests:
+      - requestId: host-withdrawal
+        kind: faq
+        query: Retiro de dinero de mi evento que aún no recibo
+        hostWithdrawal: individual_status
+        eventHint: null
+    selection_candidates: []
+    last_completed_request: null
+backendFixture: {scenario: support-continuity}
+expectations:
+  - id: event-name-continues-withdrawal-support
+    type: tool_usage
+    mustCall: [knowledge_base_search, request_human_takeover]
+    mustNotCall: [lookup_rsvp_invitations, lookup_guest_events_by_phone, guest_rsvp, lookup_guest_orders_by_phone, request_user_login_code]
+    severity: hard
+  - id: event-anchor-preserved
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected: [{kind: faq, hostWithdrawal: individual_status, eventHint: Diana y Fernando}]
+    severity: hard
+  - id: pending-topic-not-invitations
+    type: text_semantic
+    rubric: >-
+      Continue the pending host-withdrawal question for Diana y Fernando. Acknowledge
+      the supplied event name and explain the sourced processing policy (up to 72
+      business hours) and human review of the particular withdrawal. Do not restart,
+      offer providers, list invitations/guest names, claim attendance or a withdrawal
+      status, or ask for email/OTP. The fixture takeover succeeds.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget: {maxTurns: 1, estimatedPromptTokensPerTurn: 1700, estimatedCompletionTokensPerTurn: 220}

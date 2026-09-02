@@ -1,0 +1,38 @@
+template: template.base-live
+id: live_behavior.rsvp_missing_event_identity_is_unavailable
+suite: live_behavior_regression
+version: 1
+description: Diana's malformed invitation evidence boundary; parsed guest records without event identity cannot become guest-name invitation choices or a global denial.
+tags: [live, behavior, rsvp, minimum-disclosure, reported-interaction, diana]
+targetModes: [live_lambda]
+inputs:
+  - text: ¿Puedes verificar el estado de mi invitación?
+    channel: whatsapp
+    contactPhone: "+51985101461"
+seedPlan:
+  current_node: responder_invitacion
+  rsvp_state:
+    status: awaiting_event_selection
+    pending_action: null
+    candidates: []
+    requested_at: null
+    selection_attempts: 0
+backendFixture: {scenario: rsvp-missing-event-identity}
+expectations:
+  - id: read-only-invitation-check
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations, lookup_guest_events_by_phone]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code]
+    severity: hard
+  - id: incomplete-evidence-is-not-no-invitation
+    type: text_semantic
+    rubric: >-
+      The lookup contains a guest record but cannot identify its event. Say that
+      the invitation information could not be checked and offer a retry or human
+      help. Do not claim no invitation exists, enumerate people as event names,
+      report attendance as verified, ask for email/OTP, or claim an attendance change.
+      Reply in natural concise Spanish.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget: {maxTurns: 1, estimatedPromptTokensPerTurn: 1700, estimatedCompletionTokensPerTurn: 180}

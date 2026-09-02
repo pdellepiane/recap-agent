@@ -1,5 +1,17 @@
 version: 1
 behaviorChanges:
+  - id: host-withdrawal-policy-and-individual-status-support
+    implementedBy: 01ea7d53
+    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support, live_behavior.host_withdrawal_general_policy_only]
+  - id: pending-information-event-reference-does-not-start-rsvp
+    implementedBy: 01ea7d53
+    liveCaseIds: [live_behavior.host_withdrawal_pending_event_followup, live_behavior.host_support_allows_explicit_rsvp_switch]
+  - id: guest-record-name-is-not-event-identity
+    implementedBy: 01ea7d53
+    liveCaseIds: [live_behavior.rsvp_missing_event_identity_is_unavailable]
+  - id: reported-event-role-does-not-force-welcome-schema
+    implementedBy: 01ea7d53
+    liveCaseIds: [live_behavior.host_withdrawal_diana_policy_and_support]
   - id: remove-stale-retired-confirmation-summary
     implementedBy: 2f0d313
     liveCaseIds: [live_behavior.phone_confirmation_unclear_requires_yes_or_no]

@@ -1,0 +1,86 @@
+template: template.base-live
+id: live_behavior.host_withdrawal_diana_policy_and_support
+suite: live_behavior_regression
+version: 1
+description: Diana corrects her role, asks about a missing host withdrawal, and supplies her event; answer sourced policy and hand off without buyer or invitation detours.
+tags: [live, behavior, faq, host-withdrawal, continuity, reported-interaction, diana]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola, no hice ningún regalo. Yo soy la novia.
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-host-withdrawal-diana
+  - text: Hice un retiro de dinero de mi evento y aun no lo recibo.
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-host-withdrawal-diana
+  - text: "Evento: Diana y Fernando"
+    channel: whatsapp
+    contactPhone: "+51985101461"
+    sessionId: live-host-withdrawal-diana
+backendFixture:
+  scenario: support-continuity
+expectations:
+  - id: role-correction-is-not-a-buyer-lookup
+    type: tool_usage
+    mustNotCall: [lookup_guest_orders_by_phone, lookup_rsvp_invitations, request_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: acknowledges-role-without-generic-reset
+    type: text_semantic
+    rubric: >-
+      The user corrected an assumption: she did not buy a gift and is the bride.
+      Acknowledge that correction and ask at most one relevant question about what
+      she needs. Do not restart with a generic introduction, offer a provider menu,
+      assert verified ownership, or discuss an unrelated gift purchase.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 0
+    severity: hard
+  - id: policy-and-human-support-without-unrelated-api-work
+    type: tool_usage
+    mustCall: [knowledge_base_search, request_human_takeover]
+    mustNotCall: [lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone, lookup_guest_events_by_phone, lookup_rsvp_invitations, guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 1
+    severity: hard
+  - id: withdrawal-topic-retained
+    type: plan_field_subset
+    path: information_state.pending_requests
+    expected: [{kind: faq, hostWithdrawal: individual_status}]
+    turnIndex: 1
+    severity: hard
+  - id: supported-policy-not-invented-withdrawal-status
+    type: text_semantic
+    rubric: >-
+      The user is asking about funds withdrawn from her own event, not a gift she
+      bought. Explain that the general host-withdrawal processing policy is up to
+      72 business hours. State that the particular withdrawal status/receipt cannot
+      be checked with the available information and that human support was requested
+      (the fixture succeeds). Do not assert its actual status, blame a bank, promise
+      an arrival date, introduce fees or card-fund eligibility periods, ask for OTP,
+      or list purchases or invitations. Reply concisely in Spanish.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: handoff-is-persisted
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: requested
+    turnIndex: 1
+    severity: hard
+  - id: later-event-message-stays-with-human-team
+    type: trace_field_equals
+    path: prompt_bundle_id
+    expected: deterministic:human_escalation_soft_pause
+    turnIndex: 2
+    severity: hard
+  - id: no-repeated-takeover-or-rsvp
+    type: tool_usage
+    mustNotCall: [request_human_takeover, lookup_rsvp_invitations, guest_rsvp, knowledge_base_search, request_user_login_code]
+    turnIndex: 2
+    severity: hard
+budget:
+  maxTurns: 3
+  estimatedPromptTokensPerTurn: 1700
+  estimatedCompletionTokensPerTurn: 220
