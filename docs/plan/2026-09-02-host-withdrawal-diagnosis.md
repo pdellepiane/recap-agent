@@ -1,7 +1,7 @@
 # Host withdrawal misrouted to purchases and RSVP
 
-Status: implementation approved on 2026-09-02; local implementation complete,
-development acceptance in progress. Original diagnosis and proposal are retained
+Status: implemented and deployed on 2026-09-02; 733 local tests and all five scoped
+live cases passed. Original diagnosis and proposal are retained
 below; see `docs/implementation-log.md` for implementation decisions and results.
 Evidence reviewed: 2026-09-02. Runtime baseline: `576a381c`; evaluation registration: `e1526687`.
 
@@ -15,7 +15,8 @@ The audit used read-only conversation history, DynamoDB performance records,
 CloudWatch completion logs, stored OpenAI Responses, current source, the supplied
 `AGENT_ENDPOINTS (5).md`, and two read-only searches of the configured FAQ index.
 AWS identity was verified as account `684516060775` through `se-dev` in `us-east-1`.
-No real customer takeover, OTP, RSVP mutation, or new deployment was performed.
+During the read-only diagnosis, no customer takeover, OTP, RSVP mutation, or
+deployment was performed. Subsequent approved implementation/deployment is below.
 Private raw audit artifacts remain ignored; this document contains only selected
 diagnostic evidence, not customer phones, credentials, or financial payloads.
 
@@ -109,7 +110,29 @@ updates that same support context, without a greeting reset or invitation list.
   examples; compare changed model instruction/input bytes and prove irrelevant
   policy, raw payloads, and duplicate candidate evidence are absent.
 - Register coverage, run local gates, deploy development, then run the approved
-  live gate. This document does not mark those future checks as passed.
+  live gate. The actual completed scope and results are recorded below.
+
+## Implementation acceptance
+
+Development revision `a954695c-4d83-4b80-8f2c-3106e8b1ff2d` passed the five focused
+live cases in `.eval-runs/eval-2026-09-02T19-46-14-629Z-fafaac6c/report.json`:
+20 hard assertions including six required semantic judges. Typecheck, lint, all
+733 local tests, coverage registry, and prompt audit pass. See the implementation
+log for prior failed runs and the two boundary corrections they exposed.
+
+The indexed policy is parsed into a single processing-window fact; no raw policy
+or purchase response is passed to a reply model on this path. An individual
+withdrawal asks for support once while supplying that policy. A general timing
+question does not trigger support. Explicit attendance state queries remain
+read-only, including when older RSVP mutation intent exists.
+
+There is still no backend capability to verify a particular withdrawal or bank
+receipt. Missing policy cannot supply a promised time. After successful handoff,
+event-name follow-ups remain in channel history for the team, without another
+model call; they do not update typed event fields after the soft pause. Before
+handoff, the seeded event-name continuation does update the pending request.
+These tests use real Lambda/model/FAQ with fixture customer operations, not real
+customer mutations. They do not prove all historical failure cases are fixed.
 
 ## Existing feature test, separate from this proposed fix
 

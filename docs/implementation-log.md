@@ -8300,3 +8300,52 @@ they are not counted as passes. The live target can return no turns when stack
 discovery yields no function URL. Fresh read-only CLI and SDK checks found the
 stack healthy. Final validation will use explicit, verified function/table values
 to remove repeated discovery from the test path; no backend or judge is disabled.
+
+Final runtime deployment: CloudFormation `recap-agent-runtime` updated successfully
+through `se-dev` in `us-east-1`, account `684516060775`. Lambda revision
+`a954695c-4d83-4b80-8f2c-3106e8b1ff2d`, modified `2026-09-02T19:45:31Z`,
+Active / Successful. Package SHA `cJUrNKB8I9Yo8j/L+0w/f/SJmajo5RaF+bWp/C5hd18=`
+matches the local artifact. S3 artifact:
+`s3://recap-agent-artifacts-684516060775-us-east-1/lambda/1788378248812-recap-agent.zip`.
+Provider sync was deliberately not redeployed. Runtime commit `202e75cc`;
+coverage registration `e07971f3`. After this final correction: typecheck/lint PASS,
+733/733 local tests across 99 files PASS, coverage registry PASS, prompt audit
+zero violations. Final focused live acceptance is recorded below.
+
+Final live gate: **5/5 PASS**, 20/20 hard expectations, six mandatory semantic
+judges passing (scores 0.90–1.00), zero errors/skips. Artifact:
+`.eval-runs/eval-2026-09-02T19-46-14-629Z-fafaac6c/report.json`.
+Command: `npm run eval:behavior-live` with the five explicit case IDs below,
+`AWS_PROFILE=se-dev`, `AWS_REGION=us-east-1`, the verified `AGENT_FUNCTION_URL`,
+and `PLANS_TABLE_NAME=recap-agent-runtime-plans`. These are live deployed Lambda
+and real model/FAQ runs; customer backend operations use fixtures, not actual
+customer handoffs or attendance writes.
+
+| Case (prefix `live_behavior.`) | Hard expectations | Outcome |
+| --- | --- | --- |
+| `host_withdrawal_diana_policy_and_support` | 8 | PASS: role correction, policy + one handoff, then human soft pause. |
+| `host_withdrawal_general_policy_only` | 3 | PASS: FAQ timing only; no personal lookup or handoff. |
+| `host_withdrawal_pending_event_followup` | 3 | PASS: event anchor stays with withdrawal; no invitation detour. |
+| `rsvp_missing_event_identity_is_unavailable` | 2 | PASS: unavailable evidence, not guest-name event choices or false denial. |
+| `host_support_allows_explicit_rsvp_switch` | 4 | PASS: current attendance query, no mutation, offer, or pending action. |
+
+Actual final withdrawal call metrics: classifier instructions 9,227 bytes
+(unchanged); extractor instructions 11,461 bytes (91 fewer than the audited
+historical 11,552), with input 1,627 bytes for general policy, 1,698 for Diana's
+withdrawal, and 1,841 for the seeded event continuation. All used one extraction
+attempt. Host-policy replies make no response-model call and no personal API
+lookup: validated policy plus the real takeover outcome populate deterministic
+templates. Diana's post-handoff event turn makes no model call or repeat takeover.
+The RSVP reply bundle is 8,421 bytes, down from 8,448; its read-only switch input
+was 1,967 bytes. Role acknowledgment remains a normal reply-model call, not a
+claim that the entire application is now deterministic or prompt-minimal.
+
+Remaining limits: there is no individual withdrawal-status/receipt endpoint;
+human review remains required for that fact. Missing, stale, conflicting, or
+structurally changed indexed policy yields no numerical promise. If takeover
+fails, the bot states that it failed and retains the topic for retry rather than
+claiming success. Successful takeover stops further bot replies; later details
+are logged for the human team, not re-extracted into typed fields. This pass does
+not close every historical conversation/race issue, generic mixed-topic pending
+request scheduling, or the separate previously red overlapping-support live case.
+Only the five scoped live cases above were rerun, as requested.
