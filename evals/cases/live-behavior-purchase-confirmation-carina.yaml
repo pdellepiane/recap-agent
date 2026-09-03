@@ -1,0 +1,51 @@
+template: template.base-live
+id: live_behavior.purchase_confirmation_carina_request_survives_normalization
+suite: live_behavior_regression
+version: 1
+description: Reconstruct the repeated payment-confirmation requests after the current-event campaign without silently losing neutral authentication actions.
+tags: [live, behavior, reported-interaction, purchase, normalization, carina]
+targetModes: [live_lambda]
+seedPlan:
+  conversation_summary: 'The preceding abandoned-cart campaign concerned a gift for ANDREA & RODRIGO. No payment status has been verified in this conversation.'
+backendFixture:
+  scenario: purchase-confirmation-carina
+inputs:
+  - text: Me podrían mandar una conformidad de pago
+    channel: whatsapp
+    contactPhone: '+51900000301'
+  - text: Quisiera que me manden una conformidad de pago, compré un regalo
+    channel: whatsapp
+    contactPhone: '+51900000301'
+expectations:
+  - id: status-lookup-not-welcome
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [request_user_login_code, verify_user_login_code, auth_by_phone]
+    turnIndex: 0
+    severity: hard
+  - id: answer-current-payment
+    type: text_semantic
+    rubric: >-
+      Respond in concise Spanish to the requested payment confirmation for ANDREA & RODRIGO.
+      The current order is approved. Do not replace the answer with a welcome or ask what the user needs.
+      Do not select the old Micaela & Gonzalo purchase, assume currency, expose internal IDs,
+      or claim a document was sent or an uploaded voucher is a merchant-issued confirmation.
+      It is acceptable to explain that document issuance requires human assistance.
+    turnIndex: 0
+    requireJudge: true
+    minScore: 0.9
+    severity: hard
+  - id: repeated-request-does-not-restart
+    type: text_semantic
+    rubric: >-
+      Continue the same payment-confirmation support request in Spanish without a generic welcome,
+      an email OTP, a historical purchase, invented currency, or a claim that a document was sent.
+      If a human handoff has already been requested, a suppressed response is acceptable; do not initiate it again.
+    turnIndex: 1
+    requireJudge: true
+    minScore: 0.9
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 240

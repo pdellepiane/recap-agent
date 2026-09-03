@@ -291,7 +291,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         },
       ];
     }
-    if (!request.resource || !request.authAction) {
+    if (!request.resource) {
       return [];
     }
     return [
@@ -307,7 +307,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         aspects:
           request.aspects.length > 0 ? request.aspects : ['summary'],
         sensitiveFields: request.sensitiveFields,
-        authAction: request.authAction,
+        authAction: request.authAction ?? 'none',
       },
     ];
   }

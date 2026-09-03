@@ -8,6 +8,10 @@ import type {
 import type { InformationTaskResult } from '../src/core/information';
 import type { AgentFeatureFlags } from '../src/runtime/config';
 import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
+import {
+  openAiInformationRequestSchema,
+  type OpenAiInformationRequest,
+} from '../src/runtime/extraction-schemas';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { findDuplicateStructuredSubtrees } from '../src/audit/request-structure';
@@ -26,6 +30,18 @@ function createRuntimeForTokenUsageTests(
     providerGateway: {} as never,
     features,
   });
+}
+
+function normalizeInformationRequestsForTest(
+  runtime: OpenAiAgentRuntime,
+  informationRequests: OpenAiInformationRequest[],
+): ComposeReplyRequest['extraction']['informationRequests'] {
+  const typedRuntime = runtime as unknown as {
+    normalizeExtraction: (input: {
+      informationRequests: OpenAiInformationRequest[];
+    }) => ComposeReplyRequest['extraction'];
+  };
+  return typedRuntime.normalizeExtraction({ informationRequests }).informationRequests;
 }
 
 describe('host withdrawal minimum disclosure and role correction', () => {
@@ -380,6 +396,115 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       sensitiveFields: [],
       authAction: 'none',
     }]);
+  });
+
+  it('normalizes a schema-valid Carina-shaped purchase with null auth to none', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = openAiInformationRequestSchema.parse({
+      kind: 'purchase',
+      query: 'Necesito confirmar el estado del pago de mi regalo.',
+      eventHint: 'Evento de campaña',
+      resource: 'gift_purchases',
+      orderId: null,
+      amount: 375.5,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: null,
+    });
+
+    expect(normalizeInformationRequestsForTest(runtime, [request])).toEqual([{
+      kind: 'purchase',
+      resource: 'gift_purchases',
+      query: 'Necesito confirmar el estado del pago de mi regalo.',
+      orderId: null,
+      eventHint: 'Evento de campaña',
+      amount: 375.5,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: 'none',
+    }]);
+  });
+
+  it('retains FAQ and purchase requests in the same normalized batch', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const faq = openAiInformationRequestSchema.parse({
+      kind: 'faq',
+      query: '¿Cómo funciona la lista de regalos?',
+      eventHint: null,
+      resource: null,
+      orderId: null,
+      amount: null,
+      aspects: [],
+      sensitiveFields: [],
+      authAction: null,
+    });
+    const purchase = openAiInformationRequestSchema.parse({
+      kind: 'purchase',
+      query: '¿Cuál es el estado de mi pago?',
+      eventHint: 'Evento de campaña',
+      resource: 'gift_purchases',
+      orderId: null,
+      amount: null,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: null,
+    });
+
+    expect(normalizeInformationRequestsForTest(runtime, [faq, purchase])).toEqual([
+      { kind: 'faq', query: '¿Cómo funciona la lista de regalos?' },
+      {
+        kind: 'purchase',
+        resource: 'gift_purchases',
+        query: '¿Cuál es el estado de mi pago?',
+        orderId: null,
+        eventHint: 'Evento de campaña',
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      },
+    ]);
+  });
+
+  it('preserves an explicit purchase OTP action', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = openAiInformationRequestSchema.parse({
+      kind: 'purchase',
+      query: 'Quiero ingresar el código de verificación.',
+      eventHint: null,
+      resource: 'orders',
+      orderId: null,
+      amount: null,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: 'provide_otp',
+    });
+
+    expect(normalizeInformationRequestsForTest(runtime, [request])).toEqual([{
+      kind: 'purchase',
+      resource: 'orders',
+      query: 'Quiero ingresar el código de verificación.',
+      orderId: null,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: 'provide_otp',
+    }]);
+  });
+
+  it('does not invent a resource for a purchase request missing one', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const request = openAiInformationRequestSchema.parse({
+      kind: 'purchase',
+      query: 'Necesito ayuda con una compra.',
+      eventHint: null,
+      resource: null,
+      orderId: null,
+      amount: null,
+      aspects: ['payment_status'],
+      sensitiveFields: [],
+      authAction: null,
+    });
+
+    expect(normalizeInformationRequestsForTest(runtime, [request])).toEqual([]);
   });
 });
 

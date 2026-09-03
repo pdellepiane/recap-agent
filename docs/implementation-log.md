@@ -1,5 +1,19 @@
 # Implementation Log
 
+## 2026-09-03 — neutral purchase authentication normalization
+
+The authenticated Carina audit found schema-valid purchase requests with a null
+authentication action being silently discarded. Normalize that neutral value to
+`none`, without altering explicit OTP actions, resource validation, authorization,
+or endpoint selection. This is the only conversational correction authorized for
+immediate production promotion; broader support changes remain development-only.
+
+Offline validation: 34 normalization/runtime tests passed, including a replay of
+the observed model-shaped request and mixed FAQ/purchase input. Instruction/input
+bytes are unchanged (no schema or prompt modification). A permanent two-turn
+Carina live case reconstructs the campaign anchor and current/old purchases with
+sanitized fixtures. Live/deployment acceptance is pending, not claimed complete.
+
 ## 2026-08-28
 
 ### T10-fix-2 -- order-agnostic rubrics + casing-true sweep + tissue example + multi-person warm ack (plan-2026-08-27-rsvp-projection-prompt-audit T10-fix-2 retries_used 0)
