@@ -4,6 +4,9 @@ import type { ProviderSearchMode } from './provider-gateway';
 import { DEFAULT_GPT_TEXT_MODEL } from './openai-model-defaults';
 
 export type AppConfig = {
+  deployment: {
+    environment: 'development' | 'production' | 'local';
+  };
   channelAuth: {
     apiKey: string | null;
     secretId: string | null;
@@ -99,6 +102,7 @@ export type AgentFeatureFlags = {
 };
 
 const environmentSchema = z.object({
+  DEPLOYMENT_ENV: z.enum(['development', 'production']).optional(),
   CHANNEL_API_KEY: z.string().min(1).optional(),
   CHANNEL_API_SECRET_ID: z.string().min(1).optional(),
   OPENAI_API_KEY: z.string().min(1).optional(),
@@ -171,8 +175,12 @@ const environmentSchema = z.object({
 
 export function getConfig(): AppConfig {
   const environment = environmentSchema.parse(process.env);
+  if (process.env.AWS_LAMBDA_FUNCTION_NAME && !environment.DEPLOYMENT_ENV) {
+    throw new Error('DEPLOYMENT_ENV is required in Lambda.');
+  }
 
   return {
+    deployment: { environment: environment.DEPLOYMENT_ENV ?? 'local' },
     channelAuth: {
       apiKey: environment.CHANNEL_API_KEY ?? null,
       secretId: environment.CHANNEL_API_SECRET_ID ?? null,

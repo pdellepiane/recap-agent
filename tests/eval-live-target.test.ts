@@ -1,6 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
+vi.mock('../src/aws/local-identity', () => ({ assertRequiredLocalAwsIdentity: vi.fn() }));
+
+vi.mock('@aws-sdk/client-cloudformation', () => ({
+  DescribeStacksCommand: class {},
+  CloudFormationClient: class {
+    async send() {
+      return { Stacks: [{ Outputs: [
+        { OutputKey: 'DeploymentEnvironment', OutputValue: 'development' },
+        { OutputKey: 'FunctionUrl', OutputValue: 'https://example.test/lambda' },
+        { OutputKey: 'PlansTableName', OutputValue: 'recap-agent-runtime-dev-plans' },
+      ] }] };
+    }
+  },
+}));
 
 vi.mock('../src/storage/dynamo-plan-store', () => {
   const savedPlans: unknown[] = [];
@@ -55,7 +69,7 @@ vi.mock('../src/storage/dynamo-plan-store', () => {
 describe('live lambda eval target', () => {
   beforeEach(() => {
     vi.restoreAllMocks();
-    vi.stubEnv('CHANNEL_API_KEY', 'test-channel-api-key');
+    vi.stubEnv('DEV_CHANNEL_API_KEY', 'test-channel-api-key');
   });
 
   it('fails loudly when a live seed plan cannot be persisted', async () => {

@@ -126,6 +126,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
   constructor(
     private readonly options: {
       baseUrl: string;
+      allowCustomerWrites?: boolean;
       guestServiceBaseUrl?: string;
       userAuthBaseUrl?: string;
       persistedSearchLimit: number;
@@ -429,6 +430,9 @@ export class SinEnvolturasGateway implements ProviderGateway {
   async getProviderDetailAndTrackView(
     providerId: number,
   ): Promise<ProviderDetail | null> {
+    if (this.options.allowCustomerWrites === false) {
+      return this.getProviderDetail(providerId);
+    }
     try {
       const response = await this.fetchJson<ApiEnvelope<ProviderApiItem>>(
         `/view/${providerId}`,
@@ -1072,6 +1076,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     body: Record<string, unknown>,
     options?: { throwOnHttpError?: boolean },
   ): Promise<{ ok: boolean; status: number; body: T; requestId: string | null }> {
+    this.assertCustomerWritesAllowed();
     const baseUrl = this.options.userAuthBaseUrl ?? 'https://api.sinenvolturas.com/api-web/user';
     const url = `${baseUrl}${pathname}`;
     const operationId = createAuthOperationId();
@@ -1312,6 +1317,7 @@ export class SinEnvolturasGateway implements ProviderGateway {
     pathname: string,
     body: Record<string, unknown>,
   ): Promise<T> {
+    this.assertCustomerWritesAllowed();
     const response = await fetch(`${this.options.baseUrl}${pathname}`, {
       method: 'POST',
       headers: {
@@ -1336,6 +1342,12 @@ export class SinEnvolturasGateway implements ProviderGateway {
     }
 
     return `https://sinenvolturas.com/proveedores/${slug}`;
+  }
+
+  private assertCustomerWritesAllowed(): void {
+    if (this.options.allowCustomerWrites === false) {
+      throw new Error('Customer writes are disabled in this environment.');
+    }
   }
 
   private toUserEventLookupResult(

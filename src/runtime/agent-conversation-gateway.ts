@@ -794,6 +794,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       timeoutMs: number;
       maxRetries: number;
       messageLoggingEnabled: boolean;
+      allowCustomerWrites?: boolean;
     },
   ) {}
 
@@ -1785,6 +1786,12 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     | { status: 'success'; data: unknown }
     | HttpRequestFailure
   > {
+    if (options.method !== 'GET' && this.options.allowCustomerWrites === false) {
+      return {
+        status: 'failed', error: 'Customer writes are disabled in this environment.',
+        retryable: false, httpStatus: null, responseFormat: null, errorEnvelope: false,
+      };
+    }
     const attempts = Math.max(1, this.options.maxRetries + 1);
     let lastError: string | null = null;
     const url = `${this.options.baseUrl}${path}`;

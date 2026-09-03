@@ -6,7 +6,7 @@ import dotenv from 'dotenv';
 
 import { runEvaluation } from './runner';
 
-dotenv.config({ path: ['.env.local', '.env'], quiet: true });
+dotenv.config({ path: ['.env.development', '.env.local', '.env'], quiet: true });
 
 export function parseCaseIds(argv: string[]): string[] | undefined {
   const ids: string[] = [];

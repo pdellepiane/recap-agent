@@ -342,6 +342,9 @@ async function handleRequest(
       }, 'invalid_request', { validationIssues });
     }
     const body = parsedBody.data;
+    if (body.backendFixture && config.deployment.environment !== 'development') {
+      return respond(403, { error: 'Backend fixtures are available only in development.' }, 'invalid_request');
+    }
     const channel = body.channel;
     const messageId = body.message_id ?? crypto.randomUUID();
     requestIdentity = {
@@ -524,6 +527,7 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
             })
           : null;
       const providerGateway = new SinEnvolturasGateway({
+        allowCustomerWrites: config.deployment.environment === 'production',
         baseUrl: config.providerApi.baseUrl,
         guestServiceBaseUrl: config.providerApi.guestServiceBaseUrl,
         userAuthBaseUrl: config.providerApi.userAuthBaseUrl,
@@ -596,6 +600,7 @@ async function getRuntime(): Promise<{
       });
 
       const agentConversationGateway = new HttpAgentConversationGateway({
+        allowCustomerWrites: config.deployment.environment === 'production',
         baseUrl: config.agentApi.baseUrl,
         apiKey: seApiKey,
         timeoutMs: config.agentApi.timeoutMs,

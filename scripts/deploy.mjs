@@ -4,79 +4,129 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 import { assertRequiredAwsIdentity, createRequiredAwsEnv } from './aws-profile.mjs';
+import {
+  optionalTrimmed,
+  resolveDeploymentTarget,
+} from './deployment-config.mjs';
 
 const root = process.cwd();
 const envPath = path.join(root, '.env');
-const env = loadDotEnv(envPath);
+const deploymentEnvironment = resolveDeploymentTarget(process.env);
+const deploymentEnvPath = path.join(root, '.env.development');
+const env = {
+  ...loadDotEnv(envPath),
+  ...(deploymentEnvironment.environment === 'development'
+    ? loadDotEnv(deploymentEnvPath)
+    : {}),
+  ...process.env,
+};
+const channelApiKeyName = deploymentEnvironment.channelApiKeyEnvName;
+const isProductionPromotion = deploymentEnvironment.environment === 'production';
+const suppliedArtifactPath = optionalTrimmed(process.env.DEPLOY_ARTIFACT_PATH);
+const expectedArtifactSha256 = optionalTrimmed(process.env.DEPLOY_ARTIFACT_SHA256);
 
-if (!env.CHANNEL_API_KEY) {
-  env.CHANNEL_API_KEY = crypto.randomBytes(32).toString('base64url');
-  upsertDotEnvValue(envPath, 'CHANNEL_API_KEY', env.CHANNEL_API_KEY);
-  console.log('Generated CHANNEL_API_KEY and stored it in the ignored local .env file.');
+if (isProductionPromotion && (!suppliedArtifactPath || !expectedArtifactSha256)) {
+  throw new Error(
+    'Production deployment requires DEPLOY_ARTIFACT_PATH and DEPLOY_ARTIFACT_SHA256 for exact-artifact promotion.',
+  );
 }
 
-const required = ['OPENAI_API_KEY', 'SE_API_KEY', 'CHANNEL_API_KEY'];
+if (!isProductionPromotion && !env[channelApiKeyName]) {
+  env[channelApiKeyName] = crypto.randomBytes(32).toString('base64url');
+  const channelKeyPath =
+    deploymentEnvironment.environment === 'development' ? deploymentEnvPath : envPath;
+  upsertDotEnvValue(channelKeyPath, channelApiKeyName, env[channelApiKeyName]);
+  console.log(
+    `Generated ${channelApiKeyName} and stored it in the ignored ${path.basename(channelKeyPath)} file.`,
+  );
+}
+
+const required = isProductionPromotion ? [] : ['OPENAI_API_KEY', 'SE_API_KEY', channelApiKeyName];
 for (const key of required) {
   if (!env[key]) {
-    throw new Error(`${key} is required in .env for deployment.`);
+    throw new Error(`${key} is required in the deployment environment.`);
   }
 }
 
 const awsEnv = createRequiredAwsEnv();
 assertRequiredAwsIdentity(awsEnv);
 
-const stackName = process.env.STACK_NAME ?? 'recap-agent-runtime';
-const functionName = process.env.FUNCTION_NAME ?? 'recap-agent-runtime';
-const secretName = process.env.OPENAI_SECRET_NAME ?? 'recap-agent/openai-api-key';
-const seApiSecretName = process.env.SE_API_SECRET_NAME ?? 'recap-agent/se-api-key';
-const channelApiSecretName = process.env.CHANNEL_API_SECRET_NAME ?? 'recap-agent/channel-api-key';
+const {
+  environment,
+  stackName,
+  functionName,
+  openAiSecretName: secretName,
+  seApiSecretName,
+  channelApiSecretName,
+  providerSyncStackName,
+  providerSyncEnvironment,
+} = deploymentEnvironment;
 const artifactBucket = process.env.ARTIFACT_BUCKET ?? `recap-agent-artifacts-${getAccountId(awsEnv)}-${awsEnv.AWS_REGION}`;
-const artifactKey = `lambda/${Date.now()}-recap-agent.zip`;
 const artifactDir = path.join(root, '.artifacts');
-const artifactZip = path.join(artifactDir, 'recap-agent.zip');
+const artifactZip = suppliedArtifactPath
+  ? path.resolve(root, suppliedArtifactPath)
+  : path.join(artifactDir, 'recap-agent.zip');
 
 fs.mkdirSync(artifactDir, { recursive: true });
 
-run('npm', ['run', 'build'], { env: process.env });
+if (suppliedArtifactPath) {
+  assertArtifactFile(artifactZip);
+} else {
+  run('npm', ['run', 'build'], { env: process.env });
+  zipArtifact(path.join(root, 'dist'), artifactZip);
+}
+
+const artifactSha256 = sha256File(artifactZip);
+if (expectedArtifactSha256 && !isSha256(expectedArtifactSha256)) {
+  throw new Error('DEPLOY_ARTIFACT_SHA256 must be a 64-character hexadecimal SHA-256 digest.');
+}
+if (expectedArtifactSha256 && artifactSha256 !== expectedArtifactSha256.toLowerCase()) {
+  throw new Error(
+    `Artifact digest mismatch: expected ${expectedArtifactSha256.toLowerCase()}, got ${artifactSha256}.`,
+  );
+}
+
+const artifactKey = optionalTrimmed(process.env.DEPLOY_ARTIFACT_S3_KEY) ?? `lambda/${artifactSha256}.zip`;
+console.log(`Artifact SHA-256: ${artifactSha256}`);
 ensureBucketExists(artifactBucket, awsEnv);
-syncSecret(secretName, env.OPENAI_API_KEY, awsEnv);
-const secretArn = execFileSync(
-  'aws',
-  ['secretsmanager', 'describe-secret', '--secret-id', secretName, '--query', 'ARN', '--output', 'text'],
-  { env: awsEnv, encoding: 'utf8' },
-).trim();
-syncSecret(seApiSecretName, env.SE_API_KEY, awsEnv);
-const seApiSecretArn = execFileSync(
-  'aws',
-  ['secretsmanager', 'describe-secret', '--secret-id', seApiSecretName, '--query', 'ARN', '--output', 'text'],
-  { env: awsEnv, encoding: 'utf8' },
-).trim();
-syncSecret(channelApiSecretName, env.CHANNEL_API_KEY, awsEnv);
-const channelApiSecretArn = execFileSync(
-  'aws',
-  ['secretsmanager', 'describe-secret', '--secret-id', channelApiSecretName, '--query', 'ARN', '--output', 'text'],
-  { env: awsEnv, encoding: 'utf8' },
-).trim();
-zipArtifact(path.join(root, 'dist'), artifactZip);
+let secretArn;
+let seApiSecretArn;
+let channelApiSecretArn;
+let targetFunctionName = functionName;
+if (isProductionPromotion) {
+  // Promotion must preserve the live stack's credential bindings. In
+  // particular, local .env values are never copied into production.
+  const currentStack = readCurrentStack(stackName, awsEnv);
+  const currentEnvironment = optionalTrimmed(currentStack.DeploymentEnvironment);
+  if (currentEnvironment && currentEnvironment !== 'production') {
+    throw new Error(
+      `Refusing production promotion because ${stackName} is marked ${currentEnvironment}.`,
+    );
+  }
+  targetFunctionName = requireCurrentStackValue(currentStack, 'FunctionName');
+  secretArn = requireCurrentStackValue(currentStack, 'OpenAISecretArn');
+  seApiSecretArn = requireCurrentStackValue(currentStack, 'SeApiSecretArn');
+  channelApiSecretArn = requireCurrentStackValue(currentStack, 'ChannelApiSecretArn');
+} else {
+  syncSecret(secretName, env.OPENAI_API_KEY, awsEnv);
+  secretArn = describeSecretArn(secretName, awsEnv);
+  syncSecret(seApiSecretName, env.SE_API_KEY, awsEnv);
+  seApiSecretArn = describeSecretArn(seApiSecretName, awsEnv);
+  syncSecret(channelApiSecretName, env[channelApiKeyName], awsEnv);
+  channelApiSecretArn = describeSecretArn(channelApiSecretName, awsEnv);
+}
 run('aws', ['s3', 'cp', artifactZip, `s3://${artifactBucket}/${artifactKey}`], { env: awsEnv });
-run(
-  'aws',
-  [
-    'cloudformation',
-    'deploy',
-    '--stack-name',
-    stackName,
-    '--template-file',
-    'infra/cloudformation/stack.yaml',
-    '--capabilities',
-    'CAPABILITY_NAMED_IAM',
-    '--parameter-overrides',
-    `FunctionName=${functionName}`,
-    `CodeS3Bucket=${artifactBucket}`,
-    `CodeS3Key=${artifactKey}`,
-    `OpenAISecretArn=${secretArn}`,
-    `SeApiSecretArn=${seApiSecretArn}`,
-    `ChannelApiSecretArn=${channelApiSecretArn}`,
+const parameterOverrides = [
+  `DeploymentEnvironment=${environment}`,
+  `FunctionName=${targetFunctionName}`,
+  `CodeS3Bucket=${artifactBucket}`,
+  `CodeS3Key=${artifactKey}`,
+  `OpenAISecretArn=${secretArn}`,
+  `SeApiSecretArn=${seApiSecretArn}`,
+  `ChannelApiSecretArn=${channelApiSecretArn}`,
+];
+if (!isProductionPromotion) {
+  parameterOverrides.push(
     `OpenAIModel=${process.env.OPENAI_MODEL ?? env.OPENAI_MODEL ?? 'gpt-5.6-luna'}`,
     `OpenAIExtractorModel=${process.env.OPENAI_EXTRACTOR_MODEL ?? env.OPENAI_EXTRACTOR_MODEL ?? 'gpt-5.6-luna'}`,
     `OpenAIResponseClassifierModel=${process.env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? env.OPENAI_RESPONSE_CLASSIFIER_MODEL ?? 'gpt-5.6-luna'}`,
@@ -85,11 +135,11 @@ run(
     `LogRetentionDays=${process.env.LOG_RETENTION_DAYS ?? env.LOG_RETENTION_DAYS ?? '7'}`,
     `ProviderSearchMode=${process.env.PROVIDER_SEARCH_MODE ?? env.PROVIDER_SEARCH_MODE ?? 'hybrid'}`,
     `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
-    `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,
+    `ProviderVectorStoreId=${getEnvironmentSetting('PROVIDER_VECTOR_STORE_ID', '')}`,
     `ProviderVectorMaxResults=${process.env.PROVIDER_VECTOR_MAX_RESULTS ?? env.PROVIDER_VECTOR_MAX_RESULTS ?? '12'}`,
     `ProviderVectorScoreThreshold=${process.env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? env.PROVIDER_VECTOR_SCORE_THRESHOLD ?? '0.2'}`,
     `KbEnabled=${process.env.KB_ENABLED ?? env.KB_ENABLED ?? 'true'}`,
-    `KbVectorStoreId=${process.env.KB_VECTOR_STORE_ID ?? env.KB_VECTOR_STORE_ID ?? ''}`,
+    `KbVectorStoreId=${getEnvironmentSetting('KB_VECTOR_STORE_ID', '')}`,
     `KbMaxResults=${process.env.KB_MAX_RESULTS ?? env.KB_MAX_RESULTS ?? '6'}`,
     `KbScoreThreshold=${process.env.KB_SCORE_THRESHOLD ?? env.KB_SCORE_THRESHOLD ?? '0'}`,
     `AgentApiBaseUrl=${process.env.AGENT_API_BASE_URL ?? env.AGENT_API_BASE_URL ?? 'https://api.sinenvolturas.com/api/agent'}`,
@@ -105,6 +155,21 @@ run(
     `AgentFeatureInvitedEventLookup=${process.env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? env.AGENT_FEATURE_INVITED_EVENT_LOOKUP ?? 'true'}`,
     `AgentFeaturePurchaseInformation=${process.env.AGENT_FEATURE_PURCHASE_INFORMATION ?? env.AGENT_FEATURE_PURCHASE_INFORMATION ?? 'true'}`,
     `AgentFeatureRsvp=${process.env.AGENT_FEATURE_RSVP ?? env.AGENT_FEATURE_RSVP ?? 'true'}`,
+  );
+}
+run(
+  'aws',
+  [
+    'cloudformation',
+    'deploy',
+    '--stack-name',
+    stackName,
+    '--template-file',
+    'infra/cloudformation/stack.yaml',
+    '--capabilities',
+    'CAPABILITY_NAMED_IAM',
+    '--parameter-overrides',
+    ...parameterOverrides,
   ],
   { env: awsEnv },
 );
@@ -127,8 +192,7 @@ const functionUrl = execFileSync(
 console.log(`Deployed stack: ${stackName}`);
 console.log(`Function URL: ${functionUrl}`);
 
-if (process.env.DEPLOY_PROVIDER_SYNC !== 'false') {
-  const providerSyncStackName = process.env.PROVIDER_SYNC_STACK_NAME ?? 'recap-agent-provider-sync-dev';
+if (process.env.DEPLOY_PROVIDER_SYNC === 'true') {
   run(
     'aws',
     [
@@ -141,11 +205,11 @@ if (process.env.DEPLOY_PROVIDER_SYNC !== 'false') {
       '--capabilities',
       'CAPABILITY_NAMED_IAM',
       '--parameter-overrides',
-      `Environment=${process.env.ENVIRONMENT ?? 'dev'}`,
+      `Environment=${providerSyncEnvironment}`,
       `OpenAiSecretArn=${secretArn}`,
       `SinEnvolturasBaseUrl=${process.env.SINENVOLTURAS_BASE_URL ?? env.SINENVOLTURAS_BASE_URL ?? 'https://api.sinenvolturas.com/api-web/vendor'}`,
       `ProviderVectorStoreName=${process.env.PROVIDER_VECTOR_STORE_NAME ?? env.PROVIDER_VECTOR_STORE_NAME ?? 'Sin Envolturas Provider Search'}`,
-      `ProviderVectorStoreId=${process.env.PROVIDER_VECTOR_STORE_ID ?? env.PROVIDER_VECTOR_STORE_ID ?? ''}`,
+      `ProviderVectorStoreId=${getProviderSyncVectorStoreId()}`,
       `CodeS3Bucket=${artifactBucket}`,
       `CodeS3Key=${artifactKey}`,
     ],
@@ -154,7 +218,7 @@ if (process.env.DEPLOY_PROVIDER_SYNC !== 'false') {
 
   console.log(`Deployed provider sync stack: ${providerSyncStackName}`);
 } else {
-  console.log('Skipped provider sync stack deployment.');
+  console.log('Skipped provider sync stack deployment; set DEPLOY_PROVIDER_SYNC=true to opt in.');
 }
 
 function loadDotEnv(filePath) {
@@ -179,6 +243,27 @@ function loadDotEnv(filePath) {
   return result;
 }
 
+function getEnvironmentSetting(baseKey, fallback) {
+  const scopedKey = `${baseKey}_${environment.toUpperCase()}`;
+  const scopedValue = optionalTrimmed(env[scopedKey]);
+  if (scopedValue) {
+    return scopedValue;
+  }
+
+  // A development runtime may use an explicitly configured shared index for
+  // read-only retrieval. Provider sync has a separate resolver below and
+  // never inherits this generic value in development.
+  return optionalTrimmed(env[baseKey]) ?? fallback;
+}
+
+function getProviderSyncVectorStoreId() {
+  const scopedKey = `PROVIDER_VECTOR_STORE_ID_${environment.toUpperCase()}`;
+  if (environment === 'development') {
+    return optionalTrimmed(env[scopedKey]) ?? '';
+  }
+  return getEnvironmentSetting('PROVIDER_VECTOR_STORE_ID', '');
+}
+
 function upsertDotEnvValue(filePath, key, value) {
   const content = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
   const lines = content.split(/\r?\n/);
@@ -198,11 +283,111 @@ function run(command, args, options) {
   });
 }
 
+function assertArtifactFile(filePath) {
+  let stats;
+  try {
+    stats = fs.statSync(filePath);
+  } catch {
+    throw new Error(`DEPLOY_ARTIFACT_PATH does not exist: ${filePath}`);
+  }
+  if (!stats.isFile()) {
+    throw new Error(`DEPLOY_ARTIFACT_PATH must point to a file: ${filePath}`);
+  }
+  if (path.extname(filePath).toLowerCase() !== '.zip') {
+    throw new Error(`DEPLOY_ARTIFACT_PATH must point to a .zip file: ${filePath}`);
+  }
+}
+
+function sha256File(filePath) {
+  return crypto.createHash('sha256').update(fs.readFileSync(filePath)).digest('hex');
+}
+
+function isSha256(value) {
+  return /^[0-9a-f]{64}$/iu.test(value);
+}
+
 function getAccountId(env) {
   return execFileSync('aws', ['sts', 'get-caller-identity', '--query', 'Account', '--output', 'text'], {
     env,
     encoding: 'utf8',
   }).trim();
+}
+
+function describeSecretArn(secretName, env) {
+  return execFileSync(
+    'aws',
+    [
+      'secretsmanager',
+      'describe-secret',
+      '--secret-id',
+      secretName,
+      '--query',
+      'ARN',
+      '--output',
+      'text',
+    ],
+    { env, encoding: 'utf8' },
+  ).trim();
+}
+
+function readCurrentStack(stackName, env) {
+  let parsed;
+  try {
+    parsed = JSON.parse(
+      execFileSync(
+        'aws',
+        [
+          'cloudformation',
+          'describe-stacks',
+          '--stack-name',
+          stackName,
+          '--output',
+          'json',
+        ],
+        { env, encoding: 'utf8' },
+      ),
+    );
+  } catch {
+    throw new Error(
+      `Production promotion requires an existing CloudFormation stack: ${stackName}.`,
+    );
+  }
+
+  const stack = parsed?.Stacks?.[0];
+  if (!stack || typeof stack !== 'object') {
+    throw new Error(`CloudFormation stack ${stackName} returned no usable state.`);
+  }
+  const values = {};
+  for (const parameter of stack.Parameters ?? []) {
+    if (
+      parameter &&
+      typeof parameter === 'object' &&
+      typeof parameter.ParameterKey === 'string' &&
+      typeof parameter.ParameterValue === 'string'
+    ) {
+      values[parameter.ParameterKey] = parameter.ParameterValue;
+    }
+  }
+  for (const output of stack.Outputs ?? []) {
+    if (
+      output &&
+      typeof output === 'object' &&
+      typeof output.OutputKey === 'string' &&
+      typeof output.OutputValue === 'string' &&
+      !values[output.OutputKey]
+    ) {
+      values[output.OutputKey] = output.OutputValue;
+    }
+  }
+  return values;
+}
+
+function requireCurrentStackValue(stack, key) {
+  const value = optionalTrimmed(stack[key]);
+  if (!value) {
+    throw new Error(`Production stack is missing required parameter/output ${key}.`);
+  }
+  return value;
 }
 
 function ensureBucketExists(bucket, env) {

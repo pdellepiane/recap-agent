@@ -4,6 +4,8 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb';
 import { DynamoDBDocumentClient, GetCommand } from '@aws-sdk/lib-dynamodb';
 
 import { configureRequiredLocalAwsProfile } from '../../aws/local-profile';
+import { assertRequiredLocalAwsIdentity } from '../../aws/local-identity';
+import { resolveDevelopmentTarget, type DevelopmentStackOutputs } from '../../aws/development-target';
 
 import { createEmptyPlan, mergePlan, normalizeRawPlan, planIntentValues, planSchema } from '../../core/plan';
 import { getConfig } from '../../runtime/config';
@@ -33,6 +35,7 @@ export async function runLiveLambdaCase(args: {
     region: process.env.AWS_REGION,
   });
 
+  assertRequiredLocalAwsIdentity();
   const liveDefaults = await resolveLiveLambdaDefaults(args);
   const functionUrl = liveDefaults.functionUrl;
   if (!functionUrl) {
@@ -41,9 +44,9 @@ export async function runLiveLambdaCase(args: {
       status: 'skipped',
     };
   }
-  const channelApiKey = process.env.CHANNEL_API_KEY;
+  const channelApiKey = process.env.DEV_CHANNEL_API_KEY;
   if (!channelApiKey) {
-    throw new Error('CHANNEL_API_KEY is required for live Lambda evaluations.');
+    throw new Error('DEV_CHANNEL_API_KEY is required for live Lambda evaluations.');
   }
 
   const channel =
@@ -238,32 +241,17 @@ async function resolveLiveLambdaDefaults(args: {
 }> {
   const appConfig = getConfig();
   const region = process.env.AWS_REGION ?? appConfig.aws.region;
-  const stackName = process.env.STACK_NAME ?? 'recap-agent-runtime';
+  const stackName = process.env.DEV_STACK_NAME ?? 'recap-agent-runtime-dev';
   const directFunctionUrl =
     args.currentCase.configOverrides?.liveLambda?.functionUrl ??
     args.config.liveLambda?.functionUrl ??
-    appConfig.lambda.functionUrl ??
+    process.env.DEV_AGENT_FUNCTION_URL ??
     null;
-  const directPlansTableName = process.env.PLANS_TABLE_NAME ?? null;
-
-  let outputs: Partial<Record<'FunctionUrl' | 'PlansTableName', string>> = {};
-  if (!directFunctionUrl || !directPlansTableName) {
-    try {
-      outputs = await getStackOutputs(stackName, region);
-    } catch {
-      outputs = {};
-    }
-  }
-
-  const functionUrl =
-    directFunctionUrl ??
-    outputs.FunctionUrl ??
-    null;
-
-  const plansTableName =
-    directPlansTableName ??
-    outputs.PlansTableName ??
-    appConfig.storage.plansTableName;
+  const directPlansTableName = process.env.DEV_PLANS_TABLE_NAME ?? null;
+  const outputs = await getStackOutputs(stackName, region);
+  const { functionUrl, plansTableName } = resolveDevelopmentTarget(outputs, {
+    functionUrl: directFunctionUrl, plansTableName: directPlansTableName,
+  });
 
   return {
     functionUrl,
@@ -284,7 +272,7 @@ async function getStackOutputs(stackName: string, region: string) {
     outputs
       .filter((item) => item.OutputKey && item.OutputValue)
       .map((item) => [item.OutputKey as string, item.OutputValue as string]),
-  ) as Partial<Record<'FunctionUrl' | 'PlansTableName', string>>;
+  ) as DevelopmentStackOutputs;
 }
 
 function seedPlanFallback(channel: string, externalUserId: string) {

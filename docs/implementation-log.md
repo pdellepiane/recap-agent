@@ -8363,3 +8363,31 @@ are logged for the human team, not re-extracted into typed fields. This pass doe
 not close every historical conversation/race issue, generic mixed-topic pending
 request scheduling, or the separate previously red overlapping-support live case.
 Only the five scoped live cases above were rerun, as requested.
+
+## 2026-09-03 — Explicit development/production deployment isolation
+
+**Reason:** The runtime deployment previously had one implicit stack/function target,
+shared local channel-secret handling, and provider-sync deployment enabled by default.
+That made it possible for a routine development command to update production resources
+or indexes.
+
+**Decision:** Require `DEPLOYMENT_ENV=development|production` and derive the isolated
+development runtime (`recap-agent-runtime-dev`) and its function-derived tables/logs.
+Development uses `.env.development` and `DEV_CHANNEL_API_KEY` with separate OpenAI,
+Agent API, and channel secret paths; the OpenAI key value may be reused without
+updating the production secret. Provider sync now requires the explicit
+`DEPLOY_PROVIDER_SYNC=true` opt-in and uses a development-scoped vector-store ID.
+Production is promotion-only: it requires an existing tested zip and expected SHA-256,
+reads existing production secret bindings, and omits optional CloudFormation parameter
+overrides so current production configuration remains unchanged. Artifact S3 keys are
+content-addressed by SHA-256 for exact promotion without rebuilding.
+
+**Validation:** Focused deployment-target and endpoint-default tests pass. A development
+smoke artifact was deployed only to `recap-agent-runtime-dev`; CloudFormation reports
+`DeploymentEnvironment=development`, isolated plan/performance tables and log group,
+and development-only secret paths. The development revision after the fixture refresh
+was `bb592211-9bd8-4aaa-9645-30e6ae6c65a8` with AWS code SHA-256
+`rDRKVeCwGD3pn/Da5W31sWG+SIXjx5Wtzak5VUAeGVY=`. The production function remained at
+revision `a954695c-4d83-4b80-8f2c-3106e8b1ff2d`, last modified on 2026-09-02, with its
+prior code SHA-256 unchanged. The complete development candidate is deployed and
+recorded separately after the behavioral integration gate.

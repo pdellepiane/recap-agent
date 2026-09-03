@@ -2,9 +2,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: recap-agent serverless runtime
 
 Parameters:
+  DeploymentEnvironment:
+    Type: String
+    AllowedValues:
+      - development
+      - production
+    Description: Explicit deployment target. The deployment script must always provide this value.
   FunctionName:
     Type: String
-    Default: recap-agent-runtime
+    Description: Lambda function name. Development and production names must remain distinct.
   CodeS3Bucket:
     Type: String
     Description: S3 bucket containing the zipped Lambda artifact.
@@ -196,6 +202,20 @@ Parameters:
       - 'true'
       - 'false'
 
+Rules:
+  EnvironmentFunctionIsolation:
+    Assertions:
+      - AssertDescription: Development must not target the production runtime function.
+        Assert: !Not
+          - !And
+            - !Equals [!Ref DeploymentEnvironment, development]
+            - !Equals [!Ref FunctionName, recap-agent-runtime]
+      - AssertDescription: Production must not target the development runtime function.
+        Assert: !Not
+          - !And
+            - !Equals [!Ref DeploymentEnvironment, production]
+            - !Equals [!Ref FunctionName, recap-agent-runtime-dev]
+
 Resources:
   RuntimeLogGroup:
     Type: AWS::Logs::LogGroup
@@ -311,6 +331,7 @@ Resources:
           OPENAI_SECRET_ID: !Ref OpenAISecretArn
           SE_API_SECRET_ID: !Ref SeApiSecretArn
           CHANNEL_API_SECRET_ID: !Ref ChannelApiSecretArn
+          DEPLOYMENT_ENV: !Ref DeploymentEnvironment
           OPENAI_MODEL: !Ref OpenAIModel
           OPENAI_EXTRACTOR_MODEL: !Ref OpenAIExtractorModel
           OPENAI_RESPONSE_CLASSIFIER_MODEL: !Ref OpenAIResponseClassifierModel
@@ -381,6 +402,9 @@ Resources:
       InvokedViaFunctionUrl: true
 
 Outputs:
+  DeploymentEnvironment:
+    Description: Deployment target used by the runtime.
+    Value: !Ref DeploymentEnvironment
   FunctionUrl:
     Value: !GetAtt RuntimeFunctionUrl.FunctionUrl
   PlansTableName:

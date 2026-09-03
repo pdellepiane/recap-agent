@@ -8,6 +8,7 @@ let lambdaHandler: typeof LambdaHandler;
 
 beforeAll(async () => {
   vi.stubEnv('CHANNEL_API_KEY', 'test-channel-key');
+  vi.stubEnv('DEPLOYMENT_ENV', 'production');
   ({ handler: lambdaHandler } = await import('../src/lambda/handler'));
 });
 
@@ -16,6 +17,17 @@ afterAll(() => {
 });
 
 describe('Lambda handler request observability', () => {
+  it('rejects fixture input in production before loading runtime or state', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
+    const response = await lambdaHandler(buildEvent({
+      method: 'POST', rawPath: '/', headers: { authorization: 'Bearer test-channel-key' },
+      body: JSON.stringify({ channel: 'whatsapp', user_id: 'fixture-test', text: 'test', contact_phone: '+51900000001',
+        backendFixture: { scenario: 'support-continuity' } }),
+    }));
+    expect(response.statusCode).toBe(403);
+    expect(response.body).toContain('only in development');
+    info.mockRestore();
+  });
   it('logs the ownership path and route before rejecting missing authentication', async () => {
     const info = vi.spyOn(console, 'info').mockImplementation(() => undefined);
 

@@ -10,7 +10,7 @@ describe('live evaluation fixture configuration', () => {
       'src/evals/live-behavior-cli.ts',
     ]) {
       const source = fs.readFileSync(path.resolve(process.cwd(), relativePath), 'utf8');
-      expect(source).toContain("path: ['.env.local', '.env']");
+      expect(source).toContain("path: ['.env.development', '.env.local', '.env']");
     }
   });
 });

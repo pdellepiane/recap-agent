@@ -12,12 +12,14 @@ import dotenv from 'dotenv';
 import pc from 'picocolors';
 
 import { configureRequiredLocalAwsProfile } from '../aws/local-profile';
+import { assertRequiredLocalAwsIdentity } from '../aws/local-identity';
+import { resolveDevelopmentTarget, type DevelopmentStackOutputs } from '../aws/development-target';
 import type { PlanSnapshot } from '../core/plan';
 import type { TurnTrace } from '../core/trace';
 import type { CliPerfSummary } from '../logs/trace/perf';
 import { DynamoPlanStore } from '../storage/dynamo-plan-store';
 
-dotenv.config({ quiet: true });
+dotenv.config({ path: ['.env.development', '.env'], quiet: true });
 
 type CliOptions = {
   url?: string;
@@ -115,7 +117,7 @@ program
   .option(
     '--stack-name <name>',
     'CloudFormation stack name used to resolve defaults',
-    process.env.STACK_NAME ?? 'recap-agent-runtime',
+    process.env.DEV_STACK_NAME ?? 'recap-agent-runtime-dev',
   )
   .option(
     '--plans-table <name>',
@@ -318,14 +320,12 @@ function isReadlineClosed(error: unknown): boolean {
 }
 
 async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> {
-  const outputs =
-    options.url && options.plansTable
-      ? {}
-      : await getStackOutputs(options.stackName, options.region);
+  assertRequiredLocalAwsIdentity();
+  const outputs = await getStackOutputs(options.stackName, options.region);
 
   const functionUrl =
     options.url ??
-    process.env.AGENT_FUNCTION_URL ??
+    process.env.DEV_AGENT_FUNCTION_URL ??
     outputs.FunctionUrl;
 
   if (!functionUrl) {
@@ -336,7 +336,7 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
 
   const plansTableName =
     options.plansTable ??
-    process.env.PLANS_TABLE_NAME ??
+    process.env.DEV_PLANS_TABLE_NAME ??
     outputs.PlansTableName;
 
   if (!plansTableName) {
@@ -347,9 +347,10 @@ async function resolveDefaults(options: CliOptions): Promise<ResolvedCliConfig> 
 
   const showPlan = resolveBooleanToggle(options, 'plan', 'noPlan', true);
   const showTrace = resolveBooleanToggle(options, 'trace', 'noTrace', true);
-  const apiKey = process.env.CHANNEL_API_KEY;
+  resolveDevelopmentTarget(outputs, { functionUrl, plansTableName });
+  const apiKey = process.env.DEV_CHANNEL_API_KEY;
   if (!apiKey) {
-    throw new Error('CHANNEL_API_KEY is required in .env to invoke the protected Function URL.');
+    throw new Error('DEV_CHANNEL_API_KEY is required to invoke development.');
   }
 
   return {
@@ -403,7 +404,7 @@ async function getStackOutputs(stackName: string, region: string) {
     outputs
       .filter((item) => item.OutputKey && item.OutputValue)
       .map((item) => [item.OutputKey as string, item.OutputValue as string]),
-  ) as Partial<Record<'FunctionUrl' | 'PlansTableName', string>>;
+  ) as DevelopmentStackOutputs;
 }
 
 async function invokeLambda(
