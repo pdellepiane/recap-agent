@@ -1579,7 +1579,12 @@ export class InformationOrchestrator {
     const includeAmount = aspectSet.has('summary') || includePayment;
     const disclosedTotal = includeAmount ? purchase.grandTotal : null;
     const disclosedPaid = includePayment ? purchase.payment?.amount ?? null : null;
-    const disclosedMethod = includeAmount
+    // Payment type grounds the pending-validation window message, so it is
+    // disclosed for payment_details requests and pending purchases. Approved
+    // summaries omit it: status answers never need the method type, and the
+    // accountless summary gate forbids introducing card wording.
+    const isPendingPurchase = purchase.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending';
+    const disclosedMethod = includePayment || isPendingPurchase
       ? purchase.paymentMethod ?? purchase.payment?.method ?? null
       : null;
     const shouldDiscloseAmount =

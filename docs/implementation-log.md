@@ -1,5 +1,45 @@
 # Implementation Log
 
+## 2026-09-03 — approved purchase summaries omit payment type
+
+A foreground live sweep on the prod-identical bytes found
+`live_behavior.accountless_event_answer_precedes_remaining_private_auth`
+failing its hard `summary-excludes-payment-type` gate: the reply verbalized
+"pagada con tarjeta de crédito/débito" via the recorded-method operational
+note. Root cause: `projectPurchase` disclosed `paymentMethod` for any summary
+aspect, so the model named a backend-only card type the user never mentioned.
+
+Fix (`src/runtime/information-orchestrator.ts`): disclose the recorded method
+only for `payment_details` requests or pending purchases, where it grounds the
+indexed 72-hour validation-window message (transfer/Yape/Plin/PayPal, required
+by the Luis balance rubric). Approved summaries now project amount without
+method or currency, satisfying both the summary gate and the
+currency-grounding rule. Offline twin added; one pending-PayPal flow
+expectation updated to the intended disclosure. (Background suite execution
+does not survive this shell environment, so validation runs in foreground
+batches.)
+
+## 2026-09-03 — production promotion of dev-validated build (Carina restart fix)
+
+Promoted the exact dev-validated bytes (S3 key
+`lambda/5ef8c44a7c4d4075f0847010dbfd6be90a76f31482e1ae13637f2c328559034b.zip`,
+HEAD `37c9cbad`) to `recap-agent-runtime`. Stack `UPDATE_COMPLETE` at
+20:13:51Z; Lambda `Active`/`Successful`; `CodeSha256` matches dev
+(`XvjESnxN…`), so dev validation transfers. Production secret bindings were
+preserved (no secret churn). Pre-promote gates on those bytes: typecheck clean,
+759/759 vitest green across 102 files.
+
+Contents vs prior prod (`202e75cc`): Carina neutral-auth normalization
+(`4dce9960`), deployment isolation with prod fixture guard (`a92bddb3`,
+`ce6509f6`), typed plus ambiguous support continuity (`ff9e1491`, `297974f4`).
+
+Post-promote live confirmation on the identical dev bytes, runId
+`eval-2026-09-03T20-19-41-973Z-1175cedc`: 2/2 passed, 0 failed/skipped/errored.
+`live_behavior.purchase_confirmation_carina_request_survives_normalization` and
+`live_behavior.mailbox_issue_deferral_and_clarification_preserve_support` (the
+María Isabel "Esta lkeno" residual now stays in the support lane). Full live
+suite sweep remains pending.
+
 ## 2026-09-03 — neutral purchase authentication normalization
 
 The authenticated Carina audit found schema-valid purchase requests with a null

@@ -267,6 +267,71 @@ describe('InformationOrchestrator', () => {
     );
   });
 
+  it('omits payment type from approved summaries but keeps it for pending ones', async () => {
+    const knowledgeGateway = {
+      async search() {
+        return {
+          status: 'failed' as const,
+          reason: 'not_configured' as const,
+          retryable: false,
+          error: 'not configured',
+        };
+      },
+    };
+    const runSummary = async (purchase: PurchaseInformation) => {
+      const agentGateway = new FakeAgentGateway();
+      agentGateway.giftResult = {
+        status: 'success',
+        resource: 'gift_purchases',
+        purchases: [purchase],
+      };
+      const orchestrator = new InformationOrchestrator({
+        knowledgeGateway,
+        providerGateway: {} as ProviderGateway,
+        agentGateway,
+      });
+      const execution = await orchestrator.execute({
+        requests: [{
+          requestId: 'summary-1',
+          kind: 'purchase',
+          resource: 'gift_purchases',
+          query: 'Estado de mi compra',
+          orderId: 'ORD-000880',
+          aspects: ['summary'],
+          sensitiveFields: [],
+          authAction: 'none',
+        }],
+        authentication: {
+          token: 'jwt',
+          email: 'user@example.com',
+        },
+        authBlock: null,
+      });
+      const result = execution.results[0];
+      if (!result || result.status !== 'completed' || result.kind !== 'purchase') {
+        throw new Error('Expected a completed purchase result.');
+      }
+      return result.purchases[0]?.amountDisclosure;
+    };
+
+    const approved = await runSummary(giftPurchase());
+    expect(approved).toMatchObject({
+      total: 300,
+      paymentMethod: null,
+      presentation: 'recorded_method_no_currency',
+    });
+    const pending = await runSummary({
+      ...giftPurchase(),
+      paymentStatus: 'pending',
+      paymentMethod: 'Yape',
+    });
+    expect(pending).toMatchObject({
+      total: 300,
+      paymentMethod: 'Yape',
+      presentation: 'recorded_method_no_currency',
+    });
+  });
+
   it('does not call protected capabilities until shared authentication is ready', async () => {
     const agentGateway = new FakeAgentGateway();
     const lookupAuthenticatedUserEvents = vi.fn();
