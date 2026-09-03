@@ -136,6 +136,11 @@ describe('deployment target safety', () => {
     expect(deployScript).toContain('resolveDeploymentTarget(process.env)');
     expect(deployScript).toContain('DEPLOY_ARTIFACT_PATH');
     expect(deployScript).toContain('DEPLOY_ARTIFACT_SHA256');
+    expect(deployScript).toContain('const developmentArtifactKey = requireCurrentStackValue(');
+    expect(deployScript).toContain("'CodeS3Key',");
+    expect(deployScript).toContain(
+      'Production artifact must exactly match the content-addressed artifact currently deployed in development.',
+    );
     expect(deployScript).toContain("process.env.DEPLOY_PROVIDER_SYNC === 'true'");
     expect(deployScript).toContain('set DEPLOY_PROVIDER_SYNC=true to opt in');
     expect(template).toContain('DeploymentEnvironment:');

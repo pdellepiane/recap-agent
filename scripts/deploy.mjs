@@ -107,6 +107,28 @@ if (isProductionPromotion) {
   secretArn = requireCurrentStackValue(currentStack, 'OpenAISecretArn');
   seApiSecretArn = requireCurrentStackValue(currentStack, 'SeApiSecretArn');
   channelApiSecretArn = requireCurrentStackValue(currentStack, 'ChannelApiSecretArn');
+
+  // The content-addressed artifact must first be deployed to the isolated
+  // development stack. This binds production promotion to the exact code
+  // that reached development instead of trusting a local path and digest
+  // pair alone.
+  const developmentStackName = optionalTrimmed(process.env.DEV_STACK_NAME) ??
+    'recap-agent-runtime-dev';
+  const developmentStack = readCurrentStack(developmentStackName, awsEnv);
+  if (requireCurrentStackValue(developmentStack, 'DeploymentEnvironment') !== 'development') {
+    throw new Error(
+      `Refusing production promotion because ${developmentStackName} is not marked development.`,
+    );
+  }
+  const developmentArtifactKey = requireCurrentStackValue(
+    developmentStack,
+    'CodeS3Key',
+  );
+  if (developmentArtifactKey !== artifactKey) {
+    throw new Error(
+      'Production artifact must exactly match the content-addressed artifact currently deployed in development.',
+    );
+  }
 } else {
   syncSecret(secretName, env.OPENAI_API_KEY, awsEnv);
   secretArn = describeSecretArn(secretName, awsEnv);
