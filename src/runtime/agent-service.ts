@@ -3117,6 +3117,7 @@ export class AgentService {
       (Boolean(extraction.supportAct) && extraction.actionIntent === null &&
         !extraction.vendorCategory && extraction.vendorCategories.length === 0 &&
         !extraction.providerQueryIntents?.length && !extraction.providerPlanOperations?.length) ||
+      this.isEstablishedSupportAnchorContinuation(plan, extraction) ||
       extraction.informationRequests.length > 0 ||
       plan.information_state.pending_requests.length > 0 ||
       this.isInformationSupportDetailContinuation(plan, extraction, previousNode) ||
@@ -3124,6 +3125,36 @@ export class AgentService {
         (plan.information_state.last_completed_request?.kind === 'purchase' ||
           plan.information_state.last_completed_request?.kind === 'associated_event' ||
           plan.information_state.last_completed_request?.kind === 'faq'))
+    );
+  }
+
+  private isEstablishedSupportAnchorContinuation(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): boolean {
+    if (
+      plan.current_node !== 'resolver_consultas_informativas' ||
+      plan.information_state.support_anchor == null ||
+      extraction.supportAct != null ||
+      extraction.actionIntent !== null ||
+      extraction.informationRequests.length > 0
+    ) {
+      return false;
+    }
+
+    return !this.hasProviderPlanningEvidence(extraction);
+  }
+
+  private hasProviderPlanningEvidence(extraction: ExtractionResult): boolean {
+    return (
+      this.hasStructuredPlanningSignal(extraction) ||
+      (extraction.providerPlanOperations?.length ?? 0) > 0 ||
+      (extraction.selectedProviderReferences?.length ?? 0) > 0 ||
+      extraction.selectedProviderHints.length > 0 ||
+      extraction.providerExplanationRequest != null ||
+      extraction.providerDetailRequest != null ||
+      extraction.closeAction != null ||
+      extraction.pauseRequested
     );
   }
 
@@ -3204,6 +3235,10 @@ export class AgentService {
       args.workingPlan,
       args.extraction,
       args.previousNode,
+    );
+    const supportAnchorContinuation = this.isEstablishedSupportAnchorContinuation(
+      args.workingPlan,
+      args.extraction,
     );
     const resumeNode =
       args.workingPlan.current_node === currentNode
@@ -3298,6 +3333,13 @@ export class AgentService {
           pending_requests: planWithContact.information_state.pending_requests,
         },
       }));
+    }
+
+    if (
+      supportAnchorContinuation &&
+      args.extraction.ambiguity?.status === 'ambiguous'
+    ) {
+      return this.handleEstablishedSupportContinuation(args, planForInformation);
     }
 
     const hostWithdrawalRequests = requests.filter((request) =>
@@ -3812,8 +3854,9 @@ export class AgentService {
   private async handleSupportAcknowledgment(
     args: Parameters<AgentService['handleInformationFlow']>[0],
     plan: PlanSnapshot,
+    act: InformationSupportAct | null | undefined = args.extraction.supportAct,
+    operationalNote = 'A bounded user-reported support act was acknowledged without a lookup or reply-model call.',
   ): Promise<HandleTurnResponse> {
-    const act = args.extraction.supportAct;
     if (!act || !isSupportAcknowledgment(act)) {
       throw new Error('Support acknowledgment requires typed support evidence.');
     }
@@ -3864,10 +3907,30 @@ export class AgentService {
         responseClassifier: args.responseClassifierTrace,
         searchStrategy: 'none',
         turnDecision,
-        operationalNote: 'A bounded user-reported support act was acknowledged without a lookup or reply-model call.',
+        operationalNote,
         informationExecution: [],
       }),
     };
+  }
+
+  private async handleEstablishedSupportContinuation(
+    args: Parameters<AgentService['handleInformationFlow']>[0],
+    plan: PlanSnapshot,
+  ): Promise<HandleTurnResponse> {
+    const anchor = plan.information_state.support_anchor;
+    if (!anchor) {
+      throw new Error('Established support continuation requires a typed support anchor.');
+    }
+    return this.handleSupportAcknowledgment(
+      args,
+      plan,
+      {
+        kind: 'provide_detail',
+        topic: anchor.topic,
+        detail: anchor.detail,
+      },
+      'An established typed support anchor was preserved for an ambiguous no-domain follow-up without a lookup or reply-model call.',
+    );
   }
 
   private selectSupportAcknowledgmentMessage(

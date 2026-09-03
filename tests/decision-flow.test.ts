@@ -64,6 +64,32 @@ describe('resolveResumeNode', () => {
     expect(resolveResumeNode(plan)).toBe('resolver_consultas_informativas');
   });
 
+  it('keeps an established support anchor in the information resolver after deferral', () => {
+    const plan = mergePlan(
+      createEmptyPlan({
+        planId: 'p-support-anchor',
+        channel: 'terminal_whatsapp',
+        externalUserId: 'u-support-anchor',
+      }),
+      {
+        current_node: 'resolver_consultas_informativas',
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [],
+          selection_candidates: [],
+          support_anchor: {
+            topic: 'mailbox_capacity',
+            detail: 'mailbox_full',
+            last_act: 'defer_submission',
+            phase: 'deferred',
+          },
+        },
+      },
+    );
+
+    expect(resolveResumeNode(plan)).toBe('resolver_consultas_informativas');
+  });
+
   it('falls back to entrevista when the active need has no_providers_available', () => {
     const plan = mergePlan(
       createEmptyPlan({

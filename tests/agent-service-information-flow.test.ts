@@ -71,6 +71,69 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.extractRequests).toHaveLength(3);
   });
 
+  it('keeps an established support lane for an ambiguous no-domain follow-up', async () => {
+    const planStore = new InMemoryPlanStore();
+    const seed = mergePlan(
+      createEmptyPlan({
+        planId: 'mailbox-support-anchor',
+        channel: 'whatsapp',
+        externalUserId: 'mailbox-support-anchor-user',
+      }),
+      {
+        current_node: 'resolver_consultas_informativas',
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [],
+          selection_candidates: [],
+          last_completed_request: null,
+          support_anchor: {
+            topic: 'mailbox_capacity',
+            detail: 'mailbox_full',
+            last_act: 'defer_submission',
+            phase: 'deferred',
+          },
+        },
+      },
+    );
+    await planStore.save({ plan: seed, reason: 'fixture' });
+
+    const runtime = new InformationRuntime([{
+      ...extraction([]),
+      ambiguity: {
+        status: 'ambiguous',
+        clarificationQuestion: '¿Qué información necesitas?',
+        interpretations: ['un documento', 'el estado de una compra'],
+      },
+    }]);
+    const knowledge = new FakeKnowledgeGateway();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'mailbox-support-anchor-user',
+      contactPhone: '+51900000302',
+      text: 'Esta lkeno',
+      messageId: 'mailbox-support-anchor-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.plan.information_state.support_anchor).toEqual(
+      seed.information_state.support_anchor,
+    );
+    expect(response.outbound.text).toContain('buzón');
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+  });
+
   it('acknowledges a deferral without executing or deleting an unresolved purchase selection', async () => {
     const store = new InMemoryPlanStore();
     const request = { kind: 'purchase' as const, resource: 'orders' as const, query: 'Consulta sobre mi regalo',

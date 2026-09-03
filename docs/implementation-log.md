@@ -8424,3 +8424,23 @@ Carina's repeated confirmation request and María Isabel's mailbox report, defer
 and misspelled clarification. Development deployment revision, prompt bytes, live
 outcomes, and the complete evaluation artifact are recorded after the isolated Lambda
 gate.
+
+## 2026-09-03 — Preserve the support resolver across ambiguous continuations
+
+**Reason:** The María Isabel mailbox sequence persisted a typed support anchor, but
+the empty pending-request state caused `resolveResumeNode` to return its saved
+`resume_node=entrevista`. The next turn therefore left the compact support extractor
+and fell into generic planning clarification even though no new domain was extracted.
+
+**Decision:** Keep `resolver_consultas_informativas` as the resume node whenever a
+typed `support_anchor` is present. When that established lane receives an ambiguous
+follow-up with no typed domain or planning evidence, acknowledge the bounded anchor
+deterministically without a lookup or reply-model call. Explicit action intents,
+information requests, provider evidence, and conversations without a support anchor
+retain their existing routing.
+
+**Validation:** Added decision-flow and AgentService offline regressions covering the
+deferred mailbox anchor, ambiguous `Esta lkeno` continuation, no lookup/authentication,
+and no reply-model call. `npm run typecheck` and the focused decision-flow,
+support-continuity, and information-flow tests pass. No deployment or live evaluation
+was run in this change.
