@@ -1,5 +1,29 @@
 version: 1
 behaviorChanges:
+  - id: preserve-neutral-auth-purchase-extraction-instead-of-welcome
+    implementedBy: 4dce9960
+    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+  - id: typed-mailbox-support-act-preserves-conversation-continuity
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+  - id: compact-established-support-extractor-omits-planning-context
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+  - id: deterministic-support-acknowledgment-avoids-reply-model-and-lookups
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.mailbox_issue_deferral_and_clarification_preserve_support]
+  - id: confirmation-document-checks-canonical-status-and-hands-off-once
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+  - id: typed-policy-support-act-requires-indexed-faq-evidence
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.support_detail_continuity]
+  - id: rejected-purchase-extraction-cannot-fall-through-to-welcome
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
+  - id: phone-scoped-human-handoff-uses-only-trusted-channel-phone
+    implementedBy: ff9e1491
+    liveCaseIds: [live_behavior.purchase_confirmation_carina_request_survives_normalization]
   - id: attendance-state-query-clears-old-mutations-and-does-not-offer-new-ones
     implementedBy: 202e75cc
     liveCaseIds: [live_behavior.host_support_allows_explicit_rsvp_switch]
