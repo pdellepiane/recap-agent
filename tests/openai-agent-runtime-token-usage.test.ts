@@ -36,12 +36,20 @@ function normalizeInformationRequestsForTest(
   runtime: OpenAiAgentRuntime,
   informationRequests: OpenAiInformationRequest[],
 ): ComposeReplyRequest['extraction']['informationRequests'] {
+  return normalizeInformationExtractionForTest(runtime, informationRequests)
+    .informationRequests;
+}
+
+function normalizeInformationExtractionForTest(
+  runtime: OpenAiAgentRuntime,
+  informationRequests: OpenAiInformationRequest[],
+): ComposeReplyRequest['extraction'] {
   const typedRuntime = runtime as unknown as {
     normalizeExtraction: (input: {
       informationRequests: OpenAiInformationRequest[];
     }) => ComposeReplyRequest['extraction'];
   };
-  return typedRuntime.normalizeExtraction({ informationRequests }).informationRequests;
+  return typedRuntime.normalizeExtraction({ informationRequests });
 }
 
 describe('host withdrawal minimum disclosure and role correction', () => {
@@ -504,7 +512,13 @@ describe('OpenAiAgentRuntime token usage parsing', () => {
       authAction: null,
     });
 
-    expect(normalizeInformationRequestsForTest(runtime, [request])).toEqual([]);
+    const normalized = normalizeInformationExtractionForTest(runtime, [request]);
+    expect(normalized.informationRequests).toEqual([]);
+    expect(normalized.normalizationIssues).toEqual([{
+      requestKind: 'purchase',
+      field: 'resource',
+      reason: 'missing_resource',
+    }]);
   });
 });
 

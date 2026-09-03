@@ -145,6 +145,15 @@ export const extractorAuditProfiles: Array<{
     capabilities: extractionCapabilities({ rsvp: true }),
   },
   {
+    name: 'established_support',
+    capabilities: extractionCapabilities({
+      information: true,
+      informationSupport: true,
+      rsvp: true,
+      contact: true,
+    }),
+  },
+  {
     name: 'initial_planning_information',
     capabilities: extractionCapabilities({
       information: true,

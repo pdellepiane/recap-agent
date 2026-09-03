@@ -1,4 +1,5 @@
 import { ulid } from 'ulid';
+import { isSupportAcknowledgment, reduceSupportAnchor } from '../core/support-continuity';
 
 import type { DecisionNode } from '../core/decision-nodes';
 import { extractionPersistenceNodes } from '../core/decision-nodes';
@@ -20,6 +21,7 @@ import {
   type InformationAuthReason,
   type InformationExecutionSummary,
   type InformationSelectionCandidate,
+  type InformationSupportAct,
   type InformationTaskResult,
   type CompletedInformationRequest,
   type PendingInformationRequest,
@@ -480,7 +482,7 @@ export class AgentService {
         previousHealth.help_offer_status === 'offered' &&
         responseClassifierTrace.human_help_response === 'accept'
       ) {
-        const phoneNumber = this.resolveEscalationPhone(inbound, classifierPlan);
+        const phoneNumber = this.resolveEscalationPhone(inbound);
         const gatewayResult = phoneNumber
           ? await this.requestHumanTakeoverWithTrace(
               agentConversationGateway,
@@ -850,6 +852,14 @@ export class AgentService {
       inbound.text,
     );
     extraction = providerConfirmationGuard.extraction;
+    if (extraction.supportAct && extraction.actionIntent === null) {
+      workingPlan = mergePlan(workingPlan, {
+        information_state: {
+          ...workingPlan.information_state,
+          support_anchor: reduceSupportAnchor(workingPlan.information_state.support_anchor, extraction.supportAct),
+        },
+      });
+    }
     if (
       this.hasRsvpWork(workingPlan, extraction) &&
       extraction.actionIntent !== 'pausar' &&
@@ -974,7 +984,7 @@ export class AgentService {
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
       }
-      const phoneNumber = this.resolveEscalationPhone(inbound, mergedPlan);
+      const phoneNumber = this.resolveEscalationPhone(inbound);
       const requestedAt = new Date().toISOString();
       const gatewayResult = phoneNumber
         ? await this.requestHumanTakeoverWithTrace(
@@ -1716,6 +1726,7 @@ export class AgentService {
         extraction.rsvpCandidateGuestId !== undefined) ||
       extraction.rsvpParty?.plus_one_response === 'yes' ||
       extraction.rsvpParty?.plus_one_response === 'no';
+    if (extraction.supportAct && !hasExplicitRsvpSelection) return false;
     if (
       (extraction.informationRequests.length > 0 ||
         plan.information_state.pending_requests.length > 0 ||
@@ -1782,7 +1793,7 @@ export class AgentService {
     );
     if (requiresMultiCompanionHandoff && handoffParty) {
       const handoffFragment = this.renderRsvpHandoffFragment(handoffParty);
-      const handoffPhoneNumber = this.resolveEscalationPhone(args.inbound, args.workingPlan);
+      const handoffPhoneNumber = this.resolveEscalationPhone(args.inbound);
       const dedupeKey = `rsvp_handoff:${args.workingPlan.conversation_id ?? args.workingPlan.plan_id}`;
       const isDeduped = args.workingPlan.assumptions.includes(dedupeKey);
       if (isDeduped) {
@@ -3102,6 +3113,10 @@ export class AgentService {
     previousNode: DecisionNode = plan.current_node,
   ): boolean {
     return (
+      (extraction.normalizationIssues?.length ?? 0) > 0 ||
+      (Boolean(extraction.supportAct) && extraction.actionIntent === null &&
+        !extraction.vendorCategory && extraction.vendorCategories.length === 0 &&
+        !extraction.providerQueryIntents?.length && !extraction.providerPlanOperations?.length) ||
       extraction.informationRequests.length > 0 ||
       plan.information_state.pending_requests.length > 0 ||
       this.isInformationSupportDetailContinuation(plan, extraction, previousNode) ||
@@ -3182,7 +3197,9 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
-    const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    let currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const supportAcknowledgment = isSupportAcknowledgment(args.extraction.supportAct) &&
+      args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
     const supportDetailContinuation = this.isInformationSupportDetailContinuation(
       args.workingPlan,
       args.extraction,
@@ -3204,14 +3221,43 @@ export class AgentService {
       planWithContact.information_state.pending_requests,
       args.extraction.informationRequests,
     );
+    if (supportAcknowledgment) requests = [];
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
+    if (args.extraction.supportAct?.kind === 'ask_policy' &&
+      !requests.some((request) => request.kind === 'faq')) {
+      requests = [{
+        kind: 'faq',
+        query: args.inbound.text,
+        requestId: 'support-policy',
+      }, ...requests];
+    }
+    if (args.extraction.supportAct?.kind === 'request_document' &&
+      !requests.some((request) =>
+        request.kind === 'purchase' &&
+        request.resource === 'orders' &&
+        request.aspects.includes('payment_status'))
+    ) {
+      requests = [{
+        kind: 'purchase',
+        resource: 'orders',
+        query: args.inbound.text,
+        orderId: null,
+        aspects: ['payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+        eventHint: lastCompletedRequest?.kind === 'purchase'
+          ? lastCompletedRequest.eventHint ?? null
+          : null,
+        requestId: 'support-document-status',
+      }, ...requests];
+    }
     let replayingLastCompletedRequest = false;
     const hasNewFaqInExtraction = args.extraction.informationRequests.some(
       (request) => request.kind === 'faq',
     );
     if (
-      requests.length === 0 &&
+      !supportAcknowledgment && requests.length === 0 &&
       args.extraction.actionIntent === null &&
       lastCompletedRequest &&
       (lastCompletedRequest.kind === 'purchase' ||
@@ -3236,6 +3282,7 @@ export class AgentService {
     let planForInformation = mergePlan(planWithContact, {
       current_node: currentNode,
       information_state: {
+        ...planWithContact.information_state,
         resume_node: resumeNode,
         pending_requests: requests,
         selection_candidates:
@@ -3243,6 +3290,15 @@ export class AgentService {
         last_completed_request: lastCompletedRequest ?? null,
       },
     });
+
+    if (supportAcknowledgment) {
+      return this.handleSupportAcknowledgment(args, mergePlan(planForInformation, {
+        information_state: {
+          ...planForInformation.information_state,
+          pending_requests: planWithContact.information_state.pending_requests,
+        },
+      }));
+    }
 
     const hostWithdrawalRequests = requests.filter((request) =>
       request.kind === 'faq' && request.hostWithdrawal);
@@ -3324,7 +3380,9 @@ export class AgentService {
       });
     }
 
-    if (hasActionConflict) {
+    if ((args.extraction.normalizationIssues?.length ?? 0) > 0) {
+      operationalNote = 'La solicitud de soporte fue reconocida, pero no se pudo determinar de forma segura qué tipo de información de compra se necesita. Haz una sola pregunta breve para aclararlo. No des la bienvenida ni pidas correo o código todavía.';
+    } else if (hasActionConflict) {
       operationalNote =
         'El mensaje combina una acción del plan con consultas informativas. Haz una sola pregunta breve para confirmar cuál quiere resolver primero. No ejecutes ni respondas ninguna de las dos rutas todavía.';
     } else if (hasAmbiguity) {
@@ -3556,6 +3614,39 @@ export class AgentService {
         }
       }
 
+      if (args.extraction.supportAct?.kind === 'request_document') {
+        const gateway = this.dependencies.agentConversationGateway ??
+          new NoopAgentConversationGateway('not_configured');
+        const phone = this.resolveEscalationPhone(args.inbound);
+        const handoff = phone
+          ? await this.requestHumanTakeoverWithTrace(gateway, phone, args.toolUsage)
+          : this.missingPhoneEscalationResult();
+        const handoffSucceeded = handoff.status === 'success';
+        const documentNote = handoffSucceeded
+          ? 'La API solo permite verificar el estado registrado de la compra; no permite emitir ni reenviar una constancia oficial. Informa el estado canónico disponible sin asumir moneda ni afirmar que se envió un documento, y confirma que una persona del equipo continuará con la solicitud de constancia.'
+          : 'La API solo permite verificar el estado registrado de la compra; no permite emitir ni reenviar una constancia oficial. Informa el estado canónico disponible sin asumir moneda ni afirmar que se envió un documento, y explica que no se pudo registrar el apoyo humano en este momento.';
+        operationalNote = operationalNote
+          ? `${operationalNote} ${documentNote}`
+          : documentNote;
+        if (handoffSucceeded) {
+          currentNode = 'solicitar_agente_humano';
+        }
+        planForInformation = mergePlan(planForInformation, {
+          current_node: currentNode,
+          ...(handoffSucceeded ? { intent: 'solicitar_humano' as const } : {}),
+          human_escalation: {
+            status: handoffSucceeded ? 'requested' : 'none',
+            requested_at: handoffSucceeded ? new Date().toISOString() : null,
+            phone_number: phone,
+            last_error: handoff.status === 'failed'
+              ? handoff.error
+              : handoff.status === 'skipped'
+                ? handoff.message
+                : null,
+          },
+        });
+      }
+
       if (operationalNote === null && supportDetailContinuation) {
         const anchorSource =
           planForInformation.information_state.last_completed_request ?? lastCompletedRequest ?? null;
@@ -3614,6 +3705,7 @@ export class AgentService {
       );
       planForInformation = mergePlan(planForInformation, {
         information_state: {
+          ...planForInformation.information_state,
           resume_node: resumeNode,
           pending_requests: nextState.pendingRequests,
           selection_candidates: nextState.selectionCandidates,
@@ -3626,7 +3718,7 @@ export class AgentService {
     }
 
     const promptBundleStartedAt = Date.now();
-    const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+    const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     args.timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
     const composeReplyStartedAt = Date.now();
     const replyExtraction: ExtractionResult = {
@@ -3674,9 +3766,9 @@ export class AgentService {
     });
     args.timingMs.save_plan += Date.now() - savePlanStartedAt;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const turnDecision = this.informationTurnDecision(
-      operationalNote ?? 'information_batch',
-    );
+    const turnDecision = currentNode === 'solicitar_agente_humano'
+      ? this.humanEscalationTurnDecision('confirmation_document_unavailable')
+      : this.informationTurnDecision(operationalNote ?? 'information_batch');
 
     return {
       plan: planForInformation,
@@ -3717,6 +3809,90 @@ export class AgentService {
     };
   }
 
+  private async handleSupportAcknowledgment(
+    args: Parameters<AgentService['handleInformationFlow']>[0],
+    plan: PlanSnapshot,
+  ): Promise<HandleTurnResponse> {
+    const act = args.extraction.supportAct;
+    if (!act || !isSupportAcknowledgment(act)) {
+      throw new Error('Support acknowledgment requires typed support evidence.');
+    }
+    const messages = await this.dependencies.promptLoader.loadSupportContinuityMessages();
+    const text = this.selectSupportAcknowledgmentMessage(act, messages);
+    await this.dependencies.planStore.save({
+      plan,
+      reason: 'support_continuity_acknowledgment',
+    });
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+    );
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const turnDecision = this.informationTurnDecision('support_acknowledgment');
+    return {
+      plan,
+      outbound: this.renderOutbound(
+        { text },
+        [],
+        args.inbound.channel,
+        plan.conversation_id,
+        plan,
+      ),
+      trace: this.buildTrace({
+        plan,
+        previousNode: args.previousNode,
+        currentNode,
+        nodePath: args.previousNode === currentNode
+          ? [currentNode]
+          : [args.previousNode, currentNode],
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: 'deterministic:support_continuity_acknowledgment',
+        promptFilePaths: [
+          'nodes/resolver_consultas_informativas/support-continuity.json',
+        ],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'support_continuity_acknowledgment',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision,
+        operationalNote: 'A bounded user-reported support act was acknowledged without a lookup or reply-model call.',
+        informationExecution: [],
+      }),
+    };
+  }
+
+  private selectSupportAcknowledgmentMessage(
+    act: InformationSupportAct,
+    messages: Awaited<ReturnType<PromptLoader['loadSupportContinuityMessages']>>,
+  ): string {
+    if (act.kind === 'defer_submission') {
+      return messages.deferred;
+    }
+    if (act.topic === 'mailbox_capacity') {
+      return act.kind === 'report_issue'
+        ? messages.mailboxReport
+        : messages.mailboxDetail;
+    }
+    if (
+      act.topic === 'payment_proof' &&
+      act.detail === 'submission_reported'
+    ) {
+      return messages.paymentProofReported;
+    }
+    return act.kind === 'report_issue'
+      ? messages.genericReport
+      : messages.genericDetail;
+  }
+
   private async handleHostWithdrawalInformation(
     args: Parameters<AgentService['handleInformationFlow']>[0],
     plan: PlanSnapshot,
@@ -3753,7 +3929,7 @@ export class AgentService {
       ? messages.policy.replace('{hours}', String(policy.maxBusinessHours))
       : messages.unavailable];
     let handoff: AgentGatewayResult | null = null;
-    const phone = this.resolveEscalationPhone(args.inbound, plan);
+    const phone = this.resolveEscalationPhone(args.inbound);
     if (needsHandoff) {
       if (needsReview) parts.push(messages.statusUnavailable);
       handoff = phone
@@ -4015,7 +4191,7 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const gateway = this.dependencies.agentConversationGateway ??
       new NoopAgentConversationGateway('not_configured');
-    const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
+    const phoneNumber = this.resolveEscalationPhone(args.inbound);
     const gatewayResult = phoneNumber
       ? await this.requestHumanTakeoverWithTrace(gateway, phoneNumber, args.toolUsage)
       : this.missingPhoneEscalationResult();
@@ -5311,7 +5487,7 @@ export class AgentService {
     gatewayConfigured: boolean;
     toolUsage: ToolUsage;
   }): Promise<TurnMessageContext> {
-    const phoneNumber = this.resolveEscalationPhone(args.inbound, args.plan);
+    const phoneNumber = this.resolveEscalationPhone(args.inbound);
     if (!args.gatewayConfigured) {
       return localTurnMessageContext('not_configured');
     }
@@ -5460,11 +5636,11 @@ export class AgentService {
 
   private resolveEscalationPhone(
     inbound: NormalizedInboundMessage,
-    plan: PlanSnapshot,
   ): string | null {
-    return this.normalizePhone(inbound.contactPhone) ??
-      this.normalizePhone(plan.contact_phone) ??
-      this.normalizePhone(inbound.externalUserId);
+    // Human takeover is a phone-scoped customer action. Only the phone
+    // supplied by the trusted channel adapter is authoritative here; model-
+    // extracted plan fields and external conversation IDs are not identities.
+    return this.normalizePhone(inbound.contactPhone);
   }
 
   private humanEscalationRequestedMessage(result: AgentGatewayResult): string {
@@ -6459,6 +6635,9 @@ export class AgentService {
       information_request_kinds: extraction.informationRequests.map(
         (request) => request.kind,
       ),
+      information_normalization_rejected_count: extraction.normalizationIssues?.length ?? 0,
+      information_normalization_issue_reasons: extraction.normalizationIssues?.map((issue) => issue.reason) ?? [],
+      support_act_kind: extraction.supportAct?.kind ?? null,
       ambiguity_status: extraction.ambiguity?.status ?? null,
       clarification_question_present: Boolean(
         extraction.ambiguity?.clarificationQuestion,

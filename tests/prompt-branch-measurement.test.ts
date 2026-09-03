@@ -16,6 +16,15 @@ describe('prompt branch measurement parity', () => {
     const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
     const current = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
 
+    const histSupport = historical.find((b) => b.branchId === 'extractor:established_support');
+    const currSupport = current.find((b) => b.branchId === 'extractor:established_support');
+    expect(histSupport).toBeDefined();
+    expect(currSupport).toBeDefined();
+    expect(currSupport?.instructionBytes).toBeLessThan(histSupport?.instructionBytes ?? 0);
+    expect(currSupport?.filePaths).toContain('extractors/information_support.txt');
+    expect(histSupport?.filePaths).toContain('extractors/information.txt');
+    expect(histSupport?.filePaths).not.toContain('extractors/information_support.txt');
+
     const histResolver = historical.find((b) => b.branchId === 'resolver_consultas_informativas');
     const currResolver = current.find((b) => b.branchId === 'resolver_consultas_informativas');
     expect(histResolver).toBeDefined();

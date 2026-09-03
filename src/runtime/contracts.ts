@@ -8,6 +8,8 @@ import type { ToolInputTrace } from '../core/trace';
 import type { TurnDecision } from '../core/turn-decision';
 import type {
   ExtractedInformationRequest,
+  InformationNormalizationIssue,
+  InformationSupportAct,
   InformationTaskResult,
   PhoneConfirmation,
 } from '../core/information';
@@ -46,6 +48,8 @@ export type ExtractionResult = {
   reportedEventRole?: 'host' | 'guest' | null;
   actionIntent: ActionIntent | null;
   informationRequests: ExtractedInformationRequest[];
+  supportAct?: InformationSupportAct | null;
+  normalizationIssues?: InformationNormalizationIssue[];
   phoneConfirmation?: PhoneConfirmation | null;
   rsvpAction?: RsvpAction | null;
   rsvpDecisionSource?: RsvpDecisionSource | null;

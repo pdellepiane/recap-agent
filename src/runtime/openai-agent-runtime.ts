@@ -20,6 +20,7 @@ import { normalizeExtractedOrderReference } from '../core/order-reference';
 import {
   informationPaymentOptionsPolicyRequestId,
   informationValidationPolicyRequestId,
+  type InformationNormalizationIssue,
   type InformationTaskResult,
   type PurchaseInformation,
 } from '../core/information';
@@ -166,72 +167,110 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       close: features.providerPlanning && policy.capabilities.canClose,
       pause: features.providerPlanning && policy.capabilities.canPause,
     };
-    const bundle = await this.options.promptLoader.loadExtractorBundle(
-      extractionCapabilities,
-    );
-    const outputSchema = createDynamicExtractionSchema({
-      allowedActionIntents,
-      capabilities: extractionCapabilities,
-    });
-    const extractor = new Agent({
-      name: 'plan_extractor',
-      model: this.options.extractorModel,
-      instructions: bundle.instructions,
-      inputGuardrails: [this.createJailbreakInputGuardrail()],
-      outputType: outputSchema,
-      modelSettings: this.buildModelSettings({
-        model: this.options.extractorModel,
-        cacheKey: `extractor:${bundle.id}`,
-      }),
-    });
-
-    const input = this.composeExtractorInput(request, policy);
-    const requestMetrics = this.buildRequestMetrics({
-      instructions: bundle.instructions,
-      input,
-      toolCount: 0,
-      schemaPropertyCount: Object.keys(outputSchema.shape).length,
-    });
-
-    try {
-      const result = await executeOpenAiStage({
-        stage: 'extraction',
-        model: this.options.extractorModel,
-        timeoutMs: this.options.extractorTimeoutMs ?? 35_000,
-        operation: async (signal) => await this.runner.run(extractor, input, { signal }),
-      });
-      return {
-        extraction: this.normalizeExtraction(
-          result.finalOutput as StructuredExtraction,
-        ),
-        tokenUsage: this.extractTokenUsage(result),
-        openAiCall: this.extractOpenAiCallRef(
-          result,
-          this.options.extractorModel,
-          requestMetrics,
-        ),
+    const supportLane = this.isEstablishedInformationSupportLane(request.plan);
+    const runExtraction = async (
+      informationSupport: boolean,
+    ): Promise<ExtractResult> => {
+      const capabilities = {
+        ...extractionCapabilities,
+        informationSupport,
+        providerPlanning: informationSupport
+          ? false
+          : extractionCapabilities.providerPlanning,
+        providerOperations: informationSupport
+          ? false
+          : extractionCapabilities.providerOperations,
+        providerSelection: informationSupport
+          ? false
+          : extractionCapabilities.providerSelection,
+        providerInspection: informationSupport
+          ? false
+          : extractionCapabilities.providerInspection,
+        close: informationSupport ? false : extractionCapabilities.close,
+        pause: informationSupport ? false : extractionCapabilities.pause,
       };
-    } catch (error) {
-      if (error instanceof InputGuardrailTripwireTriggered) {
+      const bundle = await this.options.promptLoader.loadExtractorBundle(capabilities);
+      const outputSchema = createDynamicExtractionSchema({
+        allowedActionIntents,
+        capabilities,
+      });
+      const extractor = new Agent({
+        name: informationSupport ? 'support_extractor' : 'plan_extractor',
+        model: this.options.extractorModel,
+        instructions: bundle.instructions,
+        inputGuardrails: [this.createJailbreakInputGuardrail()],
+        outputType: outputSchema,
+        modelSettings: this.buildModelSettings({
+          model: this.options.extractorModel,
+          cacheKey: `extractor:${bundle.id}`,
+        }),
+      });
+
+      const input = this.composeExtractorInput(request, policy, informationSupport);
+      const requestMetrics = this.buildRequestMetrics({
+        instructions: bundle.instructions,
+        input,
+        toolCount: 0,
+        schemaPropertyCount: Object.keys(outputSchema.shape).length,
+      });
+
+      try {
+        const result = await executeOpenAiStage({
+          stage: 'extraction',
+          model: this.options.extractorModel,
+          timeoutMs: this.options.extractorTimeoutMs ?? 35_000,
+          operation: async (signal) => await this.runner.run(extractor, input, { signal }),
+        });
         return {
-          extraction: this.buildJailbreakExtraction(),
-          tokenUsage: this.extractTokenUsage(error),
-          openAiCall: null,
+          extraction: this.normalizeExtraction(
+            result.finalOutput as StructuredExtraction,
+          ),
+          tokenUsage: this.extractTokenUsage(result),
+          openAiCall: this.extractOpenAiCallRef(
+            result,
+            this.options.extractorModel,
+            requestMetrics,
+          ),
         };
+      } catch (error) {
+        if (error instanceof InputGuardrailTripwireTriggered) {
+          return {
+            extraction: this.buildJailbreakExtraction(),
+            tokenUsage: this.extractTokenUsage(error),
+            openAiCall: null,
+          };
+        }
+        throw error;
       }
-      throw error;
+    };
+
+    const compactResult = await runExtraction(supportLane);
+    if (!supportLane || !this.shouldEscapeSupportExtraction(compactResult.extraction)) {
+      return compactResult;
     }
+
+    // The compact lane deliberately omits planning fields. Re-run the normal
+    // extractor only after an explicit typed domain switch, preserving one
+    // ordinary support continuation as a single model call.
+    const broadResult = await runExtraction(false);
+    return {
+      ...broadResult,
+      tokenUsage: this.combineTokenUsage(compactResult.tokenUsage, broadResult.tokenUsage),
+    };
   }
 
   private normalizeExtraction(
     extraction: Partial<StructuredExtraction>,
   ): ExtractResult['extraction'] {
+    const normalizationIssues: InformationNormalizationIssue[] = [];
     return {
       actionIntent: extraction.actionIntent ?? null,
       reportedEventRole: extraction.reportedEventRole ?? null,
       informationRequests: (extraction.informationRequests ?? []).flatMap((request) =>
-        this.normalizeInformationRequest(request),
+        this.normalizeInformationRequest(request, normalizationIssues),
       ),
+      supportAct: extraction.supportAct ?? null,
+      normalizationIssues,
       phoneConfirmation: extraction.phoneConfirmation ?? null,
       rsvpAction: extraction.rsvpAction ?? null,
       rsvpDecisionSource: (extraction.rsvpDecisionSource === 'current_message' ? 'current_message' : 'plan_state'),
@@ -272,6 +311,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
 
   private normalizeInformationRequest(
     request: OpenAiInformationRequest,
+    normalizationIssues: InformationNormalizationIssue[] = [],
   ): ExtractResult['extraction']['informationRequests'] {
     if (request.kind === 'faq') {
       return [{ kind: 'faq', query: request.query,
@@ -292,6 +332,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ];
     }
     if (!request.resource) {
+      normalizationIssues.push({
+        requestKind: 'purchase',
+        field: 'resource',
+        reason: 'missing_resource',
+      });
       return [];
     }
     return [
@@ -443,6 +488,27 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       inputBytes: Buffer.byteLength(args.input, 'utf8'),
       toolCount: args.toolCount,
       schemaPropertyCount: args.schemaPropertyCount,
+    };
+  }
+
+  private combineTokenUsage(
+    first: TokenUsage | null,
+    second: TokenUsage | null,
+  ): TokenUsage | null {
+    if (!first) {
+      return second;
+    }
+    if (!second) {
+      return first;
+    }
+    return {
+      input_tokens: first.input_tokens + second.input_tokens,
+      output_tokens: first.output_tokens + second.output_tokens,
+      total_tokens: first.total_tokens + second.total_tokens,
+      cached_input_tokens:
+        (first.cached_input_tokens ?? 0) + (second.cached_input_tokens ?? 0),
+      cache_write_input_tokens:
+        (first.cache_write_input_tokens ?? 0) + (second.cache_write_input_tokens ?? 0),
     };
   }
 
@@ -750,7 +816,11 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private composeExtractorInput(
     request: ExtractRequest,
     policy: DynamicAgentPolicy,
+    informationSupport = this.isEstablishedInformationSupportLane(request.plan),
   ): string {
+    const planSnapshot = informationSupport
+      ? this.buildSupportExtractorPlanSnapshot(request.plan)
+      : this.buildExtractorPlanSnapshot(request.plan);
     const suggestedCategories = this.buildEventCategoryPromptContext(
       request.plan.event_type,
       'extractor',
@@ -759,11 +829,30 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Estado del historial: ${request.messageContext.historyStatus}.`,
       `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
       `Mensaje del usuario: ${request.userMessage}`,
-      `Plan base (JSON compacto): ${JSON.stringify(this.buildExtractorPlanSnapshot(request.plan))}`,
+      `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}`,
       `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`,
-      suggestedCategories,
+      informationSupport ? null : suggestedCategories,
       'Extrae solo cambios nuevos del turno. Si un dato no cambia, mantenlo como null/vacio para no sobreescribir sin evidencia.',
-    ].join('\n');
+    ].filter((part): part is string => part !== null).join('\n');
+  }
+
+  private buildSupportExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
+    return {
+      current_node: plan.current_node,
+      information_state: {
+        pending_request_kinds: plan.information_state.pending_requests.map((request) => request.kind),
+        pending_count: plan.information_state.pending_requests.length,
+        last_completed_kind: plan.information_state.last_completed_request?.kind ?? null,
+        support_anchor: plan.information_state.support_anchor ?? null,
+        authentication_status: plan.user_auth.status,
+        authenticated_email_present: Boolean(plan.user_auth.email),
+      },
+      rsvp_state: {
+        status: plan.rsvp_state.status,
+        candidate_count: plan.rsvp_state.candidates.length,
+      },
+      planning_context_present: this.hasPlanningContext(plan),
+    };
   }
 
   private buildExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
@@ -1113,6 +1202,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return {
         action_intent: extraction.actionIntent,
         information_requests: extraction.informationRequests,
+        support_act: extraction.supportAct ?? null,
         phone_confirmation: extraction.phoneConfirmation ?? null,
         ...(extraction.contactEmail ? { contact_email: extraction.contactEmail } : {}),
         ambiguity: extraction.ambiguity
@@ -1236,6 +1326,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
 
     const node = request.currentNode;
+    if (
+      (node === 'contacto_inicial' || node === 'entrevista') &&
+      (request.extraction.supportAct != null || request.plan.information_state.support_anchor != null)
+    ) {
+      return genericMessageSchema;
+    }
     if ((node === 'contacto_inicial' || node === 'entrevista') && request.extraction.reportedEventRole) {
       return genericMessageSchema;
     }
@@ -1331,6 +1427,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       rsvp: true,
       ...this.options.features,
     };
+  }
+
+  private isEstablishedInformationSupportLane(plan: PersistedPlan): boolean {
+    return plan.current_node === 'resolver_consultas_informativas' &&
+      plan.information_state.support_anchor != null;
+  }
+
+  private shouldEscapeSupportExtraction(
+    extraction: ExtractResult['extraction'],
+  ): boolean {
+    return extraction.actionIntent !== null &&
+      extraction.actionIntent !== 'solicitar_humano' &&
+      extraction.actionIntent !== 'responder_invitacion';
   }
 
   private isProviderPlanningIntent(actionIntent: ActionIntent): boolean {
@@ -2103,6 +2212,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         information_state: {
           pending_requests: plan.information_state.pending_requests,
           selection_candidates: plan.information_state.selection_candidates,
+          ...(plan.information_state.support_anchor
+            ? { support_anchor: plan.information_state.support_anchor }
+            : {}),
           authentication_status: plan.user_auth.status,
           ...(plan.user_auth.email ? { authenticated_email: plan.user_auth.email } : {}),
           ...(plan.user_auth.failed_code_attempts !== null && plan.user_auth.failed_code_attempts !== undefined ? { failed_code_attempts: plan.user_auth.failed_code_attempts } : {}),

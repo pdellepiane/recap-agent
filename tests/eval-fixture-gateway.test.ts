@@ -83,6 +83,42 @@ describe('eval fixture seam', () => {
     expect(eventsResult.status === 'success' || eventsResult.status === 'not_found' || eventsResult.status === 'failed').toBe(true);
   });
 
+  it('loads Carina with the realistic international phone and preserves the current partitioned order', async () => {
+    const gateway = await FixtureAgentConversationGateway.create('purchase-confirmation-carina');
+    const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '900000301' };
+
+    const result = await gateway.getGuestOrdersByPhone(phone);
+    expect(result.status).toBe('success');
+    if (result.status === 'success') {
+      expect(result.orderPartitions?.pending).toEqual([]);
+      expect(result.orderPartitions?.completed).toHaveLength(2);
+      const current = result.orderPartitions?.completed.find(
+        (purchase) => purchase.eventName === 'ANDREA & RODRIGO',
+      );
+      expect(current).toMatchObject({
+        orderId: 'fixture-carina-current',
+        partition: 'completed_orders',
+        paymentStatus: 'approved',
+        grandTotal: 375.5,
+        currency: null,
+        eventName: 'ANDREA & RODRIGO',
+      });
+    }
+
+    // The same fixture also supports the detailed gift-purchase route used by
+    // an information request that asks for payment details.
+    const giftResult = await gateway.getGuestGiftPurchasesByPhone(phone);
+    expect(giftResult.status).toBe('success');
+    if (giftResult.status === 'success') {
+      expect(giftResult.purchases).toHaveLength(2);
+      expect(giftResult.purchases[0]).toMatchObject({
+        orderId: 'fixture-carina-current',
+        eventName: 'ANDREA & RODRIGO',
+        paymentStatus: 'approved',
+      });
+    }
+  });
+
   it('unknown scenario -> typed fail-closed error, never fallback to real backend', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
     const gateway = await FixtureAgentConversationGateway.create('unknown-scenario-xyz');

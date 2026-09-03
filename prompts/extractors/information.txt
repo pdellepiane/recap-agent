@@ -2,6 +2,10 @@ Consultas informativas
 
 `informationRequests` conserva el orden y puede coexistir con `actionIntent`.
 
+Apoyo de continuidad sin consulta
+
+Cuando el usuario reporta un problema, aporta un dato de seguimiento, pospone un envío, pregunta por una política o solicita un documento, emite también `supportAct` con exactamente un `kind`, `topic` y `detail` de estas listas: `kind=report_issue|provide_detail|defer_submission|ask_policy|request_document`; `topic=mailbox_capacity|payment_proof|purchase_status|confirmation_document|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|document_missing|status_pending|status_approved|unknown`. Usa `unknown` solo si el referente no se puede resolver con evidencia estructurada. Puede coexistir con `informationRequests` cuando sí hace falta una consulta; un acuse o reporte ya establecido no inventa una consulta. Conserva `reportedEventRole`, `rsvpAction` y cualquier cambio explícito de planificación.
+
 - `faq`: pregunta general sobre Sin Envolturas, politicas, comisiones o funciones. `query` autosuficiente.
 - Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad; null si no lo declara.
 - Retiro del anfitrión: faq `hostWithdrawal=individual_status` para retiro no recibido/estado, `policy_only` para plazo general; null fuera del tema. No compra/RSVP. Un evento posterior actualiza `eventHint` del retiro pendiente. El runtime gestiona apoyo sin otra acción.

@@ -93,7 +93,13 @@ export function extractorPromptFilesForCapabilities(
   return [
     'extractors/base_system.txt',
     ...(capabilities.providerPlanning ? ['extractors/planning.txt'] : []),
-    ...(capabilities.information ? ['extractors/information.txt'] : []),
+    ...(capabilities.information
+      ? [
+          capabilities.informationSupport
+            ? 'extractors/information_support.txt'
+            : 'extractors/information.txt',
+        ]
+      : []),
     ...(capabilities.rsvp ? ['extractors/rsvp.txt'] : []),
     ...(capabilities.providerOperations ||
       capabilities.providerSelection ||

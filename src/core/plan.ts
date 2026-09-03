@@ -301,6 +301,7 @@ export function createEmptyPlan(args: {
       pending_requests: [],
       selection_candidates: [],
       last_completed_request: null,
+      support_anchor: null,
     },
     rsvp_state: {
       status: 'none',

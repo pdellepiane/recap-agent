@@ -19,7 +19,7 @@ describe('prompt audit', () => {
     });
 
     expect(result.violations).toEqual([]);
-    expect(result.entries).toHaveLength(34);
+    expect(result.entries).toHaveLength(35);
     expect(entry(result, 'contacto_inicial')).toMatchObject({
       serializedRequestBytes: 7279,
       maximumToolCount: 0,
@@ -36,9 +36,9 @@ describe('prompt audit', () => {
     expect(entry(result, 'extractor:conversation_only').serializedRequestBytes)
       .toBeLessThan(2_500);
     expect(entry(result, 'extractor:initial_planning_information').serializedRequestBytes)
-      .toBeLessThan(9_300);
+      .toBeLessThan(10_300);
     expect(entry(result, 'extractor:shortlist').serializedRequestBytes)
-      .toBeLessThan(12_300);
+      .toBeLessThan(13_300);
     for (const auditEntry of result.entries) {
       expect(auditEntry.ruleIds).toHaveLength(auditEntry.filePaths.length);
       expect(auditEntry.remoteInputTokens).toBeNull();
@@ -74,9 +74,9 @@ describe('prompt inventory', () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    expect(inventory.totalFiles).toBe(105);
+    expect(inventory.totalFiles).toBe(107);
     expect(inventory.unmappedFiles).toEqual([]);
-    expect(inventory.entries).toHaveLength(105);
+    expect(inventory.entries).toHaveLength(107);
     for (const entry of inventory.entries) {
       expect(entry.consumers.length).toBeGreaterThan(0);
       expect(entry.filePath).toBeTruthy();
@@ -119,8 +119,8 @@ describe('per-branch prompt bytes', () => {
     const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
     const first = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
     const second = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
-    expect(first).toHaveLength(38);
-    expect(second).toHaveLength(38);
+    expect(first).toHaveLength(39);
+    expect(second).toHaveLength(39);
     expect(first).toEqual(second);
     const branchIds = first.map((branch) => branch.branchId);
     expect(branchIds).toContain('classifier');
@@ -144,6 +144,28 @@ describe('per-branch prompt bytes', () => {
     expect(resolved?.inputBytes).toBeGreaterThan(0);
     expect(needsSelection?.inputBytes).toBeGreaterThan(resolved?.inputBytes ?? 0);
     expect(unavailable?.instructionBytes).toBe(resolved?.instructionBytes);
+  });
+
+  it('keeps the established support extractor compact and records its byte budget', async () => {
+    const branches = await measureCurrentBranches({
+      loader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
+      counterModel: 'gpt-5.6-luna',
+    });
+    const support = branches.find(
+      (branch) => branch.branchId === 'extractor:established_support',
+    );
+    expect(support).toBeDefined();
+    expect(support?.filePaths).toEqual([
+      'extractors/base_system.txt',
+      'extractors/information_support.txt',
+      'extractors/rsvp.txt',
+      'extractors/contact.txt',
+    ]);
+    expect(support?.filePaths).not.toContain('extractors/planning.txt');
+    expect(support?.filePaths).not.toContain('extractors/provider_management.txt');
+    expect(support?.filePaths).not.toContain('extractors/close_pause.txt');
+    expect(support?.instructionBytes).toBe(7986);
+    expect(support?.serializedRequestBytes).toBe(8570);
   });
 
   it('uses buildRequestMetrics byte semantics for sample inputs', () => {

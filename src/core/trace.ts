@@ -37,6 +37,9 @@ export type ExtractionDebugSummary = {
   intent_confidence: number | null;
   information_request_count: number;
   information_request_kinds: string[];
+  information_normalization_rejected_count?: number;
+  information_normalization_issue_reasons?: string[];
+  support_act_kind?: string | null;
   ambiguity_status?: 'clear' | 'ambiguous' | null;
   clarification_question_present?: boolean;
   ambiguity_interpretation_count?: number;

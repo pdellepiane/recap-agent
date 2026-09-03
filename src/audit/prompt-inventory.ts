@@ -73,6 +73,13 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       loader: 'PromptLoader.loadHostWithdrawalMessages -> AgentService.handleHostWithdrawalInformation (no model call)',
     });
   }
+  if (filePath === 'nodes/resolver_consultas_informativas/support-continuity.json') {
+    consumers.push({
+      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
+      profiles: [], transitions: ['information:support_continuity_acknowledgment'],
+      loader: 'PromptLoader.loadSupportContinuityMessages -> AgentService.handleSupportAcknowledgment (no model call)',
+    });
+  }
 
   if (filePath.startsWith('shared/')) {
     const nodes = decisionNodes.filter((node) =>

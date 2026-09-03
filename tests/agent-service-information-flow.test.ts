@@ -49,6 +49,147 @@ const renderers = {
 };
 
 describe('AgentService first-class information flow', () => {
+  it('routes mailbox reports, deferrals and clarifications from empty information state without lookups or restarts', async () => {
+    const runtime = new InformationRuntime([
+      { ...extraction([]), supportAct: { kind: 'report_issue', topic: 'mailbox_capacity', detail: 'mailbox_full' } },
+      { ...extraction([]), supportAct: { kind: 'defer_submission', topic: 'unknown', detail: 'unknown' } },
+      { ...extraction([]), supportAct: { kind: 'provide_detail', topic: 'mailbox_capacity', detail: 'mailbox_full' } },
+    ]);
+    const knowledge = new FakeKnowledgeGateway();
+    const gateway = new FakePurchaseGateway();
+    const service = createService({ runtime, knowledgeGateway: knowledge, purchaseGateway: gateway, providerGateway: providerGateway() });
+    const texts = ['Tengo un problema de capacidad en mi gmail registrado', 'Lo voy a enviar luego', 'Esta lkeno'];
+    for (const [index, text] of texts.entries()) {
+      const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'mailbox-report',
+        contactPhone: '+51900000302', messageId: `mailbox-${index}`, receivedAt: new Date().toISOString(), text });
+      expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+      expect(response.plan.information_state.support_anchor?.topic).toBe('mailbox_capacity');
+      expect(runtime.composeRequests).toHaveLength(0);
+    }
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+    expect(runtime.extractRequests).toHaveLength(3);
+  });
+
+  it('acknowledges a deferral without executing or deleting an unresolved purchase selection', async () => {
+    const store = new InMemoryPlanStore();
+    const request = { kind: 'purchase' as const, resource: 'orders' as const, query: 'Consulta sobre mi regalo',
+      orderId: null, aspects: ['payment_status' as const], sensitiveFields: [], authAction: 'none' as const, requestId: 'pending' };
+    await store.save({ reason: 'fixture', plan: mergePlan(createEmptyPlan({ planId: 'deferred', channel: 'whatsapp', externalUserId: 'deferred' }), {
+      current_node: 'resolver_consultas_informativas', information_state: {
+        resume_node: 'entrevista', pending_requests: [request], selection_candidates: [], last_completed_request: null,
+      },
+    }) });
+    const runtime = new InformationRuntime([{ ...extraction([]), supportAct: { kind: 'defer_submission', topic: 'payment_proof', detail: 'submission_deferred' } }]);
+    const gateway = new FakePurchaseGateway();
+    const service = createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(), purchaseGateway: gateway, providerGateway: providerGateway(), planStore: store });
+    const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'deferred', contactPhone: '+51900000302',
+      text: 'Lo envío luego', messageId: 'defer', receivedAt: new Date().toISOString() });
+    expect(response.plan.information_state.pending_requests).toEqual([request]);
+    expect(gateway.guestOrdersCalls + gateway.authByPhoneCalls).toBe(0);
+  });
+
+  it('clarifies a rejected purchase extraction without welcoming, looking up data, or starting OTP', async () => {
+    const runtime = new InformationRuntime([{
+      ...extraction([]),
+      normalizationIssues: [{
+        requestKind: 'purchase',
+        field: 'resource',
+        reason: 'missing_resource',
+      }],
+    }]);
+    const gateway = new FakePurchaseGateway();
+    const knowledge = new FakeKnowledgeGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'rejected-purchase-extraction',
+      contactPhone: '+51900000302',
+      text: 'Necesito ayuda con esa compra.',
+      messageId: 'rejected-purchase-extraction-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'una sola pregunta breve',
+    );
+    expect(runtime.composeRequests[0]?.currentNode).toBe(
+      'resolver_consultas_informativas',
+    );
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.trace.extraction_summary.information_normalization_rejected_count).toBe(1);
+  });
+
+  it('retrieves verified FAQ evidence for a typed policy question instead of answering from model memory', async () => {
+    const runtime = new InformationRuntime([{
+      ...extraction([]),
+      supportAct: {
+        kind: 'ask_policy',
+        topic: 'purchase_status',
+        detail: 'status_pending',
+      },
+    }]);
+    const gateway = new FakePurchaseGateway();
+    const knowledge = new FakeKnowledgeGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'typed-policy-question',
+      contactPhone: '+51900000302',
+      text: '¿Cuál es el plazo general de validación?',
+      messageId: 'typed-policy-question-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(knowledge.calls).toBe(1);
+    expect(knowledge.lastQuery).toBe('¿Cuál es el plazo general de validación?');
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls).toBe(0);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.informationResults).toEqual([
+      expect.objectContaining({ kind: 'faq', status: 'completed' }),
+    ]);
+  });
+
+  it('never treats a numeric external conversation id as a trusted escalation phone', async () => {
+    const runtime = new InformationRuntime([
+      extraction([], 'solicitar_humano'),
+    ]);
+    const gateway = new FakePurchaseGateway();
+    const takeover = vi.spyOn(gateway, 'requestHumanTakeover');
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: '51987654321',
+      text: 'Necesito hablar con una persona.',
+      messageId: 'untrusted-external-id-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(takeover).not.toHaveBeenCalled();
+  });
   const hostRequest = (hostWithdrawal: 'individual_status' | 'policy_only' = 'individual_status'): ExtractedInformationRequest => ({
     kind: 'faq', query: 'Retiro de fondos del evento aún no recibido', hostWithdrawal,
     eventHint: 'Diana y Fernando',
@@ -468,6 +609,137 @@ describe('AgentService first-class information flow', () => {
       status: 'completed',
       accessMethod: 'trusted_phone_purchase',
     });
+  });
+
+  it('looks up one canonical order for a confirmation document, hands off once, and suppresses repeats', async () => {
+    const runtime = new InformationRuntime([
+      {
+        ...extraction([]),
+        supportAct: {
+          kind: 'request_document',
+          topic: 'confirmation_document',
+          detail: 'document_missing',
+        },
+      },
+    ]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
+    };
+    const takeover = vi
+      .spyOn(gateway, 'requestHumanTakeover')
+      .mockResolvedValue({ status: 'success', message: null });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const inbound = {
+      channel: 'whatsapp',
+      externalUserId: 'document-request-user',
+      contactPhone: '+51973296571',
+      text: 'Necesito la constancia de mi compra.',
+      messageId: 'document-request-1',
+      receivedAt: new Date().toISOString(),
+    };
+    const response = await service.handleTurn(inbound);
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(gateway.guestGiftCalls).toBe(0);
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(takeover).toHaveBeenCalledTimes(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.trace.information_execution_summary).toEqual([
+      expect.objectContaining({
+        status: 'completed',
+        accessMethod: 'trusted_phone_purchase',
+        resource: 'orders',
+      }),
+    ]);
+    expect(runtime.composeRequests).toHaveLength(1);
+
+    const repeated = await service.handleTurn({
+      ...inbound,
+      messageId: 'document-request-2',
+      text: 'También necesito el comprobante.',
+    });
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(takeover).toHaveBeenCalledTimes(1);
+    expect(runtime.extractRequests).toHaveLength(1);
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(repeated.outbound.text).toBeNull();
+  });
+
+  it('adds the canonical document-status lookup even when an unrelated request is already pending', async () => {
+    const store = new InMemoryPlanStore();
+    await store.save({
+      reason: 'fixture',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'document-with-pending-faq',
+        channel: 'whatsapp',
+        externalUserId: 'document-with-pending-faq',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [{
+            kind: 'faq',
+            query: 'Consulta general anterior.',
+            requestId: 'pending-faq',
+          }],
+          selection_candidates: [],
+          last_completed_request: null,
+        },
+      }),
+    });
+    const runtime = new InformationRuntime([{
+      ...extraction([]),
+      supportAct: {
+        kind: 'request_document',
+        topic: 'confirmation_document',
+        detail: 'document_missing',
+      },
+    }]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [purchase('ORD-000880')],
+    };
+    vi.spyOn(gateway, 'requestHumanTakeover')
+      .mockResolvedValue({ status: 'success', message: null });
+    const knowledge = new FakeKnowledgeGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore: store,
+    });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'document-with-pending-faq',
+      contactPhone: '+51973296571',
+      text: 'Ahora necesito la constancia de mi compra.',
+      messageId: 'document-with-pending-faq-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(gateway.guestOrdersCalls).toBe(1);
+    expect(runtime.composeRequests[0]?.extraction.informationRequests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'purchase',
+          resource: 'orders',
+          aspects: ['payment_status'],
+        }),
+      ]),
+    );
   });
 
   it('projects a trusted cart recovery path separately from general payment policy', async () => {

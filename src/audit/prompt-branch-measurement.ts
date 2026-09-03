@@ -307,6 +307,7 @@ function schemaPropertyCountForExtractor(profileName: string): number {
   const counts: Record<string, number> = {
     conversation_only: 8,
     rsvp: 11,
+    established_support: 15,
     initial_planning_information: 16,
     active_plan: 20,
     shortlist: 24,
@@ -457,7 +458,23 @@ export async function measureHistoricalBranches(args: {
   // Extractors
   for (const profile of extractorAuditProfiles) {
     const branchId = `extractor:${profile.name}`;
-    const relativePaths = extractorPromptFilesForCapabilities(profile.capabilities);
+    // The established-support lane did not exist at the historical anchor.
+    // Compare it with the same historical capabilities routed through the
+    // former broad information prompt instead of trying to read a new file
+    // from an old commit.
+    const historicalCapabilities = profile.name === 'established_support'
+      ? {
+          ...profile.capabilities,
+          informationSupport: false,
+          // Before the dedicated lane, provider-planning instructions were
+          // always present whenever the feature was enabled, even for a
+          // support-only continuation.
+          providerPlanning: true,
+        }
+      : profile.capabilities;
+    const relativePaths = extractorPromptFilesForCapabilities(
+      historicalCapabilities,
+    );
     const bundle = await loadHistoricalBundle(relativePaths, []);
     const input = sampleInputForBranch(branchId);
     const base = measureBundle({

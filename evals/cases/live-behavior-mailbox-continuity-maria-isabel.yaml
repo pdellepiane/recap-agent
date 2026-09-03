@@ -1,0 +1,75 @@
+template: template.base-live
+id: live_behavior.mailbox_issue_deferral_and_clarification_preserve_support
+suite: live_behavior_regression
+version: 1
+description: Reconstruct Maria Isabel's transfer-proof greeting, mailbox-capacity report, deferral and misspelled clarification without a restart or irrelevant purchase search.
+tags: [live, behavior, reported-interaction, support, continuity, maria-isabel]
+targetModes: [live_lambda]
+seedPlan:
+  conversation_summary: 'The user previously shared an image described as transfer proof for Carolina & Diego. Image contents and payment receipt have not been verified. No information request is pending.'
+backendFixture:
+  scenario: mailbox-continuity-maria-isabel
+inputs:
+  - text: Hola
+    channel: whatsapp
+    contactPhone: '+51900000302'
+  - text: Tengo un problema de capacidad en mi gmail registrado
+    channel: whatsapp
+    contactPhone: '+51900000302'
+  - text: Lo voy a enviar luego
+    channel: whatsapp
+    contactPhone: '+51900000302'
+  - text: Esta lkeno
+    channel: whatsapp
+    contactPhone: '+51900000302'
+expectations:
+  - id: report-enters-support
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 1
+    severity: hard
+  - id: deferral-does-not-fetch-or-authenticate
+    type: tool_usage
+    mustNotCall: [lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone, knowledge_base_search, auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 2
+    severity: hard
+  - id: clarification-stays-in-support
+    type: node_transition
+    to: resolver_consultas_informativas
+    turnIndex: 3
+    severity: hard
+  - id: acknowledge-mailbox-not-welcome
+    type: text_semantic
+    rubric: >-
+      Concise Spanish acknowledgment of the reported capacity problem in the registered mailbox,
+      optionally one relevant clarification. Do not give a generic welcome, ask what the user needs,
+      select a historical purchase, claim to inspect the image, verify payment receipt or ask for email OTP.
+      Do not invent a mailbox-specific company policy.
+    turnIndex: 1
+    requireJudge: true
+    minScore: 0.9
+    severity: hard
+  - id: acknowledge-deferral-without-inventing-referent
+    type: text_semantic
+    rubric: >-
+      Continue the support topic in Spanish, briefly acknowledge that the person will send something later,
+      or remain silent if the message is classified as a simple acknowledgment. Do not reset the conversation,
+      repeat the introduction, claim payment approval, or confidently invent what the ambiguous 'lo' refers to.
+    turnIndex: 2
+    requireJudge: true
+    minScore: 0.9
+    severity: hard
+  - id: understand-full-mailbox-clarification
+    type: text_semantic
+    rubric: >-
+      Understand 'Esta lkeno' as clarification that the mailbox discussed earlier is full.
+      Briefly acknowledge it in Spanish without asking again whether the mailbox is full, restarting with a welcome,
+      listing unrelated purchases, asking for OTP, or claiming payment/proof validation or document delivery.
+    turnIndex: 3
+    requireJudge: true
+    minScore: 0.9
+    severity: hard
+budget:
+  maxTurns: 4
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 200

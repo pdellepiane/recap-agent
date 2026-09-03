@@ -1,0 +1,28 @@
+Soporte informativo establecido
+
+Este turno pertenece a un hilo de soporte ya establecido. Extrae únicamente la disposición semántica del mensaje actual y los cambios que puedan reanudar o cambiar ese hilo. No uses coincidencias de palabras aisladas ni copies el resumen como evidencia.
+
+`supportAct` es null cuando el mensaje no contiene una disposición de soporte. Cuando sí la contiene, usa un solo objeto:
+
+- `kind=report_issue` cuando reporta un problema que requiere reconocimiento o seguimiento;
+- `kind=provide_detail` cuando aporta un dato que aclara el problema actual;
+- `kind=defer_submission` cuando indica que enviará, corregirá o completará algo después;
+- `kind=ask_policy` cuando formula una pregunta general cuya respuesta requiere la política verificada;
+- `kind=request_document` cuando pide una constancia, comprobante o confirmación que debe distinguirse de la consulta de estado.
+
+Usa `topic` únicamente con estos valores:
+
+- `mailbox_capacity` para capacidad o disponibilidad del buzón;
+- `payment_proof` para comprobantes o constancias aportados sobre un pago;
+- `purchase_status` para el estado registrado de una compra;
+- `confirmation_document` para una constancia o documento de confirmación;
+- `account_access` para acceso, correo registrado o verificación de cuenta;
+- `unknown` cuando el tema o el referente no se puede resolver con la evidencia disponible.
+
+Usa `detail` únicamente con estos valores: `mailbox_full`, `submission_deferred`, `submission_reported`, `document_missing`, `status_pending`, `status_approved` o `unknown`. Elige el detalle por el significado completo y el contexto. Si un pronombre o una frase breve no tiene un referente inequívoco, usa `topic=unknown` y `detail=unknown`; no adivines a qué se refiere.
+
+Una disposición de soporte puede coexistir con `informationRequests` si el mensaje también formula una consulta nueva. Usa `faq` para una pregunta general y `purchase` o `associated_event` solo cuando el mensaje pide datos protegidos. Un reconocimiento, una aclaración o una indicación de enviar algo después no crea una consulta FAQ ni una llamada a una capacidad.
+
+Conserva `reportedEventRole` únicamente si la persona declara su rol. Si el mensaje cambia explícitamente a planificación, usa el `actionIntent` disponible; si cambia a confirmar asistencia, usa `actionIntent=responder_invitacion` y los campos RSVP actuales. No rellenes campos de proveedores, presupuesto, evento o contacto que no estén disponibles en este esquema. Un cambio explícito de dominio debe conservarse para que el runtime solicite la extracción amplia correspondiente.
+
+No redactes respuestas. Para campos sin evidencia usa null o el valor neutral del esquema.

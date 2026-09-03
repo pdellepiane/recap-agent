@@ -12,6 +12,7 @@ import {
   purchaseResourceValues,
   sensitivePurchaseFieldValues,
   phoneConfirmationValues,
+  informationSupportActSchema,
 } from '../core/information';
 import {
   rsvpActionValues,
@@ -117,6 +118,7 @@ export const extractionSchema = z.object({
   reportedEventRole: z.enum(['host', 'guest']).nullable().optional(),
   actionIntent: z.enum(actionIntentValues).nullable(),
   informationRequests: z.array(openAiInformationRequestSchema).default([]),
+  supportAct: informationSupportActSchema.nullable().default(null),
   phoneConfirmation: z.enum(phoneConfirmationValues).nullable().default(null),
   rsvpAction: z.enum(rsvpActionValues).nullable().default(null),
   rsvpDecisionSource: z.enum(rsvpDecisionSourceValues).default('plan_state').catch('plan_state'),
@@ -154,6 +156,8 @@ export type StructuredExtraction = z.infer<typeof extractionSchema>;
 
 export type ExtractionCapabilityProfile = {
   information: boolean;
+  /** Selects the compact prompt/schema for an established support lane. */
+  informationSupport?: boolean;
   rsvp: boolean;
   providerPlanning: boolean;
   providerOperations: boolean;
@@ -179,11 +183,12 @@ export function createDynamicExtractionSchema(args: {
     ambiguity: extractionSchema.shape.ambiguity,
     assumptions: extractionSchema.shape.assumptions,
     conversationSummary: extractionSchema.shape.conversationSummary,
-    ...(args.capabilities.information
+  ...(args.capabilities.information
       ? {
           informationRequests: extractionSchema.shape.informationRequests,
           reportedEventRole: extractionSchema.shape.reportedEventRole,
           phoneConfirmation: extractionSchema.shape.phoneConfirmation,
+          supportAct: extractionSchema.shape.supportAct,
         }
       : {}),
     ...(args.capabilities.rsvp

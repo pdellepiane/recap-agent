@@ -8391,3 +8391,36 @@ was `bb592211-9bd8-4aaa-9645-30e6ae6c65a8` with AWS code SHA-256
 revision `a954695c-4d83-4b80-8f2c-3106e8b1ff2d`, last modified on 2026-09-02, with its
 prior code SHA-256 unchanged. The complete development candidate is deployed and
 recorded separately after the behavioral integration gate.
+
+## 2026-09-03 — Typed support continuity and compact support extraction
+
+**Reason:** Stored response evidence proved that the Carina confirmation requests
+were understood but lost when a schema-valid null authentication action reached the
+normalizer, while the María Isabel mailbox sequence was understood only in free-form
+summaries and fell into the planning welcome. Neither sequence showed a lost plan,
+lease contention, duplicate inbound ID, endpoint failure, or attempted FAQ lookup.
+
+**Decision:** Preserve neutral purchase reads as `authAction=none`; surface genuinely
+incomplete purchase requests as typed normalization issues; add bounded typed support
+acts and a compact support anchor; select a dedicated established-support extractor;
+render pure acknowledgments without a reply-model call; and separate payment-status
+verification from unsupported confirmation-document delivery. Document requests use
+one canonical trusted-phone order lookup and one human handoff, never raw endpoint
+objects, inferred currency, or a claim that a document was sent. Policy questions
+without a model-provided FAQ request deterministically synthesize one verified FAQ
+lookup. Only the trusted channel phone can authorize a phone-scoped handoff.
+
+**Minimum disclosure:** The established-support extractor measures 7,986 instruction
+bytes, compared with 10,584 bytes for its historical planning-enabled equivalent
+(24.5% smaller). Planning, provider-management, close, and pause prompts are absent.
+The pure acknowledgment path makes no reply-model, API, knowledge-base, or
+authentication call. Raw Agent API and knowledge-base responses remain behind typed
+parsing, canonical reconciliation, and outcome-specific projection.
+
+**Validation before deployment:** `npm run typecheck`, `npm run lint`, and
+`npm run audit:prompts` pass. The full bounded local suite passes 757 tests across 102
+files after the independent review corrections. Permanent live Lambda cases reconstruct
+Carina's repeated confirmation request and María Isabel's mailbox report, deferral,
+and misspelled clarification. Development deployment revision, prompt bytes, live
+outcomes, and the complete evaluation artifact are recorded after the isolated Lambda
+gate.
