@@ -60,6 +60,7 @@ import {
   type ChannelRequestValidationIssue,
 } from './request-observability';
 import { withRequestObservabilityContext } from '../runtime/auth-observability';
+import { buildRuntimeCapabilityManifest, type RuntimeCapabilityManifest } from '../runtime/capability-manifest';
 
 const config = getConfig();
 
@@ -77,6 +78,7 @@ type SharedRuntimeDeps = {
   providerGateway: SinEnvolturasGateway;
   knowledgeGateway: OpenAiKnowledgeRetrievalGateway | NoopKnowledgeRetrievalGateway;
   openAiRuntime: OpenAiAgentRuntime;
+  capabilityManifest: RuntimeCapabilityManifest;
   responseClassifier: OpenAiMessageResponseClassifier;
   planStore: DynamoPlanStore;
   perfStore: PerfStore;
@@ -546,6 +548,21 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
               timeoutMs: config.openAi.timeoutsMs.retrieval,
             })
           : new NoopKnowledgeRetrievalGateway();
+      const capabilityManifest = buildRuntimeCapabilityManifest({
+        configured: true,
+        environment: config.deployment.environment === 'production' ? 'production' : 'development',
+        allowCustomerWrites: config.deployment.environment === 'production',
+        featureFlags: {
+          ...config.features,
+          phoneAuthentication: true,
+          emailOtp: Boolean(config.providerApi.userAuthBaseUrl),
+          humanTakeover: Boolean(config.agentApi.baseUrl),
+        },
+        disabledOperations: [
+          ...(config.knowledgeBase.enabled && config.knowledgeBase.vectorStoreId ? [] : ['faq.read' as const]),
+          ...(config.providerApi.searchMode === 'api' || config.providerApi.vectorStoreId ? [] : ['provider.search' as const]),
+        ],
+      });
       const openAiRuntime = new OpenAiAgentRuntime({
         apiKey,
         replyModel: config.openAi.models.reply,
@@ -558,6 +575,7 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
         promptLoader,
         providerGateway,
         features: config.features,
+        capabilityManifest,
       });
       const responseClassifier = new OpenAiMessageResponseClassifier({
         apiKey,
@@ -581,6 +599,7 @@ async function getSharedRuntimeDeps(): Promise<SharedRuntimeDeps> {
         responseClassifier,
         planStore: runtimePlanStore,
         perfStore,
+        capabilityManifest,
       };
     })();
   }
@@ -606,11 +625,13 @@ async function getRuntime(): Promise<{
         timeoutMs: config.agentApi.timeoutMs,
         maxRetries: config.agentApi.maxRetries,
         messageLoggingEnabled: config.agentApi.messageLoggingEnabled,
+        environment: config.deployment.environment === 'production' ? 'production' : 'development',
       });
       const informationOrchestrator = new InformationOrchestrator({
         knowledgeGateway: shared.knowledgeGateway,
         providerGateway: shared.providerGateway,
         agentGateway: agentConversationGateway,
+        capabilityManifest: shared.capabilityManifest,
       });
 
       return {
@@ -627,6 +648,7 @@ async function getRuntime(): Promise<{
             webchat: new WebChatMessageRenderer(),
             terminal_whatsapp: new WhatsAppMessageRenderer(),
           },
+          capabilityManifest: shared.capabilityManifest,
         }),
         perfStore: shared.perfStore,
       };
@@ -693,6 +715,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
     knowledgeGateway: shared.knowledgeGateway,
     providerGateway: fixtureProviderGateway,
     agentGateway: fixtureGateway,
+    capabilityManifest: fixtureGateway.capabilityDescriptor,
   });
 
   return {
@@ -709,6 +732,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
         webchat: new WebChatMessageRenderer(),
         terminal_whatsapp: new WhatsAppMessageRenderer(),
       },
+      capabilityManifest: fixtureGateway.capabilityDescriptor,
     }),
     perfStore: shared.perfStore,
   };

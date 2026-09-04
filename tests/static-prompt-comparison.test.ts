@@ -21,7 +21,7 @@ describe('static prompt comparison', () => {
     });
 
     expect(result.baselineRef).toBe(legacyPromptBaselineRef);
-    expect(result.comparisons).toHaveLength(37);
+    expect(result.comparisons).toHaveLength(36);
     expect(result.violations).toEqual([]);
     expect(result.summary.currentSerializedRequestBytes)
       .toBeLessThan(result.summary.baselineSerializedRequestBytes);
@@ -70,10 +70,10 @@ describe('per-branch historical baseline via git show', () => {
       anchorRef: '78ae24e',
       counterModel: 'gpt-5.6-luna',
     });
-    expect(historical).toHaveLength(39);
+    expect(historical).toHaveLength(38);
     const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
     const current = await measureCurrentBranches({ loader, counterModel: 'gpt-5.6-luna' });
-    expect(current).toHaveLength(39);
+    expect(current).toHaveLength(38);
     // Historical and current share same branchId set
     expect(historical.map((branch) => branch.branchId).sort()).toEqual(
       current.map((branch) => branch.branchId).sort(),

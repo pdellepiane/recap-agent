@@ -31,6 +31,10 @@ import {
 import {
   eventMatches as sharedEventMatches,
 } from './event-matching';
+import type {
+  RuntimeCapabilityManifest,
+  RuntimeOperationId,
+} from './capability-manifest';
 
 type PurchaseRequest = Extract<
   PendingInformationRequest,
@@ -117,8 +121,22 @@ export class InformationOrchestrator {
       knowledgeGateway: KnowledgeRetrievalGateway;
       providerGateway: ProviderGateway;
       agentGateway: AgentConversationGateway;
+      capabilityManifest?: RuntimeCapabilityManifest;
     },
   ) {}
+
+  private capabilityAvailable(
+    operation: RuntimeOperationId,
+    fallback = true,
+  ): boolean {
+    const manifest = this.dependencies.capabilityManifest ??
+      this.dependencies.agentGateway.capabilityDescriptor;
+    return manifest?.[operation].available ?? fallback;
+  }
+
+  private gatewayMethodConfigured(method: keyof AgentConversationGateway): boolean {
+    return typeof Reflect.get(this.dependencies.agentGateway, method) === 'function';
+  }
 
   async execute(args: {
     requests: PendingInformationRequest[];
@@ -145,6 +163,7 @@ export class InformationOrchestrator {
       !args.authentication &&
       canUseTrustedPhone &&
       args.trustedPhone &&
+      this.capabilityAvailable('event.association.read', this.gatewayMethodConfigured('getGuestEventsByPhone')) &&
       args.requests.some((request) => request.kind === 'associated_event')
         ? this.lookupGuestEvents(args.trustedPhone)
         : null;
@@ -279,6 +298,16 @@ export class InformationOrchestrator {
     phoneContext: PhoneContextSnapshot,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
+      if (!this.capabilityAvailable('faq.read')) {
+        return {
+          requestId: request.requestId,
+          kind: 'faq',
+          status: 'failed',
+          retryable: false,
+          failureKind: 'not_configured',
+          message: 'La consulta de información general no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
+        };
+      }
       const retrieval = request.hostWithdrawal
         ? await this.dependencies.knowledgeGateway.search(hostWithdrawalPolicyQuery, { rewriteQuery: false })
         : await this.dependencies.knowledgeGateway.search(request.query);
@@ -312,6 +341,20 @@ export class InformationOrchestrator {
     }
 
     if (
+      !authentication &&
+      authBlock &&
+      !(authBlock.guidance.reason === 'email_required' && trustedPhone)
+    ) {
+      return {
+        requestId: request.requestId,
+        kind: request.kind,
+        status: 'needs_input',
+        nextInput: authBlock.nextInput,
+        guidance: authBlock.guidance,
+      };
+    }
+
+    if (
       request.kind === 'associated_event' &&
       !authentication &&
       guestEventsPromise
@@ -334,7 +377,7 @@ export class InformationOrchestrator {
           status: 'failed',
           retryable: guestEvents.retryable,
           accessMethod: 'trusted_phone_guest',
-          failureKind: this.dependencies.agentGateway.getGuestEventsByPhone
+          failureKind: this.gatewayMethodConfigured('getGuestEventsByPhone')
             ? 'request_failed'
             : 'not_configured',
           message: guestEvents.retryable
@@ -355,11 +398,35 @@ export class InformationOrchestrator {
       };
     }
 
+    if (
+      request.kind === 'associated_event' &&
+      !authentication &&
+      !guestEventsPromise &&
+      !this.capabilityAvailable('event.association.read', this.gatewayMethodConfigured('getGuestEventsByPhone'))
+    ) {
+      return {
+        requestId: request.requestId,
+        kind: 'associated_event',
+        status: 'failed',
+        retryable: false,
+        failureKind: 'not_configured',
+        message: 'La consulta de eventos asociados no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
+      };
+    }
+
     if (!authentication) {
       if (
         request.kind === 'purchase' &&
         trustedPhone &&
-        (!authBlock || authBlock.guidance.reason === 'email_required')
+        (!authBlock || authBlock.guidance.reason === 'email_required') &&
+        this.capabilityAvailable(
+          request.resource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
+          this.gatewayMethodConfigured(
+            request.resource === 'orders'
+              ? 'getGuestOrdersByPhone'
+              : 'getGuestGiftPurchasesByPhone',
+          ),
+        )
       ) {
         return await this.executePhonePurchaseRequest(
           request,
@@ -377,6 +444,25 @@ export class InformationOrchestrator {
         guidance:
           authBlock?.guidance ??
           createInformationAuthGuidance('email_required', null),
+      };
+    }
+
+    if (
+      request.kind === 'purchase' &&
+      !this.capabilityAvailable(
+        request.resource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
+        this.gatewayMethodConfigured(
+          request.resource === 'orders' ? 'getOrders' : 'getGiftPurchases',
+        ),
+      )
+    ) {
+      return {
+        requestId: request.requestId,
+        kind: 'purchase',
+        status: 'failed',
+        retryable: false,
+        failureKind: 'not_configured',
+        message: 'La consulta de compras no está disponible en este momento. Puedo comunicarte con una persona del equipo.',
       };
     }
 
@@ -567,7 +653,11 @@ export class InformationOrchestrator {
       };
     }
 
-    if (!phoneGateway.getEventDetail || !trustedPhone) {
+    if (
+      !phoneGateway.getEventDetail ||
+      !trustedPhone ||
+      !this.capabilityAvailable('event.detail.read', this.gatewayMethodConfigured('getEventDetail'))
+    ) {
       return {
         requestId: request.requestId,
         kind: 'associated_event',
@@ -674,7 +764,10 @@ export class InformationOrchestrator {
     phoneGateway: AgentConversationGateway,
     eventDetailLookups: EventDetailCache,
   ): Promise<PhoneEventDetailResult> {
-    if (!phoneGateway.getEventDetail) {
+    if (
+      !phoneGateway.getEventDetail ||
+      !this.capabilityAvailable('event.detail.read', this.gatewayMethodConfigured('getEventDetail'))
+    ) {
       return {
         status: 'failed',
         error: 'Agent API event detail lookup is not configured.',
@@ -1042,10 +1135,16 @@ export class InformationOrchestrator {
       ? 'gift_purchases'
       : 'orders';
     if (
-      (lookupResource === 'orders' && !phoneGateway.getGuestOrdersByPhone) ||
+      (lookupResource === 'orders' && !this.gatewayMethodConfigured('getGuestOrdersByPhone')) ||
       (lookupResource === 'gift_purchases' &&
-        !phoneGateway.getGuestGiftPurchasesByPhone)
+        !this.gatewayMethodConfigured('getGuestGiftPurchasesByPhone'))
     ) {
+      return undefined;
+    }
+    if (!this.capabilityAvailable(
+      lookupResource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
+      true,
+    )) {
       return undefined;
     }
     const parsedReference = parseOrderReference(request.orderId);
@@ -1097,7 +1196,8 @@ export class InformationOrchestrator {
       lookupResource === 'gift_purchases' &&
       this.isSummaryOrStatusRequest(request) &&
       this.isRetryableLookupFailure(lookup) &&
-      phoneGateway.getGuestOrdersByPhone
+      phoneGateway.getGuestOrdersByPhone &&
+      this.capabilityAvailable('purchase.orders.read', true)
     ) {
       const fallbackKey = [
         'orders',
@@ -1541,6 +1641,12 @@ export class InformationOrchestrator {
     token: string,
     orderId: string | null,
   ): Promise<AgentPurchaseLookupResult | undefined> {
+    if (!this.capabilityAvailable(
+      request.resource === 'orders' ? 'purchase.orders.read' : 'purchase.gift_detail.read',
+      true,
+    )) {
+      return undefined;
+    }
     return request.resource === 'orders'
       ? await this.dependencies.agentGateway.getOrders?.({ token, orderId })
       : await this.dependencies.agentGateway.getGiftPurchases?.({

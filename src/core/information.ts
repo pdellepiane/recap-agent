@@ -65,7 +65,6 @@ export const informationSupportActKindValues = [
   'provide_detail',
   'defer_submission',
   'ask_policy',
-  'request_document',
 ] as const;
 export type InformationSupportActKind =
   (typeof informationSupportActKindValues)[number];
@@ -74,7 +73,6 @@ export const informationSupportTopicValues = [
   'mailbox_capacity',
   'payment_proof',
   'purchase_status',
-  'confirmation_document',
   'account_access',
   'unknown',
 ] as const;
@@ -85,21 +83,12 @@ export const informationSupportDetailValues = [
   'mailbox_full',
   'submission_deferred',
   'submission_reported',
-  'document_missing',
   'status_pending',
   'status_approved',
   'unknown',
 ] as const;
 export type InformationSupportDetail =
   (typeof informationSupportDetailValues)[number];
-
-export const informationSupportPhaseValues = [
-  'active',
-  'deferred',
-  'needs_clarification',
-] as const;
-export type InformationSupportPhase =
-  (typeof informationSupportPhaseValues)[number];
 
 export const informationSupportActSchema = z.object({
   kind: z.enum(informationSupportActKindValues),
@@ -108,16 +97,6 @@ export const informationSupportActSchema = z.object({
 });
 
 export type InformationSupportAct = z.infer<typeof informationSupportActSchema>;
-
-/** Persisted support continuity uses only bounded, non-sensitive evidence. */
-export const informationSupportAnchorSchema = z.object({
-  topic: z.enum(informationSupportTopicValues),
-  detail: z.enum(informationSupportDetailValues),
-  last_act: z.enum(informationSupportActKindValues),
-  phase: z.enum(informationSupportPhaseValues),
-});
-
-export type InformationSupportAnchor = z.infer<typeof informationSupportAnchorSchema>;
 
 export const informationNormalizationIssueReasonValues = [
   'missing_resource',
@@ -212,7 +191,6 @@ export const informationStateSchema = z.object({
   pending_requests: z.array(pendingInformationRequestSchema),
   selection_candidates: z.array(informationSelectionCandidateSchema),
   last_completed_request: completedInformationRequestSchema.nullable().optional(),
-  support_anchor: informationSupportAnchorSchema.nullable().optional(),
 });
 
 export type InformationState = z.infer<typeof informationStateSchema>;

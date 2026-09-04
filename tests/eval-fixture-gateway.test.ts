@@ -158,14 +158,14 @@ describe('eval fixture seam', () => {
     void phone;
   });
 
-  it('fixture timestamp normalization matches HTTP gateway (offset-less -> null)', async () => {
+  it('fixture timestamp normalization preserves server timezone strings', async () => {
     // The normalize function is shared; test it directly
-    expect(normalizePurchaseTimestamp('2026-08-30 21:31:00')).toBeNull();
+    expect(normalizePurchaseTimestamp('2026-08-30 21:31:00')).toBe('2026-08-30 21:31:00');
     expect(normalizePurchaseTimestamp('2026-08-30T21:31:00.000Z')).toBe('2026-08-30T21:31:00.000Z');
     expect(normalizePurchaseTimestamp('2026-08-30T21:31:00+00:00')).toBe('2026-08-30T21:31:00+00:00');
     expect(normalizePurchaseTimestamp('2026-08-30')).toBe('2026-08-30');
 
-    // Also verify fixture gateway returns null for offset-less created_at
+    // Also verify fixture gateway preserves offset-less created_at
     const gateway = await FixtureAgentConversationGateway.create('purchase-claudia-085');
     const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '957212085' };
     const result = await gateway.getGuestOrdersByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
@@ -180,13 +180,13 @@ describe('eval fixture seam', () => {
     void concatenatedPhone;
     expect(result.status).toBe('success');
     if (result.status === 'success') {
-      expect(result.purchases[0]?.createdAt).toBeNull();
+      expect(result.purchases[0]?.createdAt).toBe('2026-08-30 14:00:00');
     }
     const giftResult = await gateway.getGuestGiftPurchasesByPhone({ phone_extension: phone.phone_extension, phone_number: phone.phone_number });
     expect(giftResult.status).toBe('success');
     if (giftResult.status === 'success') {
-      expect(giftResult.purchases[0]?.createdAt).toBeNull();
-      expect(giftResult.purchases[0]?.payment?.paidAt).toBeNull();
+      expect(giftResult.purchases[0]?.createdAt).toBe('2026-08-30 14:00:00');
+      expect(giftResult.purchases[0]?.payment?.paidAt).toBe('2026-08-30 21:31:00');
     }
   });
 

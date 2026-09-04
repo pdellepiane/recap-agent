@@ -13,6 +13,24 @@ import {
   logAuthObservabilityEvent,
   responseHeadersForAuthLog,
 } from './auth-observability';
+import {
+  buildRuntimeCapabilityManifest,
+  type RuntimeCapabilityManifest,
+} from './capability-manifest';
+
+export {
+  buildRuntimeCapabilityManifest,
+  runtimeOperationIds,
+  runtimeWriteOperationIds,
+  type CapabilityDecision,
+  type RuntimeCapabilityAvailabilityReason,
+  type RuntimeCapabilityDescriptor,
+  type RuntimeCapabilityManifest,
+  type RuntimeOperationId,
+} from './capability-manifest';
+import { normalizeServerTimestamp } from '../core/server-timestamp';
+
+export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/server-timestamp';
 
 export type AgentMessageDirection = 'inbound' | 'outbound';
 
@@ -306,6 +324,10 @@ export type AgentGuestRsvpResult =
     };
 
 export interface AgentConversationGateway {
+  /** Read-only capability projection used by extraction and reply boundaries. */
+  readonly capabilityDescriptor?: RuntimeCapabilityManifest;
+  /** Alias retained for callers that describe this as a capability manifest. */
+  readonly capabilities?: RuntimeCapabilityManifest;
   logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult>;
   getRecentMessages(phoneNumber: string): Promise<
     | { status: 'success'; messages: AgentConversationMessage[] }
@@ -338,9 +360,15 @@ export interface AgentConversationGateway {
 }
 
 export class NoopAgentConversationGateway implements AgentConversationGateway {
+  readonly capabilityDescriptor: RuntimeCapabilityManifest;
+  readonly capabilities: RuntimeCapabilityManifest;
+
   constructor(
     private readonly reason: 'not_configured' = 'not_configured',
-  ) {}
+  ) {
+    this.capabilityDescriptor = buildRuntimeCapabilityManifest({ configured: false });
+    this.capabilities = this.capabilityDescriptor;
+  }
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
     void input;
@@ -772,21 +800,10 @@ function normalizePhoneInput(
   };
 }
 
-function normalizePurchaseTimestamp(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return trimmed;
-  if (/(?:Z|[+-]\d{2}:?\d{2})$/u.test(trimmed)) return trimmed;
-  // Offset-less datetimes are intentionally omitted until the backend
-  // timezone convention is confirmed. Never assign a timezone or forward
-  // a naive timestamp toward a model; return null to mark it unavailable.
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/u.test(trimmed)) {
-    return null;
-  }
-  return null;
-}
-
 export class HttpAgentConversationGateway implements AgentConversationGateway {
+  readonly capabilityDescriptor: RuntimeCapabilityManifest;
+  readonly capabilities: RuntimeCapabilityManifest;
+
   constructor(
     private readonly options: {
       baseUrl: string;
@@ -795,8 +812,17 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       maxRetries: number;
       messageLoggingEnabled: boolean;
       allowCustomerWrites?: boolean;
+      environment?: 'development' | 'production';
     },
-  ) {}
+  ) {
+    this.capabilityDescriptor = buildRuntimeCapabilityManifest({
+      configured: Boolean(options.baseUrl.trim() && options.apiKey.trim()),
+      environment: options.environment ?? (options.allowCustomerWrites === false ? 'development' : 'production'),
+      allowCustomerWrites: options.allowCustomerWrites,
+      disabledOperations: [],
+    });
+    this.capabilities = this.capabilityDescriptor;
+  }
 
   async logMessage(input: AgentMessageLogInput): Promise<AgentGatewayResult> {
     if (!this.options.messageLoggingEnabled) {
@@ -1536,7 +1562,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       eventName: order.event_name ?? null,
       eventDate: order.event_date ?? null,
       eventUrl: order.event_url ?? null,
-      createdAt: normalizePurchaseTimestamp(order.created_at),
+      createdAt: normalizeServerTimestamp(order.created_at),
       items: order.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1558,7 +1584,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       eventUrl: cart.event_url ?? null,
       subtotal: cart.subtotal ?? null,
       giftsQuantity: cart.gifts_quantity ?? null,
-      createdAt: normalizePurchaseTimestamp(cart.created_at),
+      createdAt: normalizeServerTimestamp(cart.created_at),
       items: cart.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1592,7 +1618,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       eventName: purchase.event_name ?? null,
       eventDate: purchase.event_date ?? null,
       eventUrl: purchase.event_url ?? null,
-      createdAt: normalizePurchaseTimestamp(purchase.created_at),
+      createdAt: normalizeServerTimestamp(purchase.created_at),
       items: purchase.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1604,7 +1630,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         ? {
             method: purchase.payment.method ?? null,
             amount: purchase.payment.amount ?? null,
-            paidAt: normalizePurchaseTimestamp(purchase.payment.paid_at),
+            paidAt: normalizeServerTimestamp(purchase.payment.paid_at),
             paymentId: purchase.payment.payment_id ?? null,
             transactionStatus: purchase.payment.transaction_status ?? null,
             gatewayMessage: purchase.payment.gateway_message ?? null,

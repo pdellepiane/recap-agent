@@ -264,6 +264,16 @@ export function normalizeRawPlan(raw: unknown): unknown {
     });
   }
 
+  // Support anchors were a temporary persistence workaround. Strip them at
+  // the storage boundary so old plans cannot revive that state after upgrade.
+  if (plan.information_state && typeof plan.information_state === 'object') {
+    const informationState = {
+      ...(plan.information_state as Record<string, unknown>),
+    };
+    delete informationState.support_anchor;
+    plan.information_state = informationState;
+  }
+
   return plan;
 }
 
@@ -301,7 +311,6 @@ export function createEmptyPlan(args: {
       pending_requests: [],
       selection_candidates: [],
       last_completed_request: null,
-      support_anchor: null,
     },
     rsvp_state: {
       status: 'none',

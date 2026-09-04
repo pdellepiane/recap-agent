@@ -1,6 +1,4 @@
 import { ulid } from 'ulid';
-import { isSupportAcknowledgment, reduceSupportAnchor } from '../core/support-continuity';
-
 import type { DecisionNode } from '../core/decision-nodes';
 import { extractionPersistenceNodes } from '../core/decision-nodes';
 import { resolveResumeNode } from '../core/decision-flow';
@@ -118,11 +116,23 @@ import {
   type InformationAuthBlock,
   type InformationAuthentication,
 } from './information-orchestrator';
+import {
+  buildRuntimeCapabilityManifest,
+  resolveCapabilityDecision,
+  type CapabilityDecision,
+  type RuntimeCapabilityManifest,
+} from './capability-manifest';
+import {
+  CapabilityBoundaryRenderer,
+  defaultCapabilityBoundaryMessages,
+} from './capability-boundary-renderer';
 import { NoopKnowledgeRetrievalGateway } from './knowledge-retrieval-gateway';
 import {
   buildTurnMessageContext,
+  deriveConversationContinuity,
   localTurnMessageContext,
   unavailableTurnMessageContext,
+  withConversationContinuity,
   type TurnMessageContext,
 } from './turn-message-context';
 import {
@@ -248,6 +258,9 @@ export function hasValidUserAuthToken(
 }
 
 export class AgentService {
+  private readonly capabilityManifest: RuntimeCapabilityManifest;
+  private readonly capabilityBoundaryRenderer: CapabilityBoundaryRenderer;
+
   constructor(
     private readonly dependencies: {
       planStore: PlanStore;
@@ -258,8 +271,20 @@ export class AgentService {
       responseClassifier?: MessageResponseClassifier;
       promptLoader: PromptLoader;
       renderers: Record<string, MessageRenderer>;
+      capabilityManifest?: RuntimeCapabilityManifest;
+      capabilityBoundaryRenderer?: CapabilityBoundaryRenderer;
     },
-  ) {}
+  ) {
+    this.capabilityManifest = dependencies.capabilityManifest ??
+      dependencies.agentConversationGateway?.capabilityDescriptor ??
+      buildRuntimeCapabilityManifest({
+        configured: Boolean(dependencies.agentConversationGateway),
+        environment: 'production',
+        allowCustomerWrites: true,
+      });
+    this.capabilityBoundaryRenderer = dependencies.capabilityBoundaryRenderer ??
+      new CapabilityBoundaryRenderer(defaultCapabilityBoundaryMessages);
+  }
 
   async handleTurn(
     inbound: NormalizedInboundMessage,
@@ -343,20 +368,29 @@ export class AgentService {
         existingPlan = classifierPlan;
       }
     }
-    const hasUnsupportedImageMedia = inbound.media?.some(
-      (item) => item.kind === 'image',
-    ) ?? false;
     const messageContextStartedAt = Date.now();
-    const messageContext = await this.prepareTurnMessageContext({
+    const rawMessageContext = await this.prepareTurnMessageContext({
       inbound,
       plan: classifierPlan,
       gateway: agentConversationGateway,
       gatewayConfigured: Boolean(this.dependencies.agentConversationGateway),
       toolUsage,
     });
+    const messageContext = withConversationContinuity(rawMessageContext, classifierPlan);
     timingMs.response_classification += Date.now() - messageContextStartedAt;
+    if (inbound.text.trim().length === 0 && (inbound.media?.length ?? 0) > 0) {
+      return await this.handleMediaOnlyMessage({
+        inbound,
+        plan: existingPlan ?? classifierPlan,
+        messageContext,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        handleTurnStartedAt,
+      });
+    }
     let responseClassifierTrace: MessageResponseClassifierTrace | undefined;
-    if (this.dependencies.responseClassifier && !hasUnsupportedImageMedia) {
+    if (this.dependencies.responseClassifier) {
       const preflightStartedAt = Date.now();
       const preflight = await this.runResponseClassifierPreflight({
         inbound,
@@ -412,58 +446,6 @@ export class AgentService {
           turnDecision: this.humanEscalationTurnDecision('human_escalation_soft_pause'),
           operationalNote: 'Conversation is soft-paused after human escalation.',
           responseClassifier: responseClassifierTrace,
-        }),
-      };
-    }
-
-    if (hasUnsupportedImageMedia) {
-      const previousNode = existingPlan?.current_node ?? 'contacto_inicial';
-      const planToSave = mergePlan(classifierPlan, {
-        current_node: 'resolver_consultas_informativas',
-        intent_confidence: 1,
-      });
-      const savePlanStartedAt = Date.now();
-      await this.dependencies.planStore.save({
-        plan: planToSave,
-        reason: 'unsupported_image_media',
-      });
-      timingMs.save_plan += Date.now() - savePlanStartedAt;
-      timingMs.total = Date.now() - handleTurnStartedAt;
-      const extraction = this.buildSyntheticUnsupportedImageExtraction();
-      const message =
-        'Por ahora no puedo leer imágenes. Escribe aquí el dato que aparece y podré orientarte';
-      return {
-        plan: planToSave,
-        outbound: this.renderOutbound(
-          { text: message },
-          [],
-          inbound.channel,
-          planToSave.conversation_id,
-          planToSave,
-        ),
-        trace: this.buildTrace({
-          plan: planToSave,
-          previousNode,
-          currentNode: 'resolver_consultas_informativas',
-          nodePath: previousNode === 'resolver_consultas_informativas'
-            ? ['resolver_consultas_informativas']
-            : [previousNode, 'resolver_consultas_informativas'],
-          extraction,
-          missingFields: planToSave.missing_fields,
-          searchReady: false,
-          promptBundleId: 'deterministic:unsupported_image_media',
-          promptFilePaths: [],
-          toolUsage,
-          providerResults: [],
-          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
-          planPersisted: true,
-          planPersistReason: 'unsupported_image_media',
-          timingMs,
-          tokenUsage,
-          messageContext,
-          searchStrategy: 'none',
-          operationalNote:
-            'Trusted channel media metadata reported an image; media retrieval and interpretation are not enabled.',
         }),
       };
     }
@@ -651,6 +633,11 @@ export class AgentService {
         userMessage: inbound.text,
         plan: existingPlan,
         messageContext,
+        media: inbound.media?.map((item) => ({
+          kind: item.kind,
+          mimeType: item.mimeType,
+          fileName: item.fileName,
+        })),
       });
       let finishedExtraction =
         'extraction' in rawExtractionResult
@@ -667,6 +654,22 @@ export class AgentService {
       timingMs.extraction += Date.now() - extractionStartedAt;
       finishedExtraction =
         this.normalizeInformationExtractionAmbiguity(finishedExtraction);
+
+      const finishedCapabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({
+        inbound,
+        previousNode: existingPlan.current_node,
+        plan: existingPlan,
+        extraction: finishedExtraction,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        responseClassifierTrace,
+        messageContext,
+        handleTurnStartedAt,
+      });
+      if (finishedCapabilityBoundaryResponse) {
+        return finishedCapabilityBoundaryResponse;
+      }
 
       if (this.hasRsvpWork(existingPlan, finishedExtraction)) {
         return await this.handleRsvpFlow({
@@ -814,6 +817,11 @@ export class AgentService {
       userMessage: inbound.text,
       plan: workingPlan,
       messageContext,
+      media: inbound.media?.map((item) => ({
+        kind: item.kind,
+        mimeType: item.mimeType,
+        fileName: item.fileName,
+      })),
     });
     let extraction =
       'extraction' in rawExtractionResult
@@ -838,6 +846,35 @@ export class AgentService {
       extraction,
     );
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
+    if (this.shouldUseContextualClarification(messageContext, classifierPlan, extraction)) {
+      return await this.handleContextualClarification({
+        inbound,
+        previousNode: existingPlan?.current_node ?? 'contacto_inicial',
+        plan: classifierPlan,
+        extraction,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        responseClassifierTrace,
+        messageContext,
+        handleTurnStartedAt,
+      });
+    }
+    const capabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({
+      inbound,
+      previousNode,
+      plan: workingPlan,
+      extraction,
+      toolUsage,
+      timingMs,
+      tokenUsage,
+      responseClassifierTrace,
+      messageContext,
+      handleTurnStartedAt,
+    });
+    if (capabilityBoundaryResponse) {
+      return capabilityBoundaryResponse;
+    }
     if (extraction.actionIntent === 'reset_plan') {
       workingPlan = createEmptyPlan({
         planId: ulid(),
@@ -852,14 +889,6 @@ export class AgentService {
       inbound.text,
     );
     extraction = providerConfirmationGuard.extraction;
-    if (extraction.supportAct && extraction.actionIntent === null) {
-      workingPlan = mergePlan(workingPlan, {
-        information_state: {
-          ...workingPlan.information_state,
-          support_anchor: reduceSupportAnchor(workingPlan.information_state.support_anchor, extraction.supportAct),
-        },
-      });
-    }
     if (
       this.hasRsvpWork(workingPlan, extraction) &&
       extraction.actionIntent !== 'pausar' &&
@@ -880,7 +909,7 @@ export class AgentService {
       });
     }
     if (
-      this.hasInformationWork(workingPlan, extraction, previousNode) &&
+      this.hasInformationWork(workingPlan, extraction) &&
       extraction.actionIntent !== 'pausar' &&
       (extraction.actionIntent !== 'solicitar_humano' ||
         extraction.informationRequests.some((request) =>
@@ -2155,7 +2184,10 @@ export class AgentService {
         }
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, false);
         nextRsvpState = this.emptyRsvpState();
-      } else if (!args.gateway.guestRsvp) {
+      } else if (
+        !args.gateway.guestRsvp ||
+        !this.capabilityManifest['rsvp.response.write'].available
+      ) {
         operationalNote = 'El servicio de actualización de asistencia no está configurado. No afirmes que se cambió la respuesta; ofrece apoyo humano.';
         nextRsvpState = this.emptyRsvpState();
       } else {
@@ -2393,6 +2425,9 @@ export class AgentService {
     timingMs: TurnTiming,
     eventReference: string | null,
   ): Promise<RsvpPhoneEvidence | null> {
+    if (!this.capabilityManifest['rsvp.state.read'].available) {
+      return null;
+    }
     const startedAt = Date.now();
     toolUsage.called.push('lookup_rsvp_invitations');
     toolUsage.inputs.push({
@@ -3110,17 +3145,14 @@ export class AgentService {
   private hasInformationWork(
     plan: PlanSnapshot,
     extraction: ExtractionResult,
-    previousNode: DecisionNode = plan.current_node,
   ): boolean {
     return (
       (extraction.normalizationIssues?.length ?? 0) > 0 ||
       (Boolean(extraction.supportAct) && extraction.actionIntent === null &&
         !extraction.vendorCategory && extraction.vendorCategories.length === 0 &&
         !extraction.providerQueryIntents?.length && !extraction.providerPlanOperations?.length) ||
-      this.isEstablishedSupportAnchorContinuation(plan, extraction) ||
       extraction.informationRequests.length > 0 ||
       plan.information_state.pending_requests.length > 0 ||
-      this.isInformationSupportDetailContinuation(plan, extraction, previousNode) ||
       (extraction.actionIntent === null &&
         (plan.information_state.last_completed_request?.kind === 'purchase' ||
           plan.information_state.last_completed_request?.kind === 'associated_event' ||
@@ -3128,21 +3160,438 @@ export class AgentService {
     );
   }
 
-  private isEstablishedSupportAnchorContinuation(
+  private isSupportAcknowledgment(
+    act: InformationSupportAct | null | undefined,
+  ): boolean {
+    return act?.kind === 'report_issue' ||
+      act?.kind === 'provide_detail' ||
+      act?.kind === 'defer_submission';
+  }
+
+  private shouldUseContextualClarification(
+    messageContext: TurnMessageContext,
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): boolean {
-    if (
-      plan.current_node !== 'resolver_consultas_informativas' ||
-      plan.information_state.support_anchor == null ||
-      extraction.supportAct != null ||
-      extraction.actionIntent !== null ||
-      extraction.informationRequests.length > 0
-    ) {
+    const continuity = messageContext.continuity;
+    if (!continuity?.hasPriorContext) {
       return false;
     }
+    // Authentication replies and contact updates are stateful continuations;
+    // they must reach their existing typed handlers even when the extraction
+    // delta is empty.
+    if (plan.user_auth.status !== 'none' || plan.user_auth.awaiting_phone_confirmation) {
+      return false;
+    }
+    const emptyDelta =
+      extraction.actionIntent === null &&
+      extraction.informationRequests.length === 0 &&
+      extraction.supportAct == null &&
+      extraction.phoneConfirmation == null &&
+      extraction.rsvpAction == null &&
+      extraction.rsvpEventReference == null &&
+      extraction.eventType == null &&
+      extraction.vendorCategory == null &&
+      extraction.vendorCategories.length === 0 &&
+      extraction.activeNeedCategory == null &&
+      extraction.location == null &&
+      extraction.budgetSignal == null &&
+      extraction.guestRange == null &&
+      extraction.preferences.length === 0 &&
+      extraction.hardConstraints.length === 0 &&
+      (extraction.providerQueryIntents?.length ?? 0) === 0 &&
+      (extraction.providerPlanOperations?.length ?? 0) === 0 &&
+      extraction.selectedProviderHints.length === 0 &&
+      (extraction.selectedProviderReferences?.length ?? 0) === 0 &&
+      extraction.providerExplanationRequest == null &&
+      extraction.providerDetailRequest == null &&
+      extraction.closeAction == null &&
+      !extraction.pauseRequested &&
+      extraction.contactName == null &&
+      extraction.contactEmail == null &&
+      extraction.contactPhone == null;
+    return emptyDelta || (
+      extraction.ambiguity?.status === 'ambiguous' &&
+      extraction.informationRequests.length === 0
+    );
+  }
 
-    return !this.hasProviderPlanningEvidence(extraction);
+  private contextualClarificationTurnDecision(reason: string): TurnDecision {
+    return turnDecisionSchema.parse({
+      nextNode: 'resolver_consultas_informativas',
+      routeKind: 'contextual_clarification',
+      providerSearchMode: 'none',
+      presentationScope: 'clarification',
+      focusNeedCategory: null,
+      needsToSearch: [],
+      needsToPresent: [],
+      stopReason: null,
+      persistReason: reason,
+      invariantStatus: 'valid',
+      invariantViolations: [],
+    });
+  }
+
+  private contextualClarificationMessage(
+    continuity: NonNullable<TurnMessageContext['continuity']>,
+  ): string {
+    switch (continuity.lane) {
+      case 'purchase_support':
+        return 'Para continuar con tu consulta de compra, ¿quieres revisar el estado registrado o necesitas precisar otro dato?';
+      case 'event_support':
+        return 'Para continuar con tu consulta del evento, ¿qué dato deseas precisar?';
+      case 'public_faq':
+        return 'Para continuar con tu consulta, ¿qué aspecto deseas precisar?';
+      case 'planning':
+        return 'Para continuar con tu plan, ¿qué parte deseas precisar?';
+      case 'rsvp':
+        return 'Para continuar con la invitación, ¿quieres confirmar o rechazar tu asistencia?';
+      default:
+        return 'Para continuar, ¿podrías indicar qué necesitas resolver?';
+    }
+  }
+
+  private async handleContextualClarification(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    plan: PlanSnapshot;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const continuity = args.messageContext.continuity ?? deriveConversationContinuity({
+      plan: args.plan,
+      recentMessages: args.messageContext.recentMessages,
+      historyStatus: args.messageContext.historyStatus,
+    });
+    const plan = args.plan.current_node === 'contacto_inicial' &&
+      !continuity.hasPersistedPlan
+      ? mergePlan(args.plan, { current_node: 'deteccion_intencion' })
+      : args.plan;
+    await this.dependencies.planStore.save({
+      plan,
+      reason: 'contextual_clarification',
+    });
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+    );
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const turnDecision = this.contextualClarificationTurnDecision(
+      'contextual_clarification',
+    );
+    return {
+      plan,
+      outbound: this.renderOutbound(
+        { text: this.contextualClarificationMessage(continuity) },
+        [],
+        args.inbound.channel,
+        plan.conversation_id,
+        plan,
+      ),
+      trace: this.buildTrace({
+        plan,
+        previousNode: args.previousNode,
+        currentNode: plan.current_node,
+        nodePath: args.previousNode === plan.current_node
+          ? [plan.current_node]
+          : [args.previousNode, plan.current_node],
+        extraction: args.extraction,
+        missingFields: plan.missing_fields,
+        searchReady: false,
+        promptBundleId: 'deterministic:contextual_clarification',
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'contextual_clarification',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision,
+        operationalNote: 'Prior typed state was preserved after an empty or ambiguous extraction; no external information or reply call was made.',
+        informationExecution: [],
+      }),
+    };
+  }
+
+  private async handleCapabilityBoundaryIfNeeded(args: {
+    inbound: NormalizedInboundMessage;
+    previousNode: DecisionNode;
+    plan: PlanSnapshot;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse | null> {
+    const ambiguity = args.extraction.ambiguity;
+    const candidateOperations = ambiguity?.candidateOperations ?? [];
+    if (
+      !args.extraction.requestedOperation &&
+      !(ambiguity?.status === 'ambiguous' && candidateOperations.length > 0)
+    ) {
+      return null;
+    }
+    const decision = resolveCapabilityDecision({
+      requestedOperation: args.extraction.requestedOperation ?? null,
+      manifest: this.capabilityManifest,
+      ambiguity: ambiguity
+        ? {
+            status: ambiguity.status,
+            candidateOperations,
+            questionKey: ambiguity.questionKey ?? undefined,
+          }
+        : undefined,
+    });
+    if (decision.status === 'not_applicable' || decision.status === 'supported') {
+      return null;
+    }
+
+    if (decision.status === 'clarify') {
+      const plan = args.plan;
+      await this.dependencies.planStore.save({ plan, reason: 'capability_clarification_requested' });
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      const turnDecision = this.contextualClarificationTurnDecision('capability_clarification_requested');
+      return {
+        plan,
+        outbound: this.renderOutbound(
+          { text: this.capabilityBoundaryRenderer.render(decision) ?? '¿Qué necesitas hacer exactamente con esta información?' },
+          [], args.inbound.channel, plan.conversation_id, plan,
+        ),
+        trace: this.buildTrace({
+          plan,
+          previousNode: args.previousNode,
+          currentNode: plan.current_node,
+          nodePath: args.previousNode === plan.current_node ? [plan.current_node] : [args.previousNode, plan.current_node],
+          extraction: args.extraction,
+          missingFields: plan.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:capability_clarification',
+          promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/capability_boundary.txt'],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'capability_clarification_requested',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          searchStrategy: 'none',
+          turnDecision,
+          operationalNote: 'Capability request was ambiguous; no external call was made.',
+          responseClassifier: args.responseClassifierTrace,
+          capabilityDecision: decision,
+        }),
+      };
+    }
+
+    const safeReadSummaries = await this.performCapabilitySafeRead({
+      inbound: args.inbound,
+      plan: args.plan,
+      extraction: args.extraction,
+      toolUsage: args.toolUsage,
+    });
+    const alreadyRequested = args.plan.human_escalation.status === 'requested';
+    const phoneNumber = this.resolveEscalationPhone(args.inbound);
+    const takeoverResult = alreadyRequested
+      ? ({ status: 'success', message: 'Human takeover was already requested.' } satisfies AgentGatewayResult)
+      : decision.humanTakeoverAvailable && phoneNumber
+        ? await this.requestHumanTakeoverWithTrace(
+            this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway('not_configured'),
+            phoneNumber,
+            args.toolUsage,
+          )
+        : this.missingPhoneEscalationResult();
+    const takeoverSucceeded = takeoverResult.status === 'success';
+    const plan = takeoverSucceeded && !alreadyRequested
+      ? mergePlan(args.plan, {
+          current_node: 'solicitar_agente_humano',
+          intent: 'solicitar_humano',
+          human_escalation: {
+            status: 'requested',
+            requested_at: new Date().toISOString(),
+            phone_number: phoneNumber,
+            last_error: null,
+          },
+        })
+      : args.plan;
+    await this.dependencies.planStore.save({ plan, reason: 'unsupported_operation_detected' });
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const text = this.capabilityBoundaryRenderer.render(decision, {
+      humanTakeoverRequested: alreadyRequested || takeoverSucceeded,
+      humanTakeoverSucceeded: takeoverSucceeded,
+      humanTakeoverFailed: !takeoverSucceeded && !alreadyRequested,
+    }) ?? 'No puedo realizar esa gestión desde aquí.';
+    return {
+      plan,
+      outbound: this.renderOutbound({ text }, [], args.inbound.channel, plan.conversation_id, plan),
+      trace: this.buildTrace({
+        plan,
+        previousNode: args.previousNode,
+        currentNode: takeoverSucceeded ? 'solicitar_agente_humano' : args.previousNode,
+        nodePath: takeoverSucceeded && args.previousNode !== 'solicitar_agente_humano'
+          ? [args.previousNode, 'solicitar_agente_humano']
+          : [args.previousNode],
+        extraction: args.extraction,
+        missingFields: plan.missing_fields,
+        searchReady: false,
+        promptBundleId: 'deterministic:unsupported_operation',
+        promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/capability_boundary.txt'],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'unsupported_operation_detected',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        searchStrategy: 'none',
+        turnDecision: takeoverSucceeded
+          ? this.humanEscalationTurnDecision('unsupported_operation_detected')
+          : undefined,
+        operationalNote: takeoverSucceeded
+          ? 'Unsupported operation was handed off once.'
+          : 'Unsupported operation could not be handed off; success was not claimed.',
+        responseClassifier: args.responseClassifierTrace,
+        capabilityDecision: decision,
+        humanTakeoverAttempted: !alreadyRequested && decision.humanTakeoverAvailable,
+        humanTakeoverSucceeded: takeoverSucceeded,
+        informationExecution: safeReadSummaries,
+      }),
+    };
+  }
+
+  /**
+   * A document/proof request may still benefit from the existing status read.
+   * The read is deliberately phone-scoped, uses only canonical projections,
+   * and is never sent to the reply model as raw endpoint data.
+   */
+  private async performCapabilitySafeRead(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    extraction: ExtractionResult;
+    toolUsage: ToolUsage;
+  }): Promise<InformationExecutionSummary[]> {
+    const operation = args.extraction.requestedOperation;
+    if (
+      operation !== 'confirmation_document.send' &&
+      operation !== 'payment_proof.verify'
+    ) {
+      return [];
+    }
+    const trustedPhone = splitInternationalPhone(args.inbound.contactPhone);
+    if (!trustedPhone) return [];
+
+    const existingPurchase = args.extraction.informationRequests.find(
+      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
+        request.kind === 'purchase',
+    ) ?? args.plan.information_state.pending_requests.find(
+      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
+        request.kind === 'purchase',
+    );
+    const request: Extract<PendingInformationRequest, { kind: 'purchase' }> = existingPurchase
+      ? {
+          ...existingPurchase,
+          resource: 'orders',
+          aspects: ['payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        }
+      : {
+          requestId: 'capability-status-read',
+          kind: 'purchase',
+          resource: 'orders',
+          query: args.inbound.text,
+          orderId: null,
+          aspects: ['summary', 'payment_status'],
+          sensitiveFields: [],
+          authAction: 'none',
+        };
+    const toolName = this.informationToolName(request);
+    this.recordDeterministicToolInput(
+      args.toolUsage,
+      toolName,
+      this.summarizeInformationToolInput(request),
+    );
+    const orchestrator =
+      this.dependencies.informationOrchestrator ??
+      new InformationOrchestrator({
+        knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
+        providerGateway: this.dependencies.providerGateway,
+        agentGateway:
+          this.dependencies.agentConversationGateway ??
+          new NoopAgentConversationGateway('not_configured'),
+        capabilityManifest: this.capabilityManifest,
+      });
+    const execution = await orchestrator.execute({
+      requests: [request],
+      authentication: null,
+      authBlock: null,
+      trustedPhone,
+    });
+    this.recordInformationExecutionTrace(args.toolUsage, execution.summaries);
+    return execution.summaries;
+  }
+
+  private async handleMediaOnlyMessage(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    messageContext: TurnMessageContext;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const plan = mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
+    const extraction = this.buildSyntheticSuppressionExtraction('Media-only message; content access is unavailable.');
+    const decision = resolveCapabilityDecision({
+      requestedOperation: 'media.image.inspect',
+      manifest: this.capabilityManifest,
+    });
+    await this.dependencies.planStore.save({ plan, reason: 'unsupported_image_media' });
+    args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    return {
+      plan,
+      outbound: this.renderOutbound(
+        { text: this.capabilityBoundaryRenderer.render(decision) ?? 'No puedo leer ni revisar el contenido de imágenes.' },
+        [], args.inbound.channel, plan.conversation_id, plan,
+      ),
+      trace: this.buildTrace({
+        plan,
+        previousNode: args.plan.current_node,
+        currentNode: plan.current_node,
+        nodePath: args.plan.current_node === plan.current_node ? [plan.current_node] : [args.plan.current_node, plan.current_node],
+        extraction,
+        missingFields: plan.missing_fields,
+        searchReady: false,
+        promptBundleId: 'deterministic:unsupported_image_media',
+        promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/capability_boundary.txt'],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'unsupported_image_media',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        searchStrategy: 'none',
+        operationalNote: 'Image metadata was received without content access; extraction and external calls were skipped.',
+        capabilityDecision: decision,
+      }),
+    };
   }
 
   private hasProviderPlanningEvidence(extraction: ExtractionResult): boolean {
@@ -3155,43 +3604,6 @@ export class AgentService {
       extraction.providerDetailRequest != null ||
       extraction.closeAction != null ||
       extraction.pauseRequested
-    );
-  }
-
-  private isInformationSupportDetailContinuation(
-    plan: PlanSnapshot,
-    extraction: ExtractionResult,
-    previousNode: DecisionNode,
-  ): boolean {
-    const lastCompleted = plan.information_state.last_completed_request;
-    const hasSupportDetail = Boolean(
-      extraction.contactName ||
-      extraction.contactEmail ||
-      extraction.eventType,
-    );
-    const hasProviderNeed = Boolean(
-      extraction.vendorCategory ||
-      (extraction.vendorCategories?.length ?? 0) > 0 ||
-      (extraction.providerQueryIntents?.length ?? 0) > 0 ||
-      (extraction.providerPlanOperations?.length ?? 0) > 0 ||
-      (extraction.selectedProviderReferences?.length ?? 0) > 0 ||
-      (extraction.selectedProviderHints?.length ?? 0) > 0 ||
-      extraction.budgetSignal ||
-      extraction.location ||
-      extraction.guestRange !== null ||
-      extraction.activeNeedCategory,
-    );
-    const isInformationThread =
-      lastCompleted?.kind === 'faq' ||
-      lastCompleted?.kind === 'purchase' ||
-      lastCompleted?.kind === 'associated_event';
-    return (
-      previousNode === 'resolver_consultas_informativas' &&
-      isInformationThread &&
-      extraction.informationRequests.length === 0 &&
-      hasSupportDetail &&
-      !hasProviderNeed &&
-      (extraction.actionIntent === null || (hasSupportDetail && !hasProviderNeed))
     );
   }
 
@@ -3212,6 +3624,8 @@ export class AgentService {
         status: 'clear',
         clarificationQuestion: null,
         interpretations: [],
+        candidateOperations: [],
+        questionKey: null,
       },
     };
   }
@@ -3228,25 +3642,15 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
-    let currentNode: DecisionNode = 'resolver_consultas_informativas';
-    const supportAcknowledgment = isSupportAcknowledgment(args.extraction.supportAct) &&
+    const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const supportAcknowledgment = this.isSupportAcknowledgment(args.extraction.supportAct) &&
       args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
-    const supportDetailContinuation = this.isInformationSupportDetailContinuation(
-      args.workingPlan,
-      args.extraction,
-      args.previousNode,
-    );
-    const supportAnchorContinuation = this.isEstablishedSupportAnchorContinuation(
-      args.workingPlan,
-      args.extraction,
-    );
     const resumeNode =
       args.workingPlan.current_node === currentNode
         ? args.workingPlan.information_state.resume_node
         : args.workingPlan.current_node;
     const planWithContact = mergePlan(args.workingPlan, {
       contact_email:
-        !supportDetailContinuation &&
         args.extraction.contactEmail &&
         this.isValidEmail(args.extraction.contactEmail)
           ? args.extraction.contactEmail
@@ -3267,26 +3671,6 @@ export class AgentService {
         requestId: 'support-policy',
       }, ...requests];
     }
-    if (args.extraction.supportAct?.kind === 'request_document' &&
-      !requests.some((request) =>
-        request.kind === 'purchase' &&
-        request.resource === 'orders' &&
-        request.aspects.includes('payment_status'))
-    ) {
-      requests = [{
-        kind: 'purchase',
-        resource: 'orders',
-        query: args.inbound.text,
-        orderId: null,
-        aspects: ['payment_status'],
-        sensitiveFields: [],
-        authAction: 'none',
-        eventHint: lastCompletedRequest?.kind === 'purchase'
-          ? lastCompletedRequest.eventHint ?? null
-          : null,
-        requestId: 'support-document-status',
-      }, ...requests];
-    }
     let replayingLastCompletedRequest = false;
     const hasNewFaqInExtraction = args.extraction.informationRequests.some(
       (request) => request.kind === 'faq',
@@ -3297,7 +3681,7 @@ export class AgentService {
       lastCompletedRequest &&
       (lastCompletedRequest.kind === 'purchase' ||
         lastCompletedRequest.kind === 'associated_event' ||
-        (supportDetailContinuation && lastCompletedRequest.kind === 'faq' && hasNewFaqInExtraction))
+        (lastCompletedRequest.kind === 'faq' && hasNewFaqInExtraction))
     ) {
       requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
       replayingLastCompletedRequest = true;
@@ -3333,13 +3717,6 @@ export class AgentService {
           pending_requests: planWithContact.information_state.pending_requests,
         },
       }));
-    }
-
-    if (
-      supportAnchorContinuation &&
-      args.extraction.ambiguity?.status === 'ambiguous'
-    ) {
-      return this.handleEstablishedSupportContinuation(args, planForInformation);
     }
 
     const hostWithdrawalRequests = requests.filter((request) =>
@@ -3468,13 +3845,14 @@ export class AgentService {
 
       const orchestrator =
         this.dependencies.informationOrchestrator ??
-        new InformationOrchestrator({
-          knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
-          providerGateway: this.dependencies.providerGateway,
-          agentGateway:
-            this.dependencies.agentConversationGateway ??
-            new NoopAgentConversationGateway('not_configured'),
-        });
+      new InformationOrchestrator({
+        knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
+        providerGateway: this.dependencies.providerGateway,
+        agentGateway:
+          this.dependencies.agentConversationGateway ??
+          new NoopAgentConversationGateway('not_configured'),
+        capabilityManifest: this.capabilityManifest,
+      });
       const execution = await withAuthenticationFlowContext(
         {
           authFlowId: authResolution.authFlowId,
@@ -3656,51 +4034,6 @@ export class AgentService {
         }
       }
 
-      if (args.extraction.supportAct?.kind === 'request_document') {
-        const gateway = this.dependencies.agentConversationGateway ??
-          new NoopAgentConversationGateway('not_configured');
-        const phone = this.resolveEscalationPhone(args.inbound);
-        const handoff = phone
-          ? await this.requestHumanTakeoverWithTrace(gateway, phone, args.toolUsage)
-          : this.missingPhoneEscalationResult();
-        const handoffSucceeded = handoff.status === 'success';
-        const documentNote = handoffSucceeded
-          ? 'La API solo permite verificar el estado registrado de la compra; no permite emitir ni reenviar una constancia oficial. Informa el estado canónico disponible sin asumir moneda ni afirmar que se envió un documento, y confirma que una persona del equipo continuará con la solicitud de constancia.'
-          : 'La API solo permite verificar el estado registrado de la compra; no permite emitir ni reenviar una constancia oficial. Informa el estado canónico disponible sin asumir moneda ni afirmar que se envió un documento, y explica que no se pudo registrar el apoyo humano en este momento.';
-        operationalNote = operationalNote
-          ? `${operationalNote} ${documentNote}`
-          : documentNote;
-        if (handoffSucceeded) {
-          currentNode = 'solicitar_agente_humano';
-        }
-        planForInformation = mergePlan(planForInformation, {
-          current_node: currentNode,
-          ...(handoffSucceeded ? { intent: 'solicitar_humano' as const } : {}),
-          human_escalation: {
-            status: handoffSucceeded ? 'requested' : 'none',
-            requested_at: handoffSucceeded ? new Date().toISOString() : null,
-            phone_number: phone,
-            last_error: handoff.status === 'failed'
-              ? handoff.error
-              : handoff.status === 'skipped'
-                ? handoff.message
-                : null,
-          },
-        });
-      }
-
-      if (operationalNote === null && supportDetailContinuation) {
-        const anchorSource =
-          planForInformation.information_state.last_completed_request ?? lastCompletedRequest ?? null;
-        const topic =
-          anchorSource && typeof anchorSource.query === 'string' && anchorSource.query.trim().length > 0
-            ? anchorSource.query.trim()
-            : anchorSource?.kind ?? 'soporte';
-        operationalNote =
-          'El usuario aporto un dato adicional para el hilo de soporte activo. Reconoce solo el dato nuevo, no repitas la explicación anterior, no lo uses como nombre del usuario del canal y pide como máximo el siguiente dato estrictamente necesario. Cita el nombre del evento o contexto tal como aparece en el mensaje de la persona, sin traducirlo, reformularlo ni explicar su significado; el resumen conversacional es una parfrasis y no es la fuente del nombre. En turnos de continuidad no repitas explicaciones previas ni cites evidencia FAQ. Continua resolviendo el problema ya planteado con el siguiente paso necesario; no vuelvas a pedir que elija entre aspectos generales de la consulta. El hilo de soporte activo continua sobre: ' +
-          topic;
-      }
-
       const requiresPhonePurchaseDetailHandoff = requests.some((request) => {
         if (
           request.kind !== 'purchase' ||
@@ -3808,9 +4141,7 @@ export class AgentService {
     });
     args.timingMs.save_plan += Date.now() - savePlanStartedAt;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const turnDecision = currentNode === 'solicitar_agente_humano'
-      ? this.humanEscalationTurnDecision('confirmation_document_unavailable')
-      : this.informationTurnDecision(operationalNote ?? 'information_batch');
+    const turnDecision = this.informationTurnDecision(operationalNote ?? 'information_batch');
 
     return {
       plan: planForInformation,
@@ -3857,11 +4188,10 @@ export class AgentService {
     act: InformationSupportAct | null | undefined = args.extraction.supportAct,
     operationalNote = 'A bounded user-reported support act was acknowledged without a lookup or reply-model call.',
   ): Promise<HandleTurnResponse> {
-    if (!act || !isSupportAcknowledgment(act)) {
+    if (!act || !this.isSupportAcknowledgment(act)) {
       throw new Error('Support acknowledgment requires typed support evidence.');
     }
-    const messages = await this.dependencies.promptLoader.loadSupportContinuityMessages();
-    const text = this.selectSupportAcknowledgmentMessage(act, messages);
+    const text = this.selectSupportAcknowledgmentMessage(act);
     await this.dependencies.planStore.save({
       plan,
       reason: 'support_continuity_acknowledgment',
@@ -3893,9 +4223,7 @@ export class AgentService {
         missingFields: [],
         searchReady: false,
         promptBundleId: 'deterministic:support_continuity_acknowledgment',
-        promptFilePaths: [
-          'nodes/resolver_consultas_informativas/support-continuity.json',
-        ],
+        promptFilePaths: [],
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -3913,47 +4241,26 @@ export class AgentService {
     };
   }
 
-  private async handleEstablishedSupportContinuation(
-    args: Parameters<AgentService['handleInformationFlow']>[0],
-    plan: PlanSnapshot,
-  ): Promise<HandleTurnResponse> {
-    const anchor = plan.information_state.support_anchor;
-    if (!anchor) {
-      throw new Error('Established support continuation requires a typed support anchor.');
-    }
-    return this.handleSupportAcknowledgment(
-      args,
-      plan,
-      {
-        kind: 'provide_detail',
-        topic: anchor.topic,
-        detail: anchor.detail,
-      },
-      'An established typed support anchor was preserved for an ambiguous no-domain follow-up without a lookup or reply-model call.',
-    );
-  }
-
   private selectSupportAcknowledgmentMessage(
     act: InformationSupportAct,
-    messages: Awaited<ReturnType<PromptLoader['loadSupportContinuityMessages']>>,
   ): string {
     if (act.kind === 'defer_submission') {
-      return messages.deferred;
+      return 'De acuerdo, podemos continuar cuando lo envíes. Mantengo el contexto de esta consulta.';
     }
     if (act.topic === 'mailbox_capacity') {
       return act.kind === 'report_issue'
-        ? messages.mailboxReport
-        : messages.mailboxDetail;
+        ? 'Entiendo: el buzón de tu correo registrado está lleno. Mantengo el contexto de esta consulta para que podamos continuar sin empezar de nuevo.'
+        : 'Entiendo: el buzón de tu correo registrado está lleno. Continuamos desde aquí; no necesitas empezar de nuevo.';
     }
     if (
       act.topic === 'payment_proof' &&
       act.detail === 'submission_reported'
     ) {
-      return messages.paymentProofReported;
+      return 'Tomé nota de que indicas haber enviado el comprobante. Eso no confirma por sí solo que el pago ya figure aprobado.';
     }
     return act.kind === 'report_issue'
-      ? messages.genericReport
-      : messages.genericDetail;
+      ? 'Entiendo el problema que reportas. Mantengo el contexto de esta consulta. ¿Qué necesitas continuar?'
+      : 'Tomé nota de ese dato y mantengo el contexto de esta consulta; no necesitas empezar de nuevo.';
   }
 
   private async handleHostWithdrawalInformation(
@@ -3973,6 +4280,7 @@ export class AgentService {
     const orchestrator = this.dependencies.informationOrchestrator ?? new InformationOrchestrator({
       knowledgeGateway: new NoopKnowledgeRetrievalGateway(),
       providerGateway: this.dependencies.providerGateway, agentGateway: gateway,
+      capabilityManifest: this.capabilityManifest,
     });
     this.recordDeterministicToolInput(args.toolUsage, 'knowledge_base_search', {
       subject: 'host_withdrawal', query_present: true,
@@ -4738,6 +5046,7 @@ export class AgentService {
       args.plan.user_auth.email === email
         ? args.plan
         : this.resetUserAuth(args.plan, email);
+
 
     if (this.hasValidUserAuthToken(planForEmail)) {
       return {
@@ -6610,6 +6919,9 @@ export class AgentService {
     sessionFocusKeyPresent?: boolean;
     operationalNote: string | null;
     informationExecution?: InformationExecutionSummary[];
+    capabilityDecision?: CapabilityDecision;
+    humanTakeoverAttempted?: boolean;
+    humanTakeoverSucceeded?: boolean;
   }): TurnTrace {
     const contactValidationSummary = this.summarizeContactValidation(args.extraction, args.plan);
     const turnDecision = args.turnDecision ?? this.fallbackTurnDecision({
@@ -6685,6 +6997,15 @@ export class AgentService {
         ),
         entry_source: args.messageContext.entryMessage?.source ?? null,
       },
+      continuity_state: args.messageContext.continuity?.state,
+      welcome_allowed: args.messageContext.continuity?.welcomeAllowed,
+      requested_operation: args.extraction.requestedOperation ?? null,
+      capability_decision: args.capabilityDecision?.status ?? null,
+      capability_reason: args.capabilityDecision?.status === 'unsupported'
+        ? args.capabilityDecision.reason
+        : null,
+      human_takeover_attempted: args.humanTakeoverAttempted,
+      human_takeover_succeeded: args.humanTakeoverSucceeded,
     };
   }
 

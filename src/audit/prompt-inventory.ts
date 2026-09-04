@@ -66,6 +66,15 @@ export async function buildPromptInventory(args: {
 
 function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   const consumers: PromptInventoryConsumer[] = [];
+  if (filePath === 'nodes/resolver_consultas_informativas/capability_boundary.txt') {
+    consumers.push({
+      callType: 'deterministic_reply',
+      nodes: ['resolver_consultas_informativas'],
+      profiles: [],
+      transitions: ['capability:boundary_renderer'],
+      loader: 'CapabilityBoundaryRenderer (deterministic capability outcomes)',
+    });
+  }
   if (filePath === 'nodes/resolver_consultas_informativas/host-withdrawal.json') {
     consumers.push({
       callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
@@ -73,14 +82,6 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       loader: 'PromptLoader.loadHostWithdrawalMessages -> AgentService.handleHostWithdrawalInformation (no model call)',
     });
   }
-  if (filePath === 'nodes/resolver_consultas_informativas/support-continuity.json') {
-    consumers.push({
-      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
-      profiles: [], transitions: ['information:support_continuity_acknowledgment'],
-      loader: 'PromptLoader.loadSupportContinuityMessages -> AgentService.handleSupportAcknowledgment (no model call)',
-    });
-  }
-
   if (filePath.startsWith('shared/')) {
     const nodes = decisionNodes.filter((node) =>
       conversationPromptFilesForNode(node).includes(filePath as never),
@@ -97,6 +98,15 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   }
 
   if (filePath.startsWith('extractors/')) {
+    if (filePath === 'extractors/capability_boundary.txt') {
+      consumers.push({
+        callType: 'extraction',
+        nodes: [],
+        profiles: ['initial_planning_information', 'active_plan', 'shortlist'],
+        transitions: ['extraction:capability_boundary'],
+        loader: 'OpenAiAgentRuntime.extract -> extractorPromptFilesForCapabilities(capabilityBoundary)',
+      });
+    }
     const profiles = extractorAuditProfiles.filter((profile) =>
       extractorPromptFilesForCapabilities(profile.capabilities).includes(filePath as never),
     );

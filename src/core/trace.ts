@@ -256,4 +256,11 @@ export type TurnTrace = {
   };
   response_classifier?: MessageResponseClassifierTrace;
   message_context: MessageContextTrace;
+  continuity_state?: 'new' | 'continuing' | 'degraded';
+  welcome_allowed?: boolean;
+  requested_operation?: string | null;
+  capability_decision?: string | null;
+  capability_reason?: string | null;
+  human_takeover_attempted?: boolean;
+  human_takeover_succeeded?: boolean;
 };

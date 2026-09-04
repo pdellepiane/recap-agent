@@ -18,10 +18,7 @@ export function resolveResumeNode(plan: PersistedPlan): DecisionNode {
   }
 
   if (plan.current_node === 'resolver_consultas_informativas') {
-    if (
-      plan.information_state.pending_requests.length > 0 ||
-      plan.information_state.support_anchor != null
-    ) {
+    if (plan.information_state.pending_requests.length > 0) {
       return 'resolver_consultas_informativas';
     }
     return plan.information_state.resume_node ?? 'deteccion_intencion';

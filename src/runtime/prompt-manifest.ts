@@ -80,6 +80,7 @@ export const extractorPromptFiles = [
   'extractors/provider_management.txt',
   'extractors/contact.txt',
   'extractors/close_pause.txt',
+  'extractors/capability_boundary.txt',
 ] as const;
 
 export const responseClassifierPromptFiles = {
@@ -94,11 +95,7 @@ export function extractorPromptFilesForCapabilities(
     'extractors/base_system.txt',
     ...(capabilities.providerPlanning ? ['extractors/planning.txt'] : []),
     ...(capabilities.information
-      ? [
-          capabilities.informationSupport
-            ? 'extractors/information_support.txt'
-            : 'extractors/information.txt',
-        ]
+      ? ['extractors/information.txt']
       : []),
     ...(capabilities.rsvp ? ['extractors/rsvp.txt'] : []),
     ...(capabilities.providerOperations ||
@@ -109,6 +106,9 @@ export function extractorPromptFilesForCapabilities(
     ...(capabilities.contact ? ['extractors/contact.txt'] : []),
     ...(capabilities.close || capabilities.pause
       ? ['extractors/close_pause.txt']
+      : []),
+    ...(capabilities.capabilityBoundary === true
+      ? ['extractors/capability_boundary.txt']
       : []),
   ];
 }

@@ -1,156 +1,186 @@
 /**
- * The complete operation surface known by the runtime. Keep this list stable:
- * traces, capability projections, and evaluation fixtures use these ids.
+ * Stable semantic operations exposed to the extractor and runtime policy.
+ * Keep this order unchanged: it is part of the v1 manifest contract.
  */
 export const runtimeOperationIds = [
-  'conversation.log.write',
-  'conversation.history.read',
-  'human.takeover.write',
   'faq.read',
   'event.association.read',
   'event.detail.read',
   'purchase.orders.read',
-  'purchase.gifts.read',
-  'purchase.status.read',
-  'purchase.details.read',
-  'account.phone.authenticate',
-  'account.phone.update',
-  'rsvp.write',
-  'provider.catalog.read',
-  'provider.search.read',
-  'provider.detail.read',
-  'provider.related.read',
-  'provider.reviews.read',
-  'provider.event-context.read',
-  'provider.favorites.read',
+  'purchase.gift_detail.read',
+  'rsvp.state.read',
+  'rsvp.response.write',
+  'provider.plan',
+  'provider.search',
   'provider.quote.write',
-  'provider.favorite.write',
-  'provider.review.write',
-  'plan.finish.write',
+  'auth.phone',
+  'auth.email_otp',
+  'human.takeover.write',
+  'confirmation_document.send',
+  'media.image.inspect',
+  'payment_proof.verify',
+  'purchase.modify',
+  'refund_or_withdrawal.execute',
 ] as const;
 
 export type RuntimeOperationId = (typeof runtimeOperationIds)[number];
 
-/** Maps concrete provider-tool names to the semantic capability they use. */
-export const runtimeToolOperationMap = {
-  list_categories: 'provider.catalog.read',
-  get_category_by_slug: 'provider.catalog.read',
-  list_locations: 'provider.catalog.read',
-  search_providers_from_plan: 'provider.search.read',
-  search_providers_by_keyword: 'provider.search.read',
-  search_providers_by_category_location: 'provider.search.read',
-  search_providers_by_query_intent: 'provider.search.read',
-  get_relevant_providers: 'provider.search.read',
-  get_provider_detail: 'provider.detail.read',
-  get_provider_detail_and_track_view: 'provider.detail.read',
-  get_related_providers: 'provider.related.read',
-  list_provider_reviews: 'provider.reviews.read',
-  get_event_vendor_context: 'provider.event-context.read',
-  list_event_favorite_providers: 'provider.favorites.read',
-  list_user_events_vendor_context: 'provider.event-context.read',
-  create_quote_request: 'provider.quote.write',
-  add_vendor_to_event_favorites: 'provider.favorite.write',
-  create_provider_review: 'provider.review.write',
-  finish_plan: 'plan.finish.write',
-} as const satisfies Record<string, RuntimeOperationId>;
-
-export type RuntimeToolName = keyof typeof runtimeToolOperationMap;
-
-export const runtimeGatewayOperationMap = {
-  logMessage: 'conversation.log.write',
-  getRecentMessages: 'conversation.history.read',
-  requestHumanTakeover: 'human.takeover.write',
-  getOrders: 'purchase.orders.read',
-  getGiftPurchases: 'purchase.gifts.read',
-  getGuestOrdersByPhone: 'purchase.orders.read',
-  getGuestGiftPurchasesByPhone: 'purchase.gifts.read',
-  authByPhone: 'account.phone.authenticate',
-  getGuestEventsByPhone: 'event.association.read',
-  getEventDetail: 'event.detail.read',
-  updatePhone: 'account.phone.update',
-  guestRsvp: 'rsvp.write',
-} as const satisfies Record<string, RuntimeOperationId>;
-
 export const runtimeCapabilityAvailabilityReasonValues = [
-  'available',
-  'not_configured',
-  'disabled',
-  'development_write_blocked',
-  'fixture_only',
-  'unsupported',
+  'enabled',
+  'feature_disabled',
+  'gateway_unavailable',
+  'write_blocked',
+  'not_implemented',
+  'media_unavailable',
 ] as const;
 
 export type RuntimeCapabilityAvailabilityReason =
   (typeof runtimeCapabilityAvailabilityReasonValues)[number];
 
 export type RuntimeCapabilityDescriptor = {
-  readonly operation: RuntimeOperationId;
+  readonly id: RuntimeOperationId;
   readonly available: boolean;
   readonly reason: RuntimeCapabilityAvailabilityReason;
 };
 
-export type RuntimeCapabilityManifest = Readonly<
-  Record<RuntimeOperationId, RuntimeCapabilityDescriptor>
->;
+/** The array is model/projectable data; keyed properties are runtime helpers. */
+export type RuntimeCapabilityManifest = {
+  readonly version: 'v1';
+  readonly operations: readonly RuntimeCapabilityDescriptor[];
+} & Readonly<Record<RuntimeOperationId, RuntimeCapabilityDescriptor>>;
 
-export type RuntimeCapabilityManifestOptions = {
-  /** Whether the backing gateway is configured and may be called. */
-  configured?: boolean;
-  /** Explicit deployment environment; omitted for test doubles. */
-  environment?: 'development' | 'production';
-  /** Customer mutations are denied by default in development. */
-  allowCustomerWrites?: boolean;
-  /** A fixture is an isolated backend and can expose test-only operations. */
-  fixture?: boolean;
-  disabledOperations?: readonly RuntimeOperationId[];
-};
+export const runtimeToolOperationMap = {
+  list_categories: 'provider.plan',
+  get_category_by_slug: 'provider.plan',
+  list_locations: 'provider.plan',
+  search_providers_from_plan: 'provider.search',
+  search_providers_by_keyword: 'provider.search',
+  search_providers_by_category_location: 'provider.search',
+  search_providers_by_query_intent: 'provider.search',
+  get_relevant_providers: 'provider.search',
+  get_provider_detail: 'provider.search',
+  get_provider_detail_and_track_view: 'provider.search',
+  get_related_providers: 'provider.search',
+  list_provider_reviews: 'provider.search',
+  get_event_vendor_context: 'provider.search',
+  list_event_favorite_providers: 'provider.search',
+  list_user_events_vendor_context: 'provider.search',
+  create_quote_request: 'provider.quote.write',
+  add_vendor_to_event_favorites: 'provider.plan',
+  create_provider_review: 'provider.plan',
+  finish_plan: 'provider.plan',
+} as const satisfies Record<string, RuntimeOperationId>;
 
-/** Operations that issue a customer-visible or durable mutation. */
+export type RuntimeToolName = keyof typeof runtimeToolOperationMap;
+
+export const runtimeGatewayOperationMap = {
+  getOrders: 'purchase.orders.read',
+  getGiftPurchases: 'purchase.gift_detail.read',
+  getGuestOrdersByPhone: 'purchase.orders.read',
+  getGuestGiftPurchasesByPhone: 'purchase.gift_detail.read',
+  authByPhone: 'auth.phone',
+  getGuestEventsByPhone: 'event.association.read',
+  getEventDetail: 'event.detail.read',
+  updatePhone: 'auth.phone',
+  guestRsvp: 'rsvp.response.write',
+  requestHumanTakeover: 'human.takeover.write',
+} as const satisfies Record<string, RuntimeOperationId>;
+
 export const runtimeWriteOperationIds = [
-  'conversation.log.write',
-  'human.takeover.write',
-  'account.phone.update',
-  'rsvp.write',
+  'rsvp.response.write',
   'provider.quote.write',
-  'provider.favorite.write',
-  'provider.review.write',
-  'plan.finish.write',
+  'human.takeover.write',
 ] as const satisfies readonly RuntimeOperationId[];
 
-const writeOperations = new Set<RuntimeOperationId>(runtimeWriteOperationIds);
+const alwaysUnavailableReasons: Partial<
+  Record<RuntimeOperationId, RuntimeCapabilityAvailabilityReason>
+> = {
+  'confirmation_document.send': 'not_implemented',
+  'media.image.inspect': 'media_unavailable',
+  'payment_proof.verify': 'not_implemented',
+  'purchase.modify': 'not_implemented',
+  'refund_or_withdrawal.execute': 'not_implemented',
+};
+
+export type RuntimeCapabilityFeatureFlags = {
+  faq?: boolean;
+  invitedEventLookup?: boolean;
+  purchaseInformation?: boolean;
+  rsvp?: boolean;
+  providerPlanning?: boolean;
+  providerSearch?: boolean;
+  providerQuoteRequests?: boolean;
+  phoneAuthentication?: boolean;
+  emailOtp?: boolean;
+  humanTakeover?: boolean;
+};
+
+export type RuntimeCapabilityManifestOptions = {
+  configured?: boolean;
+  environment?: 'development' | 'production';
+  allowCustomerWrites?: boolean;
+  fixture?: boolean;
+  disabledOperations?: readonly RuntimeOperationId[];
+  featureFlags?: RuntimeCapabilityFeatureFlags;
+};
+
+function featureForOperation(
+  operation: RuntimeOperationId,
+  flags: RuntimeCapabilityFeatureFlags,
+): boolean | undefined {
+  switch (operation) {
+    case 'faq.read': return flags.faq;
+    case 'event.association.read': return flags.invitedEventLookup;
+    case 'event.detail.read': return flags.invitedEventLookup;
+    case 'purchase.orders.read': return flags.purchaseInformation;
+    case 'purchase.gift_detail.read': return flags.purchaseInformation;
+    case 'rsvp.state.read': return flags.rsvp;
+    case 'rsvp.response.write': return flags.rsvp;
+    case 'provider.plan': return flags.providerPlanning;
+    case 'provider.search': return flags.providerSearch;
+    case 'provider.quote.write': return flags.providerQuoteRequests;
+    case 'auth.phone': return flags.phoneAuthentication;
+    case 'auth.email_otp': return flags.emailOtp;
+    case 'human.takeover.write': return flags.humanTakeover;
+    default: return undefined;
+  }
+}
 
 export function buildRuntimeCapabilityManifest(
   options: RuntimeCapabilityManifestOptions = {},
 ): RuntimeCapabilityManifest {
   const configured = options.configured ?? true;
   const disabled = new Set(options.disabledOperations ?? []);
-  const manifest = {} as Record<RuntimeOperationId, RuntimeCapabilityDescriptor>;
+  const flags = options.featureFlags ?? {};
+  const byId = {} as Record<RuntimeOperationId, RuntimeCapabilityDescriptor>;
 
-  for (const operation of runtimeOperationIds) {
-    let available = configured;
-    let reason: RuntimeCapabilityAvailabilityReason = configured
-      ? 'available'
-      : 'not_configured';
+  for (const id of runtimeOperationIds) {
+    const forcedReason = alwaysUnavailableReasons[id];
+    let available = configured && forcedReason === undefined;
+    let reason: RuntimeCapabilityAvailabilityReason = forcedReason ??
+      (configured ? 'enabled' : 'gateway_unavailable');
+    const featureEnabled = featureForOperation(id, flags);
 
-    if (disabled.has(operation)) {
+    if (disabled.has(id) || featureEnabled === false) {
       available = false;
-      reason = 'disabled';
-    } else if (
+      reason = 'feature_disabled';
+    } else if (available && featureEnabled === true) {
+      reason = 'enabled';
+    }
+    if (
       available &&
       options.environment === 'development' &&
-      writeOperations.has(operation) &&
+      runtimeWriteOperationIds.includes(id as (typeof runtimeWriteOperationIds)[number]) &&
       options.allowCustomerWrites !== true
     ) {
       available = false;
-      reason = 'development_write_blocked';
-    } else if (available && options.fixture === true) {
-      reason = 'fixture_only';
+      reason = 'write_blocked';
     }
-
-    manifest[operation] = { operation, available, reason };
+    byId[id] = { id, available, reason };
   }
 
-  return manifest;
+  const operations = runtimeOperationIds.map((id) => byId[id]);
+  return { version: 'v1', operations, ...byId };
 }
 
 export function isRuntimeOperationId(value: string): value is RuntimeOperationId {
@@ -165,75 +195,49 @@ export function capabilityForOperation(
 }
 
 export type CapabilityDecision =
+  | { readonly status: 'not_applicable' }
+  | { readonly status: 'supported'; readonly operation: RuntimeOperationId }
   | {
-      readonly kind: 'supported';
+      readonly status: 'clarify';
+      readonly candidateOperations: readonly RuntimeOperationId[];
+      readonly questionKey: 'status_or_document' | 'status_or_proof_review' | 'type_missing';
+    }
+  | {
+      readonly status: 'unsupported';
       readonly operation: RuntimeOperationId;
-    }
-  | {
-      readonly kind: 'unsupported';
-      readonly operation: RuntimeOperationId | null;
-      readonly reason: 'unavailable' | 'unsupported';
-      readonly requiresHumanTakeover: true;
-    }
-  | {
-      readonly kind: 'clarification';
-      readonly topic: 'status' | 'document';
-      readonly questionKey: 'ambiguous_status' | 'ambiguous_document';
-      readonly requiresOneQuestion: true;
+      readonly reason: RuntimeCapabilityAvailabilityReason;
+      readonly humanTakeoverAvailable: boolean;
     };
 
-export type RequestedOperation =
-  | 'continue_support'
-  | 'new_support_topic'
-  | 'switch_to_planning'
-  | 'switch_to_rsvp'
-  | 'request_human_help'
-  | 'clarify';
+export type RequestedOperation = RuntimeOperationId;
 
 export function resolveCapabilityDecision(args: {
-  requestedOperation: RequestedOperation | null | undefined;
-  operation?: RuntimeOperationId | null;
+  requestedOperation: RuntimeOperationId | null | undefined;
   manifest: RuntimeCapabilityManifest;
-  statusAmbiguous?: boolean;
-  documentAmbiguous?: boolean;
+  ambiguity?: {
+    status: 'clear' | 'ambiguous';
+    candidateOperations?: readonly RuntimeOperationId[];
+    questionKey?: 'status_or_document' | 'status_or_proof_review' | 'type_missing';
+  };
 }): CapabilityDecision {
-  if (args.statusAmbiguous) {
-    return {
-      kind: 'clarification',
-      topic: 'status',
-      questionKey: 'ambiguous_status',
-      requiresOneQuestion: true,
-    };
+  if (args.ambiguity?.status === 'ambiguous') {
+    const candidates = args.ambiguity.candidateOperations ?? [];
+    if (candidates.length > 0) {
+      return {
+        status: 'clarify',
+        candidateOperations: candidates,
+        questionKey: args.ambiguity.questionKey ?? 'type_missing',
+      };
+    }
   }
-  if (args.documentAmbiguous) {
-    return {
-      kind: 'clarification',
-      topic: 'document',
-      questionKey: 'ambiguous_document',
-      requiresOneQuestion: true,
-    };
-  }
-  if (args.requestedOperation === 'clarify') {
-    return {
-      kind: 'clarification',
-      topic: 'status',
-      questionKey: 'ambiguous_status',
-      requiresOneQuestion: true,
-    };
-  }
-
-  const operation = args.operation ?? null;
-  if (!operation) {
-    return { kind: 'unsupported', operation: null, reason: 'unsupported', requiresHumanTakeover: true };
-  }
+  const operation = args.requestedOperation ?? null;
+  if (operation === null) return { status: 'not_applicable' };
   const descriptor = args.manifest[operation];
-  if (descriptor?.available) {
-    return { kind: 'supported', operation };
-  }
+  if (descriptor?.available) return { status: 'supported', operation };
   return {
-    kind: 'unsupported',
+    status: 'unsupported',
     operation,
-    reason: descriptor?.reason === 'unsupported' ? 'unsupported' : 'unavailable',
-    requiresHumanTakeover: true,
+    reason: descriptor?.reason ?? 'gateway_unavailable',
+    humanTakeoverAvailable: args.manifest['human.takeover.write'].available,
   };
 }

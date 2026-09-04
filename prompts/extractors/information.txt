@@ -1,41 +1,29 @@
 Consultas informativas
 
-`informationRequests` conserva el orden y puede coexistir con `actionIntent`.
+`requestedOperation` identifica la operación solicitada usando solo los identificadores de `extractors/capability_boundary.txt`; no expresa disponibilidad. Si estado y documento son ambiguos, deja `requestedOperation=null` y marca `ambiguity.status=ambiguous`.
 
-Apoyo de continuidad sin consulta
+`informationRequests` conserva el orden y puede coexistir con `actionIntent`. Un delta vacío no crea consulta ni bienvenida. Un seguimiento breve resuelve contra solicitud pendiente, última completada y luego historial reciente.
 
-Cuando el usuario reporta un problema, aporta un dato de seguimiento, pospone un envío, pregunta por una política o solicita un documento, emite también `supportAct` con exactamente un `kind`, `topic` y `detail` de estas listas: `kind=report_issue|provide_detail|defer_submission|ask_policy|request_document`; `topic=mailbox_capacity|payment_proof|purchase_status|confirmation_document|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|document_missing|status_pending|status_approved|unknown`. Usa `unknown` solo si el referente no se puede resolver con evidencia estructurada. Puede coexistir con `informationRequests` cuando sí hace falta una consulta; un acuse o reporte ya establecido no inventa una consulta. Conserva `reportedEventRole`, `rsvpAction` y cualquier cambio explícito de planificación.
+Apoyo sin consulta
 
-- `faq`: pregunta general sobre Sin Envolturas, politicas, comisiones o funciones. `query` autosuficiente.
-- Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad; null si no lo declara.
-- Retiro del anfitrión: faq `hostWithdrawal=individual_status` para retiro no recibido/estado, `policy_only` para plazo general; null fuera del tema. No compra/RSVP. Un evento posterior actualiza `eventHint` del retiro pendiente. El runtime gestiona apoyo sin otra acción.
-- `associated_event`: fecha, hora, lugar, anfitrion o lista de confirmados. Usa `eventHint` si identifica; kind=associated_event. Estado de asistencia propia va por RSVP.
-- `purchase`: estado o detalle de orden/regalo propio o notificado. `orders` para ordenes/carritos; `gift_purchases` para pago, dedicatoria, tarjeta, envio o agradecimiento.
+Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia usa `requestedOperation=confirmation_document.send`, no `supportAct`.
+
+- `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad.
+- Retiro del anfitrión: `hostWithdrawal=individual_status` si no recibe el retiro y `policy_only` para plazo general; no es compra ni RSVP.
+- `kind=associated_event`: fecha, hora, lugar, anfitrión o confirmados; usa `eventHint`. Estado de asistencia propia va por RSVP.
+- `purchase`: estado o detalle de orden/regalo propio o notificado. Usa `orders` para ordenes/carritos y `gift_purchases` para pago, dedicatoria, tarjeta, envío o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
 
-Plazo de validación => purchase orders [payment_status,validation_window]; opciones de carrito => orders [payment_options].
-Con compra activa, constancia o correccion de moneda => purchase orders; no FAQ/plan.
-"Monto pendiente 63.85 por transferencia para Isa y Lu" => purchase orders [summary,payment_status], eventHint y amount.
+Plazo de validación => purchase orders [payment_status,validation_window]; opciones de carrito => orders [payment_options]. Con compra activa, constancia o correccion de moneda => purchase orders; no FAQ/plan. “Monto pendiente 63.85 por transferencia para Isa y Lu” => purchase orders [summary,payment_status], `eventHint` y `amount`.
 
-Sin numero usa `orderId=null`. `COD301816`/`301816`=>`orderId=301816`, no OTP. "estado de mi pedido"=>`resource=orders`, `aspects=[summary, payment_status, shipping]`. Regalos solo lo pedido.
+Sin numero usa `orderId=null`. `COD301816`/`301816` => `orderId=301816`, nunca OTP. “estado de mi pedido” => `resource=orders`, `aspects=[summary, payment_status, shipping]`. Regalos solo lo pedido.
 
-En compras llena eventHint/amount si explicitos. No uses payment_details para estado/plazo/opciones; citar Yape/transferencia no pide detalles.
+En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_details` para estado, plazo u opciones; mencionar Yape/transferencia no pide detalles. `sensitiveFields` solo incluye datos pedidos explícitamente: `payment_id`, `transaction_status`, `gateway_message`, `operation_code`, `origin_bank`, `destination_account`, `voucher_image`, `decline_code` o `admin_comment`.
 
-`sensitiveFields` solo con datos sensibles pedidos explicitamente: payment_id, transaction_status, gateway_message, operation_code, origin_bank, destination_account, voucher_image, decline_code o admin_comment.
+Autenticación de consultas personales
 
-Autenticacion de consultas personales
+Compras y eventos usan el número confiable. `phoneConfirmation=no` solo si niega que la cuenta sea suya y no `decline_authentication`; usa `yes` con confirmación explícita y `unclear` si ambiguo. Con `information_state.authentication_status=code_requested`, conserva la consulta y usa `provide_otp`, `report_otp_not_received`, `resend_otp`, `change_email`, `accountless_user` o `decline_authentication` si rechaza continuar la verificacion. Antes del código usa `provide_email` al recibir correo. Nunca copies códigos fuera de `authAction`.
 
-Compras/eventos usan número confiable. `phoneConfirmation=no` solo si niega que la cuenta o número sean suyos: usa `phoneConfirmation=no` y no `decline_authentication`; `yes` con confirmación explícita, `unclear` si ambiguo.
+“Ya envié el regalo” sin pedido no crea consulta ni cierre. Una pregunta sobre capacidad no es solicitud de atencion humana; pregunta si puedes leer una fotografia es FAQ y pedir persona sí es `solicitar_humano`. “Y el evento es Baby Shower Catalina” => `actionIntent=null`.
 
-Con `information_state.authentication_status=code_requested`, conserva la solicitud y usa:
-
-- `provide_otp` si proporciona el codigo;
-- `report_otp_not_received` si dice que no llego;
-- `resend_otp` si pide otro codigo;
-- `change_email` si corrige el correo;
-- `accountless_user` si compro sin cuenta;
-- `decline_authentication` si rechaza continuar la verificacion.
-
-Antes del codigo usa `provide_email` al recibir correo. No copies codigos fuera de `authAction` y conserva consulta pendiente.
-
-“Ya envié el regalo” sin pedido no crea consulta ni cierre. Si pregunta si puedes leer una fotografia, crea FAQ; una pregunta sobre capacidad no es solicitud de atencion humana. Pedir persona => solicitar_humano; “Y el evento es Baby Shower Catalina” => actionIntent=null.
+Responde con el nombre del evento tal como aparece. Si el mensaje cita el nombre del evento o contexto tal como aparece en el mensaje, conserva esa referencia. Continúa resolviendo el problema ya planteado con el siguiente paso necesario.

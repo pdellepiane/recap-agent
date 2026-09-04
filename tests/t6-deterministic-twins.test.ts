@@ -158,8 +158,8 @@ describe('T6 deterministic twins', () => {
     expect(result.carts![0].eventName).toBe('Isa and Lu');
     // currency null preserved
     expect(result.orderPartitions!.pending[0].currency).toBeNull();
-    // offset-less timestamp normalized to null
-    expect(result.orderPartitions!.pending[0].createdAt).toBeNull();
+    // Server-provided timestamp is preserved byte-for-byte.
+    expect(result.orderPartitions!.pending[0].createdAt).toBe('2026-08-28 14:00:00');
   });
 
   it('keeps pending Alejandratotal without inventing currency for Luis', async () => {
@@ -248,7 +248,7 @@ describe('T6 deterministic twins', () => {
     expect(result.orderPartitions!.completed[0].eventName).toBe('Josue y Paola');
   });
 
-  it('omits offset-less paidAt until backend timezone confirmed', async () => {
+  it('preserves offset-less paidAt supplied by the server', async () => {
     const fetchMock = vi.fn().mockResolvedValue(jsonResponse(200, {
       status: true,
       data: {
@@ -283,7 +283,7 @@ describe('T6 deterministic twins', () => {
     const result = await gateway.getGuestGiftPurchasesByPhone({ phone_extension: '+51', phone_number: '957212085' });
     expect(result.status).toBe('success');
     if (result.status !== 'success') throw new Error('expected success');
-    expect(result.purchases[0].payment?.paidAt).toBeNull();
+    expect(result.purchases[0].payment?.paidAt).toBe('2026-08-30 21:31:27');
   });
 
   it('registers single plus_one yes with saved true', async () => {

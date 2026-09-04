@@ -22,6 +22,13 @@ import type {
   RsvpCandidate,
 } from './agent-conversation-gateway';
 import type { CartInformation, PurchaseInformation, PurchasePartition, PurchaseResource } from '../core/information';
+import {
+  buildRuntimeCapabilityManifest,
+  type RuntimeCapabilityManifest,
+} from './capability-manifest';
+import { normalizeServerTimestamp } from '../core/server-timestamp';
+
+export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/server-timestamp';
 
 export type EvalFixtureScenario = string;
 
@@ -319,17 +326,6 @@ function normalizePhoneInput(
   };
 }
 
-export function normalizePurchaseTimestamp(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (/^\d{4}-\d{2}-\d{2}$/u.test(trimmed)) return trimmed;
-  if (/(?:Z|[+-]\d{2}:?\d{2})$/u.test(trimmed)) return trimmed;
-  if (/^\d{4}-\d{2}-\d{2}[ T]\d{2}:\d{2}:\d{2}(?:\.\d+)?$/u.test(trimmed)) {
-    return null;
-  }
-  return null;
-}
-
 export async function loadFixtureData(
   scenario: string,
   fixturesRoot?: string,
@@ -382,25 +378,46 @@ export function loadFixtureDataSync(
 }
 
 export class FixtureAgentConversationGateway implements AgentConversationGateway {
+  readonly capabilityDescriptor: RuntimeCapabilityManifest;
+  readonly capabilities: RuntimeCapabilityManifest;
   private readonly loadResult: FixtureLoadResult;
   private readonly data: FixtureData | null;
 
   constructor(
     private readonly scenario: string,
     loadResult: FixtureLoadResult,
+    options: { allowCustomerWrites?: boolean } = {},
   ) {
     this.loadResult = loadResult;
     this.data = loadResult.status === 'loaded' ? loadResult.data : null;
+    this.capabilityDescriptor = buildRuntimeCapabilityManifest({
+      configured: loadResult.status === 'loaded',
+      fixture: true,
+      environment: 'development',
+      // A fixture is an explicitly isolated test backend. Callers can still
+      // deny all mutation capabilities to exercise development isolation.
+      allowCustomerWrites: options.allowCustomerWrites ?? true,
+    });
+    this.capabilities = this.capabilityDescriptor;
   }
 
-  static async create(scenario: string, fixturesRoot?: string): Promise<FixtureAgentConversationGateway> {
+  static async create(
+    scenario: string,
+    fixturesRoot?: string,
+    options?: { allowCustomerWrites?: boolean },
+  ): Promise<FixtureAgentConversationGateway> {
     const result = await loadFixtureData(scenario, fixturesRoot);
-    return new FixtureAgentConversationGateway(scenario, result);
+    return new FixtureAgentConversationGateway(scenario, result, options);
   }
 
-  static createSync(scenario: string, fixtureData: FixtureData | null, knownScenarios?: Set<string>): FixtureAgentConversationGateway {
+  static createSync(
+    scenario: string,
+    fixtureData: FixtureData | null,
+    knownScenarios?: Set<string>,
+    options?: { allowCustomerWrites?: boolean },
+  ): FixtureAgentConversationGateway {
     const result = loadFixtureDataSync(scenario, fixtureData ?? null, knownScenarios ?? null);
-    return new FixtureAgentConversationGateway(scenario, result);
+    return new FixtureAgentConversationGateway(scenario, result, options);
   }
 
   private unknownScenarioError(): string {
@@ -415,6 +432,10 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
   private isFixtureUnavailable(): boolean {
     return this.loadResult.status !== 'loaded';
+  }
+
+  private isWriteBlocked(operation: 'human.takeover.write' | 'rsvp.response.write'): boolean {
+    return !this.capabilityDescriptor[operation].available;
   }
 
   private resolveFixtureValue(
@@ -529,6 +550,13 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
   async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
     void phoneNumber;
+    if (this.isWriteBlocked('human.takeover.write')) {
+      return {
+        status: 'skipped',
+        reason: 'disabled',
+        message: 'Customer writes are disabled in this development fixture.',
+      };
+    }
     if (this.isFixtureUnavailable()) {
       return { status: 'failed', error: this.malformedError(), retryable: false };
     }
@@ -812,6 +840,9 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     if (this.isFixtureUnavailable()) {
       return { status: 'failed', error: this.malformedError(), retryable: false };
     }
+    if (this.isWriteBlocked('rsvp.response.write')) {
+      return { status: 'failed', error: 'Customer writes are disabled in this development fixture.', retryable: false };
+    }
     const phone = normalizePhoneInput(input);
     if (!phone) {
       return { status: 'failed', error: 'Agent API RSVP requires a valid phone identity.', retryable: false };
@@ -1073,7 +1104,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       eventName: order.event_name ?? null,
       eventDate: order.event_date ?? null,
       eventUrl: order.event_url ?? null,
-      createdAt: normalizePurchaseTimestamp(order.created_at),
+      createdAt: normalizeServerTimestamp(order.created_at),
       items: order.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1095,7 +1126,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       eventUrl: cart.event_url ?? null,
       subtotal: cart.subtotal ?? null,
       giftsQuantity: cart.gifts_quantity ?? null,
-      createdAt: normalizePurchaseTimestamp(cart.created_at),
+      createdAt: normalizeServerTimestamp(cart.created_at),
       items: cart.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1127,7 +1158,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       eventName: purchase.event_name ?? null,
       eventDate: purchase.event_date ?? null,
       eventUrl: purchase.event_url ?? null,
-      createdAt: normalizePurchaseTimestamp(purchase.created_at),
+      createdAt: normalizeServerTimestamp(purchase.created_at),
       items: purchase.items.map((item) => ({
         giftName: item.gift_name ?? null,
         quantity: item.quantity ?? null,
@@ -1139,7 +1170,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         ? {
             method: purchase.payment.method ?? null,
             amount: purchase.payment.amount ?? null,
-            paidAt: normalizePurchaseTimestamp(purchase.payment.paid_at),
+            paidAt: normalizeServerTimestamp(purchase.payment.paid_at),
             paymentId: purchase.payment.payment_id ?? null,
             transactionStatus: purchase.payment.transaction_status ?? null,
             gatewayMessage: purchase.payment.gateway_message ?? null,

@@ -61,6 +61,7 @@ export const routeKindValues = [
   'human_help_offer',
   'human_escalation',
   'information_batch',
+  'contextual_clarification',
   'rsvp',
   'error',
 ] as const;
@@ -85,6 +86,7 @@ export const presentationScopeValues = [
   'human_help_offer',
   'human_escalation',
   'information_batch',
+  'contextual_clarification',
   'rsvp',
 ] as const;
 

@@ -15,7 +15,6 @@ import {
 import type { ExtractionCapabilityProfile } from './extraction-schemas';
 import type { InformationAuthReason } from '../core/information';
 import { hostWithdrawalMessagesSchema } from './host-withdrawal-policy';
-import { supportContinuityMessagesSchema } from './support-continuity-messages';
 
 export type PromptLoadContext = {
   informationAuthReasons?: readonly InformationAuthReason[];
@@ -38,12 +37,6 @@ export class PromptLoader {
     const content = await fs.readFile(path.join(this.promptsDir,
       'nodes/resolver_consultas_informativas/host-withdrawal.json'), 'utf8');
     return hostWithdrawalMessagesSchema.parse(JSON.parse(content) as unknown);
-  }
-
-  async loadSupportContinuityMessages() {
-    const content = await fs.readFile(path.join(this.promptsDir,
-      'nodes/resolver_consultas_informativas/support-continuity.json'), 'utf8');
-    return supportContinuityMessagesSchema.parse(JSON.parse(content) as unknown);
   }
 
   async loadNodeBundle(

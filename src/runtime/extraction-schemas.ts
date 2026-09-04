@@ -19,6 +19,10 @@ import {
   rsvpDecisionSourceValues,
   rsvpPartySchema,
 } from '../core/rsvp';
+import {
+  runtimeOperationIds,
+  type RuntimeOperationId,
+} from './capability-manifest';
 
 export const providerReferenceSchema = z.object({
   providerId: z.number().int().positive().nullable(),
@@ -95,7 +99,17 @@ export const ambiguityEvidenceSchema = z.object({
   status: z.enum(['clear', 'ambiguous']),
   clarificationQuestion: z.string().nullable(),
   interpretations: z.array(z.string()).max(3),
+  candidateOperations: z.array(z.enum(runtimeOperationIds)).max(3).default([]),
+  questionKey: z.enum([
+    'status_or_document',
+    'status_or_proof_review',
+    'type_missing',
+  ]).nullable().default(null),
 });
+
+/** User-requested operation; availability is decided deterministically. */
+export const requestedOperationSchema = z.enum(runtimeOperationIds);
+export type RequestedOperation = RuntimeOperationId;
 
 export const openAiInformationRequestSchema = z.object({
   kind: z.enum(['faq', 'associated_event', 'purchase']),
@@ -117,6 +131,7 @@ export type OpenAiInformationRequest = z.infer<
 export const extractionSchema = z.object({
   reportedEventRole: z.enum(['host', 'guest']).nullable().optional(),
   actionIntent: z.enum(actionIntentValues).nullable(),
+  requestedOperation: requestedOperationSchema.nullable().default(null),
   informationRequests: z.array(openAiInformationRequestSchema).default([]),
   supportAct: informationSupportActSchema.nullable().default(null),
   phoneConfirmation: z.enum(phoneConfirmationValues).nullable().default(null),
@@ -156,8 +171,6 @@ export type StructuredExtraction = z.infer<typeof extractionSchema>;
 
 export type ExtractionCapabilityProfile = {
   information: boolean;
-  /** Selects the compact prompt/schema for an established support lane. */
-  informationSupport?: boolean;
   rsvp: boolean;
   providerPlanning: boolean;
   providerOperations: boolean;
@@ -166,6 +179,7 @@ export type ExtractionCapabilityProfile = {
   contact: boolean;
   close: boolean;
   pause: boolean;
+  capabilityBoundary?: boolean;
 };
 
 export function createDynamicExtractionSchema(args: {
@@ -179,6 +193,9 @@ export function createDynamicExtractionSchema(args: {
 
   return z.object({
     actionIntent: z.enum(allowedActionIntents).nullable(),
+    ...(args.capabilities.capabilityBoundary !== false
+      ? { requestedOperation: extractionSchema.shape.requestedOperation }
+      : {}),
     intentConfidence: extractionSchema.shape.intentConfidence,
     ambiguity: extractionSchema.shape.ambiguity,
     assumptions: extractionSchema.shape.assumptions,

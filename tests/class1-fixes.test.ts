@@ -152,8 +152,8 @@ describe('class1 fixes twins', () => {
     expect(phoneWideMessage).toContain('No encontré compras coincidentes asociadas a este número');
   });
 
-  it('c: projection omits timezone for offset-less records and renderer emits no zone claim', async () => {
-    // gateway parsing: offset-less timestamps become null
+  it('c: projection preserves server-provided timestamps without adding a zone claim', async () => {
+    // gateway parsing preserves the server string
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       status: true,
       data: {
@@ -168,10 +168,10 @@ describe('class1 fixes twins', () => {
     const result = await gateway.getGuestOrdersByPhone({ phone_extension: '+51', phone_number: '999999999' });
     expect(result.status).toBe('success');
     if (result.status === 'success') {
-      expect(result.orderPartitions?.pending[0]?.createdAt).toBeNull();
+      expect(result.orderPartitions?.pending[0]?.createdAt).toBe('2026-08-30 21:31:27');
     }
 
-    // projection: offset-less paidAt omitted
+    // projection: offset-less paidAt preserved as supplied by server
     void new InformationOrchestrator({
       knowledgeGateway: { async search() { return { status: 'failed' as const, reason: 'not_configured' as const, retryable: false, error: 'x' }; } } as unknown as KnowledgeRetrievalGateway,
       providerGateway: {} as ProviderGateway,
@@ -197,7 +197,7 @@ describe('class1 fixes twins', () => {
         currency: null,
       }],
     };
-    // For Http gateway, paidAt would be nulled via normalizePurchaseTimestamp; verify that orchestrator projection also reflects null
+    // The Http gateway preserves the server timestamp; projection remains unshifted.
     // Here we test the Http gateway path for gift purchases offset-less
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({
       status: true,
@@ -209,7 +209,7 @@ describe('class1 fixes twins', () => {
     const giftResult = await giftGateway.getGuestGiftPurchasesByPhone({ phone_extension: '+51', phone_number: '999999999' });
     expect(giftResult.status).toBe('success');
     if (giftResult.status === 'success') {
-      expect(giftResult.purchases[0]?.payment?.paidAt).toBeNull();
+      expect(giftResult.purchases[0]?.payment?.paidAt).toBe('2026-08-30 21:31:27');
     }
 
     // Ensure canonical projection contains no inferred UTC/Lima claim.

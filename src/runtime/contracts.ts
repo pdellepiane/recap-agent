@@ -27,6 +27,8 @@ import type {
   ProviderQueryIntent,
   ProviderReference,
 } from './extraction-schemas';
+import type { RequestedOperation } from './extraction-schemas';
+import type { RuntimeOperationId } from './capability-manifest';
 import type { RsvpAction, RsvpDecisionSource, RsvpParty } from '../core/rsvp';
 
 export type OpenAiRequestMetrics = {
@@ -47,6 +49,8 @@ export type OpenAiCallRef = {
 export type ExtractionResult = {
   reportedEventRole?: 'host' | 'guest' | null;
   actionIntent: ActionIntent | null;
+  /** Semantic capability/domain disposition emitted by the extractor. */
+  requestedOperation?: RequestedOperation | null;
   informationRequests: ExtractedInformationRequest[];
   supportAct?: InformationSupportAct | null;
   normalizationIssues?: InformationNormalizationIssue[];
@@ -61,6 +65,8 @@ export type ExtractionResult = {
     status: 'clear' | 'ambiguous';
     clarificationQuestion: string | null;
     interpretations?: string[];
+    candidateOperations?: RuntimeOperationId[];
+    questionKey?: 'status_or_document' | 'status_or_proof_review' | 'type_missing' | null;
   };
   eventType: EventType | null;
   vendorCategory: ProviderCategory | null;
@@ -91,6 +97,12 @@ export type ExtractRequest = {
   userMessage: string;
   plan: PersistedPlan;
   messageContext: TurnMessageContext;
+  /** Trusted channel metadata only; media bytes and provider URLs are excluded. */
+  media?: readonly {
+    kind: 'image' | 'video' | 'audio' | 'document' | 'sticker';
+    mimeType: string | null;
+    fileName: string | null;
+  }[];
 };
 
 export type RsvpPhoneReplyEvidence =

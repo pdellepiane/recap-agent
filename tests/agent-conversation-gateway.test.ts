@@ -496,7 +496,7 @@ describe('AgentConversationGateway', () => {
           paymentStatus: 'declined',
           currency: null,
           paymentMethod: 'Transferencia',
-            createdAt: null,
+            createdAt: '2026-08-28 14:00:00',
         }),
         expect.objectContaining({
           orderId: 'ORD-COMPLETED',
@@ -621,7 +621,7 @@ describe('AgentConversationGateway', () => {
         orderId: 'ORD-000883',
         eventId: 88,
         currency: 'USD',
-        payment: { paidAt: null },
+        payment: { paidAt: '2026-08-31 02:31:27' },
         dedication: { message: 'Felicidades' },
       }],
     });

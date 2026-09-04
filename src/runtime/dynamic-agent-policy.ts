@@ -2,6 +2,10 @@ import type { DecisionNode } from '../core/decision-nodes';
 import type { ActionIntent, PersistedPlan } from '../core/plan';
 import type { ProviderSummary } from '../core/provider';
 import type { ToolName } from './prompt-manifest';
+import {
+  runtimeToolOperationMap,
+  type RuntimeCapabilityManifest,
+} from './capability-manifest';
 
 export type PlanCapabilities = {
   hasActivePlan: boolean;
@@ -151,6 +155,7 @@ export function resolveDynamicTools(args: {
   maximumTools: readonly ToolName[];
   searchReady: boolean;
   providerResults: readonly ProviderSummary[];
+  capabilityManifest?: RuntimeCapabilityManifest;
 }): ToolName[] {
   const capabilities = derivePlanCapabilities(args.plan);
   const hasKnownProvider =
@@ -171,6 +176,10 @@ export function resolveDynamicTools(args: {
   ]);
 
   return args.maximumTools.filter((toolName) => {
+    const operation = runtimeToolOperationMap[toolName];
+    if (args.capabilityManifest && operation && !args.capabilityManifest[operation].available) {
+      return false;
+    }
     if (searchTools.has(toolName)) {
       return capabilities.hasActivePlan && args.searchReady;
     }
