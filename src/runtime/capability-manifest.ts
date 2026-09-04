@@ -194,6 +194,33 @@ export function capabilityForOperation(
   return manifest[operation];
 }
 
+/**
+ * Intersect configuration/feature availability with the concrete gateway
+ * descriptor. A method being present on an interface is not evidence that the
+ * backing gateway is configured, so the least-available side wins.
+ */
+export function mergeRuntimeCapabilityManifests(
+  configuredManifest: RuntimeCapabilityManifest,
+  gatewayManifest: RuntimeCapabilityManifest,
+): RuntimeCapabilityManifest {
+  const operations = runtimeOperationIds.map((id) => {
+    const configured = configuredManifest[id];
+    const gateway = gatewayManifest[id];
+    if (configured.available && gateway.available) {
+      return { id, available: true, reason: 'enabled' as const };
+    }
+    return {
+      id,
+      available: false,
+      reason: configured.available ? gateway.reason : configured.reason,
+    };
+  });
+  const byId = Object.fromEntries(
+    operations.map((descriptor) => [descriptor.id, descriptor]),
+  ) as Record<RuntimeOperationId, RuntimeCapabilityDescriptor>;
+  return { version: 'v1', operations, ...byId };
+}
+
 export type CapabilityDecision =
   | { readonly status: 'not_applicable' }
   | { readonly status: 'supported'; readonly operation: RuntimeOperationId }
@@ -222,7 +249,18 @@ export function resolveCapabilityDecision(args: {
 }): CapabilityDecision {
   if (args.ambiguity?.status === 'ambiguous') {
     const candidates = args.ambiguity.candidateOperations ?? [];
-    if (candidates.length > 0) {
+    const availableCandidates = candidates.filter(
+      (candidate) => args.manifest[candidate]?.available === true,
+    );
+    const unavailableCandidates = candidates.filter(
+      (candidate) => args.manifest[candidate]?.available !== true,
+    );
+    // Capability clarification is only needed when the ambiguity crosses the
+    // runtime boundary. Domain-level ambiguity (for example, an RSVP request
+    // whose exact mutation is still unstated) must continue through that
+    // domain's typed flow instead of being mistaken for an unsupported
+    // operation.
+    if (availableCandidates.length > 0 && unavailableCandidates.length > 0) {
       return {
         status: 'clarify',
         candidateOperations: candidates,

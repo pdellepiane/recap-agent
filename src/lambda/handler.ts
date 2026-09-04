@@ -60,7 +60,11 @@ import {
   type ChannelRequestValidationIssue,
 } from './request-observability';
 import { withRequestObservabilityContext } from '../runtime/auth-observability';
-import { buildRuntimeCapabilityManifest, type RuntimeCapabilityManifest } from '../runtime/capability-manifest';
+import {
+  buildRuntimeCapabilityManifest,
+  mergeRuntimeCapabilityManifests,
+  type RuntimeCapabilityManifest,
+} from '../runtime/capability-manifest';
 
 const config = getConfig();
 
@@ -627,17 +631,25 @@ async function getRuntime(): Promise<{
         messageLoggingEnabled: config.agentApi.messageLoggingEnabled,
         environment: config.deployment.environment === 'production' ? 'production' : 'development',
       });
+      const capabilityManifest = mergeRuntimeCapabilityManifests(
+        shared.capabilityManifest,
+        agentConversationGateway.capabilityDescriptor ?? shared.capabilityManifest,
+      );
+      const openAiRuntime = shared.openAiRuntime.withCapabilityManifest(
+        capabilityManifest,
+        shared.providerGateway,
+      );
       const informationOrchestrator = new InformationOrchestrator({
         knowledgeGateway: shared.knowledgeGateway,
         providerGateway: shared.providerGateway,
         agentGateway: agentConversationGateway,
-        capabilityManifest: shared.capabilityManifest,
+        capabilityManifest,
       });
 
       return {
         service: new AgentService({
           planStore: shared.planStore,
-          runtime: shared.openAiRuntime,
+          runtime: openAiRuntime,
           providerGateway: shared.providerGateway,
           agentConversationGateway,
           informationOrchestrator,
@@ -648,7 +660,7 @@ async function getRuntime(): Promise<{
             webchat: new WebChatMessageRenderer(),
             terminal_whatsapp: new WhatsAppMessageRenderer(),
           },
-          capabilityManifest: shared.capabilityManifest,
+          capabilityManifest,
         }),
         perfStore: shared.perfStore,
       };
@@ -711,6 +723,10 @@ async function getFixtureRuntime(scenario: string): Promise<{
     addVendorToEventFavorites: (...args: Parameters<typeof originalProviderGateway.addVendorToEventFavorites>) => originalProviderGateway.addVendorToEventFavorites(...args),
     createProviderReview: (...args: Parameters<typeof originalProviderGateway.createProviderReview>) => originalProviderGateway.createProviderReview(...args),
   } as unknown as typeof shared.providerGateway;
+  const fixtureOpenAiRuntime = shared.openAiRuntime.withCapabilityManifest(
+    fixtureGateway.capabilityDescriptor,
+    fixtureProviderGateway,
+  );
   const informationOrchestrator = new InformationOrchestrator({
     knowledgeGateway: shared.knowledgeGateway,
     providerGateway: fixtureProviderGateway,
@@ -721,7 +737,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
   return {
     service: new AgentService({
       planStore: shared.planStore,
-      runtime: shared.openAiRuntime,
+      runtime: fixtureOpenAiRuntime,
       providerGateway: fixtureProviderGateway,
       agentConversationGateway: fixtureGateway,
       informationOrchestrator,

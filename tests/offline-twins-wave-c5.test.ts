@@ -71,8 +71,8 @@ describe('offline twins wave C5 provenance batch', () => {
 
   it('support note strengthened clause and no-menu continuation per branch taken (no verbatim field)', () => {
     const content = fs.readFileSync(path.resolve(process.cwd(), 'prompts/extractors/information.txt'), 'utf8');
-    expect(content).toContain('cita el nombre del evento o contexto tal como aparece en el mensaje');
-    expect(content).toContain('Continúa resolviendo el problema ya planteado con el siguiente paso necesario');
+    expect(content).toContain('Conserva literalmente el nombre del evento citado');
+    expect(content).toContain('continúa el problema con el siguiente paso necesario');
     // Verify no verbatim event/context name field added (extractor has 7B margin - no new field)
     const extractionSchema = fs.readFileSync(path.resolve(process.cwd(), 'src/runtime/extraction-schemas.ts'), 'utf8');
     expect(extractionSchema).not.toContain('verbatim');

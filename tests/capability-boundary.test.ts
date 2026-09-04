@@ -5,6 +5,7 @@ import { createEmptyPlan } from '../src/core/plan';
 import { resolveDynamicTools } from '../src/runtime/dynamic-agent-policy';
 import {
   buildRuntimeCapabilityManifest,
+  mergeRuntimeCapabilityManifests,
   resolveCapabilityDecision,
   runtimeOperationIds,
 } from '../src/runtime/capability-manifest';
@@ -127,6 +128,27 @@ describe('runtime capability boundary', () => {
     });
     expect(tools).toEqual(['list_categories']);
     expect(runtimeToolOperationMap.search_providers_from_plan).toBe('provider.search');
+  });
+
+  it('intersects configured features with the concrete gateway descriptor', () => {
+    const configured = buildRuntimeCapabilityManifest({
+      configured: true,
+      featureFlags: { purchaseInformation: true, humanTakeover: true },
+    });
+    const gateway = buildRuntimeCapabilityManifest({
+      configured: true,
+      disabledOperations: ['purchase.orders.read', 'human.takeover.write'],
+    });
+    const merged = mergeRuntimeCapabilityManifests(configured, gateway);
+    expect(merged['purchase.orders.read']).toMatchObject({
+      available: false,
+      reason: 'feature_disabled',
+    });
+    expect(merged['human.takeover.write']).toMatchObject({
+      available: false,
+      reason: 'feature_disabled',
+    });
+    expect(merged['purchase.gift_detail.read'].available).toBe(true);
   });
 });
 

@@ -13,15 +13,11 @@ import type { ProviderGateway, UserEventLookupResult } from '../src/runtime/prov
 describe('rsvp party detection precision (T12-fix)', () => {
   it('prompt tightens party rule: explicit companion evidence only, we-form not evidence, event titles never', () => {
     const prompt = fs.readFileSync(path.resolve(process.cwd(), 'prompts/extractors/rsvp.txt'), 'utf-8');
-    expect(prompt).toContain("SOLO con evidencia explicita de acompañante");
-    expect(prompt).toContain('Verbos en forma nosotros solos ("confirmamos", "vamos", "apuntamos") NO son evidencia de acompañante');
-    expect(prompt).toContain('Titulos de evento NUNCA cuentan como acompañantes');
-    expect(prompt).toContain('Gia Antonella');
-    expect(prompt).toContain('Julisabeth y Andrés');
-    expect(prompt).toContain('mentioned_names` queda vacio salvo que haya nombres reales de acompañantes');
-    expect(prompt).toContain('la de mi esposa Maria');
+    expect(prompt).toContain('evidencia explícita de acompañante');
+    expect(prompt).toContain('“Confirmamos”, “vamos” o títulos con varios nombres no bastan');
+    expect(prompt).toContain('Deja `mentioned_names` vacío salvo nombres de acompañantes');
     expect(prompt).toContain('pareja/esposo/esposa/acompañante/+1');
-    expect(prompt).toContain('nosotros dos');
+    expect(prompt).toContain('“los dos” o “nosotros dos”');
   });
 
   it('jose twin: Si confirmamos la asistencia (event Gia Antonella) -> scope self, no handoff, RSVP lookups run', async () => {

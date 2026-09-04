@@ -243,7 +243,7 @@ describe('PromptLoader', () => {
       'report_otp_not_received',
     );
     expect(extractorBundle.instructions).toContain(
-      'information_state.authentication_status=code_requested',
+      'Con `code_requested`, conserva la consulta',
     );
     expect(welcomeBundle.instructions).toContain(
       'No prometas diseñar, construir ni editar sitios externos',
@@ -275,10 +275,10 @@ describe('PromptLoader', () => {
       '`phoneConfirmation=no` solo si niega que la cuenta',
     );
     expect(extractorBundle.instructions).toContain(
-      '`decline_authentication` si rechaza continuar la verificacion',
+      '`decline_authentication`',
     );
     expect(extractorBundle.instructions).toContain(
-      '`phoneConfirmation=no` solo si niega que la cuenta sea suya y no `decline_authentication`',
+      '`phoneConfirmation=no` solo si niega que la cuenta sea suya (no `decline_authentication`)',
     );
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');

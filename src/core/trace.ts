@@ -258,6 +258,8 @@ export type TurnTrace = {
   message_context: MessageContextTrace;
   continuity_state?: 'new' | 'continuing' | 'degraded';
   welcome_allowed?: boolean;
+  history_status?: MessageContextTrace['history_status'];
+  has_prior_outbound?: boolean;
   requested_operation?: string | null;
   capability_decision?: string | null;
   capability_reason?: string | null;

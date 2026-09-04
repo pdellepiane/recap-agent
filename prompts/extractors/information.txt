@@ -8,6 +8,8 @@ Apoyo sin consulta
 
 Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia usa `requestedOperation=confirmation_document.send`, no `supportAct`.
 
+Si aporta datos para continuar un problema, usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`. Ejemplo: “El nombre del invitado afectado es Roger Abanto. Y el evento es Baby Shower Catalina.” → ambos campos con esos valores, `topic=unknown`, `detail=unknown`; solo confirma contexto, no crea consulta ni mutación.
+
 - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad.
 - Retiro del anfitrión: `hostWithdrawal=individual_status` si no recibe el retiro y `policy_only` para plazo general; no es compra ni RSVP.
 - `kind=associated_event`: fecha, hora, lugar, anfitrión o confirmados; usa `eventHint`. Estado de asistencia propia va por RSVP.
@@ -22,8 +24,8 @@ En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_detai
 
 Autenticación de consultas personales
 
-Compras y eventos usan el número confiable. `phoneConfirmation=no` solo si niega que la cuenta sea suya y no `decline_authentication`; usa `yes` con confirmación explícita y `unclear` si ambiguo. Con `information_state.authentication_status=code_requested`, conserva la consulta y usa `provide_otp`, `report_otp_not_received`, `resend_otp`, `change_email`, `accountless_user` o `decline_authentication` si rechaza continuar la verificacion. Antes del código usa `provide_email` al recibir correo. Nunca copies códigos fuera de `authAction`.
+Compras/eventos usan el número confiable. `phoneConfirmation=no` solo si niega que la cuenta sea suya (no `decline_authentication`); `yes` con confirmación explícita y `unclear` si ambiguo. Con `code_requested`, conserva la consulta y usa `provide_otp`, `report_otp_not_received`, `resend_otp`, `change_email`, `accountless_user` o `decline_authentication`; antes del código, `provide_email`. Nunca copies códigos fuera de `authAction`.
 
 “Ya envié el regalo” sin pedido no crea consulta ni cierre. Una pregunta sobre capacidad no es solicitud de atencion humana; pregunta si puedes leer una fotografia es FAQ y pedir persona sí es `solicitar_humano`. “Y el evento es Baby Shower Catalina” => `actionIntent=null`.
 
-Responde con el nombre del evento tal como aparece. Si el mensaje cita el nombre del evento o contexto tal como aparece en el mensaje, conserva esa referencia. Continúa resolviendo el problema ya planteado con el siguiente paso necesario.
+Conserva literalmente el nombre del evento citado y continúa el problema con el siguiente paso necesario.

@@ -846,20 +846,6 @@ export class AgentService {
       extraction,
     );
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
-    if (this.shouldUseContextualClarification(messageContext, classifierPlan, extraction)) {
-      return await this.handleContextualClarification({
-        inbound,
-        previousNode: existingPlan?.current_node ?? 'contacto_inicial',
-        plan: classifierPlan,
-        extraction,
-        toolUsage,
-        timingMs,
-        tokenUsage,
-        responseClassifierTrace,
-        messageContext,
-        handleTurnStartedAt,
-      });
-    }
     const capabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({
       inbound,
       previousNode,
@@ -874,6 +860,20 @@ export class AgentService {
     });
     if (capabilityBoundaryResponse) {
       return capabilityBoundaryResponse;
+    }
+    if (this.shouldUseContextualClarification(messageContext, classifierPlan, extraction)) {
+      return await this.handleContextualClarification({
+        inbound,
+        previousNode: existingPlan?.current_node ?? 'contacto_inicial',
+        plan: classifierPlan,
+        extraction,
+        toolUsage,
+        tokenUsage,
+        responseClassifierTrace,
+        messageContext,
+        timingMs,
+        handleTurnStartedAt,
+      });
     }
     if (extraction.actionIntent === 'reset_plan') {
       workingPlan = createEmptyPlan({
@@ -3269,7 +3269,7 @@ export class AgentService {
       historyStatus: args.messageContext.historyStatus,
     });
     const plan = args.plan.current_node === 'contacto_inicial' &&
-      !continuity.hasPersistedPlan
+      !continuity.welcomeAllowed
       ? mergePlan(args.plan, { current_node: 'deteccion_intencion' })
       : args.plan;
     await this.dependencies.planStore.save({
@@ -3358,7 +3358,13 @@ export class AgentService {
     }
 
     if (decision.status === 'clarify') {
-      const plan = args.plan;
+      // Capability clarification is still an information-resolution turn.
+      // Preserve that node explicitly so a seeded or resumed plan cannot
+      // drift into the generic planning interview while waiting for the
+      // user's one confirmation answer.
+      const plan = args.plan.current_node === 'resolver_consultas_informativas'
+        ? args.plan
+        : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
       await this.dependencies.planStore.save({ plan, reason: 'capability_clarification_requested' });
       args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
@@ -4244,6 +4250,11 @@ export class AgentService {
   private selectSupportAcknowledgmentMessage(
     act: InformationSupportAct,
   ): string {
+    if (act.kind === 'provide_detail' && (act.personReference || act.eventReference)) {
+      const person = act.personReference ? ` a ${act.personReference}` : '';
+      const event = act.eventReference ? ` y del evento ${act.eventReference}` : '';
+      return `Gracias, tomo nota${person}${event}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
+    }
     if (act.kind === 'defer_submission') {
       return 'De acuerdo, podemos continuar cuando lo envíes. Mantengo el contexto de esta consulta.';
     }
@@ -6999,6 +7010,10 @@ export class AgentService {
       },
       continuity_state: args.messageContext.continuity?.state,
       welcome_allowed: args.messageContext.continuity?.welcomeAllowed,
+      history_status: args.messageContext.historyStatus,
+      has_prior_outbound: args.messageContext.continuity?.hasPriorOutbound ?? args.messageContext.recentMessages.some(
+        (message) => message.direction === 'outbound',
+      ),
       requested_operation: args.extraction.requestedOperation ?? null,
       capability_decision: args.capabilityDecision?.status ?? null,
       capability_reason: args.capabilityDecision?.status === 'unsupported'

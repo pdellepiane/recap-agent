@@ -94,6 +94,11 @@ export const informationSupportActSchema = z.object({
   kind: z.enum(informationSupportActKindValues),
   topic: z.enum(informationSupportTopicValues),
   detail: z.enum(informationSupportDetailValues),
+  // User-supplied context for a support continuation. These are evidence
+  // fields, not a second persisted memory store; they are retained only for
+  // the current turn's deterministic acknowledgement.
+  eventReference: z.string().trim().min(1).nullable().optional(),
+  personReference: z.string().trim().min(1).nullable().optional(),
 });
 
 export type InformationSupportAct = z.infer<typeof informationSupportActSchema>;

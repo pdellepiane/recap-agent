@@ -1096,7 +1096,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         name: event.name,
         slug: event.slug,
         url: event.url ?? null,
-        datetime: event.datetime ?? null,
+        datetime: normalizeServerTimestamp(event.datetime),
         type: event.type ?? null,
         typeDetail: event.type_detail ?? null,
         stage: event.stage ?? null,
@@ -1183,7 +1183,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         name: event.name,
         slug: event.slug,
         url: event.url ?? null,
-        datetime: event.datetime ?? null,
+        datetime: normalizeServerTimestamp(event.datetime),
         type: event.type ?? null,
         typeDetail: event.type_detail ?? null,
         stage: event.stage ?? null,
@@ -1199,7 +1199,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         moments: event.moments.map((moment) => ({
           label: moment.label,
           description: moment.description ?? null,
-          datetime: moment.datetime ?? null,
+          datetime: normalizeServerTimestamp(moment.datetime),
           withTime: moment.with_time,
           locationDescription: moment.location_description ?? null,
           locationReference: moment.location_reference ?? null,
@@ -1227,7 +1227,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
               willAttend: parsed.data.attendance.will_attend === null
                 ? null
                 : parsed.data.attendance.will_attend === true || parsed.data.attendance.will_attend === 1,
-              responseDate: parsed.data.attendance.response_date,
+              responseDate: normalizeServerTimestamp(parsed.data.attendance.response_date),
             }
           : null,
         purchases: parsed.data.purchases.map((purchase) => this.mapGiftPurchase(purchase)),
@@ -1385,11 +1385,11 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
           parsed.data.event?.name ??
           parsed.data.event?.title ??
           null,
-        eventDate:
+        eventDate: normalizeServerTimestamp(
           parsed.data.event_date ??
           parsed.data.event?.date ??
-          parsed.data.event?.event_date ??
-          null,
+          parsed.data.event?.event_date,
+        ),
         plusOne: plusOne
           ? {
               saved: plusOne.saved,
@@ -1458,11 +1458,11 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
         candidate.event?.name ??
         candidate.event?.title ??
         null,
-      eventDate:
+      eventDate: normalizeServerTimestamp(
         candidate.event_date ??
         candidate.event?.date ??
-        candidate.event?.event_date ??
-        null,
+        candidate.event?.event_date,
+      ),
     }));
   }
 
@@ -1560,7 +1560,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       grandTotal: order.grand_total ?? null,
       paymentMethod: order.payment_method ?? null,
       eventName: order.event_name ?? null,
-      eventDate: order.event_date ?? null,
+      eventDate: normalizeServerTimestamp(order.event_date),
       eventUrl: order.event_url ?? null,
       createdAt: normalizeServerTimestamp(order.created_at),
       items: order.items.map((item) => ({
@@ -1580,7 +1580,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       wasAbandoned: cart.was_abandoned,
       eventId: cart.event_id ?? null,
       eventName: cart.event_name ?? null,
-      eventDate: cart.event_date ?? null,
+      eventDate: normalizeServerTimestamp(cart.event_date),
       eventUrl: cart.event_url ?? null,
       subtotal: cart.subtotal ?? null,
       giftsQuantity: cart.gifts_quantity ?? null,
@@ -1616,7 +1616,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       grandTotal: purchase.grand_total ?? null,
       paymentMethod: purchase.payment?.method ?? null,
       eventName: purchase.event_name ?? null,
-      eventDate: purchase.event_date ?? null,
+      eventDate: normalizeServerTimestamp(purchase.event_date),
       eventUrl: purchase.event_url ?? null,
       createdAt: normalizeServerTimestamp(purchase.created_at),
       items: purchase.items.map((item) => ({

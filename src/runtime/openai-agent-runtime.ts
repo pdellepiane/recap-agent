@@ -146,6 +146,23 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     });
   }
 
+  /**
+   * Build an isolated runtime for a fixture or another gateway while keeping
+   * the same model, prompt, timeout, and feature configuration. This keeps
+   * the manifest used during extraction/reply projection identical to the
+   * manifest enforced by the service for that backend.
+   */
+  withCapabilityManifest(
+    capabilityManifest: RuntimeCapabilityManifest,
+    providerGateway: ProviderGateway = this.options.providerGateway,
+  ): OpenAiAgentRuntime {
+    return new OpenAiAgentRuntime({
+      ...this.options,
+      capabilityManifest,
+      providerGateway,
+    });
+  }
+
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const policy = deriveDynamicAgentPolicy(request.plan);
     const features = this.resolveFeatureFlags();

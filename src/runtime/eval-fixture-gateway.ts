@@ -821,7 +821,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         name: event.name,
         slug: event.slug,
         url: event.url ?? null,
-        datetime: event.datetime ?? null,
+        datetime: normalizeServerTimestamp(event.datetime),
         type: event.type ?? null,
         typeDetail: event.type_detail ?? null,
         stage: event.stage ?? null,
@@ -909,7 +909,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         name: event.name,
         slug: event.slug,
         url: event.url ?? null,
-        datetime: event.datetime ?? null,
+        datetime: normalizeServerTimestamp(event.datetime),
         type: event.type ?? null,
         typeDetail: event.type_detail ?? null,
         stage: event.stage ?? null,
@@ -925,7 +925,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         moments: event.moments.map((moment) => ({
           label: moment.label,
           description: moment.description ?? null,
-          datetime: moment.datetime ?? null,
+          datetime: normalizeServerTimestamp(moment.datetime),
           withTime: moment.with_time,
           locationDescription: moment.location_description ?? null,
           locationReference: moment.location_reference ?? null,
@@ -953,7 +953,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
               willAttend: parsed.attendance.will_attend === null
                 ? null
                 : parsed.attendance.will_attend === true || parsed.attendance.will_attend === 1,
-              responseDate: parsed.attendance.response_date,
+              responseDate: normalizeServerTimestamp(parsed.attendance.response_date),
             }
           : null,
         purchases: parsed.purchases.map((purchase) => this.mapGiftPurchase(purchase)),
@@ -1123,7 +1123,9 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       willAttend: returnedWillAttend,
       guestId: parsed.data.guest_id ?? input.guest_id ?? null,
       eventName: parsed.data.event_name ?? parsed.data.event?.name ?? parsed.data.event?.title ?? null,
-      eventDate: parsed.data.event_date ?? parsed.data.event?.date ?? parsed.data.event?.event_date ?? null,
+      eventDate: normalizeServerTimestamp(
+        parsed.data.event_date ?? parsed.data.event?.date ?? parsed.data.event?.event_date,
+      ),
       plusOne: plusOne
         ? {
             saved: plusOne.saved,
@@ -1151,7 +1153,9 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     return candidateData.map((candidate) => ({
       guestId: candidate.guest_id,
       eventName: candidate.event_name ?? candidate.event?.name ?? candidate.event?.title ?? null,
-      eventDate: candidate.event_date ?? candidate.event?.date ?? candidate.event?.event_date ?? null,
+      eventDate: normalizeServerTimestamp(
+        candidate.event_date ?? candidate.event?.date ?? candidate.event?.event_date,
+      ),
     }));
   }
 
@@ -1227,7 +1231,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       grandTotal: order.grand_total ?? null,
       paymentMethod: order.payment_method ?? null,
       eventName: order.event_name ?? null,
-      eventDate: order.event_date ?? null,
+      eventDate: normalizeServerTimestamp(order.event_date),
       eventUrl: order.event_url ?? null,
       createdAt: normalizeServerTimestamp(order.created_at),
       items: order.items.map((item) => ({
@@ -1247,7 +1251,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       wasAbandoned: cart.was_abandoned,
       eventId: cart.event_id ?? null,
       eventName: cart.event_name ?? null,
-      eventDate: cart.event_date ?? null,
+      eventDate: normalizeServerTimestamp(cart.event_date),
       eventUrl: cart.event_url ?? null,
       subtotal: cart.subtotal ?? null,
       giftsQuantity: cart.gifts_quantity ?? null,
@@ -1281,7 +1285,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       grandTotal: purchase.grand_total ?? null,
       paymentMethod: purchase.payment?.method ?? null,
       eventName: purchase.event_name ?? null,
-      eventDate: purchase.event_date ?? null,
+      eventDate: normalizeServerTimestamp(purchase.event_date),
       eventUrl: purchase.event_url ?? null,
       createdAt: normalizeServerTimestamp(purchase.created_at),
       items: purchase.items.map((item) => ({

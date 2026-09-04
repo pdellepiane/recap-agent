@@ -114,6 +114,15 @@ export type TurnPerfRecord = {
   openai_calls: TurnTrace['openai_calls'];
   response_classifier?: TurnTrace['response_classifier'];
   message_context: TurnTrace['message_context'];
+  continuity_state?: TurnTrace['continuity_state'];
+  welcome_allowed?: TurnTrace['welcome_allowed'];
+  history_status?: TurnTrace['history_status'];
+  has_prior_outbound?: TurnTrace['has_prior_outbound'];
+  requested_operation?: TurnTrace['requested_operation'];
+  capability_decision?: TurnTrace['capability_decision'];
+  capability_reason?: TurnTrace['capability_reason'];
+  human_takeover_attempted?: TurnTrace['human_takeover_attempted'];
+  human_takeover_succeeded?: TurnTrace['human_takeover_succeeded'];
   previous_node: string;
   node_path: string[];
   intent: string | null;
@@ -273,6 +282,15 @@ export function buildTurnPerfRecord(args: {
     openai_calls: args.trace.openai_calls,
     response_classifier: args.trace.response_classifier,
     message_context: args.trace.message_context,
+    continuity_state: args.trace.continuity_state,
+    welcome_allowed: args.trace.welcome_allowed,
+    history_status: args.trace.history_status,
+    has_prior_outbound: args.trace.has_prior_outbound,
+    requested_operation: args.trace.requested_operation,
+    capability_decision: args.trace.capability_decision,
+    capability_reason: args.trace.capability_reason,
+    human_takeover_attempted: args.trace.human_takeover_attempted,
+    human_takeover_succeeded: args.trace.human_takeover_succeeded,
     previous_node: args.trace.previous_node,
     node_path: args.trace.node_path,
     intent: args.trace.intent,
