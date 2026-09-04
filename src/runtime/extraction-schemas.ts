@@ -13,6 +13,7 @@ import {
   sensitivePurchaseFieldValues,
   phoneConfirmationValues,
   informationSupportActSchema,
+  type InformationSupportAct,
 } from '../core/information';
 import {
   rsvpActionValues,
@@ -110,6 +111,29 @@ export const ambiguityEvidenceSchema = z.object({
 /** User-requested operation; availability is decided deterministically. */
 export const requestedOperationSchema = z.enum(runtimeOperationIds);
 export type RequestedOperation = RuntimeOperationId;
+
+/**
+ * A typed FAQ/support disposition is authoritative evidence that a withdrawal
+ * question is informational. Keep an explicit execution operation only when
+ * the extractor did not also classify the turn as a policy/status request.
+ */
+export function normalizeRequestedOperation(
+  requestedOperation: RequestedOperation | null | undefined,
+  informationRequests: readonly Pick<OpenAiInformationRequest, 'kind' | 'hostWithdrawal'>[],
+  supportAct: Pick<InformationSupportAct, 'kind'> | null | undefined,
+): RequestedOperation | null {
+  const operation = requestedOperation ?? null;
+  if (operation !== 'refund_or_withdrawal.execute') {
+    return operation;
+  }
+
+  const hasInformationalWithdrawalEvidence =
+    supportAct?.kind === 'ask_policy' ||
+    informationRequests.some(
+      (request) => request.kind === 'faq' && request.hostWithdrawal != null,
+    );
+  return hasInformationalWithdrawalEvidence ? null : operation;
+}
 
 export const openAiInformationRequestSchema = z.object({
   kind: z.enum(['faq', 'associated_event', 'purchase']),

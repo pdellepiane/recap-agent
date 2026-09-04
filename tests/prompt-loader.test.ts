@@ -298,6 +298,12 @@ describe('PromptLoader', () => {
       '`purchase`: estado o detalle de orden/regalo propio o notificado',
     );
     expect(extractorBundle.instructions).toContain(
+      'No emitas `requestedOperation=refund_or_withdrawal.execute` en esos casos',
+    );
+    expect(extractorBundle.instructions).toContain(
+      'Código o número de transacción',
+    );
+    expect(extractorBundle.instructions).toContain(
       'Sin numero usa',
     );
     expect(extractorBundle.instructions).toContain('orderId=null');
@@ -309,6 +315,27 @@ describe('PromptLoader', () => {
     expect(extractorBundle.instructions).toContain('no quiero quedarme con X');
     expect(extractorBundle.instructions).toContain('respuestas negativas como "ninguna"');
     expect(welcomeBundle.instructions).toContain('presupuesto o cantidad aproximada de invitados');
+  });
+
+  it('keeps withdrawal execution guidance out of non-information extractor profiles', async () => {
+    const planningBundle = await loader.loadExtractorBundle({
+      information: false,
+      rsvp: false,
+      providerPlanning: true,
+      providerOperations: false,
+      providerSelection: false,
+      providerInspection: false,
+      contact: false,
+      close: false,
+      pause: false,
+    });
+
+    expect(planningBundle.instructions).not.toContain(
+      'No emitas `requestedOperation=refund_or_withdrawal.execute` en esos casos',
+    );
+    expect(planningBundle.instructions).not.toContain(
+      'Código o número de transacción',
+    );
   });
 
   it('keeps multi-front prompt guidance enabled for explicit parallel needs', async () => {
