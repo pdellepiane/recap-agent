@@ -344,7 +344,7 @@ describe('class1 fixes twins', () => {
     const infoExtractor = fs.readFileSync('prompts/extractors/information.txt', 'utf8');
     expect(infoExtractor).toContain('constancia o correccion de moneda');
     expect(infoExtractor).toContain('purchase orders; no FAQ/plan');
-    expect(infoExtractor).toContain('resource=orders');
+    expect(infoExtractor).toContain('`purchase`/`orders`');
     expect(infoExtractor).toContain('payment_status');
     expect(infoExtractor).toContain('validation_window');
     expect(infoExtractor).toContain('Y el evento es Baby Shower Catalina');
