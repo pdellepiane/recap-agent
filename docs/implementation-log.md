@@ -1,28 +1,5 @@
 # Implementation Log
 
-## 2026-09-04 — keep withdrawal questions informational and transaction codes on purchase reads
-
-**Reason:** Withdrawal/refund policy, timing, eligibility, and status questions
-could be accompanied by the unsupported `refund_or_withdrawal.execute`
-operation, allowing the capability boundary to preempt the existing FAQ flow.
-Transaction references also need to remain purchase reads whether the customer
-includes the `COD` prefix or sends only the numeric value.
-
-**Decision:** Added a bounded information-extractor rule that reserves the
-withdrawal operation for explicit execution requests and classifies policy/
-status questions as FAQ evidence. Typed extraction normalization now clears a
-conflicting withdrawal operation when a host-withdrawal FAQ or `ask_policy`
-support act is present, while preserving explicit operations without that
-informational evidence. The existing order-reference normalizer remains the
-single path for `COD` and numeric references; no raw payload or new route was
-introduced. Existing host-withdrawal and customer-transaction live cases
-already cover these behaviors, so the live registry was not changed.
-
-**Validation:** Focused extraction, prompt-loader, capability-routing,
-order-reference, and information-orchestrator tests pass (92 tests); typecheck
-and scoped lint pass. No deployment or live AWS evaluation was run per task
-constraints.
-
 ## 2026-09-03 — approved purchase summaries omit payment type
 
 A foreground live sweep on the prod-identical bytes found
@@ -8642,3 +8619,25 @@ prompt manifest or raw gateway payload is projected.
 lint and `npm run typecheck` pass. Full lint still reports the unrelated pre-existing
 unused `_options` parameter in `tests/live-behavior-cli.test.ts`. No deployment or
 live evaluation was run, per task constraints.
+
+## 2026-09-04 — Close declined authentication and preserve recent support context
+
+**Reason:** A typed refusal to provide authentication data could still be rendered
+without explicitly stating that the protected lookup cannot continue, and an empty
+or ambiguous follow-up after a short/misspelled support message needed a bounded
+continuity path without restoring a persisted support anchor.
+
+**Decision:** The typed `decline_authentication` path now clears the authentication
+attempt and protected pending requests while retaining unrelated FAQ work; its
+deterministic response explicitly states that the protected lookup cannot continue
+without authentication and does not request another email or code. Ambiguous
+continuations retain the extractor's single typed clarification question when one
+is available. The extractor receives a compact continuity projection only for an
+anchorless information-support route with recent context; the existing recent
+message projection remains the sole conversational history source, and unrelated
+routes receive no such evidence.
+
+**Validation:** Deterministic authentication-refusal and mailbox typo/empty-follow-up
+twins pass. Prompt relevance/size assertions pass, including absence of continuity
+evidence on an unrelated planning route. Focused tests, typecheck, and scoped lint
+pass. No AWS deployment or live evaluation was run.

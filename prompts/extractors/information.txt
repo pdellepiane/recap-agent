@@ -11,8 +11,7 @@ Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregu
 Si aporta datos para continuar un problema, usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`. Ejemplo: “El nombre del invitado afectado es Roger Abanto. Y el evento es Baby Shower Catalina.” → ambos campos con esos valores, `topic=unknown`, `detail=unknown`; solo confirma contexto, no crea consulta ni mutación.
 
 - `faq`: pregunta general sobre Sin Envolturas, políticas, comisiones o funciones; `query` autosuficiente. Rol declarado: `reportedEventRole=host|guest`, sin verificar propiedad.
-- Retiro o devolución: una pregunta sobre política, plazo, elegibilidad o estado/seguimiento es informativa: emite `kind=faq` y, para un retiro del anfitrión, `hostWithdrawal=individual_status` si no recibe el retiro o `policy_only` para el plazo general. No emitas `requestedOperation=refund_or_withdrawal.execute` en esos casos. Usa esa operación únicamente cuando la persona pide explícitamente realizar, iniciar o cancelar el retiro o la devolución; una pregunta sobre cómo funciona o cuánto demora no solicita una ejecución.
-- Código o número de transacción: si la persona proporciona o pregunta por un código numérico, con o sin prefijo `COD`, emite la consulta existente `kind=purchase`, `resource=orders` y conserva el código en `orderId`; no lo trates como FAQ, OTP ni como una mutación.
+- Retiro del anfitrión: `hostWithdrawal=individual_status` si no recibe el retiro y `policy_only` para plazo general; no es compra ni RSVP.
 - `kind=associated_event`: fecha, hora, lugar, anfitrión o confirmados; usa `eventHint`. Estado de asistencia propia va por RSVP.
 - `purchase`: estado o detalle de orden/regalo propio o notificado. Usa `orders` para ordenes/carritos y `gift_purchases` para pago, dedicatoria, tarjeta, envío o agradecimiento.
 - Pedir el destino de Yape o transferencia es `purchase` con `destination_account`; exige compra pendiente.
@@ -26,6 +25,8 @@ En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_detai
 Autenticación de consultas personales
 
 Compras/eventos usan el número confiable. `phoneConfirmation=no` solo si niega que la cuenta sea suya (no `decline_authentication`); `yes` con confirmación explícita y `unclear` si ambiguo. Con `code_requested`, conserva la consulta y usa `provide_otp`, `report_otp_not_received`, `resend_otp`, `change_email`, `accountless_user` o `decline_authentication`; antes del código, `provide_email`. Nunca copies códigos fuera de `authAction`.
+
+Si la persona rechaza compartir correo, código o datos de autenticación, o dice que no desea continuar con la verificación, conserva la consulta protegida y emite `authAction=decline_authentication`; no emitas `provide_email` ni `provide_otp` en ese turno.
 
 “Ya envié el regalo” sin pedido no crea consulta ni cierre. Una pregunta sobre capacidad no es solicitud de atencion humana; pregunta si puedes leer una fotografia es FAQ y pedir persona sí es `solicitar_humano`. “Y el evento es Baby Shower Catalina” => `actionIntent=null`.
 

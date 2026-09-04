@@ -70,7 +70,7 @@ describe('AgentService first-class information flow', () => {
     expect(runtime.extractRequests).toHaveLength(3);
   });
 
-  it.skip('keeps an established support lane for an ambiguous no-domain follow-up', async () => {
+  it('keeps a recent support topic for an ambiguous no-domain follow-up', async () => {
     const planStore = new InMemoryPlanStore();
     const seed = mergePlan(
       createEmptyPlan({
@@ -94,12 +94,24 @@ describe('AgentService first-class information flow', () => {
       ...extraction([]),
       ambiguity: {
         status: 'ambiguous',
-        clarificationQuestion: '¿Qué información necesitas?',
-        interpretations: ['un documento', 'el estado de una compra'],
+        clarificationQuestion: '¿Confirmas que el buzón del correo registrado está lleno?',
+        interpretations: ['el buzón del correo registrado está lleno', 'el estado de una compra'],
       },
     }]);
     const knowledge = new FakeKnowledgeGateway();
     const gateway = new FakePurchaseGateway();
+    gateway.recentMessages = [
+      conversationMessage({
+        id: 1,
+        direction: 'inbound',
+        body: 'Tengo un problema de capacidad en mi gmail registrado',
+      }),
+      conversationMessage({
+        id: 2,
+        direction: 'outbound',
+        body: 'Entiendo: el buzón de tu correo registrado está lleno.',
+      }),
+    ];
     const service = createService({
       runtime,
       knowledgeGateway: knowledge,
@@ -118,7 +130,63 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(response.outbound.text).toContain('buzón');
+    expect(response.outbound.text).toBe(
+      '¿Confirmas que el buzón del correo registrado está lleno?',
+    );
+    expect(runtime.composeRequests).toHaveLength(0);
+    expect(knowledge.calls).toBe(0);
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+  });
+
+  it('uses contextual clarification for an empty extraction after recent support history', async () => {
+    const runtime = new InformationRuntime([extraction([])]);
+    const knowledge = new FakeKnowledgeGateway();
+    const gateway = new FakePurchaseGateway();
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'fixture',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'mailbox-empty-continuation-plan',
+        channel: 'whatsapp',
+        externalUserId: 'mailbox-empty-continuation',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [],
+          selection_candidates: [],
+          last_completed_request: null,
+        },
+      }),
+    });
+    gateway.recentMessages = [
+      conversationMessage({
+        id: 1,
+        direction: 'outbound',
+        body: '¿Qué dato deseas precisar sobre el buzón de tu correo registrado?',
+      }),
+    ];
+    const service = createService({
+      runtime,
+      knowledgeGateway: knowledge,
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'mailbox-empty-continuation',
+      contactPhone: '+51900000302',
+      text: 'mmm',
+      messageId: 'mailbox-empty-continuation-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('resolver_consultas_informativas');
+    expect(response.trace.route_kind).toBe('contextual_clarification');
+    expect(response.outbound.text).toContain('continuar');
+    expect(response.outbound.text).not.toMatch(/^(?:Hola|¡Hola)/u);
     expect(runtime.composeRequests).toHaveLength(0);
     expect(knowledge.calls).toBe(0);
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
@@ -2117,8 +2185,76 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.takeoverCalls).toBe(0);
     expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.information_state.pending_requests).toEqual([]);
-    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.plan.user_auth).toMatchObject({
+      status: 'none',
+      email: null,
+      token: null,
+      token_expires_at: null,
+      auth_method: null,
+      awaiting_phone_confirmation: false,
+    });
+    expect(response.trace.tools_called).not.toContain('request_user_login_code');
+    expect(response.trace.tools_called).not.toContain('verify_user_login_code');
     expect(response.outbound.text).toContain('No volveré a pedirte el correo ni un código');
+  });
+
+  it('closes only protected work when authentication is declined and preserves an unrelated FAQ', async () => {
+    const protectedRequest = { ...purchaseRequest(null), requestId: 'purchase-1' };
+    const unrelatedFaq = {
+      kind: 'faq' as const,
+      query: '¿Cuánto demora la validación general?',
+      requestId: 'faq-1',
+    };
+    const declinedRequest = { ...protectedRequest, authAction: 'decline_authentication' as const };
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'fixture',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'declined-auth-preserve-faq',
+        channel: 'whatsapp',
+        externalUserId: 'declined-auth-preserve-faq',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        information_state: {
+          resume_node: 'entrevista',
+          pending_requests: [protectedRequest, unrelatedFaq],
+          selection_candidates: [],
+        },
+        user_auth: {
+          status: 'code_requested',
+          email: 'prior@example.com',
+          token: null,
+          token_expires_at: null,
+          auth_method: null,
+          awaiting_phone_confirmation: false,
+        },
+      }),
+    });
+    const runtime = new InformationRuntime([extraction([declinedRequest])]);
+    const gateway = new FakePurchaseGateway();
+    const provider = providerGateway();
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: provider,
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'declined-auth-preserve-faq',
+      text: 'No quiero continuar con la verificación.',
+      messageId: 'declined-auth-preserve-faq-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.information_state.pending_requests).toEqual([unrelatedFaq]);
+    expect(response.plan.user_auth.status).toBe('none');
+    expect(response.outbound.text).toContain('Sin autenticación no puedo continuar');
+    expect(response.outbound.text).not.toContain('correo registrado');
+    expect(gateway.authByPhoneCalls).toBe(0);
+    expect(provider.requestCodeCalls).toBe(0);
   });
 
   it('preserves missing-code recovery for a protected associated-event request', async () => {

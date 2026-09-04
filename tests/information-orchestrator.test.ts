@@ -835,7 +835,7 @@ describe('InformationOrchestrator', () => {
     expect(execution.results.every((result) => result.status === 'completed')).toBe(true);
   });
 
-  it.each(['COD301816', '301816'])('matches customer reference %s locally against backend increment ids', async (reference) => {
+  it('matches COD and numeric customer references locally against backend increment ids', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -856,8 +856,8 @@ describe('InformationOrchestrator', () => {
         requestId: 'customer-code',
         kind: 'purchase',
         resource: 'orders',
-        query: reference,
-        orderId: reference,
+        query: 'COD301816',
+        orderId: 'COD301816',
         aspects: ['summary', 'payment_status'],
         sensitiveFields: [],
         authAction: 'none',

@@ -57,7 +57,6 @@ import {
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import {
   createDynamicExtractionSchema,
-  normalizeRequestedOperation,
   type OpenAiInformationRequest,
   type StructuredExtraction,
 } from './extraction-schemas';
@@ -71,7 +70,10 @@ import {
   resolveDynamicTools,
   type DynamicAgentPolicy,
 } from './dynamic-agent-policy';
-import { buildModelVisibleConversationHistory } from './turn-message-context';
+import {
+  buildModelVisibleConversationHistory,
+  deriveConversationContinuity,
+} from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
@@ -261,19 +263,13 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     extraction: Partial<StructuredExtraction>,
   ): ExtractResult['extraction'] {
     const normalizationIssues: InformationNormalizationIssue[] = [];
-    const extractedInformationRequests = extraction.informationRequests ?? [];
-    const informationRequests = extractedInformationRequests.flatMap((request) =>
-      this.normalizeInformationRequest(request, normalizationIssues),
-    );
     return {
       actionIntent: extraction.actionIntent ?? null,
-      requestedOperation: normalizeRequestedOperation(
-        extraction.requestedOperation,
-        extractedInformationRequests,
-        extraction.supportAct,
-      ),
+      requestedOperation: extraction.requestedOperation ?? null,
       reportedEventRole: extraction.reportedEventRole ?? null,
-      informationRequests,
+      informationRequests: (extraction.informationRequests ?? []).flatMap((request) =>
+        this.normalizeInformationRequest(request, normalizationIssues),
+      ),
       supportAct: extraction.supportAct ?? null,
       normalizationIssues,
       phoneConfirmation: extraction.phoneConfirmation ?? null,
@@ -809,6 +805,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       request.plan.event_type,
       'extractor',
     );
+    const continuityEvidence = this.buildExtractorContinuityEvidence(request);
     return [
       `Estado del historial: ${request.messageContext.historyStatus}.`,
       `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
@@ -819,9 +816,43 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}`,
       `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`,
       suggestedCategories,
+      continuityEvidence,
       'requestedOperation identifica una operación concreta de capability_boundary.txt; no indica disponibilidad. Usa null cuando no se solicita una operación concreta. Decide por el significado completo y el contexto, nunca por palabras aisladas.',
       'Extrae solo cambios nuevos del turno. Si no hay un cambio claro, devuelve un delta vacío: no inventes datos y el runtime conservará el estado persistido.',
     ].filter((part): part is string => part !== null).join('\n');
+  }
+
+  private buildExtractorContinuityEvidence(
+    request: ExtractRequest,
+  ): string | null {
+    const continuity = request.messageContext.continuity ?? deriveConversationContinuity({
+      plan: request.plan,
+      recentMessages: request.messageContext.recentMessages,
+      historyStatus: request.messageContext.historyStatus,
+    });
+
+    // This projection is intentionally limited to the established,
+    // anchorless information-support lane. Authentication and pending
+    // lookups have their own typed continuation rules and must not inherit
+    // this clarification guidance.
+    if (
+      request.plan.current_node !== 'resolver_consultas_informativas' ||
+      request.plan.user_auth.status !== 'none' ||
+      request.plan.information_state.pending_requests.length > 0 ||
+      request.plan.information_state.last_completed_request != null ||
+      (continuity.lane !== 'public_faq' && continuity.lane !== 'unresolved') ||
+      !continuity.hasPriorContext
+    ) {
+      return null;
+    }
+
+    return `Evidencia condicional de continuidad (JSON): ${JSON.stringify({
+      state: continuity.state,
+      lane: continuity.lane,
+      has_prior_context: continuity.hasPriorContext,
+      welcome_allowed: continuity.welcomeAllowed,
+      history_status: continuity.historyStatus,
+    })}. El mensaje actual es un seguimiento de esta ruta: conserva el tema que el historial reciente permita sostener; si no puedes extraer un cambio confiable, devuelve un delta vacío o una ambigüedad con una sola pregunta contextual. No saludes, no reinicies y no inventes una nueva intención o consulta.`;
   }
 
   private buildExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {

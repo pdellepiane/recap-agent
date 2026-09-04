@@ -9,11 +9,9 @@ import type { InformationTaskResult } from '../src/core/information';
 import type { AgentFeatureFlags } from '../src/runtime/config';
 import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
 import {
-  normalizeRequestedOperation,
   openAiInformationRequestSchema,
   type OpenAiInformationRequest,
 } from '../src/runtime/extraction-schemas';
-import type { StructuredExtraction } from '../src/runtime/extraction-schemas';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { findDuplicateStructuredSubtrees } from '../src/audit/request-structure';
@@ -45,58 +43,16 @@ function normalizeInformationRequestsForTest(
 function normalizeInformationExtractionForTest(
   runtime: OpenAiAgentRuntime,
   informationRequests: OpenAiInformationRequest[],
-  overrides: Partial<StructuredExtraction> = {},
 ): ComposeReplyRequest['extraction'] {
   const typedRuntime = runtime as unknown as {
-    normalizeExtraction: (input: Partial<StructuredExtraction>) => ComposeReplyRequest['extraction'];
+    normalizeExtraction: (input: {
+      informationRequests: OpenAiInformationRequest[];
+    }) => ComposeReplyRequest['extraction'];
   };
-  return typedRuntime.normalizeExtraction({ ...overrides, informationRequests });
+  return typedRuntime.normalizeExtraction({ informationRequests });
 }
 
 describe('host withdrawal minimum disclosure and role correction', () => {
-  it('keeps policy/status withdrawal turns informational at the typed boundary', () => {
-    const policyRequest = openAiInformationRequestSchema.parse({
-      kind: 'faq',
-      query: '¿Cuánto demora un retiro de fondos?',
-      eventHint: null,
-      resource: null,
-      orderId: null,
-      amount: null,
-      aspects: [],
-      sensitiveFields: [],
-      authAction: null,
-      hostWithdrawal: 'policy_only',
-    });
-    const runtime = createRuntimeForTokenUsageTests();
-    const normalized = normalizeInformationExtractionForTest(runtime, [policyRequest], {
-      requestedOperation: 'refund_or_withdrawal.execute',
-    });
-
-    expect(normalized.requestedOperation).toBeNull();
-    expect(normalized.informationRequests).toEqual([{
-      kind: 'faq',
-      query: '¿Cuánto demora un retiro de fondos?',
-      hostWithdrawal: 'policy_only',
-      eventHint: null,
-    }]);
-  });
-
-  it('keeps an explicit withdrawal operation when no informational evidence is present', () => {
-    expect(normalizeRequestedOperation(
-      'refund_or_withdrawal.execute',
-      [],
-      null,
-    )).toBe('refund_or_withdrawal.execute');
-  });
-
-  it('uses a typed policy support act as informational evidence', () => {
-    expect(normalizeRequestedOperation(
-      'refund_or_withdrawal.execute',
-      [],
-      { kind: 'ask_policy' },
-    )).toBeNull();
-  });
-
   it('allows a generic role-correction response without removing the normal welcome contract', () => {
     const runtime = createRuntimeForTokenUsageTests() as unknown as {
       resolveOutputSchema: (request: ComposeReplyRequest) => { safeParse: (value: unknown) => { success: boolean } };
@@ -647,6 +603,73 @@ describe('OpenAiAgentRuntime capability context', () => {
     expect(extractionInput).toContain('Mensaje del usuario: No ha llegado nada');
     expect(replyInput).toContain('Envié un código a sandra@example.com.');
     expect(replyInput).toContain('"user_message": "No ha llegado nada"');
+  });
+
+  it('projects continuity guidance only for the anchorless information-support route', () => {
+    const runtime = createRuntimeForTokenUsageTests();
+    const contextualRequest = createComposeRequest('resolver_consultas_informativas');
+    contextualRequest.messageContext = {
+      historyStatus: 'available',
+      contextSource: 'agent_api',
+      retrievedMessageCount: 1,
+      excludedCurrentMessageCount: 0,
+      recentMessages: [{
+        id: 1,
+        direction: 'outbound',
+        source: 'agent',
+        body: '¿Qué dato deseas precisar sobre el buzón?',
+        status: 'sent',
+        sentAt: null,
+        createdAt: null,
+      }],
+      entryMessage: null,
+      continuity: {
+        state: 'continuing',
+        hasPersistedPlan: true,
+        hasRecentMessages: true,
+        hasPriorOutbound: true,
+        historyStatus: 'available',
+        lane: 'unresolved',
+        hasPriorContext: true,
+        welcomeAllowed: false,
+        hasPendingInformation: false,
+        hasCompletedInformation: false,
+        recentInboundCount: 0,
+        recentOutboundCount: 1,
+      },
+    };
+    const unrelatedRequest = createComposeRequest('entrevista');
+    unrelatedRequest.messageContext = contextualRequest.messageContext;
+    const typedRuntime = runtime as unknown as {
+      composeExtractorInput: (
+        extractionRequest: ExtractRequest,
+        policy: ReturnType<typeof deriveDynamicAgentPolicy>,
+      ) => string;
+    };
+
+    const contextualInput = typedRuntime.composeExtractorInput(
+      {
+        userMessage: 'Esta lkeno',
+        plan: contextualRequest.plan,
+        messageContext: contextualRequest.messageContext,
+      },
+      deriveDynamicAgentPolicy(contextualRequest.plan),
+    );
+    const unrelatedInput = typedRuntime.composeExtractorInput(
+      {
+        userMessage: 'Necesito continuar',
+        plan: unrelatedRequest.plan,
+        messageContext: unrelatedRequest.messageContext,
+      },
+      deriveDynamicAgentPolicy(unrelatedRequest.plan),
+    );
+
+    expect(contextualInput).toContain('Evidencia condicional de continuidad');
+    expect(contextualInput).toContain('no reinicies');
+    expect(unrelatedInput).not.toContain('Evidencia condicional de continuidad');
+    expect(unrelatedInput).not.toContain('no reinicies');
+    expect(Buffer.byteLength(contextualInput, 'utf8')).toBeLessThan(5_000);
+    expect(Buffer.byteLength(unrelatedInput, 'utf8')).toBeLessThan(5_000);
   });
 
   it('includes both purchase lookup paths when purchase information is enabled', () => {

@@ -131,23 +131,4 @@ describe('capability boundary routing', () => {
     expect(response.outbound.text).not.toContain('No puedo realizar esa gestión');
     expect(runtime.composeRequests).toHaveLength(0);
   });
-
-  it('routes typed host-withdrawal policy evidence through the FAQ flow', async () => {
-    const runtime = new ScriptedRuntime(extraction({
-      requestedOperation: null,
-      informationRequests: [{
-        kind: 'faq',
-        query: '¿Cuánto demora un retiro de fondos?',
-        hostWithdrawal: 'policy_only',
-      }],
-    }));
-
-    const response = await service(runtime).handleTurn(inbound('¿Cuánto demora un retiro de fondos?'));
-
-    expect(response.trace.prompt_bundle_id).toBe(
-      'deterministic:host_withdrawal_policy_and_support',
-    );
-    expect(response.trace.capability_decision).toBeNull();
-    expect(runtime.composeRequests).toHaveLength(0);
-  });
 });

@@ -3273,7 +3273,20 @@ export class AgentService {
 
   private contextualClarificationMessage(
     continuity: NonNullable<TurnMessageContext['continuity']>,
+    extraction: ExtractionResult,
   ): string {
+    // The extractor has already resolved any available recent-message
+    // context into a typed clarification question. Keep that question when
+    // present so a short or misspelled continuation stays on the established
+    // topic without deriving a topic from text in deterministic code.
+    const extractedQuestion = extraction.ambiguity?.clarificationQuestion?.trim();
+    if (
+      extraction.ambiguity?.status === 'ambiguous' &&
+      extractedQuestion
+    ) {
+      return extractedQuestion;
+    }
+
     switch (continuity.lane) {
       case 'purchase_support':
         return 'Para continuar con tu consulta de compra, ¿quieres revisar el estado registrado o necesitas precisar otro dato?';
@@ -3326,7 +3339,7 @@ export class AgentService {
     return {
       plan,
       outbound: this.renderOutbound(
-        { text: this.contextualClarificationMessage(continuity) },
+        { text: this.contextualClarificationMessage(continuity, args.extraction) },
         [],
         args.inbound.channel,
         plan.conversation_id,
@@ -4669,7 +4682,7 @@ export class AgentService {
       args.tokenUsage.extraction,
     );
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const message = 'Entiendo. No volveré a pedirte el correo ni un código. Cerré esa consulta; si después deseas retomarla, puedes escribirnos por aquí.';
+    const message = 'Entiendo. Sin autenticación no puedo continuar con esa consulta protegida. No volveré a pedirte el correo ni un código. Cerré esa consulta; si después deseas retomarla, puedes escribirnos por aquí.';
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
