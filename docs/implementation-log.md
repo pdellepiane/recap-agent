@@ -19,9 +19,10 @@ introduced. Existing host-withdrawal and customer-transaction live cases
 already cover these behaviors, so the live registry was not changed.
 
 **Validation:** Focused extraction, prompt-loader, capability-routing,
-order-reference, and information-orchestrator tests pass (92 tests); typecheck
-and scoped lint pass. No deployment or live AWS evaluation was run per task
-constraints.
+order-reference, and information-orchestrator tests pass. The two new semantic
+rules were compacted into the existing information fragment; prompt size gates
+pass without increasing their limits. Typecheck and scoped lint pass. A new dev
+deployment and focused live evaluation remain required.
 
 ## 2026-09-03 — approved purchase summaries omit payment type
 

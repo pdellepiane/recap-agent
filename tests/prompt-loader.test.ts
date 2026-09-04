@@ -298,18 +298,18 @@ describe('PromptLoader', () => {
       '`purchase`: estado o detalle de orden/regalo propio o notificado',
     );
     expect(extractorBundle.instructions).toContain(
-      'No emitas `requestedOperation=refund_or_withdrawal.execute` en esos casos',
+      'Retiro: política/plazo/estado → `faq`',
     );
     expect(extractorBundle.instructions).toContain(
-      'Código o número de transacción',
+      'Código de transacción `COD301816`/`301816`',
     );
     expect(extractorBundle.instructions).toContain(
-      'Sin numero usa',
+      'Sin número usa',
     );
     expect(extractorBundle.instructions).toContain('orderId=null');
     expect(extractorBundle.instructions).toContain('COD301816');
     expect(extractorBundle.instructions).toContain(
-      'aspects=[summary, payment_status, shipping]',
+      'aspects=[summary,payment_status,shipping]',
     );
     expect(extractorBundle.instructions).toContain('no reemplaces nombres de proveedores desconocidos');
     expect(extractorBundle.instructions).toContain('no quiero quedarme con X');
@@ -331,10 +331,10 @@ describe('PromptLoader', () => {
     });
 
     expect(planningBundle.instructions).not.toContain(
-      'No emitas `requestedOperation=refund_or_withdrawal.execute` en esos casos',
+      'Retiro: política/plazo/estado → `faq`',
     );
     expect(planningBundle.instructions).not.toContain(
-      'Código o número de transacción',
+      'Código de transacción `COD301816`/`301816`',
     );
   });
 
