@@ -8515,3 +8515,24 @@ media IDs, and secrets are not projected.
 media, disclosure, and live-coverage registry checks. Development deployment and the
 mandatory live Lambda evaluation are still required before promotion; production has
 not been changed by this commit.
+
+## 2026-09-04 — Align fixture runtimes, timestamp projections, and regression coverage
+
+**Reason:** Development evaluations must use the same capability boundary as the
+fixture gateway, and every server-provided event/payment timestamp must remain
+authoritative without hidden timezone conversion. The new behavior also needs
+separate coverage entries so fixture OTP behavior and typed support acknowledgements
+cannot silently regress.
+
+**Decision:** Added a manifest intersection at runtime composition and an isolated
+OpenAI runtime clone for each fixture, so extraction, tools, information routing, and
+reply projection all share the exact gateway-aware manifest. Added local fixture OTP
+outcomes and attached the OTP live case to its fixture. Event, RSVP, order, cart, gift,
+payment, and attendance timestamps are validated and returned byte-for-byte (after
+trimming) without `Date` construction or offset arithmetic. Added sanitized continuity
+and capability fields to turn/performance traces and registered the new regressions.
+
+**Validation:** Typecheck, lint, the full local suite (104 files, 767 passed, 6
+skipped), prompt audit, capability tests, timestamp tests, and fixture tests pass.
+Development Lambda deployment and the mandatory live suite remain the release gate;
+production is unchanged until that gate passes.
