@@ -231,6 +231,11 @@ type TurnTokenUsage = {
   };
 };
 
+type CapabilitySafeReadOutcome = {
+  results: InformationTaskResult[];
+  summaries: InformationExecutionSummary[];
+};
+
 const MAX_BROADEN_SEARCH_PAGES = 5;
 const TARGET_BROADEN_UNSEEN_RESULTS = 5;
 const MAX_STARTER_NEEDS = 5;
@@ -3423,7 +3428,7 @@ export class AgentService {
       };
     }
 
-    const safeReadSummaries = await this.performCapabilitySafeRead({
+    const safeRead = await this.performCapabilitySafeRead({
       inbound: args.inbound,
       plan: args.plan,
       extraction: args.extraction,
@@ -3456,11 +3461,16 @@ export class AgentService {
     await this.dependencies.planStore.save({ plan, reason: 'unsupported_operation_detected' });
     args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const text = this.capabilityBoundaryRenderer.render(decision, {
+    const boundaryText = this.capabilityBoundaryRenderer.render(decision, {
       humanTakeoverRequested: alreadyRequested || takeoverSucceeded,
       humanTakeoverSucceeded: takeoverSucceeded,
       humanTakeoverFailed: !takeoverSucceeded && !alreadyRequested,
     }) ?? 'No puedo realizar esa gestión desde aquí.';
+    const safeReadContext = this.renderCapabilitySafeReadContext({
+      extraction: args.extraction,
+      results: safeRead.results,
+    });
+    const text = safeReadContext ? `${safeReadContext} ${boundaryText}` : boundaryText;
     return {
       plan,
       outbound: this.renderOutbound({ text }, [], args.inbound.channel, plan.conversation_id, plan),
@@ -3495,9 +3505,46 @@ export class AgentService {
         capabilityDecision: decision,
         humanTakeoverAttempted: !alreadyRequested && decision.humanTakeoverAvailable,
         humanTakeoverSucceeded: takeoverSucceeded,
-        informationExecution: safeReadSummaries,
+        informationExecution: safeRead.summaries,
       }),
     };
+  }
+
+  /**
+   * Render only the canonical status that directly complements an unsupported
+   * proof-validation request. This evidence is conditional on the current
+   * typed outcome and is never added to shared model instructions.
+   */
+  private renderCapabilitySafeReadContext(args: {
+    extraction: ExtractionResult;
+    results: InformationTaskResult[];
+  }): string | null {
+    if (args.extraction.requestedOperation !== 'payment_proof.verify') return null;
+    const completed = args.results.find(
+      (result): result is Extract<InformationTaskResult, { kind: 'purchase'; status: 'completed' }> =>
+        result.kind === 'purchase' && result.status === 'completed',
+    );
+    if (!completed || completed.needsSelection || completed.purchases.length !== 1) return null;
+    const purchase = completed.purchases[0];
+    if (!purchase || purchase.paymentStatus?.trim().toLocaleLowerCase('en') !== 'pending') {
+      return null;
+    }
+
+    const reportedPurchase = args.extraction.informationRequests.find(
+      (request): request is Extract<ExtractedInformationRequest, { kind: 'purchase' }> =>
+        request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
+    );
+    const reportedAmount = reportedPurchase?.amount;
+    const report = reportedAmount === null || reportedAmount === undefined
+      ? 'Tomo nota de que indicas haber enviado el comprobante.'
+      : `Tomo nota de que indicas haber enviado ${reportedAmount}.`;
+    const event = purchase.eventName?.trim()
+      ? `El pedido de ${purchase.eventName.trim()} sigue pendiente de validación.`
+      : 'El pedido consultado sigue pendiente de validación.';
+    const validation = purchase.paymentValidationExpectation?.maxBusinessHours === 72
+      ? 'La validación puede tardar hasta 72 horas hábiles.'
+      : null;
+    return [report, event, validation].filter((part): part is string => part !== null).join(' ');
   }
 
   /**
@@ -3510,16 +3557,16 @@ export class AgentService {
     plan: PlanSnapshot;
     extraction: ExtractionResult;
     toolUsage: ToolUsage;
-  }): Promise<InformationExecutionSummary[]> {
+  }): Promise<CapabilitySafeReadOutcome> {
     const operation = args.extraction.requestedOperation;
     if (
       operation !== 'confirmation_document.send' &&
       operation !== 'payment_proof.verify'
     ) {
-      return [];
+      return { results: [], summaries: [] };
     }
     const trustedPhone = splitInternationalPhone(args.inbound.contactPhone);
-    if (!trustedPhone) return [];
+    if (!trustedPhone) return { results: [], summaries: [] };
 
     const extractedPurchase = args.extraction.informationRequests.find(
       (request) => request.kind === 'purchase',
@@ -3537,6 +3584,10 @@ export class AgentService {
           aspects: ['payment_status'],
           sensitiveFields: [],
           authAction: 'none',
+          // On a proof-validation turn the newly extracted amount describes
+          // what the user reports sending, not the order total used to select
+          // a purchase. Only a previously persisted selector remains valid.
+          amount: persistedPurchase?.amount ?? null,
         }
       : {
           requestId: 'capability-status-read',
@@ -3571,7 +3622,7 @@ export class AgentService {
       trustedPhone,
     });
     this.recordInformationExecutionTrace(args.toolUsage, execution.summaries);
-    return execution.summaries;
+    return execution;
   }
 
   private async handleMediaOnlyMessage(args: {

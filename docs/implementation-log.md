@@ -8559,3 +8559,13 @@ full local checks pass. Development live cases must be rerun after deployment; t
 pending-balance evaluator previously failed before model execution and the RSVP
 case failed only because the typed interpretation was omitted. Production remains
 unchanged until the development artifact passes the mandatory live suite.
+
+The first post-deployment focused run confirmed the RSVP case passes. Luis then
+completed both Lambda turns without the former trace error: the first pending-status
+answer passed its semantic judge at 0.97, while the proof turn failed because the
+canonical safe read was recorded only in the trace. The runtime now retains that
+already-parsed result long enough to render the current pending state and its typed
+72-business-hour expectation before the deterministic image limitation. The amount
+reported on the proof turn is treated only as user-reported evidence and is not reused
+as an order-total selector. This remains a conditional proof-validation projection;
+no shared prompt rule or raw endpoint field was added.

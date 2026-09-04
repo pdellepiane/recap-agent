@@ -807,6 +807,70 @@ describe('AgentService first-class information flow', () => {
     );
   });
 
+  it('adds only canonical pending status to an unsupported proof-validation reply', async () => {
+    const request = purchaseRequest(null);
+    request.resource = 'orders';
+    request.amount = 13.76;
+    const runtime = new InformationRuntime([{
+      ...extraction([request]),
+      requestedOperation: 'payment_proof.verify',
+    }]);
+    const gateway = new FakePurchaseGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      purchases: [{
+        ...purchase('ORD-000880'),
+        paymentStatus: 'pending',
+        grandTotal: 227.76,
+        paymentMethod: 'Yape_o_Plin',
+        eventName: 'Alejandra',
+        currency: null,
+        paymentValidationExpectation: {
+          maxBusinessHours: 72,
+          appliesTo: 'indexed_validation_methods',
+        },
+      }],
+    };
+    vi.spyOn(gateway, 'requestHumanTakeover')
+      .mockResolvedValue({ status: 'success', message: null });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'proof-validation-safe-read',
+      contactPhone: '+51973296571',
+      text: 'Ya envié los 13.76 que faltaban, tengo el voucher.',
+      messageId: 'proof-validation-safe-read-1',
+      receivedAt: new Date().toISOString(),
+      media: [{
+        kind: 'image',
+        providerMediaId: 'fixture-image',
+        mimeType: 'image/jpeg',
+        sha256: null,
+        fileName: null,
+      }],
+    });
+
+    expect(response.outbound.text).toContain('indicas haber enviado 13.76');
+    expect(response.outbound.text).toContain('El pedido de Alejandra sigue pendiente');
+    expect(response.outbound.text).toContain('hasta 72 horas hábiles');
+    expect(response.outbound.text).toContain('No puedo validar un comprobante');
+    expect(response.outbound.text).not.toMatch(/S\/|PEN|soles|not_eligible/u);
+    expect(response.trace.information_execution_summary).toEqual([
+      expect.objectContaining({
+        requestId: 'capability-status-read',
+        status: 'completed',
+        resource: 'orders',
+      }),
+    ]);
+  });
+
   it('projects a trusted cart recovery path separately from general payment policy', async () => {
     const request = purchaseRequest(null);
     request.resource = 'orders';
