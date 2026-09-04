@@ -40,7 +40,13 @@ expectations:
   - id: support-details-do-not-reset-or-rename
     type: text_semantic
     rubric: >-
-      Roger Abanto is the affected invited purchaser, not the WhatsApp user. Baby Shower Catalina is the event connected to the same card-payment support thread. The final answer must be concise, natural, and entirely in Spanish; acknowledge the newly supplied event detail and continue only with the next necessary support step. It must not greet or address the channel user as Roger, restart with a generic welcome, switch to provider planning, repeat the full card-payment explanation, or claim that an account or purchase was verified when no such lookup occurred.
+      Baby Shower Catalina is the event supplied for the same card-payment support thread.
+      The final answer must be a concise, natural, entirely Spanish acknowledgment that
+      preserves this support context and does not restart the conversation. It must use the
+      event name exactly as supplied, must not greet or address the channel user as Roger,
+      switch to provider planning, repeat the full card-payment explanation, perform a lookup,
+      or claim that an account or purchase was verified. The previous Roger Abanto detail need
+      not be repeated when the final turn supplies only the event reference.
     minScore: 0.9
     requireJudge: true
     turnIndex: 2

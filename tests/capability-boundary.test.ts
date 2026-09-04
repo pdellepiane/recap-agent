@@ -90,6 +90,20 @@ describe('runtime capability boundary', () => {
       candidateOperations: ['purchase.orders.read', 'confirmation_document.send'],
       questionKey: 'status_or_document',
     });
+    const allSupportedAmbiguityManifest = buildRuntimeCapabilityManifest({
+      configured: true,
+      allowCustomerWrites: true,
+      featureFlags: { rsvp: true },
+    });
+    expect(resolveCapabilityDecision({
+      requestedOperation: null,
+      manifest: allSupportedAmbiguityManifest,
+      ambiguity: {
+        status: 'ambiguous',
+        candidateOperations: ['rsvp.state.read', 'rsvp.response.write'],
+        questionKey: 'type_missing',
+      },
+    })).toEqual({ status: 'not_applicable' });
     expect(resolveCapabilityDecision({ requestedOperation: 'confirmation_document.send', manifest })).toEqual({
       status: 'unsupported',
       operation: 'confirmation_document.send',

@@ -17,30 +17,54 @@ inputs:
     channel: whatsapp
     contactPhone: '+51900000301'
 expectations:
-  - id: status-lookup-not-welcome
-    type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [request_user_login_code, verify_user_login_code, auth_by_phone]
+  - id: ambiguous-request-clarifies-before-lookup
+    type: trace_field_equals
+    path: capability_decision
+    expected: clarify
     turnIndex: 0
     severity: hard
-  - id: answer-current-payment
+  - id: ambiguous-request-does-not-choose-an-operation
+    type: trace_field_equals
+    path: requested_operation
+    expected: null
+    turnIndex: 0
+    severity: hard
+  - id: ambiguous-request-no-external-call
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone,
+      request_user_login_code, verify_user_login_code, auth_by_phone,
+      request_human_takeover]
+    turnIndex: 0
+    severity: hard
+  - id: asks-one-status-or-document-question
     type: text_semantic
     rubric: >-
-      Respond in concise Spanish to the requested payment confirmation for ANDREA & RODRIGO.
-      The current order is approved. Do not replace the answer with a welcome or ask what the user needs.
-      Do not select the old Micaela & Gonzalo purchase, assume currency, expose internal IDs,
-      or claim a document was sent or an uploaded voucher is a merchant-issued confirmation.
-      It is acceptable to explain that document issuance requires human assistance.
+      Ask exactly one concise clarification in Spanish distinguishing a request to consult
+      the recorded payment status from a request to have a payment confirmation document sent.
+      Do not look up either purchase, start authentication, greet generically, select the old
+      Micaela & Gonzalo purchase, assume currency, expose internal IDs, or claim that a document
+      was sent. The clarification should not assert that the current order is approved before
+      the user identifies the desired operation.
     turnIndex: 0
     requireJudge: true
     minScore: 0.9
     severity: hard
-  - id: repeated-request-does-not-restart
+  - id: clarified-request-looks-up-current-order
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [request_user_login_code, verify_user_login_code, auth_by_phone,
+      request_human_takeover]
+    turnIndex: 1
+    severity: hard
+  - id: answer-current-payment
     type: text_semantic
     rubric: >-
-      Continue the same payment-confirmation support request in Spanish without a generic welcome,
-      an email OTP, a historical purchase, invented currency, or a claim that a document was sent.
-      If a human handoff has already been requested, a suppressed response is acceptable; do not initiate it again.
+      Respond in concise Spanish to the clarified payment-status request for the current
+      ANDREA & RODRIGO purchase. State that the current order is approved and report its
+      recorded amount without inventing a currency. Do not select the old Micaela & Gonzalo
+      purchase, expose internal IDs, claim a document was sent, inspect an uploaded voucher,
+      or start an OTP flow. Continue the conversation rather than sending a generic welcome.
     turnIndex: 1
     requireJudge: true
     minScore: 0.9

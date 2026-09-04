@@ -393,8 +393,26 @@ describe('AgentService first-class information flow', () => {
     const planStore = new InMemoryPlanStore();
     const runtime = new InformationRuntime([
       extraction([{ kind: 'faq', query: 'Problema de tarjeta de un invitado.' }]),
-      { ...extraction([]), contactName: 'Roger Abanto' },
-      { ...extraction([]), eventType: 'baby_shower' },
+      {
+        ...extraction([]),
+        supportAct: {
+          kind: 'provide_detail',
+          topic: 'unknown',
+          detail: 'unknown',
+          personReference: 'Roger Abanto',
+          eventReference: null,
+        },
+      },
+      {
+        ...extraction([]),
+        supportAct: {
+          kind: 'provide_detail',
+          topic: 'unknown',
+          detail: 'unknown',
+          personReference: null,
+          eventReference: 'Baby Shower Catalina',
+        },
+      },
     ]);
     const service = createService({
       runtime,
@@ -432,8 +450,12 @@ describe('AgentService first-class information flow', () => {
 
     expect(namedGuest.plan.current_node).toBe('resolver_consultas_informativas');
     expect(namedGuest.plan.contact_name).toBeNull();
+    expect(namedGuest.outbound.text).toContain('Roger Abanto');
+    expect(namedGuest.outbound.text).toContain('Mantengo esta consulta');
     expect(namedEvent.plan.current_node).toBe('resolver_consultas_informativas');
     expect(namedEvent.plan.contact_name).toBeNull();
+    expect(namedEvent.outbound.text).toContain('Baby Shower Catalina');
+    expect(namedEvent.outbound.text).toContain('Mantengo esta consulta');
     expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
   });
 
