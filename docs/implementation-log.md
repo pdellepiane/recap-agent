@@ -8484,3 +8484,34 @@ deferred mailbox anchor, ambiguous `Esta lkeno` continuation, no lookup/authenti
 and no reply-model call. `npm run typecheck` and the focused decision-flow,
 support-continuity, and information-flow tests pass. No deployment or live evaluation
 was run in this change.
+
+## 2026-09-04 — Replace support-anchor continuity with capability-bounded runtime
+
+**Reason:** The approved continuity plan identified two separate failure classes: a
+valid purchase request discarded during normalization (Carina), and an ambiguous short
+continuation treated as a new conversation (María Isabel). The runtime also needed a
+single source of truth for what it can execute, so the model cannot claim to send
+documents, inspect images, or validate proofs that have no enabled operation.
+
+**Decision:** Commit `cecd8ac4` removes the persisted `support_anchor` workaround and
+derives continuity from the loaded plan, bounded recent history, and history status.
+Empty or ambiguous extraction now preserves the active context and returns one
+contextual clarification; the generic welcome is legal only for a genuinely new
+conversation. A v1 runtime capability manifest is built once in the Lambda composition
+root and shared by extraction, routing, tools, and reply projection. Unsupported
+operations use deterministic Spanish responses and at most one idempotent human
+takeover. Text-plus-image messages retain typed media metadata only; image content and
+proof validation are never claimed. The extractor now emits a requested operation but
+never decides availability. COD-prefixed transaction references normalize to their
+numeric order identifier, while null currency remains unknown.
+
+The shared server-timestamp validator trims and validates upstream values without
+instantiating `Date` or applying a timezone offset. Parsed Agent API and FAQ results
+remain the only model-visible evidence; raw payloads, identifiers, gateway messages,
+media IDs, and secrets are not projected.
+
+**Validation:** `npm test -- --run --reporter=dot` passes 764 tests across 104 files
+(6 skipped), including continuity, capability, prompt-relevance, timestamp, RSVP,
+media, disclosure, and live-coverage registry checks. Development deployment and the
+mandatory live Lambda evaluation are still required before promotion; production has
+not been changed by this commit.
