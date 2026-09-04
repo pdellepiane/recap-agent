@@ -9,9 +9,11 @@ import type { InformationTaskResult } from '../src/core/information';
 import type { AgentFeatureFlags } from '../src/runtime/config';
 import { deriveDynamicAgentPolicy } from '../src/runtime/dynamic-agent-policy';
 import {
+  normalizeRequestedOperation,
   openAiInformationRequestSchema,
   type OpenAiInformationRequest,
 } from '../src/runtime/extraction-schemas';
+import type { StructuredExtraction } from '../src/runtime/extraction-schemas';
 import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
 import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import { findDuplicateStructuredSubtrees } from '../src/audit/request-structure';
@@ -43,16 +45,58 @@ function normalizeInformationRequestsForTest(
 function normalizeInformationExtractionForTest(
   runtime: OpenAiAgentRuntime,
   informationRequests: OpenAiInformationRequest[],
+  overrides: Partial<StructuredExtraction> = {},
 ): ComposeReplyRequest['extraction'] {
   const typedRuntime = runtime as unknown as {
-    normalizeExtraction: (input: {
-      informationRequests: OpenAiInformationRequest[];
-    }) => ComposeReplyRequest['extraction'];
+    normalizeExtraction: (input: Partial<StructuredExtraction>) => ComposeReplyRequest['extraction'];
   };
-  return typedRuntime.normalizeExtraction({ informationRequests });
+  return typedRuntime.normalizeExtraction({ ...overrides, informationRequests });
 }
 
 describe('host withdrawal minimum disclosure and role correction', () => {
+  it('keeps policy/status withdrawal turns informational at the typed boundary', () => {
+    const policyRequest = openAiInformationRequestSchema.parse({
+      kind: 'faq',
+      query: '¿Cuánto demora un retiro de fondos?',
+      eventHint: null,
+      resource: null,
+      orderId: null,
+      amount: null,
+      aspects: [],
+      sensitiveFields: [],
+      authAction: null,
+      hostWithdrawal: 'policy_only',
+    });
+    const runtime = createRuntimeForTokenUsageTests();
+    const normalized = normalizeInformationExtractionForTest(runtime, [policyRequest], {
+      requestedOperation: 'refund_or_withdrawal.execute',
+    });
+
+    expect(normalized.requestedOperation).toBeNull();
+    expect(normalized.informationRequests).toEqual([{
+      kind: 'faq',
+      query: '¿Cuánto demora un retiro de fondos?',
+      hostWithdrawal: 'policy_only',
+      eventHint: null,
+    }]);
+  });
+
+  it('keeps an explicit withdrawal operation when no informational evidence is present', () => {
+    expect(normalizeRequestedOperation(
+      'refund_or_withdrawal.execute',
+      [],
+      null,
+    )).toBe('refund_or_withdrawal.execute');
+  });
+
+  it('uses a typed policy support act as informational evidence', () => {
+    expect(normalizeRequestedOperation(
+      'refund_or_withdrawal.execute',
+      [],
+      { kind: 'ask_policy' },
+    )).toBeNull();
+  });
+
   it('allows a generic role-correction response without removing the normal welcome contract', () => {
     const runtime = createRuntimeForTokenUsageTests() as unknown as {
       resolveOutputSchema: (request: ComposeReplyRequest) => { safeParse: (value: unknown) => { success: boolean } };

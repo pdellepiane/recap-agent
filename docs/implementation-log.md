@@ -1,5 +1,28 @@
 # Implementation Log
 
+## 2026-09-04 — keep withdrawal questions informational and transaction codes on purchase reads
+
+**Reason:** Withdrawal/refund policy, timing, eligibility, and status questions
+could be accompanied by the unsupported `refund_or_withdrawal.execute`
+operation, allowing the capability boundary to preempt the existing FAQ flow.
+Transaction references also need to remain purchase reads whether the customer
+includes the `COD` prefix or sends only the numeric value.
+
+**Decision:** Added a bounded information-extractor rule that reserves the
+withdrawal operation for explicit execution requests and classifies policy/
+status questions as FAQ evidence. Typed extraction normalization now clears a
+conflicting withdrawal operation when a host-withdrawal FAQ or `ask_policy`
+support act is present, while preserving explicit operations without that
+informational evidence. The existing order-reference normalizer remains the
+single path for `COD` and numeric references; no raw payload or new route was
+introduced. Existing host-withdrawal and customer-transaction live cases
+already cover these behaviors, so the live registry was not changed.
+
+**Validation:** Focused extraction, prompt-loader, capability-routing,
+order-reference, and information-orchestrator tests pass (92 tests); typecheck
+and scoped lint pass. No deployment or live AWS evaluation was run per task
+constraints.
+
 ## 2026-09-03 — approved purchase summaries omit payment type
 
 A foreground live sweep on the prod-identical bytes found

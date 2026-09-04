@@ -57,6 +57,7 @@ import {
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
 import {
   createDynamicExtractionSchema,
+  normalizeRequestedOperation,
   type OpenAiInformationRequest,
   type StructuredExtraction,
 } from './extraction-schemas';
@@ -260,13 +261,19 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     extraction: Partial<StructuredExtraction>,
   ): ExtractResult['extraction'] {
     const normalizationIssues: InformationNormalizationIssue[] = [];
+    const extractedInformationRequests = extraction.informationRequests ?? [];
+    const informationRequests = extractedInformationRequests.flatMap((request) =>
+      this.normalizeInformationRequest(request, normalizationIssues),
+    );
     return {
       actionIntent: extraction.actionIntent ?? null,
-      requestedOperation: extraction.requestedOperation ?? null,
-      reportedEventRole: extraction.reportedEventRole ?? null,
-      informationRequests: (extraction.informationRequests ?? []).flatMap((request) =>
-        this.normalizeInformationRequest(request, normalizationIssues),
+      requestedOperation: normalizeRequestedOperation(
+        extraction.requestedOperation,
+        extractedInformationRequests,
+        extraction.supportAct,
       ),
+      reportedEventRole: extraction.reportedEventRole ?? null,
+      informationRequests,
       supportAct: extraction.supportAct ?? null,
       normalizationIssues,
       phoneConfirmation: extraction.phoneConfirmation ?? null,
