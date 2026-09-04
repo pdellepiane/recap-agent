@@ -8581,3 +8581,18 @@ exposing raw payment data.
 **Validation:** The focused reply-projection suite passes all 34 tests, including
 positive pending-balance evidence and an approved-purchase absence regression;
 typecheck and lint pass.
+
+## 2026-09-04 — Make live behavior CLI help side-effect free
+
+**Reason:** `npm run eval:behavior-live -- --help` was ignored, so a help request
+could start the complete live Lambda/OpenAI evaluation suite and duplicate traffic.
+
+**Decision:** Recognize `--help` and `-h` before API-key validation or runner loading,
+print concise CLI usage, and return. Load the evaluation runner dynamically only for
+actual evaluation requests. Add a unit regression proving neither runner loading nor
+`runEvaluation` invocation occurs for help.
+
+**Validation:** The focused CLI tests, scoped lint, and
+`npm run eval:behavior-live -- --help` smoke test pass. Repository typecheck is
+blocked by an unrelated pre-existing `src/runtime/agent-service.ts` error in
+concurrent work.

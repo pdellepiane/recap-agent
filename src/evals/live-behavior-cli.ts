@@ -4,11 +4,39 @@ import path from 'node:path';
 
 import dotenv from 'dotenv';
 
-import { runEvaluation } from './runner';
+import type { EvalRunnerOptions } from './runner';
 
 dotenv.config({ path: ['.env.development', '.env.local', '.env'], quiet: true });
 
-export function parseCaseIds(argv: string[]): string[] | undefined {
+type EvaluationRunner = (
+  options: EvalRunnerOptions,
+) => Promise<{
+  runId: string;
+  report: {
+    totalCases: number;
+    passedCases: number;
+    failedCases: number;
+    erroredCases: number;
+    skippedCases: number;
+  };
+  runDir: string;
+}>;
+
+type EvaluationRunnerLoader = () => Promise<EvaluationRunner>;
+
+const USAGE = `Usage: npm run eval:behavior-live [options]
+
+Options:
+  --case <id>   Run a specific regression case (repeatable).
+  -h, --help    Show this help message.
+`;
+
+async function loadEvaluationRunner(): Promise<EvaluationRunner> {
+  const runner = await import('./runner');
+  return runner.runEvaluation;
+}
+
+export function parseCaseIds(argv: readonly string[]): string[] | undefined {
   const ids: string[] = [];
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i];
@@ -30,14 +58,27 @@ export function parseCaseIds(argv: string[]): string[] | undefined {
   return ids.length > 0 ? ids : undefined;
 }
 
-async function main(): Promise<void> {
+export function isHelpRequested(argv: readonly string[]): boolean {
+  return argv.includes('--help') || argv.includes('-h');
+}
+
+export async function main(
+  argv: readonly string[] = process.argv.slice(2),
+  loadRunner: EvaluationRunnerLoader = loadEvaluationRunner,
+): Promise<void> {
+  if (isHelpRequested(argv)) {
+    process.stdout.write(USAGE);
+    return;
+  }
+
   if (!process.env.OPENAI_API_KEY) {
     throw new Error(
       'OPENAI_API_KEY is required because live behavior regressions use mandatory semantic judges.',
     );
   }
 
-  const caseIds = parseCaseIds(process.argv.slice(2));
+  const runEvaluation = await loadRunner();
+  const caseIds = parseCaseIds(argv);
 
   const result = await runEvaluation({
     evalsDir: path.resolve(process.cwd(), 'evals'),
