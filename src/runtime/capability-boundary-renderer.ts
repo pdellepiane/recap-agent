@@ -4,6 +4,8 @@ export type CapabilityBoundaryMessageKey =
   | 'unsupported_human_once'
   | 'unsupported_human_failed'
   | 'unsupported_human_repeat'
+  | 'unsupported_operation_once'
+  | 'unsupported_operation_failed'
   | 'status_or_document'
   | 'status_or_proof_review'
   | 'type_missing'
@@ -36,6 +38,8 @@ export function parseCapabilityBoundaryMessages(
       (key === 'unsupported_human_once' ||
         key === 'unsupported_human_failed' ||
         key === 'unsupported_human_repeat' ||
+        key === 'unsupported_operation_once' ||
+        key === 'unsupported_operation_failed' ||
         key === 'status_or_document' ||
         key === 'status_or_proof_review' ||
         key === 'type_missing' ||
@@ -45,13 +49,15 @@ export function parseCapabilityBoundaryMessages(
       entries.set(key, value);
     }
   }
-  if (entries.size !== 8) {
+  if (entries.size !== 10) {
     throw new Error('Capability boundary prompt is incomplete.');
   }
   return {
     unsupported_human_once: entries.get('unsupported_human_once') as string,
     unsupported_human_failed: entries.get('unsupported_human_failed') as string,
     unsupported_human_repeat: entries.get('unsupported_human_repeat') as string,
+    unsupported_operation_once: entries.get('unsupported_operation_once') as string,
+    unsupported_operation_failed: entries.get('unsupported_operation_failed') as string,
     status_or_document: entries.get('status_or_document') as string,
     status_or_proof_review: entries.get('status_or_proof_review') as string,
     type_missing: entries.get('type_missing') as string,
@@ -64,6 +70,8 @@ export const defaultCapabilityBoundaryMessages: CapabilityBoundaryMessages = {
   unsupported_human_once: 'Puedo consultar el estado registrado, pero no puedo emitir ni reenviar una constancia desde aquí. Ya solicité apoyo humano para que continúen con ese pedido.',
   unsupported_human_failed: 'Puedo consultar el estado registrado, pero no puedo emitir ni reenviar una constancia desde aquí. En este momento no pude registrar el apoyo humano.',
   unsupported_human_repeat: 'El apoyo humano ya fue solicitado para continuar con este pedido.',
+  unsupported_operation_once: 'No puedo realizar esa gestión desde aquí. Ya solicité apoyo humano para que continúen con este pedido.',
+  unsupported_operation_failed: 'No puedo realizar esa gestión desde aquí. En este momento no pude registrar el apoyo humano.',
   status_or_document: '¿Quieres consultar si el pago está confirmado o necesitas que te envíen una constancia?',
   status_or_proof_review: '¿Quieres consultar el estado registrado del pago o necesitas que una persona revise el comprobante?',
   type_missing: '¿Qué necesitas hacer exactamente con esta información?',
@@ -95,15 +103,21 @@ export class CapabilityBoundaryRenderer {
       if (decision.operation === 'payment_proof.verify') {
         const base = this.messages.proof_limitation;
         return state.humanTakeoverFailed
-          ? `${base} ${this.messages.unsupported_human_failed}`
+          ? `${base} ${this.messages.unsupported_operation_failed}`
           : state.humanTakeoverSucceeded
             ? `${base} Ya solicité apoyo humano para continuar.`
             : base;
       }
-      if (state.humanTakeoverFailed) return this.messages.unsupported_human_failed;
+      if (decision.operation === 'confirmation_document.send') {
+        if (state.humanTakeoverFailed) return this.messages.unsupported_human_failed;
+        return state.humanTakeoverRequested
+          ? this.messages.unsupported_human_repeat
+          : this.messages.unsupported_human_once;
+      }
+      if (state.humanTakeoverFailed) return this.messages.unsupported_operation_failed;
       return state.humanTakeoverRequested
         ? this.messages.unsupported_human_repeat
-        : this.messages.unsupported_human_once;
+        : this.messages.unsupported_operation_once;
     }
     if (state.clarificationAsked) return null;
     return this.messages[decision.questionKey];

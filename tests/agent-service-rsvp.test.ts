@@ -24,6 +24,10 @@ import type {
 } from '../src/runtime/contracts';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import {
+  buildRuntimeCapabilityManifest,
+  type RuntimeCapabilityManifest,
+} from '../src/runtime/capability-manifest';
 import type {
   ProviderGateway,
   UserEventLookupResult,
@@ -68,6 +72,40 @@ describe('AgentService RSVP flow', () => {
     expect(result.trace.route_kind).toBe('rsvp');
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
+  });
+
+  it('reconciles a read-only RSVP continuation before a development write boundary', async () => {
+    const runtime = new RsvpRuntime([{
+      ...rsvpExtraction({
+        action: null,
+        decisionSource: 'current_message',
+        eventReference: 'Matrimonio de Ana y Luis',
+      }),
+      requestedOperation: 'rsvp.response.write',
+    }]);
+    const gateway = new RsvpGateway([]);
+    const manifest = {
+      ...buildRuntimeCapabilityManifest({
+        configured: true,
+        environment: 'development',
+        allowCustomerWrites: false,
+        featureFlags: { rsvp: true },
+      }),
+    } satisfies RuntimeCapabilityManifest;
+    const result = await createService(
+      runtime,
+      gateway,
+      new InMemoryPlanStore(),
+      [rsvpLookupInvitation({ hasResponded: true, willAttend: true })],
+      undefined,
+      manifest,
+    ).handleTurn(inbound('Hola, ya confirmé, gracias'));
+
+    expect(result.trace.route_kind).toBe('rsvp');
+    expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(gateway.inputs).toEqual([]);
+    expect(result.outbound.text).toContain('asistencia ya está confirmada');
   });
 
   it('treats guest records with no event identity as unavailable, not as no invitation', async () => {
@@ -867,6 +905,7 @@ function createService(
   store = new InMemoryPlanStore(),
   invitations: UserEventLookupResult['events'] | null = [rsvpLookupInvitation({})],
   providerGateway?: ProviderGateway,
+  capabilityManifest?: RuntimeCapabilityManifest,
 ): AgentService {
   return new AgentService({
     planStore: store,
@@ -891,6 +930,7 @@ function createService(
       },
     } as unknown as ProviderGateway,
     agentConversationGateway: gateway,
+    capabilityManifest,
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
   });

@@ -121,6 +121,7 @@ import {
   resolveCapabilityDecision,
   type CapabilityDecision,
   type RuntimeCapabilityManifest,
+  type RuntimeOperationId,
 } from './capability-manifest';
 import {
   CapabilityBoundaryRenderer,
@@ -265,6 +266,7 @@ export function hasValidUserAuthToken(
 export class AgentService {
   private readonly capabilityManifest: RuntimeCapabilityManifest;
   private readonly capabilityBoundaryRenderer: CapabilityBoundaryRenderer;
+  private capabilityBoundaryRendererLoad: Promise<CapabilityBoundaryRenderer> | null = null;
 
   constructor(
     private readonly dependencies: {
@@ -289,6 +291,16 @@ export class AgentService {
       });
     this.capabilityBoundaryRenderer = dependencies.capabilityBoundaryRenderer ??
       new CapabilityBoundaryRenderer(defaultCapabilityBoundaryMessages);
+  }
+
+  private async loadCapabilityBoundaryRenderer(): Promise<CapabilityBoundaryRenderer> {
+    if (this.dependencies.capabilityBoundaryRenderer) {
+      return this.capabilityBoundaryRenderer;
+    }
+    this.capabilityBoundaryRendererLoad ??= this.dependencies.promptLoader
+      .loadCapabilityBoundaryMessages()
+      .then((messages) => new CapabilityBoundaryRenderer(messages));
+    return await this.capabilityBoundaryRendererLoad;
   }
 
   async handleTurn(
@@ -1759,7 +1771,8 @@ export class AgentService {
       (extraction.rsvpCandidateGuestId !== null &&
         extraction.rsvpCandidateGuestId !== undefined) ||
       extraction.rsvpParty?.plus_one_response === 'yes' ||
-      extraction.rsvpParty?.plus_one_response === 'no';
+      extraction.rsvpParty?.plus_one_response === 'no' ||
+      extraction.rsvpParty?.scope === 'self_and_others';
     if (extraction.supportAct && !hasExplicitRsvpSelection) return false;
     if (
       (extraction.informationRequests.length > 0 ||
@@ -3383,6 +3396,21 @@ export class AgentService {
       return null;
     }
 
+    // The extractor can report a capability operation alongside a more
+    // specific typed domain turn. Let the domain flow reconcile its own
+    // authoritative state before deciding whether a write is needed. A
+    // capability-only request has no such evidence and remains intercepted.
+    const hasRsvpEvidence = this.hasMeaningfulRsvpEvidence(args.plan, args.extraction);
+    const hasSecondaryPlanningOperation = decision.status === 'unsupported' &&
+      this.hasProviderPlanningEvidence(args.extraction) &&
+      this.isProviderPlanningActionIntent(args.extraction.actionIntent) &&
+      !this.isProviderPlanningCapabilityOperation(decision.operation);
+    if (hasRsvpEvidence || hasSecondaryPlanningOperation) {
+      return null;
+    }
+
+    const capabilityBoundaryRenderer = await this.loadCapabilityBoundaryRenderer();
+
     if (decision.status === 'clarify') {
       // Capability clarification is still an information-resolution turn.
       // Preserve that node explicitly so a seeded or resumed plan cannot
@@ -3398,7 +3426,7 @@ export class AgentService {
       return {
         plan,
         outbound: this.renderOutbound(
-          { text: this.capabilityBoundaryRenderer.render(decision) ?? '¿Qué necesitas hacer exactamente con esta información?' },
+          { text: capabilityBoundaryRenderer.render(decision) ?? '¿Qué necesitas hacer exactamente con esta información?' },
           [], args.inbound.channel, plan.conversation_id, plan,
         ),
         trace: this.buildTrace({
@@ -3461,7 +3489,7 @@ export class AgentService {
     await this.dependencies.planStore.save({ plan, reason: 'unsupported_operation_detected' });
     args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const boundaryText = this.capabilityBoundaryRenderer.render(decision, {
+    const boundaryText = capabilityBoundaryRenderer.render(decision, {
       humanTakeoverRequested: alreadyRequested || takeoverSucceeded,
       humanTakeoverSucceeded: takeoverSucceeded,
       humanTakeoverFailed: !takeoverSucceeded && !alreadyRequested,
@@ -3640,13 +3668,14 @@ export class AgentService {
       requestedOperation: 'media.image.inspect',
       manifest: this.capabilityManifest,
     });
+    const capabilityBoundaryRenderer = await this.loadCapabilityBoundaryRenderer();
     await this.dependencies.planStore.save({ plan, reason: 'unsupported_image_media' });
     args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
       plan,
       outbound: this.renderOutbound(
-        { text: this.capabilityBoundaryRenderer.render(decision) ?? 'No puedo leer ni revisar el contenido de imágenes.' },
+        { text: capabilityBoundaryRenderer.render(decision) ?? 'No puedo leer ni revisar el contenido de imágenes.' },
         [], args.inbound.channel, plan.conversation_id, plan,
       ),
       trace: this.buildTrace({
@@ -3685,6 +3714,49 @@ export class AgentService {
       extraction.closeAction != null ||
       extraction.pauseRequested
     );
+  }
+
+  private hasMeaningfulRsvpEvidence(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+  ): boolean {
+    const hasExtractionEvidence =
+      extraction.actionIntent === 'responder_invitacion' ||
+      extraction.rsvpAction !== null && extraction.rsvpAction !== undefined ||
+      extraction.rsvpCandidateGuestId !== null && extraction.rsvpCandidateGuestId !== undefined ||
+      extraction.rsvpEventReference !== null && extraction.rsvpEventReference !== undefined ||
+      extraction.rsvpParty !== null && extraction.rsvpParty !== undefined;
+    return hasExtractionEvidence && this.hasRsvpWork(plan, extraction);
+  }
+
+  private isProviderPlanningActionIntent(
+    actionIntent: ExtractionResult['actionIntent'],
+  ): boolean {
+    switch (actionIntent) {
+      case 'reset_plan':
+      case 'elicitar_necesidades':
+      case 'buscar_proveedores':
+      case 'refinar_busqueda':
+      case 'ver_opciones':
+      case 'confirmar_proveedor':
+      case 'modificar_plan_proveedores':
+      case 'explicar_recomendacion':
+      case 'detallar_proveedor':
+      case 'retomar_plan':
+      case 'cerrar':
+      case 'pausar':
+        return true;
+      default:
+        return false;
+    }
+  }
+
+  private isProviderPlanningCapabilityOperation(
+    operation: RuntimeOperationId,
+  ): boolean {
+    return operation === 'provider.plan' ||
+      operation === 'provider.search' ||
+      operation === 'provider.quote.write';
   }
 
   private normalizeInformationExtractionAmbiguity(

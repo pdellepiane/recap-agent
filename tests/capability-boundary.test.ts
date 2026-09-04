@@ -182,5 +182,17 @@ describe('capability boundary renderer', () => {
       reason: 'media_unavailable',
       humanTakeoverAvailable: true,
     })).toContain('No puedo leer ni revisar');
+    expect(renderer.render({
+      status: 'unsupported',
+      operation: 'purchase.modify',
+      reason: 'not_implemented',
+      humanTakeoverAvailable: true,
+    })).not.toContain('constancia');
+    expect(renderer.render({
+      status: 'unsupported',
+      operation: 'purchase.modify',
+      reason: 'not_implemented',
+      humanTakeoverAvailable: true,
+    })).toContain('No puedo realizar esa gestión');
   });
 });

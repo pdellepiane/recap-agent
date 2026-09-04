@@ -8596,3 +8596,26 @@ actual evaluation requests. Add a unit regression proving neither runner loading
 `npm run eval:behavior-live -- --help` smoke test pass. Repository typecheck is
 blocked by an unrelated pre-existing `src/runtime/agent-service.ts` error in
 concurrent work.
+
+## 2026-09-04 — Keep typed RSVP and planning flows ahead of capability boundaries
+
+**Reason:** The complete development evaluation showed that an extractor capability
+operation could preempt a typed RSVP status continuation or an otherwise valid
+provider-planning turn. Development write blocking therefore produced an unsupported
+reply before RSVP could reconcile the authoritative invitation state. The same
+boundary renderer also used receipt wording for unrelated unsupported operations.
+
+**Decision:** `handleCapabilityBoundaryIfNeeded` now preserves extraction-backed RSVP
+evidence and planning evidence paired with a secondary unsupported operation. RSVP
+continues through its existing phone reconciliation and decides whether a mutation
+is actually needed from the authoritative invitation state; primary provider
+capability operations and capability-only requests remain intercepted. The
+deterministic renderer keeps receipt wording scoped to document delivery, uses
+operation-neutral wording for unrelated unsupported operations, and loads both
+message variants from the tracked capability-boundary prompt resource. No global
+prompt manifest or raw gateway payload is projected.
+
+**Validation:** Focused capability, RSVP, and information-flow tests pass; scoped
+lint and `npm run typecheck` pass. Full lint still reports the unrelated pre-existing
+unused `_options` parameter in `tests/live-behavior-cli.test.ts`. No deployment or
+live evaluation was run, per task constraints.

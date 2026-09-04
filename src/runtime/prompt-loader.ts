@@ -15,6 +15,10 @@ import {
 import type { ExtractionCapabilityProfile } from './extraction-schemas';
 import type { InformationAuthReason } from '../core/information';
 import { hostWithdrawalMessagesSchema } from './host-withdrawal-policy';
+import {
+  parseCapabilityBoundaryMessages,
+  type CapabilityBoundaryMessages,
+} from './capability-boundary-renderer';
 
 export type PromptLoadContext = {
   informationAuthReasons?: readonly InformationAuthReason[];
@@ -37,6 +41,14 @@ export class PromptLoader {
     const content = await fs.readFile(path.join(this.promptsDir,
       'nodes/resolver_consultas_informativas/host-withdrawal.json'), 'utf8');
     return hostWithdrawalMessagesSchema.parse(JSON.parse(content) as unknown);
+  }
+
+  async loadCapabilityBoundaryMessages(): Promise<CapabilityBoundaryMessages> {
+    const content = await fs.readFile(path.join(
+      this.promptsDir,
+      'nodes/resolver_consultas_informativas/capability_boundary.txt',
+    ), 'utf8');
+    return parseCapabilityBoundaryMessages(content);
   }
 
   async loadNodeBundle(
