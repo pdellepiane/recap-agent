@@ -207,6 +207,11 @@ describe('AgentService RSVP flow', () => {
       plus_one_response: 'yes',
     }]);
     expect(result.outbound.text).toContain('no quedó guardada');
+    expect(result.outbound.text).toContain('no se puede agregar un acompañante para este invitado o evento');
+    expect(result.outbound.text).not.toContain('not_eligible');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain(
+      'no se puede agregar un acompañante para este invitado o evento',
+    );
     expect(result.outbound.text).not.toContain('quedó confirmado tu acompañante');
     expect(result.trace.tools_called).not.toContain('request_human_takeover');
   });

@@ -8536,3 +8536,26 @@ and capability fields to turn/performance traces and registered the new regressi
 skipped), prompt audit, capability tests, timestamp tests, and fixture tests pass.
 Development Lambda deployment and the mandatory live suite remain the release gate;
 production is unchanged until that gate passes.
+
+## 2026-09-04 — Preserve scoped outcome interpretations at the runtime boundary
+
+**Reason:** The first development evaluation exposed three distinct failures that
+must not be addressed with broader model instructions. RSVP plus-one rejection was
+already parsed as typed `saved=false` evidence, but its interpretation was dropped
+before deterministic rendering. A pending-balance capability read copied an
+extraction-only purchase request without its required internal request identifier,
+which caused trace validation to fail before a model turn. Support continuity cases
+were deterministic acknowledgement wording issues, not model context loss.
+
+**Decision:** Render the documented plus-one rejection interpretation only when the
+typed RSVP result contains `plusOne.saved=false` and a non-empty reason; never copy
+the raw reason into prompts or customer output. Give capability safe reads a stable
+internal request identifier unless a persisted request already has one. Clarify
+support acknowledgements with explicit person/event grammar while preserving the
+existing no-lookup, no-reply-model path. No global prompt instructions were added.
+
+**Validation:** Focused RSVP, information-flow, capability, support-continuity, and
+full local checks pass. Development live cases must be rerun after deployment; the
+pending-balance evaluator previously failed before model execution and the RSVP
+case failed only because the typed interpretation was omitted. Production remains
+unchanged until the development artifact passes the mandatory live suite.

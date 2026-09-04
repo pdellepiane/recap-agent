@@ -3011,10 +3011,30 @@ export class AgentService {
       } else if (args.result.plusOne?.saved && args.result.plusOne.response === 'no') {
         parts.push(`También quedó registrado que tu acompañante no asistirá a ${eventName}.`);
       } else {
-        parts.push('La respuesta de tu acompañante no quedó guardada para esta invitación. No la consideraré confirmada; si deseas, el equipo de apoyo puede revisarla.');
+        const interpretation = this.rsvpPlusOneFailureInterpretation(args.result);
+        parts.push(
+          `La respuesta de tu acompañante no quedó guardada para esta invitación${interpretation ? ` porque ${interpretation}` : ''}. No la consideraré confirmada; si deseas, el equipo de apoyo puede revisarla.`,
+        );
       }
     }
     return parts.length > 0 ? parts.join(' ') : null;
+  }
+
+  /**
+   * Convert the documented API failure into a safe, user-facing interpretation.
+   * The endpoint reason is never copied into model context or user output.
+   */
+  private rsvpPlusOneFailureInterpretation(
+    result: AgentGuestRsvpResult,
+  ): string | null {
+    if (
+      result.status !== 'responded' ||
+      result.plusOne?.saved !== false ||
+      !result.plusOne.reason?.trim()
+    ) {
+      return null;
+    }
+    return 'no se puede agregar un acompañante para este invitado o evento';
   }
 
   private renderRsvpHandoffFragment(
@@ -3048,7 +3068,8 @@ export class AgentService {
     if (result.status === 'responded') {
       void selectedCandidate;
       if (plusOneResponse !== null && result.plusOne?.saved === false) {
-        return 'La respuesta principal se procesó, pero el servicio indicó que la respuesta del acompañante no quedó guardada. No afirmes que el acompañante quedó confirmado o rechazado; ofrece apoyo humano para revisarlo.';
+        const interpretation = this.rsvpPlusOneFailureInterpretation(result);
+        return `La respuesta principal se procesó, pero el servicio indicó que la respuesta del acompañante no quedó guardada${interpretation ? ` porque ${interpretation}` : ''}. No afirmes que el acompañante quedó confirmado o rechazado; ofrece apoyo humano para revisarlo.`;
       }
       if (plusOneResponse !== null && result.plusOne === null) {
         return 'El servicio respondió, pero no devolvió evidencia de que la respuesta del acompañante se haya guardado. No la presentes como confirmada; ofrece apoyo humano para revisarla.';
@@ -3500,16 +3521,18 @@ export class AgentService {
     const trustedPhone = splitInternationalPhone(args.inbound.contactPhone);
     if (!trustedPhone) return [];
 
-    const existingPurchase = args.extraction.informationRequests.find(
-      (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
-        request.kind === 'purchase',
-    ) ?? args.plan.information_state.pending_requests.find(
+    const extractedPurchase = args.extraction.informationRequests.find(
+      (request) => request.kind === 'purchase',
+    );
+    const persistedPurchase = args.plan.information_state.pending_requests.find(
       (request): request is Extract<PendingInformationRequest, { kind: 'purchase' }> =>
         request.kind === 'purchase',
     );
+    const existingPurchase = persistedPurchase ?? extractedPurchase;
     const request: Extract<PendingInformationRequest, { kind: 'purchase' }> = existingPurchase
       ? {
           ...existingPurchase,
+          requestId: persistedPurchase?.requestId ?? 'capability-status-read',
           resource: 'orders',
           aspects: ['payment_status'],
           sensitiveFields: [],
@@ -4250,10 +4273,14 @@ export class AgentService {
   private selectSupportAcknowledgmentMessage(
     act: InformationSupportAct,
   ): string {
-    if (act.kind === 'provide_detail' && (act.personReference || act.eventReference)) {
-      const person = act.personReference ? ` a ${act.personReference}` : '';
-      const event = act.eventReference ? ` y del evento ${act.eventReference}` : '';
-      return `Gracias, tomo nota${person}${event}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
+    if (act.kind === 'provide_detail' && act.personReference && act.eventReference) {
+      return `Gracias, tomo nota de que el invitado afectado es ${act.personReference} y del evento ${act.eventReference}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
+    }
+    if (act.kind === 'provide_detail' && act.personReference) {
+      return `Gracias, tomo nota del invitado afectado ${act.personReference}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
+    }
+    if (act.kind === 'provide_detail' && act.eventReference) {
+      return `Gracias, tomo nota del evento ${act.eventReference}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
     }
     if (act.kind === 'defer_submission') {
       return 'De acuerdo, podemos continuar cuando lo envíes. Mantengo el contexto de esta consulta.';
