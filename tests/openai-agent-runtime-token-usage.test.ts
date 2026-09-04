@@ -1190,6 +1190,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('lookup_guest_orders_by_phone');
     expect(input).not.toContain('Capacidades habilitadas');
     expect(input).not.toContain('Herramientas autorizadas');
+    expect(input).not.toContain('remainingBalance');
     expect(findDuplicateStructuredSubtrees(input)).toEqual([]);
     expect(Buffer.byteLength(input, 'utf8')).toBeLessThan(5_000);
   });
@@ -1205,7 +1206,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
       needsSelection: false,
       purchases: [{
         orderId: 'ORD-SECRET',
-        paymentStatus: 'approved',
+        paymentStatus: 'pending',
         shippingStatus: null,
         grandTotal: null,
         paymentMethod: null,
@@ -1243,6 +1244,7 @@ describe('OpenAiAgentRuntime information auth prompt isolation', () => {
     expect(input).not.toContain('trusted_phone');
     expect(input).toContain('recorded_method_no_currency');
     expect(input).toContain('"currency": "not_reported"');
+    expect(input).toContain('"remainingBalance": "not_verifiable"');
     expect(input).toContain('"transactionTime": "not_verifiable"');
     expect(input).toContain('63.85');
     expect(input).not.toContain('PEN');

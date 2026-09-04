@@ -2365,6 +2365,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ...(purchase.amountDisclosure?.presentation === 'recorded_method_no_currency'
         ? { currency: 'not_reported' }
         : {}),
+      ...(purchase.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending' &&
+        purchase.amountDisclosure?.paid === null
+        ? { remainingBalance: 'not_verifiable' }
+        : {}),
       ...(purchase.paymentValidationExpectation && !purchase.payment?.paidAt
         ? { transactionTime: 'not_verifiable' }
         : {}),

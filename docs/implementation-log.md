@@ -8569,3 +8569,15 @@ already-parsed result long enough to render the current pending state and its ty
 reported on the proof turn is treated only as user-reported evidence and is not reused
 as an order-total selector. This remains a conditional proof-validation projection;
 no shared prompt rule or raw endpoint field was added.
+
+The complete development run later showed a separate phrasing risk: a pending order
+with a disclosed total but no disclosed applied-payment amount could be described as
+if the total were the remaining balance. Reply evidence now carries
+`remainingBalance=not_verifiable` only for that typed pending/null-paid combination.
+Approved purchases and unrelated routes receive no additional field. This fixes the
+interpretation at the canonical projection boundary without adding prompt rules or
+exposing raw payment data.
+
+**Validation:** The focused reply-projection suite passes all 34 tests, including
+positive pending-balance evidence and an approved-purchase absence regression;
+typecheck and lint pass.
