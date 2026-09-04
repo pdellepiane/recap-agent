@@ -21,6 +21,10 @@ import type {
   AgentUpdatePhoneResult,
   RsvpCandidate,
 } from './agent-conversation-gateway';
+import type {
+  UserLoginCodeRequestResult,
+  UserLoginCodeVerificationResult,
+} from './provider-gateway';
 import type { CartInformation, PurchaseInformation, PurchasePartition, PurchaseResource } from '../core/information';
 import {
   buildRuntimeCapabilityManifest,
@@ -44,6 +48,8 @@ export type FixtureData = {
   guestEvents?: Record<string, unknown>;
   eventDetails?: Record<string, unknown>;
   rsvp?: Record<string, unknown>;
+  /** Deterministic provider-auth outcomes used by isolated live evaluations. */
+  emailAuth?: unknown;
 };
 
 const rsvpEventSchema = z.object({
@@ -302,6 +308,48 @@ const giftPurchasesDataSchema = z.object({
   purchases: z.array(giftPurchaseSchema),
 });
 
+const fixtureLoginCodeRequestSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('sent'),
+    httpStatus: z.number().int().min(100).max(599).optional(),
+    requestId: z.string().trim().min(1).nullable().optional(),
+  }),
+  z.object({
+    status: z.enum(['email_not_found', 'rate_limited', 'unavailable', 'failed']),
+    error: z.string().trim().min(1),
+    httpStatus: z.number().int().min(100).max(599).optional(),
+    requestId: z.string().trim().min(1).nullable().optional(),
+  }),
+]);
+
+const fixtureLoginCodeVerificationSchema = z.discriminatedUnion('status', [
+  z.object({
+    status: z.literal('authenticated'),
+    token: z.string().trim().min(1),
+    tokenExpiresAt: z.string().trim().min(1),
+    httpStatus: z.number().int().min(100).max(599).optional(),
+    requestId: z.string().trim().min(1).nullable().optional(),
+  }),
+  z.object({
+    status: z.enum([
+      'invalid_code',
+      'email_not_verified',
+      'validation_failed',
+      'rate_limited',
+      'unavailable',
+      'failed',
+    ]),
+    error: z.string().trim().min(1),
+    httpStatus: z.number().int().min(100).max(599).optional(),
+    requestId: z.string().trim().min(1).nullable().optional(),
+  }),
+]);
+
+const fixtureEmailAuthSchema = z.object({
+  request: fixtureLoginCodeRequestSchema.optional(),
+  verify: fixtureLoginCodeVerificationSchema.optional(),
+}).strict();
+
 const eventDetailDataSchema = z.object({
   event: eventDetailSchema,
   attendance: attendanceSchema.nullable().default(null),
@@ -390,10 +438,16 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   ) {
     this.loadResult = loadResult;
     this.data = loadResult.status === 'loaded' ? loadResult.data : null;
+    const emailAuth = this.data?.emailAuth;
+    const hasEmailAuthOutcome = emailAuth !== null &&
+      typeof emailAuth === 'object' &&
+      !Array.isArray(emailAuth) &&
+      ('request' in emailAuth || 'verify' in emailAuth);
     this.capabilityDescriptor = buildRuntimeCapabilityManifest({
       configured: loadResult.status === 'loaded',
       fixture: true,
       environment: 'development',
+      disabledOperations: hasEmailAuthOutcome ? [] : ['auth.email_otp'],
       // A fixture is an explicitly isolated test backend. Callers can still
       // deny all mutation capabilities to exercise development isolation.
       allowCustomerWrites: options.allowCustomerWrites ?? true,
@@ -436,6 +490,77 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
   private isWriteBlocked(operation: 'human.takeover.write' | 'rsvp.response.write'): boolean {
     return !this.capabilityDescriptor[operation].available;
+  }
+
+  private fixtureEmailAuth(): z.infer<typeof fixtureEmailAuthSchema> | null {
+    const parsed = fixtureEmailAuthSchema.safeParse(this.data?.emailAuth);
+    return parsed.success ? parsed.data : null;
+  }
+
+  async requestUserLoginCode(_email: string): Promise<UserLoginCodeRequestResult> {
+    void _email;
+    if (this.isFixtureUnavailable()) {
+      return {
+        status: 'unavailable',
+        error: 'Fixture scenario is unavailable.',
+      };
+    }
+    if (!this.capabilityDescriptor['auth.email_otp'].available) {
+      return {
+        status: 'unavailable',
+        error: 'Email authentication is not configured in this fixture.',
+      };
+    }
+    const configured = this.fixtureEmailAuth();
+    if (!configured?.request) {
+      return {
+        status: 'unavailable',
+        error: 'Email authentication request is not configured in this fixture.',
+      };
+    }
+    const parsed = fixtureLoginCodeRequestSchema.safeParse(configured.request);
+    if (!parsed.success) {
+      return {
+        status: 'failed',
+        error: 'Fixture email authentication request outcome had an unexpected shape.',
+      };
+    }
+    return parsed.data;
+  }
+
+  async verifyUserLoginCode(
+    _email: string,
+    _code: string,
+  ): Promise<UserLoginCodeVerificationResult> {
+    void _email;
+    void _code;
+    if (this.isFixtureUnavailable()) {
+      return {
+        status: 'unavailable',
+        error: 'Fixture scenario is unavailable.',
+      };
+    }
+    if (!this.capabilityDescriptor['auth.email_otp'].available) {
+      return {
+        status: 'unavailable',
+        error: 'Email authentication is not configured in this fixture.',
+      };
+    }
+    const configured = this.fixtureEmailAuth();
+    if (!configured?.verify) {
+      return {
+        status: 'unavailable',
+        error: 'Email authentication verification is not configured in this fixture.',
+      };
+    }
+    const parsed = fixtureLoginCodeVerificationSchema.safeParse(configured.verify);
+    if (!parsed.success) {
+      return {
+        status: 'failed',
+        error: 'Fixture email authentication verification outcome had an unexpected shape.',
+      };
+    }
+    return parsed.data;
   }
 
   private resolveFixtureValue(

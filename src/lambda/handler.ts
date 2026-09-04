@@ -704,8 +704,8 @@ async function getFixtureRuntime(scenario: string): Promise<{
         },
       };
     },
-    requestUserLoginCode: (...args: Parameters<typeof originalProviderGateway.requestUserLoginCode>) => originalProviderGateway.requestUserLoginCode(...args),
-    verifyUserLoginCode: (...args: Parameters<typeof originalProviderGateway.verifyUserLoginCode>) => originalProviderGateway.verifyUserLoginCode(...args),
+    requestUserLoginCode: (email: string) => fixtureGateway.requestUserLoginCode(email),
+    verifyUserLoginCode: (email: string, code: string) => fixtureGateway.verifyUserLoginCode(email, code),
     lookupAuthenticatedUserEvents: (...args: Parameters<typeof originalProviderGateway.lookupAuthenticatedUserEvents>) => originalProviderGateway.lookupAuthenticatedUserEvents(...args),
     createQuoteRequest: (...args: Parameters<typeof originalProviderGateway.createQuoteRequest>) => originalProviderGateway.createQuoteRequest(...args),
     addVendorToEventFavorites: (...args: Parameters<typeof originalProviderGateway.addVendorToEventFavorites>) => originalProviderGateway.addVendorToEventFavorites(...args),

@@ -83,6 +83,37 @@ describe('eval fixture seam', () => {
     expect(eventsResult.status === 'success' || eventsResult.status === 'not_found' || eventsResult.status === 'failed').toBe(true);
   });
 
+  it('simulates email OTP outcomes locally without contacting the provider', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const gateway = await FixtureAgentConversationGateway.create('otp-sent-image-guidance');
+
+    expect(gateway.capabilityDescriptor['auth.email_otp']).toMatchObject({
+      id: 'auth.email_otp',
+      available: true,
+    });
+    await expect(gateway.requestUserLoginCode('customer@example.invalid')).resolves.toEqual({
+      status: 'sent',
+      httpStatus: 200,
+      requestId: 'fixture-otp-request',
+    });
+    await expect(gateway.verifyUserLoginCode('customer@example.invalid', '123456')).resolves.toMatchObject({
+      status: 'unavailable',
+    });
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('does not advertise or call email OTP when a fixture has no auth outcome', async () => {
+    const gateway = await FixtureAgentConversationGateway.create('purchase-victor-171');
+    expect(gateway.capabilityDescriptor['auth.email_otp']).toMatchObject({
+      id: 'auth.email_otp',
+      available: false,
+      reason: 'feature_disabled',
+    });
+    await expect(gateway.requestUserLoginCode('customer@example.invalid')).resolves.toMatchObject({
+      status: 'unavailable',
+    });
+  });
+
   it('loads Carina with the realistic international phone and preserves the current partitioned order', async () => {
     const gateway = await FixtureAgentConversationGateway.create('purchase-confirmation-carina');
     const phone: AgentAuthByPhoneInput = { phone_extension: '+51', phone_number: '900000301' };
