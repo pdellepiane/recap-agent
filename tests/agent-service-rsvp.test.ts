@@ -347,6 +347,90 @@ describe('AgentService RSVP flow', () => {
     expect(runtime.composeRequests[0]?.plan.rsvp_state.candidates).toHaveLength(2);
   });
 
+  it('keeps an ambiguous RSVP continuation in selection state and renders grounded candidates', async () => {
+    const store = new InMemoryPlanStore();
+    const input = inbound('Ese.');
+    await store.save({
+      reason: 'seed-rsvp-selection',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'plan-rsvp-ambiguous',
+        channel: input.channel,
+        externalUserId: input.externalUserId,
+      }), {
+        current_node: 'responder_invitacion',
+        contact_phone: '51973296571',
+        contact_phone_extension: '+51',
+        contact_phone_number: '973296571',
+        rsvp_state: {
+          status: 'awaiting_event_selection',
+          pending_action: 'attending',
+          pending_plus_one_response: null,
+          candidates: [
+            {
+              guest_id: 41,
+              event_name: 'Matrimonio de Ana y Luis',
+              event_date: '2026-09-12',
+            },
+            {
+              guest_id: 42,
+              event_name: 'Cumpleaños de Marta',
+              event_date: '2026-09-19',
+            },
+          ],
+          requested_at: '2026-08-13T15:00:00.000Z',
+          selection_attempts: 0,
+        },
+      }),
+    });
+    const runtime = new RsvpRuntime([rsvpExtraction({
+      action: null,
+      decisionSource: 'current_message',
+    })]);
+    const gateway = new RsvpGateway([], [campaignMessage('Matrimonio de Ana y Luis')]);
+    const service = createService(runtime, gateway, store, [
+      { ...rsvpLookupInvitation({ guestId: 41, eventName: 'Matrimonio de Ana y Luis' }), eventId: 205 },
+      { ...rsvpLookupInvitation({ guestId: 42, eventName: 'Cumpleaños de Marta' }), eventId: 206, datetime: '2026-09-19' },
+    ]);
+
+    const result = await service.handleTurn(input);
+    const reply = (result.outbound.text ?? '').toLowerCase();
+
+    expect(result.plan.rsvp_state).toMatchObject({
+      status: 'awaiting_event_selection',
+      pending_action: 'attending',
+      selection_attempts: 1,
+    });
+    expect(gateway.inputs).toEqual([]);
+    expect(result.trace.tools_called).not.toContain('guest_rsvp');
+    expect(result.outbound.text).toContain('Matrimonio de Ana y Luis');
+    expect(result.outbound.text).toContain('12 de septiembre de 2026');
+    expect(result.outbound.text).toContain('Cumpleaños de Marta');
+    expect(result.outbound.text).toContain('19 de septiembre de 2026');
+    expect(result.outbound.text).toContain('¿A cuál de estos eventos te refieres?');
+    expect(reply).not.toContain('confirmar');
+    expect(reply).not.toContain('rechazar');
+    expect(reply).not.toContain('asistencia');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toEqual({
+      state: 'needs_event_selection',
+      coverage: 'complete',
+      resolution: 'authoritative_invitation',
+      candidates: [
+        {
+          event_name: 'Matrimonio de Ana y Luis',
+          event_date: '2026-09-12',
+          invitation_record: 'available',
+          rsvp_state: 'pending',
+        },
+        {
+          event_name: 'Cumpleaños de Marta',
+          event_date: '2026-09-19',
+          invitation_record: 'available',
+          rsvp_state: 'pending',
+        },
+      ],
+    });
+  });
+
   it('never calls the mutation when the extracted guest id is not a stored candidate', async () => {
     const runtime = new RsvpRuntime([rsvpExtraction({
       action: null,
@@ -680,6 +764,78 @@ describe('AgentService RSVP flow', () => {
     expect(runtime.composeRequests[0]?.errorMessage).not.toContain(
       'no encontró ninguna invitación',
     );
+  });
+
+  it('preserves the authoritative server date when phone enrichment omits it', async () => {
+    const runtime = new RsvpRuntime([rsvpExtraction({ action: null })]);
+    const guestEvent = {
+      eventId: 37218,
+      name: 'Michelle & Jorge',
+      slug: 'michellejorge',
+      url: null,
+      datetime: null,
+      type: 'wedding',
+      typeDetail: null,
+      stage: 'active',
+      city: 'Lima',
+      country: 'PE',
+      currency: 'PEN',
+    };
+    const gateway = new RsvpGateway(
+      [],
+      [],
+      { status: 'success', events: [guestEvent] },
+      undefined,
+      {
+        status: 'success',
+        event: {
+          ...guestEvent,
+          withTime: true,
+          timezone: 'America/Lima',
+          celebrateds: [],
+          moments: [],
+          dresscode: null,
+          commonAsked: [],
+          contactInfo: [],
+          attendance: {
+            guestId: 584352,
+            name: 'Cristian Abarca',
+            hasResponded: true,
+            willAttend: true,
+            responseDate: '2026-08-25T00:00:00.000Z',
+          },
+          purchases: [],
+        },
+      },
+    );
+    const service = createService(runtime, gateway, new InMemoryPlanStore(), [
+      {
+        ...rsvpLookupInvitation({
+          guestId: 584352,
+          eventName: 'Michelle & Jorge',
+          hasResponded: true,
+          willAttend: true,
+        }),
+        eventId: 37218,
+        datetime: '10/10/2026 20:15',
+      },
+    ]);
+
+    const result = await service.handleTurn(inbound('Hola buen día, ya confirmé, gracias'));
+
+    expect(gateway.inputs).toEqual([]);
+    expect(result.outbound.text).toContain('Michelle & Jorge');
+    expect(result.outbound.text).toContain('10/10/2026 20:15');
+    expect(result.outbound.text).toContain('asistencia ya está confirmada');
+    expect(result.outbound.text).toContain('no se realizó un nuevo registro');
+    expect(runtime.composeRequests[0]?.rsvpPhoneEvidence).toMatchObject({
+      state: 'resolved_single',
+      event: {
+        event_name: 'Michelle & Jorge',
+        event_date: '10/10/2026 20:15',
+        rsvp_state: 'attending',
+      },
+    });
   });
 
   it('starts both phone lookups before either result is reconciled', async () => {

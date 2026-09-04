@@ -2159,8 +2159,8 @@ export class AgentService {
         : 0;
       nextRsvpState = {
         status: 'awaiting_event_selection',
-        pending_action: action,
-        pending_plus_one_response: plusOneResponse,
+        pending_action: action ?? pendingState.pending_action,
+        pending_plus_one_response: plusOneResponse ?? pendingState.pending_plus_one_response,
         candidates: invitations.map((invitation) => ({
           guest_id: invitation.guestId as number,
           event_name: invitation.eventName,
@@ -2170,6 +2170,8 @@ export class AgentService {
         selection_attempts: attempts,
       };
       operationalNote = this.multipleRsvpInvitationsNote(invitations, action, attempts);
+      deterministicReplyText = this.renderRsvpEventSelectionDeterministically(invitations);
+      deterministicReplyIsComplete = true;
     } else if (selectedInvitation.guestId === null) {
       operationalNote = action
         ? 'Usa el evento seleccionado. La consulta no expone el registro de invitado ni el estado guardado. La persona indica que ya respondió. Agradece la confirmación y aclara que no hiciste otro cambio; no afirmes que el estado registrado esté confirmado, no niegues la invitación, no pidas correo ni código y ofrece apoyo humano solo si desea verificar el estado registrado.'
@@ -2544,16 +2546,18 @@ export class AgentService {
         })) ?? [];
       const associatedEvents: RsvpInvitation[] = associatedSummaries
         .map((event) => {
-          const attendance =
+          const enrichedEvent =
             enrichedDetail?.status === 'success' &&
             enrichedDetail.event.eventId === event.eventId
-              ? enrichedDetail.event.attendance ?? null
+              ? enrichedDetail.event
               : null;
+          const attendance =
+            enrichedEvent?.attendance ?? null;
           return {
             eventId: event.eventId,
             guestId: attendance?.guestId ?? null,
             eventName: event.name,
-            eventDate: event.datetime,
+            eventDate: enrichedEvent?.datetime ?? event.datetime,
             state: attendance
               ? this.rsvpInvitationState(
                   attendance.hasResponded,
@@ -2708,7 +2712,14 @@ export class AgentService {
       if (duplicateIndex < 0) {
         reconciled.push(associatedEvent);
       } else if (associatedEvent.accessMethod === 'phone_enriched_event') {
-        reconciled[duplicateIndex] = associatedEvent;
+        const authoritativeEvent = reconciled[duplicateIndex];
+        if (authoritativeEvent) {
+          reconciled[duplicateIndex] = {
+            ...associatedEvent,
+            eventName: associatedEvent.eventName ?? authoritativeEvent.eventName,
+            eventDate: associatedEvent.eventDate ?? authoritativeEvent.eventDate,
+          };
+        }
       }
     });
     return this.sortRsvpInvitationsDeterministically(reconciled);
@@ -2740,7 +2751,13 @@ export class AgentService {
     if (selectedInvitation && this.hasRsvpEventIdentity(selectedInvitation)) {
       const matched = sortedInvitations.find((invitation) =>
         this.sameRsvpEvent(invitation, selectedInvitation));
-      const target = matched ?? selectedInvitation;
+      const target = matched
+        ? {
+            ...matched,
+            eventName: matched.eventName ?? selectedInvitation.eventName,
+            eventDate: matched.eventDate ?? selectedInvitation.eventDate,
+          }
+        : selectedInvitation;
       const projection: RsvpPhoneReplyEvidence = {
         state: 'resolved_single',
         coverage: evidence.coverage,
@@ -2952,10 +2969,9 @@ export class AgentService {
     action: 'attending' | 'declining' | null,
     attempts: number,
   ): string {
+    void action;
     const enumerated = this.formatRsvpInvitationEnumeration(invitations);
-    const nextStep = action
-      ? 'Pregunta en una sola frase a cuál evento desea aplicar la respuesta, enumerando cada candidato con su nombre y fecha.'
-      : 'Informa brevemente el estado actual de cada invitación con su nombre y fecha y pregunta cuál desea gestionar.';
+    const nextStep = 'Pregunta en una sola frase cuál de los eventos desea gestionar, enumerando cada candidato con su nombre y fecha.';
     return `Hay varias invitaciones asociadas a tu número. ${nextStep} Candidatos: ${enumerated}. ${attempts >= 2 ? 'Como la selección sigue ambigua, ofrece apoyo humano como alternativa.' : ''} No afirmes que se actualizó ninguna.`;
   }
 
@@ -2983,6 +2999,13 @@ export class AgentService {
     const months = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
     const monthName = months[month - 1] ?? String(month);
     return `${day} de ${monthName} de ${year}`;
+  }
+
+  private renderRsvpEventSelectionDeterministically(
+    invitations: RsvpInvitation[],
+  ): string {
+    const enumerated = this.formatRsvpInvitationEnumeration(invitations);
+    return `¿A cuál de estos eventos te refieres? ${enumerated}.`;
   }
 
   private renderRsvpCurrentStateDeterministically(
@@ -3220,6 +3243,12 @@ export class AgentService {
     // they must reach their existing typed handlers even when the extraction
     // delta is empty.
     if (plan.user_auth.status !== 'none' || plan.user_auth.awaiting_phone_confirmation) {
+      return false;
+    }
+    // RSVP selection is also a stateful continuation. Keep it in the typed
+    // RSVP handler so an ambiguous event choice cannot fall through to the
+    // generic contextual clarification prompt.
+    if (plan.rsvp_state.status !== 'none') {
       return false;
     }
     const emptyDelta =

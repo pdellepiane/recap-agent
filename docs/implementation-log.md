@@ -8664,3 +8664,22 @@ routes receive no such evidence.
 twins pass. Prompt relevance/size assertions pass, including absence of continuity
 evidence on an unrelated planning route. Focused tests, typecheck, and scoped lint
 pass. No AWS deployment or live evaluation was run.
+
+## 2026-09-04 — Ground ambiguous RSVP selection and preserve event dates
+
+**Reason:** Focused development evaluation showed that an ambiguous reply while two
+RSVP candidates were pending lost the selection state and asked for attendance
+polarity instead of identifying the events. A separate already-confirmed RSVP reply
+correctly avoided a duplicate mutation but omitted the server-provided event date.
+
+**Decision:** Keep ambiguous RSVP continuations in the typed selection handler,
+increment the bounded selection attempt once, and render only the reconciled event
+names and validated server dates. Preserve an authoritative event date when phone
+enrichment supplies attendance but omits the date. No timezone conversion, raw API
+payload, shared prompt rule, or additional persistent support memory was added.
+
+**Validation:** The focused RSVP, information-flow, extraction, prompt, and routing
+suites pass (161 tests, 2 skipped); typecheck and scoped lint pass. The previously
+deployed development artifact `5543e263d776d439aed69769314c7a1f490c5b66150c8ebeacef016e032ea656`
+passed five of seven focused live cases. The two remaining RSVP findings are covered
+by these changes and require a new development deployment and focused live rerun.
