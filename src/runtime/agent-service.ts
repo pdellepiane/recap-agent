@@ -2352,7 +2352,6 @@ export class AgentService {
       reason: currentNode,
     });
     args.timingMs.save_plan += Date.now() - saveStartedAt;
-    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
 
     return {
       plan: planToSave,
@@ -3365,10 +3364,58 @@ export class AgentService {
     const turnDecision = this.contextualClarificationTurnDecision(
       'contextual_clarification',
     );
+    const shouldComposeFromCanonicalContext =
+      plan.current_node === 'resolver_consultas_informativas' &&
+      args.messageContext.recentMessages.length === 0 &&
+      plan.conversation_summary.trim().length > 0;
+    let promptBundleId = 'deterministic:contextual_clarification';
+    let promptFilePaths: string[] = [];
+    let reply = {
+      text: this.contextualClarificationMessage(continuity, args.extraction),
+    };
+    let operationalNote = 'Prior typed state was preserved after an empty or ambiguous extraction; no external information or reply call was made.';
+    if (shouldComposeFromCanonicalContext) {
+      const promptBundleStartedAt = Date.now();
+      const bundle = await this.dependencies.promptLoader.loadNodeBundle(
+        'resolver_consultas_informativas',
+      );
+      args.timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
+      const composeReplyStartedAt = Date.now();
+      const composedReply = await this.dependencies.runtime.composeReply({
+        currentNode: 'resolver_consultas_informativas',
+        previousNode: args.previousNode,
+        userMessage: args.inbound.text,
+        messageContext: args.messageContext,
+        plan,
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        providerResults: [],
+        turnDecision,
+        errorMessage: 'No se extrajo una acción nueva, pero el resumen canónico conserva el tema activo. Responde con una sola frase que reconozca el significado contextual del mensaje y continúe ese tema. No hagas una pregunta genérica ni afirmes una acción externa.',
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
+        toolUsage: args.toolUsage,
+        informationResults: [],
+      });
+      args.timingMs.compose_reply += Date.now() - composeReplyStartedAt;
+      args.tokenUsage.reply = composedReply.tokenUsage ?? null;
+      args.tokenUsage.openAiCalls.reply = composedReply.openAiCall ?? null;
+      args.tokenUsage.total = this.sumTokenUsage(
+        args.tokenUsage.classifier,
+        args.tokenUsage.extraction,
+        args.tokenUsage.reply,
+      );
+      reply = composedReply;
+      promptBundleId = bundle.id;
+      promptFilePaths = bundle.filePaths;
+      operationalNote = 'Empty extraction with unavailable history was resolved from the compact canonical conversation summary.';
+    }
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
       plan,
       outbound: this.renderOutbound(
-        { text: this.contextualClarificationMessage(continuity, args.extraction) },
+        reply,
         [],
         args.inbound.channel,
         plan.conversation_id,
@@ -3384,8 +3431,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: plan.missing_fields,
         searchReady: false,
-        promptBundleId: 'deterministic:contextual_clarification',
-        promptFilePaths: [],
+        promptBundleId,
+        promptFilePaths,
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -3397,7 +3444,7 @@ export class AgentService {
         responseClassifier: args.responseClassifierTrace,
         searchStrategy: 'none',
         turnDecision,
-        operationalNote: 'Prior typed state was preserved after an empty or ambiguous extraction; no external information or reply call was made.',
+        operationalNote,
         informationExecution: [],
       }),
     };

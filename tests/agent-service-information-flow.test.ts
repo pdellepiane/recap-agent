@@ -199,6 +199,45 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
   });
 
+  it('composes an empty-history continuation from the compact canonical support summary', async () => {
+    const runtime = new InformationRuntime([extraction([])]);
+    const gateway = new FakePurchaseGateway();
+    const planStore = new InMemoryPlanStore();
+    await planStore.save({
+      reason: 'fixture',
+      plan: mergePlan(createEmptyPlan({
+        planId: 'canonical-support-summary-plan',
+        channel: 'whatsapp',
+        externalUserId: 'canonical-support-summary-user',
+      }), {
+        current_node: 'resolver_consultas_informativas',
+        conversation_summary: 'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
+      }),
+    });
+    const service = createService({
+      runtime,
+      knowledgeGateway: new FakeKnowledgeGateway(),
+      purchaseGateway: gateway,
+      providerGateway: providerGateway(),
+      planStore,
+    });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'canonical-support-summary-user',
+      contactPhone: '+51900000302',
+      text: 'Esta lkeno',
+      messageId: 'canonical-support-summary-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(runtime.composeRequests).toHaveLength(1);
+    expect(runtime.composeRequests[0]?.plan.conversation_summary).toContain('buzón');
+    expect(runtime.composeRequests[0]?.errorMessage).toContain('resumen canónico');
+    expect(response.trace.route_kind).toBe('contextual_clarification');
+    expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
+  });
+
   it('acknowledges a deferral without executing or deleting an unresolved purchase selection', async () => {
     const store = new InMemoryPlanStore();
     const request = { kind: 'purchase' as const, resource: 'orders' as const, query: 'Consulta sobre mi regalo',

@@ -8704,5 +8704,15 @@ strings without constructing a `Date` or applying a timezone offset. No global p
 instruction, keyword router, raw endpoint projection, or additional persisted support
 state was added.
 
-**Validation:** Focused server-timestamp, information-flow, and RSVP tests pass (78
-passed, 2 skipped). Development deployment and focused live evaluation are pending.
+When recent-message retrieval is genuinely empty but that compact canonical summary
+exists, an empty extraction now invokes the normal informational composer with only
+that bounded summary and a turn-specific clarification constraint. This exceptional
+path lets natural-language repair use the already-interpreted topic without adding a
+global instruction, replaying raw history, or deriving a route from keywords.
+
+**Validation:** The first focused development run passed authentication refusal and
+the localized RSVP datetime (2/3); the remaining mailbox case proved that the compact
+summary was preserved but ignored by the deterministic generic renderer. Focused
+server-timestamp, information-flow, RSVP, and prompt-audit tests pass after routing
+that degraded continuation through the bounded composer. A second development
+deployment and focused live rerun are pending.
