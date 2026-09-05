@@ -8684,3 +8684,25 @@ suites pass (161 tests, 2 skipped); typecheck and scoped lint pass. The previous
 deployed development artifact `5543e263d776d439aed69769314c7a1f490c5b66150c8ebeacef016e032ea656`
 passed five of seven focused live cases. The two remaining RSVP findings are covered
 by these changes and require a new development deployment and focused live rerun.
+
+## 2026-09-04 — Reconcile refusal signals and preserve server-local RSVP dates
+
+**Reason:** The latest focused development evaluation exposed three deterministic
+projection failures. A broad privacy refusal was extracted both as an authentication
+decline and as a negative phone confirmation, causing the runtime to prefer email
+fallback. A mailbox support topic was acknowledged but not retained in the canonical
+plan summary when the fixture supplied no message history. Finally, the Agent API's
+already-localized `DD/MM/YYYY HH:mm` event value was rejected by the timestamp
+validator before RSVP reconciliation.
+
+**Decision:** An explicit authentication decline now closes protected work unless a
+previous phone-authentication or phone-confirmation state proves the user is rejecting
+only that account association. Typed support acknowledgements update the existing
+conversation summary with a compact topic-specific fact; deferrals preserve that
+summary. The timestamp validator accepts and preserves valid localized date and time
+strings without constructing a `Date` or applying a timezone offset. No global prompt
+instruction, keyword router, raw endpoint projection, or additional persisted support
+state was added.
+
+**Validation:** Focused server-timestamp, information-flow, and RSVP tests pass (78
+passed, 2 skipped). Development deployment and focused live evaluation are pending.

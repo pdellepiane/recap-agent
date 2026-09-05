@@ -3970,7 +3970,13 @@ export class AgentService {
     // broader refusal action to the protected request.
     if (
       protectedAuthAction === 'decline_authentication' &&
-      args.extraction.phoneConfirmation !== 'no'
+      (
+        args.extraction.phoneConfirmation !== 'no' ||
+        (
+          !planForInformation.user_auth.awaiting_phone_confirmation &&
+          planForInformation.user_auth.auth_method !== 'phone'
+        )
+      )
     ) {
       return await this.completeDeclinedInformationAuthentication({
         ...args,
@@ -4386,8 +4392,14 @@ export class AgentService {
       throw new Error('Support acknowledgment requires typed support evidence.');
     }
     const text = this.selectSupportAcknowledgmentMessage(act);
+    const planWithSupportContext = mergePlan(plan, {
+      conversation_summary: this.supportConversationSummary(
+        act,
+        plan.conversation_summary,
+      ),
+    });
     await this.dependencies.planStore.save({
-      plan,
+      plan: planWithSupportContext,
       reason: 'support_continuity_acknowledgment',
     });
     args.tokenUsage.total = this.sumTokenUsage(
@@ -4398,16 +4410,16 @@ export class AgentService {
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
     const turnDecision = this.informationTurnDecision('support_acknowledgment');
     return {
-      plan,
+      plan: planWithSupportContext,
       outbound: this.renderOutbound(
         { text },
         [],
         args.inbound.channel,
-        plan.conversation_id,
-        plan,
+        planWithSupportContext.conversation_id,
+        planWithSupportContext,
       ),
       trace: this.buildTrace({
-        plan,
+        plan: planWithSupportContext,
         previousNode: args.previousNode,
         currentNode,
         nodePath: args.previousNode === currentNode
@@ -4433,6 +4445,23 @@ export class AgentService {
         informationExecution: [],
       }),
     };
+  }
+
+  private supportConversationSummary(
+    act: InformationSupportAct,
+    currentSummary: string,
+  ): string {
+    if (act.topic === 'mailbox_capacity' && act.detail === 'mailbox_full') {
+      return 'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.';
+    }
+    if (act.topic === 'payment_proof' && act.detail === 'submission_reported') {
+      return 'La persona informó que envió un comprobante; su contenido y el estado del pago no han sido verificados.';
+    }
+    if (act.kind === 'defer_submission') {
+      return currentSummary ||
+        'La persona indicó que enviará la información después; la consulta de soporte sigue abierta.';
+    }
+    return 'La persona aportó información a una consulta de soporte que sigue abierta.';
   }
 
   private selectSupportAcknowledgmentMessage(

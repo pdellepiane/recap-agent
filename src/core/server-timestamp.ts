@@ -24,6 +24,34 @@ export function normalizeServerTimestamp(value: string | null | undefined): stri
       : null;
   }
 
+  // The Agent API also returns already-localized event datetimes in this
+  // representation. Validate the calendar and clock fields, but preserve the
+  // server value exactly; the runtime must not infer or shift its timezone.
+  const localizedDateTimeMatch = /^(\d{2})\/(\d{2})\/(\d{4})(?: (\d{2}):(\d{2})(?::(\d{2}))?)?$/u.exec(trimmed);
+  if (localizedDateTimeMatch) {
+    const day = Number(localizedDateTimeMatch[1]);
+    const month = Number(localizedDateTimeMatch[2]);
+    const year = Number(localizedDateTimeMatch[3]);
+    const hour = localizedDateTimeMatch[4] === undefined
+      ? null
+      : Number(localizedDateTimeMatch[4]);
+    const minute = localizedDateTimeMatch[5] === undefined
+      ? null
+      : Number(localizedDateTimeMatch[5]);
+    const second = localizedDateTimeMatch[6] === undefined
+      ? null
+      : Number(localizedDateTimeMatch[6]);
+    if (
+      !isValidCalendarDate(year, month, day) ||
+      (hour !== null && hour > 23) ||
+      (minute !== null && minute > 59) ||
+      (second !== null && second > 59)
+    ) {
+      return null;
+    }
+    return trimmed;
+  }
+
   const datetimeMatch = /^(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(\.\d+)?(Z|[+-]\d{2}:?\d{2})?$/u.exec(trimmed);
   if (!datetimeMatch) {
     return null;

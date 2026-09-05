@@ -59,12 +59,19 @@ describe('AgentService first-class information flow', () => {
     const gateway = new FakePurchaseGateway();
     const service = createService({ runtime, knowledgeGateway: knowledge, purchaseGateway: gateway, providerGateway: providerGateway() });
     const texts = ['Tengo un problema de capacidad en mi gmail registrado', 'Lo voy a enviar luego', 'Esta lkeno'];
+    const summaries: string[] = [];
     for (const [index, text] of texts.entries()) {
       const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'mailbox-report',
         contactPhone: '+51900000302', messageId: `mailbox-${index}`, receivedAt: new Date().toISOString(), text });
       expect(response.plan.current_node).toBe('resolver_consultas_informativas');
       expect(runtime.composeRequests).toHaveLength(0);
+      summaries.push(response.plan.conversation_summary);
     }
+    expect(summaries).toEqual([
+      'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
+      'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
+      'La persona informó que el buzón de su correo registrado está lleno; la consulta de soporte sigue abierta.',
+    ]);
     expect(knowledge.calls).toBe(0);
     expect(gateway.guestOrdersCalls + gateway.guestGiftCalls + gateway.authByPhoneCalls).toBe(0);
     expect(runtime.extractRequests).toHaveLength(3);
@@ -2154,7 +2161,10 @@ describe('AgentService first-class information flow', () => {
     declinedRequest.authAction = 'decline_authentication';
     const runtime = new InformationRuntime([
       extraction([purchaseRequest(null)]),
-      extraction([declinedRequest]),
+      // A model may also emit phoneConfirmation=no for broad refusal wording.
+      // Without an active phone-association decision, the explicit typed
+      // authentication refusal remains authoritative.
+      extraction([declinedRequest], null, null, 'no'),
     ]);
     const gateway = new FakePurchaseGateway();
     gateway.authByPhoneResult = { status: 'user_not_found' };
