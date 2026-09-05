@@ -8716,3 +8716,21 @@ summary was preserved but ignored by the deterministic generic renderer. Focused
 server-timestamp, information-flow, RSVP, and prompt-audit tests pass after routing
 that degraded continuation through the bounded composer. A second development
 deployment and focused live rerun are pending.
+
+**Development verification:** Artifact
+`lambda/c2862ce34811268bca5d3ef87b2ba5455143aaa14920dbf346c93f8c3a68cbc5.zip`
+was deployed to `recap-agent-runtime-dev`; CloudFormation reached
+`UPDATE_COMPLETE`, Lambda reported `Active/Successful`, and its `CodeSha256`
+matched the local artifact. Focused live run
+`eval-2026-09-05T01-32-14-773Z-5fbcf4c3` passed all three affected cases with
+no skips or evaluator errors. The complete mandatory live suite remains pending.
+
+The complete mandatory development run
+`eval-2026-09-05T01-33-57-291Z-e1e50919` executed all 59 cases with no skips or
+evaluator errors: 43 passed and 16 failed. Comparison with the previous complete run
+`eval-2026-09-04T13-16-18-352Z-79745806` found no newly failing case and 13 cases
+that changed from failing to passing. All 16 remaining failures were already present.
+They separate into pre-existing typed projection/state defects, trace-only contract
+gaps, and OTP/RSVP cases whose expected writes are unavailable under development's
+intentional real-customer write block. The focused authentication, mailbox, and RSVP
+datetime cases remain 3/3 passing. Production was not promoted.
