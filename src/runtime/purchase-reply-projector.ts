@@ -344,3 +344,83 @@ export function resolvePurchaseReplyText(
   }
   return renderPurchaseReplyDeterministic(outcome);
 }
+
+/**
+ * F3b deterministic truthfulness gates. Each predicate uses only typed
+ * reconciliation evidence (counts, canonical status, reference resolution,
+ * trusted method/currency, requested aspects). Renderers use only trusted
+ * record fields with server-local timestamps and never surface customer
+ * transaction references, gateway data, or user-reported values as facts.
+ */
+
+export function shouldRenderConciseApprovedStatus(args: {
+  purchaseCount: number;
+  paymentStatus: string | null;
+  referenceResolution: string | null;
+}): boolean {
+  return args.purchaseCount === 1 &&
+    (args.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') === 'approved' &&
+    args.referenceResolution === 'unavailable';
+}
+
+export function renderConciseApprovedStatus(eventName: string | null): string {
+  const event = eventName?.trim() ? eventName.trim() : 'tu evento';
+  return `Tu regalo para ${event} ya quedó aprobado.`;
+}
+
+export function shouldRenderNeutralSelection(args: {
+  purchaseCount: number;
+  hasAssociatedGuestEvent: boolean;
+}): boolean {
+  return args.purchaseCount > 1 && !args.hasAssociatedGuestEvent;
+}
+
+function describeSelectionStatus(status: string | null): string {
+  const normalized = status?.trim().toLocaleLowerCase('en') ?? '';
+  if (normalized === 'pending') return 'pendiente';
+  if (normalized === 'approved') return 'aprobado';
+  if (normalized === 'declined') return 'rechazado';
+  const trimmed = status?.trim() ?? '';
+  return trimmed.length > 0 ? trimmed : 'sin estado registrado';
+}
+
+export function renderNeutralPurchaseSelection(
+  purchases: PurchaseInformation[],
+): string {
+  const options = purchases.map((purchase, index) => {
+    const total = trustedAmount(purchase.grandTotal);
+    const method = trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null);
+    const when = preserveServerTimestamp(purchase.eventDate) ??
+      preserveServerTimestamp(purchase.createdAt) ??
+      'fecha no registrada';
+    const amount = total !== null ? `monto ${total}` : 'monto no registrado';
+    const via = method ? ` mediante ${method}` : '';
+    return `opción ${index + 1}: ${amount}${via}, fecha ${when}, estado ${describeSelectionStatus(purchase.paymentStatus)}`;
+  }).join('; ');
+  return `Encontré ${purchases.length} registros asociados a este número: ${options}. ¿A cuál te refieres?`;
+}
+
+const TRANSFER_METHOD_TOKENS = ['transfer', 'transferencia'];
+
+export function shouldRenderConciseTransferValidation(args: {
+  purchaseCount: number;
+  paymentStatus: string | null;
+  paymentMethod: string | null;
+  currency: string | null;
+  requestedAspects: PurchaseAspect[];
+}): boolean {
+  if (args.purchaseCount !== 1) return false;
+  if ((args.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') !== 'pending') return false;
+  const method = (args.paymentMethod ?? '').toLocaleLowerCase('en');
+  if (!TRANSFER_METHOD_TOKENS.some((token) => method.includes(token))) return false;
+  if (args.currency !== null && args.currency.trim().length > 0) return false;
+  const aspects = new Set(args.requestedAspects);
+  if (!aspects.has('validation_window')) return false;
+  if (aspects.has('payment_details')) return false;
+  return true;
+}
+
+export function renderConciseTransferValidation(eventName: string | null): string {
+  const event = eventName?.trim() ? eventName.trim() : 'tu evento';
+  return `Tu regalo para ${event} sigue pendiente de validación por transferencia. La validación puede tardar hasta 72 horas hábiles.`;
+}

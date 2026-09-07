@@ -23,6 +23,7 @@ import {
   type InformationTaskResult,
   type CompletedInformationRequest,
   type PendingInformationRequest,
+  type PurchaseAspect,
 } from '../core/information';
 import {
   createEmptyPlan,
@@ -146,6 +147,14 @@ import {
   purchaseThreadBypassesContextualClarification,
   purchaseThreadSuppressesHealthOffer,
 } from './conversation-continuity-policy';
+import {
+  renderConciseApprovedStatus,
+  renderConciseTransferValidation,
+  renderNeutralPurchaseSelection,
+  shouldRenderConciseApprovedStatus,
+  shouldRenderConciseTransferValidation,
+  shouldRenderNeutralSelection,
+} from './purchase-reply-projector';
 import {
   createAuthOperationId,
   logAuthObservabilityEvent,
@@ -4215,6 +4224,8 @@ export class AgentService {
     let informationResults: InformationTaskResult[] = [];
     let informationSummaries: InformationExecutionSummary[] = [];
     let operationalNote: string | null = null;
+    let completedPhonePurchase: InformationTaskResult | undefined;
+    let completedGuestEventForReply = false;
     const protectedAuthAction = requests
       .filter((request) => request.kind === 'purchase' || request.kind === 'associated_event')
       .map((request) => request.authAction ?? 'none')
@@ -4423,8 +4434,12 @@ export class AgentService {
         phonePurchaseResult?.status === 'completed' &&
         phonePurchaseResult.kind === 'purchase'
       ) {
+        const unavailableSinglePurchase = phonePurchaseResult.referenceResolution === 'unavailable' &&
+          phonePurchaseResult.purchases.length === 1;
         operationalNote = phonePurchaseResult.referenceResolution === 'unavailable'
-          ? 'El número confiable permitió recuperar compras, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Dilo brevemente, muestra opciones solo por evento, fecha, monto y estado, pide elegir una y no muestres identificadores internos ni pidas correo o código.'
+          ? unavailableSinglePurchase
+            ? 'El número confiable permitió recuperar la compra, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Responde de forma concisa solo el estado para el evento consultado, sin identificadores, montos, fechas ni preguntas de confirmación, y no pidas correo ni código.'
+            : 'El número confiable permitió recuperar compras, pero la fuente no expuso el número de transacción visible para vincular el código solicitado. Dilo brevemente, muestra opciones solo por monto, fecha y estado sin atribuir eventos, pide elegir una y no muestres identificadores internos ni pidas correo o código.'
           : phonePurchaseResult.coverage === 'partial'
           ? 'La consulta se resolvió con información resumida asociada al número confiable porque el detalle no estuvo disponible. Responde solo con los campos presentes, aclara brevemente que la cobertura es parcial y no pidas correo ni código.'
           : phonePurchaseResult.coverage === 'inconsistent'
@@ -4510,7 +4525,12 @@ export class AgentService {
           }
         }
       }
-
+      completedGuestEventForReply = guestEventResult?.status === 'completed' &&
+        guestEventResult.kind === 'associated_event';
+      completedPhonePurchase = phonePurchaseResult?.status === 'completed' &&
+          phonePurchaseResult.kind === 'purchase'
+        ? phonePurchaseResult
+        : undefined;
       const requiresPhonePurchaseDetailHandoff = requests.some((request) => {
         if (
           request.kind !== 'purchase' ||
@@ -4605,7 +4625,17 @@ export class AgentService {
       replyExtraction,
       composedReply,
     );
-    const reply = ambiguitySafeReply;
+    const hasAssociatedGuestEventForReply = completedGuestEventForReply;
+    const requestedPurchaseAspects = requests.flatMap((request) =>
+      request.kind === 'purchase' ? request.aspects : [],
+    );
+    const reply = this.enforcePurchaseReplyDeterministic(
+      currentNode,
+      completedPhonePurchase,
+      hasAssociatedGuestEventForReply,
+      requestedPurchaseAspects,
+      ambiguitySafeReply,
+    );
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
@@ -6228,6 +6258,79 @@ export class AgentService {
       structuredMessage: undefined,
       recommendationFunnel: undefined,
     };
+  }
+
+  /**
+   * F3b deterministic purchase truthfulness gate. Runs after model composition
+   * in resolver_consultas_informativas and replaces the narrative only when
+   * typed reconciliation evidence matches one of the bounded outcomes: a
+   * single approved record without a linked reference, a currency-less
+   * pending transfer validation query, or a multi-record selection without
+   * an associated guest event. All other outcomes keep the model narrative.
+   */
+  private enforcePurchaseReplyDeterministic(
+    currentNode: DecisionNode,
+    phonePurchaseResult: InformationTaskResult | undefined,
+    hasAssociatedGuestEvent: boolean,
+    requestedAspects: PurchaseAspect[],
+    reply: ComposeReplyResult,
+  ): ComposeReplyResult {
+    if (currentNode !== 'resolver_consultas_informativas') return reply;
+    if (
+      !phonePurchaseResult ||
+      phonePurchaseResult.status !== 'completed' ||
+      phonePurchaseResult.kind !== 'purchase'
+    ) {
+      return reply;
+    }
+    const purchases = phonePurchaseResult.purchases;
+    const single = purchases.length === 1 ? purchases[0] : null;
+    if (
+      single &&
+      shouldRenderConciseApprovedStatus({
+        purchaseCount: purchases.length,
+        paymentStatus: single.paymentStatus,
+        referenceResolution: phonePurchaseResult.referenceResolution ?? null,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderConciseApprovedStatus(single.eventName),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    if (
+      single &&
+      shouldRenderConciseTransferValidation({
+        purchaseCount: purchases.length,
+        paymentStatus: single.paymentStatus,
+        paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+        currency: single.currency ?? null,
+        requestedAspects,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderConciseTransferValidation(single.eventName),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    if (
+      shouldRenderNeutralSelection({
+        purchaseCount: purchases.length,
+        hasAssociatedGuestEvent,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderNeutralPurchaseSelection(purchases),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    return reply;
   }
 
   private enforceMissingFieldReply(
