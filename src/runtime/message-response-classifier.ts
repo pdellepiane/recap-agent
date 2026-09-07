@@ -12,6 +12,11 @@ import type {
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
 import { executeWithOpenAiRetry } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
+import {
+  resolveClassifierProfile,
+} from './conversation-continuity-policy';
+
+export { resolveClassifierProfile, resolveCampaignReplyDisposition } from './conversation-continuity-policy';
 
 const classifierOutputSchema = z.object({
   action: z.enum([
@@ -141,15 +146,12 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
     const latestOutboundMessage = [...args.messages]
       .reverse()
       .find((message) => message.direction === 'outbound') ?? null;
-    const hasRecentCampaign = args.messages.some(
-      (message) =>
-        message.direction === 'outbound' && message.source === 'admin_campaign',
-    );
+    // S05: campaign profile follows the newest outbound source only
+    // (admin_campaign, frontend_followup, admin_manual). An old campaign
+    // displaced by a newer agent message resolves to general. Missing
+    // history resolves to general with no onboarding. Source enum only.
     const classifierProfile: ResponseClassifierPromptProfile =
-      latestOutboundMessage?.source === 'admin_campaign' ||
-      (hasRecentCampaign && latestOutboundMessage?.source === 'admin_manual')
-        ? 'campaign_reply'
-        : 'general';
+      resolveClassifierProfile(args.messages);
     let promptBundleId: string | null = null;
     let promptFilePaths: string[] = [];
 

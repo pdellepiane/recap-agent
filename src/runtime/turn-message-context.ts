@@ -1,6 +1,15 @@
 import type { NormalizedInboundMessage } from '../core/messages';
 import type { PersistedPlan } from '../core/plan';
+import { normalizeServerTimestamp } from '../core/server-timestamp';
 import type { AgentConversationMessage } from './agent-conversation-gateway';
+import {
+  resolveReminderContext,
+  categorizeOutboundSource,
+  isManualFollowupSource,
+  isReminderOutboundSource,
+} from './conversation-continuity-policy';
+
+export { resolveReminderContext } from './conversation-continuity-policy';
 
 export const recentConversationMessageLimit = 5;
 export const modelConversationMessageBodyLimit = 600;
@@ -43,6 +52,121 @@ export type ConversationContinuity = {
   recentInboundCount: number;
   recentOutboundCount: number;
 };
+
+export type AdapterSourceCategory = 'reminder' | 'manual' | 'other';
+
+/**
+ * S04: normalize adapter source metadata without new wire fields.
+ * Delegates to the shared S05 categorization so reminder/manual logic
+ * has one owner; frontend_followup and admin_campaign share reminder.
+ */
+export function normalizeAdapterSourceCategory(
+  source: string | null | undefined,
+): AdapterSourceCategory {
+  return categorizeOutboundSource(source ?? null);
+}
+
+export function isReminderSource(source: string | null | undefined): boolean {
+  return isReminderOutboundSource(source ?? null);
+}
+
+export function isManualContextSource(source: string | null | undefined): boolean {
+  return isManualFollowupSource(source ?? null);
+}
+
+/**
+ * S04: order by valid server timestamps with message ID as stable tie-break.
+ * Invalid timestamps never reorder by body text; they fall back to ID order.
+ */
+export function orderMessagesByServerTime(
+  messages: readonly AgentConversationMessage[],
+): AgentConversationMessage[] {
+  return [...messages].sort((left, right) => {
+    const leftTime = normalizeServerTimestamp(left.sentAt ?? left.createdAt);
+    const rightTime = normalizeServerTimestamp(right.sentAt ?? right.createdAt);
+    if (leftTime && rightTime) {
+      if (leftTime < rightTime) {
+        return -1;
+      }
+      if (leftTime > rightTime) {
+        return 1;
+      }
+    }
+    return left.id - right.id;
+  });
+}
+
+/** Newest outbound reminder in the visible window, or null when absent. */
+export function selectCurrentReminder(
+  messages: readonly AgentConversationMessage[],
+): AgentConversationMessage | null {
+  const ordered = orderMessagesByServerTime(messages);
+  for (let index = ordered.length - 1; index >= 0; index -= 1) {
+    const candidate = ordered[index];
+    if (candidate && candidate.direction === 'outbound' && isReminderSource(candidate.source)) {
+      return candidate;
+    }
+  }
+  return null;
+}
+
+export type ReminderNarrativeProvenance = 'outbound_message';
+
+export type ReminderNarrativeContext = {
+  readonly sourceMessageId: number;
+  readonly provenance: ReminderNarrativeProvenance;
+  readonly literalTitle: string | null;
+  readonly publicLink: string | null;
+  readonly purpose: string | null;
+  readonly explicitTopicSwitch: string | null;
+};
+
+function boundNarrativeText(value: string | null | undefined, limit: number): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return null;
+  }
+  return trimmed.slice(0, limit);
+}
+
+/**
+ * S04: bounded narrative context from adapter metadata plus structured
+ * extraction. Provenance is always outbound_message; the result is never
+ * authoritative attendance or authorization evidence.
+ */
+export function buildReminderNarrativeContext(args: {
+  readonly reminder: AgentConversationMessage | null;
+  readonly literalTitle?: string | null;
+  readonly publicLink?: string | null;
+  readonly purpose?: string | null;
+  readonly explicitTopicSwitch?: string | null;
+}): ReminderNarrativeContext | null {
+  if (!args.reminder) {
+    return null;
+  }
+  return {
+    sourceMessageId: args.reminder.id,
+    provenance: 'outbound_message',
+    literalTitle: boundNarrativeText(args.literalTitle, 200),
+    publicLink: boundNarrativeText(args.publicLink, 500),
+    purpose: boundNarrativeText(args.purpose, 200),
+    explicitTopicSwitch: boundNarrativeText(args.explicitTopicSwitch, 200),
+  };
+}
+
+/** Encode narrative context into the existing aggregate assumptions field. */
+export function encodeReminderNarrativeAssumption(context: ReminderNarrativeContext): string {
+  const title = context.literalTitle ?? '';
+  return `reminder_narrative source_message_id=${context.sourceMessageId} provenance=${context.provenance} title=${title}`.slice(0, 280);
+}
+
+/** Narrative context never authorizes attendance or access. */
+export function isReminderNarrativeAuthoritative(): boolean {
+  return false;
+}
 
 export type TurnMessageContext = {
   historyStatus: ConversationHistoryStatus;
@@ -179,12 +303,16 @@ export function buildTurnMessageContext(args: {
     uniqueMessages.set(message.id, message);
   }
 
-  const recentMessages = Array.from(uniqueMessages.values()).slice(
+  // S04: order by valid server timestamps with message ID tie-breaker
+  // before bounding; S05 entry anchor then selects the newest campaign-like
+  // outbound. No body-text matching; raw history stays capped.
+  const recentMessages = orderMessagesByServerTime(Array.from(uniqueMessages.values())).slice(
     -recentConversationMessageLimit,
   );
-  const entryMessage = [...recentMessages].reverse().find(
-    (message) => message.source === 'admin_campaign',
-  ) ?? recentMessages[0] ?? null;
+  const reminder = resolveReminderContext(recentMessages);
+  const entryMessage = reminder.entryMessageId !== null
+    ? (recentMessages.find((message) => message.id === reminder.entryMessageId) ?? null)
+    : (recentMessages[0] ?? null);
 
   return {
     historyStatus: recentMessages.length > 0 ? 'available' : 'empty',

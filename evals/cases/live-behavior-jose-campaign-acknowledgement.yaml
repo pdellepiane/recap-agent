@@ -1,0 +1,45 @@
+template: template.base-live
+id: live_behavior.jose_campaign_greeting_then_acknowledgement
+suite: live_behavior_regression
+version: 1
+description: Jose greets then sends an acknowledgement/deferral with available history. No provider interview, tools, repeated welcome or RSVP mutation.
+tags: [live, behavior, continuity, reported-interaction, jose-screenshot]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola, buenas tardes
+    channel: whatsapp
+    contactPhone: "+51900005050"
+    sessionId: live-jose-campaign-acknowledgement-session
+  - text: Gracias, por ahora lo dejamos asi
+    channel: whatsapp
+    contactPhone: "+51900005050"
+    sessionId: live-jose-campaign-acknowledgement-session
+expectations:
+  - id: acknowledgement-performs-no-provider-or-rsvp-effect
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [search_providers_from_plan, guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code,
+      request_human_takeover]
+    turnIndex: 1
+    severity: hard
+  - id: acknowledgement-uses-no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    turnIndex: 1
+    severity: hard
+  - id: acknowledgement-closes-without-repeated-welcome-or-interview
+    type: text_semantic
+    rubric: >-
+      An empty assistant response is fully correct when the response classifier suppresses this simple
+      acknowledgement/deferral. If a response is sent, it must be entirely in Spanish as one brief
+      contextual closure without a repeated generic welcome or introduction, without opening the
+      provider planning interview, without provider tools, without an RSVP mutation or new
+      registration claim, and without requesting email authentication or a code.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 200
