@@ -2189,7 +2189,7 @@ export class AgentService {
         const reminderClause = reminderBody.length > 0
           ? ` Veo tu recordatorio vigente: "${reminderBody.slice(0, 200)}".`
           : ' Veo tu recordatorio vigente de Cumple Marcelo.';
-        deterministicReplyText = `Gracias por confirmar tu asistencia.${reminderClause} En este momento no puedo verificar tu invitación, ya pedí apoyo humano para revisarlo.`;
+        deterministicReplyText = `Gracias por tu mensaje.${reminderClause} En este momento no puedo verificar tu invitación, ya pedí apoyo humano para revisarlo.`;
         deterministicReplyIsComplete = true;
         operationalNote = 'El usuario confirma asistencia pero la consulta no devolvió registro con recordatorio vigente. Reconoce el recordatorio con su título literal, indica que no puedes verificarlo ahora y confirma que ya pediste apoyo humano. No niegues la invitación ni registres asistencia.';
         nextRsvpState = this.emptyRsvpState();

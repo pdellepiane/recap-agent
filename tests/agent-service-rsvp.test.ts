@@ -671,22 +671,14 @@ describe('AgentService RSVP flow', () => {
 
     const result = await service.handleTurn(inbound('Sí confirmamos la asistencia'));
 
-    const request = runtime.composeRequests[0];
-    expect(request?.rsvpPhoneEvidence).toEqual({
-      state: 'unavailable',
-      coverage: 'complete',
-      resolution: 'not_found',
-      reason: 'no_invitations',
-    });
-    expect(request?.extraction.rsvpEventReference).toBe('Gia Antonella');
-    expect(request?.errorMessage).toContain('no devolvió su registro ni su estado');
-    expect(request?.errorMessage).not.toContain(
-      'no encontró invitaciones pendientes para el número',
-    );
-    expect(request?.errorMessage).not.toContain('quedó registrada');
-    expect(request?.turnDecision?.persistReason).toBe(
-      'needs_input',
-    );
+    expect(runtime.composeRequests.length).toBe(0);
+    expect(result.plan.human_escalation.status).toBe('requested');
+    expect(result.outbound.text).toContain('Gracias por tu mensaje');
+    expect(result.outbound.text).not.toContain('Gracias por confirmar tu asistencia');
+    expect(result.outbound.text).toContain('Gia Antonella');
+    expect(result.outbound.text?.toLowerCase()).toContain('no puedo verificar');
+    expect(result.outbound.text).not.toMatch(/no encontr[eé] ninguna invitaci/i);
+    expect(result.outbound.text).not.toMatch(/qued[oó] registrada/i);
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.trace.tools_called).not.toContain('guest_rsvp');
   });

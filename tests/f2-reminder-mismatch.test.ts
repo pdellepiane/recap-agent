@@ -81,6 +81,10 @@ describe('F2 reminder mismatch escalates once without denial', () => {
     });
     expect(gateway.handoffCalls).toBe(1);
     const text = result.outbound.text ?? '';
+    expect(text).toContain('Gracias por tu mensaje');
+    expect(text).not.toContain('Gracias por confirmar tu asistencia');
+    expect(text).not.toMatch(/confirmar tu asistencia/i);
+    expect(text).not.toMatch(/qued[oó] registrada/i);
     expect(text).toContain('Cumple Marcelo');
     expect(text.toLowerCase()).toContain('no puedo verificar');
     expect(text).not.toMatch(/no encontr[eé] ninguna invitaci/i);
