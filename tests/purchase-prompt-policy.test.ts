@@ -26,4 +26,18 @@ describe('purchase prompt policy', () => {
     );
     expect(bundle.instructions).toContain('`destination_account`');
   });
+
+  it('keeps S09 cart and reported-amount rules scoped to the information node without global payment expansion', async () => {
+    const fs = await import('node:fs/promises');
+    const bundle = await loader.loadNodeBundle('resolver_consultas_informativas');
+    const rule = 'Carrito y pedido son registros distintos';
+    expect(bundle.instructions.split(rule)).toHaveLength(2);
+    expect(bundle.instructions).toContain('nunca reemplaza el total registrado');
+    const shared = await fs.readFile(
+      path.resolve(process.cwd(), 'prompts/shared/domain_knowledge.txt'),
+      'utf8',
+    );
+    expect(shared).not.toContain('Carrito y pedido');
+    expect(shared).not.toContain('total registrado');
+  });
 });

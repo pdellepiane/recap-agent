@@ -1,0 +1,346 @@
+import type {
+  CartInformation,
+  PurchaseAspect,
+  PurchaseInformation,
+} from '../core/information';
+import { preserveServerTimestamp } from './purchase-reconciliation';
+
+/**
+ * S09 purchase reply projection for node `resolver_consultas_informativas`.
+ *
+ * Consumes S08 reconciliation outcomes (reconciled purchases, distinct carts,
+ * coverage, selection state, reference resolution) and produces the minimal
+ * model-visible reply input plus deterministic Spanish renderers.
+ *
+ * Owned scope is the projector and outcome prompts only. Service and composer
+ * integration stays with the integrator, so this module has no imports from
+ * agent-service or openai-agent-runtime.
+ */
+
+export type PurchaseReplyCoverage = 'complete' | 'partial' | 'inconsistent';
+
+export type PurchaseReplyReferenceResolution =
+  | 'not_requested'
+  | 'matched'
+  | 'unavailable';
+
+export type PurchaseReplyUserReported = {
+  amount?: number | null;
+  currency?: string | null;
+  paidAt?: string | null;
+};
+
+export type PurchaseReplySelectionInput = {
+  purchases: PurchaseInformation[];
+  carts: CartInformation[];
+  needsSelection: boolean;
+  coverage: PurchaseReplyCoverage;
+  referenceResolution: PurchaseReplyReferenceResolution;
+  requestedAspects: PurchaseAspect[];
+  referenceAuthorized: boolean;
+  userReported: PurchaseReplyUserReported;
+};
+
+export type CartReplyView = {
+  recordType: 'cart';
+  status: string;
+  eventName: string | null;
+  eventDate: string | null;
+  createdAt: string | null;
+};
+
+export type AmountMismatchView = {
+  reported: number;
+  recorded: number;
+};
+
+export type OrderReplyView = {
+  recordType: 'order';
+  paymentStatus: string | null;
+  amount: {
+    total: number | null;
+    paid: number | null;
+    currency: string | null;
+    method: string | null;
+  } | null;
+  amountMismatch: AmountMismatchView | null;
+  eventName: string | null;
+  eventDate: string | null;
+  createdAt: string | null;
+  transactionReference: string | null;
+  currency: string | null;
+  userReported: {
+    amount: number | null;
+    currency: string | null;
+    paidAt: string | null;
+  };
+};
+
+export type OrderCandidateView = {
+  candidateIndex: number;
+  eventName: string | null;
+  eventDate: string | null;
+  paymentStatus: string | null;
+  amount: number | null;
+  transactionReference: string | null;
+};
+
+export type PurchaseReplyOutcome =
+  | { kind: 'cart_only'; cart: CartReplyView }
+  | { kind: 'order_unique'; order: OrderReplyView }
+  | { kind: 'order_plus_cart'; order: OrderReplyView; cart: CartReplyView }
+  | { kind: 'selection'; candidates: OrderCandidateView[] }
+  | { kind: 'conflict' }
+  | { kind: 'empty' };
+
+export type PurchaseNarrativeClaims = {
+  claimsSettledTotal: boolean;
+  settledFromUserReport: boolean;
+  claimsSuccess: boolean;
+  receiptPresent: boolean;
+};
+
+function trustedText(value: string | null | undefined): string | null {
+  if (value === null || value === undefined) return null;
+  return value.trim().length > 0 ? value : null;
+}
+
+function trustedAmount(value: number | null | undefined): number | null {
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function toCartView(cart: CartInformation): CartReplyView {
+  // A cart is its own record type. Order amounts and statuses can never
+  // attach to it, and its own subtotal is checkout evidence, not a reply fact.
+  return {
+    recordType: 'cart',
+    status: cart.status,
+    eventName: trustedText(cart.eventName),
+    eventDate: preserveServerTimestamp(cart.eventDate ?? null),
+    createdAt: preserveServerTimestamp(cart.createdAt ?? null),
+  };
+}
+
+function toOrderView(
+  purchase: PurchaseInformation,
+  requestedAspects: PurchaseAspect[],
+  referenceAuthorized: boolean,
+  userReported: PurchaseReplyUserReported,
+): OrderReplyView {
+  const requested = new Set(requestedAspects);
+  const wantsStatus = requested.has('summary') ||
+    requested.has('payment_status') ||
+    requested.has('decline');
+  const wantsAmount = requested.has('summary') ||
+    requested.has('payment_details') ||
+    requested.has('validation_window') ||
+    requested.has('payment_status');
+  // Payment method reaches the reply only when explicitly requested. An
+  // approved summary never needs the method type.
+  const wantsMethod = requested.has('payment_details') ||
+    requested.has('validation_window');
+  const total = trustedAmount(purchase.grandTotal);
+  const paid = trustedAmount(purchase.payment?.amount);
+  const reportedAmount = typeof userReported.amount === 'number' &&
+      Number.isFinite(userReported.amount)
+    ? userReported.amount
+    : null;
+  const mismatch = reportedAmount !== null && total !== null && Math.abs(reportedAmount - total) >= 0.005
+    ? { reported: reportedAmount, recorded: total }
+    : null;
+  const reference = referenceAuthorized
+    ? trustedText(purchase.customerTransactionNumber)
+    : null;
+  return {
+    recordType: 'order',
+    paymentStatus: wantsStatus ? purchase.paymentStatus : null,
+    amount: wantsAmount
+      ? {
+        // Reported amounts stay user-reported. Only trusted totals enter here.
+        total,
+        paid,
+        currency: purchase.currency ?? null,
+        method: wantsMethod ? purchase.paymentMethod ?? purchase.payment?.method ?? null : null,
+      }
+      : null,
+    amountMismatch: mismatch,
+    // Event associations exist only when the trusted record supplies them.
+    eventName: trustedText(purchase.eventName),
+    eventDate: preserveServerTimestamp(purchase.eventDate),
+    createdAt: preserveServerTimestamp(purchase.createdAt),
+    transactionReference: reference,
+    currency: purchase.currency ?? null,
+    userReported: {
+      amount: reportedAmount,
+      currency: typeof userReported.currency === 'string' && userReported.currency.trim().length > 0
+        ? userReported.currency
+        : null,
+      paidAt: typeof userReported.paidAt === 'string' && userReported.paidAt.trim().length > 0
+        ? userReported.paidAt
+        : null,
+    },
+  };
+}
+
+function toCandidateView(
+  purchase: PurchaseInformation,
+  candidateIndex: number,
+  referenceAuthorized: boolean,
+): OrderCandidateView {
+  return {
+    candidateIndex,
+    eventName: trustedText(purchase.eventName),
+    eventDate: preserveServerTimestamp(purchase.eventDate),
+    paymentStatus: purchase.paymentStatus,
+    amount: trustedAmount(purchase.grandTotal),
+    transactionReference: referenceAuthorized
+      ? trustedText(purchase.customerTransactionNumber)
+      : null,
+  };
+}
+
+function sameEvent(a: CartInformation, b: PurchaseInformation): boolean {
+  if (a.eventId !== null && a.eventId !== undefined && b.eventId !== null && b.eventId !== undefined) {
+    if (a.eventId === b.eventId) return true;
+  }
+  const cartName = trustedText(a.eventName)?.toLocaleLowerCase('es') ?? null;
+  const orderName = trustedText(b.eventName)?.toLocaleLowerCase('es') ?? null;
+  return cartName !== null && orderName !== null && cartName === orderName;
+}
+
+export function selectPurchaseReplyOutcome(
+  input: PurchaseReplySelectionInput,
+): PurchaseReplyOutcome {
+  if (input.coverage === 'inconsistent') return { kind: 'conflict' };
+  if (input.purchases.length === 0 && input.carts.length === 0) return { kind: 'empty' };
+  if (input.purchases.length === 0) {
+    const cart = input.carts[0];
+    if (!cart) return { kind: 'empty' };
+    return { kind: 'cart_only', cart: toCartView(cart) };
+  }
+  if (input.needsSelection || input.purchases.length > 1) {
+    return {
+      kind: 'selection',
+      candidates: input.purchases.map((purchase, index) =>
+        toCandidateView(purchase, index, input.referenceAuthorized)
+      ),
+    };
+  }
+  const single = input.purchases[0];
+  if (!single) return { kind: 'empty' };
+  // A unique trusted record is stated directly. An unavailable
+  // customer-reference lookup must not create false uncertainty.
+  const order = toOrderView(single, input.requestedAspects, input.referenceAuthorized, input.userReported);
+  const sameEventCart = input.carts.find((cart) => sameEvent(cart, single));
+  if (sameEventCart) {
+    return { kind: 'order_plus_cart', order, cart: toCartView(sameEventCart) };
+  }
+  return { kind: 'order_unique', order };
+}
+
+function toModelOrder(order: OrderReplyView): Record<string, unknown> {
+  const view: Record<string, unknown> = { ...order };
+  // Absent currency is omitted, never projected as a caveat. Empty
+  // user-reported slots are omitted as well.
+  if (view.currency === null) delete view.currency;
+  const amount = { ...(order.amount ?? {}) } as Record<string, unknown>;
+  for (const key of ['currency', 'method', 'paid'] as const) {
+    if (amount[key] === null) delete amount[key];
+  }
+  view.amount = amount;
+  const reported = { ...order.userReported };
+  if (reported.amount === null) delete (reported as Record<string, unknown>).amount;
+  if (reported.currency === null) delete (reported as Record<string, unknown>).currency;
+  if (reported.paidAt === null) delete (reported as Record<string, unknown>).paidAt;
+  view.userReported = reported;
+  return view;
+}
+
+export function projectPurchaseReplyForModel(
+  outcome: PurchaseReplyOutcome,
+): Record<string, unknown> {
+  // Internal identifiers, bank routing, vouchers and gateway data never
+  // enter model input, even when the trusted record carries them.
+  switch (outcome.kind) {
+    case 'cart_only':
+      return { recordType: 'cart', cart: outcome.cart };
+    case 'order_unique':
+      return { recordType: 'order', order: toModelOrder(outcome.order) };
+    case 'order_plus_cart':
+      return { recordType: 'order_plus_cart', order: toModelOrder(outcome.order), cart: outcome.cart };
+    case 'selection':
+      return { recordType: 'selection', candidates: outcome.candidates };
+    case 'conflict':
+      return { recordType: 'conflict' };
+    case 'empty':
+      return { recordType: 'empty' };
+  }
+}
+
+function describeOrder(order: OrderReplyView): string {
+  const event = order.eventName ?? 'tu evento';
+  if (order.paymentStatus?.trim().toLocaleLowerCase('en') === 'approved') {
+    return `Tu regalo para ${event} ya quedo aprobado.`;
+  }
+  if (order.paymentStatus?.trim().toLocaleLowerCase('en') === 'declined') {
+    return `Tu regalo para ${event} aparece como rechazado. Puedo comunicarte con una persona del equipo para revisarlo.`;
+  }
+  const amount = order.amount?.total !== null && order.amount?.total !== undefined
+    ? ` de ${order.amount.total}`
+    : '';
+  const mismatch = order.amountMismatch !== null
+    ? ' Tomo el monto que me indicas como un dato reportado por ti; el registro conserva su propio total y no lo reemplazo.'
+    : '';
+  const reported = order.userReported.currency !== null || order.userReported.paidAt !== null
+    ? ' Los datos de moneda y hora que me compartes quedan como tu reporte; no puedo confirmarlos con el registro disponible.'
+    : '';
+  return `Tu regalo${amount} para ${event} sigue pendiente de validacion.${mismatch}${reported}`;
+}
+
+export function renderPurchaseReplyDeterministic(outcome: PurchaseReplyOutcome): string {
+  switch (outcome.kind) {
+    case 'cart_only':
+      return `Tienes un carrito activo para ${outcome.cart.eventName ?? 'tu evento'}. Todavia no es un pedido: te falta completar el pago.`;
+    case 'order_unique':
+      return describeOrder(outcome.order);
+    case 'order_plus_cart':
+      return `${describeOrder(outcome.order)} Ademas tienes un carrito activo para ${outcome.cart.eventName ?? 'el mismo evento'}, que es un registro distinto y todavia no es un pedido.`;
+    case 'selection': {
+      const options = outcome.candidates.map((candidate) => {
+        const event = candidate.eventName ?? 'un evento sin nombre registrado';
+        const status = candidate.paymentStatus ?? 'sin estado registrado';
+        return `opcion ${candidate.candidateIndex + 1}: ${event} (${status})`;
+      }).join('; ');
+      return `Encontre varios registros asociados a este numero: ${options}. Dime a cual te refieres.`;
+    }
+    case 'conflict':
+      return 'Encontre informacion contradictoria entre registros del mismo pedido y no puedo confirmar su estado ahora. Puedo comunicarte con una persona del equipo para revisarlo.';
+    case 'empty':
+      return 'No encontre compras asociadas a este numero en la consulta realizada. Puedo comunicarte con una persona del equipo para revisarlo.';
+  }
+}
+
+export function checkPurchaseNarrativeClaims(
+  outcome: PurchaseReplyOutcome,
+  claims: PurchaseNarrativeClaims,
+): 'ok' | 'fallback' {
+  void outcome;
+  // Structured claim contract for bounded narrative composition: a settled
+  // total claimed from a user report, or any success claim without a
+  // matching receipt, is invalid. Invalid output uses the deterministic
+  // renderer; there is no corrective model call.
+  if (claims.settledFromUserReport && claims.claimsSettledTotal) return 'fallback';
+  if (claims.claimsSuccess && !claims.receiptPresent) return 'fallback';
+  return 'ok';
+}
+
+export function resolvePurchaseReplyText(
+  outcome: PurchaseReplyOutcome,
+  narrative: string | null,
+  claims: PurchaseNarrativeClaims,
+): string {
+  if (narrative !== null && checkPurchaseNarrativeClaims(outcome, claims) === 'ok') {
+    return narrative;
+  }
+  return renderPurchaseReplyDeterministic(outcome);
+}
