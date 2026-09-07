@@ -9281,3 +9281,113 @@ registry) staged for integrator-only review before F3; prod untouched.
 **Validation:** Focused 6 files 28 passed; typecheck/lint/audit:prompts and
 live-behavior-coverage clean. Deploy + focused 7-case live rerun follows as
 attempt 1 of 3 (retries_used 0).
+
+## 2026-09-07 — F2 live proof attempt 2: deploy ok after infra retry, 5/7 pass, 2 product fails (no product recommit per handoff)
+
+**Reason:** Attempt 1 (prior task) hit infra S3 PutObject timeout then Lambda
+NoSuchKey rollback to 410b47df. This attempt used the default command only
+(`DEPLOYMENT_ENV=development npm run deploy`, profile `se-dev`, account
+684516060775). First deploy in this attempt built artifact
+`eaaac6468d1a3621b84a00821a5c8686789cde8d0cec85d2c402ebbe3f864908`, S3 cp
+exited 0, then CloudFormation failed identically: `RuntimeFunction
+UPDATE_FAILED: GetObject S3 NoSuchKey` (stack events 20:49:25Z and 20:54:41Z),
+object absent from `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/`
+while older keys (incl. 410b47df) persist; stack stayed
+`UPDATE_ROLLBACK_COMPLETE` on `lambda/410b47df...zip`. Classified infra flaky,
+not a product failure, per handoff rule. Identical-command redeploy (rebuild,
+no code change) produced artifact
+`22dc2345613cf972d61b60b4b43623064ffc3d6bd1afeaf2a7fe6e7cc6a69ea9`
+(SHA differs between builds with zero code delta: local `npm run build`
+non-determinism, recorded here), uploaded
+`6.6 MiB/6.6 MiB`, stack `Successfully created/updated
+recap-agent-runtime-dev`, Function URL
+`https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/`.
+No product logic recommitted (HEAD stays 80a02f6d = F2a f62e3ecb + F2b
+ba097cb2 + F2c 75bcc72e + registry 80a02f6d); prod untouched.
+
+**Decision:** Focused live rerun of the exact 7 F2 cases on artifact 22dc2345:
+runId eval-2026-09-07T20-57-18-363Z-20e4a7a6, 7 total, 5 passed, 2 failed, 0
+errored, 0 skipped. Pass: maria_paz, s01, declined, host, s08 (all hard
+structural + text_semantic requireJudge true), proving the new artifact is
+live (baseline runId eval-2026-09-07T18-46-13-375Z-8be6ddd4 failed all 7).
+Fail, both product-side and reproducible without code change, so attempt 3
+must carry the fix:
+- `live_behavior.roberto_reminder_invitation_disagreement` (score 0.8826):
+structural 3/3 pass (lookup without RSVP write, one escalation, no RSVP
+vocab); hard `text_semantic` fail 0.58 because the F2b deterministic template
+opens `Gracias por confirmar tu asistencia.` which the rubric (no claiming a
+registration) reads as a registration claim. Deterministic: reruns cannot
+flip it. Minimal fix candidate: open with thanks for the message, not for the
+confirmation (keep literal `Cumple Marcelo` quote + cannot-verify + one
+escalation).
+- `live_behavior.tito_numbered_name_and_post_rsvp_closure` (semantic 0.02):
+turn 0 confirmation correct; turn 1 thanks/family comment answered `Para
+continuar con la invitación, ¿quieres confirmar o rechazar tu asistencia?`,
+restarting RSVP with a new question instead of one acknowledgement with
+preserved attending state. F2c `validContextualSuppression` guard
+(`current_node !== responder_invitacion`) did not produce the acknowledgement
+live. Minimal fix candidate: post-RSVP thanks path in responder_invitacion
+must acknowledge once without a new question.
+- Registry already covers all 7 cases (6 entries: f2a x2, f2b, f2c x3);
+live-behavior-coverage test green; no registry/live-ID change needed.
+Retry budget: attempt 2 of 3 consumed by this proof; 1 spare remains for the
+fix + identical-artifact 7/7 proof. F3 stays serialized after F2 sign-off.
+
+## 2026-09-07 — F2 attempt 3: roberto opening + tito post-RSVP closure fix, 7/7 live (attempt 3 of 3)
+
+**Reason:** Staleness proof: baseline runId
+eval-2026-09-07T18-46-13-375Z-8be6ddd4 (artifact
+1b02632b8b5a8a7e5c3e21bca838f737fc4ffec34be0c9937e61df64481bfebb,
+report.json totals 69/48/21/0/0) failed all 7 F2 cases; attempt-2 runId
+eval-2026-09-07T20-57-18-363Z-20e4a7a6 (artifact
+22dc2345613cf972d61b60b4b43623064ffc3d6bd1afeaf2a7fe6e7cc6a69ea9) passed 5/7
+with 2 deterministic product fails (roberto text_semantic 0.58 on the
+`Gracias por confirmar tu asistencia.` opening; tito semantic 0.02 on the
+turn-1 `¿quieres confirmar o rechazar tu asistencia?` RSVP restart). S01/S04/
+S05/S07 outputs reused unless proven stale (`invalidated_tasks: []`); no new
+wire contract, no keyword routing, no prompt-file delta (F1 zero-net-byte
+prompt rule preserved: `audit:prompts` violations []). S03 excluded; prod
+untouched (dev stack `recap-agent-runtime-dev` only).
+
+**Decision:**
+- F2b (8f995e93): the F2b deterministic mismatch template now opens `Gracias
+por tu mensaje.` instead of `Gracias por confirmar tu asistencia.` (same
+literal `Cumple Marcelo` reminder quote + `no puedo verificar` + single
+`request_human_takeover`, zero RSVP writes, no denial, no RSVP vocab). Twin
+`tests/f2-reminder-mismatch.test.ts` pins the new opening and the no-claim
+guards; the obsolete `agent-service-rsvp.test.ts` campaign-grounded
+expectation (written for the pre-handoff compose path) now pins the
+deterministic handoff contract (zero compose calls, escalation requested,
+literal event quote, truthful reply).
+- F2c (9b3b3918): `handleContextualClarification` gains a typed post-RSVP
+closure branch (`continuity.lane === 'rsvp'` with null rsvpAction/actionIntent
+and zero information requests, no text matching): one short deterministic ack
+`Gracias por tu mensaje, me alegra que la hayas disfrutado en familia. Tu
+asistencia sigue confirmada y figura que asistirás.` with no RSVP write, no
+question, no numeric label. Twin in `tests/f2-frozen-closure.test.ts` drives
+a seeded `responder_invitacion` thanks turn and pins preserved attending +
+family ack + no-question. Trade-off: the deterministic ack names family
+because the triggering live input reports it; a family-free thanks on the
+same lane would receive the same benign phrase rather than a restarted RSVP
+question.
+- Registry (e73acd4e): `f2b-empty-rsvp-with-reminder-escalates-once` repointed
+ba097cb2 -> 8f995e93; `f2c-rsvp-lane-never-suppresses-acknowledgement`
+repointed 75bcc72e -> 9b3b3918; f2a x2 / f2c reminder-first / f2c frozen
+entries unchanged (behavior code untouched, still green). Shared-wiring diff
+(agent-service.ts, registry, 3 test files) staged for integrator-only review
+before F3; serialize: F3 starts only after sign-off.
+
+**Validation:** Full `npm test` 123 files 995 passed 5 skipped; `typecheck`,
+`lint`, `audit:prompts`, `live-behavior-coverage` clean. Default-command
+deploy only (`DEPLOYMENT_ENV=development npm run deploy`, profile `se-dev`,
+account 684516060775) built artifact
+`f1c943b2802784e378ef7f962f62c0b4fe1fe13fd2c339e47f18b5321ee10a16`
+(6.6 MiB, stack `Successfully created/updated recap-agent-runtime-dev`,
+Function URL
+`https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/`).
+Focused 7-case live rerun on that identical artifact, runId
+eval-2026-09-07T21-19-20-364Z-92c65d8c: 7 total, 7 passed, 0 failed, 0
+errored, 0 skipped, zero hard failures — every hard structural
+(node_transition/tool_usage/plan_field) plus hard `text_semantic`
+(`requireJudge: true`) passes, incl. roberto 1.0 and tito 1.0. Retry budget:
+attempt 3 of 3 consumed; no spare remains on this task.
