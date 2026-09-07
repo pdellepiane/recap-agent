@@ -1,10 +1,12 @@
 template: template.base-live
 id: live_behavior.purchase_joaquin_dedication_selection
 suite: live_behavior_regression
-version: 1
+version: 2
 description: Joaquín's dedication request uses phone-scoped gift details and asks him to select among multiple purchases without authentication.
 tags: [live, behavior, purchase, gift-detail, selection, reported-interaction, joaquin]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-joaquin-frozen
 inputs:
   - text: Quisiera cambiar la dedicatoria de un regalo que hice para Chiara Vittoria.
     channel: whatsapp

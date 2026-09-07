@@ -31,6 +31,10 @@ import {
 import {
   eventMatches as sharedEventMatches,
 } from './event-matching';
+import {
+  detectConflictingFields,
+  reconcileTwoRecords,
+} from './purchase-reconciliation';
 import type {
   RuntimeCapabilityManifest,
   RuntimeOperationId,
@@ -1330,26 +1334,26 @@ export class InformationOrchestrator {
       snapshot.purchasePartitionByOrderId.set(incoming.orderId, partition);
       return;
     }
-    if (this.purchaseRecordsConflict(current, incoming)) {
+    const currentPartition = snapshot.purchasePartitionByOrderId.get(incoming.orderId) ?? 'legacy_orders';
+    const outcome = reconcileTwoRecords(
+      current,
+      currentSource,
+      currentPartition,
+      incoming,
+      source,
+      partition,
+    );
+    if (outcome.status === 'conflict') {
       snapshot.inconsistentOrderIds.add(incoming.orderId);
     }
-    const priority = { orders: 0, event: 1, gift_purchases: 2 } as const;
-    const preferred = priority[source] >= priority[currentSource] ? incoming : current;
-    const fallback = preferred === incoming ? current : incoming;
-    snapshot.purchasesByOrderId.set(
-      incoming.orderId,
-      this.mergePurchaseRecords(preferred, fallback),
-    );
+    snapshot.purchasesByOrderId.set(incoming.orderId, outcome.canonical);
     snapshot.purchaseSourceByOrderId.set(
       incoming.orderId,
-      priority[source] >= priority[currentSource] ? source : currentSource,
+      outcome.provenance['orderId']?.source ?? source,
     );
-    const currentPartition = snapshot.purchasePartitionByOrderId.get(incoming.orderId);
     snapshot.purchasePartitionByOrderId.set(
       incoming.orderId,
-      priority[source] >= priority[currentSource]
-        ? partition
-        : currentPartition ?? 'legacy_orders',
+      outcome.canonical.partition ?? partition,
     );
   }
 
@@ -1357,52 +1361,22 @@ export class InformationOrchestrator {
     preferred: PurchaseInformation,
     fallback: PurchaseInformation,
   ): PurchaseInformation {
-    return {
-      ...fallback,
-      ...preferred,
-      eventId: preferred.eventId ?? fallback.eventId ?? null,
-      currency: preferred.currency ?? fallback.currency ?? null,
-      paymentStatus: preferred.paymentStatus ?? fallback.paymentStatus,
-      customerTransactionNumber:
-        preferred.customerTransactionNumber ?? fallback.customerTransactionNumber,
-      shippingStatus: preferred.shippingStatus ?? fallback.shippingStatus,
-      grandTotal: preferred.grandTotal ?? fallback.grandTotal,
-      paymentMethod: preferred.paymentMethod ?? fallback.paymentMethod,
-      eventName: preferred.eventName ?? fallback.eventName,
-      eventDate: preferred.eventDate ?? fallback.eventDate,
-      eventUrl: preferred.eventUrl ?? fallback.eventUrl,
-      createdAt: preferred.createdAt ?? fallback.createdAt,
-      items: preferred.items.length > 0 ? preferred.items : fallback.items,
-      payment: preferred.payment ?? fallback.payment,
-      paymentValidationExpectation:
-        preferred.paymentValidationExpectation ?? fallback.paymentValidationExpectation ?? null,
-      declineCode: preferred.declineCode ?? fallback.declineCode,
-      adminComment: preferred.adminComment ?? fallback.adminComment,
-      dedication: preferred.dedication ?? fallback.dedication,
-      thanks: preferred.thanks ?? fallback.thanks,
-      isThanked: preferred.isThanked ?? fallback.isThanked,
-    };
+    const outcome = reconcileTwoRecords(
+      fallback,
+      'orders',
+      fallback.partition ?? 'legacy_orders',
+      preferred,
+      'gift_purchases',
+      preferred.partition ?? 'legacy_orders',
+    );
+    return outcome.canonical;
   }
 
   private purchaseRecordsConflict(
     left: PurchaseInformation,
     right: PurchaseInformation,
   ): boolean {
-    const pairs: Array<[unknown, unknown]> = [
-      [left.paymentStatus, right.paymentStatus],
-      [left.customerTransactionNumber, right.customerTransactionNumber],
-      [left.shippingStatus, right.shippingStatus],
-      [left.grandTotal, right.grandTotal],
-      [left.paymentMethod, right.paymentMethod],
-      [left.eventName, right.eventName],
-      [left.eventDate, right.eventDate],
-      [left.createdAt, right.createdAt],
-      [left.items.length > 0 ? left.items : null, right.items.length > 0 ? right.items : null],
-    ];
-    return pairs.some(([leftValue, rightValue]) =>
-      leftValue !== null && leftValue !== undefined &&
-      rightValue !== null && rightValue !== undefined &&
-      JSON.stringify(leftValue) !== JSON.stringify(rightValue));
+    return detectConflictingFields(left, right).length > 0;
   }
 
   private reconcilePhoneContextResults(
@@ -1432,7 +1406,15 @@ export class InformationOrchestrator {
       }
       const purchases = result.purchases.map((projected) => {
         const canonical = snapshot.purchasesByOrderId.get(projected.orderId);
-        return canonical ? this.projectPurchase(canonical, request) : projected;
+        if (!canonical) return projected;
+        // Partition conflicts (same order id in pending and completed) never
+        // become a confident preferred status: strip settlement-critical
+        // fields so the reply must request review instead of asserting one side.
+        const conflicted = snapshot.inconsistentOrderIds.has(projected.orderId);
+        const effective = conflicted
+          ? { ...canonical, paymentStatus: null, grandTotal: null, paymentMethod: null, amountDisclosure: null }
+          : canonical;
+        return this.projectPurchase(effective, request);
       });
       return {
         ...result,

@@ -1270,7 +1270,7 @@ describe('InformationOrchestrator', () => {
     });
   });
 
-  it('suppresses conflicting order summaries in favor of detailed gift data', async () => {
+  it('marks equally authoritative status disagreement as an explicit conflict without confident status', async () => {
     const agentGateway = new FakeAgentGateway();
     agentGateway.guestOrdersResult = {
       status: 'success',
@@ -1321,7 +1321,7 @@ describe('InformationOrchestrator', () => {
       expect(result).toMatchObject({
         status: 'completed',
         coverage: 'inconsistent',
-        purchases: [{ paymentStatus: 'approved' }],
+        purchases: [{ paymentStatus: null }],
       });
     }
   });
