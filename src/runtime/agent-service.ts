@@ -4290,11 +4290,18 @@ export class AgentService {
         guestEventResult?.status === 'completed' &&
         guestEventResult.kind === 'associated_event'
       ) {
+        const currentReminderForEvent = args.messageContext.recentMessages
+          .filter((message) => message.direction === 'outbound'
+            && (message.source === 'frontend_followup' || message.source === 'admin_campaign'))
+          .sort((left, right) => left.id - right.id)
+          .at(-1) ?? null;
         const detailedEventCount = guestEventResult.result.events.filter(
           (event) => event.detail !== undefined,
         ).length;
         operationalNote =
-          guestEventResult.result.events.length > 1 && detailedEventCount === 0
+          currentReminderForEvent !== null
+            ? `Explica el recordatorio vigente desde el mensaje saliente con su título literal (por ejemplo "${currentReminderForEvent.body.slice(0, 120)}"). No uses registros históricos ni el evento del número confiable cuando difiera del recordatorio, no cambies asistencia ni pidas correo o código.`
+            : guestEventResult.result.events.length > 1 && detailedEventCount === 0
             ? 'El número confiable está invitado a varios eventos y la referencia no identifica uno de forma única. Muestra únicamente sus nombres y fechas y pregunta en una sola frase a cuál se refiere. No pidas correo ni código.'
             : hasRemainingEmailAuthentication
               ? 'La consulta del evento se resolvió directamente con la invitación asociada al número confiable. Responde primero solo con los datos solicitados del evento y pide el correo registrado únicamente para las consultas protegidas que siguen pendientes.'
@@ -4320,13 +4327,20 @@ export class AgentService {
           : phonePurchaseResult.coverage === 'inconsistent'
             ? 'Las fuentes asociadas al número confiable discreparon. Usa únicamente los valores canónicos proyectados, indica que se requiere revisión para cualquier campo no concluyente y no muestres versiones contradictorias ni pidas correo o código.'
             : 'La consulta de compra se resolvió directamente con el número confiable. Responde solo con los campos solicitados del resultado y no pidas correo ni código.';
+        const asksExplicitAmount = args.extraction.informationRequests.some(
+          (request) => request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
+        );
+        const isSingleStatusQuery = phonePurchaseResult.purchases.length === 1 && !asksExplicitAmount;
+        if (isSingleStatusQuery) {
+          operationalNote += ' Responde de forma concisa solo el estado (pendiente/en verificación o aprobado/confirmado) para el evento consultado, en español natural. No menciones monto, método de pago, moneda, registro ni plazos de validación.';
+        }
         if (
-          phonePurchaseResult.purchases.some(
+          !isSingleStatusQuery && (phonePurchaseResult.purchases.some(
             (purchase) => purchase.amountDisclosure?.presentation === 'recorded_method_no_currency',
           ) ||
           phonePurchaseResult.carts?.some(
             (cart) => cart.amountDisclosure?.presentation === 'recorded_method_no_currency',
-          )
+          ))
         ) {
           operationalNote += ' Para amountDisclosure con presentation=recorded_method_no_currency, comunica “monto [valor] mediante [método registrado]”. No añadas símbolo ni nombre de moneda; si falta el método, di solo “monto [valor]”.';
         }
@@ -4344,7 +4358,7 @@ export class AgentService {
             purchase.amountDisclosure?.presentation === 'recorded_method_no_currency' ||
             !purchase.currency,
         );
-        if (hasUnverifiableCurrency) {
+        if (hasUnverifiableCurrency && !isSingleStatusQuery) {
           operationalNote += ' La evidencia canónica no consigna moneda para esta compra. Si la persona menciona una moneda (por ejemplo USD, dólares, soles, PEN), reconócela solo como dato aportado por ella; indica que la moneda no figura en el registro y permanece sin confirmar; no presentes la moneda mencionada como hecho del registro ni del backend.';
         }
         const hasCustomerTransactionNumber = phonePurchaseResult.purchases.some(

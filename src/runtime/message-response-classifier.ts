@@ -236,7 +236,8 @@ export class OpenAiMessageResponseClassifier implements MessageResponseClassifie
         (isNonActionableAcknowledgement || isNonActionableReaction) &&
         !hasOutstandingHelpOffer &&
         !campaignActionRequiresExtraction &&
-        args.plan.rsvp_state.status === 'none';
+        args.plan.rsvp_state.status === 'none' &&
+        args.plan.current_node !== 'responder_invitacion';
       const action = shouldSuppressAutomation
         ? 'suppress_automated_response'
         : decision.action === 'respond'
