@@ -3456,6 +3456,60 @@ export class AgentService {
       !continuity.welcomeAllowed
       ? mergePlan(args.plan, { current_node: 'deteccion_intencion' })
       : args.plan;
+    const isPostRsvpClosure = continuity.lane === 'rsvp'
+      && (args.extraction.rsvpAction === null || args.extraction.rsvpAction === undefined)
+      && (args.extraction.actionIntent === null || args.extraction.actionIntent === undefined)
+      && args.extraction.informationRequests.length === 0;
+    if (isPostRsvpClosure) {
+      const closureText = 'Gracias por tu mensaje, me alegra que la hayas disfrutado en familia. Tu asistencia sigue confirmada y figura que asistirás.';
+      await this.dependencies.planStore.save({
+        plan,
+        reason: 'contextual_clarification',
+      });
+      args.tokenUsage.total = this.sumTokenUsage(
+        args.tokenUsage.classifier,
+        args.tokenUsage.extraction,
+      );
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan,
+        outbound: this.renderOutbound(
+          { text: closureText },
+          [],
+          args.inbound.channel,
+          plan.conversation_id,
+          plan,
+        ),
+        trace: this.buildTrace({
+          plan,
+          previousNode: args.previousNode,
+          currentNode: plan.current_node,
+          nodePath: args.previousNode === plan.current_node
+            ? [plan.current_node]
+            : [args.previousNode, plan.current_node],
+          extraction: args.extraction,
+          missingFields: plan.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:post_rsvp_closure',
+          promptFilePaths: [],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'contextual_clarification',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          responseClassifier: args.responseClassifierTrace,
+          searchStrategy: 'none',
+          turnDecision: this.contextualClarificationTurnDecision(
+            'contextual_clarification',
+          ),
+          operationalNote: 'Post-RSVP thanks in RSVP lane acknowledged once with preserved attending state; no RSVP write, no question, no numeric label.',
+          informationExecution: [],
+        }),
+      };
+    }
     await this.dependencies.planStore.save({
       plan,
       reason: 'contextual_clarification',
