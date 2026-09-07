@@ -3556,6 +3556,66 @@ export class AgentService {
         }),
       };
     }
+    const hasCompetingProviderWork = args.extraction.informationRequests.length > 0 ||
+      (args.extraction.providerQueryIntents?.length ?? 0) > 0 ||
+      args.extraction.providerExplanationRequest != null ||
+      args.extraction.providerDetailRequest != null ||
+      args.extraction.closeAction != null ||
+      args.extraction.pauseRequested;
+    if (
+      args.extraction.ambiguity?.status === 'ambiguous' &&
+      !hasCompetingProviderWork &&
+      this.hasUnresolvedProviderShortlist(plan, args.extraction, args.inbound.text)
+    ) {
+      const clarificationText = '¿Qué proveedor o acción estás confirmando?';
+      await this.dependencies.planStore.save({
+        plan,
+        reason: 'contextual_clarification',
+      });
+      args.tokenUsage.total = this.sumTokenUsage(
+        args.tokenUsage.classifier,
+        args.tokenUsage.extraction,
+      );
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan,
+        outbound: this.renderOutbound(
+          { text: clarificationText },
+          [],
+          args.inbound.channel,
+          plan.conversation_id,
+          plan,
+        ),
+        trace: this.buildTrace({
+          plan,
+          previousNode: args.previousNode,
+          currentNode: plan.current_node,
+          nodePath: args.previousNode === plan.current_node
+            ? [plan.current_node]
+            : [args.previousNode, plan.current_node],
+          extraction: args.extraction,
+          missingFields: plan.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:ambiguous_provider_confirmation',
+          promptFilePaths: [],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'contextual_clarification',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          responseClassifier: args.responseClassifierTrace,
+          searchStrategy: 'none',
+          turnDecision: this.contextualClarificationTurnDecision(
+            'contextual_clarification',
+          ),
+          operationalNote: 'Bare confirmation over a multi-option shortlist clarified without selecting a provider.',
+          informationExecution: [],
+        }),
+      };
+    }
     await this.dependencies.planStore.save({
       plan,
       reason: 'contextual_clarification',
@@ -7337,7 +7397,17 @@ export class AgentService {
     extraction: ExtractionResult,
     userMessage: string,
   ): { extraction: ExtractionResult; ambiguous: boolean } {
-    if (extraction.actionIntent !== 'confirmar_proveedor') {
+    const resumesShortlist = extraction.actionIntent === 'confirmar_proveedor' ||
+      extraction.actionIntent === 'retomar_plan';
+    const isBareAmbiguousTurn = extraction.actionIntent === null &&
+      extraction.ambiguity?.status === 'ambiguous' &&
+      extraction.informationRequests.length === 0 &&
+      (extraction.providerQueryIntents?.length ?? 0) === 0 &&
+      extraction.providerExplanationRequest == null &&
+      extraction.providerDetailRequest == null &&
+      extraction.closeAction == null &&
+      !extraction.pauseRequested;
+    if (!resumesShortlist && !isBareAmbiguousTurn) {
       return { extraction, ambiguous: false };
     }
 
@@ -7369,6 +7439,28 @@ export class AgentService {
         ).filter((operation) => operation.type !== 'select_provider'),
       },
     };
+  }
+
+  /**
+   * A shortlist with several recommended providers and no selection is
+   * unresolved when the turn carries no grounded selection reference. Typed
+   * plan and extraction evidence only; the user message is matched solely
+   * against structured provider references, never against keywords.
+   */
+  private hasUnresolvedProviderShortlist(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+    userMessage: string,
+  ): boolean {
+    const candidateCount = plan.provider_needs.reduce(
+      (total, need) => total + need.recommended_providers.length,
+      0,
+    );
+    if (candidateCount <= 1) return false;
+    const hasSelection = (plan.selected_provider_ids?.length ?? 0) > 0 ||
+      plan.provider_needs.some((need) => (need.selected_provider_ids?.length ?? 0) > 0);
+    if (hasSelection) return false;
+    return !this.hasGroundedSelectionReference(plan, extraction, userMessage);
   }
 
   private hasGroundedSelectionReference(
