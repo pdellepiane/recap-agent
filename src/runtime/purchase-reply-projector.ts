@@ -1,5 +1,6 @@
 import type {
   CartInformation,
+  InformationTaskResult,
   PurchaseAspect,
   PurchaseInformation,
 } from '../core/information';
@@ -423,4 +424,79 @@ export function shouldRenderConciseTransferValidation(args: {
 export function renderConciseTransferValidation(eventName: string | null): string {
   const event = eventName?.trim() ? eventName.trim() : 'tu evento';
   return `Tu regalo para ${event} sigue pendiente de validación por transferencia. La validación puede tardar hasta 72 horas hábiles.`;
+}
+
+/**
+ * F3c voucher continuity reply for a single pending order. The reported
+ * amount stays user-reported, receipt from an image is never confirmed, the
+ * order remains pending, and the indexed validation window is repeated.
+ */
+export function renderVoucherContinuityReply(args: {
+  reportedAmount: number | null;
+  eventName: string | null;
+}): string {
+  const report = args.reportedAmount !== null
+    ? `Tomo nota de que indicas haber enviado ${args.reportedAmount}.`
+    : 'Tomo nota de que indicas haber enviado el comprobante.';
+  const event = args.eventName?.trim()
+    ? `El pedido de ${args.eventName.trim()} sigue pendiente de validación.`
+    : 'El pedido consultado sigue pendiente de validación.';
+  return `${report} ${event} Un comprobante en imagen no permite confirmar la recepción. La validación puede tardar hasta 72 horas hábiles.`;
+}
+
+function describeCapabilitySelectionOptions(
+  purchases: PurchaseInformation[],
+): string {
+  return purchases.map((purchase, index) => {
+    const total = trustedAmount(purchase.grandTotal);
+    const method = trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null);
+    const when = preserveServerTimestamp(purchase.eventDate) ??
+      preserveServerTimestamp(purchase.createdAt) ??
+      'fecha no registrada';
+    const amount = total !== null ? `monto ${total}` : 'monto no registrado';
+    const via = method ? ` mediante ${method}` : '';
+    return `opción ${index + 1}: ${amount}${via}, fecha ${when}, estado ${describeSelectionStatus(purchase.paymentStatus)}`;
+  }).join('; ');
+}
+
+/**
+ * F3c capability safe-read continuation for purchase.modify. Returns a
+ * deterministic Spanish reply when the authorized safe read produced usable
+ * purchase evidence, so an unsupported mutation never blocks the safe read:
+ * multiple records ask for a selection, a single pending record continues
+ * the voucher/balance thread. Null means the turn falls through to the
+ * regular unsupported handoff. No mutation is ever performed here.
+ */
+export function resolveCapabilityPurchaseContinuation(args: {
+  operation: string | null;
+  results: InformationTaskResult[];
+  reportedAmount: number | null;
+}): string | null {
+  if (args.operation !== 'purchase.modify') return null;
+  const completed = args.results.find((result) =>
+    result.kind === 'purchase' && result.status === 'completed'
+  );
+  if (!completed || completed.kind !== 'purchase' || completed.status !== 'completed') {
+    return null;
+  }
+  const purchases = completed.purchases;
+  if (purchases.length === 0) return null;
+  if (purchases.length > 1 || completed.needsSelection === true) {
+    const eventNames = purchases.map((purchase) => purchase.eventName?.trim() ?? '');
+    const sharedEvent = eventNames[0];
+    const uniformEvent = sharedEvent !== undefined && sharedEvent.length > 0 &&
+      eventNames.every((name) => name === sharedEvent);
+    const options = describeCapabilitySelectionOptions(purchases);
+    if (uniformEvent) {
+      return `Para ${sharedEvent} encontré ${purchases.length} registros: ${options}. ¿A cuál te refieres?`;
+    }
+    return `Encontré ${purchases.length} registros asociados a este número: ${options}. ¿A cuál te refieres?`;
+  }
+  const single = purchases[0];
+  if (!single) return null;
+  if ((single.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') !== 'pending') return null;
+  return renderVoucherContinuityReply({
+    reportedAmount: args.reportedAmount,
+    eventName: single.eventName,
+  });
 }

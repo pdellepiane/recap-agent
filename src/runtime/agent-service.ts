@@ -151,6 +151,7 @@ import {
   renderConciseApprovedStatus,
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
+  resolveCapabilityPurchaseContinuation,
   shouldRenderConciseApprovedStatus,
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
@@ -3754,6 +3755,62 @@ export class AgentService {
       extraction: args.extraction,
       toolUsage: args.toolUsage,
     });
+    const reportedPurchaseAmount = args.extraction.informationRequests.find(
+      (request): request is Extract<ExtractedInformationRequest, { kind: 'purchase' }> =>
+        request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
+    )?.amount ?? null;
+    const purchaseContinuationText = decision.status === 'unsupported'
+      ? resolveCapabilityPurchaseContinuation({
+        operation: decision.operation,
+        results: safeRead.results,
+        reportedAmount: reportedPurchaseAmount,
+      })
+      : null;
+    if (purchaseContinuationText !== null) {
+      const plan = args.plan.current_node === 'resolver_consultas_informativas'
+        ? args.plan
+        : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
+      await this.dependencies.planStore.save({ plan, reason: 'capability_purchase_continuation' });
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan,
+        outbound: this.renderOutbound(
+          { text: purchaseContinuationText },
+          [],
+          args.inbound.channel,
+          plan.conversation_id,
+          plan,
+        ),
+        trace: this.buildTrace({
+          plan,
+          previousNode: args.previousNode,
+          currentNode: plan.current_node,
+          nodePath: args.previousNode === plan.current_node
+            ? [plan.current_node]
+            : [args.previousNode, plan.current_node],
+          extraction: args.extraction,
+          missingFields: plan.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:capability_purchase_continuation',
+          promptFilePaths: [],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'capability_purchase_continuation',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          searchStrategy: 'none',
+          turnDecision: this.informationTurnDecision('capability_purchase_continuation'),
+          operationalNote: 'Authorized safe read completed before the unsupported mutation; the reply uses canonical purchase evidence with no mutation and no handoff.',
+          responseClassifier: args.responseClassifierTrace,
+          capabilityDecision: decision,
+          informationExecution: safeRead.summaries,
+        }),
+      };
+    }
     const alreadyRequested = args.plan.human_escalation.status === 'requested';
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
     const takeoverResult = alreadyRequested
@@ -3881,11 +3938,14 @@ export class AgentService {
     const operation = args.extraction.requestedOperation;
     if (
       operation !== 'confirmation_document.send' &&
-      operation !== 'payment_proof.verify'
+      operation !== 'payment_proof.verify' &&
+      operation !== 'purchase.modify'
     ) {
       return { results: [], summaries: [] };
     }
-    const trustedPhone = splitInternationalPhone(args.inbound.contactPhone);
+    const trustedPhone = splitInternationalPhone(
+      args.inbound.contactPhone ?? args.plan.contact_phone ?? null,
+    );
     if (!trustedPhone) return { results: [], summaries: [] };
 
     const extractedPurchase = args.extraction.informationRequests.find(
@@ -3912,10 +3972,12 @@ export class AgentService {
       : {
           requestId: 'capability-status-read',
           kind: 'purchase',
-          resource: 'orders',
+          resource: operation === 'purchase.modify' ? 'gift_purchases' : 'orders',
           query: args.inbound.text,
           orderId: null,
-          aspects: ['summary', 'payment_status'],
+          aspects: operation === 'purchase.modify'
+            ? ['summary', 'dedication']
+            : ['summary', 'payment_status'],
           sensitiveFields: [],
           authAction: 'none',
         };
