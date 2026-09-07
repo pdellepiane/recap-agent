@@ -9240,3 +9240,44 @@ Production webhook/tables/secrets untouched (dev stack only). Retry budget:
 openai-agent-runtime.ts, prompts, registry; handler.ts/core-plan untouched)
 staged below for integrator-only review; F2 must not start before sign-off.
 No S03, no keyword routing.
+
+## 2026-09-07 — F2 reminder/RSVP/frozen behaviors F2a/F2b/F2c (attempt 1, live gate pending)
+
+**Reason:** Live gate runId eval-2026-09-07T18-46-13-375Z-8be6ddd4 on artifact
+1b02632b8b5a8a7e5c3e21bca838f737fc4ffec34be0c9937e61df64481bfebb failed 7 F2
+cases (roberto 0.61, maria_paz 0.683, s01 0.853, declined 0.482, host 0.907,
+tito 0.744, s08 0.907). Staleness proof: report.json totals 69/48/21/0/0 plus
+per-case live_lambda artifacts cited; impl-log lines 9025-9096 S15 entry;
+S04/S07/S01 outputs reused unless proven stale (`invalidated_tasks: []`).
+No new wire contract, no keyword routing; flow decisions from typed
+extraction + plan state, deterministic renderers only.
+
+**Decision:**
+- F2a (f62e3ecb): read-only declining query still stages one change
+(`awaiting_action`/`attending`) with `Figura que no asistirás... ¿Deseas que
+confirme tu asistencia?` and no `No fue necesario...`; pending read-only uses
+deterministic `Tu asistencia a {evento} todavía está pendiente.` without date
+or mutation claim. Fixes declined + host.
+- F2b (ba097cb2): empty lookup with explicit decision plus reminder
+(frontend_followup/admin_campaign) calls `request_human_takeover` once, sets
+`human_escalation requested`, deterministic truthful reply quoting the current
+reminder body (preserves `Cumple Marcelo`), states cannot verify now, no
+denial, no RSVP vocab. Fixes roberto.
+- F2c (75bcc72e): single purchase status query without explicit amount uses
+concise status-only note (no monto/metodo/moneda/plazos); associated-event
+note prefers current outbound reminder literal title over trusted lookup;
+`validContextualSuppression` additionally requires
+`current_node !== responder_invitacion` so post-RSVP thanks gets one
+acknowledgement. Fixes maria_paz + s01/s08 + tito.
+- Registry: 6 separate entries (f2a x2, f2b, f2c x3) pointing at mandatory live
+cases with hard structural + text_semantic requireJudge true; twins
+`tests/f2-rsvp-declined-offer.test.ts`, `tests/f2-reminder-mismatch.test.ts`,
+`tests/f2-frozen-closure.test.ts`.
+- F1 wiring preserved: InformationAuthStateMachine import untouched,
+`otpContinuationEvidence` untouched; prompts unchanged (zero net bytes).
+- Shared-file diff (agent-service.ts, message-response-classifier.ts,
+registry) staged for integrator-only review before F3; prod untouched.
+
+**Validation:** Focused 6 files 28 passed; typecheck/lint/audit:prompts and
+live-behavior-coverage clean. Deploy + focused 7-case live rerun follows as
+attempt 1 of 3 (retries_used 0).
