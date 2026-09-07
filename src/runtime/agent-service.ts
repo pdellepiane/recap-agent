@@ -142,6 +142,11 @@ import {
   type TurnMessageContext,
 } from './turn-message-context';
 import {
+  hasActivePurchaseThread,
+  purchaseThreadBypassesContextualClarification,
+  purchaseThreadSuppressesHealthOffer,
+} from './conversation-continuity-policy';
+import {
   createAuthOperationId,
   logAuthObservabilityEvent,
   withAuthenticationFlowContext,
@@ -495,6 +500,28 @@ export class AgentService {
     if (responseClassifierTrace) {
       const previousHealth = classifierPlan.conversation_health;
       const healthUpdate = this.reduceConversationHealth(previousHealth, responseClassifierTrace);
+      const purchaseThreadActive = hasActivePurchaseThread({
+        hasPendingPurchaseOrEventRequest: classifierPlan.information_state.pending_requests.some(
+          (request) => request.kind === 'purchase' || request.kind === 'associated_event',
+        ),
+        lastCompletedKind: classifierPlan.information_state.last_completed_request?.kind ?? null,
+      }) ||
+        messageContext.continuity?.lane === 'purchase_support' ||
+        messageContext.continuity?.lane === 'event_support';
+      if (
+        purchaseThreadActive &&
+        purchaseThreadSuppressesHealthOffer({
+          hasActivePurchaseThread: purchaseThreadActive,
+          humanEscalationRequested: classifierPlan.human_escalation.status === 'requested',
+        })
+      ) {
+        healthUpdate.shouldOfferHelp = false;
+        healthUpdate.state = {
+          ...healthUpdate.state,
+          help_offer_status: previousHealth.help_offer_status,
+          help_offered_at: previousHealth.help_offered_at,
+        };
+      }
       classifierPlan = mergePlan(classifierPlan, {
         conversation_health: healthUpdate.state,
       });
@@ -1248,7 +1275,7 @@ export class AgentService {
         planPersisted = true;
         planPersistReason = 'crear_lead_cerrar';
 
-        const promptBundleStartedAt = Date.now();
+    const promptBundleStartedAt = Date.now();
         const bundle = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
         timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;
         const composeReplyStartedAt = Date.now();
@@ -3354,6 +3381,15 @@ export class AgentService {
     if (plan.rsvp_state.status !== 'none') {
       return false;
     }
+    // An active purchase/event thread replays its canonical request in the
+    // information flow instead of receiving a generic clarification question.
+    if (
+      purchaseThreadBypassesContextualClarification(
+        plan.information_state.last_completed_request?.kind ?? null,
+      )
+    ) {
+      return false;
+    }
     const emptyDelta =
       extraction.actionIntent === null &&
       extraction.informationRequests.length === 0 &&
@@ -4059,9 +4095,12 @@ export class AgentService {
       planWithContact.information_state.pending_requests,
       args.extraction.informationRequests,
     );
-    if (supportAcknowledgment) requests = [];
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
+    const supportContinuesPurchaseThread = supportAcknowledgment &&
+      (lastCompletedRequest?.kind === 'purchase' ||
+        lastCompletedRequest?.kind === 'associated_event');
+    if (supportAcknowledgment && !supportContinuesPurchaseThread) requests = [];
     if (args.extraction.supportAct?.kind === 'ask_policy' &&
       !requests.some((request) => request.kind === 'faq')) {
       requests = [{
@@ -4081,6 +4120,16 @@ export class AgentService {
       (lastCompletedRequest.kind === 'purchase' ||
         lastCompletedRequest.kind === 'associated_event' ||
         (lastCompletedRequest.kind === 'faq' && hasNewFaqInExtraction))
+    ) {
+      requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
+      replayingLastCompletedRequest = true;
+    }
+    if (
+      supportContinuesPurchaseThread &&
+      requests.length === 0 &&
+      lastCompletedRequest &&
+      (lastCompletedRequest.kind === 'purchase' ||
+        lastCompletedRequest.kind === 'associated_event')
     ) {
       requests = [{ ...lastCompletedRequest, requestId: 'information-1' }];
       replayingLastCompletedRequest = true;
@@ -4109,7 +4158,7 @@ export class AgentService {
       },
     });
 
-    if (supportAcknowledgment) {
+    if (supportAcknowledgment && !supportContinuesPurchaseThread) {
       return this.handleSupportAcknowledgment(args, mergePlan(planForInformation, {
         information_state: {
           ...planForInformation.information_state,
@@ -4520,6 +4569,10 @@ export class AgentService {
       });
     }
 
+    if (supportContinuesPurchaseThread) {
+      const continuationNote = 'La persona aportó un dato a su consulta de compra en curso; reconócelo solo como reporte suyo sin confirmar moneda, montos, fechas ni recepción desde el registro, conserva el hilo de la compra y repite la ventana de validación aplicable.';
+      operationalNote = operationalNote ? `${operationalNote} ${continuationNote}` : continuationNote;
+    }
     const promptBundleStartedAt = Date.now();
     const bundle = await this.dependencies.promptLoader.loadNodeBundle('resolver_consultas_informativas');
     args.timingMs.prompt_bundle_load += Date.now() - promptBundleStartedAt;

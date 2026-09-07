@@ -114,6 +114,46 @@ export function resolveReminderContext(
   };
 }
 
+export type PurchaseThreadState = {
+  hasPendingPurchaseOrEventRequest: boolean;
+  lastCompletedKind: string | null;
+};
+
+/**
+ * A purchase thread is active when a purchase/associated_event request is
+ * still pending or the last completed request was a purchase/associated
+ * event lookup. Typed plan evidence only; no message-text matching.
+ */
+export function hasActivePurchaseThread(state: PurchaseThreadState): boolean {
+  if (state.hasPendingPurchaseOrEventRequest) return true;
+  return state.lastCompletedKind === 'purchase' ||
+    state.lastCompletedKind === 'associated_event';
+}
+
+/**
+ * An active purchase thread suppresses the conversation-health help offer
+ * so a checkout/purchase follow-up stays in its thread instead of moving
+ * to ofrecer_agente_humano. An already-requested escalation is never
+ * suppressed.
+ */
+export function purchaseThreadSuppressesHealthOffer(args: {
+  hasActivePurchaseThread: boolean;
+  humanEscalationRequested: boolean;
+}): boolean {
+  return args.hasActivePurchaseThread && !args.humanEscalationRequested;
+}
+
+/**
+ * An active purchase thread bypasses the generic contextual clarification
+ * prompt so the information flow replays the last completed purchase/event
+ * request with its canonical evidence instead of asking a generic question.
+ */
+export function purchaseThreadBypassesContextualClarification(
+  lastCompletedKind: string | null,
+): boolean {
+  return lastCompletedKind === 'purchase' || lastCompletedKind === 'associated_event';
+}
+
 export type ClassifierProfile = 'campaign_reply' | 'general';
 
 export function resolveClassifierProfile(
