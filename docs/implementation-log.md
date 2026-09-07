@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-09-07 — Integrator finalize: sequence shared-wiring commits for S15 gate
+
+**Reason:** S15 gate was blocked on a dirty tree plus registry wiring. S10/S16 remediation and the S12 slice had completed all product work but left tracked modifications and untracked scratch uncommitted to avoid ownership violations. The six S12 integrator-wiring files were already atomically committed in `5724b17e`; only docs scratch remained.
+
+**Decision:** Verified no S10/S12/S16 product files were pending (`git status` on the six S12 paths empty; S10 `afd52519` and S16 `e0374f31` untouched, no cross-ticket squash). Committed `c11cfdcd` docs(plan) tracking the six `docs/plan/2026-09-05-stabilization/` files (canonical plan revision 2, baseline `55a6c99b`), then `09f94544` docs preserving `.continues-handoff.md` updates plus `analysis/current-capabilities-paper-brief-2026-09-04/` and `docs/reporte-tests-comportamiento-revisor.*` scratch (repo precedent commits `analysis/` docs; committing preserves other workers output instead of deleting it). No product behavior changed; no other domain in-progress product edits were committed.
+
+**Validation:** `git status --porcelain` empty (clean tree). `git cat-file -t` proves S10 `afd52519`, S12 `5724b17e`, S16 `e0374f31` (registry id `per-turn-capability-and-truthful-handoff`), plus `c11cfdcd` and `09f94544` all resolve as commits. Full registry scan: 93 unique implementedBy SHAs, zero invalid, zero `0000000` placeholders (`grep -c 0000000` returns 0). Focused suites pass: s12-plan-completion (9/9), s10-model-projection (13/13), s16-turn-capability (17/17), live-behavior-coverage (1/1). Full `npm run eval:behavior-live` and Lambda redeploy remain S15 gate steps, not claimed here.
+
 ## 2026-09-07 — S12 per-provider quote completion and truthful event dates
 
 **Reason:** `executeFinishPlanTool` substituted today as `eventDate`, marked the aggregate finished on partial success, and mutated the shared plan via `Object.assign`, so failed providers were stranded silently, duplicate retries could repeat confirmed writes, and no explicit valid event date was ever required despite the client requiring `eventDate`. S15 gated release on this missing slice.
