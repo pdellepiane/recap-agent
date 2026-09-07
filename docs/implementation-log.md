@@ -9391,3 +9391,74 @@ errored, 0 skipped, zero hard failures — every hard structural
 (node_transition/tool_usage/plan_field) plus hard `text_semantic`
 (`requireJudge: true`) passes, incl. roberto 1.0 and tito 1.0. Retry budget:
 attempt 3 of 3 consumed; no spare remains on this task.
+
+## 2026-09-07 — F3 continuity/purchase behaviors F3a/F3b/F3c/F3d (code complete, live proof blocked on infra)
+
+**Reason:** Staleness proof: baseline runId
+eval-2026-09-07T18-46-13-375Z-8be6ddd4 (artifact
+1b02632b8b5a8a7e5c3e21bca838f737fc4ffec34be0c9937e61df64481bfebb,
+report.json totals 69/48/21/0/0) failed the exact 7 F3 cases
+(active_cart_checkout_continuity_alex 0.57, purchase_pending_transfer_continuity
+0.7756, pending_balance_validation_luis 0.7604, ambiguous_confirmation_clarifies
+0.7333, purchase_delia_status_by_phone 0.8987, purchase_martha_accountless_selection
+0.8267, purchase_joaquin_dedication_selection 0.2053); per-case live_lambda
+artifacts cited for turn traces, node paths, and judge messages. F2 sign-off runId
+eval-2026-09-07T21-19-20-364Z-92c65d8c (artifact f1c943b2, 7/7) is the rollback
+baseline. S01/S04/S05/S07/S08/S09/S10/S13/S16 outputs reused unless proven stale
+(`invalidated_tasks: []`). No new wire contract, no keyword routing; flow decisions
+from typed extraction + plan state, deterministic renderers only. S03 excluded; prod
+untouched (dev stack `recap-agent-runtime-dev` only).
+
+**Decision:**
+- F3a (4a36bf6d): active purchase/event thread (pending purchase/event request or
+last-completed purchase/associated_event, plus purchase_support/event_support lane)
+suppresses the conversation-health help offer without touching an already-requested
+escalation; bypasses generic contextual clarification so the information flow replays
+the canonical purchase request; a support detail on a purchase thread replays the
+purchase instead of the generic ack, with a report-only continuation note. Fixes
+alex turn-1 health-offer exit and claudia turn-2 vague ack. Twin
+`tests/f3-purchase-continuity.test.ts` (8 pure + 2 handleTurn replay proofs).
+- F3b (30cdd7ea): deterministic post-compose gate in
+resolver_consultas_informativas using only typed reconciliation evidence: single
+approved without linked reference renders concise approved status (delia, no
+identifiers/amounts/questions); multi-record selection without associated guest
+event renders neutral monto/fecha/estado options with no event attribution (martha);
+single pending currency-less transfer on a validation_window query renders concise
+pending + 72h without amount (claudia turn 0); unavailable-reference note split
+single/multi. Twin `tests/f3-purchase-truthfulness.test.ts` (4 pure + 3 handleTurn
+override proofs).
+- F3c (8d4dd4b5): capability safe read extended to `purchase.modify` with
+inbound-or-plan contact-phone fallback and gift_purchases synthesis for dedication
+reads; `resolveCapabilityPurchaseContinuation` returns selection (multi, shared-event
+prefix when uniform) or voucher continuity (single pending: report ack + pending +
+image caveat + 72h) in the information node with no mutation and no handoff;
+empty/non-pending reads fall through to the existing handoff. Fixes joaquin
+gift-read selection node/tool gates and luis turn-1 voucher thread. Twin
+`tests/f3-capability-safe-read.test.ts` (4 pure + 2 handleTurn no-handoff proofs).
+- F3d (2cfa49f5): ambiguous-provider guard extended to retomar_plan and bare
+ambiguous turns with no competing work, plus an ambiguity-gated deterministic
+provider question in contextual clarification for unresolved multi-shortlists;
+grounded-selection semantics untouched. Fixes ambiguous_confirmation_clarifies.
+Twin `tests/f3-ambiguous-confirmation.test.ts` (3 handleTurn proofs incl. grounded
+no-question pin).
+- Registry (da04beff): 8 separate entries (f3a x2, f3b x3, f3c x2, f3d x1) pointing
+at the mandatory live cases with hard structural + text_semantic requireJudge true.
+- F1/F2 preserved: prompt files untouched (`audit:prompts` violations []); full
+`npm test` 127 files 1021 passed 5 skipped (995 baseline + 26 new); `typecheck`,
+`lint`, `live-behavior-coverage` clean. Shared-wiring diff (agent-service.ts,
+conversation-continuity-policy.ts, purchase-reply-projector.ts, registry, 4 test
+files) left for integrator-only review before F4; F4 stays serialized.
+
+**Validation:** Live proof NOT executed: 4 identical default-command deploys
+(`DEPLOYMENT_ENV=development npm run deploy`, profile `se-dev`, account
+684516060775) all failed identically at infra: `aws s3 cp` progress stalls at
+exactly `Completed 4.0 MiB/6.6 MiB` with exit 0, the content-addressed key
+(db239cb2, bbeb9856, d39975d0, 84efe11d) never appears in
+`s3://recap-agent-artifacts-684516060775-us-east-1/lambda/`, CloudFormation fails
+`RuntimeFunction UPDATE_FAILED: GetObject S3 NoSuchKey`, stack stays
+`UPDATE_ROLLBACK_COMPLETE` on the F2 artifact
+`lambda/f1c943b2802784e378ef7f962f62c0b4fe1fe13fd2c339e47f18b5321ee10a16.zip`
+(dev stable, prod untouched). Classified infra flaky, not a product failure, per F2
+precedent; zero live attempts consumed (no eval run started). Resume: one
+successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
+`npm run eval:behavior-live -- --case live_behavior.active_cart_checkout_continuity_alex --case live_behavior.purchase_pending_transfer_continuity --case live_behavior.pending_balance_validation_luis --case live_behavior.ambiguous_confirmation_clarifies --case live_behavior.purchase_delia_status_by_phone --case live_behavior.purchase_martha_accountless_selection --case live_behavior.purchase_joaquin_dedication_selection`.
