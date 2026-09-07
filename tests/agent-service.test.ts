@@ -4555,6 +4555,7 @@ describe('AgentService', () => {
     const result = await executeFinishPlanTool({
       plan: plan as unknown as PersistedPlan,
       providerGateway: gateway,
+      eventDate: '2026-10-18',
     });
 
     expect(result.status).toBe('success');
@@ -4604,6 +4605,7 @@ describe('AgentService', () => {
     const result = await executeFinishPlanTool({
       plan: plan as unknown as PersistedPlan,
       providerGateway: gateway,
+      eventDate: '2026-10-18',
     });
 
     expect(result.status).toBe('success');
@@ -4874,6 +4876,7 @@ describe('AgentService', () => {
     const result = await executeFinishPlanTool({
       plan: plan as unknown as PersistedPlan,
       providerGateway: gateway,
+      eventDate: '2026-10-18',
     });
 
     expect(result.status).toBe('success');

@@ -1,0 +1,74 @@
+template: template.base-live
+id: live_behavior.s12_provider_completion_truthful_event_date
+suite: live_behavior_regression
+version: 1
+description: S12 per-provider quote completion with an explicitly captured event date. Two selected providers across two needs close with the user-supplied date sent verbatim to every quote, per-provider outcomes persisted, and no today substitution or silent partial finish.
+tags: [live, behavior, provider, quote, completion, s12]
+targetModes: [live_lambda]
+inputs:
+  - text: Mi evento es el 18 de octubre de 2026. Por favor envía las cotizaciones a los dos proveedores elegidos para cerrar el plan.
+    channel: whatsapp
+    contactPhone: "+51999111222"
+    sessionId: live-s12-provider-completion-session
+seedPlan:
+  current_node: crear_lead_cerrar
+  intent: cerrar
+  event_type: boda
+  location: Lima
+  guest_range: 51-100
+  contact_name: Carolina Sintetica
+  contact_email: carolina.sintetica@example.com
+  contact_phone: "+51999111222"
+  active_need_category: Catering
+  vendor_category: Catering
+  provider_needs:
+    - category: Catering
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [101]
+      recommended_providers: []
+      selected_provider_ids: [101]
+      selected_provider_hints: [EDO]
+    - category: Música
+      status: selected
+      preferences: []
+      hard_constraints: []
+      missing_fields: []
+      recommended_provider_ids: [202]
+      recommended_providers: []
+      selected_provider_ids: [202]
+      selected_provider_hints: [Orquesta Sintetica]
+backendFixture:
+  scenario: s12-provider-completion
+expectations:
+  - id: submits-quotes-through-finish-plan
+    type: tool_usage
+    mustCall: [finish_plan]
+    mustNotCall: [search_providers_from_plan, search_providers_by_query_intent]
+    severity: hard
+  - id: multi-need-selection-preserved
+    type: plan_field_subset
+    path: provider_needs
+    expected:
+      - category: Catering
+        selected_provider_ids: [101]
+      - category: Música
+        selected_provider_ids: [202]
+    severity: hard
+  - id: confirms-per-provider-submission-with-explicit-date
+    type: text_semantic
+    rubric: >-
+      The user gave an explicit event date of 18 October 2026 and asked to send quote requests to both selected providers (Catering provider 101 and Música provider 202) to close a multi-need plan. The response must be natural and entirely in Spanish, reference the 18 October 2026 event date for the quote requests, preserve both needs without dropping either, and either confirm both providers were contacted or truthfully report per-provider blocked or unresolved state without claiming full closure on partial success. It must not substitute today as the event date, claim a null or missing date was used, expose internal fields, or reopen provider search.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

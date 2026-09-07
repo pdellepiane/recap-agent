@@ -1,6 +1,9 @@
-import { mergePlan, type PersistedPlan, type PlanSnapshot } from '../core/plan';
+import type { PersistedPlan, PlanSnapshot } from '../core/plan';
 import type { ProviderGateway } from './provider-gateway';
-import { splitInternationalPhone } from './phone';
+import {
+  executePlanCompletion,
+  type ProviderQuoteEffect,
+} from './plan-completion-executor';
 
 export type FinishPlanToolResult = {
   status: 'success' | 'partial' | 'failed';
@@ -10,11 +13,20 @@ export type FinishPlanToolResult = {
     success: boolean;
     error?: string;
   }>;
+  eventDate: string | null;
+  effects: readonly ProviderQuoteEffect[];
+  planUpdate: PlanSnapshot | null;
+  retryProviderIds: readonly number[];
 };
 
 export type FinishPlanToolErrorResult = {
   status: 'failed';
-  error: 'missing_contact_info' | 'invalid_contact_info' | 'no_selected_providers';
+  error:
+    | 'missing_contact_info'
+    | 'invalid_contact_info'
+    | 'no_selected_providers'
+    | 'missing_event_date'
+    | 'invalid_event_date';
   detail: string;
 };
 
@@ -23,106 +35,37 @@ export type FinishPlanToolOutput = FinishPlanToolResult | FinishPlanToolErrorRes
 export async function executeFinishPlanTool(args: {
   plan: PersistedPlan;
   providerGateway: ProviderGateway;
+  eventDate?: unknown;
+  priorEffects?: readonly ProviderQuoteEffect[];
 }): Promise<FinishPlanToolOutput> {
-  const { plan, providerGateway } = args;
+  const outcome = await executePlanCompletion({
+    plan: args.plan,
+    eventDate: args.eventDate,
+    providerGateway: args.providerGateway,
+    priorEffects: args.priorEffects,
+  });
 
-  if (!plan.contact_name || !plan.contact_email || !plan.contact_phone) {
+  if (outcome.error !== null || outcome.eventDate === null) {
     return {
       status: 'failed',
-      error: 'missing_contact_info',
-      detail:
-        'Faltan datos de contacto. Solicita nombre, correo electrónico y teléfono antes de llamar finish_plan.',
+      error: outcome.error ?? 'missing_event_date',
+      detail: outcome.detail ?? 'Falta la fecha del evento.',
     };
-  }
-
-  const selectedProviders = plan.provider_needs
-    .flatMap((need) => need.selected_provider_ids.map((providerId) => ({
-      providerId,
-      category: need.category,
-    })));
-
-  if (selectedProviders.length === 0) {
-    return {
-      status: 'failed',
-      error: 'no_selected_providers',
-      detail:
-        'No hay proveedores seleccionados. El usuario debe elegir al menos un proveedor antes de cerrar.',
-    };
-  }
-
-  const today = new Date().toISOString().split('T')[0];
-  const guestsRange = plan.guest_range ?? '';
-
-  const fallbackDescription = `Solicitud de cotización para ${plan.event_type ?? 'evento'} en ${plan.location ?? 'su ubicación'}.`;
-  const description = plan.conversation_summary && plan.conversation_summary.trim().length >= 10
-    ? plan.conversation_summary.trim()
-    : fallbackDescription;
-
-  const contactedProviders: FinishPlanToolResult['contacted_providers'] = [];
-  const parsedPhone = splitInternationalPhone(plan.contact_phone);
-  const phoneParts = parsedPhone
-    ? {
-        phone: parsedPhone.phone_number,
-        phoneExtension: parsedPhone.phone_extension,
-      }
-    : null;
-  if (!phoneParts) {
-    return {
-      status: 'failed',
-      error: 'invalid_contact_info',
-      detail:
-        'El teléfono debe incluir código de país compatible y número completo antes de llamar finish_plan.',
-    };
-  }
-  const { phone, phoneExtension } = phoneParts;
-
-  for (const entry of selectedProviders) {
-    try {
-      await providerGateway.createQuoteRequest({
-        providerId: entry.providerId,
-        name: plan.contact_name,
-        email: plan.contact_email,
-        phone,
-        phoneExtension,
-        eventDate: today,
-        guestsRange,
-        description,
-      });
-      contactedProviders.push({
-        providerId: entry.providerId,
-        category: entry.category,
-        success: true,
-      });
-    } catch (error) {
-      contactedProviders.push({
-        providerId: entry.providerId,
-        category: entry.category,
-        success: false,
-        error: error instanceof Error ? error.message : String(error),
-      });
-    }
-  }
-
-  const allSucceeded = contactedProviders.every((p) => p.success);
-  const someSucceeded = contactedProviders.some((p) => p.success);
-  const overallStatus = allSucceeded
-    ? 'success'
-    : someSucceeded
-      ? 'partial'
-      : 'failed';
-
-  if (overallStatus !== 'failed') {
-    const snapshot = mergePlan(plan as PlanSnapshot, {
-      lifecycle_state: 'finished',
-      current_node: 'necesidad_cubierta',
-      intent: 'cerrar',
-      updated_at: new Date().toISOString(),
-    });
-    Object.assign(plan, snapshot);
   }
 
   return {
-    status: overallStatus,
-    contacted_providers: contactedProviders,
+    status: outcome.status,
+    contacted_providers: outcome.effects.map((effect) => ({
+      providerId: effect.providerId,
+      category: effect.category,
+      success: effect.status === 'confirmed',
+      ...(effect.status === 'confirmed' ? {} : { error: effect.error ?? effect.status }),
+    })),
+    eventDate: outcome.eventDate,
+    effects: outcome.effects,
+    planUpdate: outcome.planUpdate,
+    retryProviderIds: outcome.effects
+      .filter((effect) => effect.status !== 'confirmed')
+      .map((effect) => effect.providerId),
   };
 }

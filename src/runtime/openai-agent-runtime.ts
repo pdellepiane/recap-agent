@@ -2185,14 +2185,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       finish_plan: tool({
         name: 'finish_plan',
         description:
-          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere que al menos un proveedor esté seleccionado y que los datos de contacto estén completos.',
-        parameters: z.object({}).strict(),
-        execute: async () => {
-          this.recordToolInput(toolUsage, 'finish_plan', {});
+          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere event_date explícita en formato AAAA-MM-DD capturada del usuario (nunca hoy por defecto ni nulo), al menos un proveedor seleccionado y datos de contacto completos.',
+        parameters: z.object({ event_date: z.string().min(1) }).strict(),
+        execute: async ({ event_date }: { event_date: string }) => {
+          this.recordToolInput(toolUsage, 'finish_plan', { event_date });
           toolUsage.called.push('finish_plan');
           const result = await executeFinishPlanTool({
             plan,
             providerGateway: this.options.providerGateway,
+            eventDate: event_date,
           });
           this.recordToolOutput(toolUsage, 'finish_plan', result);
           return result;
