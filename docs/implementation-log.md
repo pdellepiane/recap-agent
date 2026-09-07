@@ -9192,3 +9192,25 @@ compressed the extractor OTP paragraph at zero net bytes to respect the
 `typecheck`, `lint`, `audit:prompts` clean. Live rerun of
 `live_behavior.repeated_otp_failure_preserves_gift_query` in the F1 focused
 live batch below.
+
+## 2026-09-07 — F1 retry: route-specific extraction section for OTP continuation (attempt 2)
+
+**Reason:** Focused live rerun on artifact fb2b18d7 (runId
+eval-2026-09-07T20-01-04-146Z-c86d6be9): `repeated_otp_failure_preserves_gift_query`
+now passes 8/8, but both non-delivery cases still fail identically — the
+extraction model returns zero information requests (confidence 0.99) with a
+correct summary, so the F1a/F1b service gate never fires. Prompt-file shaping
+alone did not move the model, and the extractor bundle has ~0 byte budget left.
+
+**Decision:** Deterministic route-specific extraction section per the Minimum
+Disclosure pattern: `otpContinuationEvidence` (exported pure helper in
+`openai-agent-runtime.ts`) emits one Spanish section only when typed state
+shows `code_requested` plus a pending protected request, directing the model
+to continue that request with the matching `authAction` instead of an empty
+delta; null on every other turn (no byte growth elsewhere). The model still
+decides the action — no keyword routing, no flow bypass. Same F1a/F1b
+behaviors and registry entries; no new behavior commit.
+
+**Validation:** Twin for the helper (emit/3 null cases) in
+`tests/f1-otp-terminal-handoff.test.ts` 10/10; focused files green;
+`typecheck`/`lint` clean. Redeploy + focused 3-case rerun follows.

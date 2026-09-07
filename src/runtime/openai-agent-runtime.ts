@@ -117,6 +117,24 @@ type ReplyTurnEvidence = {
   recommendation_funnel: RecommendationFunnelTrace | null;
 };
 
+/**
+ * Route-specific extraction evidence (F1): when a code challenge is active
+ * for a pending protected request, the extractor must continue that request
+ * with the matching authAction instead of returning an empty delta. Selected
+ * deterministically from validated typed state; the model still decides the
+ * action. Returns null on every other turn so unaffected routes prove no
+ * byte growth.
+ */
+export function otpContinuationEvidence(args: {
+  readonly authStatus: string;
+  readonly hasPendingProtectedRequest: boolean;
+}): string | null {
+  if (args.authStatus !== 'code_requested' || !args.hasPendingProtectedRequest) {
+    return null;
+  }
+  return 'Verificación pendiente: hay un código solicitado para la consulta protegida. Si el mensaje no trae el código ni un correo, continúa esa consulta en informationRequests con el authAction que corresponda (report_otp_not_received, resend_otp, change_email, decline_authentication o provide_otp); en ese caso no devuelvas un delta vacío.';
+}
+
 export class OpenAiAgentRuntime implements AgentRuntime {
   private readonly runner: Runner;
 
@@ -813,17 +831,24 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       'extractor',
     );
     const continuityEvidence = this.buildExtractorContinuityEvidence(request);
+    const otpEvidence = otpContinuationEvidence({
+      authStatus: request.plan.user_auth.status,
+      hasPendingProtectedRequest: request.plan.information_state.pending_requests.some(
+        (pending) => pending.kind === 'purchase' || pending.kind === 'associated_event',
+      ),
+    });
     return [
       `Estado del historial: ${request.messageContext.historyStatus}.`,
       `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
       `Mensaje del usuario: ${request.userMessage}`,
       request.media && request.media.length > 0
-        ? `Metadatos de archivos recibidos (no se pueden abrir ni interpretar; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mime_type: item.mimeType, filename: item.fileName })))}.`
+        ? `Metadatos de archivos recibidos (no se pueden abrir ni interpretar; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mimeType: item.mimeType, filename: item.fileName })))}.`
         : null,
       `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}`,
       `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`,
       suggestedCategories,
       continuityEvidence,
+      otpEvidence,
       'requestedOperation identifica una operación concreta de capability_boundary.txt; no indica disponibilidad. Usa null cuando no se solicita una operación concreta. Decide por el significado completo y el contexto, nunca por palabras aisladas.',
       'Extrae solo cambios nuevos del turno. Si no hay un cambio claro, devuelve un delta vacío: no inventes datos y el runtime conservará el estado persistido.',
     ].filter((part): part is string => part !== null).join('\n');

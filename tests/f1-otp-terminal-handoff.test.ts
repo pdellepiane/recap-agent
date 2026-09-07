@@ -494,3 +494,26 @@ describe('F1c first rejected code verifies once then retains the human path', ()
     expect(third.plan.user_auth.failed_code_attempts).toBe(1);
   });
 });
+
+describe('otpContinuationEvidence route-specific extraction section', () => {
+  it('emits the continuation section only for an active challenge with a pending protected request', async () => {
+    const { otpContinuationEvidence } = await import(
+      '../src/runtime/openai-agent-runtime'
+    );
+    const active = otpContinuationEvidence({
+      authStatus: 'code_requested',
+      hasPendingProtectedRequest: true,
+    });
+    expect(active).toContain('report_otp_not_received');
+    expect(active).toContain('no devuelvas un delta vacío');
+    expect(
+      otpContinuationEvidence({ authStatus: 'code_requested', hasPendingProtectedRequest: false }),
+    ).toBeNull();
+    expect(
+      otpContinuationEvidence({ authStatus: 'none', hasPendingProtectedRequest: true }),
+    ).toBeNull();
+    expect(
+      otpContinuationEvidence({ authStatus: 'authenticated', hasPendingProtectedRequest: true }),
+    ).toBeNull();
+  });
+});
