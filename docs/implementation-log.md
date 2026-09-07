@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-09-07 — S14 local lease fencing and available-ID deduplication
+
+**Reason:** Plan persistence had no revision condition against the turn lease, and current-message exclusion fell back to body text plus timestamp proximity when native IDs were absent, risking deletion of distinct identical-body records. Duplicate transports could also rerun effects.
+
+**Decision:** Added `src/storage/turn-fencing.ts` (pure `isLeaseFenceSatisfied`, `FencedPlanSaveRejectedError`, `buildFencedPlanTransactInput` conditioning the plan Put on the existing `TURN_LOCK` record owner plus unexpired lease in one DynamoDB transact-write, bounded `TurnOutcomeLedger` keyed by existing channel message identity that replays persisted outcomes without rerunning effects, and optional `attachHistoricalCorrelation` that leaves outcomes untouched when upstream trace is absent). Added read-only `currentLease` inspection to `InMemoryConversationTurnCoordinator` plus a test-only fenced store mirroring the single coordination record; production uses the transact condition with no second lock store. Fixed `isCurrentInboundMessage` to exclude only on native ID match, preserving ambiguity otherwise; raw history stays capped at five with no second memory. Shared service wiring untouched for the integrator. Added fixture `s14-tito-post-rsvp` (synthetic attending) and full-context live case `live_behavior.tito_numbered_name_and_post_rsvp_closure` (hard tool-usage plus hard required semantic judge), registered as `local-lease-fencing-and-available-id-dedup-without-second-store`, and versioned the superseded body-fallback expectation to the prescribed preserve-ambiguity behavior. No cross-system exactly-once is claimed; Tito correlation is enrichment only and Jose stays history-present misrouting.
+
+**Validation:** `tests/s14-turn-fencing.test.ts` 14/14 passed (duplicate input, overlapping turns, lease expiry, save failure, delivery retry with replay, ID preservation, bounded history, Tito enrichment, transact shape). Focused coordinator/context/lambda/plan suites 49/49 passed. Full `npm test` 817 passed, 5 skipped, 0 failed across 108 files. Typecheck and scoped lint clean. `npm run eval:behavior-live` and Lambda redeploy remain integrator release-gate steps, not claimed here.
+
 ## 2026-09-07 — S02 evaluation effects fully simulated and fail closed
 
 **Reason:** Fixture OTP/RSVP already simulated single-turn outcomes, but provider writes still forwarded to HTTP, RSVP isolation assumed prior decline with auto retries, and four write-world live cases had no declared fixture scenarios.

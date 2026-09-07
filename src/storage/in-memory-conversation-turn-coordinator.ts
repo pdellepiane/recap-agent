@@ -29,6 +29,22 @@ export class InMemoryConversationTurnCoordinator implements ConversationTurnCoor
       this.locks.delete(key);
     }
   }
+
+  /**
+   * Read-only inspection of the single coordination record for lease fencing.
+   * Returns a copy of the stored lease (expired or not) or null when absent.
+   * Production DynamoDB fencing needs no read: it conditions the plan
+   * transact-write on the existing TURN_LOCK record instead.
+   */
+  async currentLease(
+    channel: string,
+    externalUserId: string,
+    nowMs: number,
+  ): Promise<StoredLease | null> {
+    validateEpochMs(nowMs, 'nowMs');
+    const existing = this.locks.get(conversationPartitionKey(channel, externalUserId));
+    return existing ? { ...existing } : null;
+  }
 }
 
 function validateLease(lease: ConversationTurnLease): void {

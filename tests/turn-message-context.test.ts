@@ -55,7 +55,7 @@ describe('turn message context', () => {
     expect(context.recentMessages.map((item) => item.id)).toEqual([1]);
   });
 
-  it('deduplicates a just-delivered inbound copy when the endpoint omits its native id', () => {
+  it('preserves ambiguity when the endpoint omits the native id', () => {
     const context = buildTurnMessageContext({
       inbound: inbound(),
       messages: [
@@ -66,8 +66,9 @@ describe('turn message context', () => {
       ],
     });
 
-    expect(context.historyStatus).toBe('empty');
-    expect(context.recentMessages).toEqual([]);
+    expect(context.historyStatus).toBe('available');
+    expect(context.recentMessages.map((item) => item.id)).toEqual([1]);
+    expect(context.excludedCurrentMessageCount).toBe(0);
   });
 
   it('caps recent history and preserves a visible campaign entry anchor', () => {

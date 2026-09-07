@@ -219,32 +219,14 @@ function isCurrentInboundMessage(
   if (message.direction !== 'inbound') {
     return false;
   }
-  if (
+  // S14: exclude only on native/record ID match. When coalesced constituent
+  // IDs are absent, preserve ambiguity: distinct identical-body records are
+  // never deleted by body text or timestamp proximity alone.
+  return Boolean(
     message.whatsappMessageId &&
-    inbound.messageId &&
-    message.whatsappMessageId === inbound.messageId
-  ) {
-    return true;
-  }
-  if (message.body.trim() !== inbound.text.trim()) {
-    return false;
-  }
-
-  const messageTimestamp = parseTimestamp(message.sentAt ?? message.createdAt);
-  const inboundTimestamp = parseTimestamp(inbound.receivedAt);
-  return (
-    messageTimestamp !== null &&
-    inboundTimestamp !== null &&
-    Math.abs(messageTimestamp - inboundTimestamp) <= 2 * 60 * 1_000
+      inbound.messageId &&
+      message.whatsappMessageId === inbound.messageId,
   );
-}
-
-function parseTimestamp(value: string | null | undefined): number | null {
-  if (!value) {
-    return null;
-  }
-  const parsed = Date.parse(value);
-  return Number.isFinite(parsed) ? parsed : null;
 }
 
 function truncateMessageBody(value: string): string {

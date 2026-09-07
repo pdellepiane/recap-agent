@@ -1,0 +1,56 @@
+template: template.base-live
+id: live_behavior.tito_numbered_name_and_post_rsvp_closure
+suite: live_behavior_regression
+version: 1
+description: Tito screenshot scenario sanitized into a full local interaction. A verified attending guest sends a relationship and thanks comment after confirmation. Attendance is preserved with no new RSVP effect, no planning interview, and no repeated introduction.
+tags: [live, behavior, rsvp, continuity, reported-interaction, tito-screenshot]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola, confirmo mi asistencia a la celebración
+    channel: whatsapp
+    contactPhone: "+51900004780"
+    sessionId: live-tito-post-rsvp-session
+  - text: Muchas gracias por la organización, la fiesta fue para mi familia y estamos muy agradecidos
+    channel: whatsapp
+    contactPhone: "+51900004780"
+    sessionId: live-tito-post-rsvp-session
+backendFixture:
+  scenario: s14-tito-post-rsvp
+expectations:
+  - id: first-turn-reads-rsvp-state-without-account-auth
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 0
+    severity: hard
+  - id: post-rsvp-comment-performs-no-rsvp-write
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code,
+      search_providers_from_plan, request_human_takeover]
+    turnIndex: 1
+    severity: hard
+  - id: post-rsvp-comment-uses-no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    turnIndex: 1
+    severity: hard
+  - id: post-rsvp-comment-preserves-attendance-with-one-acknowledgement
+    type: text_semantic
+    rubric: >-
+      The second reply must be entirely in Spanish and preserve the verified attending
+      state for Celebración familiar de prueba without a new RSVP effect, a party-size
+      change, or access grant. It must acknowledge the user-reported thanks and family
+      relationship exactly once with one short acknowledgement and no new question. It
+      must not restart with a generic welcome or repeated introduction, must not open
+      the provider planning interview, must not call for email authentication or a code,
+      must not claim a new registration, and must not copy any numeric or ordinal label
+      as a name.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 300
