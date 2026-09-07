@@ -2213,10 +2213,16 @@ export class AgentService {
       const hasRequestedMutation = actionToSubmit !== null || plusOneResponse !== null;
 
       if (!action && plusOneResponse === null) {
-        const offerAction = !isReadOnlyStateQuery;
+        const shouldOfferDecliningChange = selectedInvitation.state === 'declining';
+        const offerAction = !isReadOnlyStateQuery || shouldOfferDecliningChange;
         if (selectedInvitation.state === 'attending' || selectedInvitation.state === 'declining') {
           deterministicReplyText = this.renderRsvpCurrentStateDeterministically(selectedInvitation, offerAction);
           deterministicIsDecliningOffer = selectedInvitation.state === 'declining' && offerAction;
+        }
+        if (selectedInvitation.state === 'pending' && isReadOnlyStateQuery) {
+          const pendingEventName = selectedInvitation.eventName ?? 'el evento';
+          deterministicReplyText = `Tu asistencia a ${pendingEventName} todavía está pendiente.`;
+          deterministicReplyIsComplete = true;
         }
         operationalNote = this.rsvpCurrentStateNote(selectedInvitation, offerAction);
         nextRsvpState = offerAction && (selectedInvitation.state === 'pending' || selectedInvitation.state === 'declining')
