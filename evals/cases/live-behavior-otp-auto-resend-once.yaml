@@ -1,8 +1,8 @@
 template: template.base-live
 id: live_behavior.otp_nondelivery_auto_resends_once
 suite: live_behavior_regression
-version: 1
-description: The first missing-code report must automatically resend once while preserving the protected request and without asking the user to choose another email path.
+version: 2
+description: Version 2 supersedes the v1 auto-resend contract under the user-approved one-shot OTP policy (plan revision 2, S06). The first missing-code report now terminates OTP recovery and hands off to human support with no resend. Incident ID retained.
 tags: [live, behavior, authentication, otp, nondelivery, reported-interaction]
 targetModes: [live_lambda]
 backendFixture:
@@ -40,21 +40,21 @@ seedPlan:
         authAction: none
     selection_candidates: []
 expectations:
-  - id: remains-in-information-flow-after-single-resend
+  - id: first-nondelivery-enters-human-handoff
     type: node_transition
-    to: resolver_consultas_informativas
+    to: solicitar_agente_humano
     severity: hard
-  - id: first-nondelivery-dispatches-exactly-the-resend-path
+  - id: first-nondelivery-hands-off-without-another-code-operation
     type: tool_usage
-    mustCall: [request_user_login_code]
-    mustNotCall: [verify_user_login_code, request_human_takeover]
+    mustCall: [request_human_takeover]
+    mustNotCall: [request_user_login_code, verify_user_login_code]
     severity: hard
-  - id: one-resend-is-recorded
+  - id: handoff-is-persisted
     type: plan_field_equals
-    path: user_auth.otp_non_delivery_reports
-    expected: 1
+    path: human_escalation.status
+    expected: requested
     severity: hard
-  - id: protected-query-remains-pending-after-resend
+  - id: protected-query-remains-pending-after-handoff
     type: plan_field_subset
     path: information_state.pending_requests
     expected:
@@ -62,10 +62,10 @@ expectations:
         resource: gift_purchases
         query: Revisar el estado del regalo pagado por la persona.
     severity: hard
-  - id: automatic-resend-language-has-no-choice-loop
+  - id: first-nondelivery-handoff-language-has-no-resend-loop
     type: text_semantic
     rubric: >-
-      This is the first report that the one-time code did not arrive during a protected purchase query. Pass only if the assistant says in natural Spanish that it resent a code to the known email and asks the person to paste it if it arrives. It must not ask whether to resend, request another email, claim authentication succeeded, lose the pending purchase question, or say that human support was already requested.
+      This is the first report that the one-time code did not arrive during a protected purchase query under the one-shot OTP policy. Pass only if the assistant says in natural Spanish that human support has now been requested and leaves the conversation with that team. It must not resend a code, ask whether to resend, request another email, repeat inbox instructions, claim authentication succeeded, lose the pending purchase question, or say that a new code is on its way.
     minScore: 0.9
     requireJudge: true
     severity: hard

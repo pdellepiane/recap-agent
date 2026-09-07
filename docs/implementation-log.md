@@ -8854,3 +8854,41 @@ live-behavior-coverage, eval-loader, eval-fixture-gateway, eval-runner,
 eval-runner-case-ids (36/36 total). Typecheck clean. ESLint clean on touched
 files. Full catalog loads with the three S01 cases resolving. Live Lambda trial
 and full eval:behavior-live remain pending deployment and are not claimed.
+
+## 2026-09-07 — S06 human-first authentication with one-shot OTP recovery
+
+**Reason:** Plan revision 2 fixes authentication as human-first with exactly one
+OTP send and at most one verification: no resend or email repair loop. The
+recovery budget must persist across session/plan resets, transport retries must
+not create another OTP operation, and obsolete resend/two-failure expectations
+must be versioned explicitly with incident IDs and hard gates retained.
+
+**Decision:** Added pure `src/runtime/information-auth-state-machine.ts`
+(persisted recovery state: sendAttempted, verificationAttempted,
+terminalReason, challenge binding, preserved protected request; send/verify
+consumed before dispatch; `OTP_TRANSPORT_RETRY_POLICY` with zero retries; OTP
+entry gate requiring explicit user choice, trusted existing account email,
+compatible resource, enabled capability, unused budget, and no active takeover
+with unknown eligibility failing to human help; first non-delivery, resend,
+email-change, or refusal terminates to the shared S16 HumanHelpPolicy; one
+verification of a validly extracted code including number words via the shared
+OTP normalizer; success resumes only the preserved request; terminal plus later
+code/restart retains the human path; credential expiry never restarts OTP;
+legacy `code_requested` consumes the send allowance and legacy failure or
+non-delivery evidence terminates; merges are monotonic so resets cannot clear
+the budget; submitted codes are never persisted). Reused S16
+`decideHumanHelpAttempt`, S02 one-shot OTP/handoff fixtures, and S01 versioned
+OTP worlds; no new eligibility endpoint. Bumped
+`live_behavior.otp_nondelivery_auto_resends_once` and
+`live_behavior.repeated_otp_failure_preserves_gift_query` to version 2
+asserting immediate handoff with no further OTP operation, keeping incident
+IDs, hard structure, and hard text_semantic with requireJudge. Added three
+separate registry entries pointing at the versioned resend, two-failure, and
+number-words cases. Deterministic twin: tests/s06-information-auth.test.ts
+(32 tests). Integrator owns agent-service.ts:4036/:5370 wiring, guidance
+renderers, deployment, and eval:behavior-live; live results are not claimed
+here.
+
+**Validation:** Focused suites pass: s06-information-auth (32/32),
+live-behavior-coverage, otp-normalization, s02-fixture-simulation,
+information-auth-guidance. Typecheck clean. ESLint clean on touched files.
