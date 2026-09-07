@@ -8972,3 +8972,36 @@ live-behavior-coverage. Typecheck clean. ESLint clean on touched files.
 Prompt deltas: shared/flow_discipline.txt -161B, shared/domain_scope.txt
 -51B, aclarar node +40B, recomendar node +58B; contacto_inicial audit bytes
 unchanged at 7279 (unaffected routes do not grow).
+
+## 2026-09-07 — S15 remediation: S16 atomic commit plus S10/S16 registry repair
+
+**Reason:** S15 gate blocked release on a dirty tree (5 modified + untracked
+S16 files uncommitted), four S10 registry entries pointing at placeholder
+`0000000` while real commit `afd52519` existed, and the S16 registry entry
+pointing at `c2ec0da7` (an S14 chore). No product logic changed here; only
+commit atomicity and registry wiring were finalized so dev deploy and
+`eval:behavior-live` can proceed.
+
+**Decision:** Committed the already-reviewed S16 product work untouched as
+atomic `e0374f31` feat(s16) (9 files: capability-manifest extension,
+turn-capability-policy, human-help-policy, capability-outcome-renderer,
+turn_outcomes prompt plus inventory mapping, capability-boundary and
+prompt-audit updates, s16-turn-capability twin). Repointed the four S10
+entries at `afd52519` in `b8a3e181` chore(registry) and the S16 entry at
+`e0374f31` in `14a1c6d2` chore(registry), keeping S10 and S16 commits and
+registry entries separate with no cross-ticket squash. Left the concurrent
+S12 integrator wiring (`finish-plan-tool.ts`, `agent-service.test.ts`,
+`plan-completion-executor.ts`, `s12-plan-completion.test.ts`) and docs
+scratch (`.continues-handoff.md`, `analysis/`, `docs/plan/`,
+`docs/reporte*`) untouched for their owners. Coverage regex gap recorded:
+`tests/live-behavior-coverage.test.ts` accepts `/^[0-9a-f]{7,40}$/`, so the
+`0000000` placeholder passed schema validation despite resolving to no
+commit; `git cat-file` remains the authoritative check.
+
+**Validation:** `git cat-file -t` verifies all 89 unique implementedBy SHAs
+(197 entries) as commits, zero invalid, zero `0000000` remaining. Focused
+suites pass: s16-turn-capability (17/17), capability-boundary (8/8),
+prompt-audit (7 passed, 1 skipped), s10-model-projection (13/13),
+s12-plan-completion (9/9, uncommitted S12 work untouched),
+live-behavior-coverage. Full `npm run eval:behavior-live` and Lambda
+redeploy remain integrator release-gate steps, not claimed here.
