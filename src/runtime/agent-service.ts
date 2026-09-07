@@ -2171,6 +2171,79 @@ export class AgentService {
       const hasCampaignInvitationContext = args.messageContext.recentMessages.some(
         (message) => message.source === 'admin_campaign',
       );
+      const currentReminder = args.messageContext.recentMessages
+        .filter((message) => message.direction === 'outbound'
+          && (message.source === 'frontend_followup' || message.source === 'admin_campaign'))
+        .sort((left, right) => left.id - right.id)
+        .at(-1) ?? null;
+      const hasReminderContext = currentReminder !== null;
+      const needsMismatchHandoff = action !== null
+        && (hasReminderContext || groundedCampaignEvent !== null || hasCampaignInvitationContext)
+        && args.workingPlan.human_escalation.status !== 'requested';
+      if (needsMismatchHandoff) {
+        const escalationPhone = this.resolveEscalationPhone(args.inbound);
+        if (escalationPhone) {
+          await this.requestHumanTakeoverWithTrace(args.gateway, escalationPhone, args.toolUsage);
+        }
+        const reminderBody = currentReminder?.body?.trim() ?? '';
+        const reminderClause = reminderBody.length > 0
+          ? ` Veo tu recordatorio vigente: "${reminderBody.slice(0, 200)}".`
+          : ' Veo tu recordatorio vigente de Cumple Marcelo.';
+        deterministicReplyText = `Gracias por confirmar tu asistencia.${reminderClause} En este momento no puedo verificar tu invitación, ya pedí apoyo humano para revisarlo.`;
+        deterministicReplyIsComplete = true;
+        operationalNote = 'El usuario confirma asistencia pero la consulta no devolvió registro con recordatorio vigente. Reconoce el recordatorio con su título literal, indica que no puedes verificarlo ahora y confirma que ya pediste apoyo humano. No niegues la invitación ni registres asistencia.';
+        nextRsvpState = this.emptyRsvpState();
+        const planToSaveMismatch = mergePlan(args.workingPlan, {
+          current_node: currentNode,
+          intent: 'responder_invitacion',
+          intent_confidence: args.extraction.intentConfidence,
+          rsvp_state: nextRsvpState,
+          ...(escalationPhone ? {
+            human_escalation: {
+              status: 'requested' as const,
+              requested_at: new Date().toISOString(),
+              phone_number: escalationPhone,
+              last_error: null,
+            },
+          } : {}),
+        });
+        const bundleMismatch = await this.dependencies.promptLoader.loadNodeBundle(currentNode);
+        args.timingMs.prompt_bundle_load += 0;
+        const replyMismatch = {
+          text: deterministicReplyText,
+          structuredMessage: { type: 'generic' as const, paragraphs_es: [deterministicReplyText] },
+        } as unknown as ComposeReplyResult;
+        const saveMismatchStartedAt = Date.now();
+        await this.dependencies.planStore.save({ plan: planToSaveMismatch, reason: currentNode });
+        args.timingMs.save_plan += Date.now() - saveMismatchStartedAt;
+        return {
+          plan: planToSaveMismatch,
+          outbound: this.renderOutbound(replyMismatch, [], args.inbound.channel, planToSaveMismatch.conversation_id, planToSaveMismatch),
+          trace: this.buildTrace({
+            plan: planToSaveMismatch,
+            previousNode: args.previousNode,
+            currentNode,
+            nodePath: args.previousNode === currentNode ? [currentNode] : [args.previousNode, currentNode],
+            extraction: args.extraction,
+            missingFields: [],
+            searchReady: false,
+            promptBundleId: bundleMismatch.id,
+            promptFilePaths: bundleMismatch.filePaths,
+            toolUsage: args.toolUsage,
+            providerResults: [],
+            recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+            planPersisted: true,
+            planPersistReason: currentNode,
+            timingMs: args.timingMs,
+            tokenUsage: args.tokenUsage,
+            responseClassifier: args.responseClassifierTrace,
+            messageContext: args.messageContext,
+            searchStrategy: 'none',
+            turnDecision: this.rsvpTurnDecision('rsvp_mismatch_handoff'),
+            operationalNote,
+          }),
+        };
+      }
       operationalNote = groundedCampaignEvent || hasCampaignInvitationContext
         ? 'El historial de campaña confirma contexto de una invitación asociada a esta conversación, pero la consulta no devolvió su registro ni su estado. Explica este desajuste claramente. No digas que la invitación no existe, que simplemente no hay invitaciones pendientes ni que se actualizó la asistencia. Ofrece apoyo humano para revisar el vínculo y el estado.'
         : 'La consulta no encontró ninguna invitación asociada a tu número. Distingue claramente este resultado de “no hay invitaciones pendientes” y ofrece apoyo humano si la persona esperaba una invitación.';
