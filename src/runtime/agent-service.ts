@@ -76,6 +76,7 @@ import type {
 import type { TokenUsage } from './contracts';
 import type { OpenAiCallRef } from './contracts';
 import { extractOtpCode } from './otp-normalization';
+import { decideTerminalContinuation } from './information-auth-state-machine';
 import { normalizeExtractedOrderReference } from '../core/order-reference';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import { eventMatches } from './event-matching';
@@ -4033,12 +4034,21 @@ export class AgentService {
       });
     }
 
-    const exhaustedOtpRecovery =
-      (protectedAuthAction === 'report_otp_not_received' &&
-        planForInformation.user_auth.otp_non_delivery_reports >= 1) ||
-      (protectedAuthAction === 'resend_otp' &&
-        planForInformation.user_auth.otp_send_attempts >= 2);
-    if (exhaustedOtpRecovery) {
+    // One-shot OTP recovery (F1): the first non-delivery report or resend
+    // request on an active challenge terminates the episode. The typed
+    // state machine owns the decision; legacy counters persist the budget.
+    const otpTerminalContinuation = decideTerminalContinuation(
+      protectedAuthAction,
+      {
+        status: planForInformation.user_auth.status,
+        email: planForInformation.user_auth.email,
+        requestedAt: planForInformation.user_auth.requested_at,
+        failedCodeAttempts: planForInformation.user_auth.failed_code_attempts,
+        otpSendAttempts: planForInformation.user_auth.otp_send_attempts,
+        otpNonDeliveryReports: planForInformation.user_auth.otp_non_delivery_reports,
+      },
+    );
+    if (otpTerminalContinuation !== null) {
       return await this.escalateInformationAuthentication({
         ...args,
         plan: planForInformation,
@@ -5348,23 +5358,6 @@ export class AgentService {
         splitInternationalPhone(args.trustedContactPhone),
       );
       return verification;
-    }
-
-    if (
-      planForEmail.user_auth.status === 'code_requested' &&
-      informationAuthAction === 'report_otp_not_received'
-    ) {
-      const requested = await this.requestUserCodeForInformation(
-        planForEmail,
-        email,
-        args.toolUsage,
-        'non_delivery_recovery',
-      );
-      return {
-        plan: requested.plan,
-        authentication: null,
-        authBlock: requested.authBlock,
-      };
     }
 
     if (

@@ -232,9 +232,7 @@ function terminate(
 /** First non-delivery report ends the episode; no new code operation. */
 export function reportNonDelivery(state: InformationAuthRecoveryState) {
   return terminate(state, 'non_delivery_reported');
-}
-
-/** A resend request ends the episode instead of sending again. */
+}/** A resend request ends the episode instead of sending again. */
 export function requestOtpResend(state: InformationAuthRecoveryState) {
   return terminate(state, 'resend_requested');
 }
@@ -242,6 +240,31 @@ export function requestOtpResend(state: InformationAuthRecoveryState) {
 /** An email-change request ends the episode instead of collecting addresses. */
 export function requestEmailChange(state: InformationAuthRecoveryState) {
   return terminate(state, 'email_change_requested');
+}
+
+/**
+ * F1 one-shot wiring: the first non-delivery report or resend request on an
+ * active challenge terminates recovery with no second send. Already-terminal
+ * episodes stay terminal; unchallenged flows return null so initial sends
+ * still run. Reuses the legacy normalization so existing counters persist
+ * the budget across session, topic, and plan resets.
+ */
+export function decideTerminalContinuation(
+  action: string,
+  legacy: LegacyAuthFields,
+): AuthRecoveryTerminalReason | null {
+  const isOneShotReport = action === 'report_otp_not_received' || action === 'resend_otp';
+  if (!isOneShotReport) {
+    return null;
+  }
+  const recovery = normalizeLegacyAuthRecovery(legacy);
+  if (recovery.terminalReason !== null) {
+    return recovery.terminalReason;
+  }
+  if (!recovery.sendAttempted) {
+    return null;
+  }
+  return action === 'report_otp_not_received' ? 'non_delivery_reported' : 'resend_requested';
 }
 
 /** An authentication refusal ends the episode. */

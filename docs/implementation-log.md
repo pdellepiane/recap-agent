@@ -9021,3 +9021,112 @@ prompt-audit (7 passed, 1 skipped), s10-model-projection (13/13),
 s12-plan-completion (9/9, uncommitted S12 work untouched),
 live-behavior-coverage. Full `npm run eval:behavior-live` and Lambda
 redeploy remain integrator release-gate steps, not claimed here.
+
+## 2026-09-07 — S15 gate: default dev deploy + full eval:behavior-live
+
+**Reason:** S15 retry gate with repository default workflow only
+(`DEPLOYMENT_ENV=development npm run deploy`, profile `se-dev` enforced by
+`scripts/aws-profile.mjs`). No custom scripts or alternate profiles.
+Pre-deploy tree clean, STS identity `684516060775` via `se-dev`.
+
+**Decision:** Ran gate verification, then the default dev deploy, then the
+full live gate against the new artifact. Production promotion is out of
+scope and requires a separate explicit user action.
+
+**Validation (gate verification, all green):** `npm run build` clean;
+`npm run typecheck` clean; `npm run lint` clean; `npm run audit:prompts`
+zero violations; `tests/live-behavior-coverage.test.ts` 1/1 pass.
+Prior dev stack was `UPDATE_ROLLBACK_COMPLETE` on artifact
+`lambda/c2862ce34811268bca5d3ef87b2ba5455143aaa14920dbf346c93f8c3a68cbc5.zip`.
+
+**Deploy (trial 1, default command only):**
+`DEPLOYMENT_ENV=development npm run deploy` succeeded. Stack
+`recap-agent-runtime-dev` reached `UPDATE_COMPLETE`, environment
+`development`, function `recap-agent-runtime-dev`, URL
+`https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/`.
+Artifact SHA-256
+`1b02632b8b5a8a7e5c3e21bca838f737fc4ffec34be0c9937e61df64481bfebb`,
+S3 key
+`s3://recap-agent-artifacts-684516060775-us-east-1/lambda/1b02632b8b5a8a7e5c3e21bca838f737fc4ffec34be0c9937e61df64481bfebb.zip`.
+Provider-sync stack skipped by default (`DEPLOY_PROVIDER_SYNC` unset).
+Dev secrets remain isolated under `recap-agent/development/*`; production
+stack, webhook, tables and secrets untouched.
+
+**Eval (trial 1):** `npm run eval:behavior-live` exceeded the 10-minute
+foreground window with no summary yet (expected: ~198 cases); relaunched
+supervised in background. Run dir
+`.eval-runs/eval-2026-09-07T18-37-18-801Z-192fb9b9` aborted after 8 cases
+(6 passed, 2 failed: `active_cart_checkout_continuity_alex`,
+`current_campaign_order_over_historical_declined_maria_jose`) with
+`Connection error.` (OpenAI SDK `APIConnectionError` from the semantic
+judge; api.openai.com reachable on recheck, classified transient).
+Retried as trial 2, same default command, no workarounds.
+
+**Eval (trial 2, completed):** `npm run eval:behavior-live` finished with
+summary `runId eval-2026-09-07T18-46-13-375Z-8be6ddd4`: 69 total, 48 passed,
+21 failed, 0 errored, 0 skipped. Zero skips/errors: the transient judge
+connection failure did not recur. The 21 hard-gate failures are product
+behavior failures on the new artifact (`1b02632b...bfebb`), not
+infrastructure: OTP one-shot/handoff x3
+(`otp_nondelivery_auto_resends_once`, `otp_not_received_requires_response`,
+`repeated_otp_failure_preserves_gift_query`: no `request_human_takeover`,
+wrong recovery transitions), reminder/RSVP mismatch
+(`roberto_reminder_invitation_disagreement`,
+`maria_paz_current_reminder_explanation`,
+`rsvp_declined_state_offers_one_change`), continuity
+(`tito_numbered_name_and_post_rsvp_closure` empty reply,
+`ambiguous_confirmation_clarifies`,
+`active_cart_checkout_continuity_alex`,
+`host_support_allows_explicit_rsvp_switch`), purchase reconciliation/replies
+x7 (`pending_balance_validation_luis`, `purchase_delia_status_by_phone`,
+`purchase_joaquin_dedication_selection`,
+`purchase_martha_accountless_selection`,
+`purchase_pending_transfer_continuity`, `s01_frozen_kiara_pending_replay`,
+`s08_kiara_approved_replay`), provider completion x3
+(`provider_reference_cheaper_option`, `provider_reference_miraflores_option`,
+`s12_provider_completion_truthful_event_date`) plus
+`current_campaign_order_over_historical_declined_maria_jose`. Full per-case
+evidence in
+`.eval-runs/eval-2026-09-07T18-46-13-375Z-8be6ddd4/artifacts/live_lambda/`.
+Gate verdict: FAIL. No retry of the eval can fix deterministic behavior
+failures; returned to product owners. Triple high-risk trials and
+exact-artifact promotion preparation are suspended until a passing gate.
+Rollback identity preserved: prior dev artifact
+`lambda/c2862ce34811268bca5d3ef87b2ba5455143aaa14920dbf346c93f8c3a68cbc5.zip`
+in `s3://recap-agent-artifacts-684516060775-us-east-1`, stack
+`recap-agent-runtime-dev` previously `UPDATE_ROLLBACK_COMPLETE` on that key.
+
+## 2026-09-07 — F1a first non-delivery report terminates OTP recovery (case otp_nondelivery_auto_resends_once)
+
+**Reason:** Live gate runId eval-2026-09-07T18-46-13-375Z-8be6ddd4 on artifact
+1b02632b8b5a8a7e5c3e21bca838f737fc4ffec34be0c9937e61df64481bfebb failed
+`live_behavior.otp_nondelivery_auto_resends_once` (score 0.36, hard structural +
+text_semantic fail): a first missing-code report with an active challenge
+(`code_requested`, `otp_send_attempts: 1`, `otp_non_delivery_reports: 0`) resent
+instead of handing off. Root cause is product wiring, not stale S06: the
+`InformationAuthStateMachine` existed but was unwired; `agent-service.ts`
+required `otp_non_delivery_reports >= 1` before handoff and auto-resent on
+`report_otp_not_received` (`non_delivery_recovery`).
+
+**Decision:** Reuse (not stale — `tests/s06-information-auth.test.ts` 32/32 and
+`tests/s16-turn-capability.test.ts` 17/17 pass; `invalidated_tasks: []`): added
+`decideTerminalContinuation` to `information-auth-state-machine.ts` composing
+`normalizeLegacyAuthRecovery`; `handleInformationFlow` escalates on the first
+report/resend of an active challenge (`otp_recovery_exhausted`); deleted the
+now-unreachable auto-resend-on-report branch in `resolveEmailAuthentication`
+(no second `request_user_login_code`); strengthened
+`prompts/extractors/information.txt` so a non-delivery report with an active
+challenge is extracted as `report_otp_not_received` on the pending query via
+structured extraction (no keyword routing). Refusal and email-change paths
+untouched (passing `authentication_refusal_closes_protected_query` preserved);
+S03 excluded.
+
+**Validation:** New twin `tests/f1-otp-terminal-handoff.test.ts` 5/5
+(service-level handoff with zero send/verify, pending preserved, plus pure
+`decideTerminalContinuation` cases); updated the two obsolete resend-policy
+tests in `tests/agent-service-information-flow.test.ts` to assert immediate
+handoff per plan.md revision 2 (incident IDs retained); full focused files
+green; `npm run typecheck`, `npm run lint`, `npm run audit:prompts` (zero
+violations) clean. Live rerun of
+`live_behavior.otp_nondelivery_auto_resends_once` deferred to the F1 focused
+live batch after F1b/F1c land on the same artifact.

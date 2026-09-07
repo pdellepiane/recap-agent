@@ -1907,7 +1907,7 @@ describe('AgentService first-class information flow', () => {
     ).toHaveLength(2);
   });
 
-  it('automatically resends once and then hands off without another email or code loop', async () => {
+  it('hands off on the first missing-code report without resending', async () => {
     const missingCodeRequest = purchaseRequest(null);
     missingCodeRequest.authAction = 'report_otp_not_received';
     const runtime = new InformationRuntime([
@@ -1946,25 +1946,17 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(provider.requestCodeCalls).toBe(2);
-    const missingBlock = runtime.composeRequests
-      .at(-1)
-      ?.informationResults?.find(
-        (result) => result.kind === 'purchase' && result.status === 'needs_input',
-      );
-    expect(
-      missingBlock?.status === 'needs_input' ? missingBlock.guidance : null,
-    ).toEqual(
-      createInformationAuthGuidance(
-        'otp_resent',
-        'sandra.lopez.aguilar@gmail.com',
-      ),
-    );
+    expect(provider.requestCodeCalls).toBe(1);
+    expect(missingCodeResponse.plan.current_node).toBe('solicitar_agente_humano');
+    expect(missingCodeResponse.plan.human_escalation.status).toBe('requested');
+    expect(missingCodeResponse.trace.tools_called).toContain('request_human_takeover');
     expect(missingCodeResponse.plan.user_auth).toMatchObject({
       status: 'code_requested',
-      otp_send_attempts: 2,
-      otp_non_delivery_reports: 1,
+      otp_send_attempts: 1,
     });
+    expect(missingCodeResponse.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({ kind: 'purchase' }),
+    ]);
 
     const handoff = await service.handleTurn({
       channel: 'terminal_whatsapp',
@@ -1975,9 +1967,9 @@ describe('AgentService first-class information flow', () => {
       contactPhone: '+51973296571',
     });
 
-    expect(provider.requestCodeCalls).toBe(2);
+    expect(provider.requestCodeCalls).toBe(1);
+    expect(provider.verifyCodeCalls).toBe(0);
     expect(handoff.plan.human_escalation.status).toBe('requested');
-    expect(handoff.trace.tools_called).toContain('request_human_takeover');
     expect(handoff.plan.information_state.pending_requests).toEqual([
       expect.objectContaining({ kind: 'purchase' }),
     ]);
@@ -2306,7 +2298,7 @@ describe('AgentService first-class information flow', () => {
     expect(provider.requestCodeCalls).toBe(0);
   });
 
-  it('preserves missing-code recovery for a protected associated-event request', async () => {
+  it('hands off on a missing-code report for a protected associated-event request', async () => {
     const runtime = new InformationRuntime([
       extraction([{
         kind: 'associated_event',
@@ -2364,20 +2356,22 @@ describe('AgentService first-class information flow', () => {
       text: 'No me ha llegado',
       messageId: 'associated-event-otp-1',
       receivedAt: new Date().toISOString(),
+      contactPhone: '+51973296571',
     });
 
-    const blockedEvent = runtime.composeRequests
-      .at(-1)
-      ?.informationResults?.find(
-        (result) => result.kind === 'associated_event' && result.status === 'needs_input',
-      );
-    expect(
-      blockedEvent?.status === 'needs_input' ? blockedEvent.guidance : null,
-    ).toEqual(createInformationAuthGuidance('otp_resent', 'person@example.com'));
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.trace.tools_called).toContain('request_human_takeover');
     expect(response.plan.user_auth).toMatchObject({
-      otp_send_attempts: 2,
-      otp_non_delivery_reports: 1,
+      status: 'code_requested',
+      otp_send_attempts: 1,
     });
+    expect(response.plan.information_state.pending_requests).toEqual([
+      expect.objectContaining({
+        kind: 'associated_event',
+        query: '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+      }),
+    ]);
   });
 
   it('stops the repeated OTP loop from the reported gift-deposit interaction', async () => {
