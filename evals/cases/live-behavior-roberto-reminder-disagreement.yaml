@@ -1,0 +1,44 @@
+template: template.base-live
+id: live_behavior.roberto_reminder_invitation_disagreement
+suite: live_behavior_regression
+version: 1
+description: Roberto confirms after three frontend_followup reminders but the trusted phone lookup returns empty/404. The agent acknowledges the reminder and the inability to verify now, escalates once to a human, writes no RSVP and denies nothing.
+tags: [live, behavior, rsvp, reminder, reported-interaction, roberto-screenshot]
+targetModes: [live_lambda]
+inputs:
+  - text: Si, confirmo que asistire
+    channel: whatsapp
+    contactPhone: "+51900000421"
+    sessionId: live-roberto-mismatch-session
+backendFixture:
+  scenario: s04-roberto-mismatch
+expectations:
+  - id: mismatch-reads-invitations-without-rsvp-write
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: mismatch-escalates-once-to-human
+    type: tool_usage
+    mustCall: [request_human_takeover]
+    mustNotCall: [guest_rsvp]
+    severity: hard
+  - id: mismatch-reply-is-truthful-without-denial
+    type: text_semantic
+    rubric: >-
+      The reply must be entirely in Spanish and acknowledge the current Cumple Marcelo
+      reminder while stating truthfully that the invitation cannot be verified right now.
+      It must attempt human help without claiming the invitation does not exist, without
+      claiming a registration, and without registering attendance. It must not use RSVP
+      vocabulary and must offer only an existing trusted public assistance link if relevant.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: mismatch-uses-no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 300

@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-09-07 — S04 reminder narrative context and invitation evidence with existing APIs
+
+**Reason:** Followup reminders used only admin_campaign metadata, ordering ignored server timestamps, and RSVP identity could not distinguish empty/404 mismatch from a verified unique invitation without upstream changes.
+
+**Decision:** Reused coordinated `src/runtime/turn-message-context.ts` S04/S05 helpers (S04 source-category delegation with no duplicate logic, ordering by valid server timestamps with message ID tie-breaker before the five-message bound, newest reminder anchor via existing S05 entry, bounded `ReminderNarrativeContext` with source message ID and provenance outbound_message encoded into existing assumptions, never authoritative; landed in c38abf8c). Added pure `src/runtime/rsvp-invitation-evidence.ts` (trusted phone lookup/detail set only; deterministic membership/uniqueness on normalized event title; text IDs/URLs accepted only to prove they are ignored; empty/ambiguous/missing-decision stays unresolved for one S16 human escalation; single verified plus explicit decision is the only actionable case; no keyword routing, no OTP/registration/upstream). Service/model wiring untouched for the integrator. Registered `s04-reminder-mismatch-escalates-without-write`, `s04-verified-unique-rsvp-writes-once`, `s04-current-reminder-explanation-preserves-title` against new `live_behavior.roberto_reminder_invitation_disagreement`, `live_behavior.roberto_verified_unique_rsvp_writes_once`, `live_behavior.maria_paz_current_reminder_explanation` with fixtures `s04-roberto-mismatch`, `s04-roberto-verified`, `s04-maria-paz-reminder`; offline twin is `tests/s04-reminder-invitation.test.ts`.
+
+**Validation:** `npx vitest run tests/s04-reminder-invitation.test.ts tests/turn-message-context.test.ts tests/s05-conversation-continuity.test.ts tests/live-behavior-coverage.test.ts` 31/31 passed; typecheck and scoped lint clean. Full `npm run eval:behavior-live` and Lambda redeploy remain integrator release-gate steps, not claimed here.
+
 ## 2026-09-07 — S05 campaign continuity without reopened provider interview
 
 **Reason:** Jose acknowledgement with available history and classifier respond plus acknowledgement_only reopened the provider interview with tools and a repeated welcome. Post-RSVP relationship remarks and pure closures had no typed suppress/acknowledge boundary, frontend_followup lost the campaign profile, and an old campaign could anchor the turn after displacement.

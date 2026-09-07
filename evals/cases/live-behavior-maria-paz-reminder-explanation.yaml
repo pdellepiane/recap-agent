@@ -1,0 +1,47 @@
+template: template.base-live
+id: live_behavior.maria_paz_current_reminder_explanation
+suite: live_behavior_regression
+version: 1
+description: Maria Paz asks what the current frontend_followup reminder means. The agent explains the current reminder from outbound-message evidence with the literal title, lists no unnamed records and performs no RSVP mutation.
+tags: [live, behavior, rsvp, reminder, reported-interaction, maria-paz-screenshot]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola
+    channel: whatsapp
+    contactPhone: "+51900000423"
+    sessionId: live-maria-paz-reminder-session
+  - text: Que significa ese recordatorio?
+    channel: whatsapp
+    contactPhone: "+51900000423"
+    sessionId: live-maria-paz-reminder-session
+backendFixture:
+  scenario: s04-maria-paz-reminder
+expectations:
+  - id: reminder-explanation-performs-no-rsvp-write
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    turnIndex: 1
+    severity: hard
+  - id: reminder-explanation-preserves-literal-title
+    type: text_semantic
+    rubric: >-
+      The second reply must be entirely in Spanish and explain the current Cumple Marcelo
+      reminder from the outbound reminder evidence, preserving the literal event title
+      Cumple Marcelo. It must not dump historical or unnamed invitation records, must not
+      change attendance, must not treat the confusion as attendance consent, and must not
+      use RSVP vocabulary. An explicit later switch to the old event remains a separate
+      supported question.
+    minScore: 0.9
+    requireJudge: true
+    turnIndex: 1
+    severity: hard
+  - id: reminder-explanation-uses-no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    turnIndex: 1
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 300
