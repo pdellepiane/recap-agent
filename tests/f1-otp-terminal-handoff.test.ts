@@ -204,7 +204,11 @@ function reportContinuation() {
   };
 }
 
-async function seedOtpPlan(planStore: InMemoryPlanStore, userAuth: Record<string, unknown>) {
+async function seedOtpPlan(
+  planStore: InMemoryPlanStore,
+  userAuth: Record<string, unknown>,
+  pendingQuery = 'Revisar el estado del regalo pagado por la persona.',
+) {
   const seed = mergePlan(
     createEmptyPlan({
       planId: 'f1-otp-handoff',
@@ -235,7 +239,7 @@ async function seedOtpPlan(planStore: InMemoryPlanStore, userAuth: Record<string
             requestId: 'information-1',
             kind: 'purchase',
             resource: 'gift_purchases',
-            query: 'Revisar el estado del regalo pagado por la persona.',
+            query: pendingQuery,
             orderId: null,
             aspects: ['summary', 'payment_status'],
             sensitiveFields: [],
@@ -319,5 +323,73 @@ describe('F1a first non-delivery report ends one-shot OTP recovery', () => {
     expect(response.plan.information_state.pending_requests.map((request) => request.query)).toContain(
       'Revisar el estado del regalo pagado por la persona.',
     );
+  });
+});
+
+describe('F1b repeated missing-code report and resend request hand off without a second send', () => {
+  it('hands off a second missing-code report after a prior resend', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedOtpPlan(
+      planStore,
+      {
+        status: 'code_requested',
+        email: 'regression-not-received@example.invalid',
+        otp_send_attempts: 2,
+        otp_non_delivery_reports: 1,
+      },
+      '¿La restricción de vestir de blanco aplica a mujeres y varones?',
+    );
+    const runtime = new ScriptedRuntime([twinExtraction([reportContinuation()])]);
+    const agentGateway = new RecordingAgentGateway();
+    const provider = scriptedProviderGateway();
+    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'f1-otp-handoff-user',
+      contactPhone: '+51900000302',
+      text: 'No me ha llegado',
+      messageId: 'f1b-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(provider.verifyCodeCalls).toBe(0);
+    expect(agentGateway.takeoverCalls).toBe(1);
+    expect(response.plan.information_state.pending_requests).toHaveLength(1);
+  });
+
+  it('hands off an explicit resend request on an active challenge without sending', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedOtpPlan(planStore, { otp_send_attempts: 1, otp_non_delivery_reports: 0 });
+    const runtime = new ScriptedRuntime([twinExtraction([{
+      kind: 'purchase',
+      resource: 'gift_purchases',
+      query: 'Revisar el estado del regalo pagado por la persona.',
+      orderId: null,
+      aspects: ['summary', 'payment_status'],
+      sensitiveFields: [],
+      authAction: 'resend_otp',
+    }])]);
+    const agentGateway = new RecordingAgentGateway();
+    const provider = scriptedProviderGateway();
+    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'f1-otp-handoff-user',
+      contactPhone: '+51900000302',
+      text: 'Reenvien el codigo por favor.',
+      messageId: 'f1b-2',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(provider.verifyCodeCalls).toBe(0);
+    expect(agentGateway.takeoverCalls).toBe(1);
   });
 });

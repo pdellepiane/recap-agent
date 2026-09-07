@@ -9130,3 +9130,28 @@ green; `npm run typecheck`, `npm run lint`, `npm run audit:prompts` (zero
 violations) clean. Live rerun of
 `live_behavior.otp_nondelivery_auto_resends_once` deferred to the F1 focused
 live batch after F1b/F1c land on the same artifact.
+
+## 2026-09-07 — F1b repeat missing-code report and resend request hand off (case otp_not_received_requires_response)
+
+**Reason:** Same live gate (runId eval-2026-09-07T18-46-13-375Z-8be6ddd4,
+artifact 1b02632b) failed `live_behavior.otp_not_received_requires_response`
+(score 0.36): a second missing-code report (`code_requested`,
+`otp_send_attempts: 2`, `otp_non_delivery_reports: 1`) repeated inbox
+instructions instead of handing off, with no `request_human_takeover` and
+`human_escalation.status` stuck at `none`.
+
+**Decision:** No production-code delta required — the F1a
+`decideTerminalContinuation` gate already generalizes: a report on an
+already-terminal episode (`otp_non_delivery_reports: 1` normalizes to
+`legacy_terminated`) returns terminal, and any `resend_otp` on an active
+challenge returns `resend_requested`, so both escalate with zero additional
+`request_user_login_code`/`verify_user_login_code` calls. This commit adds the
+two deterministic offline twins (repeat report after prior resend; explicit
+resend request) proving single-handoff routing and pending-query preservation.
+F1a prompt examples already cover the `no me ha llegado` extraction signal;
+S03 excluded; refusal/email-change paths untouched.
+
+**Validation:** `tests/f1-otp-terminal-handoff.test.ts` 7/7;
+`npm run typecheck` and `eslint` on the touched test file clean. Live rerun of
+`live_behavior.otp_not_received_requires_response` deferred to the F1 focused
+live batch after F1c lands on the same artifact.
