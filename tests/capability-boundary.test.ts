@@ -18,7 +18,7 @@ import { runtimeToolOperationMap } from '../src/runtime/capability-manifest';
 
 describe('runtime capability boundary', () => {
   it('keeps the v1 operation order stable', () => {
-    expect(runtimeOperationIds).toEqual([
+    expect(runtimeOperationIds.slice(0, 18)).toEqual([
       'faq.read',
       'event.association.read',
       'event.detail.read',
@@ -38,6 +38,8 @@ describe('runtime capability boundary', () => {
       'purchase.modify',
       'refund_or_withdrawal.execute',
     ]);
+    expect(runtimeOperationIds).toContain('provider.favorites.write');
+    expect(runtimeOperationIds).toContain('auth.otp.send');
   });
 
   it('blocks customer writes in development while leaving reads available', () => {

@@ -1,6 +1,8 @@
 /**
  * Stable semantic operations exposed to the extractor and runtime policy.
- * Keep this order unchanged: it is part of the v1 manifest contract.
+ * Keep the v1 prefix order unchanged: it is part of the v1 manifest contract.
+ * S16 appends explicit effect operations after the v1 prefix; never reorder
+ * the prefix. Planning and read operations never authorize a mutation.
  */
 export const runtimeOperationIds = [
   'faq.read',
@@ -21,6 +23,11 @@ export const runtimeOperationIds = [
   'payment_proof.verify',
   'purchase.modify',
   'refund_or_withdrawal.execute',
+  'provider.favorites.write',
+  'provider.review.write',
+  'auth.phone_update.write',
+  'auth.otp.send',
+  'auth.otp.verify',
 ] as const;
 
 export type RuntimeOperationId = (typeof runtimeOperationIds)[number];
@@ -32,6 +39,10 @@ export const runtimeCapabilityAvailabilityReasonValues = [
   'write_blocked',
   'not_implemented',
   'media_unavailable',
+  'missing_identity',
+  'attempts_exhausted',
+  'not_authorized',
+  'resource_unknown',
 ] as const;
 
 export type RuntimeCapabilityAvailabilityReason =
@@ -47,6 +58,7 @@ export type RuntimeCapabilityDescriptor = {
 export type RuntimeCapabilityManifest = {
   readonly version: 'v1';
   readonly operations: readonly RuntimeCapabilityDescriptor[];
+  readonly simulated: boolean;
 } & Readonly<Record<RuntimeOperationId, RuntimeCapabilityDescriptor>>;
 
 export const runtimeToolOperationMap = {
@@ -66,9 +78,9 @@ export const runtimeToolOperationMap = {
   list_event_favorite_providers: 'provider.search',
   list_user_events_vendor_context: 'provider.search',
   create_quote_request: 'provider.quote.write',
-  add_vendor_to_event_favorites: 'provider.plan',
-  create_provider_review: 'provider.plan',
-  finish_plan: 'provider.plan',
+  add_vendor_to_event_favorites: 'provider.favorites.write',
+  create_provider_review: 'provider.review.write',
+  finish_plan: 'provider.quote.write',
 } as const satisfies Record<string, RuntimeOperationId>;
 
 export type RuntimeToolName = keyof typeof runtimeToolOperationMap;
@@ -81,16 +93,48 @@ export const runtimeGatewayOperationMap = {
   authByPhone: 'auth.phone',
   getGuestEventsByPhone: 'event.association.read',
   getEventDetail: 'event.detail.read',
-  updatePhone: 'auth.phone',
+  updatePhone: 'auth.phone_update.write',
   guestRsvp: 'rsvp.response.write',
   requestHumanTakeover: 'human.takeover.write',
+  requestUserLoginCode: 'auth.otp.send',
+  verifyUserLoginCode: 'auth.otp.verify',
+} as const satisfies Record<string, RuntimeOperationId>;
+
+export const runtimeProviderGatewayOperationMap = {
+  listCategories: 'provider.plan',
+  getCategoryBySlug: 'provider.plan',
+  listLocations: 'provider.plan',
+  searchProviders: 'provider.search',
+  searchProvidersByKeyword: 'provider.search',
+  searchProvidersByCategoryLocation: 'provider.search',
+  searchProvidersByQueryIntent: 'provider.search',
+  getRelevantProviders: 'provider.search',
+  getProviderDetail: 'provider.search',
+  getProviderDetailAndTrackView: 'provider.search',
+  getRelatedProviders: 'provider.search',
+  listProviderReviews: 'provider.search',
+  getEventVendorContext: 'provider.search',
+  listEventFavoriteProviders: 'provider.search',
+  listUserEventsVendorContext: 'provider.search',
+  createQuoteRequest: 'provider.quote.write',
+  addVendorToEventFavorites: 'provider.favorites.write',
+  createProviderReview: 'provider.review.write',
+  requestUserLoginCode: 'auth.otp.send',
+  verifyUserLoginCode: 'auth.otp.verify',
 } as const satisfies Record<string, RuntimeOperationId>;
 
 export const runtimeWriteOperationIds = [
   'rsvp.response.write',
   'provider.quote.write',
   'human.takeover.write',
+  'provider.favorites.write',
+  'provider.review.write',
+  'auth.phone_update.write',
+  'auth.otp.send',
+  'auth.otp.verify',
 ] as const satisfies readonly RuntimeOperationId[];
+
+export type RuntimeWriteOperationId = (typeof runtimeWriteOperationIds)[number];
 
 const alwaysUnavailableReasons: Partial<
   Record<RuntimeOperationId, RuntimeCapabilityAvailabilityReason>
@@ -113,6 +157,11 @@ export type RuntimeCapabilityFeatureFlags = {
   phoneAuthentication?: boolean;
   emailOtp?: boolean;
   humanTakeover?: boolean;
+  providerFavorites?: boolean;
+  providerReviews?: boolean;
+  phoneUpdate?: boolean;
+  otpSend?: boolean;
+  otpVerify?: boolean;
 };
 
 export type RuntimeCapabilityManifestOptions = {
@@ -142,7 +191,11 @@ function featureForOperation(
     case 'auth.phone': return flags.phoneAuthentication;
     case 'auth.email_otp': return flags.emailOtp;
     case 'human.takeover.write': return flags.humanTakeover;
-    default: return undefined;
+    case 'provider.favorites.write': return flags.providerFavorites ?? flags.providerPlanning;
+    case 'provider.review.write': return flags.providerReviews ?? flags.providerPlanning;
+    case 'auth.phone_update.write': return flags.phoneUpdate ?? flags.phoneAuthentication;
+    case 'auth.otp.send': return flags.otpSend ?? flags.emailOtp;
+    case 'auth.otp.verify': return flags.otpVerify ?? flags.emailOtp;
   }
 }
 
@@ -180,7 +233,7 @@ export function buildRuntimeCapabilityManifest(
   }
 
   const operations = runtimeOperationIds.map((id) => byId[id]);
-  return { version: 'v1', operations, ...byId };
+  return { version: 'v1', operations, simulated: options.fixture === true, ...byId };
 }
 
 export function isRuntimeOperationId(value: string): value is RuntimeOperationId {
@@ -218,8 +271,37 @@ export function mergeRuntimeCapabilityManifests(
   const byId = Object.fromEntries(
     operations.map((descriptor) => [descriptor.id, descriptor]),
   ) as Record<RuntimeOperationId, RuntimeCapabilityDescriptor>;
-  return { version: 'v1', operations, ...byId };
+  return {
+    version: 'v1',
+    operations,
+    simulated: configuredManifest.simulated || gatewayManifest.simulated,
+    ...byId,
+  };
 }
+
+/** Operations a user can request through extraction. Effect-only writes stay out. */
+export const runtimeRequestedOperationIds = [
+  'faq.read',
+  'event.association.read',
+  'event.detail.read',
+  'purchase.orders.read',
+  'purchase.gift_detail.read',
+  'rsvp.state.read',
+  'rsvp.response.write',
+  'provider.plan',
+  'provider.search',
+  'provider.quote.write',
+  'auth.phone',
+  'auth.email_otp',
+  'human.takeover.write',
+  'confirmation_document.send',
+  'media.image.inspect',
+  'payment_proof.verify',
+  'purchase.modify',
+  'refund_or_withdrawal.execute',
+] as const;
+
+export type RuntimeRequestedOperationId = (typeof runtimeRequestedOperationIds)[number];
 
 export type CapabilityDecision =
   | { readonly status: 'not_applicable' }

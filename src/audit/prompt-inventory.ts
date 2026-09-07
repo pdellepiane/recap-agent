@@ -75,6 +75,15 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       loader: 'CapabilityBoundaryRenderer (deterministic capability outcomes)',
     });
   }
+  if (filePath === 'capability/turn_outcomes.txt') {
+    consumers.push({
+      callType: 'deterministic_reply',
+      nodes: [],
+      profiles: [],
+      transitions: ['capability:turn_outcome_renderer'],
+      loader: 'CapabilityOutcomeRenderer (deterministic S16 turn and handoff outcomes)',
+    });
+  }
   if (filePath === 'nodes/resolver_consultas_informativas/host-withdrawal.json') {
     consumers.push({
       callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
