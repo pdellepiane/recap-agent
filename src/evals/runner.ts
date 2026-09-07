@@ -771,8 +771,8 @@ export function buildSemanticJudgeContext(
   currentCase?: EvalCase,
 ): string {
   const selectedIndex = turnIndex ?? turns.length - 1;
-  const interaction = turns
-    .filter((turn) => turn.turnIndex <= selectedIndex)
+  const effectiveTurns = turns.filter((turn) => turn.turnIndex <= selectedIndex);
+  const interaction = effectiveTurns
     .map((turn) => {
       const plan = getEvaluationPlan(turn);
       return {
@@ -808,46 +808,134 @@ export function buildSemanticJudgeContext(
       };
     });
   const base = JSON.stringify(interaction);
+  const structuralLines = buildStructuralFactLines(effectiveTurns);
+  const judgeRules = [
+    'Reglas para el juez: los hechos estructurales verificados prevalecen sobre cualquier especulacion.',
+    'El juez no debe afirmar que un intento no existio cuando el trace registra la llamada (OTP, proveedor seleccionado, handoff).',
+    'El juez no debe exigir que la respuesta repita codigos o referencias que el texto candidato muestra redactados.',
+    'Referencia del cliente: los campos ausentes se omiten; solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse.',
+  ].join(' ');
   if (!currentCase) {
-    return base;
+    return `${base}\n\n${structuralLines.join('\n')}\n\n${judgeRules}`;
   }
   const hasNotes = currentCase.notes.length > 0;
-  let fixtureMessages: Array<{ id: number; direction: string; body: string }> | null = null;
-  if (currentCase.backendFixture?.scenario) {
-    try {
-      const fixturePath = path.join(process.cwd(), 'evals', 'fixtures', `${currentCase.backendFixture.scenario}.json`);
-      const raw = fsSync.readFileSync(fixturePath, 'utf8');
-      const parsed = JSON.parse(raw) as {
-        recentMessages?: Record<string, { messages?: Array<{ id: number; direction: string; body: string }> }>;
-      };
-      if (parsed.recentMessages && typeof parsed.recentMessages === 'object') {
-        const collected: Array<{ id: number; direction: string; body: string }> = [];
-        for (const entry of Object.values(parsed.recentMessages)) {
-          const msgs = entry?.messages ?? [];
-          for (const m of msgs) {
-            collected.push({ id: m.id, direction: m.direction, body: m.body });
-          }
-        }
-        if (collected.length > 0) {
-          fixtureMessages = collected;
-        }
-      }
-    } catch {
-      // fixture missing or unreadable - treat as no fixture context
-    }
-  }
-  if (!hasNotes && !fixtureMessages) {
-    return base;
+  const fixtureMessages = loadSubjectScopedFixtureMessages(currentCase, selectedIndex);
+  const declaresFixture = resolveEffectiveFixtureScenario(currentCase, selectedIndex) !== null;
+  if (!hasNotes && !fixtureMessages && !declaresFixture) {
+    return `${base}\n\n${structuralLines.join('\n')}\n\n${judgeRules}`;
   }
   const trustedLines: string[] = [];
   trustedLines.push('Contexto confiable reconstruido del caso:');
+  trustedLines.push(structuralLines.join(' | '));
+  trustedLines.push(judgeRules);
   if (hasNotes) {
-    trustedLines.push(`Notas del caso (verbatim, hecho establecido): ${JSON.stringify(currentCase.notes)}`);
+    trustedLines.push(`Notas del caso (procedencia: autor del caso, no evidencia del mundo congelado; los hechos actuales del mundo congelado prevalecen): ${JSON.stringify(currentCase.notes)}`);
   }
   if (fixtureMessages) {
-    trustedLines.push(`Historial confiable reciente (fixture ${currentCase.backendFixture?.scenario}) - mensajes declarados (id, direction, body): ${JSON.stringify(fixtureMessages)}`);
+    const scenario = resolveEffectiveFixtureScenario(currentCase, selectedIndex);
+    trustedLines.push(`Historial efectivo por turno con alcance al sujeto (fixture ${scenario ?? 'desconocido'}) - mensajes declarados (id, direction, body): ${JSON.stringify(fixtureMessages)}`);
+  } else if (currentCase.backendFixture?.scenario) {
+    trustedLines.push(`Historial efectivo por turno con alcance al sujeto (fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? currentCase.backendFixture.scenario}): sin mensajes para el sujeto de este caso; no se transfirio historial de otros sujetos.`);
   }
+  trustedLines.push('Politica de referencia del cliente (minimum disclosure): solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse (transaction reference). Los campos ausentes se omiten y el juez no debe exigir que se repitan codigos redactados. Los identificadores internos/autenticacion permanecen ocultos.');
   return `${base}\n\n${trustedLines.join('\n')}`;
+}
+
+function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
+  return turns.map((turn) => {
+    const plan = getEvaluationPlan(turn);
+    const selection = turn.trace.selection_resolution_summary;
+    const executions = turn.trace.information_execution_summary
+      .map((entry) => `${entry.requestId}:${entry.kind}:${entry.status}:${entry.outcomeCode}`)
+      .join(',');
+    return (
+      `Hechos estructurales verificados del turno ${turn.turnIndex}: ` +
+      `tools_called=[${turn.trace.tools_called.join(',')}] ` +
+      `transicion=${turn.trace.previous_node}->${turn.trace.next_node} ` +
+      `auth=${plan.user_auth.status} ` +
+      `handoff=${plan.human_escalation.status} ` +
+      `seleccion_hints=${selection.selected_provider_hints_count} ` +
+      `operaciones_proveedor=[${selection.provider_plan_operation_types.join(',')}] ` +
+      `ejecuciones=[${executions || 'ninguna'}]`
+    );
+  });
+}
+
+function resolveEffectiveFixtureScenario(
+  currentCase: EvalCase,
+  selectedIndex: number,
+): string | null {
+  const inputs = currentCase.inputs.slice(0, selectedIndex + 1);
+  for (let index = inputs.length - 1; index >= 0; index -= 1) {
+    const scenario = inputs[index]?.backendFixture?.scenario;
+    if (scenario) {
+      return scenario;
+    }
+  }
+  return currentCase.backendFixture?.scenario ?? null;
+}
+
+function collectCaseSubjectPhones(currentCase: EvalCase, selectedIndex: number): string[] {
+  const phones: string[] = [];
+  for (const input of currentCase.inputs.slice(0, selectedIndex + 1)) {
+    const contactPhone = input.contactPhone;
+    if (typeof contactPhone === 'string' && contactPhone.length > 0 && !contactPhone.startsWith('$')) {
+      phones.push(contactPhone);
+    }
+  }
+  const seedPhone = (currentCase.seedPlan as { contact_phone?: unknown } | undefined)?.contact_phone;
+  if (typeof seedPhone === 'string' && seedPhone.length > 0 && !seedPhone.startsWith('$')) {
+    phones.push(seedPhone);
+  }
+  return phones;
+}
+
+function phoneKeysMatch(left: string, right: string): boolean {
+  const leftDigits = left.replace(/\D/gu, '');
+  const rightDigits = right.replace(/\D/gu, '');
+  if (leftDigits.length < 7 || rightDigits.length < 7) {
+    return leftDigits === rightDigits;
+  }
+  const tail = Math.min(9, leftDigits.length, rightDigits.length);
+  return leftDigits.slice(-tail) === rightDigits.slice(-tail);
+}
+
+function loadSubjectScopedFixtureMessages(
+  currentCase: EvalCase,
+  selectedIndex: number,
+): Array<{ id: number; direction: string; body: string }> | null {
+  const scenario = resolveEffectiveFixtureScenario(currentCase, selectedIndex);
+  if (!scenario) {
+    return null;
+  }
+  const subjectPhones = collectCaseSubjectPhones(currentCase, selectedIndex);
+  if (subjectPhones.length === 0) {
+    return null;
+  }
+  try {
+    const fixturePath = path.join(process.cwd(), 'evals', 'fixtures', `${scenario}.json`);
+    const raw = fsSync.readFileSync(fixturePath, 'utf8');
+    const parsed = JSON.parse(raw) as {
+      recentMessages?: Record<string, { messages?: Array<{ id: number; direction: string; body: string }> }>;
+    };
+    if (!parsed.recentMessages || typeof parsed.recentMessages !== 'object') {
+      return null;
+    }
+    const collected: Array<{ id: number; direction: string; body: string }> = [];
+    for (const [subjectKey, entry] of Object.entries(parsed.recentMessages)) {
+      if (!subjectPhones.some((phone) => phoneKeysMatch(phone, subjectKey))) {
+        continue;
+      }
+      const msgs = entry?.messages ?? [];
+      for (const m of msgs.slice(0, 20)) {
+        collected.push({ id: m.id, direction: m.direction, body: redactArtifactText(m.body) });
+      }
+    }
+    return collected.length > 0 ? collected : null;
+  } catch {
+    // fixture missing or unreadable - treat as no fixture context
+    return null;
+  }
 }
 
 function computeFinalScore(

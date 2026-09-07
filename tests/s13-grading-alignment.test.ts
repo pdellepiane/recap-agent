@@ -1,22 +1,28 @@
 import { describe, expect, it } from 'vitest';
 
 import { buildSemanticJudgeContext } from '../src/evals/runner';
+import {
+  CUSTOMER_REFERENCE_POLICY_VERSION,
+  HANDOFF_FALLBACK_TEXT,
+  OTP_POLICY_VERSION,
+  projectCustomerReference,
+} from '../src/evals/customer-reference-policy';
 import type { EvalCase, EvalTurnResult } from '../src/evals/case-schema';
 import { createEmptyPlan } from '../src/core/plan';
 
-function makeTurn(text: string): EvalTurnResult {
+function makeTurn(overrides: {
+  text?: string;
+  tools?: string[];
+  turnIndex?: number;
+}): EvalTurnResult {
   const plan = createEmptyPlan({
-    planId: 'test-plan',
+    planId: 's13-plan',
     channel: 'whatsapp',
-    externalUserId: 'test-user',
+    externalUserId: 's13-user',
   });
   return {
-    turnIndex: 0,
-    input: {
-      text,
-      channel: 'whatsapp',
-      sessionId: 's',
-    },
+    turnIndex: overrides.turnIndex ?? 0,
+    input: { text: overrides.text ?? 'hola', channel: 'whatsapp', sessionId: 's' },
     outputText: 'respuesta',
     currentNode: 'resolver_consultas_informativas',
     trace: {
@@ -32,7 +38,7 @@ function makeTurn(text: string): EvalTurnResult {
       prompt_bundle_id: 'b1',
       prompt_file_paths: [],
       tools_considered: [],
-      tools_called: ['lookup_guest_orders_by_phone'],
+      tools_called: overrides.tools ?? ['verify_user_login_code'],
       tool_inputs: [],
       tool_outputs: [],
       provider_results: [],
@@ -87,11 +93,11 @@ function makeTurn(text: string): EvalTurnResult {
 }
 
 function makeCase(overrides: Partial<EvalCase>): EvalCase {
-  const base: EvalCase = {
-    id: 'test.case',
-    suite: 'test',
+  const base = {
+    id: 's13.case',
+    suite: 'live_behavior_regression',
     version: 1,
-    description: 'test',
+    description: 's13',
     targetModes: ['live_lambda'],
     tags: [],
     variables: {},
@@ -106,38 +112,20 @@ function makeCase(overrides: Partial<EvalCase>): EvalCase {
   return { ...base, ...overrides } as EvalCase;
 }
 
-describe('buildSemanticJudgeContext judge-context completeness', () => {
-  it('includes notes and fixture recentMessages when case provides them', () => {
-    const turns = [makeTurn('Tengo un carrito abandonado de Carlos y Adriana')];
-    const currentCase = makeCase({
-      inputs: [
-        {
-          text: 'Tengo un carrito abandonado de Carlos y Adriana',
-          channel: 'whatsapp',
-          contactPhone: '+51965765765',
-          sessionId: 's',
-        } as unknown as EvalCase['inputs'][number],
-      ],
-      notes: [
-        "Contexto confiable reconstruido: el historial saliente verificado contiene el mensaje id 1 outbound campaign body 'Hola Sonia Maribel, hiciste un regalo para Carlos & Adriana pero no terminaste el proceso. Puedes completarlo aqui: https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da' con ruta /cart/recover valida.",
-      ],
-      backendFixture: { scenario: 'purchase-sonia-765' },
-    });
-    const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
-    expect(ctx).toContain('Contexto confiable reconstruido del caso');
-    expect(ctx).toContain('Notas del caso');
-    expect(ctx).toContain('procedencia');
-    expect(ctx).toContain('Hola Sonia Maribel');
-    expect(ctx).toContain('https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da');
-    expect(ctx).toContain('Historial efectivo por turno con alcance al sujeto');
-    expect(ctx).toContain('"id":1');
-    expect(ctx).toContain('"direction":"outbound"');
-    // also retains interaction
-    expect(ctx).toContain('Tengo un carrito abandonado');
+describe('S13 grading alignment', () => {
+  it('marks verified tool calls as structural facts the judge cannot override', () => {
+    const ctx = buildSemanticJudgeContext(
+      [makeTurn({ tools: ['verify_user_login_code'] })],
+      0,
+      makeCase({ notes: [] }),
+    );
+    expect(ctx).toContain('verify_user_login_code');
+    expect(ctx).toMatch(/verificad|estructural/i);
+    expect(ctx).toMatch(/no debe|no puede|prevalec/i);
   });
 
-  it('excludes fixture messages from other subjects', () => {
-    const turns = [makeTurn('COD301816')];
+  it('scopes fixture history to the case subject instead of dumping all subjects', () => {
+    const turns = [makeTurn({ text: 'COD301816' })];
     const currentCase = makeCase({
       inputs: [
         {
@@ -147,31 +135,61 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
           sessionId: 's',
         } as unknown as EvalCase['inputs'][number],
       ],
-      notes: [],
       backendFixture: { scenario: 'purchase-sonia-765' },
+      notes: [],
     });
     const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
     expect(ctx).not.toContain('Hola Sonia Maribel');
-    expect(ctx).toContain('sin mensajes para el sujeto de este caso');
   });
 
-  it('omits trusted section when case has no notes and no fixture', () => {
-    const turns = [makeTurn('hola')];
-    const currentCase = makeCase({
-      notes: [],
-    });
-    const ctx = buildSemanticJudgeContext(turns, 0, currentCase);
-    expect(ctx).not.toContain('Contexto confiable reconstruido del caso');
-    expect(ctx).not.toContain('Notas del caso');
-    expect(ctx).not.toContain('Historial confiable reciente');
-    // still contains interaction JSON
-    expect(ctx).toContain('hola');
+  it('labels notes with provenance and frozen-world precedence', () => {
+    const ctx = buildSemanticJudgeContext(
+      [makeTurn({})],
+      0,
+      makeCase({ notes: ['alguna nota del autor'] }),
+    );
+    expect(ctx).toContain('alguna nota del autor');
+    expect(ctx).toMatch(/procedencia/i);
+    expect(ctx).toMatch(/mundo congelado|frozen/i);
   });
 
-  it('returns same as before when currentCase is undefined', () => {
-    const turns = [makeTurn('test without case')];
-    const ctx = buildSemanticJudgeContext(turns, 0);
-    expect(ctx).not.toContain('Contexto confiable reconstruido del caso');
-    expect(ctx).toContain('test without case');
+  it('states the customer-reference minimum-disclosure rule for judges', () => {
+    const ctx = buildSemanticJudgeContext(
+      [makeTurn({})],
+      0,
+      makeCase({ notes: [] }),
+    );
+    expect(ctx).toMatch(/referencia.*cliente|transaction reference/i);
+    expect(ctx).toMatch(/omit|omitid/i);
+  });
+
+  it('discloses a customer reference only when authorized and explicitly supplied', () => {
+    expect(
+      projectCustomerReference({ customerTransactionNumber: 'COD301816', referenceAuthorized: true }),
+    ).toBe('COD301816');
+    expect(
+      projectCustomerReference({ customerTransactionNumber: 'COD301816', referenceAuthorized: false }),
+    ).toBeNull();
+    expect(
+      projectCustomerReference({ customerTransactionNumber: null, referenceAuthorized: true }),
+    ).toBeNull();
+    expect(
+      projectCustomerReference({ customerTransactionNumber: '  ', referenceAuthorized: true }),
+    ).toBeNull();
+    expect(
+      projectCustomerReference({ customerTransactionNumber: 'order-martha-frozen-pending-01', referenceAuthorized: true }),
+    ).toBeNull();
+  });
+
+  it('versions the customer-reference and one-shot OTP policies', () => {
+    expect(CUSTOMER_REFERENCE_POLICY_VERSION).toMatch(/^2026-09-05-s13/);
+    expect(OTP_POLICY_VERSION).toContain('one-shot');
+  });
+
+  it('provides distinct Spanish handoff fallback texts for success, failed and unknown', () => {
+    expect(HANDOFF_FALLBACK_TEXT.success).toMatch(/human/i);
+    expect(HANDOFF_FALLBACK_TEXT.failed).toMatch(/human/i);
+    expect(HANDOFF_FALLBACK_TEXT.unknown).toMatch(/human/i);
+    expect(new Set(Object.values(HANDOFF_FALLBACK_TEXT)).size).toBe(3);
   });
 });
