@@ -50,6 +50,17 @@ export type EvalRunnerOptions = {
   configLabel?: string;
 };
 
+export const S01_FROZEN_BASELINE = {
+  baselineCommit: '55a6c99bba6e2d1162aee071204f41aeebb8fba9',
+  artifactModel: 'gpt-5.6-luna',
+  asOfTime: '2026-09-05T01:33:57.291Z',
+  frozenWorlds: ['purchase-kiara-frozen', 'purchase-martha-frozen'],
+} as const;
+
+export function getFrozenBaselineIdentity(): typeof S01_FROZEN_BASELINE {
+  return S01_FROZEN_BASELINE;
+}
+
 type RuntimeCaseResult = {
   turns: EvalTurnResult[];
   status: EvalResult['status'];

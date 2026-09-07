@@ -156,8 +156,9 @@ describe('EvalLoader', () => {
       '+51962983263',
     ]);
     expect(martha?.inputs.map((input) => input.contactPhone)).toEqual([
-      '+51922701221',
+      '+51900070122',
     ]);
+    expect(martha?.backendFixture?.scenario).toBe('purchase-martha-frozen');
     expect(delia?.inputs[0]?.contactPhone).not.toBe(
       martha?.inputs[0]?.contactPhone,
     );

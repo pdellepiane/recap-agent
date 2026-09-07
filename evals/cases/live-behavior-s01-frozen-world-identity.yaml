@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.s01_frozen_kiara_pending_replay
+suite: live_behavior_regression
+version: 1
+description: S01 frozen-world replay. Synthetic identity asks for the Suki Sofia gift status against the frozen Kiara pending world. Output must follow frozen fixture facts with no OTP, no registration, and no mutable backend dependence.
+tags: [live, behavior, purchase, phone-orders, s01, frozen-world]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-kiara-frozen
+inputs:
+  - text: Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?
+    channel: whatsapp
+    contactPhone: "+51900027635"
+    sessionId: live-s01-frozen-kiara-session
+notes:
+  - S01 frozen incident world purchase-kiara-frozen as of 2026-09-05T01:33:57.291Z. Synthetic identity only.
+expectations:
+  - id: s01-frozen-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: s01-frozen-uses-order-summary-only
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [lookup_guest_gift_purchases_by_phone, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: s01-frozen-pending-status-is-reported
+    type: text_semantic
+    rubric: >-
+      The frozen phone-scoped world contains one pending order for Suki Sofia and no completed orders or carts. The answer must be concise, natural, and entirely in Spanish; explain that the payment or gift is still pending or being verified, without calling it approved or failed. It must not ask for email, an OTP, another registration, or a screenshot, and must not reference mutable backend data.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 240

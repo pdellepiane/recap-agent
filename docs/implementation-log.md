@@ -8734,3 +8734,83 @@ They separate into pre-existing typed projection/state defects, trace-only contr
 gaps, and OTP/RSVP cases whose expected writes are unavailable under development's
 intentional real-customer write block. The focused authentication, mailbox, and RSVP
 datetime cases remain 3/3 passing. Production was not promoted.
+
+## 2026-09-05 — Research and plan architecture stabilization
+
+**Reason:** Claudia's four September 4 screenshots and the current handoff required
+an evidence-backed plan to stop recurring conversational regressions and unreliable
+evaluation signals.
+
+**Decision:** Persisted the canonical plan, incident evidence, 59-case comparison,
+and 15 delegable packages under `docs/plan/2026-09-05-stabilization/`. Keep the
+existing runtime and canonical state; prioritize frozen evaluation worlds, complete
+simulated effects, campaign/invitation identity, pure domain decisions, and minimal
+reply projections. Production traces confirm history-present misrouting for Jose
+and a lookup mismatch for Roberto. The Kiara judge assumes pending while the stored
+model input says approved; a merge defect is not yet proven. Tito historical trace
+correlation remains open. Notion contains tickets only: 10 new planned tickets and
+five existing tickets updated, with old statuses preserved and stale directions
+explicitly superseded. No runtime, prompt, infrastructure, or customer data changed.
+
+**Validation:** Both supplied full reports were compared (30/59 to 43/59; 13
+improvements, zero new failures). Existing live-behavior coverage audit passed
+(1 test). Local links/dependencies and all 15 Notion ticket records were verified.
+No development deployment or new live behavior run was performed for this
+research/documentation-only change. See the local evidence dossier for read-only
+trace/request references, observed prompt byte counts and remaining evidence gaps.
+
+## 2026-09-05 — Make stabilization independent of upstream and human-first
+
+**Reason:** The user requires implementation using existing upstream contracts,
+minimal approval-only external proposals, a single OTP attempt as a last resort,
+and dynamic capability grounding that escalates unsupported work truthfully.
+
+**Decision:** Replaced the active stabilization plan with revision 2, removed all
+duration estimates and upstream release dependencies, and fixed the behavior tables
+for OTP, capabilities, failed/unknown human handoff, missing invitation identity,
+write retries, provider date requirements and local coordination. OTP permits one
+send and at most one verification, no resend; unknown account eligibility and any
+failure use human help. Existing resend-case expectations must be explicitly
+versioned to this requested product policy. Optional S03 proposes only sender name
+selection and existing lookup coverage repair with no new fields/endpoints. Added
+S16 to extend the existing capability manifest and unify human escalation. Updated
+the existing 15 Notion tickets and added S16; no runtime code or upstream changes.
+
+**Validation:** Fresh read-only message GETs for the two audited identities returned
+only the existing seven message fields; no campaign/event/invitation/name metadata
+was present. Inspected message schema, existing handoff/OTP clients, capability
+manifest/tool mappings and coordination lease record. Evidence and scope limits are
+in `docs/plan/2026-09-05-stabilization/contract-validation.md`. No authentication
+challenge, human request, customer mutation, deployment or live behavior run was
+executed for this planning revision.
+
+## 2026-09-07 — S01 freeze incident regression worlds and classify 59-case baseline
+
+**Reason:** The 43/59 baseline is historical and unvalidated for release. Kiara/Martha
+and every static factual expectation backed by mutable backend data must be frozen
+before tuning. Behavior replay must be separated from mutable backend contract
+probes, and the current no-metadata API shape frozen independently of optional
+U01/U02 proposals.
+
+**Decision:** Added frozen synthetic worlds `purchase-kiara-frozen` (one pending
+order for Suki Sofia) and `purchase-martha-frozen` (two pending orders, no guest
+event) with frozen as-of time 2026-09-05T01:33:57.291Z. Pointed the Kiara/Martha
+live cases at these fixtures with synthetic identities (+51900027635/+51900070122),
+bumped both to version 2, and preserved all mandatory hard gates including hard
+text_semantic with requireJudge. Added `evals/baseline/s01-59-case-classification.json`
+recording baseline commit 55a6c99b, model gpt-5.6-luna, fixture identity, all 59
+cases, the 16 failures by boundary with raw-wire vs canonical evidence, the four
+evidence.md incident specs mapped to owning fixes S04/S05, the no-metadata shape,
+and the held-out support review set. Added live case
+`live_behavior.s01_frozen_kiara_pending_replay` with hard node_transition,
+tool_usage, and text_semantic requireJudge gates, registered it in
+live_behavior_regression and as coverage entry `s01-frozen-incident-worlds`.
+Recorded `S01_FROZEN_BASELINE` identity in src/evals/runner.ts. Updated the
+eval-loader phone-pinning test to the frozen Martha identity. Deterministic twin:
+tests/s01-frozen-regression.test.ts (6 tests).
+
+**Validation:** Focused suites pass: s01-frozen-regression (6/6),
+live-behavior-coverage, eval-loader, eval-fixture-gateway, eval-runner,
+eval-runner-case-ids (36/36 total). Typecheck clean. ESLint clean on touched
+files. Full catalog loads with the three S01 cases resolving. Live Lambda trial
+and full eval:behavior-live remain pending deployment and are not claimed.
