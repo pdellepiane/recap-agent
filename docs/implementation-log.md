@@ -9214,3 +9214,29 @@ behaviors and registry entries; no new behavior commit.
 **Validation:** Twin for the helper (emit/3 null cases) in
 `tests/f1-otp-terminal-handoff.test.ts` 10/10; focused files green;
 `typecheck`/`lint` clean. Redeploy + focused 3-case rerun follows.
+
+## 2026-09-07 — F1 focused live rerun passes 3/3 on artifact 410b47df (attempt 2 of 3)
+
+**Reason:** Attempt 1 (artifact fb2b18d7, runId
+eval-2026-09-07T20-01-04-146Z-c86d6be9) passed only
+`repeated_otp_failure_preserves_gift_query`; both non-delivery cases failed
+identically with empty extraction. After the route-specific extraction section
+(commit e24291fa), redeployed with the default command only
+(`DEPLOYMENT_ENV=development npm run deploy`, profile `se-dev`, account
+684516060775) to artifact
+`410b47dfdfdb6c63b44950e1f04709f35bedc4b41b95d367c302f0d7a1cfe3f2` and reran
+the 3 F1 cases.
+
+**Decision:** RunId eval-2026-09-07T20-11-44-849Z-539d7282: 3 total, 3 passed,
+0 failed, 0 errored, 0 skipped, zero hard failures. All hard structural
+(node_transition, tool_usage with `request_human_takeover` and no second
+send/verification, plan_field persistence) plus hard `text_semantic`
+(`requireJudge: true`) pass on the identical artifact. Turn traces confirm:
+single handoff effect per episode, preserved protected queries, attempts stay
+1, terminal-code turn records the retained handoff with no gateway resend.
+Production webhook/tables/secrets untouched (dev stack only). Retry budget:
+2 of 3 used, 1 spare. S06/S16 outputs reused without invalidation
+(`invalidated_tasks: []`). Shared-wiring diff (agent-service.ts,
+openai-agent-runtime.ts, prompts, registry; handler.ts/core-plan untouched)
+staged below for integrator-only review; F2 must not start before sign-off.
+No S03, no keyword routing.
