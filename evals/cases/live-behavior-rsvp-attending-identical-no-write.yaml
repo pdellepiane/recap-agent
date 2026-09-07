@@ -1,0 +1,51 @@
+template: template.base-live
+id: live_behavior.s07_attending_identical_no_write
+suite: live_behavior_regression
+version: 1
+description: A repeated identical attending decision on an already confirmed invitation is reported without another mutation.
+tags: [live, behavior, rsvp, attendance, no-write, s07]
+targetModes: [live_lambda]
+inputs:
+  - text: Sí, quiero asistir a Otra celebración prueba.
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-s07-attending-identical-session
+seedPlan:
+  current_node: responder_invitacion
+  intent: responder_invitacion
+  rsvp_state:
+    status: none
+    pending_action: null
+    candidates:
+      - guest_id: 584353
+        event_name: Otra celebración prueba
+        event_date: "2026-08-19 05:00:00"
+    requested_at: null
+    selection_attempts: 0
+backendFixture:
+  scenario: s02-rsvp-reversal
+expectations:
+  - id: remains-in-rsvp-node
+    type: node_transition
+    to: responder_invitacion
+    severity: hard
+  - id: reports-without-another-mutation
+    type: tool_usage
+    mustCall: [lookup_rsvp_invitations]
+    mustNotCall: [guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: reports-confirmed-without-new-registration
+    type: text_semantic
+    rubric: >-
+      The invitation for Otra celebración prueba already says the guest will attend and the user repeated the same attending decision. The response must be natural and entirely in Spanish, clearly say attendance is already confirmed with no new registration, and must not claim a new change was made, ask for email or a code, expose internal fields, or offer human support as if the operation failed.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1600
+  estimatedCompletionTokensPerTurn: 250
