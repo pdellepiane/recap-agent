@@ -2431,14 +2431,21 @@ describe('AgentService first-class information flow', () => {
     const secondFailure = await turn('753994', 4);
     const followUp = await turn('Ese es el código que me llegó', 5);
 
+    // One-shot policy: the first rejected code verifies once, terminates
+    // recovery, and hands off. Later codes never verify again.
+    expect(provider.verifyCodeCalls).toBe(1);
     expect(firstFailure.plan.user_auth.failed_code_attempts).toBe(1);
-    expect(secondFailure.plan.user_auth.failed_code_attempts).toBe(2);
-    expect(followUp.plan.user_auth.failed_code_attempts).toBe(2);
+    expect(firstFailure.plan.current_node).toBe('solicitar_agente_humano');
+    expect(firstFailure.plan.human_escalation.status).toBe('requested');
+    expect(firstFailure.trace.tools_called).toContain('request_human_takeover');
+    expect(secondFailure.plan.user_auth.failed_code_attempts).toBe(1);
     expect(secondFailure.plan.human_escalation.status).toBe('requested');
     expect(secondFailure.trace.tools_called).toContain('request_human_takeover');
+    expect(secondFailure.trace.tools_called).not.toContain('verify_user_login_code');
+    expect(secondFailure.trace.tools_called).not.toContain('request_user_login_code');
+    expect(followUp.plan.user_auth.failed_code_attempts).toBe(1);
     expect(followUp.outbound.text).toBeNull();
     expect(followUp.plan.human_escalation.status).toBe('requested');
-    expect(provider.verifyCodeCalls).toBe(2);
     expect(followUp.plan.information_state.pending_requests).toEqual([
       expect.objectContaining({
         kind: 'purchase',
@@ -2447,17 +2454,8 @@ describe('AgentService first-class information flow', () => {
       }),
     ]);
 
-    const guidanceByTurn = runtime.composeRequests.map((request) =>
-      request.informationResults?.find(
-        (result) => result.kind === 'purchase' && result.status === 'needs_input',
-      ),
-    );
-    expect(
-      guidanceByTurn[0]?.status === 'needs_input'
-        ? guidanceByTurn[0].guidance.reason
-        : null,
-    ).toBe('otp_invalid');
-    expect(guidanceByTurn).toHaveLength(1);
+    // Terminal handoffs are deterministic: no reply-model composition runs.
+    expect(runtime.composeRequests).toHaveLength(0);
   });
 
   it('uses a newly provided email instead of the previously stored address', async () => {

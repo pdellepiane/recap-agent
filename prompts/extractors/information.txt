@@ -24,9 +24,7 @@ En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_detai
 
 Autenticación de consultas personales
 
-Compras/eventos usan el número confiable. `phoneConfirmation=no` solo si niega que la cuenta sea suya (no `decline_authentication`); `yes` con confirmación explícita y `unclear` si ambiguo. Con `code_requested`, conserva la consulta y usa `provide_otp`, `report_otp_not_received`, `resend_otp`, `change_email`, `accountless_user` o `decline_authentication`; antes del código, `provide_email`. Nunca copies códigos fuera de `authAction`.
-
-Con desafío activo (`authentication_status=code_requested`), un reporte de no recepción (“no me llega”, “no me ha llegado el código”) se extrae como la consulta pendiente con `authAction=report_otp_not_received`, nunca como delta vacío; pedir otro envío es `resend_otp` y pedir otro correo es `change_email`.
+Compras/eventos: número confiable. `phoneConfirmation=no` si niega la cuenta (no `decline_authentication`); `yes` explícito, `unclear` ambiguo. Con `code_requested` conserva consulta: código `provide_otp`; no me llega `report_otp_not_received` (nunca vacío); reenvío `resend_otp`; cambio `change_email`; sin cuenta `accountless_user`; negarse `decline_authentication`; antes del código `provide_email`. Códigos solo en `authAction`.
 
 “Ya envié el regalo” sin pedido no crea consulta ni cierre. Una pregunta sobre capacidad no es solicitud de atencion humana; pregunta si puedes leer una fotografia es FAQ y pedir persona sí es `solicitar_humano`. “Y el evento es Baby Shower Catalina” => `actionIntent=null`.
 

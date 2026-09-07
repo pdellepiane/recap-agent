@@ -393,3 +393,104 @@ describe('F1b repeated missing-code report and resend request hand off without a
     expect(agentGateway.takeoverCalls).toBe(1);
   });
 });
+
+describe('F1c first rejected code verifies once then retains the human path', () => {
+  const giftQuery = 'Confirmar si el deposito del regalo llego a los novios y revisar el estado del pago.';
+
+  function codeContinuation() {
+    return {
+      kind: 'purchase' as const,
+      resource: 'gift_purchases' as const,
+      query: giftQuery,
+      orderId: null,
+      aspects: ['payment_status' as const, 'payment_details' as const],
+      sensitiveFields: [],
+      authAction: 'provide_otp' as const,
+    };
+  }
+
+  async function seedGiftPlan(planStore: InMemoryPlanStore) {
+    await seedOtpPlan(planStore, {}, giftQuery);
+  }
+
+  it('verifies the first code once and hands off on rejection without resending', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedGiftPlan(planStore);
+    const runtime = new ScriptedRuntime([twinExtraction([codeContinuation()])]);
+    const agentGateway = new RecordingAgentGateway();
+    const provider = scriptedProviderGateway({ verifyStatus: 'invalid_code' });
+    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+
+    const response = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'f1-otp-handoff-user',
+      contactPhone: '+51900000302',
+      text: '753994',
+      messageId: 'f1c-1',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(provider.verifyCodeCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.user_auth.failed_code_attempts).toBe(1);
+    expect(agentGateway.takeoverCalls).toBe(1);
+    expect(response.plan.information_state.pending_requests.map((request) => request.query)).toContain(
+      giftQuery,
+    );
+  });
+
+  it('never verifies a later code once terminal and records a single handoff', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedGiftPlan(planStore);
+    const runtime = new ScriptedRuntime([twinExtraction([codeContinuation()])]);
+    const agentGateway = new RecordingAgentGateway();
+    const provider = scriptedProviderGateway({ verifyStatus: 'invalid_code' });
+    const service = createService({ runtime, agentGateway, provider: provider.gateway, planStore });
+
+    await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'f1-otp-handoff-user',
+      contactPhone: '+51900000302',
+      text: '753994',
+      messageId: 'f1c-1',
+      receivedAt: new Date().toISOString(),
+    });
+    const second = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'f1-otp-handoff-user',
+      contactPhone: '+51900000302',
+      text: '753994',
+      messageId: 'f1c-2',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(provider.verifyCodeCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(agentGateway.takeoverCalls).toBe(1);
+    expect(second.trace.tools_called).toContain('request_human_takeover');
+    expect(second.trace.tools_called).not.toContain('verify_user_login_code');
+    expect(second.trace.tools_called).not.toContain('request_user_login_code');
+    expect(second.plan.human_escalation.status).toBe('requested');
+    expect(second.plan.user_auth.failed_code_attempts).toBe(1);
+    expect(second.plan.information_state.pending_requests.map((request) => request.query)).toContain(
+      giftQuery,
+    );
+
+    const third = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'f1-otp-handoff-user',
+      contactPhone: '+51900000302',
+      text: 'Ese es el codigo que me llego',
+      messageId: 'f1c-3',
+      receivedAt: new Date().toISOString(),
+    });
+
+    expect(provider.verifyCodeCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
+    expect(agentGateway.takeoverCalls).toBe(1);
+    expect(third.plan.human_escalation.status).toBe('requested');
+    expect(third.plan.user_auth.failed_code_attempts).toBe(1);
+  });
+});

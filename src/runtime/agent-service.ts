@@ -76,7 +76,11 @@ import type {
 import type { TokenUsage } from './contracts';
 import type { OpenAiCallRef } from './contracts';
 import { extractOtpCode } from './otp-normalization';
-import { decideTerminalContinuation } from './information-auth-state-machine';
+import {
+  consumeVerificationAttempt,
+  decideTerminalContinuation,
+  normalizeLegacyAuthRecovery,
+} from './information-auth-state-machine';
 import { normalizeExtractedOrderReference } from '../core/order-reference';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
 import { eventMatches } from './event-matching';
@@ -425,6 +429,26 @@ export class AgentService {
     }
 
     if (existingPlan?.human_escalation.status === 'requested') {
+      // One-shot OTP retention (F1): a code arriving after a rejected-code
+      // handoff must not verify again. Record the already-requested handoff
+      // without a second gateway effect and retain the human path with the
+      // preserved request. Prose follow-ups still take the suppress path.
+      if (
+        this.extractUserLoginCode(inbound.text) !== null &&
+        existingPlan.user_auth.status === 'code_requested' &&
+        existingPlan.user_auth.failed_code_attempts >= 1
+      ) {
+        return await this.retainTerminalOtpHandoff({
+          inbound,
+          existingPlan,
+          toolUsage,
+          timingMs,
+          tokenUsage,
+          responseClassifierTrace,
+          messageContext,
+          handleTurnStartedAt,
+        });
+      }
       const planToSave = mergePlan(existingPlan, {
         current_node: 'solicitar_agente_humano',
       });
@@ -4835,6 +4859,86 @@ export class AgentService {
     };
   }
 
+  private async retainTerminalOtpHandoff(args: {
+    inbound: NormalizedInboundMessage;
+    existingPlan: PlanSnapshot;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    responseClassifierTrace?: MessageResponseClassifierTrace;
+    messageContext: TurnMessageContext;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    // The handoff was already requested on the rejection turn, so no second
+    // gateway effect is submitted. The tool record reflects the retained
+    // attempt decision (already requested), matching the unsupported-path
+    // precedent, and the reply restates the handoff with the pending query.
+    const alreadyRequested: AgentGatewayResult = {
+      status: 'success',
+      message: 'Human takeover was already requested.',
+    };
+    const phoneNumber = this.resolveEscalationPhone(args.inbound);
+    this.recordDeterministicToolInput(args.toolUsage, 'request_human_takeover', {
+      phone_number: phoneNumber,
+      auth: 'X-Agent-Key [redacted]',
+    });
+    this.recordDeterministicToolOutput(args.toolUsage, 'request_human_takeover', {
+      status: alreadyRequested.status,
+      message: alreadyRequested.message,
+    });
+    const planToSave = mergePlan(args.existingPlan, {
+      current_node: 'solicitar_agente_humano',
+    });
+    await this.dependencies.planStore.save({
+      plan: planToSave,
+      reason: 'terminal_otp_code_retains_handoff',
+    });
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    const pendingQueries = args.existingPlan.information_state.pending_requests
+      .map((request) => request.query.trim())
+      .filter((query) => query.length > 0)
+      .slice(0, 2);
+    const handoffSummary = pendingQueries.length > 0
+      ? `${this.humanEscalationRequestedMessage(alreadyRequested)}. El equipo continuará con tu consulta pendiente: ${pendingQueries.join(' / ')}`
+      : this.humanEscalationRequestedMessage(alreadyRequested);
+    const extraction = this.buildSyntheticEscalationExtraction(
+      'La persona envió un código después de que la verificación terminó y se pidió apoyo humano.',
+    );
+    return {
+      plan: planToSave,
+      outbound: this.renderOutbound(
+        { text: handoffSummary },
+        [],
+        args.inbound.channel,
+        planToSave.conversation_id,
+        planToSave,
+      ),
+      trace: this.buildTrace({
+        plan: planToSave,
+        previousNode: args.existingPlan.current_node,
+        currentNode: 'solicitar_agente_humano',
+        nodePath: [args.existingPlan.current_node, 'solicitar_agente_humano'],
+        extraction,
+        missingFields: [],
+        searchReady: false,
+        promptBundleId: 'deterministic:terminal_otp_handoff_retained',
+        promptFilePaths: [],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'terminal_otp_code_retains_handoff',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        responseClassifier: args.responseClassifierTrace,
+        searchStrategy: 'none',
+        turnDecision: this.humanEscalationTurnDecision('terminal_otp_code_retained'),
+        operationalNote: 'Un código posterior al fallo terminal no se verificó; se conservó la ruta humana sin otro envío ni verificación.',
+      }),
+    };
+  }
+
   private async escalateInformationAuthentication(args: {
     inbound: NormalizedInboundMessage;
     previousNode: DecisionNode;
@@ -5523,6 +5627,26 @@ export class AgentService {
     authentication: InformationAuthentication | null;
     authBlock: InformationAuthBlock | null;
   }> {
+    // One-shot policy: consume the single verification before the outbound
+    // call. An already-consumed or terminal episode never verifies again.
+    const recovery = normalizeLegacyAuthRecovery({
+      status: plan.user_auth.status,
+      email: plan.user_auth.email,
+      requestedAt: plan.user_auth.requested_at,
+      failedCodeAttempts: plan.user_auth.failed_code_attempts,
+      otpSendAttempts: plan.user_auth.otp_send_attempts,
+      otpNonDeliveryReports: plan.user_auth.otp_non_delivery_reports,
+    });
+    if (!consumeVerificationAttempt(recovery).allowed) {
+      return {
+        plan,
+        authentication: null,
+        authBlock: {
+          nextInput: 'otp',
+          guidance: createInformationAuthGuidance('otp_verification_failed', email),
+        },
+      };
+    }
     this.recordDeterministicToolInput(
       toolUsage,
       'verify_user_login_code',
@@ -5566,7 +5690,9 @@ export class AgentService {
             ? 'otp_verification_failed'
             : nextAttempts >= 2
               ? 'otp_repeated_failure'
-              : 'otp_invalid';
+              // One-shot policy: the first rejected code terminates recovery.
+              // The caller routes this terminal block to a single handoff.
+              : 'otp_verification_failed';
       return {
         plan: mergePlan(plan, {
           user_auth: {

@@ -9155,3 +9155,40 @@ S03 excluded; refusal/email-change paths untouched.
 `npm run typecheck` and `eslint` on the touched test file clean. Live rerun of
 `live_behavior.otp_not_received_requires_response` deferred to the F1 focused
 live batch after F1c lands on the same artifact.
+
+## 2026-09-07 — F1c first rejected code verifies once then retains handoff (case repeated_otp_failure_preserves_gift_query)
+
+**Reason:** Same live gate (runId eval-2026-09-07T18-46-13-375Z-8be6ddd4,
+artifact 1b02632b) failed `live_behavior.repeated_otp_failure_preserves_gift_query`
+(score 0.764): turn 0 verified a rejected code but offered a resend instead of
+handing off; turn 1 verified the same code a second time (`failed_code_attempts`
+2 instead of 1, forbidden `verify_user_login_code`). Root cause is product
+wiring: `verifyUserCodeForInformation` returned non-terminal `otp_invalid` on
+the first rejection, and nothing consumed the single verification before the
+outbound call.
+
+**Decision:** Reuse (S06/S16 not stale, `invalidated_tasks: []`):
+`verifyUserCodeForInformation` now composes `normalizeLegacyAuthRecovery` +
+`consumeVerificationAttempt` before the gateway call (an already-consumed or
+terminal episode returns terminal `otp_verification_failed` with no second
+call), and the first rejected/invalid code maps to terminal
+`otp_verification_failed` so the turn escalates through the shared
+`HumanHelpPolicy` path with the preserved gift query. A later code arriving
+after the rejection handoff takes a new narrow soft-pause bypass keyed on the
+deterministic OTP normalizer plus `code_requested` with `failed_code_attempts
+>= 1`: it records the already-requested `request_human_takeover` decision with
+no second gateway effect and restates the handoff deterministically; prose
+follow-ups keep the existing suppress path. Refusal/email-change untouched;
+S03 excluded; no keyword routing (code detection reuses the shared OTP
+normalizer).
+
+**Validation:** New 3-turn twin in `tests/f1-otp-terminal-handoff.test.ts`
+(verify-once-then-handoff; later code never verifies, attempts stay 1, single
+handoff effect, query preserved); updated two obsolete two-attempt expectations
+(`agent-service-information-flow` gift-deposit loop, `agent-service` wrong-code
+challenge) plus two `prompt-loader` phrase pins to the one-shot contract;
+compressed the extractor OTP paragraph at zero net bytes to respect the
+10,300-byte bundle gate. Full `npm test` 120 files 988 passed 5 skipped;
+`typecheck`, `lint`, `audit:prompts` clean. Live rerun of
+`live_behavior.repeated_otp_failure_preserves_gift_query` in the F1 focused
+live batch below.

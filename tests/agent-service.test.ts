@@ -1293,7 +1293,7 @@ describe('AgentService', () => {
     expect(response.plan.user_auth.email).toBeNull();
   });
 
-  it('keeps the code challenge active after a wrong user auth code', async () => {
+  it('hands off after the first wrong user auth code without a second attempt', async () => {
     const runtime = new InvitedEventRuntime();
     const planStore = new InMemoryPlanStore();
     const gateway = new AuthScenarioGateway();
@@ -1343,9 +1343,13 @@ describe('AgentService', () => {
 
     expect(response.plan.user_auth.status).toBe('code_requested');
     expect(response.plan.user_auth.last_error).toBe('invalid code');
+    expect(response.plan.user_auth.failed_code_attempts).toBe(1);
     expect(gateway.verifyCodeCalls).toBe(1);
     expect(gateway.lastVerifiedCode).toBe('000000');
+    expect(gateway.requestCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(0);
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.trace.authentication_execution_summary).toEqual([
       {
         operation: 'verify_user_login_code',
@@ -1358,15 +1362,8 @@ describe('AgentService', () => {
         request_id: null,
       },
     ]);
-    expect(
-      runtime.composeRequests
-        .at(-1)
-        ?.informationResults?.some(
-          (result) =>
-            result.kind === 'associated_event' &&
-            result.status === 'completed',
-        ),
-    ).toBe(false);
+    // Terminal handoff is deterministic: no reply-model composition runs.
+    expect(runtime.composeRequests).toHaveLength(0);
   });
 
   it('persists the token and injects event context after a correct user auth code', async () => {
