@@ -1,5 +1,13 @@
 # Implementation Log
 
+## 2026-09-07 — S02 evaluation effects fully simulated and fail closed
+
+**Reason:** Fixture OTP/RSVP already simulated single-turn outcomes, but provider writes still forwarded to HTTP, RSVP isolation assumed prior decline with auto retries, and four write-world live cases had no declared fixture scenarios.
+
+**Decision:** Added `src/runtime/eval-fixture-state.ts` (run/case/operation namespace with 7-day TTL, synthetic receipts, production guard, in-memory plus Dynamo stores) and `src/runtime/fixture-provider-gateway.ts` (isolated ProviderGateway; reads return empty/typed defaults, writes return simulated receipts with intent persisted first; never calls fetch). Extended `FixtureAgentConversationGateway` with `simulated`/`fixtureScenario`/`runId`/`caseId`, cross-invocation receipts, one-shot OTP (no resend/reverify), handoff dedupe with explicit failed/unknown outcomes, and stateful RSVP receipts plus attendance map. Replaced legacy RSVP isolation decline default with null prior no-op, disabled auto retries, and exposed `setup/teardownRsvpIsolationWithGateway` seam for the integrator (handler.ts and agent-service.ts untouched). Added fixtures `s02-otp-nondelivery`, `s02-otp-number-words`, `s02-otp-repeated-failure`, `s02-rsvp-reversal` and pointed the four write-world cases at them. Registered `evaluation-effects-fully-simulated-and-fail-closed` against `live_behavior.rsvp_state_reversal_ends_confirmed`.
+
+**Validation:** `npx vitest run tests/s02-fixture-simulation.test.ts tests/eval-fixture-gateway.test.ts tests/eval-rsvp-hooks.test.ts tests/development-isolation.test.ts` 33/33 passed. Coverage, loader and case-id tests 14/14 passed. Typecheck and scoped lint clean. Full `npm run eval:behavior-live` and Lambda redeploy remain integrator release-gate steps, not claimed here.
+
 ## 2026-09-04 — keep withdrawal questions informational and transaction codes on purchase reads
 
 **Reason:** Withdrawal/refund policy, timing, eligibility, and status questions

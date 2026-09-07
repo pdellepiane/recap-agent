@@ -31,8 +31,21 @@ import {
   type RuntimeCapabilityManifest,
 } from './capability-manifest';
 import { normalizeServerTimestamp } from '../core/server-timestamp';
+import type { EvalFixtureStateStore, FixtureEffectReceipt } from './eval-fixture-state';
+import { InMemoryEvalFixtureStateStore, assertFixtureAllowed } from './eval-fixture-state';
 
 export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/server-timestamp';
+
+export function assertFixtureMarkerAllowed(environment: string): void {
+  assertFixtureAllowed(environment);
+}
+
+export type FixtureGatewayEffectOptions = {
+  allowCustomerWrites?: boolean;
+  runId?: string;
+  caseId?: string;
+  stateStore?: EvalFixtureStateStore;
+};
 
 export type EvalFixtureScenario = string;
 
@@ -428,16 +441,27 @@ export function loadFixtureDataSync(
 export class FixtureAgentConversationGateway implements AgentConversationGateway {
   readonly capabilityDescriptor: RuntimeCapabilityManifest;
   readonly capabilities: RuntimeCapabilityManifest;
+  readonly simulated = true as const;
+  readonly fixtureScenario: string;
+  readonly runId: string;
+  readonly caseId: string;
   private readonly loadResult: FixtureLoadResult;
   private readonly data: FixtureData | null;
+  private readonly stateStore: EvalFixtureStateStore;
+  private readonly effectReceipts: FixtureEffectReceipt[] = [];
+  private readonly rsvpAttendanceByGuest = new Map<number, boolean | null>();
 
   constructor(
     private readonly scenario: string,
     loadResult: FixtureLoadResult,
-    options: { allowCustomerWrites?: boolean } = {},
+    options: FixtureGatewayEffectOptions = {},
   ) {
     this.loadResult = loadResult;
     this.data = loadResult.status === 'loaded' ? loadResult.data : null;
+    this.fixtureScenario = scenario;
+    this.runId = options.runId?.trim() || 'local-run';
+    this.caseId = options.caseId?.trim() || 'local-case';
+    this.stateStore = options.stateStore ?? new InMemoryEvalFixtureStateStore();
     const emailAuth = this.data?.emailAuth;
     const hasEmailAuthOutcome = emailAuth !== null &&
       typeof emailAuth === 'object' &&
@@ -458,7 +482,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   static async create(
     scenario: string,
     fixturesRoot?: string,
-    options?: { allowCustomerWrites?: boolean },
+    options?: FixtureGatewayEffectOptions,
   ): Promise<FixtureAgentConversationGateway> {
     const result = await loadFixtureData(scenario, fixturesRoot);
     return new FixtureAgentConversationGateway(scenario, result, options);
@@ -468,10 +492,31 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     scenario: string,
     fixtureData: FixtureData | null,
     knownScenarios?: Set<string>,
-    options?: { allowCustomerWrites?: boolean },
+    options?: FixtureGatewayEffectOptions,
   ): FixtureAgentConversationGateway {
     const result = loadFixtureDataSync(scenario, fixtureData ?? null, knownScenarios ?? null);
     return new FixtureAgentConversationGateway(scenario, result, options);
+  }
+
+  getFixtureReceipts(): readonly FixtureEffectReceipt[] {
+    return [...this.effectReceipts];
+  }
+
+  getFixtureCallCount(operation: FixtureEffectReceipt['operation']): number {
+    return this.effectReceipts.filter((receipt) => receipt.operation === operation).length;
+  }
+
+  getRsvpAttendanceForTesting(guestId: number): boolean | null | undefined {
+    return this.rsvpAttendanceByGuest.get(guestId);
+  }
+
+  getStateStore(): EvalFixtureStateStore {
+    return this.stateStore;
+  }
+
+  resetFixtureEffectsForTesting(): void {
+    this.effectReceipts.length = 0;
+    this.rsvpAttendanceByGuest.clear();
   }
 
   private unknownScenarioError(): string {
@@ -498,33 +543,50 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   }
 
   async requestUserLoginCode(_email: string): Promise<UserLoginCodeRequestResult> {
-    void _email;
     if (this.isFixtureUnavailable()) {
-      return {
+      const result: UserLoginCodeRequestResult = {
         status: 'unavailable',
         error: 'Fixture scenario is unavailable.',
       };
+      await this.recordEffect('otp.request', { email: _email }, result.status);
+      return result;
     }
     if (!this.capabilityDescriptor['auth.email_otp'].available) {
-      return {
+      const result: UserLoginCodeRequestResult = {
         status: 'unavailable',
         error: 'Email authentication is not configured in this fixture.',
       };
+      await this.recordEffect('otp.request', { email: _email }, result.status);
+      return result;
+    }
+    const prior = await this.stateStore.count(this.runId, this.caseId, 'otp.request');
+    if (prior >= 1 || this.getFixtureCallCount('otp.request') >= 1) {
+      const result: UserLoginCodeRequestResult = {
+        status: 'failed',
+        error: 'Fixture OTP request already consumed; no resend.',
+      };
+      await this.recordEffect('otp.request', { email: _email }, result.status);
+      return result;
     }
     const configured = this.fixtureEmailAuth();
     if (!configured?.request) {
-      return {
+      const result: UserLoginCodeRequestResult = {
         status: 'unavailable',
         error: 'Email authentication request is not configured in this fixture.',
       };
+      await this.recordEffect('otp.request', { email: _email }, result.status);
+      return result;
     }
     const parsed = fixtureLoginCodeRequestSchema.safeParse(configured.request);
     if (!parsed.success) {
-      return {
+      const result: UserLoginCodeRequestResult = {
         status: 'failed',
         error: 'Fixture email authentication request outcome had an unexpected shape.',
       };
+      await this.recordEffect('otp.request', { email: _email }, result.status);
+      return result;
     }
+    await this.recordEffect('otp.request', { email: _email }, parsed.data.status);
     return parsed.data;
   }
 
@@ -532,35 +594,69 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     _email: string,
     _code: string,
   ): Promise<UserLoginCodeVerificationResult> {
-    void _email;
     void _code;
     if (this.isFixtureUnavailable()) {
-      return {
+      const result: UserLoginCodeVerificationResult = {
         status: 'unavailable',
         error: 'Fixture scenario is unavailable.',
       };
+      await this.recordEffect('otp.verify', { email: _email }, result.status);
+      return result;
     }
     if (!this.capabilityDescriptor['auth.email_otp'].available) {
-      return {
+      const result: UserLoginCodeVerificationResult = {
         status: 'unavailable',
         error: 'Email authentication is not configured in this fixture.',
       };
+      await this.recordEffect('otp.verify', { email: _email }, result.status);
+      return result;
+    }
+    const prior = await this.stateStore.count(this.runId, this.caseId, 'otp.verify');
+    if (prior >= 1 || this.getFixtureCallCount('otp.verify') >= 1) {
+      const result: UserLoginCodeVerificationResult = {
+        status: 'failed',
+        error: 'Fixture OTP verification already consumed.',
+      };
+      await this.recordEffect('otp.verify', { email: _email }, result.status);
+      return result;
     }
     const configured = this.fixtureEmailAuth();
     if (!configured?.verify) {
-      return {
+      const result: UserLoginCodeVerificationResult = {
         status: 'unavailable',
         error: 'Email authentication verification is not configured in this fixture.',
       };
+      await this.recordEffect('otp.verify', { email: _email }, result.status);
+      return result;
     }
     const parsed = fixtureLoginCodeVerificationSchema.safeParse(configured.verify);
     if (!parsed.success) {
-      return {
+      const result: UserLoginCodeVerificationResult = {
         status: 'failed',
         error: 'Fixture email authentication verification outcome had an unexpected shape.',
       };
+      await this.recordEffect('otp.verify', { email: _email }, result.status);
+      return result;
     }
+    await this.recordEffect('otp.verify', { email: _email }, parsed.data.status);
     return parsed.data;
+  }
+
+  private async recordEffect(
+    operation: FixtureEffectReceipt['operation'],
+    args: Record<string, unknown>,
+    resultStatus: string,
+  ): Promise<FixtureEffectReceipt> {
+    const receipt = await this.stateStore.record({
+      runId: this.runId,
+      caseId: this.caseId,
+      scenario: this.scenario,
+      operation,
+      args,
+      resultStatus,
+    });
+    this.effectReceipts.push(receipt);
+    return receipt;
   }
 
   private resolveFixtureValue(
@@ -674,7 +770,6 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
   }
 
   async requestHumanTakeover(phoneNumber: string): Promise<AgentGatewayResult> {
-    void phoneNumber;
     if (this.isWriteBlocked('human.takeover.write')) {
       return {
         status: 'skipped',
@@ -683,9 +778,45 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       };
     }
     if (this.isFixtureUnavailable()) {
-      return { status: 'failed', error: this.malformedError(), retryable: false };
+      const failed: AgentGatewayResult = { status: 'failed', error: this.malformedError(), retryable: false };
+      await this.recordEffect('handoff.write', { phoneNumber }, failed.status);
+      return failed;
     }
-    return { status: 'success', message: 'Human takeover requested (fixture).' };
+    const prior = await this.stateStore.count(this.runId, this.caseId, 'handoff.write');
+    if (prior >= 1 || this.getFixtureCallCount('handoff.write') >= 1) {
+      const replayed = await this.stateStore.lastReceipt(this.runId, this.caseId, 'handoff.write');
+      const replay: AgentGatewayResult = {
+        status: 'success',
+        message: `Human takeover requested (fixture, replay ${replayed?.syntheticId ?? 'unknown'}).`,
+      };
+      await this.recordEffect('handoff.write', { phoneNumber, replayed: true }, replay.status);
+      return replay;
+    }
+    const configured = (this.data as Record<string, unknown> | null)?.['handoff'];
+    if (configured !== undefined && configured !== null && typeof configured === 'object') {
+      const record = configured as { status?: unknown; error?: unknown };
+      if (record['status'] === 'failed') {
+        const failed: AgentGatewayResult = {
+          status: 'failed',
+          error: typeof record['error'] === 'string' ? record['error'] : 'Fixture handoff failed.',
+          retryable: false,
+        };
+        await this.recordEffect('handoff.write', { phoneNumber }, failed.status);
+        return failed;
+      }
+      if (record['status'] === 'unknown') {
+        const failed: AgentGatewayResult = {
+          status: 'failed',
+          error: 'Fixture handoff outcome is unknown; no automatic retry.',
+          retryable: false,
+        };
+        await this.recordEffect('handoff.write', { phoneNumber }, 'unknown');
+        return failed;
+      }
+    }
+    const success: AgentGatewayResult = { status: 'success', message: 'Human takeover requested (fixture).' };
+    await this.recordEffect('handoff.write', { phoneNumber }, success.status);
+    return success;
   }
 
   async getOrders(args: { token: string; orderId?: string | null }): Promise<AgentPurchaseLookupResult> {
@@ -963,10 +1094,14 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
   async guestRsvp(input: AgentGuestRsvpInput): Promise<AgentGuestRsvpResult> {
     if (this.isFixtureUnavailable()) {
-      return { status: 'failed', error: this.malformedError(), retryable: false };
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: this.malformedError(), retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
     }
     if (this.isWriteBlocked('rsvp.response.write')) {
-      return { status: 'failed', error: 'Customer writes are disabled in this development fixture.', retryable: false };
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: 'Customer writes are disabled in this development fixture.', retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
     }
     const phone = normalizePhoneInput(input);
     if (!phone) {
@@ -1052,27 +1187,35 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
 
     if (rawData === undefined) {
       // No fixture entry -> fail with invalid_response (typed fail-closed, not crash)
-      return { status: 'failed', error: `Fixture scenario "${this.scenario}" missing RSVP response for phone ${key}.`, retryable: false };
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: `Fixture scenario "${this.scenario}" missing RSVP response for phone ${key}.`, retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
     }
 
     // Simulate HttpAgentConversationGateway's post-request parsing for both success and failure branches
     // If rawData is a candidate envelope, return multiple_pending regardless of status
     const candidates = this.parseRsvpCandidates(rawData);
     if (candidates) {
-      return { status: 'multiple_pending', candidates };
+      const result: AgentGuestRsvpResult = { status: 'multiple_pending', candidates };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, result.status);
+      return result;
     }
     if (errorCode === 'multiple_pending') {
       return { status: 'failed', error: 'Agent API RSVP multiple-pending response had an unexpected shape.', retryable: false };
     }
 
     if (httpStatus === 404) {
-      return { status: 'no_pending' };
+      const result: AgentGuestRsvpResult = { status: 'no_pending' };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, result.status);
+      return result;
     }
     if (httpStatus === 403 || errorCode === 'phone_mismatch') {
-      return { status: 'phone_mismatch' };
+      const result: AgentGuestRsvpResult = { status: 'phone_mismatch' };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, result.status);
+      return result;
     }
     if (errorCode === 'already_responded') {
-      return {
+      const result: AgentGuestRsvpResult = {
         status: 'already_responded',
         currentAction: null,
         requestedAction: input.action ?? null,
@@ -1080,9 +1223,13 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         eventName: null,
         eventDate: null,
       };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, result.status);
+      return result;
     }
     if (httpStatus !== 200 && httpStatus !== null) {
-      return { status: 'failed', error: (rawData as Record<string, unknown>)['error'] as string ?? `Fixture RSVP failed with ${httpStatus}`, retryable: httpStatus >= 500 };
+      const result: AgentGuestRsvpResult = { status: 'failed', error: (rawData as Record<string, unknown>)['error'] as string ?? `Fixture RSVP failed with ${httpStatus}`, retryable: httpStatus >= 500 };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, result.status);
+      return result;
     }
 
     // Success path: parse as rsvp response
@@ -1102,11 +1249,15 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         : rawObject,
     );
     if (!parsed.success) {
-      return { status: 'failed', error: 'Agent API RSVP response had an unexpected shape.', retryable: false };
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: 'Agent API RSVP response had an unexpected shape.', retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
     }
     const plusOne = parsed.data.plus_one ?? null;
     if (input.plus_one_response && !plusOne) {
-      return { status: 'failed', error: 'Agent API RSVP response did not confirm the plus-one state.', retryable: false };
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: 'Agent API RSVP response did not confirm the plus-one state.', retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
     }
     const expectedWillAttend = input.action === 'attending';
     const returnedWillAttend = parsed.data.will_attend === true || parsed.data.will_attend === 1
@@ -1115,9 +1266,11 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
         ? false
         : null;
     if (input.action && (returnedWillAttend === null || returnedWillAttend !== expectedWillAttend)) {
-      return { status: 'failed', error: 'Agent API RSVP response did not confirm the requested attendance state.', retryable: false };
+      const failed: AgentGuestRsvpResult = { status: 'failed', error: 'Agent API RSVP response did not confirm the requested attendance state.', retryable: false };
+      await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, failed.status);
+      return failed;
     }
-    return {
+    const responded: AgentGuestRsvpResult = {
       status: 'responded',
       action: parsed.data.action ?? input.action ?? null,
       willAttend: returnedWillAttend,
@@ -1134,6 +1287,11 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
           }
         : null,
     };
+    if (responded.status === 'responded' && responded.guestId !== null) {
+      this.rsvpAttendanceByGuest.set(responded.guestId, responded.willAttend);
+    }
+    await this.recordEffect('rsvp.write', { guest_id: input.guest_id ?? null, action: input.action ?? null }, responded.status);
+    return responded;
   }
 
   private parseRsvpCandidates(data: unknown): RsvpCandidate[] | null {

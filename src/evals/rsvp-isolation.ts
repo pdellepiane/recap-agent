@@ -8,6 +8,8 @@ export type RsvpIsolationSetup = {
   eventName: string;
   phone: string;
   targetState: RsvpIsolationTargetState;
+  priorState?: RsvpIsolationTargetState | null;
+  fixtureScenario?: string | null;
 };
 
 export type RsvpIsolationTeardown = {
@@ -68,19 +70,103 @@ function createGateway(): HttpAgentConversationGateway | null {
   if (!apiKey) {
     return null;
   }
+  // Isolation writes are single-attempt by contract. Automatic transport
+  // retries are disabled here; RSVP-specific read-back belongs to S11.
   return new HttpAgentConversationGateway({
     baseUrl,
     apiKey,
     timeoutMs: config.agentApi.timeoutMs,
-    maxRetries: config.agentApi.maxRetries,
+    maxRetries: 0,
     messageLoggingEnabled: false,
   });
 }
 
+export type RsvpIsolationGateway = Pick<HttpAgentConversationGateway, 'guestRsvp'>;
+
+export async function setupRsvpIsolationWithGateway(
+  hooks: RsvpIsolationHooks,
+  gateway: RsvpIsolationGateway | null,
+): Promise<RsvpIsolationContext | null> {
+  const setup = hooks.setup;
+  if (!setup) {
+    return null;
+  }
+  const priorState = setup.priorState ?? null;
+  const key = contextKey(setup.guestId, setup.eventName, setup.phone);
+  const context: RsvpIsolationContext = {
+    guestId: setup.guestId,
+    eventName: setup.eventName,
+    phone: setup.phone,
+    priorState,
+    targetState: setup.targetState,
+  };
+  isolationContexts.set(key, context);
+  if (setup.targetState === 'pending' || !gateway) {
+    return context;
+  }
+  const phoneParts = parsePhone(setup.phone);
+  if (!phoneParts) {
+    throw new Error(`Invalid phone for RSVP isolation: ${setup.phone}`);
+  }
+  const action: 'attending' | 'declining' = setup.targetState === 'attending' ? 'attending' : 'declining';
+  const result = await gateway.guestRsvp({
+    phone_extension: phoneParts.extension,
+    phone_number: phoneParts.number,
+    action,
+    guest_id: setup.guestId,
+  });
+  if (result.status === 'failed' && result.retryable === false) {
+    throw new Error(`RSVP isolation setup failed: ${result.error}`);
+  }
+  return context;
+}
+
+export async function teardownRsvpIsolationWithGateway(
+  hooks: RsvpIsolationHooks,
+  context: RsvpIsolationContext | null,
+  gateway: RsvpIsolationGateway | null,
+): Promise<void> {
+  const teardown = hooks.teardown;
+  if (!teardown || !teardown.restore) {
+    return;
+  }
+  const key = context
+    ? contextKey(context.guestId, context.eventName, context.phone)
+    : contextKey(teardown.guestId, teardown.eventName, teardown.phone);
+  const stored = context ?? isolationContexts.get(key) ?? null;
+  if (!stored) {
+    return;
+  }
+  const restoreState = stored.priorState;
+  if (!restoreState || restoreState === 'pending') {
+    isolationContexts.delete(key);
+    return;
+  }
+  if (!gateway) {
+    isolationContexts.delete(key);
+    return;
+  }
+  const phoneParts = parsePhone(stored.phone);
+  if (!phoneParts) {
+    isolationContexts.delete(key);
+    throw new Error(`Invalid phone for RSVP teardown: ${stored.phone}`);
+  }
+  const action: 'attending' | 'declining' = restoreState === 'attending' ? 'attending' : 'declining';
+  await gateway.guestRsvp({
+    phone_extension: phoneParts.extension,
+    phone_number: phoneParts.number,
+    action,
+    guest_id: stored.guestId,
+  });
+  isolationContexts.delete(key);
+}
+
 async function queryCurrentRsvpState(setup: RsvpIsolationSetup): Promise<RsvpIsolationTargetState | null> {
-  // Best-effort: try to infer prior by reading guest events, but do not fail isolation if unreadable.
-  // For now, return null to indicate unknown prior; teardown will restore to a safe default (declining)
-  // when prior is unknown and restore is requested. This keeps offline tests deterministic.
+  // Best-effort prior read. Unknown prior stays null; teardown must not
+  // assume a prior decline. Fixture scenarios carry explicit priorState.
+  if (setup.priorState !== undefined) {
+    return setup.priorState;
+  }
   void setup;
   return null;
 }
@@ -152,8 +238,8 @@ export async function teardownRsvpIsolation(
     return;
   }
 
-  const restoreState = stored.priorState ?? 'declining';
-  if (restoreState === 'pending') {
+  const restoreState = stored.priorState;
+  if (!restoreState || restoreState === 'pending') {
     isolationContexts.delete(key);
     return;
   }
