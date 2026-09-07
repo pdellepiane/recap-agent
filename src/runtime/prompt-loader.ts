@@ -34,6 +34,80 @@ export type PromptBundle = {
   allowedTools: readonly ToolName[];
 };
 
+/**
+ * S10 bundle measurement recorded once per bundle identity.
+ *
+ * Captures the actual instruction/input bytes plus the structural
+ * schema/tool counts that feed the model call, so unaffected outcomes
+ * prove no byte growth and changed requests report their deltas.
+ */
+export type BundleMeasurement = {
+  bundleId: string;
+  instructionBytes: number;
+  inputBytes: number;
+  schemaPropertyCount: number;
+  toolCount: number;
+  serializedBytes: number;
+};
+
+export type BundleDelta = {
+  instructionDelta: number;
+  inputDelta: number;
+  schemaDelta: number;
+  toolDelta: number;
+  serializedDelta: number;
+  grew: boolean;
+};
+
+export function measureBundle(args: {
+  bundleId: string;
+  instructions: string;
+  input: string;
+  schemaPropertyCount: number;
+  toolCount: number;
+}): BundleMeasurement {
+  const instructionBytes = Buffer.byteLength(args.instructions, 'utf8');
+  const inputBytes = Buffer.byteLength(args.input, 'utf8');
+  const serializedBytes = Buffer.byteLength(
+    JSON.stringify({
+      bundleId: args.bundleId,
+      instructions: args.instructions,
+      input: args.input,
+      schemaPropertyCount: args.schemaPropertyCount,
+      toolCount: args.toolCount,
+    }),
+    'utf8',
+  );
+  return {
+    bundleId: args.bundleId,
+    instructionBytes,
+    inputBytes,
+    schemaPropertyCount: args.schemaPropertyCount,
+    toolCount: args.toolCount,
+    serializedBytes,
+  };
+}
+
+export function summarizeBundleDelta(
+  before: BundleMeasurement,
+  after: BundleMeasurement,
+): BundleDelta {
+  const instructionDelta = after.instructionBytes - before.instructionBytes;
+  const inputDelta = after.inputBytes - before.inputBytes;
+  const schemaDelta = after.schemaPropertyCount - before.schemaPropertyCount;
+  const toolDelta = after.toolCount - before.toolCount;
+  const serializedDelta = after.serializedBytes - before.serializedBytes;
+  return {
+    instructionDelta,
+    inputDelta,
+    schemaDelta,
+    toolDelta,
+    serializedDelta,
+    grew: instructionDelta > 0 || inputDelta > 0 || schemaDelta > 0 ||
+      toolDelta > 0 || serializedDelta > 0,
+  };
+}
+
 export class PromptLoader {
   constructor(private readonly promptsDir: string) {}
 

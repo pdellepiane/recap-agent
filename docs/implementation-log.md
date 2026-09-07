@@ -8924,3 +8924,43 @@ here.
 **Validation:** Focused suites pass: s06-information-auth (32/32),
 live-behavior-coverage, otp-normalization, s02-fixture-simulation,
 information-auth-guidance. Typecheck clean. ESLint clean on touched files.
+
+## 2026-09-07 — S10 unify model-call projections and remove discarded reply calls
+
+**Reason:** One builder must own actual instructions/schema/tools/input so the
+same capability projection feeds schema and textual allowed actions, inactive
+lane state and tools stay omitted, clarification excludes providers,
+acknowledgement carries no provider tools, and complete deterministic outcomes
+invoke no reply model. Remaining conversational prose replaced by typed
+outcomes must be eliminated from shared prompts, not relocated.
+
+**Decision:** Added pure `src/runtime/extraction-projection.ts` (profile,
+allowed intents filtered by manifest availability, allowed domain operations
+via the shared S16 projector, Spanish textual allowed actions and schema
+property count from the same projection; inactive lanes omitted; OTP/RSVP
+intents gated by manifest). Added pure
+`src/runtime/reply-evidence-projector.ts` (clarification excludes providers
+with bounded narrative model call; acknowledgement/suppression and complete
+capability/auth/RSVP/handoff outcomes render deterministically with no reply
+model; structural narrative claim contract with deterministic fallback and no
+corrective model call). Extended `src/runtime/prompt-loader.ts` additively
+with `measureBundle`/`summarizeBundleDelta` (bundle identity plus
+instruction/input/schema/tool bytes recorded once; deltas reported).
+Extended `src/audit/prompt-audit.ts` additively with
+`auditProjectionPromptOwnership` (no provider search tools on
+ack/clarification nodes; no node-specific or typed-handoff-trigger prose in
+shared files). Moved node-specific guidance into exact-node Spanish files
+(`aclarar_pedir_faltante/system.txt`, `recomendar/system.txt`) and removed
+the typed handoff trigger from `shared/domain_scope.txt`. Did not touch
+`openai-agent-runtime.ts` (integrator-owned wiring). Added four registry
+entries reusing existing live cases. Deterministic twin:
+tests/s10-model-projection.test.ts (13 tests). Live Lambda trial and full
+eval:behavior-live remain pending deployment and are not claimed here.
+
+**Validation:** Focused suites pass: s10-model-projection (13/13),
+prompt-audit (7 passed, 1 skipped), s16-turn-capability (17/17),
+dynamic-agent-policy (7/7), capability-boundary (8/8),
+live-behavior-coverage. Typecheck clean. ESLint clean on touched files.
+Prompt deltas: shared/flow_discipline.txt -161B, shared/domain_scope.txt
+-51B, aclarar node +40B, recomendar node +58B; contacto_inicial audit bytes
+unchanged at 7279 (unaffected routes do not grow).

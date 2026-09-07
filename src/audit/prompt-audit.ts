@@ -211,3 +211,49 @@ function collectDuplicates(values: readonly string[]): string[] {
     (value, index) => values.indexOf(value) !== index,
   )));
 }
+
+/**
+ * S10 model-projection ownership audit.
+ *
+ * Verifies that acknowledgement and clarification nodes carry no provider
+ * search tools and that shared prompts hold no node-specific or
+ * typed-outcome trigger prose: that guidance lives in exact-node Spanish
+ * files and deterministic typed renderers instead.
+ */
+export const s10AckNodes = [
+  'continua',
+  'guardar_cerrar_temporalmente',
+  'responder_invitacion',
+] as const;
+
+export const s10ProviderSearchTools = [
+  'search_providers_from_plan',
+  'search_providers_by_keyword',
+  'search_providers_by_category_location',
+  'get_relevant_providers',
+] as const;
+
+export function auditProjectionPromptOwnership(args: {
+  sharedFlowDiscipline: string;
+  sharedDomainScope: string;
+}): string[] {
+  const violations: string[] = [];
+  for (const node of [...s10AckNodes, 'aclarar_pedir_faltante' as const]) {
+    const allowed = nodePromptManifest[node].allowedTools;
+    for (const tool of s10ProviderSearchTools) {
+      if ((allowed as readonly string[]).includes(tool)) {
+        violations.push(`${node}: provider search tool ${tool} on ack/clarification node`);
+      }
+    }
+  }
+  if (args.sharedFlowDiscipline.includes('Si el nodo es de aclaración o entrevista')) {
+    violations.push('shared/flow_discipline.txt: node-specific clarification prose belongs in its exact-node file');
+  }
+  if (args.sharedFlowDiscipline.includes('Si el nodo es de recomendación')) {
+    violations.push('shared/flow_discipline.txt: node-specific recommendation prose belongs in its exact-node file');
+  }
+  if (args.sharedDomainScope.includes('cuando el caso necesita intervención del equipo')) {
+    violations.push('shared/domain_scope.txt: typed handoff trigger prose replaced by HumanHelpPolicy');
+  }
+  return violations;
+}
