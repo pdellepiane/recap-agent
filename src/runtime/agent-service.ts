@@ -3563,7 +3563,8 @@ export class AgentService {
       args.extraction.closeAction != null ||
       args.extraction.pauseRequested;
     if (
-      args.extraction.ambiguity?.status === 'ambiguous' &&
+      (args.extraction.ambiguity?.status === 'ambiguous' ||
+        this.isBareProviderConfirmationTurn(args.extraction)) &&
       !hasCompetingProviderWork &&
       this.hasUnresolvedProviderShortlist(plan, args.extraction, args.inbound.text)
     ) {
@@ -7392,6 +7393,39 @@ export class AgentService {
     });
   }
 
+  /**
+   * A bare confirmation turn carries no actionable delta: null actionIntent,
+   * no information/support/RSVP/provider/contact work and no selection
+   * reference. Over an unresolved multi-option shortlist it must clarify
+   * which provider or action is confirmed, even when the extractor marked
+   * ambiguity clear (live: "Si confirmo."). Plan-echoed context (eventType,
+   * active need, guest range) does not count as a refinement.
+   */
+  private isBareProviderConfirmationTurn(extraction: ExtractionResult): boolean {
+    return extraction.actionIntent === null &&
+      extraction.informationRequests.length === 0 &&
+      extraction.supportAct == null &&
+      extraction.phoneConfirmation == null &&
+      extraction.rsvpAction == null &&
+      extraction.rsvpEventReference == null &&
+      (extraction.providerQueryIntents?.length ?? 0) === 0 &&
+      extraction.providerExplanationRequest == null &&
+      extraction.providerDetailRequest == null &&
+      extraction.closeAction == null &&
+      !extraction.pauseRequested &&
+      extraction.vendorCategory == null &&
+      (extraction.vendorCategories?.length ?? 0) === 0 &&
+      extraction.location == null &&
+      extraction.budgetSignal == null &&
+      (extraction.preferences?.length ?? 0) === 0 &&
+      (extraction.hardConstraints?.length ?? 0) === 0 &&
+      extraction.contactName == null &&
+      extraction.contactEmail == null &&
+      extraction.contactPhone == null &&
+      (extraction.selectedProviderHints?.length ?? 0) === 0 &&
+      (extraction.selectedProviderReferences?.length ?? 0) === 0;
+  }
+
   private guardAmbiguousProviderConfirmation(
     plan: PlanSnapshot,
     extraction: ExtractionResult,
@@ -7407,7 +7441,7 @@ export class AgentService {
       extraction.providerDetailRequest == null &&
       extraction.closeAction == null &&
       !extraction.pauseRequested;
-    if (!resumesShortlist && !isBareAmbiguousTurn) {
+    if (!resumesShortlist && !isBareAmbiguousTurn && !this.isBareProviderConfirmationTurn(extraction)) {
       return { extraction, ambiguous: false };
     }
 

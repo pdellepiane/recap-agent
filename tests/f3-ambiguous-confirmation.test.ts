@@ -193,4 +193,20 @@ describe('F3d bare confirmation over a multi-option shortlist', () => {
     const text = result.outbound.text ?? '';
     expect(text).not.toContain(AMBIGUOUS_QUESTION);
   });
+
+  it('asks on a bare confirmation even when the extractor marks it clear', async () => {
+    const result = await runPlanningTurn(
+      planningExtraction({
+        actionIntent: null,
+        ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
+        eventType: null,
+        activeNeedCategory: null,
+        location: null,
+        guestRange: null,
+        preferences: [],
+      }),
+    );
+    const text = result.outbound.text ?? '';
+    expect(text).toContain(AMBIGUOUS_QUESTION);
+  });
 });
