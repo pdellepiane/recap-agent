@@ -55,7 +55,27 @@ describe('F4 close submission summary confirms sent quotes with the explicit dat
     expect(text as string).not.toMatch(/plan cerrado|cerrado el plan/iu);
   });
 
-  it('returns null when the date is missing or the submission failed', () => {
+  it('reports blocked providers truthfully with the explicit date when all writes fail', () => {
+    const text = buildCloseSubmissionSummary({
+      status: 'failed',
+      eventDate: '2026-10-18',
+      contactedProviders: [
+        { providerId: 101, category: 'Catering', success: false, error: 'blocked' },
+        { providerId: 202, category: 'Música', success: false, error: 'blocked' },
+      ],
+      displayByCategory: { Catering: 'EDO', 'Música': 'Orquesta Sintetica' },
+    });
+    expect(text).not.toBe(null);
+    expect(text as string).toContain('18 de octubre de 2026');
+    expect(text as string).toContain('EDO');
+    expect(text as string).toContain('Orquesta Sintetica');
+    expect(text as string).toContain('bloque');
+    expect(text as string).not.toContain('Confirmas');
+    expect(text as string).not.toMatch(/fueron enviadas|fue enviada/iu);
+    expect(text as string).not.toMatch(/plan cerrado|cerrado el plan/iu);
+  });
+
+  it('returns null when the date is missing or no provider was attempted', () => {
     expect(
       buildCloseSubmissionSummary({
         status: 'success',
@@ -106,6 +126,22 @@ describe('F4 finish_plan turn outcome parses defensively', () => {
     expect(outcome?.status).toBe('success');
     expect(outcome?.eventDate).toBe('2026-10-18');
     expect(outcome?.contactedProviders).toHaveLength(1);
+  });
+
+  it('parses failed-all provider results that carry an explicit date', () => {
+    const outcome = parseFinishPlanTurnOutcome(
+      JSON.stringify({
+        status: 'failed',
+        eventDate: '2026-10-18',
+        contacted_providers: [
+          { providerId: 101, category: 'Catering', success: false, error: 'blocked' },
+          { providerId: 202, category: 'Música', success: false, error: 'blocked' },
+        ],
+      }),
+    );
+    expect(outcome?.status).toBe('failed');
+    expect(outcome?.eventDate).toBe('2026-10-18');
+    expect(outcome?.contactedProviders).toHaveLength(2);
   });
 
   it('returns undefined for error results or malformed payloads', () => {

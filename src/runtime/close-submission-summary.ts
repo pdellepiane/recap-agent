@@ -5,9 +5,11 @@
  * captured event date, the reply must confirm the per-provider submission
  * with that date instead of asking for another confirmation. Partial success
  * never claims closure: confirmed providers are reported as sent while
- * blocked or unresolved ones stay truthful without retry. A missing or
- * invalid date, a failed submission, or an unparsable tool output yields no
- * summary so the turn keeps asking for explicit confirmation and a date.
+ * blocked or unresolved ones stay truthful without retry. A failed-all
+ * submission with an explicit date reports the block truthfully with a human
+ * handoff instead of asking for another confirmation. A missing or invalid
+ * date, an empty provider list, or an unparsable tool output yields no
+ * summary so the turn keeps asking for an explicit date.
  */
 
 export type FinishPlanContactedProvider = {
@@ -76,10 +78,12 @@ function joinSpanishList(names: string[]): string {
 export function buildCloseSubmissionSummary(input: CloseSubmissionInput): string | null {
   const longDate = formatSpanishEventDate(input.eventDate);
   if (longDate === null) return null;
-  if (input.status === 'failed' || input.contactedProviders.length === 0) return null;
+  if (input.contactedProviders.length === 0) return null;
   const confirmed = input.contactedProviders.filter((provider) => provider.success);
   const pending = input.contactedProviders.filter((provider) => !provider.success);
-  if (confirmed.length === 0) return null;
+  if (confirmed.length === 0) {
+    return buildBlockedSubmissionSummary(longDate, input.contactedProviders, input.displayByCategory);
+  }
   const sentNames = joinSpanishList(
     confirmed.map((provider) => displayName(provider, input.displayByCategory)),
   );
@@ -104,6 +108,20 @@ export function applyCloseSubmissionToText(text: string, summary: string | null)
   return text.replace(CONFIRM_QUESTION_PATTERN, summary);
 }
 
+function buildBlockedSubmissionSummary(
+  longDate: string,
+  providers: readonly FinishPlanContactedProvider[],
+  displayByCategory: Readonly<Record<string, string>>,
+): string {
+  const names = joinSpanishList(
+    providers.map((provider) => displayName(provider, displayByCategory)),
+  );
+  const requests = providers.length === 1
+    ? `la solicitud de cotización a ${names}`
+    : `las solicitudes de cotización a ${names}`;
+  return `Para tu evento del ${longDate} no pude enviar ${requests}: el envío quedó bloqueado. Puedo comunicarte con una persona del equipo para continuar con el cierre.`;
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
@@ -117,7 +135,7 @@ export function parseFinishPlanTurnOutcome(outputJson: string): FinishPlanTurnOu
   }
   if (!isRecord(parsed)) return undefined;
   const status = parsed['status'];
-  if (status !== 'success' && status !== 'partial') return undefined;
+  if (status !== 'success' && status !== 'partial' && status !== 'failed') return undefined;
   const rawDate = parsed['eventDate'];
   const eventDate = typeof rawDate === 'string' ? rawDate : null;
   const rawProviders = parsed['contacted_providers'];
