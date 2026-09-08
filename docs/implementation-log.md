@@ -1,5 +1,17 @@
 # Implementation Log
 
+## 2026-09-08 - LEARN-JUDGE-VARIANCE eval discipline: finalScore vs semantic sub-score (docs-only, no code change)
+
+**Reason:** Triple-trial reports risk misreading finalScore as the semantic sub-score. Learn entry for plan 2026-09-05-stabilization task LEARN-JUDGE-VARIANCE (retries_used 0), docs-only with no product, test, prompt, registry, or infra change.
+
+**Decision:** Eval-discipline rule (reusable): always report both numbers as finalScore (weighted aggregate) vs semantic sub-score (text_semantic judge only); never quote one as the other.
+- Trial-3 eval-2026-09-08T19-12-58-185Z-de7d5016 (5 passed / 2 failed / 0 errored): otp_not_received_requires_response finalScore 0.856 with semantic sub-score 0.1; roberto_reminder_invitation_disagreement finalScore 0.896 with semantic sub-score 0.65.
+- Identical-artifact signal: joaquin fail-then-pass and roberto fail-pass-fail on artifact 631e6bdc indicate narrow semantic-judge variance in the 0.65-0.98 band, not product drift (no code change during trials).
+- Cited runs (identical artifact 631e6bdc, local-only): trial-1 eval-2026-09-08T18-58-17-123Z-6527c16a 5/1/1; trial-2 eval-2026-09-08T19-05-39-498Z-49aa8a64 6/1/0; trial-3 eval-2026-09-08T19-12-58-185Z-de7d5016 5/2/0; full gate eval-2026-09-08T18-27-41-865Z-8ebc180a 59/69.
+- Preserved context: G5 debugger triage-only verdict (no auto-replan from this task); F4 4/4 preserved; local audits 20/20 clean (live-behavior-coverage 1/1 plus F4 twins 11/11 + 6/6 + 2/2). Prod stack untouched; other untracked work preserved, not committed here.
+
+**Validation:** Docs-only edit to docs/implementation-log.md; `git status` shows no product/test changes; parity check passed (no code claims beyond cited run IDs and scores).
+
 ## 2026-09-08 - G5 release gate: full 69-case gate FAILS 59/69 on identical artifact, triple high-risk trials confirm judge variance, triage-only handoff (no code change)
 
 **Reason:** F4 triage rerun eval-2026-09-08T17-51-16-318Z-560518f9 reached 4/4 on artifact 631e6bdc (cheaper 1.0, miraflores 1.0, maria-jose 0.93, s12 0.994; F4g 4fd56549 is eval-runner local-only so the Lambda artifact is unchanged). G5 ran the full gate plus 3 fresh consecutive high-risk trials on that identical artifact with zero code change during trials, per the no-change rule.
