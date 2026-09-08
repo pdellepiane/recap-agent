@@ -1223,6 +1223,7 @@ export class AgentService {
           inbound.channel,
           planToSave.conversation_id,
           planToSave,
+          toolUsage,
         ),
         trace: this.buildTrace({
           plan: planToSave,
@@ -1343,6 +1344,7 @@ export class AgentService {
             inbound.channel,
             planToSave.conversation_id,
             planToSave,
+            toolUsage,
           ),
           trace: this.buildTrace({
             plan: planToSave,
@@ -1422,6 +1424,7 @@ export class AgentService {
           inbound.channel,
           planToSave.conversation_id,
           planToSave,
+          toolUsage,
         ),
         trace: this.buildTrace({
           plan: planToSave,
