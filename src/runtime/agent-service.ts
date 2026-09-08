@@ -10222,6 +10222,19 @@ export class AgentService {
     plan?: PlanSnapshot,
     toolUsage?: ToolUsage,
   ): NormalizedOutboundMessage {
+    // TEMP-PROBE-F4: observe live close-turn tool data via CloudWatch; remove before G5.
+    if (plan?.current_node === 'crear_lead_cerrar' && toolUsage) {
+      const finishOutputs = toolUsage.outputs.filter((entry) => entry.tool === 'finish_plan');
+      const finishInputs = toolUsage.inputs.filter((entry) => entry.tool === 'finish_plan');
+      console.log(JSON.stringify({
+        probe: 'f4-close',
+        called: toolUsage.called,
+        finishInputs: finishInputs.map((entry) => entry.input.slice(0, 300)),
+        finishOutputs: finishOutputs.map((entry) => entry.output.slice(0, 800)),
+        hasStructured: Boolean(reply.structuredMessage),
+        structuredType: reply.structuredMessage?.type ?? null,
+      }));
+    }
     const structuredMessage = this.enforceContactRequestFields(
       reply.structuredMessage,
       plan,
@@ -10247,17 +10260,6 @@ export class AgentService {
       }
     }
 
-    // TEMP-PROBE-F4: observe live close-turn tool data via CloudWatch; remove before G5.
-    if (plan?.current_node === 'crear_lead_cerrar' && toolUsage) {
-      const finishOutputs = toolUsage.outputs.filter((entry) => entry.tool === 'finish_plan');
-      console.log(JSON.stringify({
-        probe: 'f4-close',
-        called: toolUsage.called,
-        finishOutputs: finishOutputs.map((entry) => entry.output.slice(0, 500)),
-        hasStructured: Boolean(reply.structuredMessage),
-        structuredType: reply.structuredMessage?.type ?? null,
-      }));
-    }
     const plainText = plan?.current_node === 'crear_lead_cerrar' && toolUsage
       ? applyCloseSubmissionToText(
         reply.text,
