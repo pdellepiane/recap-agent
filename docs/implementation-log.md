@@ -11,6 +11,14 @@
 
 **Validation:** Focused suites green: f4-close-submission-summary 11/11, f4-explicit-event-date 6/6, f4-trace-unredact 3/3, agent-service-information-flow 52 (2 skipped), s09-purchase-reply-projector + f3 twins + live-behavior-coverage 38/38; typecheck and scoped lint clean. Live proof NOT yet executed: deploy + focused 4-case run is the final attempt (retry budget 2/3 consumed) and belongs to the next step on the identical artifact.
 
+## 2026-09-08 — F4 live attempt-3: deploy green, 3/4 pass, S12 judge-evidence fix staged for triage
+
+**Reason:** Final attempt of the retry budget. Deployed artifact 631e6bdc14fb15df840651c4e28dfcd0eb60df93b28b963416e460c230228a4e via default `DEPLOYMENT_ENV=development npm run deploy` (se-dev, us-east-1, acct 684516060775; full 6.6 MiB upload, CF recap-agent-runtime-dev UPDATE complete, Function URL unchanged). Focused live run eval-2026-09-08T17-41-22-003Z-274770dd: 3/4 (cheaper 1.0, miraflores 1.0, maria-jose 0.92 pass; S12 fails semantic 0.2).
+
+**Decision:** F4e worked live: finish_plan input event_date 2026-10-18, output success both providers, reply confirms both providers with the explicit date in Spanish (judge acknowledges date+providers+Spanish). Residual S12 failure is judge-evidence projection, not product: the judge context (buildSemanticJudgeContext/buildStructuralFactLines) never projected finish_plan_summary, so the judge ruled "no registra ejecuciones de contacto" despite tools_called incl. finish_plan. Fix 4fd56549 F4g (runner structural cierre facts from trace.finish_plan_summary + receipts when present + typed optional schema in case-schema + twin tests/f4-judge-close-evidence.test.ts 2/2). Registry f4g-judge-close-evidence. Deliberately NOT applied planUpdate->finished on success: the pre-render plan must stay active so the date-bearing summary (not the dateless finished branch) renders. No Lambda-impacting change in F4g (eval runner is local-only), so artifact 631e6bdc stays the identical candidate for the rerun. Retry ceiling now consumed (3/3); no further live run from this task — triage/integrator owns the single 4-case rerun plus shared-wiring diff review (openai-agent-runtime.ts finish_plan closure, runner.ts, case-schema.ts, registry) before G5. F1/F2/F3/TRACE preserved; S03 excluded; prod untouched.
+
+**Validation:** F4g twin 2/2, s12-plan-completion 9/9, eval-loader 4/4, eval-runner-case-ids 9/9, live-behavior-coverage 1/1; typecheck + scoped lint clean. Artifacts under .eval-runs/eval-2026-09-08T17-41-22-003Z-274770dd/.
+
 ## 2026-09-07 — Integrator finalize: sequence shared-wiring commits for S15 gate
 
 **Reason:** S15 gate was blocked on a dirty tree plus registry wiring. S10/S16 remediation and the S12 slice had completed all product work but left tracked modifications and untracked scratch uncommitted to avoid ownership violations. The six S12 integrator-wiring files were already atomically committed in `5724b17e`; only docs scratch remained.
