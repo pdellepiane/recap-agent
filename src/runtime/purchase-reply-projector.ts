@@ -110,6 +110,26 @@ function trustedAmount(value: number | null | undefined): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
+/**
+ * F3 canonical disclosure readers. The orchestrator projection nulls
+ * grandTotal, paymentMethod and currency on the outward record and moves the
+ * trusted values into amountDisclosure, so gates must prefer the disclosure
+ * before falling back to the direct fields (live Luis/Claudia records).
+ */
+export function disclosedPurchaseTotal(
+  purchase: PurchaseInformation,
+): number | null {
+  return trustedAmount(purchase.grandTotal) ??
+    trustedAmount(purchase.amountDisclosure?.total ?? null);
+}
+
+export function disclosedPurchaseMethod(
+  purchase: PurchaseInformation,
+): string | null {
+  return trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null) ??
+    trustedText(purchase.amountDisclosure?.paymentMethod ?? null);
+}
+
 function toCartView(cart: CartInformation): CartReplyView {
   // A cart is its own record type. Order amounts and statuses can never
   // attach to it, and its own subtotal is checkout evidence, not a reply fact.

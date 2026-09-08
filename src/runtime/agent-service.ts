@@ -148,6 +148,8 @@ import {
   purchaseThreadSuppressesHealthOffer,
 } from './conversation-continuity-policy';
 import {
+  disclosedPurchaseMethod,
+  disclosedPurchaseTotal,
   renderConciseApprovedStatus,
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
@@ -6490,7 +6492,7 @@ export class AgentService {
       shouldRenderOrderPlusCartCheckout({
         purchaseCount: purchases.length,
         paymentStatus: single.paymentStatus,
-        paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+        paymentMethod: disclosedPurchaseMethod(single),
         cartCount,
         needsSelection: phonePurchaseResult.needsSelection ?? false,
         reportedAmount,
@@ -6500,11 +6502,8 @@ export class AgentService {
         ...reply,
         text: renderOrderPlusCartCheckout({
           eventName: single.eventName,
-          total: typeof single.grandTotal === 'number' &&
-              Number.isFinite(single.grandTotal)
-            ? single.grandTotal
-            : null,
-          paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+          total: disclosedPurchaseTotal(single),
+          paymentMethod: disclosedPurchaseMethod(single),
         }),
         structuredMessage: undefined,
         recommendationFunnel: undefined,
@@ -6532,14 +6531,14 @@ export class AgentService {
       (shouldRenderConciseTransferValidation({
         purchaseCount: purchases.length,
         paymentStatus: single.paymentStatus,
-        paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+        paymentMethod: disclosedPurchaseMethod(single),
         currency: single.currency ?? null,
         requestedAspects,
       }) ||
         shouldRenderTransferValidationForStatusQuery({
           purchaseCount: purchases.length,
           paymentStatus: single.paymentStatus,
-          paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+          paymentMethod: disclosedPurchaseMethod(single),
           currency: single.currency ?? null,
           requestedAspects,
           reportedAmount,

@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from 'vitest';
 import path from 'node:path';
 import {
+  disclosedPurchaseMethod,
+  disclosedPurchaseTotal,
   renderConciseApprovedStatus,
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
@@ -624,5 +626,50 @@ describe('F3 pending correction grounding on continuations', () => {
     expect(text).toContain('pendiente');
     expect(text).toContain('moneda');
     expect(text).toContain('zona horaria');
+  });
+});
+
+describe('F3 canonical disclosure readers', () => {
+  it('prefers amountDisclosure when projection nulls direct fields', () => {
+    const projected = {
+      orderId: 'order-luis-pending-227',
+      paymentStatus: 'pending',
+      shippingStatus: null,
+      grandTotal: null,
+      paymentMethod: null,
+      eventName: 'Alejandra',
+      eventDate: '2026-09-20',
+      eventUrl: null,
+      createdAt: '2026-08-27 15:00:00',
+      items: [],
+      payment: null,
+      currency: null,
+      amountDisclosure: {
+        total: 227.76,
+        paid: null,
+        currency: null,
+        paymentMethod: 'Yape_o_Plin',
+        presentation: 'recorded_method_no_currency' as const,
+      },
+    };
+    expect(disclosedPurchaseTotal(projected)).toBe(227.76);
+    expect(disclosedPurchaseMethod(projected)).toBe('Yape_o_Plin');
+    expect(
+      shouldRenderOrderPlusCartCheckout({
+        purchaseCount: 1,
+        paymentStatus: projected.paymentStatus,
+        paymentMethod: disclosedPurchaseMethod(projected),
+        cartCount: 1,
+        needsSelection: false,
+        reportedAmount: null,
+      }),
+    ).toBe(true);
+    const text = renderOrderPlusCartCheckout({
+      eventName: projected.eventName,
+      total: disclosedPurchaseTotal(projected),
+      paymentMethod: disclosedPurchaseMethod(projected),
+    });
+    expect(text).toContain('227.76');
+    expect(text).toContain('Yape o Plin');
   });
 });
