@@ -126,6 +126,88 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
+const SPANISH_MONTH_INDEX: Record<string, number> = {
+  enero: 1,
+  febrero: 2,
+  marzo: 3,
+  abril: 4,
+  mayo: 5,
+  junio: 6,
+  julio: 7,
+  agosto: 8,
+  septiembre: 9,
+  setiembre: 9,
+  octubre: 10,
+  noviembre: 11,
+  diciembre: 12,
+};
+
+function toIsoDate(year: number, month: number, day: number): string | null {
+  if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+  const check = new Date(Date.UTC(year, month - 1, day));
+  if (check.getUTCFullYear() !== year || check.getUTCMonth() !== month - 1 || check.getUTCDate() !== day) {
+    return null;
+  }
+  const monthText = String(month).padStart(2, '0');
+  const dayText = String(day).padStart(2, '0');
+  return `${year}-${monthText}-${dayText}`;
+}
+
+function parseSingleDateText(value: string): string | null {
+  const text = value.trim();
+  if (text.length === 0) return null;
+  const iso = text.match(/^(\d{4})-(\d{2})-(\d{2})$/u);
+  if (iso?.[1] && iso?.[2] && iso?.[3]) {
+    return toIsoDate(Number(iso[1]), Number(iso[2]), Number(iso[3]));
+  }
+  const spanish = text.match(/(\d{1,2})\s+de\s+([a-záéíóúñ]+)\s+de\s+(\d{4})/iu);
+  if (spanish?.[1] && spanish?.[2] && spanish?.[3]) {
+    const month = SPANISH_MONTH_INDEX[spanish[2].toLocaleLowerCase('es')];
+    if (!month) return null;
+    return toIsoDate(Number(spanish[3]), month, Number(spanish[1]));
+  }
+  const numeric = text.match(/(\d{1,2})[/-](\d{1,2})[/-](\d{4})/u);
+  if (numeric?.[1] && numeric?.[2] && numeric?.[3]) {
+    return toIsoDate(Number(numeric[3]), Number(numeric[2]), Number(numeric[1]));
+  }
+  return null;
+}
+
+/**
+ * F4 deterministic explicit-date resolver for `finish_plan`.
+ *
+ * The model must pass the user-supplied date as AAAA-MM-DD, but live turns
+ * show it can arrive as Spanish long form or be unusable. This resolver
+ * normalizes the model value first, then falls back to the first explicit
+ * date found in the user message. It never substitutes today and returns
+ * null when neither source carries an explicit calendar-valid date, so the
+ * executor keeps failing closed with missing_event_date.
+ */
+export function resolveExplicitEventDate(modelValue: unknown, userMessage: unknown): string | null {
+  if (typeof modelValue === 'string') {
+    const normalized = parseSingleDateText(modelValue);
+    if (normalized !== null) return normalized;
+  }
+  if (typeof userMessage === 'string') {
+    const spanish = userMessage.match(/\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4}/iu);
+    if (spanish?.[0]) {
+      const normalized = parseSingleDateText(spanish[0]);
+      if (normalized !== null) return normalized;
+    }
+    const numeric = userMessage.match(/\d{1,2}[/-]\d{1,2}[/-]\d{4}/u);
+    if (numeric?.[0]) {
+      const normalized = parseSingleDateText(numeric[0]);
+      if (normalized !== null) return normalized;
+    }
+    const iso = userMessage.match(/\d{4}-\d{2}-\d{2}/u);
+    if (iso?.[0]) {
+      const normalized = parseSingleDateText(iso[0]);
+      if (normalized !== null) return normalized;
+    }
+  }
+  return null;
+}
+
 export function parseFinishPlanTurnOutcome(outputJson: string): FinishPlanTurnOutcome | undefined {
   let parsed: unknown;
   try {

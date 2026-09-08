@@ -29,6 +29,7 @@ import {
   starterProviderCategoriesForEvent,
 } from '../core/event-provider-priorities';
 import { executeFinishPlanTool } from './finish-plan-tool';
+import { resolveExplicitEventDate } from './close-submission-summary';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
@@ -2210,15 +2211,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       finish_plan: tool({
         name: 'finish_plan',
         description:
-          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere event_date explícita en formato AAAA-MM-DD capturada del usuario (nunca hoy por defecto ni nulo), al menos un proveedor seleccionado y datos de contacto completos.',
+          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere event_date explícita capturada del usuario en formato AAAA-MM-DD o en texto español ("18 de octubre de 2026", que se normaliza de forma determinista); nunca hoy por defecto ni nulo. Requiere al menos un proveedor seleccionado y datos de contacto completos.',
         parameters: z.object({ event_date: z.string().min(1) }).strict(),
         execute: async ({ event_date }: { event_date: string }) => {
-          this.recordToolInput(toolUsage, 'finish_plan', { event_date });
+          const resolvedDate = resolveExplicitEventDate(event_date, request.userMessage);
+          this.recordToolInput(toolUsage, 'finish_plan', { event_date: resolvedDate ?? event_date });
           toolUsage.called.push('finish_plan');
           const result = await executeFinishPlanTool({
             plan,
             providerGateway: this.options.providerGateway,
-            eventDate: event_date,
+            eventDate: resolvedDate ?? event_date,
           });
           this.recordToolOutput(toolUsage, 'finish_plan', result);
           return result;
