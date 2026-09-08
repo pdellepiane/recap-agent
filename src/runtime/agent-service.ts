@@ -10247,6 +10247,17 @@ export class AgentService {
       }
     }
 
+    // TEMP-PROBE-F4: observe live close-turn tool data via CloudWatch; remove before G5.
+    if (plan?.current_node === 'crear_lead_cerrar' && toolUsage) {
+      const finishOutputs = toolUsage.outputs.filter((entry) => entry.tool === 'finish_plan');
+      console.log(JSON.stringify({
+        probe: 'f4-close',
+        called: toolUsage.called,
+        finishOutputs: finishOutputs.map((entry) => entry.output.slice(0, 500)),
+        hasStructured: Boolean(reply.structuredMessage),
+        structuredType: reply.structuredMessage?.type ?? null,
+      }));
+    }
     const plainText = plan?.current_node === 'crear_lead_cerrar' && toolUsage
       ? applyCloseSubmissionToText(
         reply.text,
