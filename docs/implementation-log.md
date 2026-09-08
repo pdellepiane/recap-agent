@@ -9489,3 +9489,13 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 - d5cc055e Invalidated stale proof-validation handoff twin with live staleness proof (af842b71 luis turn 1 scored 0.15 on handoff text vs rubric demanding continuation). Registry keeps 8 F3 entries, implementedBy repointed: e9453652, 8fc75409, 30cdd7ea (delia unchanged), 1f453d51, 539852d5, 17041818, 8bab0865, 6516efdf; live IDs unchanged. continuity-policy.ts needed no change. No F1/F2/shared-wiring edits; orchestrator/extractor prompts untouched.
 
 **Validation:** Focused suites green: 4 f3 files 39/39 (26 baseline + 13 new), plus s09/s08/orchestrator/coverage/agent-service/agent-service-information-flow/s05 255 passed 2 skipped across 11 files; typecheck and scoped lint clean. Deploy via default `DEPLOYMENT_ENV=development npm run deploy` (se-dev, us-east-1, acct 684516060775): artifact SHA 7f3e040204d4d659e7a14aa3f1bdbf33d390520b52dbc75b3533b35dc41b70f1, 6.6 MiB, CF recap-agent-runtime-dev updated. Intermediate live run eval-2026-09-08T15-19-11-093Z-af842b71 on artifact c0d7b834 reached 4/7 (alex, delia, joaquin, martha pass) and exposed the three residual defects fixed above. Final live run eval-2026-09-08T15-47-44-919Z-a71acff4 on artifact 7f3e0402: 7/7 pass, 0 fail, 0 error, 0 skip, all hard gates requireJudge true - alex 0.9021, ambiguous 1.0, luis 0.946, delia 1.0, joaquin 0.9787, martha 0.984, transfer 0.8814. Product HEAD d5cc055e (stack 819ab5b2..d5cc055e); artifacts under .eval-runs/eval-2026-09-08T15-47-44-919Z-a71acff4/. Integrator diff review pending before F4; prod untouched.
+
+## 2026-09-08 - LEARN-TRACE-PERSIST: persist debug observability learn, docs-only (plan 2026-09-05-stabilization, baseline 55a6c99bba6e2d1162aee071204f41aeebb8fba9)
+
+**Reason:** Blanket [omitted] on tool_inputs/tool_outputs plus fixture-gateway write bypass makes provider close failures undebuggable.
+
+**Decision:** Minimal fix is allowlisted finish_plan summary (event_date in, status/eventDate/contacted_providers success flags out) + provider_quote_receipts from effects/stateStore, preserving disclosure policy (no phone/email/token/JWT/OTP, no internal IDs beyond trace/plan, no queue/ticket/SLA, syntheticId prefix/count only). No product logic change; docs-only commit.
+
+**Evidence:** Debugger 7 S12 runs db7f8784-55f2aa65 score 0.83 report.json 60-121 artifact 153-188 SHA fa757b61. Redaction source artifact-redaction.ts:44-72 live-lambda.ts:154 reporting.ts:124. Bypass handler.ts:722 vs fixture-provider-gateway.ts:389-423.
+
+**Validation:** Local-only; default commands only; prior work preserved (tracked src/tests modifications and untracked docs/plan scratch left untouched); prod untouched.
