@@ -156,12 +156,15 @@ import {
   renderNeutralPurchaseSelection,
   renderOrderPlusCartCheckout,
   renderPendingCorrectionGrounding,
+  renderReportedPendingInitial,
+  renderReportedShortfallPending,
   resolveCapabilityPurchaseContinuation,
   shouldRenderConciseApprovedStatus,
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
   shouldRenderOrderPlusCartCheckout,
   shouldRenderPendingCorrectionGrounding,
+  shouldRenderReportedPendingOrder,
   shouldRenderTransferValidationForStatusQuery,
 } from './purchase-reply-projector';
 import {
@@ -6506,6 +6509,37 @@ export class AgentService {
           total: disclosedPurchaseTotal(single),
           paymentMethod: disclosedPurchaseMethod(single),
         }),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    if (
+      single &&
+      shouldRenderReportedPendingOrder({
+        purchaseCount: purchases.length,
+        paymentStatus: single.paymentStatus,
+        paymentMethod: disclosedPurchaseMethod(single),
+        currency: single.currency ?? null,
+        cartCount,
+        needsSelection: phonePurchaseResult.needsSelection ?? false,
+        reportedAmount,
+      })
+    ) {
+      const text = isContinuedThread
+        ? renderReportedShortfallPending({
+          eventName: single.eventName,
+          paymentMethod: disclosedPurchaseMethod(single),
+          reportedAmount,
+        })
+        : renderReportedPendingInitial({
+          eventName: single.eventName,
+          total: disclosedPurchaseTotal(single),
+          paymentMethod: disclosedPurchaseMethod(single),
+          reportedAmount,
+        });
+      return {
+        ...reply,
+        text,
         structuredMessage: undefined,
         recommendationFunnel: undefined,
       };
