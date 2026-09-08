@@ -8145,9 +8145,13 @@ export class AgentService {
     // providerPlanOperation. Reflect select_provider in the trace summary so
     // the recorded selection stays observable. Plan application and routing
     // never consume these synthetic entries.
-    const selectedCategories = plan.provider_needs
+    const planSelected = plan.provider_needs
       .filter((need) => need.selected_provider_ids.length > 0)
       .map((need) => need.category);
+    const referenceSelected = (extraction.selectedProviderReferences ?? [])
+      .map((reference) => reference.category)
+      .filter((category): category is NonNullable<typeof category> => category !== null);
+    const selectedCategories = Array.from(new Set([...planSelected, ...referenceSelected]));
     const hasSelectionEvidence =
       (extraction.selectedProviderReferences ?? []).length > 0 ||
       extraction.selectedProviderHints.length > 0;
@@ -8169,8 +8173,8 @@ export class AgentService {
         has_hint: reference.hint !== null,
       })),
       selected_provider_hints_count: extraction.selectedProviderHints.length,
-      provider_plan_operation_types: operations.map((operation) => operation.type),
-      provider_plan_operation_categories: operations
+      provider_plan_operation_types: traceOperations.map((operation) => operation.type),
+      provider_plan_operation_categories: traceOperations
         .map((operation) => operation.category)
         .filter((category): category is ProviderCategory => category !== null),
     };
