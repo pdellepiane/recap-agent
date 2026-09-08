@@ -157,6 +157,7 @@ import {
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
   shouldRenderOrderPlusCartCheckout,
+  shouldRenderTransferValidationForStatusQuery,
 } from './purchase-reply-projector';
 import {
   createAuthOperationId,
@@ -6509,13 +6510,21 @@ export class AgentService {
     }
     if (
       single &&
-      shouldRenderConciseTransferValidation({
+      (shouldRenderConciseTransferValidation({
         purchaseCount: purchases.length,
         paymentStatus: single.paymentStatus,
         paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
         currency: single.currency ?? null,
         requestedAspects,
-      })
+      }) ||
+        shouldRenderTransferValidationForStatusQuery({
+          purchaseCount: purchases.length,
+          paymentStatus: single.paymentStatus,
+          paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+          currency: single.currency ?? null,
+          requestedAspects,
+          reportedAmount,
+        }))
     ) {
       return {
         ...reply,

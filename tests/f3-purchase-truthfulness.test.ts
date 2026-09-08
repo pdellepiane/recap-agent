@@ -9,6 +9,7 @@ import {
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
   shouldRenderOrderPlusCartCheckout,
+  shouldRenderTransferValidationForStatusQuery,
 } from '../src/runtime/purchase-reply-projector';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
@@ -521,5 +522,78 @@ describe('F3 order plus cart checkout continuity', () => {
     expect(text).toContain('registro distinto');
     expect(text).toContain('250');
     expect(text).not.toContain('El carrito tambien sigue activo.');
+  });
+});
+
+describe('F3 transfer validation on status-only queries', () => {
+  it('fires without an explicit validation_window aspect', () => {
+    expect(
+      shouldRenderTransferValidationForStatusQuery({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        paymentMethod: 'Transferencia',
+        currency: null,
+        requestedAspects: ['summary', 'payment_status'],
+        reportedAmount: null,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRenderTransferValidationForStatusQuery({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        paymentMethod: 'Transferencia',
+        currency: null,
+        requestedAspects: ['summary', 'payment_details'],
+        reportedAmount: null,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRenderTransferValidationForStatusQuery({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        paymentMethod: 'Yape_o_Plin',
+        currency: null,
+        requestedAspects: ['summary', 'payment_status'],
+        reportedAmount: null,
+      }),
+    ).toBe(false);
+  });
+
+  it('states the 72 hour window on a transfer status query', async () => {
+    const result = await runPurchaseTurn({
+      externalUserId: 'u-f3-claudia-t0',
+      text: 'El pago por transferencia figura en proceso. Cuando sabre que ya se valido?',
+      contactPhone: '+51957212085',
+      extraction: purchaseExtraction(['summary', 'payment_status']),
+      purchaseResult: {
+        requestId: 'information-1',
+        kind: 'purchase',
+        status: 'completed',
+        resource: 'orders',
+        purchases: [
+          {
+            orderId: 'order-claudia-pending-1042',
+            paymentStatus: 'pending',
+            shippingStatus: null,
+            grandTotal: 1042.89,
+            paymentMethod: 'Transferencia',
+            eventName: 'Claudia and Luis Felipe',
+            eventDate: '2026-09-18',
+            eventUrl: null,
+            createdAt: '2026-08-30 14:00:00',
+            items: [],
+            payment: { method: 'Transferencia', amount: 1042.89, paidAt: '2026-08-30 21:31:00' },
+            currency: null,
+          },
+        ],
+        carts: [],
+        needsSelection: false,
+        accessMethod: 'trusted_phone_purchase',
+        coverage: 'complete',
+      },
+      modelText: 'El pago aparece pendiente, en proceso de verificacion.',
+    });
+    const text = result.outbound.text ?? '';
+    expect(text).toContain('72 horas');
   });
 });

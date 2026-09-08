@@ -476,6 +476,32 @@ export function renderOrderPlusCartCheckout(args: {
 }
 
 /**
+ * F3 transfer validation on status-only queries. The indexed 72h window must
+ * reach the reply even when the extractor did not ask validation_window
+ * explicitly. payment_details keeps the model path so amount disclosure is
+ * preserved.
+ */
+export function shouldRenderTransferValidationForStatusQuery(args: {
+  purchaseCount: number;
+  paymentStatus: string | null;
+  paymentMethod: string | null;
+  currency: string | null;
+  requestedAspects: PurchaseAspect[];
+  reportedAmount: number | null;
+}): boolean {
+  if (args.purchaseCount !== 1) return false;
+  if ((args.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') !== 'pending') return false;
+  const method = (args.paymentMethod ?? '').toLocaleLowerCase('en');
+  if (!method.includes('transfer')) return false;
+  if (args.currency !== null && args.currency.trim().length > 0) return false;
+  if (args.reportedAmount !== null) return false;
+  const aspects = new Set(args.requestedAspects);
+  if (aspects.has('payment_details')) return false;
+  if (aspects.has('dedication') || aspects.has('thanks')) return false;
+  return true;
+}
+
+/**
  * F3c voucher continuity reply for a single pending order. The reported
  * amount stays user-reported, receipt from an image is never confirmed, the
  * order remains pending, and the indexed validation window is repeated.
