@@ -580,11 +580,13 @@ function describeCapabilitySelectionOptions(
 }
 
 /**
- * F3c capability safe-read continuation for purchase.modify. Returns a
- * deterministic Spanish reply when the authorized safe read produced usable
- * purchase evidence, so an unsupported mutation never blocks the safe read:
- * multiple records ask for a selection, a single pending record continues
- * the voucher/balance thread. Null means the turn falls through to the
+ * F3c capability safe-read continuation for purchase.modify and
+ * payment_proof.verify. Returns a deterministic Spanish reply when the
+ * authorized safe read produced usable purchase evidence, so an unsupported
+ * mutation never blocks the safe read: multiple records ask for a selection,
+ * a single pending record continues the voucher/balance thread. A voucher
+ * report (live Luis turn 1) stays on the pending order with image and window
+ * grounding instead of handing off. Null means the turn falls through to the
  * regular unsupported handoff. No mutation is ever performed here.
  */
 export function resolveCapabilityPurchaseContinuation(args: {
@@ -592,7 +594,7 @@ export function resolveCapabilityPurchaseContinuation(args: {
   results: InformationTaskResult[];
   reportedAmount: number | null;
 }): string | null {
-  if (args.operation !== 'purchase.modify') return null;
+  if (args.operation !== 'purchase.modify' && args.operation !== 'payment_proof.verify') return null;
   const completed = args.results.find((result) =>
     result.kind === 'purchase' && result.status === 'completed'
   );
@@ -602,6 +604,7 @@ export function resolveCapabilityPurchaseContinuation(args: {
   const purchases = completed.purchases;
   if (purchases.length === 0) return null;
   if (purchases.length > 1 || completed.needsSelection === true) {
+    if (args.operation !== 'purchase.modify') return null;
     const eventNames = purchases.map((purchase) => purchase.eventName?.trim() ?? '');
     const sharedEvent = eventNames[0];
     const uniformEvent = sharedEvent !== undefined && sharedEvent.length > 0 &&

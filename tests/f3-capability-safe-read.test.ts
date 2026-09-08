@@ -134,6 +134,52 @@ describe('F3c capability purchase continuation', () => {
     expect(generic).toContain('comprobante');
     expect(generic).toContain('pendiente');
   });
+
+  it('continues a voucher report on payment_proof.verify without handoff', () => {
+    const text = resolveCapabilityPurchaseContinuation({
+      operation: 'payment_proof.verify',
+      results: [
+        {
+          requestId: 'capability-status-read',
+          kind: 'purchase',
+          status: 'completed',
+          resource: 'orders',
+          purchases: [
+            {
+              orderId: 'order-luis-pending-227',
+              paymentStatus: 'pending',
+              shippingStatus: null,
+              grandTotal: null,
+              paymentMethod: null,
+              eventName: 'Alejandra',
+              eventDate: '2026-09-20',
+              eventUrl: null,
+              createdAt: '2026-08-27 15:00:00',
+              items: [],
+              payment: null,
+              currency: null,
+              amountDisclosure: {
+                total: 227.76,
+                paid: null,
+                currency: null,
+                paymentMethod: 'Yape_o_Plin',
+                presentation: 'recorded_method_no_currency' as const,
+              },
+            },
+          ],
+          needsSelection: false,
+          accessMethod: 'trusted_phone_purchase',
+          coverage: 'complete',
+        },
+      ],
+      reportedAmount: 13.76,
+    });
+    expect(text).not.toBeNull();
+    expect(text as string).toContain('13.76');
+    expect(text as string).toContain('pendiente');
+    expect(text as string).toContain('72 horas');
+    expect(text as string).not.toMatch(/apoyo humano/i);
+  });
 });
 
 function modifyExtraction(
