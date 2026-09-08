@@ -426,6 +426,55 @@ export function renderConciseTransferValidation(eventName: string | null): strin
   return `Tu regalo para ${event} sigue pendiente de validación por transferencia. La validación puede tardar hasta 72 horas hábiles.`;
 }
 
+const WINDOW_METHOD_PATTERN = /transfer|yape|plin/iu;
+
+function isWindowMethod(method: string | null): boolean {
+  return method === null || WINDOW_METHOD_PATTERN.test(method);
+}
+
+function formatPaymentMethod(method: string | null): string | null {
+  const trimmed = method?.trim() ?? '';
+  if (trimmed.length === 0) return null;
+  return trimmed.replace(/_+/gu, ' ');
+}
+
+/**
+ * F3 order-plus-cart checkout gate. A single pending order next to an active
+ * cart is the Alex/Luis checkout-continuation shape: the reply must keep both
+ * records distinct, report the trusted total with method and no currency
+ * symbol, state that no balance can be confirmed, and give the checkout next
+ * step. Voucher reports (reportedAmount) stay on the model path.
+ */
+export function shouldRenderOrderPlusCartCheckout(args: {
+  purchaseCount: number;
+  paymentStatus: string | null;
+  paymentMethod: string | null;
+  cartCount: number;
+  needsSelection: boolean;
+  reportedAmount: number | null;
+}): boolean {
+  if (args.purchaseCount !== 1) return false;
+  if (args.cartCount < 1) return false;
+  if (args.needsSelection) return false;
+  if (args.reportedAmount !== null) return false;
+  return (args.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') === 'pending';
+}
+
+export function renderOrderPlusCartCheckout(args: {
+  eventName: string | null;
+  total: number | null;
+  paymentMethod: string | null;
+}): string {
+  const event = args.eventName?.trim() ? args.eventName.trim() : 'tu evento';
+  const method = formatPaymentMethod(args.paymentMethod);
+  const totalClause = args.total !== null ? ` por ${args.total}` : '';
+  const methodClause = method !== null ? ` mediante ${method}` : '';
+  const windowClause = isWindowMethod(method)
+    ? ' La validación puede tardar hasta 72 horas hábiles.'
+    : '';
+  return `El pedido de ${event}${totalClause}${methodClause} sigue pendiente de validación; no puedo confirmar el saldo restante con el registro disponible. Además tienes un carrito activo para ${event}, que es un registro distinto y todavía no es un pedido: para completar el pago, continúa el checkout del carrito.${windowClause}`;
+}
+
 /**
  * F3c voucher continuity reply for a single pending order. The reported
  * amount stays user-reported, receipt from an image is never confirmed, the

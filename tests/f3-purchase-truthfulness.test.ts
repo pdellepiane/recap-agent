@@ -4,9 +4,11 @@ import {
   renderConciseApprovedStatus,
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
+  renderOrderPlusCartCheckout,
   shouldRenderConciseApprovedStatus,
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
+  shouldRenderOrderPlusCartCheckout,
 } from '../src/runtime/purchase-reply-projector';
 import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
@@ -409,5 +411,115 @@ describe('F3b deterministic purchase replies', () => {
     const text = result.outbound.text ?? '';
     expect(text).toContain('72 horas');
     expect(text).not.toMatch(/1042/);
+  });
+});
+
+function cartPlusOrderResult(total: number, method: string) {
+  return {
+    requestId: 'information-1',
+    kind: 'purchase',
+    status: 'completed',
+    resource: 'orders',
+    purchases: [
+      {
+        orderId: 'order-alex-pending-250',
+        paymentStatus: 'pending',
+        shippingStatus: null,
+        grandTotal: total,
+        paymentMethod: method,
+        eventName: 'Luis Raul and Carmen del Rosario',
+        eventDate: '2026-09-15',
+        eventUrl: null,
+        createdAt: '2026-08-28 10:00:00',
+        items: [],
+        payment: { method, amount: total, paidAt: '2026-08-28 10:00:00' },
+        currency: null,
+      },
+    ],
+    carts: [
+      {
+        cartId: 'cart-alex-001',
+        status: 'active',
+        eventName: 'Luis Raul and Carmen del Rosario',
+        eventDate: '2026-09-15',
+        createdAt: '2026-08-28 09:00:00',
+      },
+    ],
+    needsSelection: false,
+    accessMethod: 'trusted_phone_purchase',
+    coverage: 'complete',
+  };
+}
+
+describe('F3 order plus cart checkout continuity', () => {
+  it('renders checkout next step with distinct records and validation window', () => {
+    expect(
+      shouldRenderOrderPlusCartCheckout({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        paymentMethod: 'Yape_o_Plin',
+        cartCount: 1,
+        needsSelection: false,
+        reportedAmount: null,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRenderOrderPlusCartCheckout({
+        purchaseCount: 1,
+        paymentStatus: 'approved',
+        paymentMethod: 'Yape_o_Plin',
+        cartCount: 1,
+        needsSelection: false,
+        reportedAmount: null,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRenderOrderPlusCartCheckout({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        paymentMethod: 'Yape_o_Plin',
+        cartCount: 0,
+        needsSelection: false,
+        reportedAmount: null,
+      }),
+    ).toBe(false);
+    expect(
+      shouldRenderOrderPlusCartCheckout({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        paymentMethod: 'Yape_o_Plin',
+        cartCount: 1,
+        needsSelection: false,
+        reportedAmount: 13.76,
+      }),
+    ).toBe(false);
+    const text = renderOrderPlusCartCheckout({
+      eventName: 'Luis Raul and Carmen del Rosario',
+      total: 250,
+      paymentMethod: 'Yape_o_Plin',
+    });
+    expect(text).toContain('250');
+    expect(text).toContain('Yape o Plin');
+    expect(text).not.toMatch(/S\/|PEN|soles/);
+    expect(text).toContain('registro distinto');
+    expect(text).toContain('checkout');
+    expect(text).toContain('72 horas');
+    expect(text).toContain('saldo');
+  });
+
+  it('keeps cart and order distinct on the live checkout thread', async () => {
+    const result = await runPurchaseTurn({
+      externalUserId: 'u-f3-alex',
+      text: 'Quiero continuar el checkout. Que falta para pagar?',
+      contactPhone: '+51982340340',
+      extraction: purchaseExtraction(['summary', 'payment_status']),
+      purchaseResult: cartPlusOrderResult(250, 'Yape_o_Plin'),
+      modelText: 'El pedido aparece pendiente y en verificacion. El carrito tambien sigue activo.',
+    });
+    const text = result.outbound.text ?? '';
+    expect(text).toContain('checkout');
+    expect(text).toContain('registro distinto');
+    expect(text).toContain('250');
+    expect(text).not.toContain('El carrito tambien sigue activo.');
   });
 });

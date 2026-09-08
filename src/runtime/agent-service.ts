@@ -151,10 +151,12 @@ import {
   renderConciseApprovedStatus,
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
+  renderOrderPlusCartCheckout,
   resolveCapabilityPurchaseContinuation,
   shouldRenderConciseApprovedStatus,
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
+  shouldRenderOrderPlusCartCheckout,
 } from './purchase-reply-projector';
 import {
   createAuthOperationId,
@@ -4761,12 +4763,20 @@ export class AgentService {
     const requestedPurchaseAspects = requests.flatMap((request) =>
       request.kind === 'purchase' ? request.aspects : [],
     );
+    const reportedPurchaseAmount = args.extraction.informationRequests.find(
+      (request): request is Extract<ExtractedInformationRequest, { kind: 'purchase' }> =>
+        request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
+    )?.amount ?? null;
     const reply = this.enforcePurchaseReplyDeterministic(
       currentNode,
       completedPhonePurchase,
       hasAssociatedGuestEventForReply,
       requestedPurchaseAspects,
       ambiguitySafeReply,
+      {
+        reportedAmount: reportedPurchaseAmount,
+        isContinuedThread: preservingLastCompletedContext || supportContinuesPurchaseThread,
+      },
     );
     args.tokenUsage.reply = reply.tokenUsage ?? null;
     args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
@@ -6426,9 +6436,11 @@ export class AgentService {
    * F3b deterministic purchase truthfulness gate. Runs after model composition
    * in resolver_consultas_informativas and replaces the narrative only when
    * typed reconciliation evidence matches one of the bounded outcomes: a
-   * single approved record without a linked reference, a currency-less
-   * pending transfer validation query, or a multi-record selection without
-   * an associated guest event. All other outcomes keep the model narrative.
+   * single approved record without a linked reference, a pending order next
+   * to an active cart (checkout continuation with total, method, window and
+   * next step), a currency-less pending transfer validation query, or a
+   * multi-record selection without an associated guest event. All other
+   * outcomes keep the model narrative.
    */
   private enforcePurchaseReplyDeterministic(
     currentNode: DecisionNode,
@@ -6436,6 +6448,10 @@ export class AgentService {
     hasAssociatedGuestEvent: boolean,
     requestedAspects: PurchaseAspect[],
     reply: ComposeReplyResult,
+    options?: {
+      reportedAmount?: number | null;
+      isContinuedThread?: boolean;
+    },
   ): ComposeReplyResult {
     if (currentNode !== 'resolver_consultas_informativas') return reply;
     if (
@@ -6446,6 +6462,9 @@ export class AgentService {
       return reply;
     }
     const purchases = phonePurchaseResult.purchases;
+    const reportedAmount = options?.reportedAmount ?? null;
+    const isContinuedThread = options?.isContinuedThread ?? false;
+    void isContinuedThread;
     const single = purchases.length === 1 ? purchases[0] : null;
     if (
       single &&
@@ -6458,6 +6477,32 @@ export class AgentService {
       return {
         ...reply,
         text: renderConciseApprovedStatus(single.eventName),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    const cartCount = phonePurchaseResult.carts?.length ?? 0;
+    if (
+      single &&
+      shouldRenderOrderPlusCartCheckout({
+        purchaseCount: purchases.length,
+        paymentStatus: single.paymentStatus,
+        paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+        cartCount,
+        needsSelection: phonePurchaseResult.needsSelection ?? false,
+        reportedAmount,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderOrderPlusCartCheckout({
+          eventName: single.eventName,
+          total: typeof single.grandTotal === 'number' &&
+              Number.isFinite(single.grandTotal)
+            ? single.grandTotal
+            : null,
+          paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
+        }),
         structuredMessage: undefined,
         recommendationFunnel: undefined,
       };
