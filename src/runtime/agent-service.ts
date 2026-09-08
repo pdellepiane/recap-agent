@@ -4235,6 +4235,7 @@ export class AgentService {
       planWithContact.information_state.pending_requests,
       args.extraction.informationRequests,
     );
+    requests = this.normalizePurchaseDetailRoute(requests);
     const lastCompletedRequest =
       planWithContact.information_state.last_completed_request;
     const supportContinuesPurchaseThread = supportAcknowledgment &&
@@ -5125,6 +5126,36 @@ export class AgentService {
     }
 
     return merged;
+  }
+
+  /**
+   * F3 purchase route normalization. The orchestrator derives the lookup
+   * partition from aspects, so a status query carrying payment_details (live
+   * Martha: "que paso con el regalo que intente pagar") would hit the gift
+   * partition and violate the orders-only hard gate. payment_details is
+   * answerable from orders (method plus totals), so it is dropped unless a
+   * gift-only aspect (dedication, thanks) requires the gift partition.
+   */
+  private normalizePurchaseDetailRoute(
+    requests: PendingInformationRequest[],
+  ): PendingInformationRequest[] {
+    return requests.map((request) => {
+      if (request.kind !== 'purchase') return request;
+      if (
+        !request.aspects.includes('payment_details') ||
+        request.aspects.includes('dedication') ||
+        request.aspects.includes('thanks')
+      ) {
+        return request;
+      }
+      const aspects = request.aspects.filter(
+        (aspect) => aspect !== 'payment_details',
+      );
+      return {
+        ...request,
+        aspects: aspects.length > 0 ? aspects : ['summary'],
+      };
+    });
   }
 
   private isTerminalInformationAuthBlock(
