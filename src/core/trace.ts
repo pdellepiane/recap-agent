@@ -5,6 +5,21 @@ import type { MessageResponseClassifierTrace } from '../runtime/message-response
 import type { InformationExecutionSummary } from './information';
 import type { OpenAiCallRef } from '../runtime/contracts';
 
+export type FinishPlanSummaryTrace = {
+  status: 'success' | 'partial' | 'failed' | null;
+  eventDate: string | null;
+  confirmedCount: number;
+  pendingProviderIds: number[];
+  errorKind: string | null;
+};
+
+export type ProviderQuoteReceiptTrace = {
+  providerId: number;
+  eventDate: string;
+  resultStatus: 'confirmed' | 'failed' | 'unresolved';
+  attempt: number;
+};
+
 export type ToolOutputTrace = {
   tool: string;
   output: string;
@@ -186,6 +201,8 @@ export type TurnTrace = {
   tools_called: string[];
   tool_inputs: ToolInputTrace[];
   tool_outputs: ToolOutputTrace[];
+  finish_plan_summary?: FinishPlanSummaryTrace | null;
+  provider_quote_receipts?: ProviderQuoteReceiptTrace[];
   provider_results: ProviderSummary[];
   recommendation_funnel: RecommendationFunnelTrace;
   search_strategy: SearchStrategyTrace;

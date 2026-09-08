@@ -15,6 +15,8 @@ import {
   HttpAgentConversationGateway,
 } from '../runtime/agent-conversation-gateway';
 import { FixtureAgentConversationGateway } from '../runtime/eval-fixture-gateway';
+import { FixtureProviderGateway } from '../runtime/fixture-provider-gateway';
+import type { FixtureData } from '../runtime/eval-fixture-gateway';
 import { ProviderVectorSearchGateway } from '../runtime/provider-vector-search';
 import { AgentService } from '../runtime/agent-service';
 import type { HandleTurnResponse } from '../runtime/agent-service';
@@ -683,6 +685,12 @@ async function getFixtureRuntime(scenario: string): Promise<{
     ? rawFixture['providerUserEvents']
     : null;
   const originalProviderGateway = shared.providerGateway;
+  const fixtureQuoteGateway = new FixtureProviderGateway(
+    scenario,
+    (rawFixture as FixtureData | null) ?? null,
+    rawFixture ? 'loaded' : 'unknown_scenario',
+    { runId: `live-${scenario}`, caseId: scenario },
+  );
   const fixtureProviderGateway: typeof shared.providerGateway = {
     listCategories: (...args: Parameters<typeof originalProviderGateway.listCategories>) => originalProviderGateway.listCategories(...args),
     getCategoryBySlug: (...args: Parameters<typeof originalProviderGateway.getCategoryBySlug>) => originalProviderGateway.getCategoryBySlug(...args),
@@ -719,7 +727,7 @@ async function getFixtureRuntime(scenario: string): Promise<{
     requestUserLoginCode: (email: string) => fixtureGateway.requestUserLoginCode(email),
     verifyUserLoginCode: (email: string, code: string) => fixtureGateway.verifyUserLoginCode(email, code),
     lookupAuthenticatedUserEvents: (...args: Parameters<typeof originalProviderGateway.lookupAuthenticatedUserEvents>) => originalProviderGateway.lookupAuthenticatedUserEvents(...args),
-    createQuoteRequest: (...args: Parameters<typeof originalProviderGateway.createQuoteRequest>) => originalProviderGateway.createQuoteRequest(...args),
+    createQuoteRequest: (input: Parameters<typeof originalProviderGateway.createQuoteRequest>[0]) => fixtureQuoteGateway.createQuoteRequest(input),
     addVendorToEventFavorites: (...args: Parameters<typeof originalProviderGateway.addVendorToEventFavorites>) => originalProviderGateway.addVendorToEventFavorites(...args),
     createProviderReview: (...args: Parameters<typeof originalProviderGateway.createProviderReview>) => originalProviderGateway.createProviderReview(...args),
   } as unknown as typeof shared.providerGateway;

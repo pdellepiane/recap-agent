@@ -38,8 +38,8 @@ export function redactArtifactText(value: string): string {
 }
 
 /**
- * Projects trace diagnostics for terminal/assessment output. Tool payloads are
- * deliberately omitted rather than interpreted as free text or re-parsed.
+ * Projects trace diagnostics for terminal/assessment output. Only finish_plan
+ * carries an allowlisted debug subset; all other tool payloads stay omitted.
  */
 export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonValue> {
   const projected = redactArtifactRecord(value);
@@ -51,7 +51,7 @@ export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonVal
             isRecord(entry)
               ? {
                   ...entry,
-                  input: '[omitted]'
+                  input: projectFinishPlanInput(entry),
                 }
               : entry,
           ),
@@ -63,13 +63,85 @@ export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonVal
             isRecord(entry)
               ? {
                   ...entry,
-                  output: '[omitted]'
+                  output: projectFinishPlanOutput(entry),
                 }
               : entry,
           ),
         }
       : {}),
   };
+}
+
+const FINISH_PLAN_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
+
+function isFinishPlanDate(value: unknown): value is string {
+  if (typeof value !== 'string' || !FINISH_PLAN_DATE_PATTERN.test(value)) return false;
+  const year = Number(value.slice(0, 4));
+  const month = Number(value.slice(5, 7));
+  const day = Number(value.slice(8, 10));
+  if (month < 1 || month > 12 || day < 1 || day > 31) return false;
+  const check = new Date(Date.UTC(year, month - 1, day));
+  return check.getUTCFullYear() === year && check.getUTCMonth() === month - 1 && check.getUTCDate() === day;
+}
+
+function parseTraceJson(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== 'string') return null;
+  try {
+    const parsed = JSON.parse(value) as unknown;
+    return typeof parsed === 'object' && parsed !== null && !Array.isArray(parsed)
+      ? (parsed as Record<string, unknown>)
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function classifyErrorKind(value: unknown): string {
+  const text = typeof value === 'string' ? value.toLowerCase() : '';
+  if (text.includes('missing_event_date')) return 'missing_event_date';
+  if (text.includes('invalid_event_date')) return 'invalid_event_date';
+  if (text.includes('missing_contact')) return 'missing_contact_info';
+  if (text.includes('invalid_contact')) return 'invalid_contact_info';
+  if (text.includes('no_selected')) return 'no_selected_providers';
+  if (text.includes('unknown')) return 'unresolved';
+  if (text.includes('block') || text.includes('bloque')) return 'blocked_write';
+  return 'failed';
+}
+
+function projectFinishPlanInput(entry: Record<string, ArtifactJsonValue>): ArtifactJsonValue {
+  if (entry['tool'] !== 'finish_plan' || typeof entry['input'] !== 'string') return '[omitted]';
+  const parsed = parseTraceJson(entry['input']);
+  const eventDate = parsed?.['event_date'];
+  if (!isFinishPlanDate(eventDate)) return '[omitted]';
+  return JSON.stringify({ event_date: eventDate });
+}
+
+function projectFinishPlanOutput(entry: Record<string, ArtifactJsonValue>): ArtifactJsonValue {
+  if (entry['tool'] !== 'finish_plan' || typeof entry['output'] !== 'string') return '[omitted]';
+  const parsed = parseTraceJson(entry['output']);
+  if (!parsed) return '[omitted]';
+  const status = parsed['status'];
+  if (status !== 'success' && status !== 'partial' && status !== 'failed') return '[omitted]';
+  const rawDate = parsed['eventDate'];
+  const eventDate = isFinishPlanDate(rawDate) ? rawDate : null;
+  const rawProviders: unknown = parsed['contacted_providers'];
+  if (!Array.isArray(rawProviders)) return '[omitted]';
+  const contactedProviders: ArtifactJsonValue[] = [];
+  for (const item of rawProviders as unknown[]) {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
+    const record = item as unknown as Record<string, unknown>;
+    const providerId: unknown = record['providerId'];
+    const category: unknown = record['category'];
+    const success: unknown = record['success'];
+    if (typeof providerId !== 'number' || typeof category !== 'string' || typeof success !== 'boolean') continue;
+    contactedProviders.push({
+      providerId,
+      category,
+      success,
+      ...(success ? {} : { error_kind: classifyErrorKind(record['error']) }),
+    });
+  }
+  return JSON.stringify({ status, eventDate, contacted_providers: contactedProviders });
 }
 
 /** Projects a validated typed record without validating the redacted value again. */

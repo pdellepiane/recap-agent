@@ -153,6 +153,7 @@ import {
   buildCloseSubmissionSummary,
   parseFinishPlanTurnOutcome,
 } from './close-submission-summary';
+import { buildFinishPlanSummary, buildProviderQuoteReceipts } from './finish-plan-debug';
 import {
   disclosedPurchaseMethod,
   disclosedPurchaseTotal,
@@ -8006,6 +8007,8 @@ export class AgentService {
       tools_called: args.toolUsage.called,
       tool_inputs: args.toolUsage.inputs,
       tool_outputs: args.toolUsage.outputs,
+      finish_plan_summary: buildFinishPlanSummary(args.toolUsage),
+      provider_quote_receipts: buildProviderQuoteReceipts(args.toolUsage),
       provider_results: args.providerResults,
       recommendation_funnel: args.recommendationFunnel,
       search_strategy: args.searchStrategy,
@@ -10222,19 +10225,6 @@ export class AgentService {
     plan?: PlanSnapshot,
     toolUsage?: ToolUsage,
   ): NormalizedOutboundMessage {
-    // TEMP-PROBE-F4: observe live close-turn tool data via CloudWatch; remove before G5.
-    if (plan?.current_node === 'crear_lead_cerrar' && toolUsage) {
-      const finishOutputs = toolUsage.outputs.filter((entry) => entry.tool === 'finish_plan');
-      const finishInputs = toolUsage.inputs.filter((entry) => entry.tool === 'finish_plan');
-      console.log(JSON.stringify({
-        probe: 'f4-close',
-        called: toolUsage.called,
-        finishInputs: finishInputs.map((entry) => entry.input.slice(0, 300)),
-        finishOutputs: finishOutputs.map((entry) => entry.output.slice(0, 800)),
-        hasStructured: Boolean(reply.structuredMessage),
-        structuredType: reply.structuredMessage?.type ?? null,
-      }));
-    }
     const structuredMessage = this.enforceContactRequestFields(
       reply.structuredMessage,
       plan,
