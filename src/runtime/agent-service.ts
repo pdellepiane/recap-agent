@@ -107,6 +107,7 @@ import {
   type ProviderFitCriteria,
 } from './provider-fit';
 import { createSubQueryFitCriteria, selectProvidersForSubQuery } from './provider-sub-query-selection';
+import { missingSelectionTraceOperations } from './selection-trace-operations';
 import type {
   ProviderPlanOperation,
   ProviderQueryIntent,
@@ -7976,7 +7977,7 @@ export class AgentService {
       extraction_summary: this.summarizeExtraction(args.extraction, contactValidationSummary),
       plan_summary: this.summarizePlan(args.plan, contactValidationSummary),
       close_action_summary: this.summarizeCloseAction(args.extraction),
-      selection_resolution_summary: this.summarizeSelectionResolution(args.extraction),
+      selection_resolution_summary: this.summarizeSelectionResolution(args.extraction, args.plan),
       contact_validation_summary: contactValidationSummary,
       provider_candidate_audit: this.summarizeProviderCandidateAudit(args.providerResults),
       information_execution_summary: args.informationExecution ?? [],
@@ -8137,8 +8138,29 @@ export class AgentService {
     };
   }
 
-  private summarizeSelectionResolution(extraction: ExtractionResult): SelectionResolutionDebugSummary {
+  private summarizeSelectionResolution(extraction: ExtractionResult, plan: PlanSnapshot): SelectionResolutionDebugSummary {
     const operations = extraction.providerPlanOperations ?? [];
+    // Trace-only parity: hint-resolved selections (semantic cheaper/location
+    // references) record the selection in the plan without an LLM-emitted
+    // providerPlanOperation. Reflect select_provider in the trace summary so
+    // the recorded selection stays observable. Plan application and routing
+    // never consume these synthetic entries.
+    const selectedCategories = plan.provider_needs
+      .filter((need) => need.selected_provider_ids.length > 0)
+      .map((need) => need.category);
+    const hasSelectionEvidence =
+      (extraction.selectedProviderReferences ?? []).length > 0 ||
+      extraction.selectedProviderHints.length > 0;
+    const traceOperations =
+      selectedCategories.length > 0 && hasSelectionEvidence
+        ? [
+          ...operations,
+          ...missingSelectionTraceOperations({
+            existing: operations,
+            selectedCategories,
+          }),
+        ]
+        : operations;
     return {
       selected_provider_references: (extraction.selectedProviderReferences ?? []).map((reference) => ({
         provider_id: reference.providerId,
