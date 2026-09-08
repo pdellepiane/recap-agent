@@ -238,4 +238,39 @@ describe('F3d bare confirmation over a multi-option shortlist', () => {
     const text = result.outbound.text ?? '';
     expect(text).not.toContain(AMBIGUOUS_QUESTION);
   });
+
+  it('does not ask on a modify intent carrying selection operations', async () => {
+    const result = await runPlanningTurn(
+      planningExtraction({
+        actionIntent: 'modificar_plan_proveedores',
+        ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
+        eventType: null,
+        activeNeedCategory: null,
+        location: null,
+        guestRange: null,
+        preferences: [],
+        providerPlanOperations: [
+          {
+            type: 'select_provider',
+            category: 'Fotografía y video',
+            preferences: [],
+            hardConstraints: [],
+            queryIntent: null,
+            rerunSearch: false,
+            provider: {
+              providerId: 90,
+              providerTitle: null,
+              category: 'Fotografía y video',
+              hint: null,
+            },
+            removeProvider: null,
+            addProvider: null,
+          },
+        ],
+      }),
+      'Agrega a Carlos Schult y sigamos.',
+    );
+    const text = result.outbound.text ?? '';
+    expect(text).not.toContain(AMBIGUOUS_QUESTION);
+  });
 });

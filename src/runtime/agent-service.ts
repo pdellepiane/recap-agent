@@ -7517,6 +7517,7 @@ export class AgentService {
       extraction.rsvpAction == null &&
       extraction.rsvpEventReference == null &&
       (extraction.providerQueryIntents?.length ?? 0) === 0 &&
+      (extraction.providerPlanOperations?.length ?? 0) === 0 &&
       extraction.providerExplanationRequest == null &&
       extraction.providerDetailRequest == null &&
       extraction.closeAction == null &&
