@@ -96,6 +96,14 @@ export function buildCloseSubmissionSummary(input: CloseSubmissionInput): string
   return `${sentClause}${contactClause} Para ${pendingNames} no pude confirmar el envío todavía, así que esa parte sigue sin cerrar.`;
 }
 
+const CONFIRM_QUESTION_PATTERN = /¿Confirmas que envíe[^?]*\?/u;
+
+export function applyCloseSubmissionToText(text: string, summary: string | null): string {
+  if (summary === null) return text;
+  if (!CONFIRM_QUESTION_PATTERN.test(text)) return text;
+  return text.replace(CONFIRM_QUESTION_PATTERN, summary);
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }

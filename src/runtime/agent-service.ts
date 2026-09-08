@@ -149,6 +149,7 @@ import {
   purchaseThreadSuppressesHealthOffer,
 } from './conversation-continuity-policy';
 import {
+  applyCloseSubmissionToText,
   buildCloseSubmissionSummary,
   parseFinishPlanTurnOutcome,
 } from './close-submission-summary';
@@ -10246,8 +10247,14 @@ export class AgentService {
       }
     }
 
+    const plainText = plan?.current_node === 'crear_lead_cerrar' && toolUsage
+      ? applyCloseSubmissionToText(
+        reply.text,
+        this.resolveCloseSubmissionSummary(plan, toolUsage),
+      )
+      : reply.text;
     return {
-      text: this.sanitizeAssistantOutput(reply.text),
+      text: this.sanitizeAssistantOutput(plainText),
       conversationId,
       structuredMessageKind,
       delivery: {

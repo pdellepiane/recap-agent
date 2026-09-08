@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  applyCloseSubmissionToText,
   buildCloseSubmissionSummary,
   formatSpanishEventDate,
   parseFinishPlanTurnOutcome,
@@ -71,6 +72,25 @@ describe('F4 close submission summary confirms sent quotes with the explicit dat
         displayByCategory: {},
       }),
     ).toBe(null);
+  });
+});
+
+describe('F4 plain-text confirmation question is replaced by the submission summary', () => {
+  it('replaces the confirmation question while keeping the provider list', () => {
+    const text = applyCloseSubmissionToText(
+      'Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a EDO, Orquesta Sintetica?\n\nSe enviarán solicitudes para:\n\n- Servicio de comida: EDO.',
+      'Las solicitudes de cotización fueron enviadas a EDO y Orquesta Sintetica para tu evento del 18 de octubre de 2026. Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.',
+    );
+    expect(text).toContain('18 de octubre de 2026');
+    expect(text).toContain('Servicio de comida: EDO');
+    expect(text).not.toContain('¿Confirmas');
+  });
+
+  it('leaves text without a confirmation question untouched', () => {
+    expect(applyCloseSubmissionToText('Hola, ¿en qué te ayudo?', 'Resumen.')).toBe(
+      'Hola, ¿en qué te ayudo?',
+    );
+    expect(applyCloseSubmissionToText('¿Confirmas?', null)).toBe('¿Confirmas?');
   });
 });
 
