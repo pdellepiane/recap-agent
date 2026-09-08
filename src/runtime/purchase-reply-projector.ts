@@ -502,6 +502,31 @@ export function shouldRenderTransferValidationForStatusQuery(args: {
 }
 
 /**
+ * F3 correction grounding on continued purchase threads. When a pending
+ * record without currency is revisited (currency/time corrections, constancia
+ * questions), the reply states record facts: currency and timezone are absent,
+ * so user-shared values stay user-reported and exact datetime is unconfirmed.
+ */
+export function shouldRenderPendingCorrectionGrounding(args: {
+  purchaseCount: number;
+  paymentStatus: string | null;
+  currency: string | null;
+  isContinuedThread: boolean;
+  reportedAmount: number | null;
+}): boolean {
+  if (!args.isContinuedThread) return false;
+  if (args.purchaseCount !== 1) return false;
+  if (args.reportedAmount !== null) return false;
+  if ((args.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') !== 'pending') return false;
+  return args.currency === null || args.currency.trim().length === 0;
+}
+
+export function renderPendingCorrectionGrounding(eventName: string | null): string {
+  const event = eventName?.trim() ? eventName.trim() : 'tu evento';
+  return `Tu pago para ${event} sigue pendiente y en verificación. Tomo los datos de moneda y fecha que me compartes solo como tu reporte: el registro no consigna moneda ni zona horaria, así que no puedo confirmar la moneda ni una fecha u hora exacta.`;
+}
+
+/**
  * F3c voucher continuity reply for a single pending order. The reported
  * amount stays user-reported, receipt from an image is never confirmed, the
  * order remains pending, and the indexed validation window is repeated.

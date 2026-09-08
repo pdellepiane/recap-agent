@@ -152,11 +152,13 @@ import {
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
   renderOrderPlusCartCheckout,
+  renderPendingCorrectionGrounding,
   resolveCapabilityPurchaseContinuation,
   shouldRenderConciseApprovedStatus,
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
   shouldRenderOrderPlusCartCheckout,
+  shouldRenderPendingCorrectionGrounding,
   shouldRenderTransferValidationForStatusQuery,
 } from './purchase-reply-projector';
 import {
@@ -6439,9 +6441,10 @@ export class AgentService {
    * typed reconciliation evidence matches one of the bounded outcomes: a
    * single approved record without a linked reference, a pending order next
    * to an active cart (checkout continuation with total, method, window and
-   * next step), a currency-less pending transfer validation query, or a
-   * multi-record selection without an associated guest event. All other
-   * outcomes keep the model narrative.
+   * next step), a continued pending thread without currency (user-reported
+   * currency/time grounding), a currency-less pending transfer validation
+   * query, or a multi-record selection without an associated guest event.
+   * All other outcomes keep the model narrative.
    */
   private enforcePurchaseReplyDeterministic(
     currentNode: DecisionNode,
@@ -6465,7 +6468,6 @@ export class AgentService {
     const purchases = phonePurchaseResult.purchases;
     const reportedAmount = options?.reportedAmount ?? null;
     const isContinuedThread = options?.isContinuedThread ?? false;
-    void isContinuedThread;
     const single = purchases.length === 1 ? purchases[0] : null;
     if (
       single &&
@@ -6504,6 +6506,23 @@ export class AgentService {
             : null,
           paymentMethod: single.paymentMethod ?? single.payment?.method ?? null,
         }),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    if (
+      single &&
+      shouldRenderPendingCorrectionGrounding({
+        purchaseCount: purchases.length,
+        paymentStatus: single.paymentStatus,
+        currency: single.currency ?? null,
+        isContinuedThread,
+        reportedAmount,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderPendingCorrectionGrounding(single.eventName),
         structuredMessage: undefined,
         recommendationFunnel: undefined,
       };

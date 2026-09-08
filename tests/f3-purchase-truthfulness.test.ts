@@ -5,10 +5,12 @@ import {
   renderConciseTransferValidation,
   renderNeutralPurchaseSelection,
   renderOrderPlusCartCheckout,
+  renderPendingCorrectionGrounding,
   shouldRenderConciseApprovedStatus,
   shouldRenderConciseTransferValidation,
   shouldRenderNeutralSelection,
   shouldRenderOrderPlusCartCheckout,
+  shouldRenderPendingCorrectionGrounding,
   shouldRenderTransferValidationForStatusQuery,
 } from '../src/runtime/purchase-reply-projector';
 import { AgentService } from '../src/runtime/agent-service';
@@ -595,5 +597,32 @@ describe('F3 transfer validation on status-only queries', () => {
     });
     const text = result.outbound.text ?? '';
     expect(text).toContain('72 horas');
+  });
+});
+
+describe('F3 pending correction grounding on continuations', () => {
+  it('grounds user-reported currency and time on a continued thread', () => {
+    expect(
+      shouldRenderPendingCorrectionGrounding({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        currency: null,
+        isContinuedThread: true,
+        reportedAmount: null,
+      }),
+    ).toBe(true);
+    expect(
+      shouldRenderPendingCorrectionGrounding({
+        purchaseCount: 1,
+        paymentStatus: 'pending',
+        currency: null,
+        isContinuedThread: false,
+        reportedAmount: null,
+      }),
+    ).toBe(false);
+    const text = renderPendingCorrectionGrounding('Claudia and Luis Felipe');
+    expect(text).toContain('pendiente');
+    expect(text).toContain('moneda');
+    expect(text).toContain('zona horaria');
   });
 });
