@@ -1,5 +1,16 @@
 # Implementation Log
 
+## 2026-09-08 — F4 provider-campaign S12 close truthfulness + explicit date fallback (code complete, live proof next)
+
+**Reason:** Staleness proof: 7 consecutive live S12 runs on post-F4b artifacts all fail the hard semantic gate (runIds db7f8784/9f069215/55f2aa65 score 0.83-0.84, semantic 0.15-0.20): finish_plan IS called (tool_usage passes) yet the reply asks for another confirmation with no event date. Root cause: the model passes event_date in a non-ISO form (or unusable value), the executor fails closed with missing/invalid_event_date, parseFinishPlanTurnOutcome returns undefined for the error shape, the summary stays null, and enforceContactRequestFields falls back to the confirmation question. The other 3 F4 cases already pass live (cheaper 1.0, miraflores 0.99-1.0, maria-jose 0.93-0.94 across runs d25b9c0d/6b207a97/9f069215). S03 excluded; prod untouched; finish_plan-only summaries retained (no all-tools expansion); F1/F2/F3/TRACE preserved (prompts untouched, shared wiring limited to the finish_plan closure).
+
+**Decision:** Two atomic commits, each with deterministic twin and separate registry entry:
+- edece4aa F4d failed-all close (close-submission-summary.ts + twin tests/f4-close-submission-summary.test.ts): failed status WITH contacted providers and an explicit date now renders a truthful blocked summary naming each provider with the Spanish long-form date plus a human-team handoff, never claiming sent quotes or plan closure; error shapes without providers/date still yield null so the turn asks for an explicit date. Registry f4d-close-failed-blocked-truthful.
+- cbf42681 F4e explicit date fallback (close-submission-summary.ts resolveExplicitEventDate + openai-agent-runtime.ts finish_plan closure + twin tests/f4-explicit-event-date.test.ts): deterministic normalizer accepts ISO, Spanish long form (incl. setiembre variant), and DD/MM/YYYY (day-first) from the model value, else extracts the first explicit date from request.userMessage; never substitutes today, returns null when neither source carries a calendar-valid date so the executor keeps failing closed. Twin 6/6 pure tests incl. no-today guarantee. Registry f4e-finish-plan-explicit-date-fallback.
+- Registry (this commit): 2 separate entries above, both pointing at mandatory live_behavior.s12_provider_completion_truthful_event_date (hard tool_usage + hard text_semantic requireJudge true).
+
+**Validation:** Focused suites green: f4-close-submission-summary 11/11, f4-explicit-event-date 6/6, f4-trace-unredact 3/3, agent-service-information-flow 52 (2 skipped), s09-purchase-reply-projector + f3 twins + live-behavior-coverage 38/38; typecheck and scoped lint clean. Live proof NOT yet executed: deploy + focused 4-case run is the final attempt (retry budget 2/3 consumed) and belongs to the next step on the identical artifact.
+
 ## 2026-09-07 — Integrator finalize: sequence shared-wiring commits for S15 gate
 
 **Reason:** S15 gate was blocked on a dirty tree plus registry wiring. S10/S16 remediation and the S12 slice had completed all product work but left tracked modifications and untracked scratch uncommitted to avoid ownership violations. The six S12 integrator-wiring files were already atomically committed in `5724b17e`; only docs scratch remained.
