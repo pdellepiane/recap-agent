@@ -182,6 +182,19 @@ const turnTraceSchema = z.object({
     coverage: z.enum(['complete', 'partial', 'inconsistent']).nullable().optional(),
     eventDetailCount: z.number().int().nonnegative().optional(),
   })).default([]),
+  finish_plan_summary: z.object({
+    status: z.enum(['success', 'partial', 'failed']).nullable(),
+    eventDate: z.string().nullable(),
+    confirmedCount: z.number().int().nonnegative(),
+    pendingProviderIds: z.array(z.number().int()),
+    errorKind: z.string().nullable(),
+  }).nullable().default(null),
+  provider_quote_receipts: z.array(z.object({
+    providerId: z.number().int(),
+    eventDate: z.string(),
+    resultStatus: z.enum(['confirmed', 'failed', 'unresolved']),
+    attempt: z.number().int().nonnegative(),
+  })).default([]),
   recommendation_funnel: z.object({
     available_candidates: z.number().int().nonnegative(),
     context_candidates: z.number().int().nonnegative(),

@@ -848,6 +848,16 @@ function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
     const executions = turn.trace.information_execution_summary
       .map((entry) => `${entry.requestId}:${entry.kind}:${entry.status}:${entry.outcomeCode}`)
       .join(',');
+    const closeSummary = turn.trace.finish_plan_summary;
+    const receipts = (turn.trace.provider_quote_receipts ?? [])
+      .map((entry) => `${entry.providerId}:${entry.resultStatus}:${entry.eventDate}`)
+      .join(',');
+    const receiptFacts = receipts.length > 0 ? `:comprobantes=[${receipts}]` : '';
+    const closeFacts = closeSummary?.status
+      ? `finish_plan:${closeSummary.status}:${closeSummary.eventDate ?? 'sin-fecha'}:` +
+        `confirmados=${closeSummary.confirmedCount}:` +
+        `pendientes=[${closeSummary.pendingProviderIds.join(',')}]${receiptFacts}`
+      : 'ninguno';
     return (
       `Hechos estructurales verificados del turno ${turn.turnIndex}: ` +
       `tools_called=[${turn.trace.tools_called.join(',')}] ` +
@@ -856,7 +866,8 @@ function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
       `handoff=${plan.human_escalation.status} ` +
       `seleccion_hints=${selection.selected_provider_hints_count} ` +
       `operaciones_proveedor=[${selection.provider_plan_operation_types.join(',')}] ` +
-      `ejecuciones=[${executions || 'ninguna'}]`
+      `ejecuciones=[${executions || 'ninguna'}] ` +
+      `cierre=${closeFacts}`
     );
   });
 }
