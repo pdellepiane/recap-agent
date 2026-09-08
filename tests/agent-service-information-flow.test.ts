@@ -974,7 +974,12 @@ describe('AgentService first-class information flow', () => {
     expect(response.outbound.text).toContain('indicas haber enviado 13.76');
     expect(response.outbound.text).toContain('El pedido de Alejandra sigue pendiente');
     expect(response.outbound.text).toContain('hasta 72 horas hábiles');
-    expect(response.outbound.text).toContain('No puedo validar un comprobante');
+    // Stale 2026-09-08: live run eval-2026-09-08T15-19-11-093Z-af842b71 scored
+    // the handoff wording 0.15 on live_behavior.pending_balance_validation_luis
+    // turn 1. The hard rubric demands staying on the pending order with image
+    // and window grounding and no handoff, so the voucher continuation owns it.
+    expect(response.outbound.text).toContain('no permite confirmar');
+    expect(response.outbound.text).not.toMatch(/apoyo humano/i);
     expect(response.outbound.text).not.toMatch(/S\/|PEN|soles|not_eligible/u);
     expect(response.trace.information_execution_summary).toEqual([
       expect.objectContaining({
