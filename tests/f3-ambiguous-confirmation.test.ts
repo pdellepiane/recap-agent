@@ -209,4 +209,33 @@ describe('F3d bare confirmation over a multi-option shortlist', () => {
     const text = result.outbound.text ?? '';
     expect(text).toContain(AMBIGUOUS_QUESTION);
   });
+
+  it('asks on a hollow browse intent over the shortlist', async () => {
+    const result = await runPlanningTurn(
+      planningExtraction({
+        actionIntent: 'ver_opciones',
+        ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
+        eventType: null,
+        activeNeedCategory: null,
+        location: null,
+        guestRange: null,
+        preferences: [],
+      }),
+    );
+    const text = result.outbound.text ?? '';
+    expect(text).toContain(AMBIGUOUS_QUESTION);
+  });
+
+  it('does not ask on a browse intent carrying a refinement', async () => {
+    const result = await runPlanningTurn(
+      planningExtraction({
+        actionIntent: 'ver_opciones',
+        ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
+        preferences: ['estilo documental'],
+      }),
+      'Quiero ver opciones con estilo documental.',
+    );
+    const text = result.outbound.text ?? '';
+    expect(text).not.toContain(AMBIGUOUS_QUESTION);
+  });
 });

@@ -7506,16 +7506,13 @@ export class AgentService {
   }
 
   /**
-   * A bare confirmation turn carries no actionable delta: null actionIntent,
-   * no information/support/RSVP/provider/contact work and no selection
-   * reference. Over an unresolved multi-option shortlist it must clarify
-   * which provider or action is confirmed, even when the extractor marked
-   * ambiguity clear (live: "Si confirmo."). Plan-echoed context (eventType,
-   * active need, guest range) does not count as a refinement.
+   * A confirmation turn carries no actionable delta: no information/support/
+   * RSVP/provider/contact work and no selection reference. Plan-echoed
+   * context (eventType, active need, guest range) does not count as a
+   * refinement.
    */
-  private isBareProviderConfirmationTurn(extraction: ExtractionResult): boolean {
-    return extraction.actionIntent === null &&
-      extraction.informationRequests.length === 0 &&
+  private hasNoConfirmationDelta(extraction: ExtractionResult): boolean {
+    return extraction.informationRequests.length === 0 &&
       extraction.supportAct == null &&
       extraction.phoneConfirmation == null &&
       extraction.rsvpAction == null &&
@@ -7536,6 +7533,24 @@ export class AgentService {
       extraction.contactPhone == null &&
       (extraction.selectedProviderHints?.length ?? 0) === 0 &&
       (extraction.selectedProviderReferences?.length ?? 0) === 0;
+  }
+
+  /**
+   * A bare confirmation turn (null intent, no delta) or a hollow browse
+   * intent (ver_opciones, buscar, refinar or modificar with no executable
+   * delta) over an unresolved multi-option shortlist must clarify which
+   * provider or action is confirmed, even when the extractor marked ambiguity
+   * clear (live: "Si confirmo."). Hollow intents cannot execute anything, so
+   * clarification is the only safe move; intents with real deltas keep their
+   * routes.
+   */
+  private isBareProviderConfirmationTurn(extraction: ExtractionResult): boolean {
+    if (!this.hasNoConfirmationDelta(extraction)) return false;
+    return extraction.actionIntent === null ||
+      extraction.actionIntent === 'ver_opciones' ||
+      extraction.actionIntent === 'buscar_proveedores' ||
+      extraction.actionIntent === 'refinar_busqueda' ||
+      extraction.actionIntent === 'modificar_plan_proveedores';
   }
 
   private guardAmbiguousProviderConfirmation(
