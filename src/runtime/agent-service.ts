@@ -4017,12 +4017,20 @@ export class AgentService {
         request.kind === 'purchase',
     );
     const existingPurchase = persistedPurchase ?? extractedPurchase;
+    // A dedication change (purchase.modify) must read the gift partition even
+    // when a persisted or extracted request points at orders: the orders
+    // partition is empty for gift-only phones (live Joaquin), which stranded
+    // the safe read and forced an unsupported handoff without selection.
+    const safeReadResource = operation === 'purchase.modify' ? 'gift_purchases' : 'orders';
+    const safeReadAspects: PurchaseAspect[] = operation === 'purchase.modify'
+      ? ['summary', 'dedication']
+      : ['payment_status'];
     const request: Extract<PendingInformationRequest, { kind: 'purchase' }> = existingPurchase
       ? {
           ...existingPurchase,
           requestId: persistedPurchase?.requestId ?? 'capability-status-read',
-          resource: 'orders',
-          aspects: ['payment_status'],
+          resource: safeReadResource,
+          aspects: safeReadAspects,
           sensitiveFields: [],
           authAction: 'none',
           // On a proof-validation turn the newly extracted amount describes

@@ -8,6 +8,7 @@ import { AgentService } from '../src/runtime/agent-service';
 import type { AgentConversationGateway } from '../src/runtime/agent-conversation-gateway';
 import type { AgentRuntime, ExtractionResult } from '../src/runtime/contracts';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
+import type { PendingInformationRequest } from '../src/core/information';
 import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
@@ -199,14 +200,24 @@ async function runModifyTurn(options: {
   extraction: ExtractionResult;
   purchaseResult: Record<string, unknown>;
   summary: Record<string, unknown>;
+  pendingPurchaseRequest?: PendingInformationRequest;
 }) {
   const store = new InMemoryPlanStore();
+  const seedPlan = createEmptyPlan({
+    planId: `p-${options.externalUserId}`,
+    channel: 'whatsapp',
+    externalUserId: options.externalUserId,
+  });
   await store.save({
-    plan: createEmptyPlan({
-      planId: `p-${options.externalUserId}`,
-      channel: 'whatsapp',
-      externalUserId: options.externalUserId,
-    }),
+    plan: options.pendingPurchaseRequest
+      ? {
+        ...seedPlan,
+        information_state: {
+          ...seedPlan.information_state,
+          pending_requests: [options.pendingPurchaseRequest],
+        },
+      }
+      : seedPlan,
     reason: 'seed',
   });
   const execute = vi.fn(async () => ({
@@ -391,5 +402,85 @@ describe('F3c safe read precedes the unsupported mutation handoff', () => {
     expect(text).toContain('13.76');
     expect(text).toContain('pendiente');
     expect(text).toContain('72 horas');
+  });
+
+  it('reads gift purchases for purchase.modify even with a persisted orders request', async () => {
+    const giftResult = {
+      requestId: 'capability-status-read',
+      kind: 'purchase',
+      status: 'completed',
+      resource: 'gift_purchases',
+      purchases: [
+        {
+          orderId: 'order-joaquin-frozen-01',
+          paymentStatus: 'pending',
+          shippingStatus: null,
+          grandTotal: 120.0,
+          paymentMethod: 'Transferencia',
+          eventName: 'Chiara Vittoria',
+          eventDate: '2026-09-10',
+          eventUrl: null,
+          createdAt: '2026-09-03 11:00:00',
+          items: [],
+          payment: { method: 'Transferencia', amount: 120.0, paidAt: '2026-09-03 11:00:00' },
+          currency: null,
+        },
+        {
+          orderId: 'order-joaquin-frozen-02',
+          paymentStatus: 'approved',
+          shippingStatus: null,
+          grandTotal: 95.5,
+          paymentMethod: 'Transferencia',
+          eventName: 'Chiara Vittoria',
+          eventDate: '2026-08-10',
+          eventUrl: null,
+          createdAt: '2026-08-10 11:00:00',
+          items: [],
+          payment: { method: 'Transferencia', amount: 95.5, paidAt: '2026-08-10 11:00:00' },
+          currency: null,
+        },
+      ],
+      needsSelection: true,
+      accessMethod: 'trusted_phone_purchase',
+      coverage: 'complete',
+    };
+    const { result, execute } = await runModifyTurn({
+      externalUserId: 'u-f3c-joaquin-persisted',
+      text: 'Quisiera cambiar la dedicatoria de un regalo para Chiara Vittoria.',
+      contactPhone: '+51926857444',
+      extraction: modifyExtraction(['summary', 'dedication'], null),
+      purchaseResult: giftResult,
+      summary: {
+        requestId: 'capability-status-read',
+        kind: 'purchase',
+        status: 'completed',
+        source: 'agent_api',
+        outcomeCode: 'completed_with_results',
+        retryable: false,
+        queryHash: 'joaquin',
+        evidence: [],
+        resultCount: 2,
+        durationMs: 1,
+        accessMethod: 'trusted_phone_purchase',
+        resource: 'gift_purchases',
+      },
+      pendingPurchaseRequest: {
+        requestId: 'information-1',
+        kind: 'purchase',
+        resource: 'orders',
+        query: 'cambiar la dedicatoria',
+        orderId: null,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      },
+    });
+    expect(execute).toHaveBeenCalled();
+    const sentRequest = (execute.mock.calls[0] as Array<{ requests?: Array<{ resource?: unknown }> }>)[0]?.requests?.[0];
+    expect(sentRequest?.resource).toBe('gift_purchases');
+    expect(result.plan.current_node).toBe('resolver_consultas_informativas');
+    const text = result.outbound.text ?? '';
+    expect(text).toContain('Chiara Vittoria');
+    expect(text).toContain('?');
   });
 });
