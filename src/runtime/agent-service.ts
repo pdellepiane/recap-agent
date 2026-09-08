@@ -149,6 +149,10 @@ import {
   purchaseThreadSuppressesHealthOffer,
 } from './conversation-continuity-policy';
 import {
+  buildCloseSubmissionSummary,
+  parseFinishPlanTurnOutcome,
+} from './close-submission-summary';
+import {
   disclosedPurchaseMethod,
   disclosedPurchaseTotal,
   renderConciseApprovedStatus,
@@ -1802,6 +1806,7 @@ export class AgentService {
         inbound.channel,
         planAfterFlow.conversation_id,
         planAfterFlow,
+        toolUsage,
       ),
       trace: this.buildTrace({
         plan: planAfterFlow,
@@ -10211,10 +10216,12 @@ export class AgentService {
     channel: string,
     conversationId: string | null,
     plan?: PlanSnapshot,
+    toolUsage?: ToolUsage,
   ): NormalizedOutboundMessage {
     const structuredMessage = this.enforceContactRequestFields(
       reply.structuredMessage,
       plan,
+      toolUsage,
     );
     const structuredMessageKind = structuredMessage?.type ?? null;
     if (structuredMessage) {
@@ -10250,9 +10257,16 @@ export class AgentService {
   private enforceContactRequestFields(
     message: StructuredMessage | undefined,
     plan: PlanSnapshot | undefined,
+    toolUsage?: ToolUsage,
   ): StructuredMessage | undefined {
     if (!message || !plan) {
       return message;
+    }
+    if (message.type === 'close_confirmation') {
+      const submissionSummary = this.resolveCloseSubmissionSummary(plan, toolUsage);
+      if (submissionSummary !== null) {
+        return { ...message, summary_es: submissionSummary };
+      }
     }
 
     if (plan.lifecycle_state === 'finished') {
@@ -10311,6 +10325,32 @@ export class AgentService {
   private completeContactConfirmation(plan: PlanSnapshot): string {
     const destination = this.selectedProviderDestination(plan);
     return `Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a ${destination}?`;
+  }
+
+  private resolveCloseSubmissionSummary(
+    plan: PlanSnapshot,
+    toolUsage?: ToolUsage,
+  ): string | null {
+    if (!toolUsage || !toolUsage.called.includes('finish_plan')) return null;
+    const outputs = toolUsage.outputs.filter((entry) => entry.tool === 'finish_plan');
+    const last = outputs[outputs.length - 1];
+    if (!last) return null;
+    const outcome = parseFinishPlanTurnOutcome(last.output);
+    if (!outcome) return null;
+    const displayByCategory: Record<string, string> = {};
+    for (const need of plan.provider_needs) {
+      const titles = need.recommended_providers
+        .filter((provider) => need.selected_provider_ids.includes(provider.id))
+        .map((provider) => provider.title);
+      const name = titles[0] ?? need.selected_provider_hints[0];
+      if (name) displayByCategory[need.category] = name;
+    }
+    return buildCloseSubmissionSummary({
+      status: outcome.status,
+      eventDate: outcome.eventDate,
+      contactedProviders: outcome.contactedProviders,
+      displayByCategory,
+    });
   }
 
   private selectedProviderDestination(plan: PlanSnapshot): string {
