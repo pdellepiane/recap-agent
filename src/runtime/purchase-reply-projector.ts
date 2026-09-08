@@ -564,6 +564,63 @@ export function renderVoucherContinuityReply(args: {
   return `${report} ${event} Un comprobante en imagen no permite confirmar la recepción. La validación puede tardar hasta 72 horas hábiles.`;
 }
 
+/**
+ * F4 reported-amount pending order with a same-event cart. When the user
+ * reports an amount for the current pending transfer order (initial status
+ * query or shortfall-payment report), the reply must name the pending order
+ * explicitly, keep the trusted registry total distinct from the user report,
+ * and never compute a balance or surface the historical declined record.
+ * The first answer states the pending order without a validation window;
+ * a continued thread repeats the transfer window in the same sentence as
+ * the registered method. No approval is ever claimed while pending.
+ */
+export function shouldRenderReportedPendingOrder(args: {
+  purchaseCount: number;
+  paymentStatus: string | null;
+  paymentMethod: string | null;
+  currency: string | null;
+  cartCount: number;
+  needsSelection: boolean;
+  reportedAmount: number | null;
+}): boolean {
+  if (args.purchaseCount !== 1) return false;
+  if (args.needsSelection) return false;
+  if (args.cartCount < 1) return false;
+  if (args.reportedAmount === null) return false;
+  if ((args.paymentStatus?.trim().toLocaleLowerCase('en') ?? '') !== 'pending') return false;
+  const method = (args.paymentMethod ?? '').toLocaleLowerCase('en');
+  if (!TRANSFER_METHOD_TOKENS.some((token) => method.includes(token))) return false;
+  if (args.currency !== null && args.currency.trim().length > 0) return false;
+  return true;
+}
+
+export function renderReportedPendingInitial(args: {
+  eventName: string | null;
+  total: number | null;
+  paymentMethod: string | null;
+  reportedAmount: number | null;
+}): string {
+  const event = args.eventName?.trim() ? args.eventName.trim() : 'tu evento';
+  const totalClause = args.total !== null ? ` por ${args.total}` : '';
+  const method = formatPaymentMethod(args.paymentMethod);
+  const methodClause = method !== null ? ` mediante ${method}` : '';
+  return `El pedido de ${event}${totalClause}${methodClause} sigue pendiente. Tomo el monto que me indicas como tu reporte; el registro conserva su propio total.`;
+}
+
+export function renderReportedShortfallPending(args: {
+  eventName: string | null;
+  paymentMethod: string | null;
+  reportedAmount: number | null;
+}): string {
+  const event = args.eventName?.trim() ? args.eventName.trim() : 'tu evento';
+  const method = formatPaymentMethod(args.paymentMethod);
+  const report = args.reportedAmount !== null
+    ? `Tomo nota de que indicas haber enviado ${args.reportedAmount}. `
+    : 'Tomo nota de tu reporte. ';
+  const methodClause = method !== null ? ` por ${method}` : '';
+  return `${report}El pedido de ${event} sigue pendiente de validación${methodClause}; la validación puede tardar hasta 72 horas hábiles.`;
+}
+
 function describeCapabilitySelectionOptions(
   purchases: PurchaseInformation[],
 ): string {

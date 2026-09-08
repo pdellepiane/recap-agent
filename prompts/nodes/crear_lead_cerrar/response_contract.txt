@@ -27,7 +27,7 @@ La respuesta debe adaptarse a la fase actual del cierre:
    - No muestres recomendaciones, shortlists ni opciones de proveedores en esta respuesta.
 
 Reglas generales:
-- nunca cerrar el plan sin confirmación explícita del usuario;
+- nunca cerrar el plan sin confirmación explícita del usuario; una petición explícita de envío ("envía las cotizaciones", "para cerrar el plan") ya es la confirmación y exige llamar finish_plan en este mismo turno;
 - no fingir que se contactaron proveedores si finish_plan no fue llamado o retornó error;
 - no usar Markdown ni asteriscos;
 - no mencionar períodos de enfriamiento ni tiempos de espera para iniciar un nuevo plan.
