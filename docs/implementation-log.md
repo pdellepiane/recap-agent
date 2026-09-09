@@ -9638,3 +9638,11 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 **Decision:** L0 first. Added `Model-Written Conversation Invariant` to `AGENTS.md`; September fix plans under `docs/plan/2026-09-05-stabilization/` and `docs/plan/2026-09-09-nine-failures-fix/` marked superseded for deterministic-response prescriptions, historical evidence preserved as-is.
 
 **Base digests:** HEAD `40d3bd79393462491ab2bab85107e05c18286d36`; dev Lambda `recap-agent-runtime-dev` CodeSha256 `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=` (deployed 2026-09-09T22:53:34Z). Working tree carries one pre-existing uncommitted prompt edit `prompts/extractors/information.txt` (`af8a0963…`, drops the contact-data `supportAct` sentence) preserved untouched. Prior full-gate PID 12800 (`eval-2026-09-09T22-54-06-714Z-1674f810`) left running as in-flight data only, not the frozen baseline.
+
+## 2026-09-09 — L0 lean-conversation: inventory + frozen evaluation contract (main)
+
+**Reason:** Plan `2026-09-09-lean-conversation` L0 requires a complete outbound-path inventory and an R05-frozen evaluation contract before any candidate change.
+
+**Decision:** No production behavior change. Added `docs/plan/2026-09-09-lean-conversation/outbound-inventory.md` (20 `deterministic:` bundle sites, 4 post-generation `enforce*` rewrites, RSVP merge block, 9 purchase renderers, renderer dictionaries, guardrail fallback, vocabulary substitution, trailing-period deletion, request-assembly gaps) and `evaluation-manifest.md` (HEAD `a8e443ab`, contract digest `8b9363aa…`, dev CodeSha256 `2q9MtDjN…`, frozen thresholds, in-flight baseline run `eval-2026-09-09T22-54-06-714Z-1674f810`). Pre-existing uncommitted `prompts/extractors/information.txt` edit preserved untouched.
+
+**Evidence:** Inventory cites exact file/line for every path; manifest records gate rule (zero failed/errored/skipped) and known telemetry gaps (E10/E12) that block any future size comparison until closed.
