@@ -301,6 +301,15 @@ export const userAuthStatusValues = [
 export const phoneConfirmationValues = ['yes', 'no', 'unclear'] as const;
 export type PhoneConfirmation = (typeof phoneConfirmationValues)[number];
 
+export const humanHelpIntentValues = ['none', 'request', 'accept_offer', 'retry', 'decline_offer'] as const;
+export type HumanHelpIntent = (typeof humanHelpIntentValues)[number];
+
+export const humanHelpIntentSchema = z.enum(humanHelpIntentValues);
+
+export function isAbsentPhoneConfirmation(value: PhoneConfirmation | null | undefined): boolean {
+  return value == null || value === 'unclear';
+}
+
 export const userAuthStateSchema = z.object({
   status: z.enum(userAuthStatusValues),
   email: z.string().nullable().default(null),

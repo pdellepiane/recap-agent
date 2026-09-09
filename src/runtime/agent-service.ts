@@ -967,6 +967,22 @@ export class AgentService {
       extraction,
     );
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
+    // D1: unclear equals absent; yes/no only when typed auth state is relevant.
+    // Pure shortlist omits phone-auth fields: normalize to absent.
+    {
+      const effectivePhone = this.effectivePhoneConfirmation(workingPlan, extraction);
+      const rawPhone = extraction.phoneConfirmation ?? null;
+      if (effectivePhone !== rawPhone) {
+        extraction = { ...extraction, phoneConfirmation: effectivePhone };
+      }
+    }
+    // D2: mailbox report alone stays support. Explicit human routing requires
+    // typed humanHelpIntent; actionIntent alone cannot override supportAct.
+    if (this.isSupportWinOverHuman(workingPlan, extraction)) {
+      extraction = { ...extraction, actionIntent: null };
+    } else if (extraction.actionIntent === 'solicitar_humano' && !this.isExplicitHumanRequest(workingPlan, extraction)) {
+      extraction = { ...extraction, actionIntent: null };
+    }
     const authControl = extraction.phoneConfirmation === 'no' || extraction.informationRequests.some(
       (request) => (request.kind === 'purchase' || request.kind === 'associated_event') &&
         request.authAction === 'decline_authentication');
@@ -1143,7 +1159,7 @@ export class AgentService {
       timingMs.save_plan += Date.now() - savePlanStartedAt;
     };
 
-    if (extraction.actionIntent === 'solicitar_humano') {
+    if (this.isExplicitHumanRequest(mergedPlan, extraction)) {
       currentNode = 'solicitar_agente_humano';
       if (nodePath[nodePath.length - 1] !== currentNode) {
         nodePath.push(currentNode);
@@ -1211,7 +1227,7 @@ export class AgentService {
       planPersistReason = currentNode;
       timingMs.total = Date.now() - handleTurnStartedAt;
       const outbound = this.renderOutbound(
-        { text: this.humanEscalationRequestedMessage(gatewayResult) },
+        { text: this.selectExplicitHumanMessage(mergedPlan, extraction, gatewayResult) },
         [],
         inbound.channel,
         planToSave.conversation_id,
@@ -3499,7 +3515,8 @@ export class AgentService {
       extraction.actionIntent === null &&
       extraction.informationRequests.length === 0 &&
       extraction.supportAct == null &&
-      extraction.phoneConfirmation == null &&
+      this.isAbsentPhoneConfirmation(extraction.phoneConfirmation) &&
+      (extraction.humanHelpIntent == null || extraction.humanHelpIntent === 'none') &&
       extraction.rsvpAction == null &&
       extraction.rsvpEventReference == null &&
       extraction.eventType == null &&
@@ -5743,7 +5760,7 @@ export class AgentService {
     // only a new inbound message with an explicit human request may retry a
     // definitively failed handoff. Unknown stays unretried by policy.
     const priorReceipt = args.plan.human_help_receipt ?? null;
-    const isExplicitHelpRetry = args.extraction.actionIntent === 'solicitar_humano' &&
+    const isExplicitHelpRetry = this.isExplicitHumanRequest(args.plan, args.extraction) &&
       priorReceipt?.outcome === 'handoff_failed';
     const decision = decideHumanHelpAttempt({ conversationId: args.plan.plan_id,
       inboundId: args.inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
@@ -5798,8 +5815,7 @@ export class AgentService {
       args.tokenUsage.extraction,
     );
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const handoffMessage = requested ? handoffMessages.requested
-      : receipt?.outcome === 'outcome_unknown' ? handoffMessages.unknown : handoffMessages.failed;
+    const handoffMessage = this.selectTerminalHandoffMessage(args.reason, requested, receipt?.outcome);
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
@@ -7477,6 +7493,36 @@ export class AgentService {
     return handoffMessages.failed;
   }
 
+  private selectExplicitHumanMessage(
+    plan: PlanSnapshot,
+    extraction: ExtractionResult,
+    result: AgentGatewayResult,
+  ): string {
+    const hasProtected = this.hasProtectedInformationWork(extraction.informationRequests) ||
+      this.hasProtectedInformationWork(plan.information_state.pending_requests) ||
+      this.effectiveAuthRecovery(plan).terminalReason !== null;
+    if (hasProtected) return this.humanEscalationRequestedMessage(result);
+    if (result.status === 'success') {
+      return 'Listo, ya solicite apoyo humano para revisar tu consulta. Mantengo el contexto para continuar.';
+    }
+    return 'No pude registrar la solicitud de apoyo humano en este momento. Conserve el contexto de tu consulta.';
+  }
+
+  private selectTerminalHandoffMessage(reason: string, requested: boolean, outcome: string | null | undefined): string {
+    if (reason === 'phone_information_not_found') {
+      if (requested) {
+        return 'No pude localizar tu compra con este número en la consulta disponible; ya solicité apoyo humano para revisarla.';
+      }
+      if (outcome === 'outcome_unknown') {
+        return 'No pude localizar tu compra con este número en la consulta disponible. No pude comprobar si se registró la solicitud de apoyo humano; conservé tu consulta sin reintentarla automáticamente.';
+      }
+      return 'No pude localizar tu compra con este número en la consulta disponible. No pude registrar la solicitud de apoyo humano en este momento; conservé tu consulta.';
+    }
+    if (requested) return handoffMessages.requested;
+    if (outcome === 'outcome_unknown') return handoffMessages.unknown;
+    return handoffMessages.failed;
+  }
+
   private conversationHealthHelpOfferMessage(): string {
     return 'Siento que no estamos avanzando como deberíamos. ¿Quieres que una persona del equipo se una a esta conversación para ayudarte?';
   }
@@ -8024,6 +8070,72 @@ export class AgentService {
   }
 
   /**
+   * D1: unclear phone evidence is equivalent to absent. yes/no are actionable
+   * only where typed auth state makes them relevant; otherwise ignored.
+   * D2: explicit human routing requires typed humanHelpIntent evidence.
+   */
+  private isAbsentPhoneConfirmation(value: ExtractionResult['phoneConfirmation']): boolean {
+    return value == null || value === 'unclear';
+  }
+
+  private isPhoneConfirmationRelevant(plan: PlanSnapshot, extraction: ExtractionResult): boolean {
+    if (plan.user_auth.awaiting_phone_confirmation) return true;
+    if (plan.user_auth.status !== 'none') return true;
+    if (plan.user_auth.auth_method != null) return true;
+    if (plan.information_state.pending_requests.some((request) => request.kind === 'purchase' || request.kind === 'associated_event')) return true;
+    if (extraction.informationRequests.some((request) => request.kind === 'purchase' || request.kind === 'associated_event')) return true;
+    return false;
+  }
+
+  private effectivePhoneConfirmation(plan: PlanSnapshot, extraction: ExtractionResult): 'yes' | 'no' | null {
+    const raw = extraction.phoneConfirmation ?? null;
+    if (raw == null || raw === 'unclear') return null;
+    if (!this.isPhoneConfirmationRelevant(plan, extraction)) return null;
+    return raw;
+  }
+
+  private isPureShortlistTurn(plan: PlanSnapshot, extraction: ExtractionResult): boolean {
+    const candidateCount = plan.provider_needs.reduce((total, need) => total + need.recommended_providers.length, 0);
+    if (candidateCount < 2) return false;
+    const hasProtectedRequest = extraction.informationRequests.some((request) => request.kind === 'purchase' || request.kind === 'associated_event') ||
+      plan.information_state.pending_requests.some((request) => request.kind === 'purchase' || request.kind === 'associated_event');
+    if (hasProtectedRequest) return false;
+    if (plan.user_auth.awaiting_phone_confirmation) return false;
+    if (plan.user_auth.status !== 'none') return false;
+    return true;
+  }
+
+  private isOfferPending(plan: PlanSnapshot): boolean {
+    return plan.conversation_health.help_offer_status === 'offered';
+  }
+
+  private effectiveHumanHelpIntent(plan: PlanSnapshot, extraction: ExtractionResult): 'none' | 'request' | 'accept_offer' | 'retry' | 'decline_offer' {
+    const raw = extraction.humanHelpIntent ?? null;
+    if (raw == null) return 'none';
+    if (raw === 'accept_offer' && !this.isOfferPending(plan)) return 'none';
+    return raw;
+  }
+
+  private isExplicitHumanRequest(plan: PlanSnapshot, extraction: ExtractionResult): boolean {
+    const intent = this.effectiveHumanHelpIntent(plan, extraction);
+    if (intent === 'request' || intent === 'retry') return extraction.actionIntent === 'solicitar_humano';
+    if (intent === 'accept_offer') return extraction.actionIntent === 'solicitar_humano' && this.isOfferPending(plan);
+    // Legacy extractions without the typed field: actionIntent alone routes
+    // unless a support act claims the turn (mailbox report alone stays support).
+    if (extraction.humanHelpIntent == null) {
+      if (extraction.actionIntent !== 'solicitar_humano') return false;
+      if (extraction.supportAct != null) return false;
+      return true;
+    }
+    return false;
+  }
+
+  private isSupportWinOverHuman(plan: PlanSnapshot, extraction: ExtractionResult): boolean {
+    if (extraction.supportAct == null) return false;
+    return !this.isExplicitHumanRequest(plan, extraction);
+  }
+
+  /**
    * A confirmation turn carries no actionable delta: no information/support/
    * RSVP/provider/contact work and no selection reference. Plan-echoed
    * context (eventType, active need, guest range) does not count as a
@@ -8032,7 +8144,8 @@ export class AgentService {
   private hasNoConfirmationDelta(extraction: ExtractionResult): boolean {
     return extraction.informationRequests.length === 0 &&
       extraction.supportAct == null &&
-      extraction.phoneConfirmation == null &&
+      this.isAbsentPhoneConfirmation(extraction.phoneConfirmation) &&
+      (extraction.humanHelpIntent == null || extraction.humanHelpIntent === 'none') &&
       extraction.rsvpAction == null &&
       extraction.rsvpEventReference == null &&
       (extraction.providerQueryIntents?.length ?? 0) === 0 &&

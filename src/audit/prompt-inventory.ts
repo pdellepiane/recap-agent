@@ -97,6 +97,20 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       loader: 'PromptLoader.loadHostWithdrawalMessages -> AgentService.handleHostWithdrawalInformation (no model call)',
     });
   }
+  if (filePath === 'nodes/resolver_consultas_informativas/handoff_outcomes.json') {
+    consumers.push({
+      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
+      profiles: [], transitions: ['information:terminal_handoff', 'information:phone_information_not_found', 'human:explicit_request'],
+      loader: 'AgentService escalateInformationAuthentication/selectTerminalHandoffMessage + selectExplicitHumanMessage (no model call)',
+    });
+  }
+  if (filePath === 'nodes/resolver_consultas_informativas/auth_control.txt') {
+    consumers.push({
+      callType: 'deterministic_reply', nodes: ['resolver_consultas_informativas'],
+      profiles: [], transitions: ['information:auth_control'],
+      loader: 'AgentService effectivePhoneConfirmation/isPhoneConfirmationRelevant (auth-only guidance, no model call)',
+    });
+  }
   if (filePath.startsWith('shared/')) {
     const nodes = decisionNodes.filter((node) =>
       conversationPromptFilesForNode(node).includes(filePath as never),

@@ -323,6 +323,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       reportedEventRole: extraction.reportedEventRole ?? null,
       informationRequests,
       supportAct: extraction.supportAct ?? null,
+      humanHelpIntent: extraction.humanHelpIntent ?? null,
       normalizationIssues,
       phoneConfirmation: extraction.phoneConfirmation ?? null,
       rsvpAction: extraction.rsvpAction ?? null,

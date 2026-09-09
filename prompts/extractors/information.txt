@@ -24,8 +24,10 @@ En compras llena `eventHint`/`amount` si son explícitos. No uses `payment_detai
 
 Autenticación de consultas personales
 
-Compras/eventos: número confiable. `phoneConfirmation=no` si niega la cuenta (no `decline_authentication`); `yes` explícito, `unclear` ambiguo. Con `code_requested` conserva consulta: código `provide_otp`; no me llega `report_otp_not_received` (nunca vacío); reenvío `resend_otp`; cambio `change_email`; sin cuenta `accountless_user`; negarse `decline_authentication`; antes del código `provide_email`. Códigos solo en `authAction`.
+Compras/eventos: número confiable. `phoneConfirmation=no` si niega cuenta; `yes` explícito, `unclear`=ausente. `yes`/`no` solo con auth activa o pedido protegido; en selección pura se omiten. `code_requested`: conserva consulta; códigos solo en `authAction`.
 
-“Ya envié el regalo” sin pedido no crea consulta ni cierre. Una pregunta sobre capacidad no es solicitud de atencion humana; pregunta si puedes leer una fotografia es FAQ y pedir persona sí es `solicitar_humano`. “Y el evento es Baby Shower Catalina” => `actionIntent=null`.
+Ayuda: `humanHelpIntent=none|request|accept_offer|retry|decline_offer`. Solo `request`/`retry` piden persona; `accept_offer` solo con oferta pendiente. Buzón lleno=`supportAct`+`none`+`actionIntent=null`.
+
+“Ya envié el regalo” sin pedido no crea consulta. Capacidad no es pedido humano; foto es FAQ, pedir persona es `solicitar_humano`+`request`. “Y el evento es Baby Shower Catalina”=>`actionIntent=null`.
 
 Conserva literalmente el nombre del evento citado y continúa el problema con el siguiente paso necesario.

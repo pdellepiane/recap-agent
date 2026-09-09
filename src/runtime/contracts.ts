@@ -8,6 +8,7 @@ import type { ToolInputTrace } from '../core/trace';
 import type { TurnDecision } from '../core/turn-decision';
 import type {
   ExtractedInformationRequest,
+  HumanHelpIntent,
   InformationNormalizationIssue,
   InformationSupportAct,
   InformationTaskResult,
@@ -54,6 +55,7 @@ export type ExtractionResult = {
   requestedOperation?: RequestedOperation | null;
   informationRequests: ExtractedInformationRequest[];
   supportAct?: InformationSupportAct | null;
+  humanHelpIntent?: HumanHelpIntent | null;
   normalizationIssues?: InformationNormalizationIssue[];
   phoneConfirmation?: PhoneConfirmation | null;
   rsvpAction?: RsvpAction | null;

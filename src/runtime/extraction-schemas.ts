@@ -12,6 +12,7 @@ import {
   purchaseResourceValues,
   sensitivePurchaseFieldValues,
   phoneConfirmationValues,
+  humanHelpIntentSchema,
   informationSupportActSchema,
   type InformationSupportAct,
 } from '../core/information';
@@ -158,6 +159,7 @@ export const extractionSchema = z.object({
   requestedOperation: requestedOperationSchema.nullable().default(null),
   informationRequests: z.array(openAiInformationRequestSchema).default([]),
   supportAct: informationSupportActSchema.nullable().default(null),
+  humanHelpIntent: humanHelpIntentSchema.nullable().default(null),
   phoneConfirmation: z.enum(phoneConfirmationValues).nullable().default(null),
   rsvpAction: z.enum(rsvpActionValues).nullable().default(null),
   rsvpDecisionSource: z.enum(rsvpDecisionSourceValues).default('plan_state').catch('plan_state'),
@@ -229,6 +231,7 @@ export function createDynamicExtractionSchema(args: {
           informationRequests: extractionSchema.shape.informationRequests,
           reportedEventRole: extractionSchema.shape.reportedEventRole,
           phoneConfirmation: extractionSchema.shape.phoneConfirmation,
+          humanHelpIntent: extractionSchema.shape.humanHelpIntent,
           supportAct: extractionSchema.shape.supportAct,
         }
       : {}),
