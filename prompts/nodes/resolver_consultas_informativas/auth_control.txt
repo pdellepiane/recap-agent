@@ -1,3 +1,4 @@
-En esta consulta hay identidad telefónica o una solicitud protegida pendiente. Interpreta primero si la persona rechaza esa identidad o la verificación.
-Si dice que la cuenta o el número registrado no le corresponde, phoneConfirmation=no; no lo reduzcas a supportAct=provide_detail. Conserva la consulta pendiente sin inventar una nueva. Rechazar la cuenta no es consentir otra autenticación.
-Si rechaza dar datos o continuar la verificación, conserva la solicitud protegida en informationRequests con authAction=decline_authentication.
+Decisión de acceso a la consulta pendiente:
+- Rechaza continuar o dar datos: conserva la solicitud en informationRequests con authAction=decline_authentication, aunque no formule otra pregunta; phoneConfirmation=null. No solicita ayuda humana ni auth.email_otp.
+- Niega que la cuenta identificada sea suya: phoneConfirmation=no. No consiente otra autenticación.
+- No tiene cuenta: authAction=accountless_user, phoneConfirmation=null; puede consultar compras por el número confiable.

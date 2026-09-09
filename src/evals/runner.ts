@@ -930,6 +930,12 @@ function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
     const executions = turn.trace.information_execution_summary
       .map((entry) => `${entry.requestId}:${entry.kind}:${entry.status}:${entry.outcomeCode}`)
       .join(',');
+    const extraction = turn.trace.extraction_summary;
+    const rsvpAction = extraction !== null && typeof extraction === 'object' &&
+      'rsvp_action' in extraction && typeof extraction.rsvp_action === 'string'
+      ? extraction.rsvp_action : 'none';
+    const effectEvidence = getEvaluationFixtureEffects(turn);
+    const effectFacts = effectEvidence === null ? 'not_emitted' : JSON.stringify(effectEvidence);
     const closeSummary = turn.trace.finish_plan_summary;
     const receipts = (turn.trace.provider_quote_receipts ?? [])
       .map((entry) => `${entry.providerId}:${entry.resultStatus}:${entry.eventDate}`)
@@ -946,6 +952,9 @@ function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
       `transicion=${turn.trace.previous_node}->${turn.trace.next_node} ` +
       `auth=${plan.user_auth.status} ` +
       `handoff=${plan.human_escalation.status} ` +
+      `rsvp_pending_flow=${plan.rsvp_state?.status ?? 'none'} ` +
+      `rsvp_requested_action=${rsvpAction} ` +
+      `verified_fixture_effects=${effectFacts} ` +
       `plan_guardado=${turn.trace.plan_persisted ? 'si' : 'no'}:${turn.trace.plan_persist_reason ?? 'sin-motivo'} ` +
       `seleccion_hints=${selection.selected_provider_hints_count} ` +
       `operaciones_proveedor=[${selection.provider_plan_operation_types.join(',')}] ` +

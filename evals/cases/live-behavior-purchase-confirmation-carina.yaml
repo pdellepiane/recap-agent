@@ -1,21 +1,34 @@
 template: template.base-live
 id: live_behavior.purchase_confirmation_carina_request_survives_normalization
 suite: live_behavior_regression
-version: 1
-description: Reconstruct the repeated payment-confirmation requests after the current-event campaign without silently losing neutral authentication actions.
-tags: [live, behavior, reported-interaction, purchase, normalization, carina]
-targetModes: [live_lambda]
+version: 2
+description: Preserve both original ambiguous document/status requests, then
+  resolve an explicit status-and-amount clarification against the current event.
+tags:
+  - live
+  - behavior
+  - reported-interaction
+  - purchase
+  - normalization
+  - carina
+targetModes:
+  - live_lambda
 seedPlan:
-  conversation_summary: 'The preceding abandoned-cart campaign concerned a gift for ANDREA & RODRIGO. No payment status has been verified in this conversation.'
+  conversation_summary: The preceding abandoned-cart campaign concerned a gift for
+    ANDREA & RODRIGO. No payment status has been verified in this conversation.
 backendFixture:
   scenario: purchase-confirmation-carina
 inputs:
   - text: Me podrían mandar una conformidad de pago
     channel: whatsapp
-    contactPhone: '+51900000301'
+    contactPhone: "+51900000301"
   - text: Quisiera que me manden una conformidad de pago, compré un regalo
     channel: whatsapp
-    contactPhone: '+51900000301'
+    contactPhone: "+51900000301"
+  - text: Solo quiero consultar el estado registrado y el monto de mi regalo para
+      ANDREA & RODRIGO, no que envíen un documento.
+    channel: whatsapp
+    contactPhone: "+51900000301"
 expectations:
   - id: ambiguous-request-clarifies-before-lookup
     type: trace_field_equals
@@ -32,44 +45,73 @@ expectations:
   - id: ambiguous-request-no-external-call
     type: tool_usage
     mustCall: []
-    mustNotCall: [lookup_guest_orders_by_phone, lookup_guest_gift_purchases_by_phone,
-      request_user_login_code, verify_user_login_code, auth_by_phone,
-      request_human_takeover]
+    mustNotCall:
+      - lookup_guest_orders_by_phone
+      - lookup_guest_gift_purchases_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - auth_by_phone
+      - request_human_takeover
     turnIndex: 0
     severity: hard
   - id: asks-one-status-or-document-question
     type: text_semantic
-    rubric: >-
-      Ask exactly one concise clarification in Spanish distinguishing a request to consult
-      the recorded payment status from a request to have a payment confirmation document sent.
-      Do not look up either purchase, start authentication, greet generically, select the old
-      Micaela & Gonzalo purchase, assume currency, expose internal IDs, or claim that a document
-      was sent. The clarification should not assert that the current order is approved before
-      the user identifies the desired operation.
+    rubric: Ask exactly one concise clarification in Spanish distinguishing a
+      request to consult the recorded payment status from a request to have a
+      payment confirmation document sent. Do not look up either purchase, start
+      authentication, greet generically, select the old Micaela & Gonzalo
+      purchase, assume currency, expose internal IDs, or claim that a document
+      was sent. The clarification should not assert that the current order is
+      approved before the user identifies the desired operation.
     turnIndex: 0
     requireJudge: true
     minScore: 0.9
     severity: hard
   - id: clarified-request-looks-up-current-order
     type: tool_usage
-    mustCall: [lookup_guest_orders_by_phone]
-    mustNotCall: [request_user_login_code, verify_user_login_code, auth_by_phone,
-      request_human_takeover]
-    turnIndex: 1
+    mustCall:
+      - lookup_guest_orders_by_phone
+    mustNotCall:
+      - request_user_login_code
+      - verify_user_login_code
+      - auth_by_phone
+      - request_human_takeover
+    turnIndex: 2
     severity: hard
   - id: answer-current-payment
     type: text_semantic
-    rubric: >-
-      Respond in concise Spanish to the clarified payment-status request for the current
-      ANDREA & RODRIGO purchase. State that the current order is approved and report its
-      recorded amount without inventing a currency. Do not select the old Micaela & Gonzalo
-      purchase, expose internal IDs, claim a document was sent, inspect an uploaded voucher,
-      or start an OTP flow. Continue the conversation rather than sending a generic welcome.
-    turnIndex: 1
+    rubric: Respond in concise Spanish to the clarified payment-status request for
+      the current ANDREA & RODRIGO purchase. State that the current order is
+      approved and report its recorded amount without inventing a currency. Do
+      not select the old Micaela & Gonzalo purchase, expose internal IDs, claim
+      a document was sent, inspect an uploaded voucher, or start an OTP flow.
+      Continue the conversation rather than sending a generic welcome.
+    turnIndex: 2
     requireJudge: true
     minScore: 0.9
     severity: hard
+  - id: repeated-request-does-not-authorize-document-or-otp
+    type: tool_usage
+    turnIndex: 1
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+      - request_human_takeover
+    severity: hard
+  - id: repeated-request-retains-operation-ambiguity
+    type: text_semantic
+    turnIndex: 1
+    rubric: The user repeats a request for payment confirmation without clearly
+      choosing a status lookup or document delivery. A concise
+      status-versus-document clarification is correct. A grounded status answer
+      is also permissible, but the assistant must not claim a document was sent,
+      invent purchase details, request OTP, or claim payment verification from
+      an image.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
 budget:
-  maxTurns: 2
+  maxTurns: 3
   estimatedPromptTokensPerTurn: 1800
   estimatedCompletionTokensPerTurn: 240

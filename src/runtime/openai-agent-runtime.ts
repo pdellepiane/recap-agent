@@ -247,7 +247,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       const capabilities = {
         ...extractionCapabilities,
       };
-      const bundle = await this.options.promptLoader.loadExtractorBundle(capabilities);
+      const baseBundle = await this.options.promptLoader.loadExtractorBundle(capabilities);
+      const hasProtectedContext = request.plan.user_auth.auth_method === 'phone' ||
+        request.plan.information_state.pending_requests.some((pending) =>
+          pending.kind === 'purchase' || pending.kind === 'associated_event');
+      const authBundle = hasProtectedContext
+        ? await this.options.promptLoader.loadAuthControlBundle() : null;
+      const bundle = authBundle ? {
+        ...baseBundle,
+        id: `${baseBundle.id}:${authBundle.id}`,
+        instructions: `${baseBundle.instructions}\n\n${authBundle.instructions}`,
+        filePaths: [...baseBundle.filePaths, ...authBundle.filePaths],
+      } : baseBundle;
       const outputSchema = createDynamicExtractionSchema({
         allowedActionIntents,
         capabilities,

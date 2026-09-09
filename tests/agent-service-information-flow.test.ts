@@ -3031,3 +3031,19 @@ function providerGateway(options?: {
     },
   };
 }
+
+
+it('keeps an accountless purchase read even when extraction also emits phone rejection without phone authentication', async () => {
+  const request = { ...purchaseRequest(null), resource: 'orders' as const, authAction: 'accountless_user' as const };
+  const runtime = new InformationRuntime([extraction([request], null, null, 'no')]);
+  const gateway = new FakePurchaseGateway();
+  gateway.guestOrdersResult = { status: 'success', resource: 'orders', purchases: [purchase('order-fixture')] };
+  const service = createService({ runtime, knowledgeGateway: new FakeKnowledgeGateway(),
+    purchaseGateway: gateway, providerGateway: providerGateway() });
+  const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'accountless-conflict',
+    text: 'No tengo cuenta. Quiero consultar mi regalo.', contactPhone: '+51900000990',
+    messageId: 'accountless-conflict-1', receivedAt: new Date().toISOString() });
+  expect(gateway.takeoverCalls).toBe(0);
+  expect(gateway.guestOrdersCalls).toBe(1);
+  expect(response.trace.tools_called).not.toContain('auth_by_phone');
+});

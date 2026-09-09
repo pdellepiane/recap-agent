@@ -8204,6 +8204,11 @@ export class AgentService {
   private effectivePhoneConfirmation(plan: PlanSnapshot, extraction: ExtractionResult): 'yes' | 'no' | null {
     const raw = extraction.phoneConfirmation ?? null;
     if (raw == null || raw === 'unclear') return null;
+    const accountlessRead = extraction.informationRequests.some((request) =>
+      (request.kind === 'purchase' || request.kind === 'associated_event') &&
+      request.authAction === 'accountless_user');
+    if (accountlessRead && plan.user_auth.auth_method !== 'phone' &&
+      !plan.user_auth.awaiting_phone_confirmation) return null;
     if (!this.isPhoneConfirmationRelevant(plan, extraction)) return null;
     return raw;
   }

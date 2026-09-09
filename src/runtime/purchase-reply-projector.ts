@@ -162,7 +162,7 @@ function toOrderView(
   // approved summary never needs the method type.
   const wantsMethod = requested.has('payment_details') ||
     requested.has('validation_window');
-  const total = trustedAmount(purchase.grandTotal);
+  const total = disclosedPurchaseTotal(purchase);
   const paid = trustedAmount(purchase.payment?.amount);
   const reportedAmount = typeof userReported.amount === 'number' &&
       Number.isFinite(userReported.amount)
@@ -218,7 +218,7 @@ function toCandidateView(
     eventName: trustedText(purchase.eventName),
     eventDate: preserveServerTimestamp(purchase.eventDate),
     paymentStatus: purchase.paymentStatus,
-    amount: trustedAmount(purchase.grandTotal),
+    amount: disclosedPurchaseTotal(purchase),
     transactionReference: referenceAuthorized
       ? trustedText(purchase.customerTransactionNumber)
       : null,
@@ -465,14 +465,18 @@ export function renderNeutralPurchaseSelection(
   purchases: PurchaseInformation[],
 ): string {
   const options = purchases.map((purchase, index) => {
-    const total = trustedAmount(purchase.grandTotal);
-    const method = trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null);
+    const total = disclosedPurchaseTotal(purchase);
+    const method = disclosedPurchaseMethod(purchase);
     const when = preserveServerTimestamp(purchase.eventDate) ??
       preserveServerTimestamp(purchase.createdAt) ??
-      'fecha no registrada';
-    const amount = total !== null ? `monto ${total}` : 'monto no registrado';
-    const via = method ? ` mediante ${method}` : '';
-    return `opción ${index + 1}: ${amount}${via}, fecha ${when}, estado ${describeSelectionStatus(purchase.paymentStatus)}`;
+      null;
+    const fields = [
+      total !== null ? `monto ${total}` : null,
+      method ? `mediante ${method}` : null,
+      when ? `fecha ${when}` : null,
+      purchase.paymentStatus ? `estado ${describeSelectionStatus(purchase.paymentStatus)}` : null,
+    ].filter((field): field is string => field !== null);
+    return `opción ${index + 1}${fields.length ? `: ${fields.join(', ')}` : ''}`;
   }).join('; ');
   return `Encontré ${purchases.length} registros asociados a este número: ${options}. ¿A cuál te refieres?`;
 }
@@ -660,7 +664,11 @@ export function renderReportedPendingInitial(args: {
   const totalClause = args.total !== null ? ` por ${args.total}` : '';
   const method = formatPaymentMethod(args.paymentMethod);
   const methodClause = method !== null ? ` mediante ${method}` : '';
-  return `El pedido de ${event}${totalClause}${methodClause} sigue pendiente. Tomo el monto que me indicas como tu reporte; el registro conserva su propio total.`;
+  const mismatch = args.total !== null && args.reportedAmount !== null &&
+    Math.abs(args.total - args.reportedAmount) >= 0.005;
+  const report = mismatch
+    ? ` Indicas haber enviado ${args.reportedAmount}; ese dato no modifica el total registrado.` : '';
+  return `El pedido de ${event}${totalClause}${methodClause} sigue pendiente.${report}`;
 }
 
 export function renderReportedShortfallPending(args: {
@@ -681,14 +689,18 @@ function describeCapabilitySelectionOptions(
   purchases: PurchaseInformation[],
 ): string {
   return purchases.map((purchase, index) => {
-    const total = trustedAmount(purchase.grandTotal);
-    const method = trustedText(purchase.paymentMethod ?? purchase.payment?.method ?? null);
+    const total = disclosedPurchaseTotal(purchase);
+    const method = disclosedPurchaseMethod(purchase);
     const when = preserveServerTimestamp(purchase.eventDate) ??
       preserveServerTimestamp(purchase.createdAt) ??
-      'fecha no registrada';
-    const amount = total !== null ? `monto ${total}` : 'monto no registrado';
-    const via = method ? ` mediante ${method}` : '';
-    return `opción ${index + 1}: ${amount}${via}, fecha ${when}, estado ${describeSelectionStatus(purchase.paymentStatus)}`;
+      null;
+    const fields = [
+      total !== null ? `monto ${total}` : null,
+      method ? `mediante ${method}` : null,
+      when ? `fecha ${when}` : null,
+      purchase.paymentStatus ? `estado ${describeSelectionStatus(purchase.paymentStatus)}` : null,
+    ].filter((field): field is string => field !== null);
+    return `opción ${index + 1}${fields.length ? `: ${fields.join(', ')}` : ''}`;
   }).join('; ');
 }
 

@@ -22,6 +22,7 @@ import {
 import { projectSafeTrace } from '../src/runtime/artifact-redaction';
 import type { EvalCase, EvalTurnResult } from '../src/evals/case-schema';
 import { createEmptyPlan } from '../src/core/plan';
+import { attachEvaluationState } from '../src/evals/evaluation-state';
 
 function makeTurn(overrides: Partial<EvalTurnResult> = {}): EvalTurnResult {
   const plan = createEmptyPlan({ planId: 'p1', channel: 'whatsapp', externalUserId: 'u1' });
@@ -294,7 +295,21 @@ describe('F judge context isolation and digest gate', () => {
     const candidateSection = ctx.split('CANDIDATE RESPONSE')[1]?.split('PRIOR ASSISTANT')[0] ?? '';
     expect(candidateSection).toContain('Ya solicite apoyo humano');
     expect(ctx).toContain('plan_guardado=si');
+    expect(ctx).toContain('rsvp_pending_flow=none');
     expect(ctx).toMatch(/no especules falta de persistencia/i);
+  });
+
+  it('provides verified RSVP effect outcomes without relying on a tool-name claim', () => {
+    const turn = makeTurn();
+    const plan = createEmptyPlan({ planId: 'effect-evidence', channel: 'whatsapp', externalUserId: 'fixture' });
+    attachEvaluationState(turn, { plan, input: turn.input, outputText: turn.outputText,
+      fixtureEffects: [{ operation: 'rsvp.write', attempts: 1, successes: 1, replays: 0,
+        outcome: 'success', receiptPresent: true }] });
+    const context = buildSemanticJudgeContext([turn], 0);
+    expect(context).toContain('rsvp_pending_flow=none');
+    expect(context).toContain('"operation":"rsvp.write"');
+    expect(context).toContain('"successes":1');
+    expect(context).toContain('"receiptPresent":true');
   });
 
   it('hashes serialized judge request and validates strictly', async () => {

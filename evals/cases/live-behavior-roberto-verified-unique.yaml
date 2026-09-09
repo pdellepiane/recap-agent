@@ -1,10 +1,20 @@
 template: template.base-live
 id: live_behavior.roberto_verified_unique_rsvp_writes_once
 suite: live_behavior_regression
-version: 1
-description: Companion to the Roberto mismatch. The same attending decision resolves to one uniquely verified invitation from trusted phone lookups, so the agent executes exactly one authorized RSVP write and reports the verified outcome.
-tags: [live, behavior, rsvp, reminder, verified-invitation, roberto-screenshot]
-targetModes: [live_lambda]
+version: 2
+description: Companion to the Roberto mismatch. The same attending decision
+  resolves to one uniquely verified invitation from trusted phone lookups, so
+  the agent executes exactly one authorized RSVP write and reports the verified
+  outcome.
+tags:
+  - live
+  - behavior
+  - rsvp
+  - reminder
+  - verified-invitation
+  - roberto-screenshot
+targetModes:
+  - live_lambda
 inputs:
   - text: Si, confirmo que asistire a Cumple Marcelo
     channel: whatsapp
@@ -15,22 +25,42 @@ backendFixture:
 expectations:
   - id: verified-unique-writes-rsvp-once
     type: tool_usage
-    mustCall: [lookup_rsvp_invitations, guest_rsvp]
-    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    mustCall:
+      - lookup_rsvp_invitations
+      - guest_rsvp
+    mustNotCall:
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
     severity: hard
   - id: verified-unique-reports-verified-outcome
     type: text_semantic
-    rubric: >-
-      The reply must be entirely in Spanish and report the verified attending outcome for
-      the literal event Cumple Marcelo from the trusted lookup result. It must not deny the
-      invitation, must not claim human escalation as the outcome, and must not use RSVP
-      vocabulary.
+    rubric: The reply must be in Spanish and report the verified attending outcome
+      for the literal event Cumple Marcelo. Successful rsvp.write receipt and
+      the extracted attending action establish the outcome; do not require an
+      information lookup execution to prove a write. Do not deny the invitation,
+      claim human escalation, or use the literal technical acronym RSVP.
+      Ordinary Spanish attendance language is allowed.
     minScore: 0.9
     requireJudge: true
     severity: hard
   - id: verified-unique-uses-no-rsvp-vocabulary
     type: text_not_contains
-    phrases: ["RSVP", "rsvp"]
+    phrases:
+      - RSVP
+      - rsvp
+    severity: hard
+  - id: verified-attendance-clears-pending-flow
+    type: plan_field_equals
+    path: rsvp_state.status
+    expected: none
+    severity: hard
+  - id: verified-attendance-one-effect
+    type: fixture_effect_count
+    operation: rsvp.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
     severity: hard
 budget:
   maxTurns: 1

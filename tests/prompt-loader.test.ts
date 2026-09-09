@@ -278,7 +278,7 @@ describe('PromptLoader', () => {
       '`accept_offer` solo con oferta pendiente',
     );
     expect(extractorBundle.instructions).toContain(
-      '`phoneConfirmation=no` si niega cuenta',
+      '`phoneConfirmation=no` si rechaza la identidad asociada',
     );
     expect(extractorBundle.instructions).toContain(
       '`unclear`=ausente',

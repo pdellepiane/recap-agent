@@ -111,6 +111,10 @@ export function summarizeBundleDelta(
 export class PromptLoader {
   constructor(private readonly promptsDir: string) {}
 
+  async loadAuthControlBundle(): Promise<PromptBundle> {
+    return this.load(['nodes/resolver_consultas_informativas/auth_control.txt'], []);
+  }
+
   async loadImageBundle(): Promise<PromptBundle> {
     return this.load(['nodes/resolver_consultas_informativas/image_inspection.txt'], []);
   }
