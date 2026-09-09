@@ -98,6 +98,30 @@ expectations:
     minScore: 0.9
     requireJudge: true
     severity: hard
+  - id: turn0-auth-episode-ended-handoff-confirmed
+    type: text_semantic
+    turnIndex: 0
+    rubric: >-
+      The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+  - id: turn0-handoff-effect
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
+  - id: final-handoff-effect-unchanged
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 2
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
+    severity: hard
 budget:
   maxTurns: 3
   estimatedPromptTokensPerTurn: 1800

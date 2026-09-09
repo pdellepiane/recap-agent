@@ -65,9 +65,16 @@ expectations:
   - id: first-nondelivery-handoff-language-has-no-resend-loop
     type: text_semantic
     rubric: >-
-      This is the first report that the one-time code did not arrive during a protected purchase query under the one-shot OTP policy. Pass only if the assistant says in natural Spanish that human support has now been requested and leaves the conversation with that team. It must not resend a code, ask whether to resend, request another email, repeat inbox instructions, claim authentication succeeded, lose the pending purchase question, or say that a new code is on its way.
+      The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.
     minScore: 0.9
     requireJudge: true
+    severity: hard
+  - id: nondelivery-handoff-effect
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
     severity: hard
 budget:
   maxTurns: 1

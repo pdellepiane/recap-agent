@@ -60,9 +60,16 @@ expectations:
   - id: ends-code-delivery-loop
     type: text_semantic
     rubric: >-
-      The user reports for a second time that the one-time code has not arrived after the system already resent it once. Pass only if the assistant confirms in natural Spanish that human support has now been requested and leaves the conversation with that team. It must not ask for another email or code, repeat inbox instructions, claim authentication succeeded, or invent an answer to the protected event question.
+      The authentication episode has ended and the handoff gateway confirmed the support request. In Spanish, say human help has been requested. Do not offer another code, resend, email change or authentication attempt, claim authentication succeeded, or answer the protected question. It is not necessary to say a person has already joined or to repeat the pending question; state assertions verify preservation.
     minScore: 0.9
     requireJudge: true
+    severity: hard
+  - id: exhausted-handoff-effect
+    type: fixture_effect_count
+    operation: handoff.write
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
     severity: hard
 budget:
   maxTurns: 1

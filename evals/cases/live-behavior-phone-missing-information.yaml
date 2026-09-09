@@ -44,15 +44,25 @@ expectations:
   - id: scoped-missing-data-handoff-not-account-login
     type: text_semantic
     rubric: >-
-      The user asks whether their purchase is confirmed and has no registered account.
-      The trusted-phone fixture has no orders or carts, and human takeover succeeds.
-      Reply in Spanish that the requested information was not found associated with
-      this number and human support was requested to continue the purchase query.
-      Do not ask for email or OTP, globally deny that a purchase exists, claim a payment
-      status, or promise a guaranteed response time. Preserve the user's purchase question.
+      The scoped lookup could not locate this purchase. In Spanish, briefly explain that limitation and that human help was requested to continue this purchase query. Do not claim the purchase does not exist globally, assert payment status, ask for email or OTP, or guarantee response timing. The full pending question need not be repeated.
     minScore: 0.9
     requireJudge: true
     turnIndex: 0
+    severity: hard
+  - id: scoped-lookup-not-found-outcome
+    type: trace_field_subset
+    path: information_execution_summary
+    expected:
+      - outcomeCode: not_found
+    turnIndex: 0
+    severity: hard
+  - id: missing-purchase-handoff-effect
+    type: fixture_effect_count
+    operation: handoff.write
+    turnIndex: 0
+    expectedAttempts: 1
+    expectedSuccesses: 1
+    expectedReplays: 0
     severity: hard
 budget:
   maxTurns: 2
