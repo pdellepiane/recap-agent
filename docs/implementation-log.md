@@ -9646,3 +9646,11 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 **Decision:** No production behavior change. Added `docs/plan/2026-09-09-lean-conversation/outbound-inventory.md` (20 `deterministic:` bundle sites, 4 post-generation `enforce*` rewrites, RSVP merge block, 9 purchase renderers, renderer dictionaries, guardrail fallback, vocabulary substitution, trailing-period deletion, request-assembly gaps) and `evaluation-manifest.md` (HEAD `a8e443ab`, contract digest `8b9363aa…`, dev CodeSha256 `2q9MtDjN…`, frozen thresholds, in-flight baseline run `eval-2026-09-09T22-54-06-714Z-1674f810`). Pre-existing uncommitted `prompts/extractors/information.txt` edit preserved untouched.
 
 **Evidence:** Inventory cites exact file/line for every path; manifest records gate rule (zero failed/errored/skipped) and known telemetry gaps (E10/E12) that block any future size comparison until closed.
+
+## 2026-09-09 — L1 lean-conversation: composition seam + support continuity (main)
+
+**Reason:** Plan L1 requires one model-composition entry, an output-origin invariant, rendering restricted to layout, and representative support outcomes on very short prompts.
+
+**Decision:** New `src/runtime/model-composition.ts` (`composeModelReply`, content-based `assertModelOrigin`, documented transport transforms, typed `ModelComposedFailureError`). `reply-evidence-projector.ts` drops `ReplyMode`/`deterministicText`/fallback for `ReplyDisposition` (`suppressed | composed | operational_failure`) with `resolveComposedReply`. `handleSupportAcknowledgment` now composes through `loadSupportContinuityBundle` (~0.6 KB vs ~13.8 KB node bundle) with origin-checked delivery; composition failure yields typed `failure` outbound (new channel-contract action, no canned prose). Removed Spanish vocabulary substitution, trailing-period deletion, and the jailbreak-tripwire canned paragraph. `selectSupportAcknowledgmentMessage` is now dead (kept for L2 deletion with its tests).
+
+**Evidence:** New `tests/model-output-origin.test.ts` (6 tests: two sentinels survive end-to-end, replacement/appended-question fail, unmigrated passthrough, transform allowlist); rewritten s10/E07/template-literal expectations; full suite 145 files / 1168 passed, typecheck + lint clean, coverage registry test passes with new `l1-model-composed-support-acknowledgment` entry.
