@@ -83,7 +83,7 @@ const contactFieldPresenceSchema = z.object({
   phone: z.boolean(),
 });
 
-const turnTraceSchema = z.object({
+export const turnTraceSchema = z.object({
   turn_coordination: z.object({
     wait_ms: z.number().int().nonnegative(),
     attempts: z.number().int().positive(),
@@ -106,7 +106,7 @@ const turnTraceSchema = z.object({
   provider_results: z.array(providerSummarySchema),
   search_strategy: z.string().default('none'),
   close_action_summary: z.object({
-    type: z.enum(['confirm_close', 'defer_need', 'request_contact', 'abandon_plan', 'clarify']).nullable(),
+    type: z.enum(closeActionSchema.shape.type.options).nullable(),
     category: z.string().nullable(),
     reason_preview: z.string().nullable(),
   }).default({

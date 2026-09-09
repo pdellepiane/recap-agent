@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
 import { AgentService } from '../src/runtime/agent-service';
 import { closeActionSchema } from '../src/runtime/close-flow-schemas';
+import { turnTraceSchema } from '../src/evals/case-schema';
 import type { AgentRuntime, ComposeReplyRequest, ComposeReplyResult, ExtractionResult } from '../src/runtime/contracts';
 import { InformationOrchestrator } from '../src/runtime/information-orchestrator';
 import type { KnowledgeRetrievalGateway } from '../src/runtime/knowledge-retrieval-gateway';
@@ -154,6 +155,13 @@ describe('proceed_confirmed close state', () => {
   it('schema accepts the confirmed-proceed discriminant', () => {
     const parsed = closeActionSchema.parse({ type: 'proceed_confirmed', category: null, reason: null });
     expect(parsed.type).toBe('proceed_confirmed');
+  });
+
+  it('eval trace validator cannot drift from the canonical close discriminant', () => {
+    const summaryShape = turnTraceSchema.shape.close_action_summary.unwrap().shape;
+    const traceOptions = (summaryShape.type.unwrap() as { options: readonly string[] }).options;
+    expect(traceOptions).toContain('proceed_confirmed');
+    expect([...traceOptions].sort()).toEqual([...closeActionSchema.shape.type.options].sort());
   });
 
   it('explicit confirmation stays in close handling without reopening auth or contact', async () => {
