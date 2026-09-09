@@ -364,6 +364,8 @@ describe('C terminal auth: 3-turn sequences per outcome', () => {
     expect(first.plan.human_help_receipt).toBeNull();
     expect(first.plan.human_escalation.last_error).toContain('missing_identity');
     expect(first.plan.auth_recovery.terminalReason).toBe('verification_failed');
+    expect(first.outbound.text ?? '').toContain('identidad');
+    expect(first.outbound.text ?? '').not.toContain('solicité apoyo humano');
     expect(offersAnotherOtp(first.outbound.text)).toBe(false);
   });
 });

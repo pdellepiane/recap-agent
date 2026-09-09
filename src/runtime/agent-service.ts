@@ -5880,7 +5880,11 @@ export class AgentService {
       args.tokenUsage.extraction,
     );
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const handoffMessage = this.selectTerminalHandoffMessage(args.reason, requested, receipt?.outcome);
+    const handoffMessage = phoneNumber === null
+      // No inbound phone means no identity to verify and no dispatch target:
+      // state the missing identity truthfully with no help-request claim.
+      ? 'No pude establecer tu identidad con los datos de esta conversación; no se verificó ningún código ni se solicitó apoyo humano. Conservé tu consulta.'
+      : this.selectTerminalHandoffMessage(args.reason, requested, receipt?.outcome);
     return {
       plan: planToSave,
       outbound: this.renderOutbound(

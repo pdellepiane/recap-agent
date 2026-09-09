@@ -427,3 +427,78 @@ describe('S08 frozen wire and gateway contract', () => {
     expect(dedicationWrite.allowedNext).toBe('handoff_once');
   });
 });
+
+describe('E requested reference falls back to bare query text', () => {
+  function referenceGateway(): FakeGateway {
+    const gateway = new FakeGateway();
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      orderPartitions: {
+        pending: [
+          { ...basePurchase({ orderId: 'order-s13-matched-b-01', eventName: 'Evento de prueba B', paymentStatus: 'pending', customerTransactionNumber: '301817' }) },
+        ],
+        completed: [
+          { ...basePurchase({ orderId: 'order-s13-matched-a-01', eventName: 'Evento de prueba A', paymentStatus: 'approved', customerTransactionNumber: '301816' }) },
+        ],
+      },
+      carts: [],
+      purchases: [
+        { ...basePurchase({ orderId: 'order-s13-matched-a-01', eventName: 'Evento de prueba A', paymentStatus: 'approved', customerTransactionNumber: '301816' }) },
+        { ...basePurchase({ orderId: 'order-s13-matched-b-01', eventName: 'Evento de prueba B', paymentStatus: 'pending', customerTransactionNumber: '301817' }) },
+      ],
+    };
+    return gateway;
+  }
+
+  function runQuery(gateway: FakeGateway, query: string, orderId: string | null) {
+    const orchestrator = new InformationOrchestrator({
+      knowledgeGateway: { async search() { throw new Error('unused'); } },
+      providerGateway: {} as ProviderGateway,
+      agentGateway: gateway,
+    });
+    return orchestrator.execute({
+      requests: [{
+        requestId: 'reference-query',
+        kind: 'purchase',
+        resource: 'orders',
+        query,
+        orderId,
+        aspects: ['summary', 'payment_status'],
+        sensitiveFields: [],
+        authAction: 'none',
+      }],
+      authentication: null,
+      authBlock: null,
+      trustedPhone: { phone_extension: '+51', phone_number: '900013002' },
+    });
+  }
+
+  it('narrows a bare COD query to the single matching record', async () => {
+    const execution = await runQuery(referenceGateway(), 'COD301816', null);
+    const result = execution.results[0];
+    expect(result).toMatchObject({ status: 'completed', referenceResolution: 'matched' });
+    if (result?.status === 'completed' && result.kind === 'purchase') {
+      expect(result.purchases.map((purchase) => purchase.eventName)).toEqual(['Evento de prueba A']);
+    }
+  });
+
+  it('keeps every candidate with selection when a bare COD query matches none', async () => {
+    const gateway = new FakeGateway();
+    const noRefA = { ...basePurchase({ orderId: 'order-s13-multiple-a-01', eventName: 'Evento de prueba A', paymentStatus: 'pending', customerTransactionNumber: null }) };
+    const noRefB = { ...basePurchase({ orderId: 'order-s13-multiple-b-01', eventName: 'Evento de prueba B', paymentStatus: 'approved', customerTransactionNumber: null }) };
+    gateway.guestOrdersResult = {
+      status: 'success',
+      resource: 'orders',
+      orderPartitions: { pending: [noRefA], completed: [noRefB] },
+      carts: [],
+      purchases: [noRefA, noRefB],
+    };
+    const execution = await runQuery(gateway, 'COD301816', null);
+    const result = execution.results[0];
+    expect(result).toMatchObject({ status: 'completed', needsSelection: true, referenceResolution: 'unavailable' });
+    if (result?.status === 'completed' && result.kind === 'purchase') {
+      expect(result.purchases).toHaveLength(2);
+    }
+  });
+});

@@ -1003,6 +1003,7 @@ export class InformationOrchestrator {
         evidence.purchases,
         request,
         evidence.partitionByOrderId,
+        lookup.requestedCustomerTransactionNumber,
       );
       const purchases = candidates.purchases;
       // An empty order partition is not a global absence of information: an
@@ -1151,13 +1152,20 @@ export class InformationOrchestrator {
     )) {
       return undefined;
     }
-    const parsedReference = parseOrderReference(request.orderId);
+    const parsedOrderIdReference = parseOrderReference(request.orderId);
+    const parsedQueryReference = parseOrderReference(request.query);
+    // The extractor normally places a bare COD reference in orderId, but a
+    // bare-code query without orderId is still an explicit customer
+    // reference. Only a customer_transaction parse qualifies; anything else
+    // in the query is never treated as a backend id filter.
     const requestedCustomerTransactionNumber =
-      parsedReference?.kind === 'customer_transaction'
-        ? parsedReference.transactionNumber
-        : null;
-    const lookupOrderId = parsedReference?.kind === 'backend_order_id'
-      ? parsedReference.orderId
+      parsedOrderIdReference?.kind === 'customer_transaction'
+        ? parsedOrderIdReference.transactionNumber
+        : parsedQueryReference?.kind === 'customer_transaction'
+          ? parsedQueryReference.transactionNumber
+          : null;
+    const lookupOrderId = parsedOrderIdReference?.kind === 'backend_order_id'
+      ? parsedOrderIdReference.orderId
       : null;
     const key = [
       lookupResource,
@@ -1440,12 +1448,29 @@ export class InformationOrchestrator {
     purchases: PurchaseInformation[],
     request: PurchaseRequest,
     partitionByOrderId: ReadonlyMap<string, PurchasePartition> = new Map(),
+    requestedCustomerTransactionNumber: string | null = null,
   ): { purchases: PurchaseInformation[]; needsSelection: boolean } {
     const hasEventSelector = Boolean(request.eventHint?.trim());
     const hasAmountSelector = request.amount !== null && request.amount !== undefined;
     const requestedDate = this.requestDateSelector(request);
     const hasDateSelector = Boolean(requestedDate);
     const hasSelector = hasEventSelector || hasAmountSelector || hasDateSelector;
+
+    // An explicit customer reference is authoritative identity evidence. A
+    // unique match narrows structurally; an unmatched reference over several
+    // records keeps every candidate with selection so the reply asks instead
+    // of implying a link through the pending partition.
+    if (requestedCustomerTransactionNumber) {
+      const referenceMatches = purchases.filter(
+        (purchase) => purchase.customerTransactionNumber === requestedCustomerTransactionNumber,
+      );
+      if (referenceMatches.length === 1) {
+        return { purchases: referenceMatches, needsSelection: false };
+      }
+      if (referenceMatches.length === 0 && purchases.length > 1) {
+        return { purchases, needsSelection: true };
+      }
+    }
 
     // Typed guard: a reported payment amount in an active thread is payment evidence, not purchase identity.
     // When the pending partition has exactly one order and the question is a current-payment question,
