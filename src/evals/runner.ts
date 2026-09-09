@@ -441,20 +441,33 @@ async function evaluateScorers(
       }
       case 'text_semantic': {
         const turn = selectTurn(context.turns, scorer.turnIndex);
-        const judge = await runSemanticJudge({
-          apiKey: process.env.OPENAI_API_KEY ?? null,
-          model: scorer.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
-          rubric: scorer.rubric,
-          candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
-        });
-        results.push({
-          id: scorer.id,
-          type: scorer.type,
-          score: judge.score,
-          weight: scorer.weight,
-          skipped: judge.skipped,
-          message: judge.message,
-        });
+        const judgeContext = buildSemanticJudgeContext(context.turns, scorer.turnIndex, context.currentCase);
+        try {
+          const judge = await runSemanticJudge({
+            apiKey: process.env.OPENAI_API_KEY ?? null,
+            model: scorer.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
+            rubric: scorer.rubric,
+            candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
+            context: judgeContext,
+          });
+          results.push({
+            id: scorer.id,
+            type: scorer.type,
+            score: judge.score,
+            weight: scorer.weight,
+            skipped: judge.skipped,
+            message: judge.message,
+          });
+        } catch (error) {
+          results.push({
+            id: scorer.id,
+            type: scorer.type,
+            score: 0,
+            weight: scorer.weight,
+            skipped: false,
+            message: `Judge gate failed: ${error instanceof Error ? error.message : String(error)}`,
+          });
+        }
         break;
       }
     }
@@ -645,21 +658,27 @@ async function evaluateExpectation(
     }
     case 'text_semantic': {
       const turn = selectTurn(context.turns, expectation.turnIndex);
-      const judge = await runSemanticJudge({
-        apiKey: process.env.OPENAI_API_KEY ?? null,
-        model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
-        rubric: expectation.rubric,
-        candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
-        context: buildSemanticJudgeContext(context.turns, expectation.turnIndex, context.currentCase),
-      });
-      const verdict = evaluateSemanticJudgeOutcome({
-        outcome: judge,
-        minScore: expectation.minScore,
-        requireJudge: expectation.requireJudge,
-      });
-      result.passed = verdict.passed;
-      result.score = verdict.score;
-      result.message = judge.message;
+      try {
+        const judge = await runSemanticJudge({
+          apiKey: process.env.OPENAI_API_KEY ?? null,
+          model: expectation.judgeModel ?? DEFAULT_GPT_TEXT_MODEL,
+          rubric: expectation.rubric,
+          candidateText: turn ? redactArtifactText(getEvaluationOutputText(turn)) : '',
+          context: buildSemanticJudgeContext(context.turns, expectation.turnIndex, context.currentCase),
+        });
+        const verdict = evaluateSemanticJudgeOutcome({
+          outcome: judge,
+          minScore: expectation.minScore,
+          requireJudge: expectation.requireJudge,
+        });
+        result.passed = verdict.passed;
+        result.score = verdict.score;
+        result.message = judge.message;
+      } catch (error) {
+        result.passed = false;
+        result.score = 0;
+        result.message = `Judge gate failed: ${error instanceof Error ? error.message : String(error)}`;
+      }
       return result;
     }
     case 'trajectory_invariants': {
@@ -858,35 +877,49 @@ export function buildSemanticJudgeContext(
   const base = JSON.stringify(interaction);
   const structuralLines = buildStructuralFactLines(effectiveTurns);
   const judgeRules = [
-    'Reglas para el juez: los hechos estructurales verificados prevalecen sobre cualquier especulacion.',
-    'El juez no debe afirmar que un intento no existio cuando el trace registra la llamada (OTP, proveedor seleccionado, handoff).',
+    'Reglas para el juez: los hechos estructurales verificados (verified effect counts/outcomes and state) prevalecen sobre cualquier especulacion.',
+    'A tool-name alone is not effect proof: tools_called without verified effect counts/outcomes and persisted state must not be treated as a completed write; verified counts and state take precedence.',
+    'Judge the candidate response only; do not attribute a phrase appearing only in prior assistant output or fixture history to the candidate.',
     'El juez no debe exigir que la respuesta repita codigos o referencias que el texto candidato muestra redactados.',
-    'Referencia del cliente: los campos ausentes se omiten; solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse.',
+    'Unavailable reference policy: los campos ausentes se omiten; una respuesta de estado grounded sin eco de codigo es valida y el juez no debe exigir seleccion ni codigo echo; solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse (reference unavailable).',
   ].join(' ');
+  const lastTurn = effectiveTurns[effectiveTurns.length - 1];
+  const candidateText = selectedIndex >= 0 && lastTurn !== undefined
+    ? redactArtifactText(getEvaluationOutputText(lastTurn))
+    : '';
+  const priorTexts = effectiveTurns.slice(0, -1).map((turn) => redactArtifactText(getEvaluationOutputText(turn)));
+  const isolatedHeader = [
+    `CANDIDATE RESPONSE (turn ${selectedIndex}, judge only this text): ${candidateText}`,
+    priorTexts.length > 0
+      ? `PRIOR ASSISTANT RESPONSES (turns before candidate, never attribute to candidate): ${JSON.stringify(priorTexts)}`
+      : 'PRIOR ASSISTANT RESPONSES: none',
+  ].join('\n');
   if (!currentCase) {
-    return `${base}\n\n${structuralLines.join('\n')}\n\n${judgeRules}`;
+    return `${isolatedHeader}\n\nInteraction:\n${base}\n\n${structuralLines.join('\n')}\n\n${judgeRules}`;
   }
   const hasNotes = currentCase.notes.length > 0;
   const fixtureMessages = loadSubjectScopedFixtureMessages(currentCase, selectedIndex);
   const declaresFixture = resolveEffectiveFixtureScenario(currentCase, selectedIndex) !== null;
+  const fixtureSection = fixtureMessages
+    ? `FIXTURE HISTORY (declared world context, never attribute to candidate): fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? 'desconocido'} mensajes declarados (id, direction, body): ${JSON.stringify(fixtureMessages)}`
+    : declaresFixture
+      ? `FIXTURE HISTORY: fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? 'desconocido'} sin mensajes para el sujeto de este caso; no se transfirio historial de otros sujetos.`
+      : 'FIXTURE HISTORY: none';
   if (!hasNotes && !fixtureMessages && !declaresFixture) {
-    return `${base}\n\n${structuralLines.join('\n')}\n\n${judgeRules}`;
+    return `${isolatedHeader}\n\nInteraction:\n${base}\n\n${structuralLines.join('\n')}\n\n${fixtureSection}\n\n${judgeRules}`;
   }
   const trustedLines: string[] = [];
+  trustedLines.push(isolatedHeader);
+  trustedLines.push(`Interaction:\n${base}`);
   trustedLines.push('Contexto confiable reconstruido del caso:');
   trustedLines.push(structuralLines.join(' | '));
+  trustedLines.push(fixtureSection);
   trustedLines.push(judgeRules);
   if (hasNotes) {
     trustedLines.push(`Notas del caso (procedencia: autor del caso, no evidencia del mundo congelado; los hechos actuales del mundo congelado prevalecen): ${JSON.stringify(currentCase.notes)}`);
   }
-  if (fixtureMessages) {
-    const scenario = resolveEffectiveFixtureScenario(currentCase, selectedIndex);
-    trustedLines.push(`Historial efectivo por turno con alcance al sujeto (fixture ${scenario ?? 'desconocido'}) - mensajes declarados (id, direction, body): ${JSON.stringify(fixtureMessages)}`);
-  } else if (currentCase.backendFixture?.scenario) {
-    trustedLines.push(`Historial efectivo por turno con alcance al sujeto (fixture ${resolveEffectiveFixtureScenario(currentCase, selectedIndex) ?? currentCase.backendFixture.scenario}): sin mensajes para el sujeto de este caso; no se transfirio historial de otros sujetos.`);
-  }
   trustedLines.push('Politica de referencia del cliente (minimum disclosure): solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse (transaction reference). Los campos ausentes se omiten y el juez no debe exigir que se repitan codigos redactados. Los identificadores internos/autenticacion permanecen ocultos.');
-  return `${base}\n\n${trustedLines.join('\n')}`;
+  return trustedLines.join('\n\n');
 }
 
 function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
@@ -920,18 +953,20 @@ function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
   });
 }
 
-function resolveEffectiveFixtureScenario(
+export function resolveEffectiveFixtureScenario(
   currentCase: EvalCase,
   selectedIndex: number,
 ): string | null {
-  const inputs = currentCase.inputs.slice(0, selectedIndex + 1);
-  for (let index = inputs.length - 1; index >= 0; index -= 1) {
-    const scenario = inputs[index]?.backendFixture?.scenario;
-    if (scenario) {
-      return scenario;
-    }
-  }
+  const perTurn = currentCase.inputs[selectedIndex]?.backendFixture?.scenario;
+  if (perTurn) return perTurn;
   return currentCase.backendFixture?.scenario ?? null;
+}
+
+export function resolveDispatchFixtureScenario(
+  currentCase: EvalCase,
+  turnIndex: number,
+): string | null {
+  return resolveEffectiveFixtureScenario(currentCase, turnIndex);
 }
 
 function collectCaseSubjectPhones(currentCase: EvalCase, selectedIndex: number): string[] {

@@ -88,7 +88,8 @@ export async function runLiveLambdaCase(args: {
     const input = args.currentCase.inputs[turnIndex];
     if (!input) throw new Error('Missing live evaluation turn.');
     const startedAt = Date.now();
-    const effectiveFixture = input.backendFixture ?? args.currentCase.backendFixture ?? null;
+    const selectedScenario = input.backendFixture?.scenario ?? args.currentCase.backendFixture?.scenario ?? null;
+    const effectiveFixture = selectedScenario ? { scenario: selectedScenario } : null;
     const outboundImage = input.image && 'redacted' in input.image ? undefined : input.image;
     const response = await fetch(functionUrl, {
       method: 'POST',

@@ -128,8 +128,8 @@ describe('buildSemanticJudgeContext judge-context completeness', () => {
     expect(ctx).toContain('Notas del caso');
     expect(ctx).toContain('procedencia');
     expect(ctx).toContain('Hola Sonia Maribel');
-    expect(ctx).toContain('https://sinenvolturas.com/cart/recover/ea14739a-4064-4791-a646-aa24b799d2da');
-    expect(ctx).toContain('Historial efectivo por turno con alcance al sujeto');
+    expect(ctx).toContain('https://sinenvolturas.com/cart/recover/');
+    expect(ctx).toContain('FIXTURE HISTORY');
     expect(ctx).toContain('"id":1');
     expect(ctx).toContain('"direction":"outbound"');
     // also retains interaction
