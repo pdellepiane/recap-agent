@@ -232,4 +232,39 @@ describe('dynamic agent policy', () => {
       providerResults: [],
     })).toEqual(['search_providers_from_plan', 'finish_plan']);
   });
+
+  it('withholds finish_plan in close node until explicit confirmation', () => {
+    const maximumTools = ['finish_plan'] as const;
+    const emptyPlan = createPlan();
+    const readyPlan = mergePlan(emptyPlan, {
+      contact_name: 'Sandra López',
+      contact_email: 'sandra@example.com',
+      contact_phone: '+51999999999',
+      provider_needs: [
+        createNeed({
+          status: 'selected',
+          missing_fields: [],
+          recommended_provider_ids: [42],
+          selected_provider_ids: [42],
+        }),
+      ],
+    });
+
+    expect(resolveDynamicTools({
+      plan: readyPlan,
+      maximumTools,
+      searchReady: true,
+      providerResults: [],
+      currentNode: 'crear_lead_cerrar',
+    })).toEqual([]);
+
+    expect(resolveDynamicTools({
+      plan: readyPlan,
+      maximumTools,
+      searchReady: true,
+      providerResults: [],
+      currentNode: 'crear_lead_cerrar',
+      closeConfirmed: true,
+    })).toEqual(['finish_plan']);
+  });
 });

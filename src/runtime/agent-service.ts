@@ -3490,6 +3490,19 @@ export class AgentService {
     plan: PlanSnapshot,
     extraction: ExtractionResult,
   ): boolean {
+    // A close-flow contact turn belongs to close handling even when the
+    // extractor also labels it a support detail: providing requested contact
+    // data is not a support act, and the support path would drop the update.
+    if (
+      plan.current_node === 'crear_lead_cerrar' &&
+      extraction.informationRequests.length === 0 &&
+      (extraction.contactName !== null ||
+        extraction.contactEmail !== null ||
+        extraction.contactPhone !== null ||
+        extraction.closeAction !== null)
+    ) {
+      return false;
+    }
     return (
       (extraction.normalizationIssues?.length ?? 0) > 0 ||
       (Boolean(extraction.supportAct) && extraction.actionIntent === null &&

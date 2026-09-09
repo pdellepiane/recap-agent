@@ -204,4 +204,37 @@ describe('proceed_confirmed close state', () => {
     expect(res.trace.tools_called ?? []).not.toContain('request_human_takeover');
     expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
   });
+
+  it('close contact turn with support label stays in close handling and keeps phone', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedClosedPlan(planStore);
+    const extraction = baseExtraction({
+      actionIntent: null,
+      contactPhone: '+51 954779071',
+      supportAct: { kind: 'provide_detail', topic: 'account_access', detail: 'unknown' } as never,
+    });
+    const agentGateway = new RecordingAgentGateway();
+    const service = new AgentService({
+      planStore,
+      runtime: new ScriptedRuntime([extraction]),
+      providerGateway: scriptedProviderGateway(),
+      promptLoader,
+      renderers,
+      informationOrchestrator: new InformationOrchestrator({
+        knowledgeGateway: new QuietKnowledgeGateway(),
+        providerGateway: scriptedProviderGateway(),
+        agentGateway: agentGateway as never,
+      }),
+      agentConversationGateway: agentGateway as never,
+    });
+    const res = await service.handleTurn({
+      channel: 'whatsapp',
+      externalUserId: 'close-user',
+      text: 'perdón, mi teléfono con código es +51 954779071',
+      messageId: 'close-support-phone-1',
+      receivedAt: new Date().toISOString(),
+    });
+    expect(res.plan.current_node).toBe('crear_lead_cerrar');
+    expect(res.plan.contact_phone).toBe('51954779071');
+  });
 });

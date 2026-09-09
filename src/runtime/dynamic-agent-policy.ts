@@ -156,6 +156,8 @@ export function resolveDynamicTools(args: {
   searchReady: boolean;
   providerResults: readonly ProviderSummary[];
   capabilityManifest?: RuntimeCapabilityManifest;
+  currentNode?: DecisionNode | null;
+  closeConfirmed?: boolean;
 }): ToolName[] {
   const capabilities = derivePlanCapabilities(args.plan);
   const hasKnownProvider =
@@ -189,8 +191,16 @@ export function resolveDynamicTools(args: {
     if (toolName === 'add_vendor_to_event_favorites') {
       return capabilities.hasShortlist || capabilities.hasSelection;
     }
-    if (toolName === 'create_quote_request' || toolName === 'finish_plan') {
+    if (toolName === 'create_quote_request') {
       return capabilities.canFinish;
+    }
+    if (toolName === 'finish_plan') {
+      if (!capabilities.canFinish) return false;
+      // In the close node the model may only dispatch the send after an
+      // explicit confirmation (proceed_confirmed). Withholding the tool is
+      // deterministic: contact-only turns cannot produce a premature effect.
+      if (args.currentNode === 'crear_lead_cerrar' && !args.closeConfirmed) return false;
+      return true;
     }
     if (toolName === 'create_provider_review') {
       return capabilities.hasSelection || args.plan.lifecycle_state === 'finished';

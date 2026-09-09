@@ -441,6 +441,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       searchReady: request.searchReady,
       providerResults: request.providerResults,
       capabilityManifest: this.options.capabilityManifest,
+      currentNode: request.currentNode,
+      closeConfirmed: request.extraction?.closeAction?.type === 'proceed_confirmed',
     });
     const tools = this.createTools(request, allowedTools);
 
