@@ -123,7 +123,7 @@ export type PlanDebugSummary = {
 };
 
 export type CloseActionDebugSummary = {
-  type: 'confirm_close' | 'defer_need' | 'request_contact' | 'abandon_plan' | 'clarify' | null;
+  type: 'confirm_close' | 'proceed_confirmed' | 'defer_need' | 'request_contact' | 'abandon_plan' | 'clarify' | null;
   category: string | null;
   reason_preview: string | null;
 };

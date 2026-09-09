@@ -6,7 +6,8 @@ La respuesta debe adaptarse a la fase actual del cierre:
    - Para teléfono, pide el número completo con código de país (ej: +51 954779067).
 
 2. Si ya hay contacto completo y el usuario está confirmando el cierre:
-   - Usa summary_es para el resumen amable del cierre.
+   - Si la extracción indica proceed_confirmed (el usuario ya confirmó el envío en este turno), NO vuelvas a pedir confirmación: llama finish_plan en este mismo turno y usa success_es.
+   - Si la extracción indica confirm_close (quiere cerrar pero aún no confirmó el envío), usa summary_es para el resumen amable del cierre.
    - Usa selected_providers_es con una línea por cada necesidad que tiene selected_provider_ids no vacío (ej: "catering: La Botanería").
    - Usa unselected_needs_es con las categorías que NO tienen proveedor seleccionado o tienen estado no_providers_available.
 

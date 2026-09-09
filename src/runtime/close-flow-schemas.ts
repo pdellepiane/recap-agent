@@ -5,6 +5,7 @@ import { providerCategorySchema } from '../core/provider-category';
 export const closeActionSchema = z.object({
   type: z.enum([
     'confirm_close',
+    'proceed_confirmed',
     'defer_need',
     'request_contact',
     'abandon_plan',

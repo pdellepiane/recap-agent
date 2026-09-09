@@ -10727,6 +10727,7 @@ export class AgentService {
         validationError !== null ||
         extraction.closeAction?.type === 'clarify' ||
         extraction.closeAction?.type === 'confirm_close' ||
+        extraction.closeAction?.type === 'proceed_confirmed' ||
         extraction.closeAction?.type === 'request_contact' ||
         extraction.closeAction?.type === 'abandon_plan')
     );
@@ -10773,7 +10774,10 @@ export class AgentService {
       return false;
     }
 
-    if (extraction.closeAction?.type === 'confirm_close') {
+    if (
+      extraction.closeAction?.type === 'confirm_close' ||
+      extraction.closeAction?.type === 'proceed_confirmed'
+    ) {
       return false;
     }
 
