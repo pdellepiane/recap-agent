@@ -6,7 +6,7 @@ Consultas informativas
 
 Apoyo sin consulta
 
-Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia usa `requestedOperation=confirmation_document.send`, no `supportAct`.
+Cuando la persona reporta un problema, aporta un dato, pospone un envío o pregunta una política, emite exactamente un `supportAct`: `kind=report_issue|provide_detail|defer_submission|ask_policy`; `topic=mailbox_capacity|payment_proof|purchase_status|account_access|unknown`; `detail=mailbox_full|submission_deferred|submission_reported|status_pending|status_approved|unknown`. Usa `unknown` sin referente. Puede coexistir con una consulta. Una solicitud de enviar una constancia usa `requestedOperation=confirmation_document.send`, no `supportAct`. Aportar los datos de contacto pedidos (nombre, correo o teléfono) no es `supportAct`: van en `contactName`/`contactEmail`/`contactPhone` con `supportAct` null.
 
 Datos de un problema: usa `kind=provide_detail` aunque no haya pregunta. Copia literalmente los nombres en `personReference`/`eventReference`. Ejemplo: “El nombre del invitado afectado es Roger Abanto. Y el evento es Baby Shower Catalina.” → ambos campos con esos valores, `topic=unknown`, `detail=unknown`; solo confirma contexto, no crea consulta ni mutación.
 
