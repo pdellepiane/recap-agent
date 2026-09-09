@@ -1349,7 +1349,9 @@ describe('AgentService', () => {
     expect(gateway.requestCodeCalls).toBe(0);
     expect(gateway.authenticatedLookupCalls).toBe(0);
     expect(response.plan.current_node).toBe('solicitar_agente_humano');
-    expect(response.plan.human_escalation.status).toBe('requested');
+    // Package C contract: a skipped handoff (Agent API not configured) persists
+    // terminal recovery without fabricating a request receipt (requested=false).
+    expect(response.plan.human_escalation.status).toBe('none');
     expect(response.trace.authentication_execution_summary).toEqual([
       {
         operation: 'verify_user_login_code',
@@ -8421,7 +8423,7 @@ describe('AgentService', () => {
     expect(response.outbound.text).toBe('Puedes revisar tu lista aquí');
   });
 
-  it('routes explicit human support requests to local soft-pause when Agent API is not configured', async () => {
+  it('records unrequested skipped handoff without fabricating a receipt when Agent API is not configured', async () => {
     const runtime = new HumanEscalationRuntime();
     const agentGateway = new FakeAgentConversationGateway({
       status: 'skipped',
@@ -8449,7 +8451,9 @@ describe('AgentService', () => {
 
     expect(response.plan.current_node).toBe('solicitar_agente_humano');
     expect(response.plan.intent).toBe('solicitar_humano');
-    expect(response.plan.human_escalation.status).toBe('requested');
+    // Packages C/D contract: a skipped gateway result dispatches the single
+    // handoff attempt but persists requested=false with the gateway reason.
+    expect(response.plan.human_escalation.status).toBe('none');
     expect(response.plan.human_escalation.phone_number).toBe('51987654321');
     expect(response.plan.human_escalation.last_error).toBe('Agent API human takeover is not configured.');
     expect(response.trace.route_kind).toBe('human_escalation');
@@ -8457,7 +8461,9 @@ describe('AgentService', () => {
     expect(response.trace.search_strategy).toBe('none');
     expect(response.trace.provider_results).toHaveLength(0);
     expect(agentGateway.requestedPhones).toEqual(['51987654321']);
-    expect(response.outbound.text).toContain('Una persona del equipo podrá continuar');
+    // Package D contract: non-auth skipped help renders the bounded non-auth
+    // variant with no OTP/email copy, never a success claim.
+    expect(response.outbound.text).toContain('No pude registrar la solicitud de apoyo humano');
     expect(response.outbound.text).not.toMatch(/12|horas/iu);
   });
 
@@ -9085,7 +9091,9 @@ describe('AgentService', () => {
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.current_node).toBe('solicitar_agente_humano');
     expect(response.trace.route_kind).toBe('human_escalation');
-    expect(response.outbound.text).toContain('Una persona del equipo se unirá a esta conversación');
+    // Package D3 contract: successful handoff renders the bounded requested
+    // variant from handoff_outcomes.json.
+    expect(response.outbound.text).toContain('Listo, ya solicité apoyo humano');
     expect(response.outbound.text).not.toMatch(/12|horas/iu);
     expect(gateway.operations).toEqual([
       'get',

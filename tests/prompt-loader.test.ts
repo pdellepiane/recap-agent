@@ -240,10 +240,10 @@ describe('PromptLoader', () => {
       'kind=associated_event',
     );
     expect(extractorBundle.instructions).toContain(
-      'report_otp_not_received',
+      'humanHelpIntent',
     );
     expect(extractorBundle.instructions).toContain(
-      'Con `code_requested` conserva consulta',
+      '`code_requested`: conserva consulta',
     );
     expect(welcomeBundle.instructions).toContain(
       'No prometas diseñar, construir ni editar sitios externos',
@@ -269,27 +269,33 @@ describe('PromptLoader', () => {
     expect(informationBundle.instructions).not.toContain(
       'ofrece reenviar el código o cambiar el correo',
     );
-    expect(extractorBundle.instructions).toContain('accountless_user');
-    expect(extractorBundle.instructions).toContain('decline_authentication');
+    // Package D contract: help arbitration uses humanHelpIntent; unclear
+    // confirmations are absent; mailbox reports stay support-only.
     expect(extractorBundle.instructions).toContain(
-      '`phoneConfirmation=no` si niega la cuenta',
+      'humanHelpIntent=none|request|accept_offer|retry|decline_offer',
     );
     expect(extractorBundle.instructions).toContain(
-      '`decline_authentication`',
+      '`accept_offer` solo con oferta pendiente',
     );
     expect(extractorBundle.instructions).toContain(
-      '`phoneConfirmation=no` si niega la cuenta (no `decline_authentication`)',
+      '`phoneConfirmation=no` si niega cuenta',
+    );
+    expect(extractorBundle.instructions).toContain(
+      '`unclear`=ausente',
+    );
+    expect(extractorBundle.instructions).toContain(
+      '`yes`/`no` solo con auth activa o pedido protegido',
     );
     expect(welcomeBundle.instructions).toContain('puedes usar un poquito de emojis');
     expect(welcomeBundle.instructions).toContain('evita que el mensaje final termine con punto');
     expect(extractorBundle.instructions).toContain(
-      'pregunta sobre capacidad no es solicitud de atencion humana',
+      'Capacidad no es pedido humano',
     );
     expect(extractorBundle.instructions).toContain(
       'una referencia breve como "el horario"',
     );
     expect(extractorBundle.instructions).toContain(
-      'pregunta si puedes leer una fotografia',
+      'foto es FAQ, pedir persona es',
     );
     expect(extractorBundle.instructions).toContain(
       '`faq`: pregunta general sobre Sin Envolturas',

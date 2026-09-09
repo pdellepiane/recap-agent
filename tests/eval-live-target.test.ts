@@ -249,7 +249,9 @@ describe('live lambda eval target', () => {
     expect(result.turns).toHaveLength(1);
     expect(result.turns[0]?.trace.tools_called).toEqual(['search_providers_from_plan']);
     expect(result.turns[0]?.trace.route_kind).toBe('single_need_search');
-    expect(result.turns[0]?.trace.operational_note).toBe('Safe trace detail.');
+    // Package C contract: free-text operational notes stay omitted from safe
+    // traces; judges use typed packets instead.
+    expect(result.turns[0]?.trace.operational_note).toBe('[omitted]');
     expect(result.turns[0]?.trace.timing_ms.rsvp_execution).toBe(17);
     expect(result.turns[0]?.perf?.runtime_latency_ms).toBe(1200);
     expect(result.turns[0]?.perf?.conversation_hash).toBe('a'.repeat(64));
