@@ -1,4 +1,6 @@
 import { ulid } from 'ulid';
+import handoffMessages from '../../prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json';
+import { applyHandoffResult, decideHumanHelpAttempt } from './human-help-policy';
 import type { DecisionNode } from '../core/decision-nodes';
 import { extractionPersistenceNodes } from '../core/decision-nodes';
 import { resolveResumeNode } from '../core/decision-flow';
@@ -955,6 +957,13 @@ export class AgentService {
       extraction,
     );
     extraction = this.preserveContactPhoneCandidate(extraction, inbound.text);
+    const authControl = extraction.phoneConfirmation === 'no' || extraction.informationRequests.some(
+      (request) => (request.kind === 'purchase' || request.kind === 'associated_event') &&
+        request.authAction === 'decline_authentication');
+    if (authControl) {
+      return await this.handleInformationFlow({ inbound, previousNode, workingPlan, extraction,
+        toolUsage, timingMs, tokenUsage, responseClassifierTrace, messageContext, handleTurnStartedAt });
+    }
     const capabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({
       inbound,
       previousNode,
@@ -1135,8 +1144,8 @@ export class AgentService {
         current_node: currentNode,
         intent: 'solicitar_humano',
         human_escalation: {
-          status: 'requested',
-          requested_at: requestedAt,
+          status: gatewayResult.status === 'success' ? 'requested' : 'none',
+          requested_at: gatewayResult.status === 'success' ? requestedAt : null,
           phone_number: phoneNumber,
           last_error: gatewayResult.status === 'failed'
             ? gatewayResult.error
@@ -4512,6 +4521,19 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
+    const declined = args.extraction.informationRequests.some((request) =>
+      (request.kind === 'purchase' || request.kind === 'associated_event') && request.authAction === 'decline_authentication');
+    const hasPhoneIdentity = args.workingPlan.user_auth.auth_method === 'phone' ||
+      args.workingPlan.user_auth.awaiting_phone_confirmation;
+    if (args.extraction.phoneConfirmation === 'no' && (hasPhoneIdentity || !declined)) {
+      return await this.escalateInformationAuthentication({ ...args,
+        plan: this.clearPhoneAuthentication(args.workingPlan, 'identity_rejected'), reason: 'identity_rejected' });
+    }
+    if (declined) {
+      return await this.completeDeclinedInformationAuthentication({ ...args, plan: args.workingPlan,
+        resumeNode: args.workingPlan.information_state.resume_node,
+        requests: this.mergeInformationRequests(args.workingPlan.information_state.pending_requests, args.extraction.informationRequests) });
+    }
     const currentNode: DecisionNode = 'resolver_consultas_informativas';
     const supportAcknowledgment = this.isSupportAcknowledgment(args.extraction.supportAct) &&
       args.extraction.informationRequests.length === 0 && args.extraction.actionIntent === null;
@@ -4657,19 +4679,7 @@ export class AgentService {
       .filter((request) => request.kind === 'purchase' || request.kind === 'associated_event')
       .map((request) => request.authAction ?? 'none')
       .find((action) => action !== 'none') ?? 'none';
-    // A rejected phone association is not a refusal to continue verification.
-    // The typed phone decision takes precedence if extraction also attached the
-    // broader refusal action to the protected request.
-    if (
-      protectedAuthAction === 'decline_authentication' &&
-      (
-        args.extraction.phoneConfirmation !== 'no' ||
-        (
-          !planForInformation.user_auth.awaiting_phone_confirmation &&
-          planForInformation.user_auth.auth_method !== 'phone'
-        )
-      )
-    ) {
+    if (protectedAuthAction === 'decline_authentication') {
       return await this.completeDeclinedInformationAuthentication({
         ...args,
         plan: planForInformation,
@@ -4875,7 +4885,9 @@ export class AgentService {
         const asksExplicitAmount = args.extraction.informationRequests.some(
           (request) => request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
         );
-        const isSingleStatusQuery = phonePurchaseResult.purchases.length === 1 && !asksExplicitAmount;
+        const isSingleStatusQuery = phonePurchaseResult.purchases.length === 1 && !asksExplicitAmount &&
+          requests.filter((request) => request.kind === 'purchase').every((request) =>
+            request.kind === 'purchase' && request.aspects.length === 1 && request.aspects[0] === 'payment_status');
         if (isSingleStatusQuery) {
           operationalNote += ' Responde de forma concisa solo el estado (pendiente/en verificación o aprobado/confirmado) para el evento consultado, en español natural. No menciones monto, método de pago, moneda, registro ni plazos de validación.';
         }
@@ -4897,14 +4909,6 @@ export class AgentService {
         );
         if (hasUnverifiableTransactionTime) {
           operationalNote += ' La evidencia canónica no verifica una fecha u hora de pago. Si la persona propone una corrección temporal, reconócela solo como dato aportado por ella; no afirmes que el registro o el backend la confirma.';
-        }
-        const hasUnverifiableCurrency = phonePurchaseResult.purchases.some(
-          (purchase) =>
-            purchase.amountDisclosure?.presentation === 'recorded_method_no_currency' ||
-            !purchase.currency,
-        );
-        if (hasUnverifiableCurrency && !isSingleStatusQuery) {
-          operationalNote += ' La evidencia canónica no consigna moneda para esta compra. Si la persona menciona una moneda (por ejemplo USD, dólares, soles, PEN), reconócela solo como dato aportado por ella; indica que la moneda no figura en el registro y permanece sin confirmar; no presentes la moneda mencionada como hecho del registro ni del backend.';
         }
         const hasCustomerTransactionNumber = phonePurchaseResult.purchases.some(
           (purchase) => Boolean(purchase.customerTransactionNumber),
@@ -4972,8 +4976,7 @@ export class AgentService {
       });
       if (
         requiresPhonePurchaseDetailHandoff &&
-        args.inbound.contactPhone &&
-        args.extraction.phoneConfirmation !== 'no'
+        args.inbound.contactPhone
       ) {
         return await this.escalateInformationAuthentication({
           ...args,
@@ -5565,22 +5568,8 @@ export class AgentService {
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
     // The handoff was already requested on the rejection turn, so no second
-    // gateway effect is submitted. The tool record reflects the retained
-    // attempt decision (already requested), matching the unsupported-path
-    // precedent, and the reply restates the handoff with the pending query.
-    const alreadyRequested: AgentGatewayResult = {
-      status: 'success',
-      message: 'Human takeover was already requested.',
-    };
-    const phoneNumber = this.resolveEscalationPhone(args.inbound);
-    this.recordDeterministicToolInput(args.toolUsage, 'request_human_takeover', {
-      phone_number: phoneNumber,
-      auth: 'X-Agent-Key [redacted]',
-    });
-    this.recordDeterministicToolOutput(args.toolUsage, 'request_human_takeover', {
-      status: alreadyRequested.status,
-      message: alreadyRequested.message,
-    });
+    // gateway effect is submitted. A retained decision belongs in diagnostics,
+    // not tools_called: no fake takeover input/output is recorded here.
     const planToSave = mergePlan(args.existingPlan, {
       current_node: 'solicitar_agente_humano',
     });
@@ -5589,13 +5578,7 @@ export class AgentService {
       reason: 'terminal_otp_code_retains_handoff',
     });
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const pendingQueries = args.existingPlan.information_state.pending_requests
-      .map((request) => request.query.trim())
-      .filter((query) => query.length > 0)
-      .slice(0, 2);
-    const handoffSummary = pendingQueries.length > 0
-      ? `${this.humanEscalationRequestedMessage(alreadyRequested)}. El equipo continuará con tu consulta pendiente: ${pendingQueries.join(' / ')}`
-      : this.humanEscalationRequestedMessage(alreadyRequested);
+    const handoffSummary = handoffMessages.requested;
     const extraction = this.buildSyntheticEscalationExtraction(
       'La persona envió un código después de que la verificación terminó y se pidió apoyo humano.',
     );
@@ -5648,25 +5631,36 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
-    const gateway = this.dependencies.agentConversationGateway ??
-      new NoopAgentConversationGateway('not_configured');
+    const gateway = this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway('not_configured');
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
-    const gatewayResult = phoneNumber
-      ? await this.requestHumanTakeoverWithTrace(gateway, phoneNumber, args.toolUsage)
-      : this.missingPhoneEscalationResult();
+    const decision = decideHumanHelpAttempt({ conversationId: args.plan.plan_id,
+      inboundId: args.inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
+      gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
+      prior: args.plan.human_help_receipt ?? null, explicitRetry: false });
+    let receipt = args.plan.human_help_receipt ?? null;
+    let gatewayResult: AgentGatewayResult = { status: 'skipped', reason: 'not_configured', message: decision.reason };
+    if (decision.action === 'attempt' && phoneNumber) {
+      // Persist uncertainty before dispatch. A timeout/crash can never trigger an automatic retry.
+      receipt = applyHandoffResult({ dedupeKey: decision.dedupeKey, inboundId: args.inbound.messageId,
+        phone: phoneNumber, gatewayStatus: 'unknown' });
+      await this.dependencies.planStore.save({ plan: mergePlan(args.plan, { human_help_receipt: receipt }),
+        reason: 'human_help_intent' });
+      try {
+        gatewayResult = await this.requestHumanTakeoverWithTrace(gateway, phoneNumber, args.toolUsage);
+        receipt = applyHandoffResult({ dedupeKey: decision.dedupeKey, inboundId: args.inbound.messageId,
+          phone: phoneNumber, gatewayStatus: gatewayResult.status });
+      } catch {
+        // The pre-dispatch receipt remains unknown: no claim of success or automatic retry.
+      }
+    } else if (receipt?.outcome === 'handoff_requested') {
+      gatewayResult = { status: 'success', message: 'retained_confirmed_handoff' };
+    }
+    const requested = receipt?.outcome === 'handoff_requested';
     const planToSave = mergePlan(args.plan, {
-      current_node: 'solicitar_agente_humano',
-      intent: 'solicitar_humano',
-      human_escalation: {
-        status: 'requested',
-        requested_at: new Date().toISOString(),
-        phone_number: phoneNumber,
-        last_error: gatewayResult.status === 'failed'
-          ? gatewayResult.error
-          : gatewayResult.status === 'skipped'
-            ? gatewayResult.message
-            : null,
-      },
+      current_node: 'solicitar_agente_humano', intent: 'solicitar_humano', human_help_receipt: receipt,
+      human_escalation: { status: requested ? 'requested' : 'none',
+        requested_at: requested ? receipt?.updatedAt ?? null : null,
+        phone_number: phoneNumber, last_error: requested ? null : receipt?.outcome ?? decision.reason },
     });
     await this.dependencies.planStore.save({
       plan: planToSave,
@@ -5677,16 +5671,8 @@ export class AgentService {
       args.tokenUsage.extraction,
     );
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const pendingQueries = args.plan.information_state.pending_requests
-      .map((request) => request.query.trim())
-      .filter((query) => query.length > 0)
-      .slice(0, 2);
-    const handoffSummary = pendingQueries.length > 0
-      ? `${this.humanEscalationRequestedMessage(gatewayResult)}. El equipo continuará con tu consulta pendiente: ${pendingQueries.join(' / ')}`
-      : this.humanEscalationRequestedMessage(gatewayResult);
-    const handoffMessage = args.reason === 'phone_information_not_found'
-      ? `No encontré la información solicitada asociada a este número en la consulta realizada. ${handoffSummary}`
-      : handoffSummary;
+    const handoffMessage = requested ? handoffMessages.requested
+      : receipt?.outcome === 'outcome_unknown' ? handoffMessages.unknown : handoffMessages.failed;
     return {
       plan: planToSave,
       outbound: this.renderOutbound(
@@ -5718,9 +5704,8 @@ export class AgentService {
         searchStrategy: 'none',
         turnDecision: this.humanEscalationTurnDecision(args.reason),
         informationExecution: args.informationExecution,
-        operationalNote: args.reason === 'phone_information_not_found'
-          ? 'La consulta por el número de contacto no devolvió información coincidente. Se conservó la consulta y se intentó solicitar apoyo humano sin iniciar verificación por correo.'
-          : `La verificación alcanzó un resultado terminal (${args.reason}). Se conservó la consulta y se solicitó apoyo humano sin pedir otro correo ni código.`,
+        operationalNote: `auth_terminal:${requested ? 'handoff_requested' : receipt?.outcome ?? decision.reason}`,
+        humanTakeoverAttempted: decision.action === 'attempt', humanTakeoverSucceeded: requested,
       }),
     };
   }
@@ -5898,10 +5883,8 @@ export class AgentService {
     const trustedPhoneParts = splitInternationalPhone(args.trustedContactPhone);
     const phoneAccountRejected = args.phoneConfirmation === 'no';
     if (phoneAccountRejected) {
-      return this.resolveEmailAuthentication({
-        ...args,
-        plan: this.clearPhoneAuthentication(args.plan, 'Current phone account rejected by user.'),
-      });
+      return { plan: this.clearPhoneAuthentication(args.plan, 'identity_rejected'),
+        authentication: null, authBlock: { nextInput: 'retry', guidance: createInformationAuthGuidance('phone_auth_failed', null) } };
     }
 
     const informationAuthAction = protectedRequests
@@ -7271,10 +7254,10 @@ export class AgentService {
 
   private humanEscalationRequestedMessage(result: AgentGatewayResult): string {
     if (result.status === 'success') {
-      return 'Listo, ya pedí apoyo. Una persona del equipo se unirá a esta conversación y te responderá por aquí. Mientras tanto, dejaré la conversación en sus manos';
+      return handoffMessages.requested;
     }
 
-    return 'No pude registrar la solicitud automáticamente, pero dejé esta conversación para revisión manual. Una persona del equipo podrá continuar por aquí';
+    return handoffMessages.failed;
   }
 
   private conversationHealthHelpOfferMessage(): string {

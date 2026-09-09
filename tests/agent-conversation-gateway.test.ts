@@ -94,6 +94,7 @@ describe('AgentConversationGateway', () => {
       status: 'failed',
       error: 'Agent API request failed with 401: Autenticación api fallida',
       retryable: false,
+      outcome: 'failed',
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -114,6 +115,7 @@ describe('AgentConversationGateway', () => {
       status: 'failed',
       error: 'Agent API request failed with 405.',
       retryable: false,
+      outcome: 'failed',
     });
     expect(fetchMock).toHaveBeenCalledTimes(1);
   });
@@ -136,6 +138,7 @@ describe('AgentConversationGateway', () => {
       status: 'failed',
       error: 'Agent API response had an unexpected envelope.',
       retryable: false,
+      outcome: 'failed',
     });
   });
 

@@ -36,7 +36,7 @@ import {
   projectSafeTrace,
   redactArtifactText,
 } from '../../runtime/artifact-redaction';
-import { attachEvaluationState } from '../evaluation-state';
+import { attachEvaluationState, buildCumulativeFixtureEffectSummaries } from '../evaluation-state';
 
 export async function runOfflineCase(args: {
   currentCase: EvalCase;
@@ -103,8 +103,18 @@ export async function runOfflineCase(args: {
       plan: response.plan,
       input: turn.input,
       outputText: response.outbound.text ?? '',
+      fixtureEffects: [],
     });
     turns.push(turn);
+  }
+  for (const turn of turns) {
+    const { getEvaluationPlan } = await import('../evaluation-state');
+    attachEvaluationState(turn, {
+      plan: getEvaluationPlan(turn),
+      input: turn.input,
+      outputText: turn.outputText,
+      fixtureEffects: buildCumulativeFixtureEffectSummaries(turns, turn.turnIndex),
+    });
   }
 
   return {

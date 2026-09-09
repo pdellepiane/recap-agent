@@ -66,6 +66,16 @@ export function decideHumanHelpAttempt(args: {
   return { action: 'attempt', dedupeKey, reason: 'first_attempt' };
 }
 
+export function resolveHandoffGatewayStatus(
+  result: { status: 'success' | 'failed' | 'skipped' | 'blocked'; outcome?: 'failed' | 'unknown' },
+): HandoffGatewayStatus {
+  if (result.status === 'success') return 'success';
+  if (result.status === 'failed' && result.outcome === 'unknown') return 'unknown';
+  if (result.status === 'failed') return 'failed';
+  if (result.status === 'blocked') return 'blocked';
+  return 'skipped';
+}
+
 export function applyHandoffResult(args: {
   readonly dedupeKey: string;
   readonly inboundId: string;

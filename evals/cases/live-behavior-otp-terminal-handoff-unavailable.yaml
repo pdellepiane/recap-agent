@@ -1,0 +1,58 @@
+template: template.base-live
+id: live_behavior.otp_terminal_handoff_unavailable
+suite: live_behavior_regression
+version: 1
+description: Rejected OTP with disabled handoff capability dispatches nothing and stays terminal.
+tags: [live, behavior, authentication, otp, terminal]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: s06-otp-handoff-unavailable
+inputs:
+  - text: "753994"
+    channel: whatsapp
+    contactPhone: "+51900000907"
+    sessionId: live-otp-terminal-unavailable-session
+  - text: "753994"
+    channel: whatsapp
+    contactPhone: "+51900000907"
+    sessionId: live-otp-terminal-unavailable-session
+seedPlan:
+  current_node: resolver_consultas_informativas
+  contact_email: regression-otp-unavailable@example.invalid
+  contact_phone: "+51900000907"
+  user_auth:
+    status: code_requested
+    email: regression-otp-unavailable@example.invalid
+    token: null
+    token_expires_at: null
+    last_error: null
+    requested_at: "2026-07-31T15:52:10.867Z"
+    failed_code_attempts: 0
+    otp_send_attempts: 1
+  information_state:
+    resume_node: deteccion_intencion
+    pending_requests:
+      - requestId: information-1
+        kind: purchase
+        resource: gift_purchases
+        query: Confirmar si el deposito del regalo llego a los novios.
+        orderId: null
+        aspects: [payment_status]
+        sensitiveFields: []
+        authAction: provide_otp
+    selection_candidates: []
+expectations:
+  - id: unavailable-handoff-is-not-requested
+    type: plan_field_equals
+    path: human_escalation.status
+    expected: none
+    severity: hard
+  - id: unavailable-handoff-no-takeover-dispatch
+    type: tool_usage
+    turnIndex: 0
+    mustNotCall: [request_human_takeover]
+    severity: hard
+budget:
+  maxTurns: 2
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 450

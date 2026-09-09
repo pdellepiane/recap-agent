@@ -46,6 +46,8 @@ export type AgentConversationMessage = {
   createdAt: string | null;
 };
 
+export type HandoffGatewayOutcome = 'failed' | 'unknown';
+
 export type AgentGatewayResult =
   | {
       status: 'success';
@@ -60,6 +62,7 @@ export type AgentGatewayResult =
       status: 'failed';
       error: string;
       retryable: boolean;
+      outcome?: HandoffGatewayOutcome;
     };
 
 type AgentGatewaySkippedResult = Extract<AgentGatewayResult, { status: 'skipped' }>;
@@ -2062,10 +2065,12 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   private publicFailure(
     failure: HttpRequestFailure,
   ): Extract<AgentGatewayResult, { status: 'failed' }> {
+    const outcome: HandoffGatewayOutcome = failure.httpStatus === null ? 'unknown' : 'failed';
     return {
       status: 'failed',
       error: failure.error,
       retryable: failure.retryable,
+      outcome,
     };
   }
 

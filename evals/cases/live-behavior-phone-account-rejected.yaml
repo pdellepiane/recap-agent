@@ -1,14 +1,16 @@
 template: template.base-live
 id: live_behavior.phone_account_rejection_requests_email
 suite: live_behavior_regression
-version: 1
+version: 2
 description: An explicit rejection of the current phone account clears phone authentication and requests the registered email.
 tags: [live, behavior, authentication, phone-first, email-fallback]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: s06-identity-rejection-success
 inputs:
   - text: Esa no es mi cuenta ni el número que tengo registrado.
     channel: whatsapp
-    contactPhone: "$TERMINAL_CONTACT_PHONE"
+    contactPhone: "+51900000901"
     sessionId: phone-account-rejected-session
 seedPlan:
   current_node: resolver_consultas_informativas

@@ -27,6 +27,7 @@ import { runOfflineCase } from './targets/offline';
 import { DEFAULT_GPT_TEXT_MODEL } from '../runtime/openai-model-defaults';
 import { redactArtifactText } from '../runtime/artifact-redaction';
 import {
+  getEvaluationFixtureEffects,
   getEvaluationInput,
   getEvaluationOutputText,
   getEvaluationPlan,
@@ -757,6 +758,53 @@ async function evaluateExpectation(
         : failures.join('; ');
       return result;
     }
+    case 'fixture_effect_count': {
+      const selected = selectTurn(context.turns, expectation.turnIndex);
+      if (!selected) {
+        result.passed = false;
+        result.score = 0;
+        result.message = `Missing turn ${expectation.turnIndex ?? 'final'} for fixture_effect_count.`;
+        return result;
+      }
+      const effects = getEvaluationFixtureEffects(selected);
+      if (effects === null) {
+        result.passed = false;
+        result.score = 0;
+        result.message = `Missing fixture receipt evidence for ${expectation.operation}; it is not zero.`;
+        return result;
+      }
+      const entry = effects.find((item) => item.operation === expectation.operation);
+      if (!entry) {
+        const expectsZero = expectation.expectedAttempts === 0 &&
+          expectation.expectedSuccesses === 0 &&
+          expectation.expectedReplays === 0;
+        if (expectsZero) {
+          result.passed = true;
+          result.score = 1;
+          result.message = `No ${expectation.operation} effects recorded as expected.`;
+          return result;
+        }
+        result.passed = false;
+        result.score = 0;
+        result.message = `Missing fixture receipt evidence for ${expectation.operation}; it is not zero.`;
+        return result;
+      }
+      if (!entry.receiptPresent) {
+        result.passed = false;
+        result.score = 0;
+        result.message = `Missing fixture receipt evidence for ${expectation.operation}; it is not zero.`;
+        return result;
+      }
+      const matched = entry.attempts === expectation.expectedAttempts &&
+        entry.successes === expectation.expectedSuccesses &&
+        entry.replays === expectation.expectedReplays;
+      result.passed = matched;
+      result.score = matched ? 1 : 0;
+      result.message = matched
+        ? `Fixture ${expectation.operation} attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome}.`
+        : `Fixture ${expectation.operation} was attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome} instead of attempts=${expectation.expectedAttempts} successes=${expectation.expectedSuccesses} replays=${expectation.expectedReplays}.`;
+      return result;
+    }
     default: {
       const unknownExpectation = expectation as { type?: unknown };
       result.message = `Unknown expectation type: ${String(unknownExpectation.type)}.`;
@@ -1030,6 +1078,42 @@ function selectTurn(turns: EvalTurnResult[], turnIndex?: number) {
     return turns.at(-1);
   }
   return turns[turnIndex];
+}
+
+export function evaluateFixtureEffectCountForTesting(args: {
+  turns: EvalTurnResult[];
+  operation: string;
+  turnIndex?: number;
+  expectedAttempts: number;
+  expectedSuccesses: number;
+  expectedReplays: number;
+}): { passed: boolean; message: string } {
+  const selected = args.turnIndex === undefined ? args.turns.at(-1) : args.turns[args.turnIndex];
+  if (!selected) {
+    return { passed: false, message: `Missing turn ${args.turnIndex ?? 'final'} for fixture_effect_count.` };
+  }
+  const effects = getEvaluationFixtureEffects(selected);
+  if (effects === null) {
+    return { passed: false, message: `Missing fixture receipt evidence for ${args.operation}; it is not zero.` };
+  }
+  const entry = effects.find((item) => item.operation === args.operation);
+  if (!entry) {
+    const expectsZero = args.expectedAttempts === 0 && args.expectedSuccesses === 0 && args.expectedReplays === 0;
+    if (expectsZero) return { passed: true, message: `No ${args.operation} effects recorded as expected.` };
+    return { passed: false, message: `Missing fixture receipt evidence for ${args.operation}; it is not zero.` };
+  }
+  if (!entry.receiptPresent) {
+    return { passed: false, message: `Missing fixture receipt evidence for ${args.operation}; it is not zero.` };
+  }
+  const matched = entry.attempts === args.expectedAttempts &&
+    entry.successes === args.expectedSuccesses &&
+    entry.replays === args.expectedReplays;
+  return {
+    passed: matched,
+    message: matched
+      ? `Fixture ${args.operation} attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome}.`
+      : `Fixture ${args.operation} was attempts=${entry.attempts} successes=${entry.successes} replays=${entry.replays} outcome=${entry.outcome} instead of attempts=${args.expectedAttempts} successes=${args.expectedSuccesses} replays=${args.expectedReplays}.`,
+  };
 }
 
 function getValueAtPath(source: unknown, dottedPath: string): unknown {

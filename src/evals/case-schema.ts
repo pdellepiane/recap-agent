@@ -594,6 +594,25 @@ const tokenUsagePresentExpectationSchema = z.object({
   severity: z.enum(['hard', 'soft']).default('hard'),
 });
 
+const fixtureEffectCountExpectationSchema = z.object({
+  id: z.string().optional(),
+  type: z.literal('fixture_effect_count'),
+  operation: z.enum([
+    'otp.request',
+    'otp.verify',
+    'rsvp.write',
+    'handoff.write',
+    'provider.quote.write',
+    'provider.favorite.write',
+    'provider.review.write',
+  ]),
+  turnIndex: z.number().int().nonnegative().optional(),
+  expectedAttempts: z.number().int().nonnegative(),
+  expectedSuccesses: z.number().int().nonnegative(),
+  expectedReplays: z.number().int().nonnegative().default(0),
+  severity: z.enum(['hard', 'soft']).default('hard'),
+});
+
 export const expectationSchema = z.discriminatedUnion('type', [
   nodeTransitionExpectationSchema,
   nodePathContainsExpectationSchema,
@@ -611,6 +630,7 @@ export const expectationSchema = z.discriminatedUnion('type', [
   trajectoryInvariantExpectationSchema,
   budgetConstraintExpectationSchema,
   tokenUsagePresentExpectationSchema,
+  fixtureEffectCountExpectationSchema,
 ]);
 export type EvalExpectation = z.infer<typeof expectationSchema>;
 

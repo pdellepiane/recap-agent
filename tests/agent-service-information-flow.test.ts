@@ -1062,7 +1062,7 @@ describe('AgentService first-class information flow', () => {
     expect(response.trace.tools_called).toContain('lookup_guest_orders_by_phone');
   });
 
-  it('routes an explicit wrong-account statement to email OTP without phone authentication', async () => {
+  it('rejects a wrong-account statement without automatic email OTP recovery and hands off once', async () => {
     const runtime = new InformationRuntime([
       extraction([purchaseRequest(null)], null, 'fallback@example.com', 'no'),
     ]);
@@ -1085,18 +1085,24 @@ describe('AgentService first-class information flow', () => {
     });
 
     expect(gateway.authByPhoneCalls).toBe(0);
-    expect(provider.requestCodeCalls).toBe(1);
+    expect(provider.requestCodeCalls).toBe(0);
     expect(response.plan.user_auth).toMatchObject({
-      status: 'code_requested',
+      status: 'none',
       auth_method: null,
       awaiting_phone_confirmation: false,
     });
-    expect(runtime.composeRequests.at(-1)?.extraction.informationRequests).toEqual([
-      expect.objectContaining({
-        kind: 'purchase',
-        query: 'Estado del regalo comprado.',
-      }),
-    ]);
+    expect(response.plan.user_auth.last_error).toBe('identity_rejected');
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.current_node).toBe('solicitar_agente_humano');
+    expect(response.plan.human_help_receipt).toMatchObject({
+      outcome: 'handoff_requested',
+      requested: true,
+    });
+    expect(response.trace.tools_called).toContain('log_agent_conversation_message');
+    expect(response.trace.tools_called).toContain('request_human_takeover');
+    expect(response.outbound.text).toContain('ya solicité apoyo humano');
+    expect(runtime.composeRequests).toHaveLength(0);
   });
 
   it('does not disclose trusted-phone guest data after the person rejects that phone association', async () => {
@@ -1176,16 +1182,17 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.eventDetailCalls).toBe(0);
     expect(response.trace.tools_called).not.toContain('lookup_guest_events_by_phone');
     expect(response.plan.user_auth.status).toBe('none');
-    expect(response.plan.information_state.pending_requests).toEqual([
-      expect.objectContaining({
-        query: pendingQuestion.query,
-      }),
-    ]);
-    expect(runtime.composeRequests.at(-1)?.informationResults?.[0]).toMatchObject({
-      kind: 'associated_event',
-      status: 'needs_input',
-      nextInput: 'email',
+    expect(response.plan.user_auth.last_error).toBe('identity_rejected');
+    expect(gateway.takeoverCalls).toBe(1);
+    expect(response.plan.human_escalation.status).toBe('requested');
+    expect(response.plan.human_help_receipt).toMatchObject({
+      outcome: 'handoff_requested',
+      requested: true,
     });
+    expect(response.trace.tools_called).toContain('log_agent_conversation_message');
+    expect(response.trace.tools_called).toContain('request_human_takeover');
+    expect(response.outbound.text).toContain('ya solicité apoyo humano');
+    expect(runtime.composeRequests).toHaveLength(0);
   });
 
   it('recovers a persisted retired confirmation turn with the phone-scoped purchase read', async () => {
@@ -1302,7 +1309,11 @@ describe('AgentService first-class information flow', () => {
     expect(response.trace.information_execution_summary).toEqual([
       expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_purchase', resource: 'orders' }),
     ]);
-    expect(response.outbound.text).toContain('asociada a este número');
+    expect(response.outbound.text).toContain('ya solicité apoyo humano');
+    expect(response.plan.human_help_receipt).toMatchObject({
+      outcome: 'handoff_requested',
+      requested: true,
+    });
     const repeated = await service.handleTurn({
       channel: 'whatsapp', externalUserId: 'phone-not-found-user',
       contactPhone: '+51973296571', text: 'No tengo cuenta',
@@ -1338,8 +1349,11 @@ describe('AgentService first-class information flow', () => {
     expect(gateway.takeoverCalls).toBe(1);
     expect(response.plan.human_escalation.status).toBe('requested');
     expect(response.plan.information_state.pending_requests[0]?.query).toBe(query);
-    expect(response.outbound.text).toContain('el invitado Roger Abanto');
-    expect(response.outbound.text).toContain('Baby Shower Catalina');
+    expect(response.outbound.text).toContain('ya solicité apoyo humano');
+    expect(response.plan.human_help_receipt).toMatchObject({
+      outcome: 'handoff_requested',
+      requested: true,
+    });
     expect(response.trace.tools_called).toContain('lookup_guest_events_by_phone');
     expect(response.trace.information_execution_summary).toEqual([
       expect.objectContaining({ status: 'failed', accessMethod: 'trusted_phone_guest' }),
@@ -2446,7 +2460,7 @@ describe('AgentService first-class information flow', () => {
     expect(firstFailure.trace.tools_called).toContain('request_human_takeover');
     expect(secondFailure.plan.user_auth.failed_code_attempts).toBe(1);
     expect(secondFailure.plan.human_escalation.status).toBe('requested');
-    expect(secondFailure.trace.tools_called).toContain('request_human_takeover');
+    expect(secondFailure.trace.tools_called).not.toContain('request_human_takeover');
     expect(secondFailure.trace.tools_called).not.toContain('verify_user_login_code');
     expect(secondFailure.trace.tools_called).not.toContain('request_user_login_code');
     expect(followUp.plan.user_auth.failed_code_attempts).toBe(1);
@@ -2734,6 +2748,7 @@ class FakePurchaseGateway implements AgentConversationGateway {
   } | null = null;
   public recentMessageCalls = 0;
   public takeoverCalls = 0;
+  public takeoverResult: AgentGatewayResult = { status: 'success', message: 'fixture_handoff' };
   public recentMessages: AgentConversationMessage[] | null = null;
   public giftResult: AgentPurchaseLookupResult = {
     status: 'success',
@@ -2777,7 +2792,7 @@ class FakePurchaseGateway implements AgentConversationGateway {
 
   async requestHumanTakeover(): Promise<AgentGatewayResult> {
     this.takeoverCalls += 1;
-    return { status: 'skipped', reason: 'disabled', message: 'disabled' };
+    return this.takeoverResult;
   }
 
   async getOrders(args: {

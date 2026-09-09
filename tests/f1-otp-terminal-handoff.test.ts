@@ -469,7 +469,7 @@ describe('F1c first rejected code verifies once then retains the human path', ()
     expect(provider.verifyCodeCalls).toBe(1);
     expect(provider.requestCodeCalls).toBe(0);
     expect(agentGateway.takeoverCalls).toBe(1);
-    expect(second.trace.tools_called).toContain('request_human_takeover');
+    expect(second.trace.tools_called).not.toContain('request_human_takeover');
     expect(second.trace.tools_called).not.toContain('verify_user_login_code');
     expect(second.trace.tools_called).not.toContain('request_user_login_code');
     expect(second.plan.human_escalation.status).toBe('requested');

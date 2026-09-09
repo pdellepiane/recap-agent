@@ -29,7 +29,9 @@ import type {
 import type { CartInformation, PurchaseInformation, PurchasePartition, PurchaseResource } from '../core/information';
 import {
   buildRuntimeCapabilityManifest,
+  isRuntimeOperationId,
   type RuntimeCapabilityManifest,
+  type RuntimeOperationId,
 } from './capability-manifest';
 import { normalizeServerTimestamp } from '../core/server-timestamp';
 import type { EvalFixtureStateStore, FixtureEffectReceipt } from './eval-fixture-state';
@@ -39,6 +41,26 @@ export { normalizeServerTimestamp as normalizePurchaseTimestamp } from '../core/
 
 export function assertFixtureMarkerAllowed(environment: string): void {
   assertFixtureAllowed(environment);
+}
+
+export function parseFixtureDisabledOperations(value: unknown): RuntimeOperationId[] {
+  if (!Array.isArray(value)) return [];
+  const out: RuntimeOperationId[] = [];
+  for (const entry of value) {
+    if (typeof entry === 'string' && isRuntimeOperationId(entry)) {
+      out.push(entry);
+    }
+  }
+  return [...new Set(out)];
+}
+
+export function resolveFixtureHandoffStatus(data: FixtureData | null): 'success' | 'failed' | 'unknown' {
+  const raw = (data as Record<string, unknown> | null)?.['handoff'];
+  if (raw !== undefined && raw !== null && typeof raw === 'object') {
+    const status = (raw as { status?: unknown }).status;
+    if (status === 'failed' || status === 'unknown') return status;
+  }
+  return 'success';
 }
 
 export type FixtureGatewayEffectOptions = {
@@ -64,6 +86,10 @@ export type FixtureData = {
   rsvp?: Record<string, unknown>;
   /** Deterministic provider-auth outcomes used by isolated live evaluations. */
   emailAuth?: unknown;
+  /** Typed isolated manifest: fixture-declared disabled runtime operations. */
+  disabledOperations?: unknown;
+  /** Explicit handoff world outcome: success | failed | unknown. */
+  handoff?: unknown;
 };
 
 const rsvpEventSchema = z.object({
@@ -475,11 +501,16 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       typeof emailAuth === 'object' &&
       !Array.isArray(emailAuth) &&
       ('request' in emailAuth || 'verify' in emailAuth);
+    const fixtureDisabled = parseFixtureDisabledOperations(this.data?.disabledOperations);
+    const disabled: RuntimeOperationId[] = [
+      ...(hasEmailAuthOutcome ? [] : ['auth.email_otp' as const]),
+      ...fixtureDisabled,
+    ];
     this.capabilityDescriptor = buildRuntimeCapabilityManifest({
       configured: loadResult.status === 'loaded',
       fixture: true,
       environment: 'development',
-      disabledOperations: hasEmailAuthOutcome ? [] : ['auth.email_otp'],
+      disabledOperations: [...new Set(disabled)],
       // A fixture is an explicitly isolated test backend. Callers can still
       // deny all mutation capabilities to exercise development isolation.
       allowCustomerWrites: options.allowCustomerWrites ?? true,
@@ -654,14 +685,18 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
     operation: FixtureEffectReceipt['operation'],
     args: Record<string, unknown>,
     resultStatus: string,
+    replayed = false,
   ): Promise<FixtureEffectReceipt> {
+    const { replayed: _replayedFlag, ...cleanArgs } = args;
+    void _replayedFlag;
     const receipt = await this.stateStore.record({
       runId: this.runId,
       caseId: this.caseId,
       scenario: this.scenario,
       operation,
-      args,
+      args: cleanArgs,
       resultStatus,
+      replayed,
     });
     this.effectReceipts.push(receipt);
     return receipt;
@@ -786,18 +821,39 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
       };
     }
     if (this.isFixtureUnavailable()) {
-      const failed: AgentGatewayResult = { status: 'failed', error: this.malformedError(), retryable: false };
+      const failed: AgentGatewayResult = { status: 'failed', error: this.malformedError(), retryable: false, outcome: 'failed' };
       await this.recordEffect('handoff.write', { phoneNumber }, failed.status);
       return failed;
     }
     const prior = await this.stateStore.count(this.runId, this.caseId, 'handoff.write');
     if (prior >= 1 || this.getFixtureCallCount('handoff.write') >= 1) {
-      const replayed = await this.stateStore.lastReceipt(this.runId, this.caseId, 'handoff.write');
+      const stored = await this.stateStore.lastReceipt(this.runId, this.caseId, 'handoff.write');
+      const storedStatus = stored?.resultStatus ?? 'success';
+      if (storedStatus === 'unknown') {
+        const replay: AgentGatewayResult = {
+          status: 'failed',
+          error: 'Fixture handoff outcome is unknown; no automatic retry.',
+          retryable: false,
+          outcome: 'unknown',
+        };
+        await this.recordEffect('handoff.write', { phoneNumber }, 'unknown', true);
+        return replay;
+      }
+      if (storedStatus === 'failed') {
+        const replay: AgentGatewayResult = {
+          status: 'failed',
+          error: 'Fixture handoff failed.',
+          retryable: false,
+          outcome: 'failed',
+        };
+        await this.recordEffect('handoff.write', { phoneNumber }, 'failed', true);
+        return replay;
+      }
       const replay: AgentGatewayResult = {
         status: 'success',
-        message: `Human takeover requested (fixture, replay ${replayed?.syntheticId ?? 'unknown'}).`,
+        message: 'Human takeover requested (fixture, replay).',
       };
-      await this.recordEffect('handoff.write', { phoneNumber, replayed: true }, replay.status);
+      await this.recordEffect('handoff.write', { phoneNumber }, replay.status, true);
       return replay;
     }
     const configured = (this.data as Record<string, unknown> | null)?.['handoff'];
@@ -808,6 +864,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
           status: 'failed',
           error: typeof record['error'] === 'string' ? record['error'] : 'Fixture handoff failed.',
           retryable: false,
+          outcome: 'failed',
         };
         await this.recordEffect('handoff.write', { phoneNumber }, failed.status);
         return failed;
@@ -817,6 +874,7 @@ export class FixtureAgentConversationGateway implements AgentConversationGateway
           status: 'failed',
           error: 'Fixture handoff outcome is unknown; no automatic retry.',
           retryable: false,
+          outcome: 'unknown',
         };
         await this.recordEffect('handoff.write', { phoneNumber }, 'unknown');
         return failed;

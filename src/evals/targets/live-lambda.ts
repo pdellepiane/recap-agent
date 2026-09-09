@@ -18,7 +18,7 @@ import {
   projectSafeRecord,
   projectSafeTrace,
 } from '../../runtime/artifact-redaction';
-import { attachEvaluationState } from '../evaluation-state';
+import { attachEvaluationState, buildCumulativeFixtureEffectSummaries, getEvaluationPlan } from '../evaluation-state';
 import { conversationPartitionKey } from '../../storage/conversation-key';
 import { parseTurnCoordinationHeaders, runOverlappingTurns } from '../concurrent-turns';
 
@@ -165,6 +165,7 @@ export async function runLiveLambdaCase(args: {
       plan: evaluationPlan,
       input: turn.input,
       outputText: parsed.message ?? '',
+      fixtureEffects: [],
     });
     return turn;
   };
@@ -199,6 +200,14 @@ export async function runLiveLambdaCase(args: {
   }
   for (let index = turns.length; index < args.currentCase.inputs.length; index += 1) {
     turns.push(await runTurn(index));
+  }
+  for (const turn of turns) {
+    attachEvaluationState(turn, {
+      plan: getEvaluationPlan(turn),
+      input: turn.input,
+      outputText: turn.outputText,
+      fixtureEffects: buildCumulativeFixtureEffectSummaries(turns, turn.turnIndex),
+    });
   }
 
   return {
