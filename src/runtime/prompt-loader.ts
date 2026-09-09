@@ -119,6 +119,10 @@ export class PromptLoader {
     return this.load(['nodes/resolver_consultas_informativas/image_inspection.txt'], []);
   }
 
+  async loadSupportContinuityBundle(): Promise<PromptBundle> {
+    return this.load(['nodes/resolver_consultas_informativas/support_continuity.txt'], []);
+  }
+
   async loadImageMessages(): Promise<Record<'image_too_large' | 'media_unavailable' | 'handoff_requested' | 'handoff_failed', string>> {
     const { z } = await import('zod');
     const schema = z.object({ image_too_large: z.string(), media_unavailable: z.string(),

@@ -72,6 +72,12 @@ function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
       nodes: ['resolver_consultas_informativas'], profiles: ['image'],
       transitions: ['media:image_turn'], loader: 'PromptLoader image bundle/messages' });
   }
+  if (filePath === 'nodes/resolver_consultas_informativas/support_continuity.txt') {
+    consumers.push({ callType: 'reply',
+      nodes: ['resolver_consultas_informativas'], profiles: ['support'],
+      transitions: ['information:support_acknowledgment'],
+      loader: 'PromptLoader.loadSupportContinuityBundle -> AgentService.handleSupportAcknowledgment via composeModelReply' });
+  }
   if (filePath === 'nodes/resolver_consultas_informativas/capability_boundary.txt') {
     consumers.push({
       callType: 'deterministic_reply',

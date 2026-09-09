@@ -758,7 +758,7 @@ export type EvalMatrix = z.infer<typeof evalMatrixSchema>;
 export const lambdaTurnResponseSchema = z.object({
   message: z.string().nullable(),
   delivery: z.object({
-    action: z.enum(['send', 'suppress']),
+    action: z.enum(['send', 'suppress', 'failure']),
     reason: z.string(),
   }).optional(),
   conversation_id: z.string().nullable(),

@@ -34,10 +34,14 @@ const FALLBACK_HANDOFF_REQUESTED =
 const FALLBACK_HANDOFF_FAILED =
   'No puedo ejecutar esa acción a partir de una imagen. No pude registrar la solicitud de apoyo humano en este momento; puedes explicar tu consulta en texto por aquí.';
 
-// The outbound renderer strips a single trailing period from every reply,
-// so user-visible text is the sanitized form of the stored content.
+// Delivery preserves model text: only documented transport transforms apply
+// (filecite markers, whitespace collapse). No trailing-period deletion.
 function sans(value: string): string {
-  return value.replace(/\.(?=\s*$)/u, '');
+  return value
+    .replace(/\bfilecite\s+turn\d+\s+file\s+\d+\b/giu, '')
+    .replace(/[ \t]{2,}/gu, ' ')
+    .replace(/[ \t]+\n/gu, '\n')
+    .trim();
 }
 
 type InspectionOutcome = 'readable' | 'unreadable' | 'human_help';

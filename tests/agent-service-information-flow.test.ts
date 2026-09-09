@@ -64,7 +64,15 @@ describe('AgentService first-class information flow', () => {
       const response = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'mailbox-report',
         contactPhone: '+51900000302', messageId: `mailbox-${index}`, receivedAt: new Date().toISOString(), text });
       expect(response.plan.current_node).toBe('resolver_consultas_informativas');
-      expect(runtime.composeRequests).toHaveLength(0);
+      // L1: support acknowledgments are model-composed from scoped evidence,
+      // one reply-model call per turn through the minimal support bundle.
+      expect(runtime.composeRequests).toHaveLength(index + 1);
+      expect(response.trace.prompt_bundle_id).not.toBe('deterministic:support_continuity_acknowledgment');
+      expect(response.trace.prompt_file_paths).toContain(
+        'nodes/resolver_consultas_informativas/support_continuity.txt',
+      );
+      expect(response.outbound.text).toBe('Respuesta informativa.');
+      expect(response.outbound.delivery.action).toBe('send');
       summaries.push(response.plan.conversation_summary);
     }
     expect(summaries).toEqual([
@@ -564,12 +572,21 @@ describe('AgentService first-class information flow', () => {
 
     expect(namedGuest.plan.current_node).toBe('resolver_consultas_informativas');
     expect(namedGuest.plan.contact_name).toBeNull();
-    expect(namedGuest.outbound.text).toContain('Roger Abanto');
-    expect(namedGuest.outbound.text).toContain('Mantengo esta consulta');
+    // L1: the service projects the structured detail as evidence; the model
+    // writes the reply. The stub model text is delivered verbatim.
+    expect(namedGuest.outbound.text).toBe('Respuesta informativa.');
+    expect(namedGuest.outbound.delivery.action).toBe('send');
+    expect(runtime.composeRequests.at(-2)?.extraction.supportAct).toMatchObject({
+      kind: 'provide_detail',
+      personReference: 'Roger Abanto',
+    });
     expect(namedEvent.plan.current_node).toBe('resolver_consultas_informativas');
     expect(namedEvent.plan.contact_name).toBeNull();
-    expect(namedEvent.outbound.text).toContain('Baby Shower Catalina');
-    expect(namedEvent.outbound.text).toContain('Mantengo esta consulta');
+    expect(namedEvent.outbound.text).toBe('Respuesta informativa.');
+    expect(runtime.composeRequests.at(-1)?.extraction.supportAct).toMatchObject({
+      kind: 'provide_detail',
+      eventReference: 'Baby Shower Catalina',
+    });
     expect(runtime.composeRequests.at(-1)?.errorMessage).toBeNull();
   });
 

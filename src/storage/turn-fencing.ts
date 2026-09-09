@@ -125,7 +125,7 @@ export function buildFencedPlanTransactInput(args: {
 
 export type PersistedTurnOutcome = {
   text: string | null;
-  deliveryAction: 'send' | 'suppress';
+  deliveryAction: 'send' | 'suppress' | 'failure';
   effectCount: number;
 };
 

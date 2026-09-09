@@ -65,7 +65,7 @@ export type FeedbackSignalsV1 = {
     runtime_latency_ms: number;
   };
   output: {
-    delivery_action: 'send' | 'suppress';
+    delivery_action: 'send' | 'suppress' | 'failure';
     character_count: number;
     word_count: number;
     question_count: number;
@@ -203,7 +203,7 @@ export function buildTurnPerfRecord(args: {
   receivedAt?: string;
   sessionId?: string | null;
   contactPhonePresent?: boolean;
-  deliveryAction?: 'send' | 'suppress';
+  deliveryAction?: 'send' | 'suppress' | 'failure';
   assistantMessage?: string | null;
   includeAssistantMessagePreview?: boolean;
   structuredMessageKind?: string | null;
@@ -354,7 +354,7 @@ function buildFeedbackSignals(args: {
   receivedAt: string;
   sessionId: string | null;
   contactPhonePresent: boolean;
-  deliveryAction: 'send' | 'suppress';
+  deliveryAction: 'send' | 'suppress' | 'failure';
   assistantMessage: string | null;
   assistantQualityFlags: AssistantMessageQualityFlag[];
   structuredMessageKind: string | null;

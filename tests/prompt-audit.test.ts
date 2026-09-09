@@ -74,9 +74,9 @@ describe('prompt inventory', () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    expect(inventory.totalFiles).toBe(112);
+    expect(inventory.totalFiles).toBe(113);
     expect(inventory.unmappedFiles).toEqual([]);
-    expect(inventory.entries).toHaveLength(112);
+    expect(inventory.entries).toHaveLength(113);
     for (const entry of inventory.entries) {
       expect(entry.consumers.length).toBeGreaterThan(0);
       expect(entry.filePath).toBeTruthy();

@@ -29,6 +29,7 @@ import {
   starterProviderCategoriesForEvent,
 } from '../core/event-provider-priorities';
 import { executeFinishPlanTool } from './finish-plan-tool';
+import { ModelComposedFailureError } from './model-composition';
 import { resolveExplicitEventDate } from './close-submission-summary';
 import type {
   AgentRuntime,
@@ -427,7 +428,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   async composeReply(
     request: ComposeReplyRequest,
   ): Promise<ComposeReplyResult> {
-    const bundle = await this.options.promptLoader.loadNodeBundle(
+    const bundle = request.replyBundle ?? await this.options.promptLoader.loadNodeBundle(
       request.currentNode,
       {
         informationAuthReasons: (request.informationResults ?? [])
@@ -498,18 +499,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       runResult = result;
     } catch (error) {
       if (error instanceof InputGuardrailTripwireTriggered) {
-        return {
-          text: '',
-          structuredMessage: {
-            type: 'generic',
-            paragraphs_es: [
-              'No puedo ayudar a ignorar instrucciones, revelar prompts internos o saltarme las reglas del sistema. Sí puedo ayudarte con preguntas sobre Sin Envolturas o con tu plan de evento.',
-            ],
-          },
-          tokenUsage: this.extractTokenUsage(error),
-          recommendationFunnel,
-          openAiCall: null,
-        };
+        throw new ModelComposedFailureError('guardrail_trip');
       }
       if (error instanceof OutputGuardrailTripwireTriggered) {
         finalOutput = error.result.agentOutput;
@@ -520,7 +510,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     }
     const parseSchema = outputSchema;
     const structured = parseSchema.parse(
-      this.normalizeSpanishVocabulary(this.normalizeSupportEmails(finalOutput)),
+      this.normalizeSupportEmails(finalOutput),
     );
     return {
       text: '',
@@ -1767,70 +1757,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       .replace(/\bemail\s+protected\b/giu, SUPPORT_EMAIL)
       .replace(/\bhola\s*(?:\[at\]|\(at\)| at )\s*sinenvolturas\.com\b/giu, SUPPORT_EMAIL)
       .replace(/\b(?!hola@)[A-Z0-9._%+-]+@sinenvolturas\.com\b/giu, SUPPORT_EMAIL);
-  }
-
-  private normalizeSpanishVocabulary(value: unknown, userVisible = false): unknown {
-    if (typeof value === 'string') {
-      return userVisible ? this.normalizeSpanishVocabularyText(value) : value;
-    }
-
-    if (Array.isArray(value)) {
-      return value.map((entry) => this.normalizeSpanishVocabulary(entry, userVisible));
-    }
-
-    if (value && typeof value === 'object') {
-      const normalized: Record<string, unknown> = {};
-      for (const [key, entry] of Object.entries(value)) {
-        const entryIsUserVisible =
-          key !== 'requested_fields_es' && (userVisible || key.endsWith('_es'));
-        normalized[key] = this.normalizeSpanishVocabulary(entry, entryIsUserVisible);
-      }
-      return normalized;
-    }
-
-    return value;
-  }
-
-  private normalizeSpanishVocabularyText(value: string): string {
-    const replacements: ReadonlyArray<readonly [RegExp, string]> = [
-      [/\bel RSVP\b/giu, 'la confirmación de asistencia'],
-      [/\bla web\b/giu, 'el sitio de internet'],
-      [/\bel Excel\b/giu, 'la hoja de cálculo'],
-      [/\bdel Excel\b/giu, 'de la hoja de cálculo'],
-      [/\bEl delivery\b/gu, 'La entrega'],
-      [/\bel delivery\b/gu, 'la entrega'],
-      [/\bdel Shop\b/giu, 'de la tienda'],
-      [/\bun screenshot\b/giu, 'una captura de pantalla'],
-      [/\bRSVP\b/giu, 'confirmación de asistencia'],
-      [/\bShop\b/giu, 'tienda'],
-      [/\bExcel\b/giu, 'hoja de cálculo'],
-      [/\bQR\b/gu, 'código de pago'],
-      [/\be-?mail\b/giu, 'correo electrónico'],
-      [/\bchat\b/giu, 'conversación'],
-      [/\bweb\b/giu, 'sitio de internet'],
-      [/\blink\b/giu, 'enlace'],
-      [/\bonline\b/giu, 'en línea'],
-      [/\bdelivery\b/giu, 'entrega'],
-      [/\bspam\b/giu, 'correo no deseado'],
-      [/\bmarketplace\b/giu, 'plataforma de proveedores'],
-      [/\bstreaming\b/giu, 'transmisión en vivo'],
-      [/\bhost\b/giu, 'anfitrión'],
-      [/\bbartenders?\b/giu, 'personal de barra'],
-      [/\bel baby shower\b/giu, 'la celebración por la llegada del bebé'],
-      [/\bbaby shower\b/giu, 'celebración por la llegada del bebé'],
-      [/\bcatering\b/giu, 'servicio de comida'],
-      [/\bwedding planners?\b/giu, 'organización de bodas'],
-      [/\bscreenshot\b/giu, 'captura de pantalla'],
-      [/\bFAQ\b/gu, 'preguntas frecuentes'],
-      [/\bfeedback\b/giu, 'comentarios'],
-      [/\bapp\b/giu, 'aplicación'],
-      [/\blogin\b/giu, 'acceso'],
-    ];
-
-    return replacements.reduce(
-      (normalized, [pattern, replacement]) => normalized.replace(pattern, replacement),
-      value,
-    );
   }
 
   private stringifyForGuardrail(value: unknown): string {

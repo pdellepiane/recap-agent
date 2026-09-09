@@ -16,6 +16,7 @@ import type {
 } from '../core/information';
 
 import type { StructuredMessage } from './structured-message';
+import type { PromptBundle } from './prompt-loader';
 import type { ProviderFitCriteria } from './provider-fit';
 import type { TurnMessageContext } from './turn-message-context';
 import type {
@@ -155,6 +156,20 @@ export type ComposeReplyRequest = {
   toolUsage: ToolUsage;
   informationResults?: InformationTaskResult[];
   rsvpPhoneEvidence?: RsvpPhoneReplyEvidence | null;
+  /**
+   * L1 composition seam: a pre-loaded minimal bundle replaces the node bundle
+   * for migrated paths. Absent means the legacy node bundle (to be retired).
+   */
+  replyBundle?: PromptBundle;
+};
+
+/**
+ * L1 output-origin receipt. Carries this turn's actual model paragraphs so
+ * delivery can verify content, never a boolean a caller can set dishonestly.
+ */
+export type ModelOriginReceipt = {
+  readonly modelParagraphs: readonly string[];
+  readonly bundleId: string;
 };
 
 export type ComposeReplyResult = {
@@ -168,6 +183,7 @@ export type ComposeReplyResult = {
     presentation_limit: number;
   };
   openAiCall?: OpenAiCallRef | null;
+  origin?: ModelOriginReceipt | null;
 };
 
 export type ToolUsage = {

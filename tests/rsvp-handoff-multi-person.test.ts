@@ -39,8 +39,8 @@ describe('RSVP multi-person handoff (T11)', () => {
     });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-handoff-1', text: 'Hola, confirmo mi asistencia y la de mi esposa Maria para el evento del sabado', messageId: 'msg-1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     const outbound = result.outbound.text ?? '';
-    // sanitizeAssistantOutput strips trailing period
-    expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará');
+    // Delivery preserves model text: no trailing-period deletion.
+    expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará.');
     expect(outbound.toLowerCase()).not.toContain('rsvp');
     expect(outbound).not.toContain('Para cuál');
     expect(outbound).not.toContain('Evento sin nombre');
@@ -84,7 +84,7 @@ describe('RSVP multi-person handoff (T11)', () => {
     });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-handoff-2', text: 'Confirmamos asistencia para dos personas', messageId: 'msg-2', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     const outbound = result.outbound.text ?? '';
-    expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará');
+    expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará.');
     expect(outbound.toLowerCase()).not.toContain('rsvp');
     expect(gateway.calledTools).toEqual([]);
     expect(result.trace.tools_called).toContain('request_human_takeover');
@@ -123,7 +123,7 @@ describe('RSVP multi-person handoff (T11)', () => {
     });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-handoff-3', text: 'Confirmo para mi y Maria y Carlos', messageId: 'msg-3', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     const outbound = result.outbound.text ?? '';
-    expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria y Carlos, nuestro equipo de apoyo humano te ayudará');
+    expect(outbound).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria y Carlos, nuestro equipo de apoyo humano te ayudará.');
     expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
     expect(result.trace.tools_called).toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(1);
@@ -164,7 +164,7 @@ describe('RSVP multi-person handoff (T11)', () => {
     });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-single', text: 'Confirmo mi asistencia', messageId: 'msg-4', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     const outbound = result.outbound.text ?? '';
-    expect(outbound).not.toBe('¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará');
+    expect(outbound).not.toBe('¡Con gusto! Para confirmar la asistencia para ti y para tu acompañante, nuestro equipo de apoyo humano te ayudará.');
     expect(result.trace.tools_called).toContain('lookup_rsvp_invitations');
     expect(result.trace.tools_called).not.toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(0);
@@ -216,10 +216,10 @@ describe('RSVP multi-person handoff (T12 backend-registered)', () => {
     const first = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-dedupe', text: 'Confirmo para mi y Maria', messageId: 'msg-d1', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     expect(first.trace.tools_called).toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(1);
-    expect(first.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará');
+    expect(first.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará.');
     expect(first.plan.assumptions).toContain(`rsvp_handoff:${first.plan.conversation_id ?? first.plan.plan_id}`);
     const second = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-dedupe', text: 'Confirmo para mi y Maria otra vez', messageId: 'msg-d2', receivedAt: '2026-08-27T15:01:00.000Z', contactPhone: '+51973296571' });
-    expect(second.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará');
+    expect(second.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Maria, nuestro equipo de apoyo humano te ayudará.');
     expect(second.trace.tools_called).not.toContain('request_human_takeover');
     expect(gateway.takeoverCalls).toBe(1);
     expect(second.plan.assumptions).toContain(`rsvp_handoff:${second.plan.conversation_id ?? second.plan.plan_id}`);
@@ -261,7 +261,7 @@ describe('RSVP multi-person handoff (T12 backend-registered)', () => {
     expect(result.trace.tools_called).toContain('request_human_takeover');
     expect(result.outbound.text ?? '').toContain('No pude registrar');
     expect(result.outbound.text ?? '').toContain('intenta nuevamente');
-    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará');
+    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará.');
     expect(result.plan.human_escalation.status).toBe('none');
     expect(result.plan.human_escalation.last_error).toContain('still 500');
   });
@@ -298,7 +298,7 @@ describe('RSVP multi-person handoff (T12 backend-registered)', () => {
     });
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-retry-success', text: 'Confirmo para mi y Carlos', messageId: 'msg-rs', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '+51973296571' });
     expect(gateway.takeoverCalls).toBe(2);
-    expect(result.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Carlos, nuestro equipo de apoyo humano te ayudará');
+    expect(result.outbound.text).toBe('¡Con gusto! Para confirmar la asistencia para ti y para Carlos, nuestro equipo de apoyo humano te ayudará.');
     expect(result.plan.assumptions).toContain(`rsvp_handoff:${result.plan.conversation_id ?? result.plan.plan_id}`);
   });
 
@@ -334,7 +334,7 @@ describe('RSVP multi-person handoff (T12 backend-registered)', () => {
     expect(result.trace.tools_called.filter((t) => t === 'request_human_takeover').length).toBe(1);
     expect(result.outbound.text ?? '').toContain('No pude registrar');
     expect(result.outbound.text ?? '').toContain('intenta nuevamente');
-    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará');
+    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará.');
     expect(result.plan.human_escalation.status).toBe('none');
     expect(result.plan.human_escalation.last_error).toContain('definitive 400');
     expect(result.plan.rsvp_state).toEqual(seeded.rsvp_state);
@@ -370,7 +370,7 @@ describe('RSVP multi-person handoff (T12 backend-registered)', () => {
     const result = await service.handleTurn({ channel: 'whatsapp', externalUserId: 'user-skipped', text: 'Confirmo para mi y Maria', messageId: 'msg-skip', receivedAt: '2026-08-27T15:00:00.000Z', contactPhone: '' });
     // missing phone triggers missingPhoneEscalationResult without calling gateway, but honest fallback still
     expect(result.outbound.text ?? '').toContain('No pude registrar');
-    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará');
+    expect(result.outbound.text ?? '').not.toContain('nuestro equipo de apoyo humano te ayudará.');
     expect(result.plan.human_escalation.status).toBe('none');
   });
 });

@@ -74,6 +74,7 @@ import type {
   AgentRuntime,
   ComposeReplyResult,
   ExtractionResult,
+  ModelOriginReceipt,
   RsvpPhoneReplyEvidence,
   ToolUsage,
 } from './contracts';
@@ -162,6 +163,11 @@ import {
   buildCloseSubmissionSummary,
   parseFinishPlanTurnOutcome,
 } from './close-submission-summary';
+import {
+  applyDocumentedTransportTransforms,
+  assertModelOrigin,
+  composeModelReply,
+} from './model-composition';
 import { buildFinishPlanSummary, buildProviderQuoteReceipts } from './finish-plan-debug';
 import {
   disclosedPurchaseMethod,
@@ -5336,12 +5342,11 @@ export class AgentService {
     args: Parameters<AgentService['handleInformationFlow']>[0],
     plan: PlanSnapshot,
     act: InformationSupportAct | null | undefined = args.extraction.supportAct,
-    operationalNote = 'A bounded user-reported support act was acknowledged without a lookup or reply-model call.',
+    operationalNote = 'A bounded user-reported support act was acknowledged from scoped evidence by the reply model.',
   ): Promise<HandleTurnResponse> {
     if (!act || !this.isSupportAcknowledgment(act)) {
       throw new Error('Support acknowledgment requires typed support evidence.');
     }
-    const text = this.selectSupportAcknowledgmentMessage(act);
     const planWithSupportContext = mergePlan(plan, {
       conversation_summary: this.supportConversationSummary(
         act,
@@ -5352,21 +5357,88 @@ export class AgentService {
       plan: planWithSupportContext,
       reason: 'support_continuity_acknowledgment',
     });
+    const currentNode: DecisionNode = 'resolver_consultas_informativas';
+    const turnDecision = this.informationTurnDecision('support_acknowledgment');
+    const bundle = await this.dependencies.promptLoader.loadSupportContinuityBundle();
+    args.timingMs.prompt_bundle_load += 0;
+    let reply: ComposeReplyResult;
+    try {
+      reply = await composeModelReply(this.dependencies.runtime, {
+        currentNode,
+        previousNode: args.previousNode,
+        userMessage: args.inbound.text,
+        messageContext: args.messageContext,
+        plan: planWithSupportContext,
+        extraction: args.extraction,
+        missingFields: [],
+        searchReady: false,
+        providerResults: [],
+        turnDecision,
+        errorMessage: null,
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
+        toolUsage: args.toolUsage,
+        replyBundle: bundle,
+      });
+    } catch (error) {
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      args.tokenUsage.total = this.sumTokenUsage(
+        args.tokenUsage.classifier,
+        args.tokenUsage.extraction,
+      );
+      return {
+        plan: planWithSupportContext,
+        outbound: this.failureOutbound(
+          planWithSupportContext.conversation_id,
+          'support_acknowledgment_composition_failed',
+        ),
+        trace: this.buildTrace({
+          plan: planWithSupportContext,
+          previousNode: args.previousNode,
+          currentNode,
+          nodePath: args.previousNode === currentNode
+            ? [currentNode]
+            : [args.previousNode, currentNode],
+          extraction: args.extraction,
+          missingFields: [],
+          searchReady: false,
+          promptBundleId: bundle.id,
+          promptFilePaths: bundle.filePaths,
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'support_continuity_acknowledgment',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          responseClassifier: args.responseClassifierTrace,
+          searchStrategy: 'none',
+          turnDecision,
+          operationalNote: `Support acknowledgment composition failed (${error instanceof Error ? error.name : 'unknown'}); typed operational failure delivered without prose.`,
+          informationExecution: [],
+        }),
+      };
+    }
+    args.tokenUsage.reply = reply.tokenUsage ?? null;
+    args.tokenUsage.openAiCalls.reply = reply.openAiCall ?? null;
     args.tokenUsage.total = this.sumTokenUsage(
       args.tokenUsage.classifier,
       args.tokenUsage.extraction,
+      args.tokenUsage.reply,
     );
+    args.timingMs.compose_reply += 0;
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const currentNode: DecisionNode = 'resolver_consultas_informativas';
-    const turnDecision = this.informationTurnDecision('support_acknowledgment');
     return {
       plan: planWithSupportContext,
       outbound: this.renderOutbound(
-        { text },
+        { text: reply.text, structuredMessage: reply.structuredMessage },
         [],
         args.inbound.channel,
         planWithSupportContext.conversation_id,
         planWithSupportContext,
+        undefined,
+        reply.origin,
       ),
       trace: this.buildTrace({
         plan: planWithSupportContext,
@@ -5378,8 +5450,8 @@ export class AgentService {
         extraction: args.extraction,
         missingFields: [],
         searchReady: false,
-        promptBundleId: 'deterministic:support_continuity_acknowledgment',
-        promptFilePaths: [],
+        promptBundleId: bundle.id,
+        promptFilePaths: bundle.filePaths,
         toolUsage: args.toolUsage,
         providerResults: [],
         recommendationFunnel: this.resolveRecommendationFunnel(null, []),
@@ -10959,22 +11031,40 @@ export class AgentService {
     conversationId: string | null,
     plan?: PlanSnapshot,
     toolUsage?: ToolUsage,
+    origin: ModelOriginReceipt | null = null,
   ): NormalizedOutboundMessage {
-    const structuredMessage = this.enforceContactRequestFields(
-      reply.structuredMessage,
-      plan,
-      toolUsage,
-    );
+    // Migrated model-composed paths bypass post-generation prose insertion:
+    // contact/close prose rewrites are L2 deletion targets, not delivery steps.
+    const migratedGeneric = origin !== null && reply.structuredMessage?.type === 'generic';
+    const structuredMessage = migratedGeneric
+      ? reply.structuredMessage
+      : this.enforceContactRequestFields(
+        reply.structuredMessage,
+        plan,
+        toolUsage,
+      );
     const structuredMessageKind = structuredMessage?.type ?? null;
     if (structuredMessage) {
       const renderer = this.dependencies.renderers[channel]
         ?? this.dependencies.renderers['whatsapp'];
       if (renderer) {
+        const text = this.sanitizeAssistantOutput(renderer.render({
+          message: structuredMessage,
+          providerResults,
+        }));
+        if (origin !== null) {
+          try {
+            assertModelOrigin({
+              origin,
+              reply: { text: reply.text, structuredMessage },
+              deliveredText: text,
+            });
+          } catch {
+            return this.failureOutbound(conversationId, 'model_origin_mismatch');
+          }
+        }
         return {
-          text: this.sanitizeAssistantOutput(renderer.render({
-            message: structuredMessage,
-            providerResults,
-          })),
+          text,
           conversationId,
           structuredMessageKind,
           delivery: {
@@ -10985,14 +11075,26 @@ export class AgentService {
       }
     }
 
-    const plainText = plan?.current_node === 'crear_lead_cerrar' && toolUsage
+    const plainText = !migratedGeneric && plan?.current_node === 'crear_lead_cerrar' && toolUsage
       ? applyCloseSubmissionToText(
         reply.text,
         this.resolveCloseSubmissionSummary(plan, toolUsage),
       )
       : reply.text;
+    const text = this.sanitizeAssistantOutput(plainText);
+    if (origin !== null) {
+      try {
+        assertModelOrigin({
+          origin,
+          reply: { text: reply.text, structuredMessage },
+          deliveredText: text,
+        });
+      } catch {
+        return this.failureOutbound(conversationId, 'model_origin_mismatch');
+      }
+    }
     return {
-      text: this.sanitizeAssistantOutput(plainText),
+      text,
       conversationId,
       structuredMessageKind,
       delivery: {
@@ -11137,13 +11239,22 @@ export class AgentService {
     };
   }
 
-  private sanitizeAssistantOutput(value: string): string {
-    const sanitized = value
-      .replace(/\bfilecite\s+turn\d+\s+file\s+\d+\b/giu, '')
-      .replace(/[ \t]{2,}/gu, ' ')
-      .replace(/[ \t]+\n/gu, '\n')
-      .trim();
+  private failureOutbound(
+    conversationId: string | null,
+    reason: string,
+  ): NormalizedOutboundMessage {
+    return {
+      text: null,
+      conversationId,
+      structuredMessageKind: null,
+      delivery: {
+        action: 'failure',
+        reason,
+      },
+    };
+  }
 
-    return sanitized.replace(/\.(?=\s*$)/u, '');
+  private sanitizeAssistantOutput(value: string): string {
+    return applyDocumentedTransportTransforms(value);
   }
 }

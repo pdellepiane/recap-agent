@@ -14,8 +14,9 @@ import {
 } from '../src/runtime/extraction-projection';
 import {
   checkReplyNarrativeClaims,
+  projectOperationalFailure,
   projectReply,
-  resolveReplyText,
+  resolveComposedReply,
 } from '../src/runtime/reply-evidence-projector';
 
 function emptyPlan() {
@@ -114,10 +115,10 @@ describe('S10 reply evidence projector', () => {
     expect(projected.providersExcluded).toBe(true);
     expect(projected.providerTools).toEqual([]);
     expect(projected.requiresReplyModel).toBe(true);
-    expect(projected.mode).toBe('narrative');
+    expect(projected.disposition).toBe('composed');
   });
 
-  it('renders acknowledgement deterministically with no provider tools or model', () => {
+  it('composes acknowledgement from facts with no provider tools or model bypass', () => {
     const projected = projectReply({
       continuity: { disposition: 'acknowledge_without_interview', providerToolsAllowed: false, suppressClosure: false },
       capabilityOutcome: null,
@@ -128,38 +129,58 @@ describe('S10 reply evidence projector', () => {
     });
     expect(projected.providerTools).toEqual([]);
     expect(projected.providersExcluded).toBe(true);
-    expect(projected.requiresReplyModel).toBe(false);
-    expect(projected.mode).toBe('deterministic');
+    expect(projected.requiresReplyModel).toBe(true);
+    expect(projected.disposition).toBe('composed');
   });
 
-  it('invokes no reply model for complete deterministic outcomes', () => {
-    const projected = projectReply({
-      continuity: { disposition: 'suppress_closure', providerToolsAllowed: false, suppressClosure: true },
-      capabilityOutcome: { status: 'unsupported', operation: 'confirmation_document.send', reason: 'not_implemented', requiredInput: [], allowedNext: 'handoff_once' },
-      handoffOutcome: 'handoff_requested',
-      verifiedFacts: [],
-      allowedNextSteps: ['apoyo humano solicitado'],
-      providerResultCount: 0,
-    });
-    expect(projected.requiresReplyModel).toBe(false);
-    expect(projected.mode).toBe('deterministic');
-    expect(projected.providerTools).toEqual([]);
+  it('composes complete capability outcomes from facts instead of fixed text', () => {
+    for (const status of ['unsupported', 'already_completed', 'blocked', 'unavailable'] as const) {
+      const projected = projectReply({
+        continuity: { disposition: 'suppress_closure', providerToolsAllowed: false, suppressClosure: true },
+        capabilityOutcome: { status, operation: 'confirmation_document.send', reason: 'not_implemented', requiredInput: [], allowedNext: 'handoff_once' },
+        handoffOutcome: 'handoff_requested',
+        verifiedFacts: [],
+        allowedNextSteps: ['apoyo humano solicitado'],
+        providerResultCount: 0,
+      });
+      expect(projected.requiresReplyModel).toBe(true);
+      expect(projected.disposition).toBe('composed');
+      expect(projected.providerTools).toEqual([]);
+    }
   });
 
-  it('falls back to the deterministic renderer on invalid structure with no corrective call', () => {
+  it('resolves invalid structure to operational failure, never canned prose', () => {
     const claims = checkReplyNarrativeClaims(
       [{ operation: 'rsvp.response.write', claimsSuccess: true, receiptPresent: false, operationAllowed: true }],
     );
     expect(claims).toBe('fallback');
-    const resolved = resolveReplyText({
-      mode: 'narrative',
-      deterministicText: 'Este pedido ya quedo registrado.',
-      narrative: 'Listo, ya quedo confirmado.',
+    const resolved = resolveComposedReply({
+      disposition: 'composed',
+      modelText: 'Listo, ya quedo confirmado.',
       claims,
     });
-    expect(resolved.text).toBe('Este pedido ya quedo registrado.');
-    expect(resolved.usedFallback).toBe(true);
-    expect(resolved.correctiveModelCall).toBe(false);
+    expect(resolved.disposition).toBe('operational_failure');
+    expect(resolved.text).toBeNull();
+  });
+
+  it('passes model text through for grounded claims without substitution', () => {
+    expect(checkReplyNarrativeClaims(
+      [{ operation: 'rsvp.response.write', claimsSuccess: true, receiptPresent: true, operationAllowed: true }],
+    )).toBe('ok');
+    const resolved = resolveComposedReply({
+      disposition: 'composed',
+      modelText: 'Listo, ya quedo confirmado.',
+      claims: 'ok',
+    });
+    expect(resolved.disposition).toBe('composed');
+    expect(resolved.text).toBe('Listo, ya quedo confirmado.');
+  });
+
+  it('projects operational failure explicitly instead of silent suppression', () => {
+    const projected = projectOperationalFailure({ verifiedFacts: ['handoff unknown'] });
+    expect(projected.disposition).toBe('operational_failure');
+    expect(projected.requiresReplyModel).toBe(false);
+    expect(projected.providersExcluded).toBe(true);
   });
 
   it('accepts grounded narrative claims structurally', () => {

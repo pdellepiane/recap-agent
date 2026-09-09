@@ -1632,14 +1632,14 @@ describe('OpenAiAgentRuntime guardrails', () => {
     ).toEqual([]);
   });
 
-  it('replaces common English service terms in user-visible output', () => {
+  it('preserves model wording in user-visible output without substitution', () => {
     const runtime = createRuntimeWithKnowledgeBase();
     const typedRuntime = runtime as unknown as {
-      normalizeSpanishVocabulary: (value: unknown) => unknown;
+      normalizeSupportEmails: (value: unknown) => unknown;
     };
 
     expect(
-      typedRuntime.normalizeSpanishVocabulary({
+      typedRuntime.normalizeSupportEmails({
         type: 'multi_need_recommendation',
         intro_es: 'Revisa el RSVP en la web o envía un screenshot del Excel por chat para el baby shower.',
         needs: [{
@@ -1650,10 +1650,10 @@ describe('OpenAiAgentRuntime guardrails', () => {
       }),
     ).toEqual({
       type: 'multi_need_recommendation',
-      intro_es: 'Revisa la confirmación de asistencia en el sitio de internet o envía una captura de pantalla de la hoja de cálculo por conversación para la celebración por la llegada del bebé.',
+      intro_es: 'Revisa el RSVP en la web o envía un screenshot del Excel por chat para el baby shower.',
       needs: [{
         category: 'Catering',
-        summary_es: 'La entrega de la tienda se pagó con código de pago.',
+        summary_es: 'El delivery del Shop se pagó con QR.',
         providers: [],
       }],
     });

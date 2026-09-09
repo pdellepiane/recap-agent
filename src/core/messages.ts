@@ -43,7 +43,13 @@ export type NormalizedOutboundMessage = {
   conversationId: string | null;
   structuredMessageKind: string | null;
   delivery: {
-    action: 'send' | 'suppress';
+    /**
+     * L1 typed operational failure: the turn could not produce a model-written
+     * reply (guardrail trip, origin mismatch, model error). Adapters must not
+     * send text for `failure`; `text` is always null. This replaces quiet
+     * canned fallback prose, never legitimate suppression.
+     */
+    action: 'send' | 'suppress' | 'failure';
     reason: string;
   };
 };

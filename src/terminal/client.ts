@@ -61,7 +61,7 @@ type ResolvedCliConfig = {
 type LambdaSuccessPayload = {
   message: string | null;
   delivery?: {
-    action: 'send' | 'suppress';
+    action: 'send' | 'suppress' | 'failure';
     reason: string;
   };
   conversation_id: string | null;

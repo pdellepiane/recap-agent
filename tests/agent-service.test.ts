@@ -989,7 +989,7 @@ describe('AgentService', () => {
 
     expect(runtime.extractCalls).toBe(0);
     expect(response.outbound.text).toBe(
-      'No puedo leer ni revisar el contenido de imágenes. Puedes escribir aquí el dato relevante o puedo solicitar apoyo humano',
+      'No puedo leer ni revisar el contenido de imágenes. Puedes escribir aquí el dato relevante o puedo solicitar apoyo humano.',
     );
     expect(response.plan.current_node).toBe('resolver_consultas_informativas');
     expect(response.trace.prompt_bundle_id).toBe('deterministic:unsupported_image_media');
@@ -8420,7 +8420,7 @@ describe('AgentService', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(response.outbound.text).toBe('Puedes revisar tu lista aquí');
+    expect(response.outbound.text).toBe('Puedes revisar tu lista aquí.');
   });
 
   it('records unrequested skipped handoff without fabricating a receipt when Agent API is not configured', async () => {
