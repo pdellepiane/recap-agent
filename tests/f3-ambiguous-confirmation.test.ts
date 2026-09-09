@@ -8,6 +8,7 @@ import { PromptLoader } from '../src/runtime/prompt-loader';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { InMemoryPlanStore } from '../src/storage/in-memory-plan-store';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
+import { buildRuntimeCapabilityManifest, type RuntimeCapabilityManifest } from '../src/runtime/capability-manifest';
 
 const AMBIGUOUS_QUESTION = '¿Qué proveedor o acción estás confirmando?';
 
@@ -102,7 +103,7 @@ function seedPlanningPlan(planId: string) {
   );
 }
 
-async function runPlanningTurn(extraction: ExtractionResult, text = 'Sí confirmo.') {
+async function runPlanningTurn(extraction: ExtractionResult, text = 'Sí confirmo.', manifest?: RuntimeCapabilityManifest) {
   const store = new InMemoryPlanStore();
   await store.save({ plan: seedPlanningPlan('p-f3d'), reason: 'seed' });
   const gateway = {
@@ -151,6 +152,7 @@ async function runPlanningTurn(extraction: ExtractionResult, text = 'Sí confirm
       },
     } as unknown as ProviderGateway,
     agentConversationGateway: gateway,
+    ...(manifest ? { capabilityManifest: manifest } : {}),
     promptLoader: new PromptLoader(path.resolve(process.cwd(), 'prompts')),
     renderers: { whatsapp: new WhatsAppMessageRenderer() },
   });
@@ -272,5 +274,23 @@ describe('F3d bare confirmation over a multi-option shortlist', () => {
     );
     const text = result.outbound.text ?? '';
     expect(text).not.toContain(AMBIGUOUS_QUESTION);
+  });
+
+  it('asks on a bare confirmation even when the extractor attaches capability candidates', async () => {
+    const manifest = buildRuntimeCapabilityManifest({ disabledOperations: ['provider.quote.write'] });
+    const result = await runPlanningTurn(
+      planningExtraction({
+        ambiguity: {
+          status: 'ambiguous',
+          clarificationQuestion: '¿Qué deseas confirmar?',
+          interpretations: ['Confirmar un proveedor de fotografía', 'Confirmar un dato o acción pendiente'],
+          candidateOperations: ['provider.quote.write', 'provider.search'],
+        },
+      }),
+      'Sí confirmo.',
+      manifest,
+    );
+    const text = result.outbound.text ?? '';
+    expect(text).toContain(AMBIGUOUS_QUESTION);
   });
 });

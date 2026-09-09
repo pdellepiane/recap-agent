@@ -3925,6 +3925,15 @@ export class AgentService {
     ) {
       return null;
     }
+    // D1: a bare confirmation over an unresolved multi-option shortlist is a
+    // domain selection ambiguity, not a capability question. Yield to the
+    // shortlist guard so the bounded provider/action question is asked.
+    if (
+      !args.extraction.requestedOperation &&
+      this.hasUnresolvedProviderShortlist(args.plan, args.extraction, args.inbound.text)
+    ) {
+      return null;
+    }
     const decision = resolveCapabilityDecision({
       requestedOperation: args.extraction.requestedOperation ?? null,
       manifest: this.capabilityManifest,
