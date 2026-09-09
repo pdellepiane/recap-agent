@@ -34,7 +34,7 @@ describe('F3b purchase truthfulness predicates', () => {
       }),
     ).toBe(true);
     expect(renderConciseApprovedStatus('Caroline & Jason')).toBe(
-      'Tu regalo para Caroline & Jason ya quedó aprobado.',
+      'El pago de tu regalo para Caroline & Jason figura aprobado.',
     );
   });
 
@@ -312,7 +312,7 @@ describe('F3b deterministic purchase replies', () => {
       modelText: 'Encontre una compra con fecha 24/08/2026, monto 150.81. Es esa compra?',
     });
     expect(result.plan.current_node).toBe('resolver_consultas_informativas');
-    expect(result.outbound.text).toContain('Tu regalo para Caroline & Jason ya quedó aprobado');
+    expect(result.outbound.text).toContain('El pago de tu regalo para Caroline & Jason figura aprobado');
   });
 
   it('asks neutral selection without inventing event association', async () => {

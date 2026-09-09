@@ -392,7 +392,7 @@ export function shouldRenderConciseApprovedStatus(args: {
 
 export function renderConciseApprovedStatus(eventName: string | null): string {
   const event = eventName?.trim() ? eventName.trim() : 'tu evento';
-  return `Tu regalo para ${event} ya quedó aprobado.`;
+  return `El pago de tu regalo para ${event} figura aprobado.`;
 }
 
 export function shouldRenderNeutralSelection(args: {
@@ -421,7 +421,7 @@ export function renderReferenceMatchedSingle(args: {
 }): string {
   const event = args.eventName?.trim() ? args.eventName.trim() : 'tu evento';
   const status = (args.paymentStatus ?? '').trim().toLocaleLowerCase('en');
-  if (status === 'approved') return `Tu regalo para ${event} ya quedó aprobado.`;
+  if (status === 'approved') return `El pago de tu regalo para ${event} figura aprobado.`;
   if (status === 'declined') {
     return `Tu regalo para ${event} aparece como rechazado. Puedo comunicarte con una persona del equipo para revisarlo.`;
   }
