@@ -9630,3 +9630,11 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 **Evaluation decisions:** Supply recorded fixture effect outcomes to the judge; distinguish pending RSVP flow from backend attendance. Require one successful RSVP write and one successful handoff effect, not a particular Spanish wording. Preserve Carina's original ambiguous turns and append explicit status clarification. Preserve the four close-flow contact turns and append the missing event date and explicit dispatch authorization, using an isolated simulated quote fixture. No semantic thresholds were lowered; no production writes are enabled.
 
 **Local validation:** `npm run check` passed typecheck and lint; 143 test files, 1,154 passed, five skipped (1,159 total). New boundary tests cover decimal redaction, amount agreement, authorized/missing selection fields, scoped auth instructions, accountless conflicting extraction, and verified RSVP effect evidence. Existing prompt audit enforces the 10,300-byte base extractor limit; auth-control guidance is absent without protected state and bounded below 800 bytes. Development deployment and mandatory live gate results will be appended after execution; this is not a green release claim.
+
+## 2026-09-09 — L0 lean-conversation: freeze contract, base digests (main)
+
+**Reason:** User instruction adopts `docs/plan/2026-09-09-lean-conversation/plan.md` plus binding `acceptance-contract.md` (E01–E12, R01–R11) as the authority; all prior deterministic-response fix work is dropped, no shortcuts.
+
+**Decision:** L0 first. Added `Model-Written Conversation Invariant` to `AGENTS.md`; September fix plans under `docs/plan/2026-09-05-stabilization/` and `docs/plan/2026-09-09-nine-failures-fix/` marked superseded for deterministic-response prescriptions, historical evidence preserved as-is.
+
+**Base digests:** HEAD `40d3bd79393462491ab2bab85107e05c18286d36`; dev Lambda `recap-agent-runtime-dev` CodeSha256 `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=` (deployed 2026-09-09T22:53:34Z). Working tree carries one pre-existing uncommitted prompt edit `prompts/extractors/information.txt` (`af8a0963…`, drops the contact-data `supportAct` sentence) preserved untouched. Prior full-gate PID 12800 (`eval-2026-09-09T22-54-06-714Z-1674f810`) left running as in-flight data only, not the frozen baseline.
