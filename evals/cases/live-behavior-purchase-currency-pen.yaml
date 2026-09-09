@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.purchase_currency_pen_symbol
+suite: live_behavior_regression
+version: 1
+description: Purchase rows carrying currency_code PEN with currency_symbol S/ surface the code with its symbol for display.
+tags: [live, behavior, purchase, currency, s08, s09]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-currency-pen
+inputs:
+  - text: Hice una compra para Mesa Mara y quiero saber el estado y el monto.
+    channel: whatsapp
+    contactPhone: "+51900027701"
+    sessionId: live-purchase-currency-pen-session
+notes:
+  - Backend currency contract 2026-09-08. Synthetic identity only; fixture purchase-currency-pen carries PEN with S/ on order and gift rows.
+expectations:
+  - id: currency-uses-phone-orders
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: currency-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: currency-pen-displayed-with-symbol
+    type: text_semantic
+    rubric: >-
+      The fixture world contains one approved order for Mesa Mara for 250 with currency code PEN and symbol S/. The answer must be concise, natural, and entirely in Spanish; state the approved status and display the amount with its PEN currency using the S/ symbol. It must not claim another currency, invent an exchange rate, or ask for email, OTP, or a screenshot.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 300

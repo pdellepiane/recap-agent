@@ -336,14 +336,46 @@ export const backendFixtureInputSchema = z.object({
   scenario: z.string().trim().min(1).max(128),
 }).strict();
 
+const turnImageDataSchema = z.object({
+  data: z.string().min(1),
+  mime_type: z.string().min(1).max(128),
+}).strict();
+
+const turnImageErrorSchema = z.object({
+  error: z.enum(['image_too_large', 'media_unavailable']),
+  mime_type: z.string().min(1).max(128),
+}).strict();
+
+const turnImageRedactedSchema = z.object({
+  redacted: z.literal(true),
+  mime_type: z.string().min(1).max(128),
+  byte_length: z.number().int().nonnegative(),
+}).strict();
+
+export const turnImageInputSchema = z.union([
+  turnImageDataSchema,
+  turnImageErrorSchema,
+  turnImageRedactedSchema,
+]);
+export type TurnImageInput = z.infer<typeof turnImageInputSchema>;
+
 const turnInputSchema = z.object({
-  text: z.string().min(1),
+  text: z.string(),
   channel: z.string().optional(),
   externalUserId: z.string().optional(),
   receivedAt: z.string().optional(),
   sessionId: z.string().optional(),
   contactPhone: z.string().nullable().optional(),
   backendFixture: backendFixtureInputSchema.optional(),
+  image: turnImageInputSchema.optional(),
+}).superRefine((value, context) => {
+  if (value.text.length === 0 && !value.image) {
+    context.addIssue({
+      code: 'custom',
+      path: ['text'],
+      message: 'A non-empty text or an image is required.',
+    });
+  }
 });
 
 const turnOutcomeSchema = <T extends z.ZodTypeAny>(inner: T) =>

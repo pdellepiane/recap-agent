@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.image_unavailable_captioned
+suite: live_behavior_regression
+version: 1
+description: A media_unavailable error with a caption answers the caption through the text pipeline and appends the resend fallback once.
+tags: [live, behavior, image, image-error, caption, s17]
+targetModes: [live_lambda]
+inputs:
+  - text: Hola
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-image-unavailable-captioned-session
+    image:
+      error: media_unavailable
+      mime_type: image/jpeg
+notes:
+  - Backend image forwarding contract 2026-09-08 error variant. No bytes are transmitted.
+expectations:
+  - id: unavailable-caption-fallback-appended
+    type: text_contains
+    allOf: [Puedes enviarla de nuevo]
+    severity: hard
+  - id: unavailable-caption-stays-informative
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: unavailable-caption-answered-plus-fallback
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish with a single reply that both acknowledges the greeting and asks the user to resend the image or write the information in text. It must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 250

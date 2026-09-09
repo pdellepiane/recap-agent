@@ -1,6 +1,7 @@
 import { ulid } from 'ulid';
 
 import { AgentService } from '../../runtime/agent-service';
+import { normalizeInboundImage } from '../../core/inbound-image';
 import { createEmptyPlan, mergePlan, planSchema } from '../../core/plan';
 import type {
   AgentRuntime,
@@ -73,10 +74,16 @@ export async function runOfflineCase(args: {
 
   for (const [turnIndex, input] of args.currentCase.inputs.entries()) {
     const startedAt = Date.now();
+    const offlineImage = input.image && 'redacted' in input.image
+      ? undefined
+      : input.image
+        ? normalizeInboundImage(input.image)
+        : undefined;
     const response = await service.handleTurn({
       channel: input.channel ?? 'terminal_whatsapp_eval',
       externalUserId: input.externalUserId ?? userId,
       text: input.text,
+      ...(offlineImage ? { image: offlineImage } : {}),
       messageId: `${args.currentCase.id}-${turnIndex}`,
       receivedAt: input.receivedAt ?? new Date().toISOString(),
       sessionId: input.sessionId ?? args.currentCase.id,
@@ -94,7 +101,7 @@ export async function runOfflineCase(args: {
     };
     attachEvaluationState(turn, {
       plan: response.plan,
-      input,
+      input: turn.input,
       outputText: response.outbound.text ?? '',
     });
     turns.push(turn);
@@ -110,6 +117,15 @@ function redactOfflineInput(input: EvalTurnResult['input']): EvalTurnResult['inp
   return {
     ...input,
     text: redactArtifactText(input.text),
+    ...(input.image && 'data' in input.image
+      ? {
+        image: {
+          redacted: true as const,
+          mime_type: input.image.mime_type,
+          byte_length: Buffer.byteLength(input.image.data, 'utf8'),
+        },
+      }
+      : {}),
     ...(input.externalUserId
       ? { externalUserId: input.externalUserId }
       : {}),

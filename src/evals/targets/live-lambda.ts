@@ -89,6 +89,7 @@ export async function runLiveLambdaCase(args: {
     if (!input) throw new Error('Missing live evaluation turn.');
     const startedAt = Date.now();
     const effectiveFixture = input.backendFixture ?? args.currentCase.backendFixture ?? null;
+    const outboundImage = input.image && 'redacted' in input.image ? undefined : input.image;
     const response = await fetch(functionUrl, {
       method: 'POST',
       headers: {
@@ -99,6 +100,7 @@ export async function runLiveLambdaCase(args: {
         channel: input.channel ?? channel,
         user_id: input.externalUserId ?? externalUserId,
         text: input.text,
+        ...(outboundImage ? { image: outboundImage } : {}),
         message_id: `${args.currentCase.id}-${turnIndex}`,
         received_at: input.receivedAt ?? new Date().toISOString(),
         session_id: input.sessionId ?? args.currentCase.id,
@@ -161,7 +163,7 @@ export async function runLiveLambdaCase(args: {
     };
     attachEvaluationState(turn, {
       plan: evaluationPlan,
-      input,
+      input: turn.input,
       outputText: parsed.message ?? '',
     });
     return turn;
@@ -209,6 +211,17 @@ function redactLiveInput(input: EvalTurnResult['input']): EvalTurnResult['input'
   return {
     ...input,
     text: redactArtifactText(input.text),
+    // Image bytes never reach evaluation reports: only MIME/size-bucket
+    // facts are retained.
+    ...(input.image && 'data' in input.image
+      ? {
+        image: {
+          redacted: true as const,
+          mime_type: input.image.mime_type,
+          byte_length: Buffer.byteLength(input.image.data, 'utf8'),
+        },
+      }
+      : {}),
     ...(input.externalUserId
       ? { externalUserId: input.externalUserId }
       : {}),

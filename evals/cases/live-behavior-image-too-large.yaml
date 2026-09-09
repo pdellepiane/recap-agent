@@ -1,0 +1,41 @@
+template: template.base-live
+id: live_behavior.image_too_large_fallback
+suite: live_behavior_regression
+version: 1
+description: An image_too_large delivery error without caption returns the smaller-image Spanish fallback exactly once.
+tags: [live, behavior, image, image-error, s17]
+targetModes: [live_lambda]
+inputs:
+  - text: ''
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-image-too-large-session
+    image:
+      error: image_too_large
+      mime_type: image/jpeg
+notes:
+  - Backend image forwarding contract 2026-09-08 error variant. No bytes are transmitted.
+expectations:
+  - id: too-large-fallback-text
+    type: text_contains
+    allOf: [supera el tamaño permitido, más pequeña]
+    severity: hard
+  - id: too-large-stays-informative
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: too-large-no-inspection-claim
+    type: text_not_contains
+    phrases: [base64, data:image]
+    severity: hard
+  - id: too-large-guidance-in-spanish
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish asking for a smaller image or the information in text. It must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 200
