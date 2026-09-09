@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.customer_transaction_reference_unavailable_multiple
+suite: live_behavior_regression
+version: 1
+description: S13 unavailable-multiple frozen world. COD301816 matches nothing; two orders without references require one grounded selection question.
+tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: s13-reference-unavailable-multiple
+inputs:
+  - text: COD301816
+    channel: whatsapp
+    contactPhone: "+51900001303"
+    sessionId: live-customer-transaction-reference-multiple-session
+notes:
+  - S13 frozen world s13-reference-unavailable-multiple as of 2026-09-09T00:00:00.000Z. Synthetic identity only; two orders with no customer references for Evento de prueba A and Evento de prueba B with distinct status and authorized totals, no carts. Output must follow this world, never mutable backend data.
+expectations:
+  - id: multiple-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: multiple-uses-phone-orders-without-write
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    severity: hard
+  - id: multiple-asks-grounded-selection
+    type: text_semantic
+    rubric: >-
+      The phone-scoped lookup has two orders and no customer transaction numbers, so COD301816 cannot be linked directly. The response must be entirely in natural Spanish and ask exactly one concise selection question naming both candidates with grounded public labels (Evento de prueba A and Evento de prueba B). It must not claim a match, must not select automatically, must not invent a latest-order choice, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 240

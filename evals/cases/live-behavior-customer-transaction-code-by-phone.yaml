@@ -1,15 +1,19 @@
 template: template.base-live
 id: live_behavior.customer_transaction_code_by_phone
 suite: live_behavior_regression
-version: 1
-description: A customer-facing COD transaction reference is resolved as a phone-scoped purchase request without exposing internal order ids or starting authentication.
-tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction]
+version: 2
+description: S13 unavailable-unique frozen world. COD301816 cannot be linked directly; one approved order for Evento de prueba A is answered with grounded status and no code echo.
+tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13]
 targetModes: [live_lambda]
+backendFixture:
+  scenario: s13-reference-unavailable-unique
 inputs:
   - text: COD301816
     channel: whatsapp
-    contactPhone: "+51990027179"
+    contactPhone: "+51900001301"
     sessionId: live-customer-transaction-code-session
+notes:
+  - S13 frozen world s13-reference-unavailable-unique as of 2026-09-09T00:00:00.000Z. Synthetic identity only; one approved order for Evento de prueba A with absent code, amount and currency, no carts. Output must follow this world, never mutable backend data.
 expectations:
   - id: transaction-code-enters-information
     type: node_transition
@@ -20,10 +24,10 @@ expectations:
     mustCall: [lookup_guest_orders_by_phone]
     mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
     severity: hard
-  - id: transaction-code-is-handled-as-purchase-reference
+  - id: transaction-code-unavailable-unique-grounded
     type: text_semantic
     rubric: >-
-      The user sent the customer-facing transaction reference COD301816 in an abandoned-cart and purchase conversation. The response must treat it as a purchase reference and be entirely in natural Spanish. If the backend exposes transaction number 301816, answer from that matched purchase and identify it as COD301816. If the phone-scoped backend omits customer transaction numbers, clearly say that the code could not be linked directly, present the available purchases using event/date/amount/status rather than opaque internal ids, and ask the user to select one. It must not ask generically what the user wants to do with the code, must not request email or OTP, and must not reveal opaque Agent API order ids or sensitive payment details.
+      The phone-scoped lookup has exactly one approved purchase for Evento de prueba A and no customer transaction numbers, so COD301816 cannot be linked directly. The response must be entirely in natural Spanish and state the grounded approval for Evento de prueba A without claiming a code match. Code echo is not required and must not be demanded. It must not express manufactured uncertainty about the status, must not ask for email or OTP, must not ask the user to select among candidates, and must not reveal opaque backend order ids or sensitive payment details.
     minScore: 0.9
     requireJudge: true
     severity: hard

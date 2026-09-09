@@ -1,0 +1,37 @@
+template: template.base-live
+id: live_behavior.customer_transaction_reference_matched
+suite: live_behavior_regression
+version: 1
+description: S13 matched frozen world. COD301816 matches the Evento de prueba A order; the reply answers A and not the Evento de prueba B order.
+tags: [live, behavior, purchase, phone-orders, customer-transaction-code, reported-interaction, s13]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: s13-reference-matched
+inputs:
+  - text: COD301816
+    channel: whatsapp
+    contactPhone: "+51900001302"
+    sessionId: live-customer-transaction-reference-matched-session
+notes:
+  - S13 frozen world s13-reference-matched as of 2026-09-09T00:00:00.000Z. Synthetic identity only; order alias A for Evento de prueba A carries 301816, alias B for Evento de prueba B carries 301817, no carts. Output must follow this world, never mutable backend data.
+expectations:
+  - id: matched-enters-information
+    type: node_transition
+    to: resolver_consultas_informativas
+    severity: hard
+  - id: matched-uses-phone-orders
+    type: tool_usage
+    mustCall: [lookup_guest_orders_by_phone]
+    mustNotCall: [auth_by_phone, request_user_login_code, verify_user_login_code]
+    severity: hard
+  - id: matched-answers-alias-a
+    type: text_semantic
+    rubric: >-
+      The phone-scoped lookup matches COD301816 to the Evento de prueba A order only; the Evento de prueba B order carries a different reference. The response must be entirely in natural Spanish and answer from the Evento de prueba A record, not the B record. It must not present a selection question, must not request email or OTP, and must not reveal opaque backend order ids or sensitive payment details. Echoing the customer reference is optional; match correctness is what matters.
+    minScore: 0.9
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 240
