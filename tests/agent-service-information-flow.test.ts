@@ -2508,7 +2508,7 @@ describe('AgentService first-class information flow', () => {
       messageId: 'change-email-1',
       receivedAt: new Date().toISOString(),
     });
-    await service.handleTurn({
+    const changed = await service.handleTurn({
       channel: 'terminal_whatsapp',
       externalUserId: 'change-email-user',
       text: 'Me registré con correct@example.com',
@@ -2516,15 +2516,12 @@ describe('AgentService first-class information flow', () => {
       receivedAt: new Date().toISOString(),
     });
 
-    expect(provider.requestCodeCalls).toBe(2);
-    const changedBlock = runtime.composeRequests
-      .at(-1)
-      ?.informationResults?.find(
-        (result) => result.kind === 'purchase' && result.status === 'needs_input',
-      );
-    expect(
-      changedBlock?.status === 'needs_input' ? changedBlock.guidance : null,
-    ).toEqual(createInformationAuthGuidance('otp_sent', 'correct@example.com'));
+    // Package C one-shot policy: an email-change request on a challenged
+    // episode ends recovery instead of sending a second code.
+    expect(provider.requestCodeCalls).toBe(1);
+    expect(changed.plan.auth_recovery.terminalReason).toBe('email_change_requested');
+    expect(changed.plan.current_node).toBe('solicitar_agente_humano');
+    expect(changed.trace.tools_called).not.toContain('request_user_login_code');
   });
 
   it('persists information requests and executes neither side when a turn also asks for an exclusive action', async () => {

@@ -11,8 +11,13 @@ import {
 } from './provider-category';
 import { providerSubQueryResultSchema } from './provider-sub-query';
 import {
+  authRecoveryStateSchema,
+  emptyAuthRecoveryState,
   informationStateSchema,
+  mergeAuthRecoveryState,
+  seedAuthRecoveryFromUserAuth,
   userAuthStateSchema,
+  type AuthRecoveryState,
   type UserAuthState,
 } from './information';
 import { rsvpStateSchema, type RsvpState } from './rsvp';
@@ -57,7 +62,8 @@ export const humanEscalationStatusValues = ['none', 'requested'] as const;
 
 export type HumanEscalationStatus = (typeof humanEscalationStatusValues)[number];
 
-export type { UserAuthState };
+export type { UserAuthState, AuthRecoveryState };
+export { emptyAuthRecoveryState, mergeAuthRecoveryState };
 
 export const humanEscalationStateSchema = z.object({
   status: z.enum(humanEscalationStatusValues),
@@ -148,6 +154,14 @@ export const planSchema = z.object({
     auth_method: null,
     awaiting_phone_confirmation: false,
   }),
+  auth_recovery: authRecoveryStateSchema.default({
+    sendAttempted: false,
+    verificationAttempted: false,
+    terminalReason: null,
+    challengeEmail: null,
+    challengeRequestedAt: null,
+    preservedRequest: null,
+  }),
   information_state: informationStateSchema.default({
     resume_node: null,
     pending_requests: [],
@@ -167,6 +181,11 @@ export const planSchema = z.object({
     phone_number: null,
     last_error: null,
   }),
+  human_help_receipt: z.object({
+    dedupeKey: z.string(), inboundId: z.string(), phone: z.string(),
+    outcome: z.enum(['handoff_requested', 'handoff_failed', 'outcome_unknown']),
+    requested: z.boolean(), softPaused: z.boolean(), updatedAt: z.string(),
+  }).nullable().optional(),
   conversation_health: conversationHealthStateSchema.default({
     status: 'uncertain',
     reason: 'insufficient_context',
@@ -204,10 +223,11 @@ export type PersistedPlan = z.infer<typeof planSchema>;
 export type PlanSnapshot = PersistedPlan & { current_node: DecisionNode };
 
 export type PlanUpdate = Partial<
-  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth' | 'rsvp_state'>
+  Omit<PersistedPlan, 'plan_id' | 'channel' | 'external_user_id' | 'user_auth' | 'rsvp_state' | 'auth_recovery'>
 > & {
   user_auth?: Partial<UserAuthState>;
   rsvp_state?: Partial<RsvpState>;
+  auth_recovery?: Partial<AuthRecoveryState>;
 };
 
 export function normalizeRawPlan(raw: unknown): unknown {
@@ -274,6 +294,31 @@ export function normalizeRawPlan(raw: unknown): unknown {
     plan.information_state = informationState;
   }
 
+  // Seed typed auth_recovery once from legacy user_auth evidence, then merge
+  // monotonically so an existing terminal record is never cleared.
+  try {
+    const rawAuth = plan.user_auth as Record<string, unknown> | undefined;
+    const parsedRecovery = authRecoveryStateSchema.safeParse(plan.auth_recovery);
+    const currentRecovery = parsedRecovery.success
+      ? parsedRecovery.data
+      : emptyAuthRecoveryState();
+    if (rawAuth && typeof rawAuth === 'object') {
+      const seed = seedAuthRecoveryFromUserAuth({
+        status: typeof rawAuth.status === 'string' ? rawAuth.status : 'none',
+        email: typeof rawAuth.email === 'string' ? rawAuth.email : null,
+        requestedAt: typeof rawAuth.requested_at === 'string' ? rawAuth.requested_at : null,
+        failedCodeAttempts: typeof rawAuth.failed_code_attempts === 'number' ? rawAuth.failed_code_attempts : 0,
+        otpSendAttempts: typeof rawAuth.otp_send_attempts === 'number' ? rawAuth.otp_send_attempts : 0,
+        otpNonDeliveryReports: typeof rawAuth.otp_non_delivery_reports === 'number' ? rawAuth.otp_non_delivery_reports : 0,
+      });
+      plan.auth_recovery = mergeAuthRecoveryState(currentRecovery, seed);
+    } else if (!parsedRecovery.success) {
+      plan.auth_recovery = currentRecovery;
+    }
+  } catch {
+    // Keep raw plan when recovery seeding fails; schema validation reports it.
+  }
+
   return plan;
 }
 
@@ -326,6 +371,7 @@ export function createEmptyPlan(args: {
       phone_number: null,
       last_error: null,
     },
+    auth_recovery: emptyAuthRecoveryState(),
     conversation_health: {
       status: 'uncertain',
       reason: 'insufficient_context',
@@ -652,9 +698,18 @@ export function mergePlan(plan: PlanSnapshot, update: PlanUpdate): PlanSnapshot 
     activeNeedState.activeNeedCategory,
   );
 
+  const { auth_recovery: authRecoveryUpdate, ...restUpdate } = update;
+  const mergedAuthRecovery = authRecoveryUpdate
+    ? mergeAuthRecoveryState(plan.auth_recovery ?? emptyAuthRecoveryState(), {
+        ...emptyAuthRecoveryState(),
+        ...authRecoveryUpdate,
+      })
+    : (plan.auth_recovery ?? emptyAuthRecoveryState());
+
   const merged: PersistedPlan = {
     ...plan,
-    ...update,
+    ...restUpdate,
+    auth_recovery: mergedAuthRecovery,
     user_auth: {
       ...plan.user_auth,
       ...(update.user_auth ?? {}),

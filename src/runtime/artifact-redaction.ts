@@ -1,3 +1,5 @@
+import { z } from 'zod';
+import { providerCategorySchema } from '../core/provider-category';
 import type { PlanSnapshot } from '../core/plan';
 
 export type ArtifactJsonValue =
@@ -8,7 +10,7 @@ export type ArtifactJsonValue =
   | ArtifactJsonValue[]
   | { [key: string]: ArtifactJsonValue };
 
-const sensitiveKeyPattern = /^(?:access[_-]?token|refresh[_-]?token|bearer[_-]?token|jwt|token|otp|one[_-]?time[_-]?password|passcode|verification[_-]?code|code|email|contact[_-]?email|phone|contact[_-]?phone|phone[_-]?extension|phone[_-]?number|full[_-]?phone|phoneNumber|phoneExtension)$/iu;
+const sensitiveKeyPattern = /^(?:api[_-]?key|authorization|password|secret|access[_-]?token|refresh[_-]?token|bearer[_-]?token|jwt|token|otp|one[_-]?time[_-]?password|passcode|verification[_-]?code|code|email|contact[_-]?email|phone|contact[_-]?phone|phone[_-]?extension|phone[_-]?number|full[_-]?phone|phoneNumber|phoneExtension)$/iu;
 
 /**
  * Projects structured JSON without applying content heuristics to structural values.
@@ -42,16 +44,20 @@ export function redactArtifactText(value: string): string {
  * carries a bounded allowlisted summary; unknown tools stay omitted.
  * Safety net: any summary leaking email/JWT/stack reverts to omitted.
  */
+const MAX_DIAGNOSTIC_BYTES = 8192;
+const MAX_CALL_SUMMARIES = 16;
+const MAX_CANDIDATE_DETAILS = 8;
+
 export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonValue> {
   const projected = redactArtifactRecord(value);
-  return {
+  const bounded: Record<string, ArtifactJsonValue> = {
     ...projected,
     ...(Array.isArray(projected.tool_inputs)
       ? {
-          tool_inputs: projected.tool_inputs.map((entry) =>
+          tool_inputs: projected.tool_inputs.slice(0, MAX_CALL_SUMMARIES).map((entry) =>
             isRecord(entry)
               ? {
-                  ...entry,
+                  tool: entry.tool,
                   input: projectToolInput(entry),
                 }
               : entry,
@@ -60,10 +66,10 @@ export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonVal
       : {}),
     ...(Array.isArray(projected.tool_outputs)
       ? {
-          tool_outputs: projected.tool_outputs.map((entry) =>
+          tool_outputs: projected.tool_outputs.slice(0, MAX_CALL_SUMMARIES).map((entry) =>
             isRecord(entry)
               ? {
-                  ...entry,
+                  tool: entry.tool,
                   output: projectToolOutput(entry),
                 }
               : entry,
@@ -71,6 +77,71 @@ export function projectSafeTrace(value: unknown): Record<string, ArtifactJsonVal
         }
       : {}),
   };
+  if (Array.isArray(bounded['provider_candidate_audit']) && (bounded['provider_candidate_audit'] as unknown[]).length > MAX_CANDIDATE_DETAILS) {
+    bounded['provider_candidate_audit'] = (bounded['provider_candidate_audit'] as ArtifactJsonValue[]).slice(0, MAX_CANDIDATE_DETAILS);
+  }
+  return enforceDiagnosticEnvelope(bounded, projected);
+}
+
+function enforceDiagnosticEnvelope(
+  bounded: Record<string, ArtifactJsonValue>,
+  original: Record<string, ArtifactJsonValue>,
+): Record<string, ArtifactJsonValue> {
+  const priorRaw = original['truncation'];
+  const prior = isRecord(priorRaw) ? priorRaw : null;
+  const priorDroppedCandidates = typeof prior?.['droppedCandidateDetails'] === 'number' ? prior['droppedCandidateDetails'] : 0;
+  const priorDroppedCalls = typeof prior?.['droppedCalls'] === 'number' ? prior['droppedCalls'] : 0;
+  const priorTruncated = prior?.['truncated'] === true;
+  let droppedCandidates = priorDroppedCandidates;
+  let droppedCalls = priorDroppedCalls;
+  const rawInputs = Array.isArray(original['tool_inputs']) ? (original['tool_inputs'] as unknown[]).length : (Array.isArray(bounded['tool_inputs']) ? (bounded['tool_inputs'] as unknown[]).length : 0);
+  const rawOutputs = Array.isArray(original['tool_outputs']) ? (original['tool_outputs'] as unknown[]).length : 0;
+  const rawCandidates = Array.isArray(original['provider_candidate_audit']) ? (original['provider_candidate_audit'] as unknown[]).length : 0;
+  if (rawInputs > MAX_CALL_SUMMARIES && priorDroppedCandidates === 0 && priorDroppedCalls === 0 && !priorTruncated) {
+    droppedCalls += Math.max(0, rawInputs - MAX_CALL_SUMMARIES);
+  }
+  if (rawOutputs > MAX_CALL_SUMMARIES && priorDroppedCandidates === 0 && priorDroppedCalls === 0 && !priorTruncated) {
+    droppedCalls += Math.max(0, rawOutputs - MAX_CALL_SUMMARIES);
+  }
+  if (rawCandidates > MAX_CANDIDATE_DETAILS && priorDroppedCandidates === 0 && priorDroppedCalls === 0 && !priorTruncated) {
+    droppedCandidates += Math.max(0, rawCandidates - MAX_CANDIDATE_DETAILS);
+  }
+  const output: Record<string, ArtifactJsonValue> = { ...bounded };
+  while (Buffer.byteLength(JSON.stringify(output), 'utf8') > MAX_DIAGNOSTIC_BYTES) {
+    const candidates = Array.isArray(output['provider_candidate_audit']) ? [...(output['provider_candidate_audit'] as unknown[])] : [];
+    if (candidates.length > 0) {
+      candidates.pop();
+      droppedCandidates += 1;
+      output['provider_candidate_audit'] = candidates as ArtifactJsonValue[];
+      continue;
+    }
+    if (Array.isArray(output['tool_inputs']) && (output['tool_inputs'] as unknown[]).length > 0) {
+      const kept = (output['tool_inputs'] as unknown[]).slice(0, -1);
+      droppedCalls += 1;
+      output['tool_inputs'] = kept as ArtifactJsonValue[];
+      continue;
+    }
+    if (Array.isArray(output['tool_outputs']) && (output['tool_outputs'] as unknown[]).length > 0) {
+      const kept = (output['tool_outputs'] as unknown[]).slice(0, -1);
+      droppedCalls += 1;
+      output['tool_outputs'] = kept as ArtifactJsonValue[];
+      continue;
+    }
+    break;
+  }
+  const truncated = priorTruncated || droppedCandidates > 0 || droppedCalls > 0;
+  const { truncation: _ignored, ...withoutTruncation } = output;
+  void _ignored;
+  output['truncation'] = {
+    truncated,
+    droppedCandidateDetails: droppedCandidates,
+    droppedCalls,
+    diagnosticBytes: Math.min(Buffer.byteLength(JSON.stringify(withoutTruncation), 'utf8'), MAX_DIAGNOSTIC_BYTES),
+    envelopeBytes: MAX_DIAGNOSTIC_BYTES,
+    maxCallSummaries: MAX_CALL_SUMMARIES,
+    maxCandidateDetails: MAX_CANDIDATE_DETAILS,
+  };
+  return output;
 }
 
 const FINISH_PLAN_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/u;
@@ -115,6 +186,7 @@ function projectToolInput(entry: Record<string, ArtifactJsonValue>): ArtifactJso
   if (tool === 'finish_plan') return projectFinishPlanInput(entry);
   const parsed = parseTraceJson(entry['input']);
   if (!parsed) return '[omitted]';
+  if ('projection_version' in parsed) return validateProjectedSummary(parsed);
   const summary = summarizeToolInput(tool, parsed);
   if (!summary) return '[omitted]';
   return emitSummary(summary);
@@ -126,22 +198,60 @@ function projectToolOutput(entry: Record<string, ArtifactJsonValue>): ArtifactJs
   if (tool === 'finish_plan') return projectFinishPlanOutput(entry);
   const parsed = parseTraceJson(entry['output']);
   if (!parsed) return '[omitted]';
+  if ('projection_version' in parsed) return validateProjectedSummary(parsed);
   const summary = summarizeToolOutput(tool, parsed);
   if (!summary) return '[omitted]';
   return emitSummary(summary);
 }
 
+const boundedCount = z.number().int().min(0).max(1_000_000).nullable().optional();
+const boundedId = z.number().int().min(0).max(2_147_483_647).nullable().optional();
+const traceStatusValues = ['success', 'partial', 'failed', 'unknown', 'unresolved', 'blocked_write',
+  'missing_event_date', 'invalid_event_date', 'missing_contact_info', 'invalid_contact_info',
+  'no_selected_providers', 'completed', 'pending', 'needs_input', 'skipped', 'simulated', 'ok',
+  'responded', 'not_found', 'unauthorized', 'unavailable', 'invalid_request', 'invalid_response',
+  'retryable_failure', 'authoritative_invitation', 'event_association_only',
+  'attending', 'declining', 'confirm', 'decline', 'purchase', 'associated_event', 'faq',
+  'collection', 'detail', 'reviews', 'write', 'requested', 'none'] as const;
+const traceStatus = z.enum(traceStatusValues).nullable().optional();
+// Strictly validate every re-projected value. A forged version flag grants no trust.
+const projectedSummarySchema = z.object({
+  projection_version: z.literal(1),
+  category: providerCategorySchema.nullable().optional(),
+  result_kind: traceStatus, result_status: traceStatus, status: traceStatus, kind: traceStatus,
+  action: traceStatus, previous_state: traceStatus, error_kind: traceStatus,
+  count: boundedCount, result_count: boundedCount, invitation_count: boundedCount, purchase_count: boundedCount,
+  keyword_length: boundedCount, location_length: boundedCount, guests_range_length: boundedCount,
+  description_length: boundedCount, comment_length: boundedCount, query_count: boundedCount,
+  page: boundedCount, rating: boundedCount,
+  provider_id: boundedId, category_id: boundedId,
+  provider_ids: z.array(z.number().int().min(0).max(2_147_483_647)).max(10).optional(),
+  event_ref_present: z.boolean().optional(), guest_ref_present: z.boolean().optional(),
+  slug_present: z.boolean().optional(), request_present: z.boolean().optional(),
+  found: z.boolean().optional(), user_ref_present: z.boolean().optional(),
+  trusted_phone_present: z.boolean().optional(), location_present: z.boolean().optional(),
+  fit_criteria_present: z.boolean().optional(), sort_present: z.boolean().optional(),
+  attendance_present: z.boolean().optional(), receipt_present: z.boolean().optional(),
+  retryable: z.boolean().optional(),
+  event_date: z.string().refine(isFinishPlanDate).nullable().optional(),
+}).strict();
+
+function validateProjectedSummary(summary: Record<string, unknown>): ArtifactJsonValue {
+  const result = projectedSummarySchema.safeParse(summary);
+  if (!result.success) return '[omitted]';
+  const text = JSON.stringify(result.data);
+  return text.length <= 2048 && !leaksBannedValue(text) ? text : '[omitted]';
+}
+
 function emitSummary(summary: Record<string, unknown>): ArtifactJsonValue {
-  const text = JSON.stringify(summary);
-  if (leaksBannedValue(text)) return '[omitted]';
-  return text;
+  return validateProjectedSummary({ ...summary, projection_version: 1 });
 }
 
 function leaksBannedValue(text: string): boolean {
   if (/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/iu.test(text)) return true;
   if (/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/u.test(text)) return true;
   if (/\n\s*at\s/u.test(text)) return true;
-  if (/(?:queue|ticket|synth-[a-z0-9-]{16,})/iu.test(text)) return true;
+  if (/(?:queue|ticket|synth-[a-z0-9-]{16,}|sk-[a-z0-9-]+)/iu.test(text)) return true;
   return false;
 }
 
@@ -150,15 +260,13 @@ function safeInt(value: unknown): number | null {
 }
 
 function safeEnum(value: unknown, maxLen = 48): string | null {
-  if (typeof value !== 'string' || value.length === 0 || value.length > maxLen) return null;
-  if (!/^[a-z0-9_.-]+$/iu.test(value)) return null;
-  return value;
+  return typeof value === 'string' && value.length <= maxLen &&
+    (traceStatusValues as readonly string[]).includes(value) ? value : null;
 }
 
 function safeCategory(value: unknown): string | null {
-  if (typeof value !== 'string' || value.length === 0 || value.length > 64) return null;
-  if (!/^[a-z0-9_ ñáéíóú-]+$/iu.test(value)) return null;
-  return value;
+  const parsed = providerCategorySchema.safeParse(value);
+  return parsed.success ? parsed.data : null;
 }
 
 function strLen(value: unknown): number | null {
@@ -173,8 +281,7 @@ function summarizeToolInput(tool: string, parsed: Record<string, unknown>): Reco
     case 'get_relevant_providers':
       return {};
     case 'get_category_by_slug': {
-      const slug = safeEnum(parsed['slug'], 64);
-      return slug ? { slug } : null;
+      return { slug_present: typeof parsed['slug'] === 'string' && parsed['slug'].length > 0 };
     }
     case 'search_providers_by_keyword': {
       const page = safeInt(parsed['page']);
@@ -207,13 +314,13 @@ function summarizeToolInput(tool: string, parsed: Record<string, unknown>): Reco
     }
     case 'get_event_vendor_context': {
       const eventId = safeInt(parsed['event_id'] ?? parsed['eventId']);
-      return eventId !== null ? { event_id: eventId } : null;
+      return eventId !== null ? { event_ref_present: eventId !== null } : null;
     }
     case 'list_event_favorite_providers': {
       const eventId = safeInt(parsed['event_id'] ?? parsed['eventId']);
       if (eventId === null) return null;
       return {
-        event_id: eventId,
+        event_ref_present: eventId !== null,
         page: safeInt(parsed['page']),
         category_id: safeInt(parsed['category_id'] ?? parsed['categoryId']),
         sort_present: parsed['sort_by'] !== null && parsed['sort_by'] !== undefined,
@@ -236,7 +343,7 @@ function summarizeToolInput(tool: string, parsed: Record<string, unknown>): Reco
       const providerId = safeInt(parsed['provider_id'] ?? parsed['providerId']);
       const eventId = safeInt(parsed['event_id'] ?? parsed['eventId']);
       if (providerId === null || eventId === null) return null;
-      return { provider_id: providerId, event_id: eventId, user_ref_present: parsed['user_id'] !== undefined };
+      return { provider_id: providerId, event_ref_present: eventId !== null, user_ref_present: parsed['user_id'] !== undefined };
     }
     case 'create_provider_review': {
       const providerId = safeInt(parsed['provider_id'] ?? parsed['providerId']);
@@ -249,12 +356,14 @@ function summarizeToolInput(tool: string, parsed: Record<string, unknown>): Reco
         user_ref_present: parsed['user_id'] !== undefined,
       };
     }
+    case 'request_human_takeover':
+      return { trusted_phone_present: Boolean(parsed['phone_number']) };
     case 'guest_rsvp': {
       const guestId = safeInt(parsed['guest_id'] ?? parsed['guestId']);
       if (guestId === null) return null;
       return {
         action: safeEnum(parsed['action'], 24),
-        guest_id: guestId,
+        guest_ref_present: guestId !== null,
         trusted_phone_present: parsed['trusted_phone_present'] === true,
         previous_state: safeEnum(parsed['previous_state'], 24),
       };
@@ -265,7 +374,7 @@ function summarizeToolInput(tool: string, parsed: Record<string, unknown>): Reco
     case 'get_guest_event_detail': {
       const eventId = safeInt(parsed['event_id'] ?? parsed['eventId']);
       if (eventId === null) return null;
-      return { event_id: eventId, trusted_phone_present: parsed['trusted_phone_present'] === true };
+      return { event_ref_present: eventId !== null, trusted_phone_present: parsed['trusted_phone_present'] === true };
     }
     case 'knowledge_base_search':
     case 'associated_event_lookup':
@@ -345,8 +454,7 @@ function summarizeToolOutput(tool: string, parsed: Record<string, unknown>): Rec
         result_status: status,
         provider_id: safeInt(parsed['providerId'] ?? parsed['provider_id']),
         event_date: isFinishPlanDate(rawDate) ? rawDate : null,
-        id_prefix: idStr ? idStr.slice(0, 8) : null,
-        id_length: idStr ? Math.min(idStr.length, 200) : null,
+        receipt_present: idStr !== null,
         ...(parsed['error'] !== undefined ? { error_kind: classifyErrorKind(parsed['error']) } : {}),
       };
     }
@@ -360,13 +468,15 @@ function summarizeToolOutput(tool: string, parsed: Record<string, unknown>): Rec
         ...(parsed['error'] !== undefined ? { error_kind: classifyErrorKind(parsed['error']) } : {}),
       };
     }
+    case 'request_human_takeover':
+      return { status: safeEnum(parsed['status']) ?? 'unknown', retryable: parsed['retryable'] === true };
     case 'guest_rsvp': {
       const status = safeEnum(parsed['status'], 32);
       if (!status) return null;
       return {
         status,
         action: safeEnum(parsed['action'], 24),
-        guest_id: safeInt(parsed['guest_id'] ?? parsed['guestId']),
+        guest_ref_present: safeInt(parsed['guest_id'] ?? parsed['guestId']) !== null,
       };
     }
     case 'lookup_rsvp_invitations': {
@@ -393,7 +503,7 @@ function summarizeToolOutput(tool: string, parsed: Record<string, unknown>): Rec
     case 'agent_api_purchase_lookup': {
       const status = safeEnum(parsed['status'], 32);
       if (!status) return null;
-      return { kind: safeEnum(parsed['kind'], 48), status };
+      return { kind: safeEnum(parsed['kind'], 48), status, result_count: safeInt(parsed['result_count']) };
     }
     default:
       return null;
@@ -418,11 +528,11 @@ function projectFinishPlanOutput(entry: Record<string, ArtifactJsonValue>): Arti
   const rawProviders: unknown = parsed['contacted_providers'];
   if (!Array.isArray(rawProviders)) return '[omitted]';
   const contactedProviders: ArtifactJsonValue[] = [];
-  for (const item of rawProviders as unknown[]) {
+  for (const item of (rawProviders as unknown[]).slice(0, 8)) {
     if (typeof item !== 'object' || item === null || Array.isArray(item)) continue;
     const record = item as unknown as Record<string, unknown>;
     const providerId: unknown = record['providerId'];
-    const category: unknown = record['category'];
+    const category: unknown = safeCategory(record['category']);
     const success: unknown = record['success'];
     if (typeof providerId !== 'number' || typeof category !== 'string' || typeof success !== 'boolean') continue;
     contactedProviders.push({
@@ -443,8 +553,18 @@ export function projectSafeRecord<T extends Record<string, unknown>>(value: T): 
 /**
  * Projects a validated plan for explicit terminal diagnostics. The full plan is
  * retained only by the caller's in-process state, never by evaluator artifacts.
+ * Auth recovery exposes only budgets, terminal reason, and counts: email and
+ * preserved private context are redacted.
  */
 export function projectSafePlan(plan: PlanSnapshot): PlanSnapshot {
+  const recovery = (plan as Partial<PlanSnapshot>).auth_recovery ?? {
+    sendAttempted: false,
+    verificationAttempted: false,
+    terminalReason: null,
+    challengeEmail: null,
+    challengeRequestedAt: null,
+    preservedRequest: null,
+  };
   return {
     ...plan,
     contact_email: null,
@@ -456,14 +576,29 @@ export function projectSafePlan(plan: PlanSnapshot): PlanSnapshot {
       email: null,
       token: null,
     },
+    auth_recovery: {
+      sendAttempted: recovery.sendAttempted,
+      verificationAttempted: recovery.verificationAttempted,
+      terminalReason: recovery.terminalReason,
+      challengeEmail: null,
+      challengeRequestedAt: null,
+      preservedRequest: null,
+    },
     human_escalation: {
       ...plan.human_escalation,
       phone_number: null,
     },
+    // The handoff receipt carries phone identity and dedupe keys. The
+    // handoff outcome stays visible through trace takeover flags instead.
+    human_help_receipt: null,
   };
 }
 
 function projectValue(value: unknown, key?: string): ArtifactJsonValue {
+  if (key === 'operational_note') return '[omitted]';
+  if (key === 'persistReason' && typeof value === 'string' && !/^[a-z_.:]+$/u.test(value)) return '[omitted]';
+  if (key && /(?:preview|_text|reasoning)$/u.test(key) && typeof value === 'string') return redactArtifactText(value);
+
   if (
     key !== undefined &&
     sensitiveKeyPattern.test(key) &&

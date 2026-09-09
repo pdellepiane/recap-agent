@@ -1470,6 +1470,14 @@ function createComposeRequest(
         auth_method: null,
         awaiting_phone_confirmation: false,
       },
+      auth_recovery: {
+        sendAttempted: false,
+        verificationAttempted: false,
+        terminalReason: null,
+        challengeEmail: null,
+        challengeRequestedAt: null,
+        preservedRequest: null,
+      },
       information_state: {
         resume_node: null,
         pending_requests: [],

@@ -200,6 +200,96 @@ export const informationStateSchema = z.object({
 
 export type InformationState = z.infer<typeof informationStateSchema>;
 
+export const authRecoveryTerminalReasonValues = [
+  'send_failed',
+  'non_delivery_reported',
+  'resend_requested',
+  'email_change_requested',
+  'auth_refused',
+  'verification_failed',
+  'legacy_terminated',
+] as const;
+
+export type AuthRecoveryTerminalReason = (typeof authRecoveryTerminalReasonValues)[number];
+
+export const authRecoveryStateSchema = z.object({
+  sendAttempted: z.boolean().default(false),
+  verificationAttempted: z.boolean().default(false),
+  terminalReason: z.enum(authRecoveryTerminalReasonValues).nullable().default(null),
+  challengeEmail: z.string().nullable().default(null),
+  challengeRequestedAt: z.string().nullable().default(null),
+  preservedRequest: pendingInformationRequestSchema.nullable().default(null),
+});
+
+export type AuthRecoveryState = z.infer<typeof authRecoveryStateSchema>;
+
+export function emptyAuthRecoveryState(): AuthRecoveryState {
+  return {
+    sendAttempted: false,
+    verificationAttempted: false,
+    terminalReason: null,
+    challengeEmail: null,
+    challengeRequestedAt: null,
+    preservedRequest: null,
+  };
+}
+
+/** Monotonic merge for core persistence: budget flags and terminal state are sticky. */
+export function mergeAuthRecoveryState(
+  current: AuthRecoveryState,
+  incoming: AuthRecoveryState,
+): AuthRecoveryState {
+  return {
+    sendAttempted: current.sendAttempted || incoming.sendAttempted,
+    verificationAttempted: current.verificationAttempted || incoming.verificationAttempted,
+    terminalReason: current.terminalReason ?? incoming.terminalReason,
+    challengeEmail: current.challengeEmail ?? incoming.challengeEmail,
+    challengeRequestedAt: current.challengeRequestedAt ?? incoming.challengeRequestedAt,
+    preservedRequest: current.preservedRequest ?? incoming.preservedRequest,
+  };
+}
+
+/**
+ * One-time normalization of legacy user_auth evidence into recovery state.
+ * Never clears an already terminal episode; caller merges monotonically.
+ */
+export function seedAuthRecoveryFromUserAuth(input: {
+  status: string;
+  email: string | null;
+  requestedAt: string | null;
+  failedCodeAttempts: number;
+  otpSendAttempts: number;
+  otpNonDeliveryReports: number;
+}): AuthRecoveryState {
+  const challenged = input.status === 'code_requested' ||
+    input.otpSendAttempts > 0 ||
+    (input.email !== null && input.requestedAt !== null && input.status !== 'none');
+  const failed = input.status === 'failed' ||
+    input.failedCodeAttempts > 0 ||
+    input.otpNonDeliveryReports > 0;
+  if (failed) {
+    return {
+      sendAttempted: true,
+      verificationAttempted: input.failedCodeAttempts > 0,
+      terminalReason: 'legacy_terminated',
+      challengeEmail: input.email,
+      challengeRequestedAt: input.requestedAt,
+      preservedRequest: null,
+    };
+  }
+  if (challenged) {
+    return {
+      sendAttempted: true,
+      verificationAttempted: false,
+      terminalReason: null,
+      challengeEmail: input.email,
+      challengeRequestedAt: input.requestedAt,
+      preservedRequest: null,
+    };
+  }
+  return emptyAuthRecoveryState();
+}
+
 export const userAuthStatusValues = [
   'none',
   'code_requested',

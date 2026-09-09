@@ -115,6 +115,9 @@ describe('perf trace module', () => {
         },
         plan_summary: {
           user_auth_status: 'none',
+          auth_recovery_terminal_reason: null,
+          auth_recovery_send_attempted: false,
+          auth_recovery_verification_attempted: false,
           pending_information_request_count: 0,
           rsvp_status: 'none',
           rsvp_candidate_count: 0,
@@ -460,6 +463,9 @@ describe('perf trace module', () => {
       },
       plan_summary: {
         user_auth_status: 'none',
+        auth_recovery_terminal_reason: null,
+        auth_recovery_send_attempted: false,
+        auth_recovery_verification_attempted: false,
         pending_information_request_count: 0,
         rsvp_status: 'none',
         rsvp_candidate_count: 0,

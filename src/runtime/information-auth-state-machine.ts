@@ -1,5 +1,12 @@
 import type { PendingInformationRequest } from '../core/information';
 import {
+  emptyAuthRecoveryState as emptyCoreRecovery,
+  mergeAuthRecoveryState,
+  seedAuthRecoveryFromUserAuth,
+  type AuthRecoveryState,
+  type AuthRecoveryTerminalReason as CoreTerminalReason,
+} from '../core/information';
+import {
   decideHumanHelpAttempt,
   type HandoffPersistedRecord,
   type HumanHelpAttemptDecision,
@@ -31,26 +38,12 @@ export const authRecoveryTerminalReasons = [
   'legacy_terminated',
 ] as const;
 
-export type AuthRecoveryTerminalReason = (typeof authRecoveryTerminalReasons)[number];
+export type AuthRecoveryTerminalReason = CoreTerminalReason;
 
-export type InformationAuthRecoveryState = {
-  readonly sendAttempted: boolean;
-  readonly verificationAttempted: boolean;
-  readonly terminalReason: AuthRecoveryTerminalReason | null;
-  readonly challengeEmail: string | null;
-  readonly challengeRequestedAt: string | null;
-  readonly preservedRequest: PendingInformationRequest | null;
-};
+export type InformationAuthRecoveryState = AuthRecoveryState;
 
 export function emptyAuthRecoveryState(): InformationAuthRecoveryState {
-  return {
-    sendAttempted: false,
-    verificationAttempted: false,
-    terminalReason: null,
-    challengeEmail: null,
-    challengeRequestedAt: null,
-    preservedRequest: null,
-  };
+  return emptyCoreRecovery();
 }
 
 export type LegacyAuthFields = {
@@ -68,33 +61,14 @@ export type LegacyAuthFields = {
  * terminates recovery. Never clears an already terminal episode.
  */
 export function normalizeLegacyAuthRecovery(input: LegacyAuthFields): InformationAuthRecoveryState {
-  const challenged = input.status === 'code_requested' ||
-    input.otpSendAttempts > 0 ||
-    (input.email !== null && input.requestedAt !== null && input.status !== 'none');
-  const failed = input.status === 'failed' ||
-    input.failedCodeAttempts > 0 ||
-    input.otpNonDeliveryReports > 0;
-  if (failed) {
-    return {
-      sendAttempted: true,
-      verificationAttempted: input.failedCodeAttempts > 0,
-      terminalReason: 'legacy_terminated',
-      challengeEmail: input.email,
-      challengeRequestedAt: input.requestedAt,
-      preservedRequest: null,
-    };
-  }
-  if (challenged) {
-    return {
-      sendAttempted: true,
-      verificationAttempted: false,
-      terminalReason: null,
-      challengeEmail: input.email,
-      challengeRequestedAt: input.requestedAt,
-      preservedRequest: null,
-    };
-  }
-  return emptyAuthRecoveryState();
+  return seedAuthRecoveryFromUserAuth({
+    status: input.status,
+    email: input.email,
+    requestedAt: input.requestedAt,
+    failedCodeAttempts: input.failedCodeAttempts,
+    otpSendAttempts: input.otpSendAttempts,
+    otpNonDeliveryReports: input.otpNonDeliveryReports,
+  });
 }
 
 /** Monotonic merge: budget flags and terminal state are sticky and win. */
@@ -102,14 +76,7 @@ export function mergeAuthRecovery(
   current: InformationAuthRecoveryState,
   incoming: InformationAuthRecoveryState,
 ): InformationAuthRecoveryState {
-  return {
-    sendAttempted: current.sendAttempted || incoming.sendAttempted,
-    verificationAttempted: current.verificationAttempted || incoming.verificationAttempted,
-    terminalReason: current.terminalReason ?? incoming.terminalReason,
-    challengeEmail: current.challengeEmail ?? incoming.challengeEmail,
-    challengeRequestedAt: current.challengeRequestedAt ?? incoming.challengeRequestedAt,
-    preservedRequest: current.preservedRequest ?? incoming.preservedRequest,
-  };
+  return mergeAuthRecoveryState(current, incoming);
 }
 
 /**
@@ -120,6 +87,18 @@ export function preserveRecoveryAcrossReset(
   current: InformationAuthRecoveryState,
 ): InformationAuthRecoveryState {
   return current;
+}
+
+/** Effective recovery: persisted typed state merged monotonically with legacy seed. */
+export function effectiveAuthRecovery(args: {
+  persisted: InformationAuthRecoveryState;
+  legacy: LegacyAuthFields;
+}): InformationAuthRecoveryState {
+  return mergeAuthRecoveryState(args.persisted, normalizeLegacyAuthRecovery(args.legacy));
+}
+
+export function isTerminalAuthRecovery(state: InformationAuthRecoveryState): boolean {
+  return state.terminalReason !== null;
 }
 
 export type OtpEntryGate = {

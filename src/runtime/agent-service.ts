@@ -1,6 +1,6 @@
 import { ulid } from 'ulid';
 import handoffMessages from '../../prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json';
-import { applyHandoffResult, decideHumanHelpAttempt } from './human-help-policy';
+import { applyHandoffResult, decideHumanHelpAttempt, resolveHandoffGatewayStatus } from './human-help-policy';
 import type { DecisionNode } from '../core/decision-nodes';
 import { extractionPersistenceNodes } from '../core/decision-nodes';
 import { resolveResumeNode } from '../core/decision-flow';
@@ -83,7 +83,12 @@ import { extractOtpCode } from './otp-normalization';
 import {
   consumeVerificationAttempt,
   decideTerminalContinuation,
-  normalizeLegacyAuthRecovery,
+  effectiveAuthRecovery,
+  isTerminalAuthRecovery,
+  mergeAuthRecovery,
+  preserveRecoveryAcrossReset,
+  type AuthRecoveryTerminalReason,
+  type InformationAuthRecoveryState,
 } from './information-auth-state-machine';
 import { normalizeExtractedOrderReference } from '../core/order-reference';
 import { deriveDynamicAgentPolicy } from './dynamic-agent-policy';
@@ -476,18 +481,16 @@ export class AgentService {
     }
 
     if (existingPlan?.human_escalation.status === 'requested') {
-      // One-shot OTP retention (F1): a code arriving after a rejected-code
-      // handoff must not verify again. Record the already-requested handoff
-      // without a second gateway effect and retain the human path with the
-      // preserved request. Prose follow-ups still take the suppress path.
+      // Terminal OTP retention: a code arriving after terminal recovery was
+      // persisted must not verify again. Retain the human path without a
+      // second effect. Prose follow-ups still take the suppress path.
       if (
-        this.extractUserLoginCode(inbound.text) !== null &&
-        existingPlan.user_auth.status === 'code_requested' &&
-        existingPlan.user_auth.failed_code_attempts >= 1
+        isTerminalAuthRecovery(this.effectiveAuthRecovery(existingPlan)) &&
+        this.extractUserLoginCode(inbound.text) !== null
       ) {
         return await this.retainTerminalOtpHandoff({
           inbound,
-          existingPlan,
+          existingPlan: this.withSeededAuthRecovery(existingPlan),
           toolUsage,
           timingMs,
           tokenUsage,
@@ -827,7 +830,14 @@ export class AgentService {
           channel: inbound.channel,
           externalUserId: inbound.externalUserId,
         });
-        existingPlan = freshPlan;
+        // Recovery and handoff dedupe survive event-plan resets and session
+        // changes; a reset never clears attempts or terminal recovery.
+        existingPlan = mergePlan(freshPlan, {
+          auth_recovery: preserveRecoveryAcrossReset(
+            this.effectiveAuthRecovery(existingPlan),
+          ),
+          human_help_receipt: existingPlan.human_help_receipt ?? null,
+        });
       } else {
         const finishedSufficiency = computeSearchSufficiency(existingPlan);
         const finishedProviders =
@@ -994,10 +1004,17 @@ export class AgentService {
       });
     }
     if (extraction.actionIntent === 'reset_plan') {
-      workingPlan = createEmptyPlan({
+      const resetBase = createEmptyPlan({
         planId: ulid(),
         channel: inbound.channel,
         externalUserId: inbound.externalUserId,
+      });
+      // Recovery and dedupe survive plan reset/session change.
+      workingPlan = mergePlan(resetBase, {
+        auth_recovery: preserveRecoveryAcrossReset(
+          this.effectiveAuthRecovery(workingPlan),
+        ),
+        human_help_receipt: workingPlan.human_help_receipt ?? null,
       });
       sessionFocus = null;
     }
@@ -1133,25 +1150,60 @@ export class AgentService {
       }
       const phoneNumber = this.resolveEscalationPhone(inbound);
       const requestedAt = new Date().toISOString();
-      const gatewayResult = phoneNumber
-        ? await this.requestHumanTakeoverWithTrace(
-            agentConversationGateway,
-            phoneNumber,
-            toolUsage,
-          )
-        : this.missingPhoneEscalationResult();
+      // Dedupe-preserving explicit help handling: failed/skipped/unknown
+      // receipts are never auto-retried. Only a definitively failed handoff
+      // may retry on a new explicit inbound request; unknown stays unretried.
+      const priorHelpReceipt = mergedPlan.human_help_receipt ?? null;
+      const helpDecision = decideHumanHelpAttempt({
+        conversationId: mergedPlan.plan_id,
+        inboundId: inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
+        gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
+        prior: priorHelpReceipt,
+        explicitRetry: priorHelpReceipt?.outcome === 'handoff_failed' &&
+          priorHelpReceipt.inboundId !== inbound.messageId,
+      });
+      let gatewayResult: AgentGatewayResult;
+      let nextReceipt = priorHelpReceipt;
+      if (helpDecision.action === 'attempt' && phoneNumber) {
+        gatewayResult = await this.requestHumanTakeoverWithTrace(
+          agentConversationGateway,
+          phoneNumber,
+          toolUsage,
+        );
+        // Never fabricate a receipt for an unattempted effect: skipped
+        // gateway results persist only the reason, not a failed receipt.
+        nextReceipt = gatewayResult.status === 'skipped'
+          ? priorHelpReceipt
+          : applyHandoffResult({ dedupeKey: helpDecision.dedupeKey, inboundId: inbound.messageId,
+            phone: phoneNumber, gatewayStatus: resolveHandoffGatewayStatus({
+              status: gatewayResult.status === 'success' ? 'success' : 'failed',
+              outcome: gatewayResult.status === 'failed' ? gatewayResult.outcome : undefined,
+            }) });
+      } else if (priorHelpReceipt?.outcome === 'handoff_requested') {
+        gatewayResult = { status: 'success', message: 'retained_confirmed_handoff' };
+      } else if (phoneNumber === null) {
+        gatewayResult = this.missingPhoneEscalationResult();
+      } else {
+        gatewayResult = { status: 'skipped', reason: 'not_configured', message: helpDecision.reason };
+      }
+      const helpRequested = nextReceipt?.outcome === 'handoff_requested' ||
+        gatewayResult.status === 'success';
+      const helpLastError = helpRequested
+        ? null
+        : gatewayResult.status === 'failed'
+          ? gatewayResult.error
+          : gatewayResult.status === 'skipped'
+            ? gatewayResult.message
+            : (nextReceipt?.outcome ?? helpDecision.reason);
       const planToSave = mergePlan(mergedPlan, {
         current_node: currentNode,
         intent: 'solicitar_humano',
+        human_help_receipt: nextReceipt,
         human_escalation: {
-          status: gatewayResult.status === 'success' ? 'requested' : 'none',
-          requested_at: gatewayResult.status === 'success' ? requestedAt : null,
+          status: helpRequested ? 'requested' : 'none',
+          requested_at: helpRequested ? (nextReceipt?.updatedAt ?? requestedAt) : null,
           phone_number: phoneNumber,
-          last_error: gatewayResult.status === 'failed'
-            ? gatewayResult.error
-            : gatewayResult.status === 'skipped'
-              ? gatewayResult.message
-              : null,
+          last_error: helpLastError,
         },
       });
       await persistPlan(planToSave, currentNode);
@@ -4526,8 +4578,11 @@ export class AgentService {
     const hasPhoneIdentity = args.workingPlan.user_auth.auth_method === 'phone' ||
       args.workingPlan.user_auth.awaiting_phone_confirmation;
     if (args.extraction.phoneConfirmation === 'no' && (hasPhoneIdentity || !declined)) {
+      // Identity rejection wins over provider clarification and conflicting
+      // support detail. Persist terminal refusal so no OTP can reopen it.
+      const rejectedBase = this.persistTerminalRecovery(args.workingPlan, 'auth_refused');
       return await this.escalateInformationAuthentication({ ...args,
-        plan: this.clearPhoneAuthentication(args.workingPlan, 'identity_rejected'), reason: 'identity_rejected' });
+        plan: this.clearPhoneAuthentication(rejectedBase, 'identity_rejected'), reason: 'identity_rejected' });
     }
     if (declined) {
       return await this.completeDeclinedInformationAuthentication({ ...args, plan: args.workingPlan,
@@ -4688,6 +4743,16 @@ export class AgentService {
       });
     }
 
+    // Seed typed recovery once, then merge monotonically. Terminal is checked
+    // after extraction/normalization and before any email/OTP recovery,
+    // regardless of escalation status or six-digit presence. Rejection and
+    // refusal precedence is kept above; unrelated public questions route
+    // normally below without clearing the record.
+    planForInformation = this.withSeededAuthRecovery(planForInformation);
+    const effectiveRecovery = this.effectiveAuthRecovery(planForInformation);
+    const hasProtectedWork = this.hasProtectedInformationWork(requests);
+    const inboundCode = this.extractUserLoginCode(args.inbound.text);
+
     // One-shot OTP recovery (F1): the first non-delivery report or resend
     // request on an active challenge terminates the episode. The typed
     // state machine owns the decision; legacy counters persist the budget.
@@ -4703,6 +4768,38 @@ export class AgentService {
       },
     );
     if (otpTerminalContinuation !== null) {
+      const terminalPlan = mergePlan(
+        this.persistTerminalRecovery(planForInformation, otpTerminalContinuation),
+        {
+          user_auth: {
+            otp_non_delivery_reports:
+              protectedAuthAction === 'report_otp_not_received'
+                ? planForInformation.user_auth.otp_non_delivery_reports + 1
+                : planForInformation.user_auth.otp_non_delivery_reports,
+          },
+        },
+      );
+      return await this.escalateInformationAuthentication({
+        ...args,
+        plan: terminalPlan,
+        reason: 'otp_recovery_exhausted',
+      });
+    }
+
+    // An email-change request on a challenged episode ends recovery instead
+    // of collecting alternative addresses.
+    if (protectedAuthAction === 'change_email' && effectiveRecovery.sendAttempted) {
+      return await this.escalateInformationAuthentication({
+        ...args,
+        plan: this.persistTerminalRecovery(planForInformation, 'email_change_requested'),
+        reason: 'otp_recovery_exhausted',
+      });
+    }
+
+    // Already-terminal episodes stay terminal: protected continuations and
+    // codes retain the human path with no verify/send/retry copy. Failed,
+    // skipped, and unknown handoffs cannot reset recovery here.
+    if (effectiveRecovery.terminalReason !== null && (hasProtectedWork || inboundCode !== null)) {
       return await this.escalateInformationAuthentication({
         ...args,
         plan: planForInformation,
@@ -5500,10 +5597,14 @@ export class AgentService {
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
     const remainingRequests = args.requests.filter((request) => request.kind === 'faq');
-    const planToSave = mergePlan(this.resetUserAuth(args.plan, null), {
+    // Refusal closes the protected request without renewing the OTP budget:
+    // persist terminal auth_refused monotonically before closing.
+    const refusedBase = this.persistTerminalRecovery(args.plan, 'auth_refused');
+    const planToSave = mergePlan(this.resetUserAuth(refusedBase, null), {
       current_node: remainingRequests.length > 0
         ? 'resolver_consultas_informativas'
         : args.resumeNode ?? 'resolver_consultas_informativas',
+      auth_recovery: this.effectiveAuthRecovery(refusedBase),
       information_state: {
         resume_node: args.resumeNode,
         pending_requests: remainingRequests,
@@ -5567,12 +5668,17 @@ export class AgentService {
     messageContext: TurnMessageContext;
     handleTurnStartedAt: number;
   }): Promise<HandleTurnResponse> {
-    // The handoff was already requested on the rejection turn, so no second
+    // The handoff was already decided on the terminal turn, so no second
     // gateway effect is submitted. A retained decision belongs in diagnostics,
     // not tools_called: no fake takeover input/output is recorded here.
-    const planToSave = mergePlan(args.existingPlan, {
-      current_node: 'solicitar_agente_humano',
-    });
+    // Failed/skipped/unknown receipts are preserved as-is; this path never
+    // resets recovery and never offers another OTP.
+    const planToSave = mergePlan(
+      this.withSeededAuthRecovery(args.existingPlan),
+      {
+        current_node: 'solicitar_agente_humano',
+      },
+    );
     await this.dependencies.planStore.save({
       plan: planToSave,
       reason: 'terminal_otp_code_retains_handoff',
@@ -5633,10 +5739,16 @@ export class AgentService {
   }): Promise<HandleTurnResponse> {
     const gateway = this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway('not_configured');
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
+    // Explicit help retry affects only the help effect, never OTP eligibility:
+    // only a new inbound message with an explicit human request may retry a
+    // definitively failed handoff. Unknown stays unretried by policy.
+    const priorReceipt = args.plan.human_help_receipt ?? null;
+    const isExplicitHelpRetry = args.extraction.actionIntent === 'solicitar_humano' &&
+      priorReceipt?.outcome === 'handoff_failed';
     const decision = decideHumanHelpAttempt({ conversationId: args.plan.plan_id,
       inboundId: args.inbound.messageId, scope: 'protected_request', trustedPhone: phoneNumber,
       gatewayCapable: this.capabilityManifest['human.takeover.write'].available,
-      prior: args.plan.human_help_receipt ?? null, explicitRetry: false });
+      prior: priorReceipt, explicitRetry: isExplicitHelpRetry });
     let receipt = args.plan.human_help_receipt ?? null;
     let gatewayResult: AgentGatewayResult = { status: 'skipped', reason: 'not_configured', message: decision.reason };
     if (decision.action === 'attempt' && phoneNumber) {
@@ -5647,8 +5759,15 @@ export class AgentService {
         reason: 'human_help_intent' });
       try {
         gatewayResult = await this.requestHumanTakeoverWithTrace(gateway, phoneNumber, args.toolUsage);
-        receipt = applyHandoffResult({ dedupeKey: decision.dedupeKey, inboundId: args.inbound.messageId,
-          phone: phoneNumber, gatewayStatus: gatewayResult.status });
+        // Never fabricate a receipt for an unattempted effect: a skipped
+        // gateway result keeps the prior receipt and records only the reason.
+        if (gatewayResult.status !== 'skipped') {
+          receipt = applyHandoffResult({ dedupeKey: decision.dedupeKey, inboundId: args.inbound.messageId,
+            phone: phoneNumber, gatewayStatus: resolveHandoffGatewayStatus({
+              status: gatewayResult.status === 'success' ? 'success' : 'failed',
+              outcome: gatewayResult.status === 'failed' ? gatewayResult.outcome : undefined,
+            }) });
+        }
       } catch {
         // The pre-dispatch receipt remains unknown: no claim of success or automatic retry.
       }
@@ -5656,11 +5775,19 @@ export class AgentService {
       gatewayResult = { status: 'success', message: 'retained_confirmed_handoff' };
     }
     const requested = receipt?.outcome === 'handoff_requested';
+    const terminalLastError = requested
+      ? null
+      : gatewayResult.status === 'failed'
+        ? gatewayResult.error
+        : gatewayResult.status === 'skipped' &&
+          gatewayResult.message !== decision.reason
+          ? gatewayResult.message
+          : receipt?.outcome ?? decision.reason;
     const planToSave = mergePlan(args.plan, {
       current_node: 'solicitar_agente_humano', intent: 'solicitar_humano', human_help_receipt: receipt,
       human_escalation: { status: requested ? 'requested' : 'none',
         requested_at: requested ? receipt?.updatedAt ?? null : null,
-        phone_number: phoneNumber, last_error: requested ? null : receipt?.outcome ?? decision.reason },
+        phone_number: phoneNumber, last_error: terminalLastError },
     });
     await this.dependencies.planStore.save({
       plan: planToSave,
@@ -6142,6 +6269,21 @@ export class AgentService {
       return verification;
     }
 
+    // Terminal episodes never return the generic otp_invalid/otp_pending
+    // recovery branch; only a still-valid, unconsumed episode may ask for
+    // its first code. Terminal callers escalate without retry copy.
+    if (isTerminalAuthRecovery(this.effectiveAuthRecovery(planForEmail))) {
+      const terminalPlan = this.withSeededAuthRecovery(planForEmail);
+      return {
+        plan: terminalPlan,
+        authentication: null,
+        authBlock: {
+          nextInput: 'otp',
+          guidance: createInformationAuthGuidance('otp_verification_failed', email),
+        },
+      };
+    }
+
     if (
       planForEmail.user_auth.status === 'code_requested' &&
       informationAuthAction !== 'resend_otp'
@@ -6272,21 +6414,26 @@ export class AgentService {
         ? 'otp_send_unavailable'
         : 'otp_send_failed';
     return {
-      plan: mergePlan(plan, {
-        user_auth: {
-          status: 'failed',
-          email,
-          token: null,
-          token_expires_at: null,
-          last_error: result.error,
-          requested_at: null,
-          failed_code_attempts: 0,
-          otp_send_attempts: plan.user_auth.otp_send_attempts + 1,
-          otp_non_delivery_reports: plan.user_auth.otp_non_delivery_reports,
-          auth_method: null,
-          awaiting_phone_confirmation: false,
+      plan: mergePlan(
+        this.persistTerminalRecovery(plan, 'send_failed', {
+          sendAttempted: true,
+        }),
+        {
+          user_auth: {
+            status: 'failed',
+            email,
+            token: null,
+            token_expires_at: null,
+            last_error: result.error,
+            requested_at: null,
+            failed_code_attempts: 0,
+            otp_send_attempts: plan.user_auth.otp_send_attempts + 1,
+            otp_non_delivery_reports: plan.user_auth.otp_non_delivery_reports,
+            auth_method: null,
+            awaiting_phone_confirmation: false,
+          },
         },
-      }),
+      ),
       authBlock: {
         nextInput: 'email',
         guidance: createInformationAuthGuidance(sendFailureReason, email),
@@ -6307,17 +6454,12 @@ export class AgentService {
   }> {
     // One-shot policy: consume the single verification before the outbound
     // call. An already-consumed or terminal episode never verifies again.
-    const recovery = normalizeLegacyAuthRecovery({
-      status: plan.user_auth.status,
-      email: plan.user_auth.email,
-      requestedAt: plan.user_auth.requested_at,
-      failedCodeAttempts: plan.user_auth.failed_code_attempts,
-      otpSendAttempts: plan.user_auth.otp_send_attempts,
-      otpNonDeliveryReports: plan.user_auth.otp_non_delivery_reports,
-    });
+    // The effective recovery merges persisted typed state with the legacy
+    // seed so terminal stays terminal across resets and sessions.
+    const recovery = this.effectiveAuthRecovery(plan);
     if (!consumeVerificationAttempt(recovery).allowed) {
       return {
-        plan,
+        plan: this.withSeededAuthRecovery(plan),
         authentication: null,
         authBlock: {
           nextInput: 'otp',
@@ -6372,16 +6514,20 @@ export class AgentService {
               // The caller routes this terminal block to a single handoff.
               : 'otp_verification_failed';
       return {
-        plan: mergePlan(plan, {
-          user_auth: {
-            ...plan.user_auth,
-            status: 'code_requested',
-            token: null,
-            token_expires_at: null,
-            last_error: result.error,
-            failed_code_attempts: nextAttempts,
+        plan: mergePlan(
+          this.persistTerminalRecovery(plan, 'verification_failed', {
+            verificationAttempted: true,
+          }),
+          {
+            user_auth: {
+              status: 'code_requested',
+              token: null,
+              token_expires_at: null,
+              last_error: result.error,
+              failed_code_attempts: nextAttempts,
+            },
           },
-        }),
+        ),
         authentication: null,
         authBlock: {
           nextInput: 'otp',
@@ -6948,6 +7094,77 @@ export class AgentService {
 
   private hasValidUserAuthToken(plan: PlanSnapshot): boolean {
     return hasValidUserAuthToken(plan);
+  }
+
+  private legacyAuthFields(plan: PlanSnapshot): {
+    status: string;
+    email: string | null;
+    requestedAt: string | null;
+    failedCodeAttempts: number;
+    otpSendAttempts: number;
+    otpNonDeliveryReports: number;
+  } {
+    return {
+      status: plan.user_auth.status,
+      email: plan.user_auth.email,
+      requestedAt: plan.user_auth.requested_at,
+      failedCodeAttempts: plan.user_auth.failed_code_attempts,
+      otpSendAttempts: plan.user_auth.otp_send_attempts,
+      otpNonDeliveryReports: plan.user_auth.otp_non_delivery_reports,
+    };
+  }
+
+  private effectiveAuthRecovery(plan: PlanSnapshot): InformationAuthRecoveryState {
+    return effectiveAuthRecovery({
+      persisted: plan.auth_recovery,
+      legacy: this.legacyAuthFields(plan),
+    });
+  }
+
+  private withSeededAuthRecovery(plan: PlanSnapshot): PlanSnapshot {
+    const effective = this.effectiveAuthRecovery(plan);
+    if (
+      effective.sendAttempted === plan.auth_recovery.sendAttempted &&
+      effective.verificationAttempted === plan.auth_recovery.verificationAttempted &&
+      effective.terminalReason === plan.auth_recovery.terminalReason &&
+      (effective.challengeEmail ?? null) === (plan.auth_recovery.challengeEmail ?? null) &&
+      (effective.challengeRequestedAt ?? null) === (plan.auth_recovery.challengeRequestedAt ?? null)
+    ) {
+      return plan;
+    }
+    return mergePlan(plan, { auth_recovery: effective });
+  }
+
+  private persistTerminalRecovery(
+    plan: PlanSnapshot,
+    terminalReason: AuthRecoveryTerminalReason,
+    extra?: Partial<InformationAuthRecoveryState>,
+  ): PlanSnapshot {
+    const effective = this.effectiveAuthRecovery(plan);
+    if (effective.terminalReason !== null) {
+      return mergePlan(plan, {
+        auth_recovery: mergeAuthRecovery(plan.auth_recovery, {
+          ...effective,
+          ...extra,
+        }),
+      });
+    }
+    return mergePlan(plan, {
+      auth_recovery: {
+        ...effective,
+        sendAttempted: true,
+        ...extra,
+        terminalReason,
+      },
+    });
+  }
+
+  private hasProtectedInformationWork(
+    requests: Array<{ kind: string }>,
+  ): boolean {
+    return requests.some(
+      (request) => request.kind === 'purchase' || request.kind === 'associated_event',
+    );
   }
 
   private resetUserAuth(
@@ -8415,6 +8632,9 @@ export class AgentService {
       },
       contact_validation_error: contactValidationSummary.reason_preview,
       user_auth_status: plan.user_auth.status,
+      auth_recovery_terminal_reason: plan.auth_recovery.terminalReason ?? null,
+      auth_recovery_send_attempted: plan.auth_recovery.sendAttempted,
+      auth_recovery_verification_attempted: plan.auth_recovery.verificationAttempted,
       pending_information_request_count:
         plan.information_state.pending_requests.length,
       rsvp_status: plan.rsvp_state.status,

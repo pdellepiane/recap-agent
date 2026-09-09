@@ -114,6 +114,9 @@ export type PlanDebugSummary = {
   };
   contact_validation_error: string | null;
   user_auth_status: string;
+  auth_recovery_terminal_reason: string | null;
+  auth_recovery_send_attempted: boolean;
+  auth_recovery_verification_attempted: boolean;
   pending_information_request_count: number;
   rsvp_status: 'none' | 'awaiting_action' | 'awaiting_event_selection';
   rsvp_candidate_count: number;
