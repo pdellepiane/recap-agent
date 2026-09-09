@@ -1,0 +1,41 @@
+template: template.base-live
+id: live_behavior.wrong_account_handoff_once
+suite: live_behavior_regression
+version: 1
+description: A wrong-account statement rejects the phone identity with no OTP recovery and records one real handoff.
+tags: [live, behavior, authentication, handoff, human-first]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: purchase-currency-pen
+inputs:
+  - text: Ese número no corresponde a mi cuenta; mi correo es fallback@example.com
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-wrong-account-handoff-session
+notes:
+  - Human-first auth policy. Synthetic identity and phone only; fixture gateway simulates the handoff with no real-world effect and no OTP is sent.
+expectations:
+  - id: wrong-account-real-handoff
+    type: tool_usage
+    mustCall: [request_human_takeover]
+    mustNotCall: [request_user_login_code, auth_by_phone, verify_user_login_code]
+    severity: hard
+  - id: wrong-account-escalates
+    type: node_transition
+    to: solicitar_agente_humano
+    severity: hard
+  - id: wrong-account-handoff-message
+    type: text_contains
+    allOf: [ya solicité apoyo humano]
+    severity: hard
+  - id: wrong-account-no-otp-recovery
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish confirming human support was requested for the query. It must not ask for an email code, must not claim a code was sent, must not request the WhatsApp number, and must not claim protected purchase data was verified.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 2000
+  estimatedCompletionTokensPerTurn: 250
