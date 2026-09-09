@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { inboundMediaKindValues } from '../core/messages';
+import { inboundImageSchema } from '../core/inbound-image';
 import { parseInternationalPhone } from '../runtime/phone';
 
 const whatsAppChannels = new Set(['whatsapp', 'whatsapp_sandbox']);
@@ -39,7 +40,8 @@ export const backendFixtureSchema = z.object({
 }).strict();
 
 export const channelRequestSchema = z.object({
-  text: z.string().trim().max(16_000).optional().default(''),
+  text: z.string().trim().max(16_000).nullish().transform((value) => value ?? ''),
+  image: inboundImageSchema.optional(),
   media: z.array(inboundMediaSchema).max(10).optional().default([]),
   user_id: z.string().trim().min(1),
   channel: channelSchema,
@@ -50,7 +52,7 @@ export const channelRequestSchema = z.object({
   contact_phone: z.string().trim().min(1).nullable().optional(),
   backendFixture: backendFixtureSchema.optional(),
 }).superRefine((value, context) => {
-  if (!value.text && value.media.length === 0) {
+  if (!value.text && value.media.length === 0 && !value.image) {
     context.addIssue({
       code: 'custom',
       path: ['text'],

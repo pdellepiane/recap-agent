@@ -155,6 +155,128 @@ describe('Lambda channel request contract', () => {
     expect(result.success).toBe(false);
   });
 
+  it('accepts the backend image payload with text null and inline data', () => {
+    const result = channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.HBgLNTE5ODc2NTQzMjE',
+      received_at: '2026-09-08T14:30:00Z',
+      client_mode: 'channel',
+      text: null,
+      image: {
+        data: 'iVBORw0KGgoAAAANSUhEUgAA',
+        mime_type: 'image/jpeg',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.text).toBe('');
+      expect(result.data.image).toMatchObject({ mime_type: 'image/jpeg' });
+    }
+  });
+
+  it('accepts a captioned backend image with text and inline data together', () => {
+    const result = channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.captioned-backend-image',
+      received_at: '2026-09-08T14:30:00Z',
+      client_mode: 'channel',
+      text: 'Este es mi comprobante',
+      image: {
+        data: 'iVBORw0KGgoAAAANSUhEUgAA',
+        mime_type: 'image/jpeg',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.text).toBe('Este es mi comprobante');
+      expect(result.data.image).toMatchObject({ mime_type: 'image/jpeg' });
+    }
+  });
+
+  it('accepts the image_too_large error event with text null', () => {
+    const result = channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.too-large-image',
+      received_at: '2026-09-08T14:30:00Z',
+      client_mode: 'channel',
+      text: null,
+      image: {
+        error: 'image_too_large',
+        mime_type: 'image/jpeg',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.text).toBe('');
+      expect(result.data.image).toMatchObject({ error: 'image_too_large' });
+    }
+  });
+
+  it('accepts the media_unavailable error event with text null', () => {
+    const result = channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.unavailable-image',
+      received_at: '2026-09-08T14:30:00Z',
+      client_mode: 'channel',
+      text: null,
+      image: {
+        error: 'media_unavailable',
+        mime_type: 'image/jpeg',
+      },
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts a captioned image error event so the caption is preserved', () => {
+    const result = channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.captioned-error-image',
+      received_at: '2026-09-08T14:30:00Z',
+      client_mode: 'channel',
+      text: 'No se ve bien?',
+      image: {
+        error: 'media_unavailable',
+        mime_type: 'image/jpeg',
+      },
+    });
+
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.text).toBe('No se ve bien?');
+    }
+  });
+
+  it('rejects an image carrying both data and error', () => {
+    const result = channelRequestSchema.safeParse({
+      user_id: 'whatsapp:+51987654321',
+      channel: 'whatsapp',
+      contact_phone: '+51987654321',
+      message_id: 'wamid.ambiguous-image',
+      text: null,
+      image: {
+        data: 'iVBORw0KGgoAAAANSUhEUgAA',
+        error: 'media_unavailable',
+        mime_type: 'image/jpeg',
+      },
+    });
+
+    expect(result.success).toBe(false);
+  });
+
   it('accepts a conversation ownership request', () => {
     const result = agentParticipationRequestSchema.safeParse({
       channel: 'whatsapp',

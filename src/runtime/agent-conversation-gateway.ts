@@ -8,6 +8,7 @@ import type {
 } from '../core/information';
 import { rsvpActionValues, type RsvpAction } from '../core/rsvp';
 import { normalizeBackendCustomerTransactionNumber } from '../core/order-reference';
+import { normalizePurchaseCurrency } from './purchase-currency';
 import {
   createAuthOperationId,
   logAuthObservabilityEvent,
@@ -702,6 +703,8 @@ const orderSchema = z.object({
   payment_method: nullableStringSchema,
   event_id: z.union([z.number(), z.string()]).nullable().optional(),
   currency: nullableStringSchema.optional(),
+  currency_code: nullableStringSchema.optional(),
+  currency_symbol: nullableStringSchema.optional(),
   event_name: nullableStringSchema,
   event_date: nullableStringSchema,
   event_url: nullableStringSchema,
@@ -718,6 +721,9 @@ const cartSchema = z.object({
   event_date: nullableStringSchema,
   event_url: nullableStringSchema,
   subtotal: nullableNumberSchema,
+  currency: nullableStringSchema.optional(),
+  currency_code: nullableStringSchema.optional(),
+  currency_symbol: nullableStringSchema.optional(),
   gifts_quantity: nullableNumberSchema,
   items: z.array(purchaseItemSchema).default([]),
   created_at: nullableStringSchema,
@@ -735,6 +741,8 @@ const giftPurchaseSchema = z.object({
   admin_comment: nullableStringSchema,
   event_id: z.union([z.number(), z.string()]).nullable().optional(),
   currency: nullableStringSchema.optional(),
+  currency_code: nullableStringSchema.optional(),
+  currency_symbol: nullableStringSchema.optional(),
   event_name: nullableStringSchema,
   event_date: nullableStringSchema,
   event_url: nullableStringSchema,
@@ -1547,11 +1555,14 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
     order: OrderWire,
     partition: PurchasePartition,
   ): PurchaseInformation {
+    const money = normalizePurchaseCurrency(order);
     return {
       orderId: order.id,
       partition,
       eventId: order.event_id ?? null,
-      currency: order.currency ?? null,
+      currency: money.currency,
+      currencySymbol: money.currencySymbol,
+      currencyConflict: money.currencyConflict,
       customerTransactionNumber: normalizeBackendCustomerTransactionNumber(
         order.increment_id,
       ),
@@ -1574,6 +1585,7 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   }
 
   private mapCart(cart: CartWire): CartInformation {
+    const money = normalizePurchaseCurrency(cart);
     return {
       cartId: String(cart.cart_id),
       status: cart.status,
@@ -1583,6 +1595,8 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
       eventDate: normalizeServerTimestamp(cart.event_date),
       eventUrl: cart.event_url ?? null,
       subtotal: cart.subtotal ?? null,
+      currency: money.currency,
+      currencySymbol: money.currencySymbol,
       giftsQuantity: cart.gifts_quantity ?? null,
       createdAt: normalizeServerTimestamp(cart.created_at),
       items: cart.items.map((item) => ({
@@ -1604,10 +1618,13 @@ export class HttpAgentConversationGateway implements AgentConversationGateway {
   }
 
   private mapGiftPurchase(purchase: GiftPurchaseWire): PurchaseInformation {
+    const money = normalizePurchaseCurrency(purchase);
     return {
       orderId: purchase.id,
       eventId: purchase.event_id ?? null,
-      currency: purchase.currency ?? null,
+      currency: money.currency,
+      currencySymbol: money.currencySymbol,
+      currencyConflict: money.currencyConflict,
       customerTransactionNumber: normalizeBackendCustomerTransactionNumber(
         purchase.increment_id,
       ),

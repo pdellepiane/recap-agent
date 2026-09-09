@@ -1,3 +1,5 @@
+import type { InboundImage } from './inbound-image';
+
 export const inboundMediaKindValues = [
   'image',
   'video',
@@ -21,6 +23,8 @@ export type InboundMedia = {
 };
 
 export type NormalizedInboundMessage = {
+  /** Ephemeral validated content: never persist or log this field. */
+  image?: InboundImage;
   channel: string;
   externalUserId: string;
   text: string;

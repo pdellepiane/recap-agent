@@ -62,6 +62,7 @@ export type OrderReplyView = {
     total: number | null;
     paid: number | null;
     currency: string | null;
+    currencySymbol: string | null;
     method: string | null;
   } | null;
   amountMismatch: AmountMismatchView | null;
@@ -70,6 +71,7 @@ export type OrderReplyView = {
   createdAt: string | null;
   transactionReference: string | null;
   currency: string | null;
+  currencySymbol: string | null;
   userReported: {
     amount: number | null;
     currency: string | null;
@@ -181,6 +183,8 @@ function toOrderView(
         total,
         paid,
         currency: purchase.currency ?? null,
+        // Display metadata never stands in for a withheld currency claim.
+        currencySymbol: purchase.currency ? purchase.currencySymbol ?? null : null,
         method: wantsMethod ? purchase.paymentMethod ?? purchase.payment?.method ?? null : null,
       }
       : null,
@@ -191,6 +195,7 @@ function toOrderView(
     createdAt: preserveServerTimestamp(purchase.createdAt),
     transactionReference: reference,
     currency: purchase.currency ?? null,
+    currencySymbol: purchase.currency ? purchase.currencySymbol ?? null : null,
     userReported: {
       amount: reportedAmount,
       currency: typeof userReported.currency === 'string' && userReported.currency.trim().length > 0
@@ -264,8 +269,9 @@ function toModelOrder(order: OrderReplyView): Record<string, unknown> {
   // Absent currency is omitted, never projected as a caveat. Empty
   // user-reported slots are omitted as well.
   if (view.currency === null) delete view.currency;
+  if (view.currencySymbol === null) delete view.currencySymbol;
   const amount = { ...(order.amount ?? {}) } as Record<string, unknown>;
-  for (const key of ['currency', 'method', 'paid'] as const) {
+  for (const key of ['currency', 'currencySymbol', 'method', 'paid'] as const) {
     if (amount[key] === null) delete amount[key];
   }
   view.amount = amount;

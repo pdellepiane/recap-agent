@@ -11,6 +11,7 @@ import type {
   NormalizedInboundMessage,
   NormalizedOutboundMessage,
 } from '../core/messages';
+import type { InboundImage } from '../core/inbound-image';
 import {
   createInformationAuthGuidance,
   informationPaymentOptionsPolicyRequestId,
@@ -127,6 +128,7 @@ import {
   buildRuntimeCapabilityManifest,
   resolveCapabilityDecision,
   type CapabilityDecision,
+  type RuntimeCapabilityDescriptor,
   type RuntimeCapabilityManifest,
   type RuntimeOperationId,
 } from './capability-manifest';
@@ -432,6 +434,17 @@ export class AgentService {
     });
     const messageContext = withConversationContinuity(rawMessageContext, classifierPlan);
     timingMs.response_classification += Date.now() - messageContextStartedAt;
+    if (inbound.image) {
+      return await this.handleImageTurn({
+        inbound,
+        plan: existingPlan ?? classifierPlan,
+        messageContext,
+        toolUsage,
+        timingMs,
+        tokenUsage,
+        handleTurnStartedAt,
+      });
+    }
     if (inbound.text.trim().length === 0 && (inbound.media?.length ?? 0) > 0) {
       return await this.handleMediaOnlyMessage({
         inbound,
@@ -4142,6 +4155,267 @@ export class AgentService {
         messageContext: args.messageContext,
         searchStrategy: 'none',
         operationalNote: 'Image metadata was received without content access; extraction and external calls were skipped.',
+        capabilityDecision: decision,
+      }),
+    };
+  }
+
+  /**
+   * Image turns delivered by the channel adapter (S17). The backend pushes
+   * image bytes or a delivery error; caption and image always stay in one
+   * turn, pending conversation state is preserved, and binary content never
+   * reaches plan persistence, logs, traces or evaluation reports.
+   */
+  private async handleImageTurn(args: {
+    inbound: NormalizedInboundMessage;
+    plan: PlanSnapshot;
+    messageContext: TurnMessageContext;
+    toolUsage: ToolUsage;
+    timingMs: TurnTiming;
+    tokenUsage: TurnTokenUsage;
+    handleTurnStartedAt: number;
+  }): Promise<HandleTurnResponse> {
+    const image: InboundImage | undefined = args.inbound.image;
+    const caption = args.inbound.text;
+    const plan = args.plan.current_node === 'resolver_consultas_informativas'
+      ? args.plan
+      : mergePlan(args.plan, { current_node: 'resolver_consultas_informativas' });
+    const canInspect = image?.status === 'available' &&
+      typeof this.dependencies.runtime.inspectImage === 'function';
+    const imageInspectDescriptor: RuntimeCapabilityDescriptor = canInspect
+      ? { id: 'media.image.inspect', available: true, reason: 'enabled' }
+      : { id: 'media.image.inspect', available: false, reason: 'media_unavailable' };
+    const manifest: RuntimeCapabilityManifest = {
+      ...this.capabilityManifest,
+      'media.image.inspect': imageInspectDescriptor,
+    };
+    const decision = resolveCapabilityDecision({
+      requestedOperation: 'media.image.inspect',
+      manifest,
+    });
+    const imageMessages = await this.dependencies.promptLoader.loadImageMessages();
+
+    if (!image || image.status === 'unavailable') {
+      const reason = image?.reason ?? 'media_unavailable';
+      const fallback = imageMessages[reason];
+      if (caption.trim().length > 0) {
+        // The caption is answered through the grounded text pipeline and
+        // the delivery fallback is added once. No second reply is generated.
+        const textResponse = await this.handleTurnCore({ ...args.inbound, image: undefined });
+        if (textResponse.outbound.delivery.action === 'send' && textResponse.outbound.text) {
+          return {
+            ...textResponse,
+            outbound: { ...textResponse.outbound, text: `${textResponse.outbound.text}\n\n${fallback}` },
+          };
+        }
+        return textResponse;
+      }
+      await this.dependencies.planStore.save({ plan, reason: 'image_unavailable_fallback' });
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan,
+        outbound: this.renderOutbound(
+          { text: fallback }, [], args.inbound.channel, plan.conversation_id, plan,
+        ),
+        trace: this.buildTrace({
+          plan,
+          previousNode: args.plan.current_node,
+          currentNode: plan.current_node,
+          nodePath: args.plan.current_node === plan.current_node ? [plan.current_node] : [args.plan.current_node, plan.current_node],
+          extraction: {
+            ...this.buildSyntheticEscalationExtraction(
+              `Image delivery failed (${reason}); fallback reply sent without image processing.`,
+            ),
+            actionIntent: null,
+            intentConfidence: 1,
+          },
+          missingFields: plan.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:image_unavailable_fallback',
+          promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/image_outcomes.json'],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'image_unavailable_fallback',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          searchStrategy: 'none',
+          operationalNote: `Image ${reason}; caption ${caption.trim().length > 0 ? 'present' : 'absent'}. No image processing was invoked and no bytes were stored.`,
+          capabilityDecision: decision,
+        }),
+      };
+    }
+
+    // Valid image content is carried ephemerally to multimodal
+    // interpretation. Only MIME/status/size-bucket facts are recorded.
+    const sizeBucket = image.byteLength < 100_000 ? '<100KB'
+      : image.byteLength < 1_000_000 ? '100KB-1MB'
+      : '1-2MB';
+    this.recordDeterministicToolInput(args.toolUsage, 'image_inspect', {
+      mime_type: image.mimeType,
+      byte_length: image.byteLength,
+      caption_present: caption.trim().length > 0,
+    });
+    let inspection: {
+      outcome: 'readable' | 'unreadable' | 'human_help';
+      answer: string;
+      tokenUsage: TokenUsage | null;
+      openAiCall: OpenAiCallRef | null;
+      promptBundleId: string;
+    };
+    try {
+      inspection = await this.dependencies.runtime.inspectImage!({ image, caption });
+    } catch {
+      // Provider errors can echo image input fragments, so they are never
+      // surfaced. The turn degrades to the resend/text fallback.
+      const fallback = imageMessages.media_unavailable;
+      await this.dependencies.planStore.save({ plan, reason: 'image_unavailable_fallback' });
+      args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan,
+        outbound: this.renderOutbound(
+          { text: fallback }, [], args.inbound.channel, plan.conversation_id, plan,
+        ),
+        trace: this.buildTrace({
+          plan,
+          previousNode: args.plan.current_node,
+          currentNode: plan.current_node,
+          nodePath: args.plan.current_node === plan.current_node ? [plan.current_node] : [args.plan.current_node, plan.current_node],
+          extraction: {
+            ...this.buildSyntheticEscalationExtraction(
+              'Image inspection failed without a usable result; fallback reply sent.',
+            ),
+            actionIntent: null,
+            intentConfidence: 1,
+          },
+          missingFields: plan.missing_fields,
+          searchReady: false,
+          promptBundleId: 'deterministic:image_unavailable_fallback',
+          promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/image_outcomes.json'],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: 'image_unavailable_fallback',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          searchStrategy: 'none',
+          operationalNote: `Image inspection errored for ${image.mimeType} (${sizeBucket}). No bytes were stored.`,
+          capabilityDecision: decision,
+        }),
+      };
+    }
+    this.recordDeterministicToolOutput(args.toolUsage, 'image_inspect', {
+      outcome: inspection.outcome,
+      prompt_bundle_id: inspection.promptBundleId,
+    });
+    args.tokenUsage.reply = inspection.tokenUsage;
+    args.tokenUsage.openAiCalls.reply = inspection.openAiCall;
+    args.tokenUsage.total = this.sumTokenUsage(
+      args.tokenUsage.classifier,
+      args.tokenUsage.extraction,
+      args.tokenUsage.reply,
+    );
+
+    if (inspection.outcome === 'human_help') {
+      const gateway = this.dependencies.agentConversationGateway ??
+        new NoopAgentConversationGateway('not_configured');
+      const escalationPhone = this.resolveEscalationPhone(args.inbound);
+      let handoffResult: AgentGatewayResult = this.missingPhoneEscalationResult();
+      if (escalationPhone) {
+        const first = await this.requestHumanTakeoverWithTrace(gateway, escalationPhone, args.toolUsage);
+        handoffResult = first;
+        if (first.status === 'failed' && first.retryable) {
+          handoffResult = await this.requestHumanTakeoverWithTrace(gateway, escalationPhone, args.toolUsage);
+        }
+      }
+      const handoffRegistered = handoffResult.status === 'success';
+      const replyText = handoffRegistered ? imageMessages.handoff_requested : imageMessages.handoff_failed;
+      const handoffPlan = handoffRegistered
+        ? mergePlan(plan, { current_node: 'solicitar_agente_humano' })
+        : plan;
+      await this.dependencies.planStore.save({
+        plan: handoffPlan,
+        reason: handoffRegistered ? 'image_handoff_requested' : 'image_handoff_failed',
+      });
+      args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+      return {
+        plan: handoffPlan,
+        outbound: this.renderOutbound(
+          { text: replyText }, [], args.inbound.channel, handoffPlan.conversation_id, handoffPlan,
+        ),
+        trace: this.buildTrace({
+          plan: handoffPlan,
+          previousNode: args.plan.current_node,
+          currentNode: handoffPlan.current_node,
+          nodePath: args.plan.current_node === handoffPlan.current_node
+            ? [handoffPlan.current_node]
+            : [args.plan.current_node, handoffPlan.current_node],
+          extraction: this.buildSyntheticEscalationExtraction(
+            'Image caption requested an action that cannot run from an image; human support path used.',
+          ),
+          missingFields: handoffPlan.missing_fields,
+          searchReady: false,
+          promptBundleId: inspection.promptBundleId,
+          promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/image_inspection.txt'],
+          toolUsage: args.toolUsage,
+          providerResults: [],
+          recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+          planPersisted: true,
+          planPersistReason: handoffRegistered ? 'image_handoff_requested' : 'image_handoff_failed',
+          timingMs: args.timingMs,
+          tokenUsage: args.tokenUsage,
+          messageContext: args.messageContext,
+          searchStrategy: 'none',
+          operationalNote: `Image inspected (${image.mimeType}, ${sizeBucket}); requested action needs a person. Handoff ${handoffRegistered ? 'registered' : 'not registered'}. A readable voucher stays user-provided evidence, never payment proof.`,
+          capabilityDecision: decision,
+          humanTakeoverAttempted: true,
+          humanTakeoverSucceeded: handoffRegistered,
+        }),
+      };
+    }
+
+    const replyText = inspection.outcome === 'readable' && inspection.answer.trim().length > 0
+      ? inspection.answer
+      : imageMessages.media_unavailable;
+    await this.dependencies.planStore.save({ plan, reason: 'image_turn_processed' });
+    args.timingMs.total = Date.now() - args.handleTurnStartedAt;
+    return {
+      plan,
+      outbound: this.renderOutbound(
+        { text: replyText }, [], args.inbound.channel, plan.conversation_id, plan,
+      ),
+      trace: this.buildTrace({
+        plan,
+        previousNode: args.plan.current_node,
+        currentNode: plan.current_node,
+        nodePath: args.plan.current_node === plan.current_node ? [plan.current_node] : [args.plan.current_node, plan.current_node],
+        extraction: {
+          ...this.buildSyntheticEscalationExtraction(
+            `Image inspected (${inspection.outcome}); reply grounded in visible content.`,
+          ),
+          actionIntent: null,
+          intentConfidence: 1,
+        },
+        missingFields: plan.missing_fields,
+        searchReady: false,
+        promptBundleId: inspection.promptBundleId,
+        promptFilePaths: ['prompts/nodes/resolver_consultas_informativas/image_inspection.txt'],
+        toolUsage: args.toolUsage,
+        providerResults: [],
+        recommendationFunnel: this.resolveRecommendationFunnel(null, []),
+        planPersisted: true,
+        planPersistReason: 'image_turn_processed',
+        timingMs: args.timingMs,
+        tokenUsage: args.tokenUsage,
+        messageContext: args.messageContext,
+        searchStrategy: 'none',
+        operationalNote: `Image inspected (${image.mimeType}, ${sizeBucket}, outcome ${inspection.outcome}). No bytes were stored; a visible voucher is evidence only, never payment proof.`,
         capabilityDecision: decision,
       }),
     };

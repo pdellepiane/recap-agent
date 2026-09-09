@@ -162,6 +162,7 @@ describe('F3c capability purchase continuation', () => {
                 total: 227.76,
                 paid: null,
                 currency: null,
+                currencySymbol: null,
                 paymentMethod: 'Yape_o_Plin',
                 presentation: 'recorded_method_no_currency' as const,
               },

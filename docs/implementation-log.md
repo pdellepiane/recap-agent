@@ -1,5 +1,67 @@
 # Implementation Log
 
+## 2026-09-08 — Validate newly announced backend image/currency contract
+
+**Reason:** User supplied endpoint revision 6 and exact image/error payloads plus
+currency_symbol/currency_code on four purchase endpoints, for backend production
+rollout validation.
+
+**Decision:** Persisted `backend-contract-2026-09-08.md` under the stabilization
+plan, linked the historical contract and canonical plan, added Notion/index S17
+for image integration and updated S08/S09 currency scope. Backend development
+availability is user-reported; current agent compatibility is not accepted.
+Specified nullable caption handling, data/error union, ephemeral image processing,
+Spanish resend/text fallbacks, dynamic capability and code/symbol normalization.
+
+**Validation:** Local request-contract probes reject all three text-null payloads;
+captioned image passes but image is stripped. Source inspection confirms metadata-
+only image handling, unavailable image capability and mappings that ignore new
+currency fields. No source edits, backend calls, deployment or production sign-off.
+Separate implementation and development/live acceptance are recorded as pending.
+
+## 2026-09-08 — Debug saved stabilization failures and decide trace expansion
+
+**Reason:** User requested debugging and an evidence-based decision on additional
+traces. Applied the audit-recap-message evidence order to saved reports and source.
+
+**Decision:** Persisted `docs/plan/2026-09-05-stabilization/debug-2026-09-08.md` with
+case-level diagnoses and a bounded versioned diagnostic contract. Identified
+support/auth precedence bypass, unconditional requested handoff state, conflicting
+currency guidance, candidate amount-disclosure mismatch, stale rubric branches,
+repeated-projection information loss and free-text trace disclosure. Separated
+identical-reply grading discrepancies from actual route/output variation. No raw
+payload expansion or unrelated provider instrumentation is required.
+
+**Validation:** Existing trace visibility, S09 projector and S16 capability suites
+pass 33/33. Synthetic local probes independently reproduced two-provider summary
+becoming zero after a second projection, an embedded phone surviving free-text
+projection, and authorized disclosure amount becoming null in candidate views.
+No runtime/prompt/test/registry edits, model calls, backend requests, live runs or
+deployments performed. Repairs and their mandatory deployment/live gates are
+specified, not claimed complete.
+
+## 2026-09-08 — Reconcile stabilization plan and Notion status (documentation only)
+
+**Reason:** User supplied a newer handoff and asked whether the planned work is
+finished. Compared repository HEAD `24fa48b2`, implementation entries and saved
+reports rather than treating embedded debugging instructions as new authorization.
+
+**Decision:** Added `docs/plan/2026-09-05-stabilization/status-2026-09-08.md`, linked
+it from the canonical plan/packages and added per-ticket implementation/acceptance
+fields to the index. Updated all 16 existing Notion ticket descriptions and status
+properties: local implementation exists but integrated acceptance remains open;
+S15 release gate failed; S03 remains optional approval-only backlog. Preserved
+ticket scopes, acceptance criteria and dates. Retained human-first one-shot OTP
+and local-only release policy. Corrected unsupported judge-only variance and
+route-irrelevant missing-provider-trace conclusions in the new status overlay.
+
+**Validation:** Parsed saved reports: full `8ebc180a` 59/69 passed, focused
+`9abb373a` 4/10 passed, F4 `560518f9` 4/4 passed; F4 cases also pass the full report.
+No current full passing gate or independent transcript adjudication was found in
+the inspected evidence. Notion updates succeeded. Documentation/JSON checks only;
+no source, prompts, tests, registry, infrastructure, deployment or upstream changes.
+Pre-existing untracked plan YAML, Spanish report and probe script preserved.
+
 ## 2026-09-08 - LEARN-JUDGE-VARIANCE eval discipline: finalScore vs semantic sub-score (docs-only, no code change)
 
 **Reason:** Triple-trial reports risk misreading finalScore as the semantic sub-score. Learn entry for plan 2026-09-05-stabilization task LEARN-JUDGE-VARIANCE (retries_used 0), docs-only with no product, test, prompt, registry, or infra change.
@@ -9538,3 +9600,13 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 **Evidence:** Debugger 7 S12 runs db7f8784-55f2aa65 score 0.83 report.json 60-121 artifact 153-188 SHA fa757b61. Redaction source artifact-redaction.ts:44-72 live-lambda.ts:154 reporting.ts:124. Bypass handler.ts:722 vs fixture-provider-gateway.ts:389-423.
 
 **Validation:** Local-only; default commands only; prior work preserved (tracked src/tests modifications and untracked docs/plan scratch left untouched); prod untouched.
+
+## 2026-09-09 - S17 image turns + purchase currency_code/symbol (backend contract 2026-09-08, single branch main)
+
+**Reason:** Backend dev added inbound image forwarding (`image: {data|error, mime_type}`, `text: null` when captionless) and `currency_code`/`currency_symbol` on GET /orders, /gift-purchases, /guest/orders, /guest/gift-purchases. Previous tree accepted the wire shape but dropped captions, never invoked inspection, and ignored the currency fields. No dev branch: implemented and validated on main, dev Lambda redeployed only because its 2026-09-08 artifact predates this change.
+
+**Decision:** Request contract already accepted the 4 image variants; added AgentService.handleImageTurn: image-only/captioned turns go to runtime.inspectImage (ephemeral, bytes never persisted/logged/traced; per-turn capability override), error events use the pinned Spanish fallbacks from prompts image_outcomes.json, captioned errors answer the caption through the text pipeline plus one fallback, human_help triggers the handoff path with requested/failed variants, voucher stays evidence never proof. Shared normalizePurchaseCurrency maps code to canonical uppercase, keeps symbol as display metadata, withholds claims on code/legacy conflict; symbol never projects without a code. Symbol flows through amountDisclosure, projector views, and model projection.
+
+**Evidence:** Offline: tests/s17-image-turn.test.ts (9), tests/purchase-currency.test.ts (10), lambda-request-contract.test.ts (+6 variants). Full suite 136 files / 1091 passed. Typecheck + eslint clean. Prompt inventory 108 -> 110 (image_inspection.txt, image_outcomes.json mapped).
+
+**Validation:** Dev Lambda redeploy + live 4-variant image probes + currency response checks + npm run eval:behavior-live recorded below before production toggle. Prod untouched until green light.

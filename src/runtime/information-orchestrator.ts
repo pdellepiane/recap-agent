@@ -1685,6 +1685,7 @@ export class InformationOrchestrator {
           total: disclosedTotal,
           paid: disclosedPaid,
           currency: purchase.currency ?? null,
+          currencySymbol: purchase.currency ? purchase.currencySymbol ?? null : null,
           paymentMethod: disclosedMethod,
           presentation: purchase.currency
             ? 'explicit_currency' as const

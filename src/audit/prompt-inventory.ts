@@ -66,6 +66,12 @@ export async function buildPromptInventory(args: {
 
 function deriveConsumers(filePath: string): PromptInventoryConsumer[] {
   const consumers: PromptInventoryConsumer[] = [];
+  if (filePath === 'nodes/resolver_consultas_informativas/image_inspection.txt' ||
+      filePath === 'nodes/resolver_consultas_informativas/image_outcomes.json') {
+    consumers.push({ callType: filePath.endsWith('.json') ? 'deterministic_reply' : 'reply',
+      nodes: ['resolver_consultas_informativas'], profiles: ['image'],
+      transitions: ['media:image_turn'], loader: 'PromptLoader image bundle/messages' });
+  }
   if (filePath === 'nodes/resolver_consultas_informativas/capability_boundary.txt') {
     consumers.push({
       callType: 'deterministic_reply',

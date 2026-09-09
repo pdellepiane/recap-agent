@@ -138,6 +138,7 @@ export function otpContinuationEvidence(args: {
 
 export class OpenAiAgentRuntime implements AgentRuntime {
   private readonly runner: Runner;
+  private readonly imageRunner: Runner;
 
   constructor(
     private readonly options: {
@@ -167,6 +168,31 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     this.runner = new Runner({
       modelProvider: new OpenAIProvider({ openAIClient }),
     });
+    this.imageRunner = new Runner({ modelProvider: new OpenAIProvider({ openAIClient }),
+      tracingDisabled: true, traceIncludeSensitiveData: false });
+  }
+
+  async inspectImage(request: Parameters<NonNullable<AgentRuntime['inspectImage']>>[0]) {
+    const bundle = await this.options.promptLoader.loadImageBundle();
+    const schema = z.object({ outcome: z.enum(['readable', 'unreadable', 'human_help']), answer: z.string() });
+    const agent = new Agent({ name: 'image_inspection', model: this.options.replyModel,
+      instructions: bundle.instructions, outputType: schema,
+      modelSettings: { ...this.buildModelSettings({ model: this.options.replyModel,
+        cacheKey: `image:${bundle.id}` }), store: false },
+    });
+    const input = [{ role: 'user' as const, content: [
+      { type: 'input_text' as const, text: request.caption || 'Describe brevemente esta imagen.' },
+      { type: 'input_image' as const, image: `data:${request.image.mimeType};base64,${request.image.data}`, detail: 'auto' },
+    ] }];
+    const metrics = this.buildRequestMetrics({ instructions: bundle.instructions,
+      input: JSON.stringify(input), toolCount: 0, schemaPropertyCount: 2 });
+    // Do not log provider errors: they can contain portions of the image input.
+    const result = await this.imageRunner.run(agent, input, {
+      maxTurns: 1, signal: AbortSignal.timeout(this.options.replyTimeoutMs ?? 35_000),
+    });
+    const output = schema.parse(result.finalOutput);
+    return { ...output, tokenUsage: this.extractTokenUsage(result),
+      openAiCall: this.extractOpenAiCallRef(result, this.options.replyModel, metrics), promptBundleId: bundle.id };
   }
 
   /**
@@ -2450,6 +2476,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ...purchase,
       ...(Object.keys(evidenceLimits).length > 0 ? { evidenceLimits } : {}),
     };
+    // Display metadata never stands in for a withheld currency claim.
+    if (sanitized.currency === null || sanitized.currency === undefined) {
+      delete sanitized.currencySymbol;
+    }
     if (cashOnly) {
       delete sanitized.shippingStatus;
       if (sanitized.dedication && typeof sanitized.dedication === 'object') {

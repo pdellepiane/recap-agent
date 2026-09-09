@@ -518,6 +518,8 @@ describe('AgentConversationGateway', () => {
         eventDate: '2026-09-20',
         eventUrl: null,
         subtotal: 63.85,
+        currency: null,
+        currencySymbol: null,
         giftsQuantity: 1,
         createdAt: '2026-08-28',
         items: [{ giftName: 'Aporte', quantity: 1, amount: 63.85, rowTotal: 63.85, type: 'cash' }],

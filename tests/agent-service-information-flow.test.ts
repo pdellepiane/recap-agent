@@ -2103,6 +2103,7 @@ describe('AgentService first-class information flow', () => {
               total: null,
               paid: null,
               currency: null,
+              currencySymbol: null,
               // Pending purchases keep the recorded method so the reply can
               // ground the indexed validation-window message; approved
               // summaries omit it (accountless summary gate).

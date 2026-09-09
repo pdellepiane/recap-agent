@@ -111,6 +111,18 @@ export function summarizeBundleDelta(
 export class PromptLoader {
   constructor(private readonly promptsDir: string) {}
 
+  async loadImageBundle(): Promise<PromptBundle> {
+    return this.load(['nodes/resolver_consultas_informativas/image_inspection.txt'], []);
+  }
+
+  async loadImageMessages(): Promise<Record<'image_too_large' | 'media_unavailable' | 'handoff_requested' | 'handoff_failed', string>> {
+    const { z } = await import('zod');
+    const schema = z.object({ image_too_large: z.string(), media_unavailable: z.string(),
+      handoff_requested: z.string(), handoff_failed: z.string() }).strict();
+    return schema.parse(JSON.parse(await fs.readFile(path.join(this.promptsDir,
+      'nodes/resolver_consultas_informativas/image_outcomes.json'), 'utf8')) as unknown);
+  }
+
   async loadHostWithdrawalMessages() {
     const content = await fs.readFile(path.join(this.promptsDir,
       'nodes/resolver_consultas_informativas/host-withdrawal.json'), 'utf8');

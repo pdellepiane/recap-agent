@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { normalizeInboundImage } from '../core/inbound-image';
 
 import type {
   APIGatewayProxyEventV2,
@@ -360,7 +361,7 @@ async function handleRequest(
       externalUserId: body.user_id,
       messageId,
       messageIdSource: body.message_id ? 'native' : 'generated',
-      mediaKinds: body.media.map((item) => item.type),
+      mediaKinds: [...body.media.map((item) => item.type), ...(body.image ? ['image'] : [])],
       providerMediaIds: body.media.map((item) => item.id),
     };
 
@@ -391,6 +392,7 @@ async function handleRequest(
           channel,
           externalUserId: body.user_id,
           text: body.text,
+          image: body.image ? normalizeInboundImage(body.image) : undefined,
           messageId,
           receivedAt,
           media,

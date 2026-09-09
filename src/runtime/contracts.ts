@@ -30,6 +30,7 @@ import type {
 import type { RequestedOperation } from './extraction-schemas';
 import type { RuntimeOperationId } from './capability-manifest';
 import type { RsvpAction, RsvpDecisionSource, RsvpParty } from '../core/rsvp';
+import type { InboundImage } from '../core/inbound-image';
 
 export type OpenAiRequestMetrics = {
   instructionBytes: number;
@@ -189,6 +190,16 @@ export type ExtractResult = {
 };
 
 export interface AgentRuntime {
+  inspectImage?(request: {
+    image: Extract<InboundImage, { status: 'available' }>;
+    caption: string;
+  }): Promise<{
+    outcome: 'readable' | 'unreadable' | 'human_help';
+    answer: string;
+    tokenUsage: TokenUsage | null;
+    openAiCall: OpenAiCallRef | null;
+    promptBundleId: string;
+  }>;
   extract(request: ExtractRequest): Promise<ExtractResult | ExtractionResult>;
   composeReply(request: ComposeReplyRequest): Promise<ComposeReplyResult>;
 }

@@ -252,6 +252,10 @@ export type CartInformation = {
   eventDate?: string | null;
   eventUrl?: string | null;
   subtotal?: number | null;
+  /** Authoritative cart currency evidence; never mixed into order amounts. */
+  currency?: string | null;
+  /** Display metadata for the cart currency; never a code substitute. */
+  currencySymbol?: string | null;
   amountDisclosure?: PurchaseAmountDisclosure | null;
   giftsQuantity?: number | null;
   createdAt?: string | null;
@@ -286,6 +290,8 @@ export type PurchaseAmountDisclosure = {
   total: number | null;
   paid: number | null;
   currency: string | null;
+  /** Display metadata for the disclosed currency; never a code substitute. */
+  currencySymbol: string | null;
   paymentMethod: string | null;
   presentation: 'explicit_currency' | 'recorded_method_no_currency';
 };
@@ -296,6 +302,10 @@ export type PurchaseInformation = {
   partition?: PurchasePartition;
   eventId?: number | string | null;
   currency?: string | null;
+  /** Display metadata for the authoritative currency code. */
+  currencySymbol?: string | null;
+  /** True when currency_code conflicts with the legacy currency field. */
+  currencyConflict?: boolean;
   /** Customer-visible numeric transaction reference, displayed as COD<number>. */
   customerTransactionNumber?: string | null;
   paymentStatus: string | null;

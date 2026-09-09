@@ -237,6 +237,7 @@ describe('InformationOrchestrator', () => {
       total: 300,
       paid: 300,
       currency: null,
+      currencySymbol: null,
       paymentMethod: 'Transferencia',
       presentation: 'recorded_method_no_currency',
     });
