@@ -881,6 +881,7 @@ export function buildSemanticJudgeContext(
     'A tool-name alone is not effect proof: tools_called without verified effect counts/outcomes and persisted state must not be treated as a completed write; verified counts and state take precedence.',
     'Judge the candidate response only; do not attribute a phrase appearing only in prior assistant output or fixture history to the candidate.',
     'El juez no debe exigir que la respuesta repita codigos o referencias que el texto candidato muestra redactados.',
+    'Una afirmacion de contexto conservado es valida cuando plan_guardado=si; no especules falta de persistencia sobre un guardado registrado.',
     'Unavailable reference policy: los campos ausentes se omiten; una respuesta de estado grounded sin eco de codigo es valida y el juez no debe exigir seleccion ni codigo echo; solo los campos existentes, explicitamente visibles para el cliente y autorizados pueden mostrarse (reference unavailable).',
   ].join(' ');
   const lastTurn = effectiveTurns[effectiveTurns.length - 1];
@@ -945,6 +946,7 @@ function buildStructuralFactLines(turns: EvalTurnResult[]): string[] {
       `transicion=${turn.trace.previous_node}->${turn.trace.next_node} ` +
       `auth=${plan.user_auth.status} ` +
       `handoff=${plan.human_escalation.status} ` +
+      `plan_guardado=${turn.trace.plan_persisted ? 'si' : 'no'}:${turn.trace.plan_persist_reason ?? 'sin-motivo'} ` +
       `seleccion_hints=${selection.selected_provider_hints_count} ` +
       `operaciones_proveedor=[${selection.provider_plan_operation_types.join(',')}] ` +
       `ejecuciones=[${executions || 'ninguna'}] ` +

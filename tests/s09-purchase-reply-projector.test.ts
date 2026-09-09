@@ -9,8 +9,12 @@ import {
   checkPurchaseNarrativeClaims,
   projectPurchaseReplyForModel,
   renderPurchaseReplyDeterministic,
+  renderReferenceMatchedSingle,
+  renderReferenceSelection,
   resolvePurchaseReplyText,
   selectPurchaseReplyOutcome,
+  shouldRenderReferenceMatchedSingle,
+  shouldRenderReferenceSelection,
 } from '../src/runtime/purchase-reply-projector';
 
 function order(overrides: Partial<PurchaseInformation> = {}): PurchaseInformation {
@@ -343,5 +347,32 @@ describe('S09 deterministic rendering with a structured claim contract', () => {
       claimsSuccess: false,
       receiptPresent: false,
     })).toBe('Tu regalo sigue pendiente.');
+  });
+
+  it('answers a matched reference deterministically from the single record', () => {
+    expect(shouldRenderReferenceMatchedSingle({ purchaseCount: 1, referenceResolution: 'matched' })).toBe(true);
+    expect(shouldRenderReferenceMatchedSingle({ purchaseCount: 2, referenceResolution: 'matched' })).toBe(false);
+    expect(shouldRenderReferenceMatchedSingle({ purchaseCount: 1, referenceResolution: 'unavailable' })).toBe(false);
+    const text = renderReferenceMatchedSingle({ eventName: 'Evento de prueba A', paymentStatus: 'approved' });
+    expect(text).toContain('Evento de prueba A');
+    expect(text).not.toMatch(/opci[oó]n|cu[aá]l te refieres/iu);
+    expect(text).not.toMatch(/correo|c[oó]digo|OTP/iu);
+    expect(text).not.toMatch(/order-s13|301816/);
+    expect(renderReferenceMatchedSingle({ eventName: 'Evento X', paymentStatus: 'pending' })).toContain('pendiente');
+  });
+
+  it('asks one grounded selection question when the reference matches none', () => {
+    expect(shouldRenderReferenceSelection({ purchaseCount: 2, referenceResolution: 'unavailable' })).toBe(true);
+    expect(shouldRenderReferenceSelection({ purchaseCount: 1, referenceResolution: 'unavailable' })).toBe(false);
+    expect(shouldRenderReferenceSelection({ purchaseCount: 2, referenceResolution: 'matched' })).toBe(false);
+    const text = renderReferenceSelection([
+      { eventName: 'Evento de prueba A', paymentStatus: 'pending' },
+      { eventName: 'Evento de prueba B', paymentStatus: 'approved' },
+    ]);
+    expect(text).toContain('Evento de prueba A');
+    expect(text).toContain('Evento de prueba B');
+    expect(text.match(/\?/g) ?? []).toHaveLength(1);
+    expect(text).not.toMatch(/order-s13|301816/);
+    expect(text).not.toMatch(/correo|OTP/iu);
   });
 });

@@ -402,6 +402,56 @@ export function shouldRenderNeutralSelection(args: {
   return args.purchaseCount > 1 && !args.hasAssociatedGuestEvent;
 }
 
+/**
+ * E reference-matched determinism. When the requested customer reference
+ * matches exactly one record, the reply is stated from that record alone so
+ * the model cannot attribute the reference to another order. No reference
+ * echo, selection question, email/OTP request, or backend identifier.
+ */
+export function shouldRenderReferenceMatchedSingle(args: {
+  purchaseCount: number;
+  referenceResolution: string | null;
+}): boolean {
+  return args.purchaseCount === 1 && args.referenceResolution === 'matched';
+}
+
+export function renderReferenceMatchedSingle(args: {
+  eventName: string | null;
+  paymentStatus: string | null;
+}): string {
+  const event = args.eventName?.trim() ? args.eventName.trim() : 'tu evento';
+  const status = (args.paymentStatus ?? '').trim().toLocaleLowerCase('en');
+  if (status === 'approved') return `Tu regalo para ${event} ya quedó aprobado.`;
+  if (status === 'declined') {
+    return `Tu regalo para ${event} aparece como rechazado. Puedo comunicarte con una persona del equipo para revisarlo.`;
+  }
+  return `Tu regalo para ${event} figura con pago pendiente.`;
+}
+
+/**
+ * E reference-unavailable determinism. When the requested reference matches
+ * no record but several candidates exist, ask exactly one grounded selection
+ * question naming each candidate by its public event label. Never claim a
+ * match, select automatically, request email/OTP, or reveal backend ids.
+ */
+export function shouldRenderReferenceSelection(args: {
+  purchaseCount: number;
+  referenceResolution: string | null;
+}): boolean {
+  return args.purchaseCount > 1 && args.referenceResolution === 'unavailable';
+}
+
+export function renderReferenceSelection(
+  purchases: Array<{ eventName: string | null; paymentStatus: string | null }>,
+): string {
+  const options = purchases.map((purchase, index) => {
+    const event = purchase.eventName?.trim()
+      ? purchase.eventName.trim()
+      : 'un evento sin nombre registrado';
+    return `opción ${index + 1}: ${event} (${describeSelectionStatus(purchase.paymentStatus)})`;
+  }).join('; ');
+  return `Encontré ${purchases.length} registros asociados a este número y la referencia no corresponde a ninguno: ${options}. ¿A cuál te refieres?`;
+}
 function describeSelectionStatus(status: string | null): string {
   const normalized = status?.trim().toLocaleLowerCase('en') ?? '';
   if (normalized === 'pending') return 'pendiente';

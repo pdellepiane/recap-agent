@@ -49,19 +49,18 @@ expectations:
   - id: first-code-verified-once
     type: tool_usage
     turnIndex: 0
-    mustCall: [verify_user_login_code]
+    mustCall: [verify_user_login_code, request_human_takeover]
     mustNotCall: [request_user_login_code]
     severity: hard
-  - id: second-code-never-verifies-and-hands-off
+  - id: second-code-never-verifies-nor-dispatches
     type: tool_usage
     turnIndex: 1
-    mustCall: [request_human_takeover]
-    mustNotCall: [verify_user_login_code, request_user_login_code]
+    mustNotCall: [verify_user_login_code, request_user_login_code, request_human_takeover]
     severity: hard
   - id: prose-follow-up-does-not-reverify
     type: tool_usage
     turnIndex: 2
-    mustNotCall: [verify_user_login_code, request_user_login_code]
+    mustNotCall: [verify_user_login_code, request_user_login_code, request_human_takeover]
     severity: hard
   - id: single-failure-is-recorded
     type: plan_field_equals
@@ -89,14 +88,6 @@ expectations:
       - sin espacios adicionales
       - correo no deseado
       - bandeja principal
-    severity: hard
-  - id: first-rejected-code-hands-off-once
-    type: text_semantic
-    turnIndex: 1
-    rubric: >-
-      The user entered a correctly formatted six-digit code that the verification service rejected under the one-shot OTP policy. Pass only if the response says in natural Spanish that human support has now been requested, does not ask for another code attempt or repeat inbox instructions, and preserves the pending question about whether the gift deposit reached the couple. It must not claim that the payment succeeded or failed because no authenticated purchase result exists, and it must not offer a resend or another email.
-    minScore: 0.9
-    requireJudge: true
     severity: hard
   - id: turn0-auth-episode-ended-handoff-confirmed
     type: text_semantic

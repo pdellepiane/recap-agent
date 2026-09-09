@@ -293,6 +293,8 @@ describe('F judge context isolation and digest gate', () => {
     expect(ctx).toMatch(/unavailable.*reference|reference.*unavailable/i);
     const candidateSection = ctx.split('CANDIDATE RESPONSE')[1]?.split('PRIOR ASSISTANT')[0] ?? '';
     expect(candidateSection).toContain('Ya solicite apoyo humano');
+    expect(ctx).toContain('plan_guardado=si');
+    expect(ctx).toMatch(/no especules falta de persistencia/i);
   });
 
   it('hashes serialized judge request and validates strictly', async () => {

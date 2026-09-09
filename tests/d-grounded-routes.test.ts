@@ -203,6 +203,42 @@ describe('D1 ambiguous confirmation', () => {
     expect(res.plan.current_node).not.toBe('solicitar_agente_humano');
   });
 
+  it('clarification persists the aclarar_pedir_faltante node for structural proof', async () => {
+    const planStore = new InMemoryPlanStore();
+    await shortlistPlan(planStore);
+    const extraction = baseExtraction({
+      phoneConfirmation: 'unclear',
+      ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
+    });
+    const runtime = new ScriptedRuntime([extraction]);
+    const gateway = new RecordingAgentGateway('success');
+    const service = createService(runtime, gateway, planStore);
+    const res = await turn(service, 'Si confirmo.', 'd1-node-1');
+    expect(res.outbound.text ?? '').toContain('confirmando');
+    expect(res.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(res.trace.tools_called ?? []).not.toContain('finish_plan');
+    expect(res.plan.selected_provider_ids).toEqual([]);
+  });
+
+  it('close pressure over an unresolved shortlist clarifies instead of closing', async () => {
+    const planStore = new InMemoryPlanStore();
+    await shortlistPlan(planStore);
+    const extraction = baseExtraction({
+      actionIntent: 'cerrar',
+      closeAction: { type: 'confirm_close', category: null, reason: null },
+      ambiguity: { status: 'clear', clarificationQuestion: null, interpretations: [] },
+    });
+    const runtime = new ScriptedRuntime([extraction]);
+    const gateway = new RecordingAgentGateway('success');
+    const service = createService(runtime, gateway, planStore);
+    const res = await turn(service, 'Si confirmo todo, usen lo que extrajeron y cierren.', 'd1-close-pressure-1');
+    expect(res.outbound.text ?? '').toContain('confirmando');
+    expect(res.plan.current_node).toBe('aclarar_pedir_faltante');
+    expect(res.trace.tools_called ?? []).not.toContain('finish_plan');
+    expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
+    expect(res.plan.selected_provider_ids).toEqual([]);
+  });
+
   it('rejection wins over clarification in protected context', async () => {
     const planStore = new InMemoryPlanStore();
     const seed = mergePlan(
@@ -288,6 +324,25 @@ describe('D2 mailbox and human arbitration', () => {
     await turn(service, 'Si, acepto ayuda.', 'd2-accept-1');
     expect(gateway.takeoverCalls).toBe(0);
   });
+
+  it('bare greeting on first exchange gets a brief greeting with no plan presupposition', async () => {
+    const planStore = new InMemoryPlanStore();
+    const seed = mergePlan(
+      createEmptyPlan({ planId: 'd-greet', channel: 'whatsapp', externalUserId: 'd-user' }),
+      {
+        current_node: 'deteccion_intencion',
+        conversation_summary: 'The user previously shared an image described as transfer proof.',
+      } as never,
+    );
+    await planStore.save({ plan: seed, reason: 'seed' });
+    const runtime = new ScriptedRuntime([baseExtraction()]);
+    const gateway = new RecordingAgentGateway('success');
+    const service = createService(runtime, gateway, planStore);
+    const res = await turn(service, 'Hola', 'd2-greet-1');
+    expect(res.outbound.text ?? '').toContain('Hola');
+    expect(res.outbound.text ?? '').not.toContain('tu plan');
+    expect(gateway.takeoverCalls).toBe(0);
+  });
 });
 
 describe('D3 missing purchase scoped rendering', () => {
@@ -314,5 +369,29 @@ describe('D3 missing purchase scoped rendering', () => {
     expect((res.outbound.text ?? '').toLowerCase()).not.toContain('no existe');
     const pending = res.plan.information_state.pending_requests;
     expect(pending.length).toBeGreaterThan(0);
+  });
+
+  it('identity_rejected success states discontinued access and requested help', async () => {
+    const planStore = new InMemoryPlanStore();
+    const seed = mergePlan(
+      createEmptyPlan({ planId: 'd-reject-copy', channel: 'whatsapp', externalUserId: 'd-user' }),
+      {
+        current_node: 'resolver_consultas_informativas',
+        user_auth: { status: 'code_requested', email: 'a@b.invalid', token: null, token_expires_at: null, last_error: null, requested_at: '2026-08-24T21:18:00.000Z', failed_code_attempts: 0, otp_send_attempts: 1, otp_non_delivery_reports: 0, auth_method: null, awaiting_phone_confirmation: true },
+        information_state: { resume_node: 'deteccion_intencion', pending_requests: [{ requestId: 'information-1', kind: 'purchase', resource: 'gift_purchases', query: 'Estado del regalo.', orderId: null, aspects: ['summary'], sensitiveFields: [], authAction: 'none' }], selection_candidates: [], last_completed_request: null },
+      } as never,
+    );
+    await planStore.save({ plan: seed, reason: 'seed' });
+    const extraction = baseExtraction({ phoneConfirmation: 'no' });
+    const runtime = new ScriptedRuntime([extraction]);
+    const gateway = new RecordingAgentGateway('success');
+    const service = createService(runtime, gateway, planStore);
+    const res = await turn(service, 'Ese numero no es mio.', 'd3-reject-1');
+    expect(res.plan.human_escalation.status).toBe('requested');
+    expect(res.outbound.text ?? '').toContain('ya no se usará para acceder');
+    expect(res.outbound.text ?? '').toContain('apoyo humano');
+    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('correo');
+    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('otp');
+    expect((res.outbound.text ?? '').toLowerCase()).not.toContain('código');
   });
 });

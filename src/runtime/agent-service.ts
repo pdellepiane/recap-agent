@@ -171,6 +171,8 @@ import {
   renderNeutralPurchaseSelection,
   renderOrderPlusCartCheckout,
   renderPendingCorrectionGrounding,
+  renderReferenceMatchedSingle,
+  renderReferenceSelection,
   renderReportedPendingInitial,
   renderReportedShortfallPending,
   resolveCapabilityPurchaseContinuation,
@@ -179,6 +181,8 @@ import {
   shouldRenderNeutralSelection,
   shouldRenderOrderPlusCartCheckout,
   shouldRenderPendingCorrectionGrounding,
+  shouldRenderReferenceMatchedSingle,
+  shouldRenderReferenceSelection,
   shouldRenderReportedPendingOrder,
   shouldRenderTransferValidationForStatusQuery,
 } from './purchase-reply-projector';
@@ -990,8 +994,35 @@ export class AgentService {
       return await this.handleInformationFlow({ inbound, previousNode, workingPlan, extraction,
         toolUsage, timingMs, tokenUsage, responseClassifierTrace, messageContext, handleTurnStartedAt });
     }
-    const capabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({
-      inbound,
+    // D1: a close/confirm over an unresolved multi-option shortlist is an
+    // ambiguous confirmation, not a capability write or a close. Defuse the
+    // close markers before capability arbitration so the domain clarification
+    // path answers with the bounded question instead of closing or claiming
+    // an unsupported operation. Grounded selections still close normally.
+    if (
+      (extraction.actionIntent === 'cerrar' || extraction.closeAction != null) &&
+      this.hasUnresolvedProviderShortlist(workingPlan, extraction, inbound.text)
+    ) {
+      return await this.handleContextualClarification({
+        inbound,
+        previousNode: existingPlan?.current_node ?? 'contacto_inicial',
+        plan: workingPlan,
+        extraction: {
+          ...extraction,
+          actionIntent: null,
+          closeAction: null,
+          selectedProviderHints: [],
+          selectedProviderReferences: [],
+        },
+        toolUsage,
+        tokenUsage,
+        responseClassifierTrace,
+        messageContext,
+        timingMs,
+        handleTurnStartedAt,
+      });
+    }
+    const capabilityBoundaryResponse = await this.handleCapabilityBoundaryIfNeeded({      inbound,
       previousNode,
       plan: workingPlan,
       extraction,
@@ -3561,11 +3592,36 @@ export class AgentService {
     });
   }
 
+  /**
+   * D2: a bare greeting on the first exchange (no prior outbound) gets a
+   * brief greeting with no plan, provider, or capability presupposition.
+   * Render-copy selection only; flow routing is unchanged.
+   */
+  private isBareGreetingTurn(text: string): boolean {
+    const normalized = text
+      .toLocaleLowerCase('es')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/gu, '')
+      .replace(/[^a-zñ ]/gu, ' ')
+      .replace(/\s+/gu, ' ')
+      .trim();
+    return [
+      'hola',
+      'buenas',
+      'buenos dias',
+      'buenas tardes',
+      'buenas noches',
+      'hey',
+      'hello',
+      'hi',
+      'alo',
+    ].includes(normalized);
+  }
+
   private contextualClarificationMessage(
     continuity: NonNullable<TurnMessageContext['continuity']>,
     extraction: ExtractionResult,
-  ): string {
-    // The extractor has already resolved any available recent-message
+  ): string {    // The extractor has already resolved any available recent-message
     // context into a typed clarification question. Keep that question when
     // present so a short or misspelled continuation stays on the established
     // topic without deriving a topic from text in deterministic code.
@@ -3681,8 +3737,11 @@ export class AgentService {
       this.hasUnresolvedProviderShortlist(plan, args.extraction, args.inbound.text)
     ) {
       const clarificationText = '¿Qué proveedor o acción estás confirmando?';
+      // Persist the clarification node explicitly so the structural
+      // node_transition proves the grounded route (D1).
+      const clarifiedPlan = mergePlan(plan, { current_node: 'aclarar_pedir_faltante' });
       await this.dependencies.planStore.save({
-        plan,
+        plan: clarifiedPlan,
         reason: 'contextual_clarification',
       });
       args.tokenUsage.total = this.sumTokenUsage(
@@ -3691,23 +3750,23 @@ export class AgentService {
       );
       args.timingMs.total = Date.now() - args.handleTurnStartedAt;
       return {
-        plan,
+        plan: clarifiedPlan,
         outbound: this.renderOutbound(
           { text: clarificationText },
           [],
           args.inbound.channel,
-          plan.conversation_id,
-          plan,
+          clarifiedPlan.conversation_id,
+          clarifiedPlan,
         ),
         trace: this.buildTrace({
-          plan,
+          plan: clarifiedPlan,
           previousNode: args.previousNode,
-          currentNode: plan.current_node,
-          nodePath: args.previousNode === plan.current_node
-            ? [plan.current_node]
-            : [args.previousNode, plan.current_node],
+          currentNode: clarifiedPlan.current_node,
+          nodePath: args.previousNode === clarifiedPlan.current_node
+            ? [clarifiedPlan.current_node]
+            : [args.previousNode, clarifiedPlan.current_node],
           extraction: args.extraction,
-          missingFields: plan.missing_fields,
+          missingFields: clarifiedPlan.missing_fields,
           searchReady: false,
           promptBundleId: 'deterministic:ambiguous_provider_confirmation',
           promptFilePaths: [],
@@ -3787,6 +3846,12 @@ export class AgentService {
       promptBundleId = bundle.id;
       promptFilePaths = bundle.filePaths;
       operationalNote = 'Empty extraction with unavailable history was resolved from the compact canonical conversation summary.';
+    }
+    if (!continuity.hasPriorOutbound && this.isBareGreetingTurn(args.inbound.text)) {
+      reply = { text: '¡Hola! ¿En qué puedo ayudarte hoy?' };
+      promptBundleId = 'deterministic:contextual_clarification';
+      promptFilePaths = [];
+      operationalNote = 'Bare greeting on first exchange answered with a brief greeting; no plan context presumed.';
     }
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
     return {
@@ -7015,6 +7080,40 @@ export class AgentService {
         recommendationFunnel: undefined,
       };
     }
+    // E reference determinism: a matched reference answers from its single
+    // record; an unmatched reference with several candidates asks one
+    // grounded selection question. Both bypass model narration and take
+    // precedence over the generic neutral selection.
+    if (
+      single &&
+      shouldRenderReferenceMatchedSingle({
+        purchaseCount: purchases.length,
+        referenceResolution: phonePurchaseResult.referenceResolution ?? null,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderReferenceMatchedSingle({
+          eventName: single.eventName,
+          paymentStatus: single.paymentStatus,
+        }),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
+    if (
+      shouldRenderReferenceSelection({
+        purchaseCount: purchases.length,
+        referenceResolution: phonePurchaseResult.referenceResolution ?? null,
+      })
+    ) {
+      return {
+        ...reply,
+        text: renderReferenceSelection(purchases),
+        structuredMessage: undefined,
+        recommendationFunnel: undefined,
+      };
+    }
     if (
       shouldRenderNeutralSelection({
         purchaseCount: purchases.length,
@@ -7509,6 +7608,17 @@ export class AgentService {
   }
 
   private selectTerminalHandoffMessage(reason: string, requested: boolean, outcome: string | null | undefined): string {
+    if (reason === 'identity_rejected') {
+      // Contract: an identity rejection acknowledges that access through the
+      // rejected association will not continue, then states the help outcome.
+      if (requested) {
+        return 'Ese número ya no se usará para acceder a tu información; ya solicité apoyo humano para revisar tu consulta.';
+      }
+      if (outcome === 'outcome_unknown') {
+        return 'Ese número ya no se usará para acceder a tu información; no pude comprobar si se registró la solicitud de apoyo humano y conservé tu consulta sin reintentarla automáticamente.';
+      }
+      return 'Ese número ya no se usará para acceder a tu información; no pude registrar la solicitud de apoyo humano en este momento y conservé tu consulta.';
+    }
     if (reason === 'phone_information_not_found') {
       if (requested) {
         return 'No pude localizar tu compra con este número en la consulta disponible; ya solicité apoyo humano para revisarla.';

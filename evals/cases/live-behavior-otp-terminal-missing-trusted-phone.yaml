@@ -2,17 +2,15 @@ template: template.base-live
 id: live_behavior.otp_terminal_missing_trusted_phone
 suite: live_behavior_regression
 version: 1
-description: Seed phone without inbound trusted phone dispatches nothing and reports missing identity.
+description: Seed phone without inbound trusted phone dispatches nothing and reports missing identity. Inputs omit channel and contactPhone so the harness default non-WhatsApp channel applies and the Lambda accepts the phoneless body.
 tags: [live, behavior, authentication, otp, terminal]
 targetModes: [live_lambda]
 backendFixture:
   scenario: s06-otp-handoff-failed
 inputs:
   - text: "753994"
-    channel: whatsapp
     sessionId: live-otp-terminal-missing-phone-session
   - text: "753994"
-    channel: whatsapp
     sessionId: live-otp-terminal-missing-phone-session
 seedPlan:
   current_node: resolver_consultas_informativas
