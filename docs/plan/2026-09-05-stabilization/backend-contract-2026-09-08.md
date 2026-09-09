@@ -116,4 +116,11 @@ behavior. Add distinct present-currency regressions.
    enablement on incompatibility while retaining ordinary text delivery.
 
 No backend messages were sent and no production deployment was performed here.
-The acceptance cases above remain pending implementation and live verification.
+Agent-side acceptance steps 1 and 3 are done: all four image variants plus
+captioned/unreadable probes pass on development Lambda artifact `650f6c01`
+(dev URL `https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/`,
+live gate `eval-2026-09-09T01-53-10-225Z-774acb25` 5/5 with hard structural and
+required semantic judges, no bytes in storage/traces/reports). Remaining for
+the backend team: step 2 (redacted samples for the four purchase endpoints
+against the test account) and step 4 (production forwarding validation and
+smoke with a designated test contact; roll back forwarding on mismatch).

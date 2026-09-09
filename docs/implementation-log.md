@@ -9610,3 +9610,13 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 **Evidence:** Offline: tests/s17-image-turn.test.ts (9), tests/purchase-currency.test.ts (10), lambda-request-contract.test.ts (+6 variants). Full suite 136 files / 1091 passed. Typecheck + eslint clean. Prompt inventory 108 -> 110 (image_inspection.txt, image_outcomes.json mapped).
 
 **Validation:** Dev Lambda redeploy + live 4-variant image probes + currency response checks + npm run eval:behavior-live recorded below before production toggle. Prod untouched until green light.
+
+## 2026-09-09 - S17/currency dev validation + prod-toggle green light (main, no dev branch)
+
+**Reason:** Image/currency implementation needed live proof on the dev Lambda before backend team enables production forwarding.
+
+**Decision:** Dev Lambda redeployed only on content change (stale 601ee68d -> 487ca60f -> 87c70cfe -> final 650f6c01 after fixture update). Same dev Function URL throughout. No dev branch: work committed on main (30b1e1ff runtime, df328989 harness+cases, cbf2c119 cases+suite, 8a45bc61 registry).
+
+**Evidence:** Live probes on dev URL: image-only JPEG read ("Monto: S/ 250.00", no payment confirmation), captioned PNG answered, invalid bytes -> resend fallback, image_too_large/media_unavailable exact fallbacks, captioned error answers caption + one fallback. Live gate eval-2026-09-09T01-53-10-225Z-774acb25: 5/5 pass, 0 fail, hard structural + requireJudge semantic on every new case; no base64/data-URL bytes in run artifacts. Full offline suite 136 files / 1091 passed; typecheck + eslint clean; coverage registry test passes. Display note: approved/pending concise reply policy (frozen F3) may omit amounts; currency code/symbol reach normalization and model disclosure, never inferred or converted.
+
+**Validation:** Production toggle = exact-artifact promotion of S3 lambda/650f6c017d5fe8b00cdf19f7fe1c766a73cde5d6528e226d8067689f5f935b3e.zip from recap-agent-runtime-dev (CodeS3Key verified) to recap-agent-runtime via DEPLOY_ARTIFACT_PATH + DEPLOY_ARTIFACT_SHA256. Backend team still owns production forwarding enablement + redacted samples for the four purchase endpoints per backend-contract-2026-09-08 acceptance step 4.
