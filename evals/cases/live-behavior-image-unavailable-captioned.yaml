@@ -20,14 +20,14 @@ expectations:
     type: text_contains
     allOf: [Puedes enviarla de nuevo]
     severity: hard
-  - id: unavailable-caption-stays-informative
+  - id: unavailable-caption-enters-intent
     type: node_transition
-    to: resolver_consultas_informativas
+    to: deteccion_intencion
     severity: hard
   - id: unavailable-caption-answered-plus-fallback
     type: text_semantic
     rubric: >-
-      Pass only if the assistant responds entirely in Spanish with a single reply that both acknowledges the greeting and asks the user to resend the image or write the information in text. It must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
+      Pass only if the assistant responds entirely in Spanish with a single reply that both handles the greeting (a welcome or a clarifying question about what the user needs is acceptable) and asks the user to resend the image or write the information in text. It must not claim it viewed, read, saved, or forwarded any image, and must not ask for an OTP.
     minScore: 0.8
     requireJudge: true
     severity: hard

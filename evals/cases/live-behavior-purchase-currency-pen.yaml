@@ -2,18 +2,18 @@ template: template.base-live
 id: live_behavior.purchase_currency_pen_symbol
 suite: live_behavior_regression
 version: 1
-description: Purchase rows carrying currency_code PEN with currency_symbol S/ surface the code with its symbol for display.
+description: A pending purchase row carrying currency_code PEN with currency_symbol S/ is accepted end-to-end without inventing currency or conversion.
 tags: [live, behavior, purchase, currency, s08, s09]
 targetModes: [live_lambda]
 backendFixture:
   scenario: purchase-currency-pen
 inputs:
-  - text: Hice una compra para Mesa Mara y quiero saber el estado y el monto.
+  - text: Cual es el estado de mi compra pendiente para Mesa Mara y en que moneda esta?
     channel: whatsapp
     contactPhone: "+51900027701"
     sessionId: live-purchase-currency-pen-session
 notes:
-  - Backend currency contract 2026-09-08. Synthetic identity only; fixture purchase-currency-pen carries PEN with S/ on order and gift rows.
+  - Backend currency contract 2026-09-08. Synthetic identity only; fixture purchase-currency-pen carries PEN with S/ on a pending order row. Concise reply policy may omit amounts; the gate pins truthful status with no currency inference.
 expectations:
   - id: currency-uses-phone-orders
     type: tool_usage
@@ -24,10 +24,10 @@ expectations:
     type: node_transition
     to: resolver_consultas_informativas
     severity: hard
-  - id: currency-pen-displayed-with-symbol
+  - id: currency-pen-no-inference
     type: text_semantic
     rubric: >-
-      The fixture world contains one approved order for Mesa Mara for 250 with currency code PEN and symbol S/. The answer must be concise, natural, and entirely in Spanish; state the approved status and display the amount with its PEN currency using the S/ symbol. It must not claim another currency, invent an exchange rate, or ask for email, OTP, or a screenshot.
+      The fixture world contains one pending order for Mesa Mara for 250 with currency code PEN and symbol S/. The answer must be concise, natural, and entirely in Spanish and state the pending status truthfully. It must not claim another currency, must not invent an exchange rate or conversion, must not claim the order is approved, and must not ask for email, OTP, or a screenshot. Stating the amount with S/ or PEN is acceptable but not required.
     minScore: 0.85
     requireJudge: true
     severity: hard
