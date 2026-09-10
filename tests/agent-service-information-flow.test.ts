@@ -3064,3 +3064,92 @@ it('keeps an accountless purchase read even when extraction also emits phone rej
   expect(gateway.guestOrdersCalls).toBe(1);
   expect(response.trace.tools_called).not.toContain('auth_by_phone');
 });
+
+it('W1-07 routes a fresh-session typed phone rejection to human handoff without OTP or greeting', async () => {
+  const runtime = new InformationRuntime([
+    extraction([], null, 'fallback@example.com', 'no'),
+  ]);
+  const gateway = new FakePurchaseGateway();
+  const provider = providerGateway();
+  const service = createService({
+    runtime,
+    knowledgeGateway: new FakeKnowledgeGateway(),
+    purchaseGateway: gateway,
+    providerGateway: provider,
+  });
+
+  const response = await service.handleTurn({
+    channel: 'whatsapp',
+    externalUserId: 'wrong-account-fresh-user',
+    text: 'Ese número no corresponde a mi cuenta; mi correo es fallback@example.com',
+    messageId: 'wrong-account-fresh-1',
+    receivedAt: new Date().toISOString(),
+    contactPhone: '+51987654321',
+  });
+
+  expect(response.plan.current_node).toBe('solicitar_agente_humano');
+  expect(response.plan.current_node).not.toBe('entrevista');
+  expect(response.plan.human_escalation.status).toBe('requested');
+  expect(response.plan.human_help_receipt).toMatchObject({
+    outcome: 'handoff_requested',
+    requested: true,
+  });
+  expect(gateway.takeoverCalls).toBe(1);
+  expect(gateway.authByPhoneCalls).toBe(0);
+  expect(provider.requestCodeCalls).toBe(0);
+  expect(provider.verifyCodeCalls).toBe(0);
+  expect(response.trace.tools_called).toContain('request_human_takeover');
+  expect(response.trace.tools_called).not.toContain('lookup_guest_orders_by_phone');
+  expect(response.trace.tools_called).not.toContain('request_user_login_code');
+  expect(response.outbound.text ?? '').toContain('ya solicité apoyo humano');
+  expect(response.outbound.text ?? '').not.toContain('Hola, soy el asistente');
+  expect((response.outbound.text ?? '').toLowerCase()).not.toContain('otp');
+  expect((response.outbound.text ?? '').toLowerCase()).not.toContain('código');
+  expect(runtime.composeRequests).toHaveLength(0);
+});
+
+it('W1-07 guides neutral reported-amount wording for a pending Yape/Plin purchase without currency', async () => {
+  const request = purchaseRequest(null);
+  request.resource = 'orders';
+  request.query = 'Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?';
+  request.aspects = ['summary', 'payment_status'];
+  const runtime = new InformationRuntime([extraction([request])]);
+  const gateway = new FakePurchaseGateway();
+  const pendingPurchase = {
+    ...purchase('ORD-S01-PENDING'),
+    partition: 'pending_orders' as const,
+    paymentStatus: 'pending',
+    paymentMethod: 'Yape_o_Plin',
+    grandTotal: 149.90,
+    currency: null,
+    eventName: 'Suki Sofia',
+  };
+  gateway.guestOrdersResult = {
+    status: 'success',
+    resource: 'orders',
+    purchases: [pendingPurchase],
+    orderPartitions: { pending: [pendingPurchase], completed: [] },
+    carts: [],
+  };
+  const service = createService({
+    runtime,
+    knowledgeGateway: new FakeKnowledgeGateway(),
+    purchaseGateway: gateway,
+    providerGateway: providerGateway(),
+  });
+
+  await service.handleTurn({
+    channel: 'whatsapp',
+    externalUserId: 's01-neutral-user',
+    text: 'Hice la compra para Suki Sofia pero no me llego confirmacion. Cual es el estado?',
+    messageId: 's01-neutral-1',
+    receivedAt: new Date().toISOString(),
+    contactPhone: '+51900027635',
+  });
+
+  expect(runtime.composeRequests).toHaveLength(1);
+  const note = runtime.composeRequests[0]?.errorMessage ?? '';
+  expect(note).toContain('monto [valor] mediante');
+  expect(note).toContain('como dato disponible');
+  expect(note).toContain('sin escribir');
+});

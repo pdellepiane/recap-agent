@@ -96,14 +96,17 @@ describe('F4 close submission summary confirms sent quotes with the explicit dat
 });
 
 describe('F4 plain-text confirmation question is replaced by the submission summary', () => {
-  it('replaces the confirmation question while keeping the provider list', () => {
+  it('replaces the confirmation question and strips the legacy future-tense footer', () => {
     const text = applyCloseSubmissionToText(
       'Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a EDO, Orquesta Sintetica?\n\nSe enviarán solicitudes para:\n\n- Servicio de comida: EDO.',
       'Las solicitudes de cotización fueron enviadas a EDO y Orquesta Sintetica para tu evento del 18 de octubre de 2026. Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.',
     );
     expect(text).toContain('18 de octubre de 2026');
-    expect(text).toContain('Servicio de comida: EDO');
+    expect(text).toContain('fueron enviadas');
+    expect(text.match(/fueron enviadas|fue enviada/giu)).toHaveLength(1);
     expect(text).not.toContain('¿Confirmas');
+    expect(text).not.toMatch(/Se enviar[áa]n solicitudes para/iu);
+    expect(text).not.toContain('Servicio de comida: EDO');
   });
 
   it('leaves text without a confirmation question untouched', () => {

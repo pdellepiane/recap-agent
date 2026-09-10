@@ -101,11 +101,13 @@ export function buildCloseSubmissionSummary(input: CloseSubmissionInput): string
 }
 
 const CONFIRM_QUESTION_PATTERN = /¿Confirmas que envíe[^?]*\?/u;
+const LEGACY_CLOSE_FOOTER_PATTERN = /\n*\s*Se enviar[áa]n solicitudes para:[\s\S]*$/iu;
 
 export function applyCloseSubmissionToText(text: string, summary: string | null): string {
   if (summary === null) return text;
   if (!CONFIRM_QUESTION_PATTERN.test(text)) return text;
-  return text.replace(CONFIRM_QUESTION_PATTERN, summary);
+  const replaced = text.replace(CONFIRM_QUESTION_PATTERN, summary);
+  return replaced.replace(LEGACY_CLOSE_FOOTER_PATTERN, '').trimEnd();
 }
 
 function buildBlockedSubmissionSummary(
@@ -173,39 +175,21 @@ function parseSingleDateText(value: string): string | null {
   return null;
 }
 
-/**
- * F4 deterministic explicit-date resolver for `finish_plan`.
- *
- * The model must pass the user-supplied date as AAAA-MM-DD, but live turns
- * show it can arrive as Spanish long form or be unusable. This resolver
- * normalizes the model value first, then falls back to the first explicit
- * date found in the user message. It never substitutes today and returns
- * null when neither source carries an explicit calendar-valid date, so the
- * executor keeps failing closed with missing_event_date.
+/** Validate the model-selected calendar date against user-authored evidence.
+ * Model arguments and prompt examples are not independent date provenance.
  */
 export function resolveExplicitEventDate(modelValue: unknown, userMessage: unknown): string | null {
-  if (typeof modelValue === 'string') {
-    const normalized = parseSingleDateText(modelValue);
-    if (normalized !== null) return normalized;
-  }
-  if (typeof userMessage === 'string') {
-    const spanish = userMessage.match(/\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4}/iu);
-    if (spanish?.[0]) {
-      const normalized = parseSingleDateText(spanish[0]);
-      if (normalized !== null) return normalized;
-    }
-    const numeric = userMessage.match(/\d{1,2}[/-]\d{1,2}[/-]\d{4}/u);
-    if (numeric?.[0]) {
-      const normalized = parseSingleDateText(numeric[0]);
-      if (normalized !== null) return normalized;
-    }
-    const iso = userMessage.match(/\d{4}-\d{2}-\d{2}/u);
-    if (iso?.[0]) {
-      const normalized = parseSingleDateText(iso[0]);
-      if (normalized !== null) return normalized;
-    }
-  }
-  return null;
+  if (typeof userMessage !== 'string') return null;
+  const candidates = userMessage.match(
+    /\d{4}-\d{2}-\d{2}|\d{1,2}\s+de\s+[a-záéíóúñ]+\s+de\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{4}/giu,
+  ) ?? [];
+  const dates = [...new Set(candidates.flatMap((candidate) => {
+    const parsed = parseSingleDateText(candidate);
+    return parsed === null ? [] : [parsed];
+  }))];
+  const selected = typeof modelValue === 'string' ? parseSingleDateText(modelValue) : null;
+  if (selected !== null) return dates.includes(selected) ? selected : null;
+  return dates.length === 1 ? dates[0] : null;
 }
 
 export function parseFinishPlanTurnOutcome(outputJson: string): FinishPlanTurnOutcome | undefined {

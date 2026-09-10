@@ -21,6 +21,8 @@ export async function runOverlappingTurns<T>(args: {
       await new Promise<void>((resolve) => setTimeout(resolve, args.pollMs ?? 50));
     }
     if (!second) {
+      // Preserve the request failure instead of misclassifying it as a lock flake.
+      if (firstFinished) await first;
       throw new Error('Concurrency regression did not observe an active first-turn lock.');
     }
     // All work must settle even if one request fails; never leave mutations in flight.

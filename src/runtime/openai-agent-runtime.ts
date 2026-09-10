@@ -29,6 +29,7 @@ import {
   starterProviderCategoriesForEvent,
 } from '../core/event-provider-priorities';
 import { executeFinishPlanTool } from './finish-plan-tool';
+import type { ProviderQuoteEffect } from './plan-completion-executor';
 import { ModelComposedFailureError } from './model-composition';
 import { resolveExplicitEventDate } from './close-submission-summary';
 import type {
@@ -114,6 +115,41 @@ type ReplyTurnEvidence = {
     missing_fields: string[];
     search_ready: boolean;
     missing_fields_instruction: string;
+    /**
+     * W1-04 L1 evidence-only facts. Verbatim user-reported support names from
+     * the extraction raw strings (never the normalized event_type), the open
+     * support-query flag, and the voucher/backend validation flags. Present
+     * only when their typed evidence exists so unrelated turns stay
+     * byte-identical. Facts for the model to verbalize, never reply prose.
+     */
+    reported_guest_name?: string | null;
+    reported_event_name?: string | null;
+    support_query_open?: boolean;
+    voucher_image_cannot_confirm_receipt?: boolean;
+    backend_validation_pending?: boolean;
+    /**
+     * W1-07 L1 evidence-only facts. Typed host-withdrawal request state:
+     * indexed policy hours from the completed faq result, the unsupported
+     * individual-status flag, and the handoff flag mirroring the typed
+     * needsHandoff rule. Present only when a faq+hostWithdrawal request
+     * exists so unrelated turns stay byte-identical. Facts for the model
+     * to verbalize, never reply prose.
+     */
+    host_withdrawal_policy_hours?: number | null;
+    host_withdrawal_status_unverifiable?: boolean;
+    host_withdrawal_handoff_requested?: boolean;
+    /**
+     * W1-10 L1 evidence-only facts. Typed close-flow contact state on
+     * crear_lead_cerrar: the persisted contact email already provided (so the
+     * model must not re-ask it) and the exactly-once dispatch precondition
+     * (complete contact, selected provider, explicit proceed confirmation,
+     * plan still active) so the model dispatches finish_plan once. Present
+     * only on the close node when their typed evidence exists so unrelated
+     * turns stay byte-identical. Facts for the model to verbalize, never
+     * reply prose.
+     */
+    contact_email_already_provided?: boolean;
+    close_ready_to_dispatch?: boolean;
   };
   provider_candidates: Array<Record<string, unknown>>;
   recommendation_funnel: RecommendationFunnelTrace | null;
@@ -135,6 +171,46 @@ export function otpContinuationEvidence(args: {
     return null;
   }
   return 'Verificación pendiente: hay un código solicitado para la consulta protegida. Si el mensaje no trae el código ni un correo, continúa esa consulta en informationRequests con el authAction que corresponda (report_otp_not_received, resend_otp, change_email, decline_authentication o provide_otp); en ese caso no devuelvas un delta vacío.';
+}
+
+/**
+ * W1-10 L1 evidence-only close continuity facts. Projects the persisted
+ * contact-email already-provided flag and the exactly-once close dispatch
+ * precondition from typed close state. Present only on crear_lead_cerrar
+ * when their typed evidence exists so unrelated turns stay byte-identical.
+ * Facts only, never reply prose (R02). No keyword matching, no fixture
+ * identifiers (R09).
+ */
+export function closeContinuityFacts(args: {
+  readonly currentNode: string;
+  readonly contactEmail: string | null;
+  readonly contactComplete: boolean;
+  readonly selectedProviderPresent: boolean;
+  readonly closeActionType: string | null;
+  readonly lifecycleState: string;
+  readonly hasUserEventDate?: boolean;
+}): Pick<
+  ReplyTurnEvidence['turn_state'],
+  'contact_email_already_provided' | 'close_ready_to_dispatch'
+> {
+  if (args.currentNode !== 'crear_lead_cerrar') return {};
+  const facts: Pick<
+    ReplyTurnEvidence['turn_state'],
+    'contact_email_already_provided' | 'close_ready_to_dispatch'
+  > = {};
+  if (args.contactEmail !== null && args.contactEmail.trim().length > 0) {
+    facts.contact_email_already_provided = true;
+  }
+  if (
+    args.contactComplete &&
+    args.selectedProviderPresent &&
+    args.closeActionType === 'proceed_confirmed' &&
+    args.lifecycleState === 'active' &&
+    args.hasUserEventDate === true
+  ) {
+    facts.close_ready_to_dispatch = true;
+  }
+  return facts;
 }
 
 export class OpenAiAgentRuntime implements AgentRuntime {
@@ -445,9 +521,14 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       currentNode: request.currentNode,
       closeConfirmed: request.extraction?.closeAction?.type === 'proceed_confirmed',
     });
-    const tools = this.createTools(request, allowedTools);
+    // An extracted confirmation does not supply a missing event date.
+    const groundedDate = resolveExplicitEventDate(null, this.closeDateEvidence(request));
+    const scopedTools = groundedDate === null
+      ? allowedTools.filter((name) => name !== 'finish_plan')
+      : allowedTools;
+    const tools = this.createTools(request, scopedTools);
 
-    request.toolUsage.considered.push(...allowedTools);
+    request.toolUsage.considered.push(...scopedTools);
 
     const outputSchema = this.resolveOutputSchema(request);
     const agent = new Agent<RuntimeContext, typeof outputSchema>({
@@ -1114,6 +1195,24 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       args.request.currentNode === 'responder_invitacion' &&
       args.request.rsvpPhoneEvidence !== null &&
       args.request.rsvpPhoneEvidence !== undefined;
+    const supportContinuity = this.buildSupportContinuityFacts(args.request);
+    const voucherContinuity = this.buildVoucherContinuityFacts(args.request);
+    const hostWithdrawalContinuity = this.buildHostWithdrawalFacts(args.request);
+    const closeContinuity = closeContinuityFacts({
+      currentNode: args.request.currentNode,
+      contactEmail: args.request.plan.contact_email,
+      contactComplete: Boolean(
+        args.request.plan.contact_name &&
+        args.request.plan.contact_email &&
+        args.request.plan.contact_phone,
+      ),
+      selectedProviderPresent: args.request.plan.provider_needs.some((need) =>
+        (need.selected_provider_ids?.length ?? 0) > 0,
+      ),
+      closeActionType: args.request.extraction.closeAction?.type ?? null,
+      lifecycleState: args.request.plan.lifecycle_state,
+      hasUserEventDate: resolveExplicitEventDate(null, this.closeDateEvidence(args.request)) !== null,
+    });
 
     return {
       nodes: {
@@ -1164,12 +1263,128 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ),
         search_ready: args.request.searchReady,
         missing_fields_instruction: this.buildMissingFieldsInstruction(args.request),
+        ...supportContinuity,
+        ...voucherContinuity,
+        ...hostWithdrawalContinuity,
+        ...closeContinuity,
       },
       provider_candidates: args.providerResults.map((provider, index) =>
         this.buildProviderEvidence(provider, index + 1),
       ),
       recommendation_funnel: args.recommendationFunnel,
     };
+  }
+
+  /**
+   * W1-04 L1 evidence-only support continuity facts. Projects the verbatim
+   * user-reported guest/event names from the extraction raw strings
+   * (supportAct person/eventReference, never the normalized event_type) plus
+   * the same-query-open flag while the support acknowledgment path keeps the
+   * query open. Returns no keys when no support act exists so unrelated turns
+   * stay byte-identical. Facts only, never reply prose (R02).
+   */
+  private buildSupportContinuityFacts(
+    request: ComposeReplyRequest,
+  ): Pick<
+    ReplyTurnEvidence['turn_state'],
+    'reported_guest_name' | 'reported_event_name' | 'support_query_open'
+  > {
+    const act = request.extraction.supportAct ?? null;
+    if (act === null) return {};
+    const guestName = act.personReference?.trim() ? act.personReference.trim() : null;
+    const eventName = act.eventReference?.trim() ? act.eventReference.trim() : null;
+    const queryOpen = act.kind === 'report_issue' ||
+      act.kind === 'provide_detail' ||
+      act.kind === 'defer_submission';
+    const facts: Pick<
+      ReplyTurnEvidence['turn_state'],
+      'reported_guest_name' | 'reported_event_name' | 'support_query_open'
+    > = {};
+    if (guestName !== null) facts.reported_guest_name = guestName;
+    if (eventName !== null) facts.reported_event_name = eventName;
+    if (queryOpen) facts.support_query_open = true;
+    return facts;
+  }
+
+  /**
+   * W1-04 L1 evidence-only voucher continuity facts. When typed evidence shows
+   * a voucher/submission report (payment_proof topic or submission_reported
+   * detail, or a reported purchase amount on a continued support thread) over
+   * a completed pending purchase, projects the image-cannot-confirm and
+   * backend-validation-pending facts so the model verbalizes them. Returns no
+   * keys otherwise. No keyword matching, no fixture identifiers (R09).
+   */
+  private buildVoucherContinuityFacts(
+    request: ComposeReplyRequest,
+  ): Pick<
+    ReplyTurnEvidence['turn_state'],
+    'voucher_image_cannot_confirm_receipt' | 'backend_validation_pending'
+  > {
+    const act = request.extraction.supportAct ?? null;
+    if (act === null) return {};
+    const voucherReport = act.topic === 'payment_proof' ||
+      act.detail === 'submission_reported';
+    const reportedPurchaseAmount = request.extraction.informationRequests.some((item) =>
+      item.kind === 'purchase' && item.amount !== null && item.amount !== undefined
+    );
+    const continuedSupportThread = act.kind === 'report_issue' ||
+      act.kind === 'provide_detail' ||
+      act.kind === 'defer_submission';
+    if (!voucherReport && !(continuedSupportThread && reportedPurchaseAmount)) return {};
+    const hasPendingPurchase = (request.informationResults ?? []).some((result) =>
+      result.kind === 'purchase' &&
+      result.status === 'completed' &&
+      result.purchases.some((purchase) =>
+        (purchase.paymentStatus ?? '').trim().toLocaleLowerCase('en') === 'pending'
+      )
+    );
+    if (!hasPendingPurchase) return {};
+    return {
+      voucher_image_cannot_confirm_receipt: true,
+      backend_validation_pending: true,
+    };
+  }
+
+  /**
+   * W1-07 L1 evidence-only host-withdrawal facts. Projects the indexed
+   * policy hours from the completed faq result plus the unsupported
+   * individual-status and handoff flags from the typed faq+hostWithdrawal
+   * requests (mirroring the needsReview/needsHandoff rule in
+   * handleHostWithdrawalInformation). Returns no keys when no hostWithdrawal
+   * request exists so unrelated turns stay byte-identical. Facts only,
+   * never reply prose (R02). No keyword matching, no fixture identifiers.
+   */
+  private buildHostWithdrawalFacts(
+    request: ComposeReplyRequest,
+  ): Pick<
+    ReplyTurnEvidence['turn_state'],
+    'host_withdrawal_policy_hours' | 'host_withdrawal_status_unverifiable' | 'host_withdrawal_handoff_requested'
+  > {
+    const hostRequests = request.extraction.informationRequests.filter((item) =>
+      item.kind === 'faq' && item.hostWithdrawal);
+    if (hostRequests.length === 0) return {};
+    let policyHours: number | null = null;
+    for (const result of request.informationResults ?? []) {
+      if (result.kind === 'faq' && result.status === 'completed') {
+        const hours = result.hostWithdrawalPolicy?.maxBusinessHours ?? null;
+        if (typeof hours === 'number' && Number.isFinite(hours)) {
+          policyHours = hours;
+          break;
+        }
+      }
+    }
+    const needsReview = hostRequests.some((item) =>
+      item.kind === 'faq' && item.hostWithdrawal === 'individual_status');
+    const needsHandoff = needsReview ||
+      request.extraction.actionIntent === 'solicitar_humano';
+    const facts: Pick<
+      ReplyTurnEvidence['turn_state'],
+      'host_withdrawal_policy_hours' | 'host_withdrawal_status_unverifiable' | 'host_withdrawal_handoff_requested'
+    > = {};
+    if (policyHours !== null) facts.host_withdrawal_policy_hours = policyHours;
+    if (needsReview) facts.host_withdrawal_status_unverifiable = true;
+    if (needsHandoff) facts.host_withdrawal_handoff_requested = true;
+    return facts;
   }
 
   private buildMinimalRsvpExtractionSnapshot(
@@ -1780,6 +1995,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     let remainingProviderDetailLookups =
       this.options.providerDetailLookupLimit;
 
+    let completionEffects: readonly ProviderQuoteEffect[] = [];
     const toolMap = {
       list_categories: tool({
         name: 'list_categories',
@@ -2177,17 +2393,22 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       finish_plan: tool({
         name: 'finish_plan',
         description:
-          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere event_date explícita capturada del usuario en formato AAAA-MM-DD o en texto español ("18 de octubre de 2026", que se normaliza de forma determinista); nunca hoy por defecto ni nulo. Requiere al menos un proveedor seleccionado y datos de contacto completos.',
+          'Cierra el plan definitivamente. Envía solicitudes de cotización (/quote) a cada proveedor seleccionado por necesidad usando los datos de contacto ya guardados en el plan (contact_name, contact_email, contact_phone). Requiere event_date respaldada por una fecha explícita del usuario; nunca una fecha inventada ni tomada de instrucciones. Requiere al menos un proveedor seleccionado y datos de contacto completos.',
         parameters: z.object({ event_date: z.string().min(1) }).strict(),
         execute: async ({ event_date }: { event_date: string }) => {
-          const resolvedDate = resolveExplicitEventDate(event_date, request.userMessage);
+          const resolvedDate = resolveExplicitEventDate(event_date, this.closeDateEvidence(request));
           this.recordToolInput(toolUsage, 'finish_plan', { event_date: resolvedDate ?? event_date });
           toolUsage.called.push('finish_plan');
           const result = await executeFinishPlanTool({
             plan,
             providerGateway: this.options.providerGateway,
-            eventDate: resolvedDate ?? event_date,
+            eventDate: resolvedDate,
+            priorEffects: completionEffects,
           });
+          if ('effects' in result) completionEffects = result.effects;
+          if ('planUpdate' in result && result.planUpdate !== null) {
+            await request.onPlanCompleted?.(result.planUpdate);
+          }
           this.recordToolOutput(toolUsage, 'finish_plan', result);
           return result;
         },
@@ -2195,6 +2416,12 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     } satisfies Record<ToolName, ReturnType<typeof tool>>;
 
     return allowedTools.map((name) => toolMap[name]);
+  }
+
+  private closeDateEvidence(request: ComposeReplyRequest): string {
+    return [request.userMessage, ...request.messageContext.recentMessages
+      .filter((message) => message.direction === 'inbound')
+      .map((message) => message.body)].join('\n');
   }
 
   private recordToolOutput(

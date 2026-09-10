@@ -1505,7 +1505,7 @@ export class AgentService {
       if (extraction.closeAction?.type === 'clarify') {
         errorMessage = extraction.closeAction.reason ?? null;
       }
-      const planToSave = mergePlan(planToClose, { current_node: currentNode });
+      let planToSave = mergePlan(planToClose, { current_node: currentNode });
       await persistPlan(planToSave, 'crear_lead_cerrar');
       planPersisted = true;
       planPersistReason = 'crear_lead_cerrar';
@@ -1520,6 +1520,11 @@ export class AgentService {
         userMessage: inbound.text,
         messageContext,
         plan: planToSave,
+        onPlanCompleted: async (completedPlan) => {
+          planToSave = completedPlan;
+          planPersistReason = 'quote_submission_confirmed';
+          await persistPlan(completedPlan, planPersistReason);
+        },
         extraction,
         missingFields: sufficiency.missingFields,
         searchReady: sufficiency.searchReady,
@@ -1884,6 +1889,10 @@ export class AgentService {
       userMessage: inbound.text,
       messageContext,
       plan: planAfterFlow,
+      onPlanCompleted: async (completedPlan) => {
+        planAfterFlow = completedPlan;
+        await persistPlan(completedPlan, 'quote_submission_confirmed');
+      },
       extraction,
       missingFields: sufficiency.missingFields,
       searchReady: sufficiency.searchReady,
@@ -3968,6 +3977,27 @@ export class AgentService {
       return null;
     }
 
+    // W1-10 L1 evidence-only yields. A location/name selection over a retained
+    // shortlist (confirmar_proveedor with typed selection evidence) is a
+    // domain selection turn even when the extractor also reports an
+    // unavailable provider operation such as provider.quote.write; the
+    // selection flow reconciles first and the model confirms in Spanish. A
+    // contact field on crear_lead_cerrar is close data even when the
+    // extractor labels it an auth operation (auth.email_otp); the close flow
+    // persists it instead of discarding the turn. Capability-only requests
+    // with no such typed evidence remain intercepted.
+    if (decision.status === 'unsupported' &&
+      args.extraction.actionIntent === 'confirmar_proveedor' &&
+      this.hasProviderSelectionEvidence(args.extraction)) {
+      return null;
+    }
+    if (decision.status === 'unsupported' &&
+      args.plan.current_node === 'crear_lead_cerrar' &&
+      this.hasCloseContactField(args.extraction) &&
+      this.isAuthCapabilityOperation(decision.operation)) {
+      return null;
+    }
+
     const capabilityBoundaryRenderer = await this.loadCapabilityBoundaryRenderer();
 
     if (decision.status === 'clarify') {
@@ -4648,6 +4678,37 @@ export class AgentService {
       operation === 'provider.quote.write';
   }
 
+  /**
+   * W1-10 L1: typed provider-selection evidence. A location or name reference
+   * resolved from the retained shortlist (hints or id/title references).
+   */
+  private hasProviderSelectionEvidence(extraction: ExtractionResult): boolean {
+    return (extraction.selectedProviderReferences?.length ?? 0) > 0 ||
+      extraction.selectedProviderHints.length > 0;
+  }
+
+  /**
+   * W1-10 L1: typed close-contact evidence. A name, email, or phone arriving
+   * on the close node is close data for the close flow to persist.
+   */
+  private hasCloseContactField(extraction: ExtractionResult): boolean {
+    return extraction.contactName !== null ||
+      extraction.contactEmail !== null ||
+      extraction.contactPhone !== null;
+  }
+
+  /**
+   * W1-10 L1: auth-scoped capability operations. Only these yield to the
+   * close-contact turn; any other unsupported operation stays intercepted.
+   */
+  private isAuthCapabilityOperation(operation: RuntimeOperationId): boolean {
+    return operation === 'auth.phone' ||
+      operation === 'auth.email_otp' ||
+      operation === 'auth.phone_update.write' ||
+      operation === 'auth.otp.send' ||
+      operation === 'auth.otp.verify';
+  }
+
   private normalizeInformationExtractionAmbiguity(
     extraction: ExtractionResult,
   ): ExtractionResult {
@@ -5106,7 +5167,7 @@ export class AgentService {
             (cart) => cart.amountDisclosure?.presentation === 'recorded_method_no_currency',
           ))
         ) {
-          operationalNote += ' Para amountDisclosure con presentation=recorded_method_no_currency, comunica “monto [valor] mediante [método registrado]”. No añadas símbolo ni nombre de moneda; si falta el método, di solo “monto [valor]”.';
+          operationalNote += ' Para amountDisclosure con presentation=recorded_method_no_currency, comunica “monto [valor] mediante [método registrado]”. No añadas símbolo ni nombre de moneda; si falta el método, di solo “monto [valor]”. Presenta el monto como dato disponible sin escribir “El registro muestra”, “backend”, “sistema” ni “registro interno”.';
         }
         const hasUnverifiableTransactionTime = phonePurchaseResult.purchases.some(
           (purchase) =>
@@ -5484,37 +5545,6 @@ export class AgentService {
         'La persona indicó que enviará la información después; la consulta de soporte sigue abierta.';
     }
     return 'La persona aportó información a una consulta de soporte que sigue abierta.';
-  }
-
-  private selectSupportAcknowledgmentMessage(
-    act: InformationSupportAct,
-  ): string {
-    if (act.kind === 'provide_detail' && act.personReference && act.eventReference) {
-      return `Gracias, tomo nota de que el invitado afectado es ${act.personReference} y del evento ${act.eventReference}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
-    }
-    if (act.kind === 'provide_detail' && act.personReference) {
-      return `Gracias, tomo nota del invitado afectado ${act.personReference}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
-    }
-    if (act.kind === 'provide_detail' && act.eventReference) {
-      return `Gracias, tomo nota del evento ${act.eventReference}. Mantengo esta consulta para continuar sin empezar de nuevo.`;
-    }
-    if (act.kind === 'defer_submission') {
-      return 'De acuerdo, podemos continuar cuando lo envíes. Mantengo el contexto de esta consulta.';
-    }
-    if (act.topic === 'mailbox_capacity') {
-      return act.kind === 'report_issue'
-        ? 'Entiendo: el buzón de tu correo registrado está lleno. Mantengo el contexto de esta consulta para que podamos continuar sin empezar de nuevo.'
-        : 'Entiendo: el buzón de tu correo registrado está lleno. Continuamos desde aquí; no necesitas empezar de nuevo.';
-    }
-    if (
-      act.topic === 'payment_proof' &&
-      act.detail === 'submission_reported'
-    ) {
-      return 'Tomé nota de que indicas haber enviado el comprobante. Eso no confirma por sí solo que el pago ya figure aprobado.';
-    }
-    return act.kind === 'report_issue'
-      ? 'Entiendo el problema que reportas. Mantengo el contexto de esta consulta. ¿Qué necesitas continuar?'
-      : 'Tomé nota de ese dato y mantengo el contexto de esta consulta; no necesitas empezar de nuevo.';
   }
 
   private async handleHostWithdrawalInformation(
@@ -8292,6 +8322,16 @@ export class AgentService {
     if (plan.user_auth.auth_method != null) return true;
     if (plan.information_state.pending_requests.some((request) => request.kind === 'purchase' || request.kind === 'associated_event')) return true;
     if (extraction.informationRequests.some((request) => request.kind === 'purchase' || request.kind === 'associated_event')) return true;
+    // W1-07: a typed identity rejection ('no') targets the channel-derived
+    // phone identity itself, which the adapter records on the plan on every
+    // WhatsApp turn. Honor it even with no prior phone-auth state so a
+    // fresh-session wrong-account statement reaches the human-first handoff
+    // instead of a generic greeting. 'yes' still needs a real phone-auth
+    // context (D1 pure-shortlist guard preserved). Accountless reads keep
+    // precedence via the earlier accountlessRead return in
+    // effectivePhoneConfirmation. No keywords, no fixture identifiers.
+    if ((extraction.phoneConfirmation ?? null) === 'no' &&
+      (plan.contact_phone_number != null || plan.contact_phone != null)) return true;
     return false;
   }
 
@@ -11119,27 +11159,6 @@ export class AgentService {
       }
     }
 
-    if (plan.lifecycle_state === 'finished') {
-      const destination = this.selectedProviderDestination(plan);
-      const selectedProviderCount = new Set(
-        plan.provider_needs.flatMap((need) => need.selected_provider_ids),
-      ).size;
-      const deferredCategories = plan.provider_needs
-        .filter((need) => need.status === 'deferred')
-        .map((need) => need.category);
-      const submissionSummary = selectedProviderCount === 1
-        ? `La solicitud de cotización fue enviada a ${destination}. Este proveedor se pondrá en contacto contigo por correo electrónico o teléfono.`
-        : `Las solicitudes de cotización fueron enviadas a ${destination}. Los proveedores se pondrán en contacto contigo por correo electrónico o teléfono.`;
-      const deferredSummary = deferredCategories.length > 0
-        ? ` ${this.formatSpanishList(deferredCategories)} quedó fuera del envío y sin proveedor seleccionado.`
-        : '';
-      return {
-        type: 'generic',
-        paragraphs_es: [
-          `${submissionSummary}${deferredSummary}`,
-        ],
-      };
-    }
 
     const hasCompleteContact = Boolean(
       plan.contact_name && plan.contact_email && plan.contact_phone,

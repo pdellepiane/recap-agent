@@ -1,6 +1,6 @@
 import type { DecisionNode } from '../core/decision-nodes';
 import type { EventType } from '../core/event-type';
-import type { ActionIntent, PersistedPlan } from '../core/plan';
+import type { ActionIntent, PersistedPlan, PlanSnapshot } from '../core/plan';
 import type { ProviderCategory } from '../core/provider-category';
 import type { ProviderSummary } from '../core/provider';
 import type { ToolOutputTrace } from '../core/trace';
@@ -161,6 +161,8 @@ export type ComposeReplyRequest = {
    * for migrated paths. Absent means the legacy node bundle (to be retired).
    */
   replyBundle?: PromptBundle;
+  /** Persist a confirmed completion before subsequent model generation can fail. */
+  onPlanCompleted?: (plan: PlanSnapshot) => Promise<void>;
 };
 
 /**

@@ -4036,15 +4036,9 @@ describe('AgentService', () => {
             },
           ],
         });
-        Object.assign(request.plan, finished);
+        await request.onPlanCompleted?.(finished);
         return {
-          text: '',
-          structuredMessage: {
-            type: 'close_confirmation',
-            summary_es: '¿Confirmas que envíe las solicitudes?',
-            selected_providers_es: [],
-            unselected_needs_es: [],
-          },
+          text: 'Envié la solicitud a Carlos Schult. Catering quedó pendiente, sin proveedor seleccionado.',
         };
       }
     }
@@ -4070,14 +4064,9 @@ describe('AgentService', () => {
     expect(planStore.saves.every((save) => !('ttlEpochSeconds' in save))).toBe(true);
     expect(planStore.currentPlan?.lifecycle_state).toBe('finished');
     expect(planStore.currentPlan?.contact_email).toBe('lin@example.com');
-    expect(response.outbound.text).toContain(
-      'La solicitud de cotización fue enviada a Carlos Schult',
+    expect(response.outbound.text).toBe(
+      'Envié la solicitud a Carlos Schult. Catering quedó pendiente, sin proveedor seleccionado.',
     );
-    expect(response.outbound.text).toContain(
-      'Catering quedó fuera del envío y sin proveedor seleccionado',
-    );
-    expect(response.outbound.text).not.toContain('Los proveedores');
-    expect(response.outbound.text).not.toContain('¿Confirmas');
   });
 
   it('rejects an invalid phone immediately and does not persist it', async () => {

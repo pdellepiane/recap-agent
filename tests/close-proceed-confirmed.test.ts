@@ -1,3 +1,6 @@
+import { RunContext, type tool } from '@openai/agents';
+import { OpenAiAgentRuntime } from '../src/runtime/openai-agent-runtime';
+import { localTurnMessageContext } from '../src/runtime/turn-message-context';
 import path from 'node:path';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createEmptyPlan, mergePlan } from '../src/core/plan';
@@ -205,6 +208,28 @@ describe('proceed_confirmed close state', () => {
     expect(res.trace.tools_called ?? []).not.toContain('search_providers_from_plan');
   });
 
+  it('persists confirmed completion even if reply generation subsequently fails', async () => {
+    const planStore = new InMemoryPlanStore();
+    await seedClosedPlan(planStore);
+    const extraction = baseExtraction({ actionIntent: 'cerrar',
+      closeAction: { type: 'proceed_confirmed', category: null, reason: null } });
+    const runtime = new ScriptedRuntime([extraction]);
+    vi.spyOn(runtime, 'composeReply').mockImplementation(async (request) => {
+      expect(request.onPlanCompleted).toBeDefined();
+      await request.onPlanCompleted?.(mergePlan(request.plan, {
+        lifecycle_state: 'finished', current_node: 'necesidad_cubierta',
+      }));
+      throw new Error('reply failed after confirmed effect');
+    });
+    const service = new AgentService({ planStore, runtime,
+      providerGateway: scriptedProviderGateway(), promptLoader, renderers });
+    await expect(service.handleTurn({ channel: 'whatsapp', externalUserId: 'close-user',
+      text: 'Mi evento es el 18 de octubre de 2026. Confirmo el envío.',
+      messageId: 'confirmed-before-model-failure', receivedAt: new Date().toISOString(),
+    })).rejects.toThrow('reply failed after confirmed effect');
+    expect((await planStore.getByExternalUser('whatsapp', 'close-user'))?.lifecycle_state).toBe('finished');
+  });
+
   it('close contact turn with support label stays in close handling and keeps phone', async () => {
     const planStore = new InMemoryPlanStore();
     await seedClosedPlan(planStore);
@@ -236,5 +261,84 @@ describe('proceed_confirmed close state', () => {
     });
     expect(res.plan.current_node).toBe('crear_lead_cerrar');
     expect(res.plan.contact_phone).toBe('51954779071');
+  });
+});
+
+describe('close tool effect boundary reconstructed from token_seeded_close_flow', () => {
+  async function fixture(userMessage: string) {
+    const planStore = new InMemoryPlanStore();
+    await seedClosedPlan(planStore);
+    const plan = await planStore.getByExternalUser('whatsapp', 'close-user');
+    if (!plan) throw new Error('Missing seeded plan');
+    const createQuoteRequest = vi.fn().mockResolvedValue({ id: 'confirmed-quote-90' });
+    const onPlanCompleted = vi.fn().mockResolvedValue(undefined);
+    const runtime = new OpenAiAgentRuntime({ apiKey: 'test-key',
+      replyModel: 'test-model', extractorModel: 'test-model',
+      replyProviderLimit: 4, presentationProviderLimit: 5, providerDetailLookupLimit: 3,
+      promptLoader, providerGateway: { createQuoteRequest } as unknown as ProviderGateway });
+    const request: ComposeReplyRequest = {
+      currentNode: 'crear_lead_cerrar', previousNode: 'crear_lead_cerrar', plan,
+      userMessage, messageContext: localTurnMessageContext('not_configured'),
+      extraction: baseExtraction({ actionIntent: 'cerrar', closeAction: {
+        type: 'proceed_confirmed', category: null, reason: null,
+      } }), missingFields: [], searchReady: true, providerResults: [], errorMessage: null,
+      promptBundleId: 'test', promptFilePaths: [],
+      toolUsage: { considered: [], called: [], inputs: [], outputs: [] }, onPlanCompleted,
+    };
+    const access = runtime as unknown as {
+      createTools(request: ComposeReplyRequest, names: ['finish_plan']): ReturnType<typeof tool>[];
+    };
+    const finish = access.createTools(request, ['finish_plan'])[0];
+    if (!finish) throw new Error('Missing finish tool');
+    const invoke = () => finish.invoke(new RunContext(), JSON.stringify({ event_date: '2026-10-18' }));
+    return { invoke, createQuoteRequest, onPlanCompleted, runtime, request };
+  }
+
+  it('omits finish_plan from the serialized phone-turn tool surface without enlarging instructions', async () => {
+    const bodies: Array<{ instructions?: string; input?: unknown; tools?: Array<{ name?: string }> }> = [];
+    const fetchMock = vi.fn<Parameters<typeof fetch>, ReturnType<typeof fetch>>()
+      .mockImplementation(async (_url, init) => {
+        if (typeof init?.body === 'string') bodies.push(JSON.parse(init.body) as typeof bodies[number]);
+        return new Response(JSON.stringify({ error: { message: 'test quota',
+          type: 'insufficient_quota', code: 'insufficient_quota' } }), {
+          status: 429, headers: { 'content-type': 'application/json' },
+        });
+      });
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      const phone = await fixture('mi teléfono es 51954779071');
+      await expect(phone.runtime.composeReply(phone.request)).rejects.toBeDefined();
+      const phoneBody = bodies.find((body) => body.tools);
+      bodies.length = 0;
+      const confirmed = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
+      await expect(confirmed.runtime.composeReply(confirmed.request)).rejects.toBeDefined();
+      const confirmedBody = bodies.find((body) => body.tools);
+      expect(phoneBody).toBeDefined();
+      expect(confirmedBody?.tools?.map((entry) => entry.name)).toContain('finish_plan');
+      expect(phoneBody?.tools?.map((entry) => entry.name)).not.toContain('finish_plan');
+      expect(phoneBody?.instructions).toBe(confirmedBody?.instructions);
+      const metrics = (body: typeof phoneBody) => ({
+        instructionBytes: Buffer.byteLength(body?.instructions ?? ''),
+        inputBytes: Buffer.byteLength(JSON.stringify(body?.input ?? [])),
+        toolBytes: Buffer.byteLength(JSON.stringify(body?.tools ?? [])),
+      });
+      expect(metrics(phoneBody).toolBytes).toBeLessThan(metrics(confirmedBody).toolBytes);
+      process.stdout.write(JSON.stringify({ closePromptMetrics: { phone: metrics(phoneBody), confirmed: metrics(confirmedBody) } }) + '\n');
+    } finally { vi.unstubAllGlobals(); }
+  });
+
+  it('rejects the exact model-hallucinated date on the original phone-only turn', async () => {
+    const test = await fixture('mi teléfono es 51954779071');
+    await test.invoke();
+    expect(test.createQuoteRequest).not.toHaveBeenCalled();
+    expect(test.onPlanCompleted).not.toHaveBeenCalled();
+  });
+
+  it('persists confirmed completion and reuses its effect if the model repeats the tool', async () => {
+    const test = await fixture('Mi evento es el 18 de octubre de 2026. Confirmo el envío.');
+    await test.invoke();
+    expect(test.onPlanCompleted).toHaveBeenCalledWith(expect.objectContaining({ lifecycle_state: 'finished' }));
+    await test.invoke();
+    expect(test.createQuoteRequest).toHaveBeenCalledTimes(1);
   });
 });

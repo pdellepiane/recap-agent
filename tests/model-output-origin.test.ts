@@ -15,6 +15,7 @@ import { InformationOrchestrator } from '../src/runtime/information-orchestrator
 import type { KnowledgeRetrievalGateway } from '../src/runtime/knowledge-retrieval-gateway';
 import { WhatsAppMessageRenderer } from '../src/runtime/message-renderer';
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import { unavailableTurnMessageContext } from '../src/runtime/turn-message-context';
 import type { ProviderGateway } from '../src/runtime/provider-gateway';
 import {
   applyDocumentedTransportTransforms,
@@ -135,7 +136,7 @@ describe('model output origin (R01)', () => {
       currentNode: 'resolver_consultas_informativas',
       previousNode: 'contacto_inicial',
       userMessage: 'Lo voy a enviar luego',
-      messageContext: undefined,
+      messageContext: unavailableTurnMessageContext(),
       plan: mergePlan(createEmptyPlan({ planId: 'p', channel: 'whatsapp', externalUserId: 'u' }), {}),
       extraction: await runtime.extract(undefined as unknown as ExtractRequest),
       missingFields: [],

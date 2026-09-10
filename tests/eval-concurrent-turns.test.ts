@@ -24,6 +24,15 @@ describe('live concurrency scheduling', () => {
     expect(secondCalled).toBe(false);
   });
 
+  it('preserves the first HTTP failure instead of reporting a missing lock', async () => {
+    await expect(runOverlappingTurns({
+      first: async () => { throw new Error('Live Lambda returned HTTP 503'); },
+      firstLockIsHeld: async () => false,
+      second: async () => 'must not run',
+      pollMs: 1,
+    })).rejects.toThrow('Live Lambda returned HTTP 503');
+  });
+
   it('settles the first turn even when the second fails', async () => {
     let settled = false;
     await expect(runOverlappingTurns({

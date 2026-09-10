@@ -1,102 +1,264 @@
-# L0 outbound-path inventory (base `a8e443ab`, dev `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=`)
+# L0 outbound-path inventory (symbol + hash authority, base `29ed763e`)
 
-Date: 2026-09-09. Every customer-visible text emission found across `src`, including unlabelled branches. Name search alone was insufficient: `deterministic:` bundle IDs (20), `enforce*` post-generation rewrites, renderer dictionaries, guardrail fallbacks, and vocabulary substitutions were all inspected at their call sites.
+Date: 2026-09-09. Rewritten 2026-09-10 (W0-02) from line-number authority to
+symbol + content-hash authority at HEAD `29ed763e`, closing the reviewer
+blocking finding (stale base `a8e443ab`, 70-120 line drift, missing hash list,
+no diff report) and critic F4. Authority is the (symbol, file, content hash)
+triple below. Any line numbers quoted in section 8 are reproduced grep evidence
+at the pinned HEAD, informational only, never authority.
 
-Conventions below: caller = production caller exercised; model call = whether any model output exists on that path before delivery; override = what happens to model text; replacement = plan work package/edit target.
+Method: `rg -n "deterministic" src/runtime` plus symbol greps for
+`renderOutbound`, `deterministicReplyText`, `enforcePurchaseReplyDeterministic`,
+`renderPurchaseReplyDeterministic`, `resolvePurchaseReplyText`,
+`sanitizeAssistantOutput`, `normalizeInformationExtractionAmbiguity`,
+`renderRsvp`, `CapabilityOutcomeRenderer`. Every customer-visible text emission
+found across `src`, including unlabelled branches. Name search alone was
+insufficient: `deterministic:` bundle IDs, `enforce*` post-generation rewrites,
+renderer dictionaries, guardrail fallbacks, and vocabulary substitutions were
+all inspected at their call sites.
+
+Conventions: old caller = production caller symbol exercised; replacement
+status = plan work package / edit target (E01-E12 per acceptance-contract
+Section A, L-families per plan.md). E-table verification status is in section 9.
+
+## 0. Basis: content hashes at `29ed763e` (recomputed, all match worktree)
+
+| file | `git hash-object` at `29ed763e` | worktree match |
+| --- | --- | --- |
+| `src/runtime/agent-service.ts` | `09f9dd3e28c3dd2944e585610b3bf8fec0ab91d0` | YES |
+| `src/runtime/openai-agent-runtime.ts` | `4cfdf32324df1afb97f0bcb0ba1ff651790a4530` | YES |
+| `src/runtime/purchase-reply-projector.ts` | `c006c9917633239c39d17a203daab78568620fbd` | YES |
+| `src/runtime/reply-evidence-projector.ts` | `1151696dc13cb75d7f75df0fcebf1186c9edd81c` | YES |
+| `src/runtime/message-renderer.ts` | `6fe28925c4c012d3dfed326560f77bf558c46ae1` | YES |
+| `src/runtime/capability-outcome-renderer.ts` | `3dc3064613a193c504660d96b5a9a76d8fb35a6f` | YES |
+| `src/runtime/capability-boundary-renderer.ts` | `c4345c47f9ec9be5379ca233f433234afcf1b33b` | YES |
+
+Recompute: `git show 29ed763e:<path> | git hash-object --stdin`.
+Full blob list: `git ls-files "src/runtime/*" | while read f; do git show 29ed763e:"$f" | git hash-object --stdin; done`
+(no recompute drift; all seven match the values above).
 
 ## 1. Post-generation rewrites in `agent-service.ts` (model output exists, then replaced)
 
-| # | Location | Caller | Emitted content | Override | Replacement |
-| --- | --- | --- | --- | --- | --- |
-| 1.1 | `enforceFaqAmbiguityReply` (6911), called 868, 1896, 5254 | `necesidad_cubierta` finished path; main compose seam 1891; information batch 5254 | `interpretations`-built `¿Quieres saber A o B?`, extractor `clarificationQuestion`, or fixed `¿Podrías indicar a qué información te refieres?`; sets `structuredMessage: undefined` | Full replacement of composed reply | E04/L2 clarification family |
-| 1.2 | `enforcePurchaseReplyDeterministic` (6975), called 5267 | Information batch after `composeReply` | 9 bounded outcomes via `purchase-reply-projector.ts` renderers (see §2); sets `structuredMessage/recommendationFunnel: undefined` | Full replacement on match, else passthrough | E02/L2 purchase family |
-| 1.3 | `enforceMissingFieldReply` (7159), called 1893 | Main compose seam, node `aclarar_pedir_faltante`, only `budget_or_guest_range` | Fixed `Para continuar con la búsqueda, ¿cuántos invitados esperas aproximadamente o qué presupuesto tienes?` | Full replacement | E04/L2 clarification family |
-| 1.4 | `enforceAmbiguousProviderConfirmationReply` (7184), called 1891 | Main compose seam when `providerConfirmationGuard.ambiguous` | Fixed `¿Qué proveedor o acción estás confirmando?` | Full replacement | E04/L2 clarification family |
-| 1.5 | RSVP merge block (2599-2624) | `responder_invitacion` after `composeReply` (2577) | `deterministicReplyText` fragment: full replacement when declining-offer/complete, else prepended as first paragraph | Replace or prepend | E03/L2 RSVP family |
-| 1.6 | Structured contact path in `renderOutbound` (10963): `enforceContactRequestFields` (11005) | Every structured-message delivery | `completeContactConfirmation` (11073): fixed `Ya tengo tu nombre, correo electrónico y teléfono. ¿Confirmas que envíe la solicitud de cotización a ${destination}?`; finished-plan generic summary (11028-11038); `summary_es` submission-summary injection (11013-11018) | Field replacement / whole-message replacement | E05/L2 contact+closure family |
-| 1.7 | Plain-text close path in `renderOutbound` (10988): `applyCloseSubmissionToText` (close-submission-summary.ts:105) | Every plain-text delivery on node `crear_lead_cerrar` with `finish_plan` output | `buildCloseSubmissionSummary` sentences (91-100, 122): sent/blocked/partial variants with date + provider names | Regex replacement of `¿Confirmas que envíe…?` | E05/L2 closure family |
-| 1.8 | `sanitizeAssistantOutput` (11140), applied 10974 + 10995 | Every delivery | Regex strips `filecite turnN file M`, collapses spaces, and **deletes a trailing final period** (`replace(/\.(?=\s*$)/u, '')`) | Silent mutation of model text | E07/L2 renderer audit |
+| symbol | file | old caller | replacement status |
+| --- | --- | --- | --- |
+| `enforceFaqAmbiguityReply` | `src/runtime/agent-service.ts` | `necesidad_cubierta` finished path; main compose seam; information batch (`ambiguitySafeReply`) | E04 / L2 clarification family — not started |
+| `enforcePurchaseReplyDeterministic` | `src/runtime/agent-service.ts` | information batch after `composeReply` | E02 / L2 purchase family — not started |
+| `enforceMissingFieldReply` | `src/runtime/agent-service.ts` | main compose seam, node `aclarar_pedir_faltante`, only `budget_or_guest_range` | E04 / L2 clarification family — not started |
+| `enforceAmbiguousProviderConfirmationReply` | `src/runtime/agent-service.ts` | main compose seam when `providerConfirmationGuard.ambiguous` | E04 / L2 clarification family — not started |
+| RSVP merge block (`deterministicReplyText`, `deterministicReplyIsComplete`, `deterministicIsDecliningOffer`) | `src/runtime/agent-service.ts` | `responder_invitacion` after `composeReply`; full replacement when declining-offer/complete, else prepended as first paragraph | E03 / L2 RSVP family — not started |
+| `enforceContactRequestFields` + `completeContactConfirmation` (structured contact path in `renderOutbound`) | `src/runtime/agent-service.ts` | every structured-message delivery via `renderOutbound` | E05 / L2 contact+closure family — not started |
+| `applyCloseSubmissionToText` + `buildCloseSubmissionSummary` (plain-text close path in `renderOutbound`) | `src/runtime/close-submission-summary.ts` + `src/runtime/agent-service.ts` | every plain-text delivery on node `crear_lead_cerrar` with `finish_plan` output | E05 / L2 closure family — not started |
+| `sanitizeAssistantOutput` | `src/runtime/agent-service.ts` | every delivery via `renderOutbound` (renderer path + plain-text path); regex strips `filecite turnN file M`, collapses spaces, deletes trailing final period | E07 / L2 renderer audit — partial (still present; layout audit pending) |
 
 ## 2. Purchase prose renderers (`purchase-reply-projector.ts`)
 
-All called only from `enforcePurchaseReplyDeterministic` (§1.2) except `resolveCapabilityPurchaseContinuation` (§4.3) and `renderVoucherContinuityReply` internals. No production caller for `resolvePurchaseReplyText` (dead; tests only).
+All called only from `enforcePurchaseReplyDeterministic` (section 1) except
+`resolveCapabilityPurchaseContinuation` (section 3) and
+`renderVoucherContinuityReply` internals. No production caller for
+`resolvePurchaseReplyText` (dead; tests only). Verified by grep in section 8.
 
-| Symbol | Lines | Emitted content |
-| --- | --- | --- |
-| `renderPurchaseReplyDeterministic` | 327 | Cart/order/conflict/no-record fixed sentences; reference/neutral selection enumerations |
-| `renderConciseApprovedStatus` | 393 | `El pago de tu regalo para ${event} figura aprobado.` |
-| `renderReferenceMatchedSingle` | 418 | Single-record reference answer by status |
-| `renderReferenceSelection` | 444 | Multi-candidate reference question |
-| `renderNeutralPurchaseSelection` | 464 | Generic multi-record selection question |
-| `renderConciseTransferValidation` | 504 | Pending-transfer method + 72h window text |
-| `renderOrderPlusCartCheckout` | 543 | Pending order + active cart checkout text |
-| `renderPendingCorrectionGrounding` | 604 | Pending-correction grounding text |
-| `renderVoucherContinuityReply` | 614 | Voucher continuity text |
-| `renderReportedPendingInitial` / `renderReportedShortfallPending` | 657/674 | User-reported pending variants |
-| Keep (no prose): `selectPurchaseReplyOutcome`, disclosed field readers, `projectPurchaseReplyForModel`, reconciliation, reference matching | — | Factual projection only |
-
-Replacement: E02 — keep outcome selection + projection, delete text replacement.
+| symbol | file | old caller | replacement status |
+| --- | --- | --- | --- |
+| `renderPurchaseReplyDeterministic` | `src/runtime/purchase-reply-projector.ts` | `enforcePurchaseReplyDeterministic`; `resolvePurchaseReplyText` | E02 — not started (keep outcome selection + projection, delete text replacement) |
+| `renderConciseApprovedStatus` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderReferenceMatchedSingle` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderReferenceSelection` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderNeutralPurchaseSelection` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderConciseTransferValidation` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderOrderPlusCartCheckout` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderPendingCorrectionGrounding` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `renderVoucherContinuityReply` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch + voucher continuity internals | E02 — not started |
+| `renderReportedPendingInitial` / `renderReportedShortfallPending` | `src/runtime/purchase-reply-projector.ts` | `renderPurchaseReplyDeterministic` dispatch | E02 — not started |
+| `resolvePurchaseReplyText` | `src/runtime/purchase-reply-projector.ts` | none in production (dead; tests only) | E02 — not started (delete with tests) |
+| `selectPurchaseReplyOutcome` + disclosed field readers + `projectPurchaseReplyForModel` + reconciliation + reference matching | `src/runtime/purchase-reply-projector.ts` | `enforcePurchaseReplyDeterministic` (factual projection only, no prose) | E02 — keep |
 
 ## 3. Zero-model-call fixed replies (`agent-service.ts`)
 
 Each path returns `renderOutbound({text: fixed})` with no `composeReply` on that branch.
 
-| Bundle ID | Location | Caller | Emitted content |
+| symbol | file | old caller | replacement status |
 | --- | --- | --- | --- |
-| `human_escalation_soft_pause` | 531 | Soft-pause after escalation | (text above site; escalation pause message) |
-| `human_help_offer_accepted` | 634 | Health-offer accept | `humanEscalationRequestedMessage`: `handoff_outcomes.json` requested/failed variants |
-| `conversation_health_help_offer` | 681 | Health monitor | Fixed `Siento que no estamos avanzando como deberíamos. ¿Quieres que una persona del equipo se una a esta conversación para ayudarte?` (7662) |
-| `solicitar_agente_humano` | 1278 | Explicit human request | `selectExplicitHumanMessage` (7621): handoff variants incl. fixed non-auth success/failure sentences (7631-7633) |
-| `rsvp_multi_person_handoff` (+`_failure`, +deduped) | 2100/2197/2276 | Multi-person RSVP scope | `renderRsvpHandoffFragment` (3363): fixed `¡Con gusto! Para confirmar la asistencia para ti y para ${names}, nuestro equipo de apoyo humano te ayudará.` |
-| RSVP mismatch handoff | 2371 | Confirm with reminder, no record | Fixed `Gracias por tu mensaje.${reminderClause} En este momento no puedo verificar tu invitación, ya pedí apoyo humano para revisarlo.` |
-| `post_rsvp_closure` | 3720 | Post-RSVP thanks | Fixed `Gracias por tu mensaje, me alegra que la hayas disfrutado en familia. Tu asistencia sigue confirmada y figura que asistirás.` (3691) |
-| `ambiguous_provider_confirmation` | 3784 | Bare confirmation over shortlist | Fixed `¿Qué proveedor o acción estás confirmando?` (3752) |
-| `capability_clarification` | 3993 | Ambiguous capability | `capabilityBoundaryRenderer.render` or fixed `¿Qué necesitas hacer exactamente con esta información?` |
-| `capability_purchase_continuation` | 4055 | Unsupported + safe read | `resolveCapabilityPurchaseContinuation` text or safe-read context + boundary text |
-| `unsupported_operation` | 4124 | Unsupported op | `renderCapabilitySafeReadContext` (4155: voucher/pending/72h sentences) + boundary renderer or fixed `No puedo realizar esa gestión desde aquí.` |
-| `unsupported_image_media` | 4311 | Image metadata w/o access | Boundary renderer or fixed `No puedo leer ni revisar el contenido de imágenes.` |
-| `image_unavailable_fallback` | 4400/4462 | Image delivery failure | `image_outcomes.json` fixed variants; caption case appends fallback to a second pipeline reply (4373) |
-| `support_continuity_acknowledgment` | 5381 | Bounded support act, no model call | `selectSupportAcknowledgmentMessage` (5417): 8 fixed variants by kind/topic |
-| `host_withdrawal_policy_and_support` | 5527 | Host withdrawal | `host-withdrawal.json` assembled parts (policy/unavailable/status/handoff/event) |
-| `information_authentication_declined` | 5747 | Explicit verification refusal | Fixed `Entiendo. Sin autenticación no puedo continuar con esa consulta protegida. No volveré a pedirte el correo ni un código. Cerré esa consulta; si después deseas retomarla, puedes escribirnos por aquí.` (5727) |
-| `terminal_otp_handoff_retained` | 5812 | Post-terminal OTP code | `handoffMessages.requested` fixed variant |
-| `information_authentication_terminal_handoff` | 5927 | Terminal auth escalation | `selectTerminalHandoffMessage` (7636): 6 fixed identity/phone variants + handoff dictionary |
-| Classifier suppression | 704-746 | `would_suppress` in enforce mode | No text: `suppressOutbound` delivery action `suppress` (legitimate suppression candidate; L4 consolidates semantics into owner) |
-| Human escalation active | 519 | Escalation in flight | No text: `suppressOutbound(..., 'human_escalation_active')` |
-
-Replacement: E06 (support/human/image/auth/capability dictionaries → typed outcome projection + generation); E03 (RSVP fixed paths); L4 (suppression semantics into entry/owner).
+| `human_escalation_soft_pause` bundle | `src/runtime/agent-service.ts` | soft-pause after escalation | E06 — not started |
+| `human_help_offer_accepted` bundle (`humanEscalationRequestedMessage`) | `src/runtime/agent-service.ts` | health-offer accept | E06 — not started |
+| `conversation_health_help_offer` bundle | `src/runtime/agent-service.ts` | health monitor | E06 — not started |
+| `solicitar_agente_humano` bundle (`selectExplicitHumanMessage`) | `src/runtime/agent-service.ts` | explicit human request | E06 — not started |
+| `rsvp_multi_person_handoff` bundle + failure/deduped (`renderRsvpHandoffFragment`) | `src/runtime/agent-service.ts` | multi-person RSVP scope | E03 — not started |
+| RSVP mismatch handoff (`deterministicReplyText` reminder clause) | `src/runtime/agent-service.ts` | confirm with reminder, no record | E03 — not started |
+| `post_rsvp_closure` bundle | `src/runtime/agent-service.ts` | post-RSVP thanks | E03 — not started |
+| `ambiguous_provider_confirmation` bundle | `src/runtime/agent-service.ts` | bare confirmation over shortlist | E04 — not started |
+| `capability_clarification` bundle (`capabilityBoundaryRenderer.render` or fixed question) | `src/runtime/agent-service.ts` | ambiguous capability | E06 — not started |
+| `capability_purchase_continuation` bundle (`resolveCapabilityPurchaseContinuation`) | `src/runtime/agent-service.ts` | unsupported + safe read | E06 — not started |
+| `unsupported_operation` bundle (`renderCapabilitySafeReadContext` + boundary renderer) | `src/runtime/agent-service.ts` | unsupported op | E06 — not started |
+| `unsupported_image_media` bundle | `src/runtime/agent-service.ts` | image metadata without access | E06 — not started |
+| `image_unavailable_fallback` bundle | `src/runtime/agent-service.ts` | image delivery failure (incl. caption-case second-pipeline append) | E06 — not started |
+| `support_continuity_acknowledgment` bundle (`selectSupportAcknowledgmentMessage`) | `src/runtime/agent-service.ts` | bounded support act, no model call | E06 — not started |
+| `host_withdrawal_policy_and_support` bundle (`host-withdrawal.json` parts) | `src/runtime/agent-service.ts` | host withdrawal | E06 — not started |
+| `information_authentication_declined` fixed reply | `src/runtime/agent-service.ts` | explicit verification refusal | E06 — not started |
+| `terminal_otp_handoff_retained` bundle (`handoffMessages.requested`) | `src/runtime/agent-service.ts` | post-terminal OTP code | E06 — not started |
+| `information_authentication_terminal_handoff` bundle (`selectTerminalHandoffMessage`) | `src/runtime/agent-service.ts` | terminal auth escalation | E06 — not started |
+| `contextual_clarification` bundle | `src/runtime/agent-service.ts` | contextual clarification fallback | E04 — not started |
+| classifier suppression (`suppressOutbound`, `would_suppress` enforce mode) | `src/runtime/agent-service.ts` | delivery classifier | L4 (suppression semantics into owner) — not started |
+| human escalation active (`suppressOutbound human_escalation_active`) | `src/runtime/agent-service.ts` | escalation in flight | L4 — not started |
 
 ## 4. Renderer dictionaries and vocabulary mutation
 
-| Location | Content | Replacement |
-| --- | --- | --- |
-| `capability-boundary-renderer.ts` (89-124) + `defaultCapabilityBoundaryMessages` (69-80) + `prompts/…/capability_boundary.txt` | 10 fixed boundary sentences/questions served by key; `render` returns complete prose by decision+state | E06: retire dictionary, project decision/state/receipt |
-| `capability-outcome-renderer.ts` `renderTurnOutcome`/`renderHandoffOutcome` + `prompts/capability/turn_outcomes.txt` (14 fixed lines) | Complete outcome sentences per status | E06; note: `CapabilityOutcomeRenderer` has **no production callers** — delete with tests |
-| `prompts/nodes/…/handoff_outcomes.json` (8 variants), `image_outcomes.json` (4), `host-withdrawal.json` (6) | Fixed customer sentences loaded as data | E06: replace with outcome projection |
-| `openai-agent-runtime.ts` jailbreak guardrail tripwire (500-512) | Fixed `No puedo ayudar a ignorar instrucciones, revelar prompts internos o saltarme las reglas del sistema. Sí puedo ayudarte con preguntas sobre Sin Envolturas o con tu plan de evento.` with zero model call | L1 failure handling: typed operational failure + receipt, never canned prose |
-| `normalizeSpanishVocabularyText` (1794+) applied 523 to `*_es` model fields | ~17 regex substitutions (RSVP→confirmación de asistencia, QR→código de pago, chat→conversación, …) | E07: remove substitutions |
-| `message-renderer.ts` `formatSentence` (310) + `renderContactRequest` (260: fixed `Envíame tu ${labels}`) | Capitalization/punctuation authoring; fixed request sentence | E07: layout + approved data only |
+| symbol | file | old caller | replacement status |
+| --- | --- | --- | --- |
+| `CapabilityBoundaryRenderer.render` + `defaultCapabilityBoundaryMessages` + `prompts/capability/capability_boundary.txt` | `src/runtime/capability-boundary-renderer.ts` | `capability_clarification` / `unsupported_*` branches above | E06 — not started (retire dictionary, project decision/state/receipt) |
+| `CapabilityOutcomeRenderer.renderTurnOutcome` / `renderHandoffOutcome` + `prompts/capability/turn_outcomes.txt` | `src/runtime/capability-outcome-renderer.ts` | none in production — no prod callers (verified section 8); delete with tests | E06 — not started |
+| `handoff_outcomes.json` / `image_outcomes.json` / `host-withdrawal.json` message maps | `prompts/nodes/...` | human-help / image / host-withdrawal branches above | E06 — not started (replace with outcome projection) |
+| jailbreak guardrail tripwire fixed reply | `src/runtime/openai-agent-runtime.ts` | guardrail tripwire, zero model call | L1 failure handling — not started (typed operational failure + receipt, never canned prose) |
+| `normalizeSpanishVocabularyText` | `src/runtime/agent-service.ts` | applied to `*_es` model fields (RSVP→confirmación de asistencia, QR→código de pago, chat→conversación, ~17 substitutions) | E07 — partial (still present; remove substitutions) |
+| `MessageRenderer.formatSentence` + `MessageRenderer.renderContactRequest` | `src/runtime/message-renderer.ts` | `renderOutbound` structured path (`Envíame tu ${labels}`) | E07 — partial (restrict to layout + approved data) |
 
 ## 5. Model-call inventory (request assembly, E09/E10)
 
-| Stage | Assembly | Metrics today | Gap vs contract |
+| symbol | file | old caller | replacement status |
 | --- | --- | --- | --- |
-| Classifier | `OpenAiMessageResponseClassifier.classify` (message-response-classifier.ts:116), called 7436 | Model call | Temporary per plan; consolidate into entry/owner in L4 |
-| Extractor | `extract` (openai-agent-runtime.ts:215) → `composeExtractorInput` (865): history JSON + full `buildExtractorPlanSnapshot` (931: plan, provider_needs w/ 4 providers each, rsvp_state, information_state) + category context + continuity + OTP evidence | `buildRequestMetrics` (550): instruction/input bytes, toolCount, schemaPropertyCount only | E09: single profile-scoped builder; E10: capture all requests incl. retries/tool-loop at transport boundary with IDs/hashes |
-| Reply | `composeReply` (427) → `composeConversationInput` (1044): canonical turn evidence JSON + ambiguity line + category/capability/tool lines; output schema via `resolveOutputSchema`; tools via `resolveDynamicTools` | Same partial metrics via `extractOpenAiCallRef` (564, last-response-ID only) | E09/E10 as above; R03: measure at SDK serialization incl. schema+tools+retries |
-| Image | `inspectImage` (175): caption + base64, 1-turn runner | Partial metrics | Unchanged path; outcome projection replaces fixed fallbacks (E06) |
-| Audit today | `src/audit/prompt-audit.ts`, `prompt-branch-measurement.ts`, `prompt-inventory.ts`, `tests/prompt-audit.test.ts` | Static sample metrics | L0: distinguish static samples from runtime metrics; extend to real-request capture |
+| `OpenAiMessageResponseClassifier.classify` | `src/runtime/message-response-classifier.ts` | delivery classifier | temporary per plan; consolidate into entry/owner in L4 — not started |
+| `extract` → `composeExtractorInput` → `buildExtractorPlanSnapshot` | `src/runtime/openai-agent-runtime.ts` | extraction stage (history JSON + plan/provider_needs/rsvp/information_state + continuity + OTP evidence) | E09 — not started (single profile-scoped builder) |
+| `composeReply` → `composeConversationInput` → `resolveOutputSchema` / `resolveDynamicTools` | `src/runtime/openai-agent-runtime.ts` | reply stage (turn evidence JSON + ambiguity/capability/tool lines) | E09 — not started |
+| `inspectImage` | `src/runtime/openai-agent-runtime.ts` | image path (caption + base64, 1-turn runner) | E06 outcome projection — not started |
+| `buildRequestMetrics` + `extractOpenAiCallRef` | `src/runtime/openai-agent-runtime.ts` | all three stages (instruction/input bytes, toolCount, schemaPropertyCount, last-response-ID only) | E10 — partial (capture all requests incl. retries/tool-loop at transport boundary with IDs/hashes) |
+| `prompt-audit.ts` + `prompt-branch-measurement.ts` + `prompt-inventory.ts` | `src/audit/*` | static sample metrics (`tests/prompt-audit.test.ts`) | L0 — distinguish static samples from runtime metrics; extend to real-request capture |
 
 ## 6. Semantic-override candidates (E08/L3, validation/preservation kept)
 
-- `normalizeInformationExtractionAmbiguity` (4645): non-FAQ ambiguity with requests → `status: 'clear'`, interpretations cleared. Blanket semantic override; E08 removal target (Carina comparison test).
-- `guardAmbiguousProviderConfirmation` (8329) + `isBareProviderConfirmationTurn` (8320) + `hasNoConfirmationDelta` (8285): structured, but second-guesses extractor ambiguity; L3 audit whether they erase semantic ambiguity without new evidence.
-- `hasGroundedSelectionReference` (8400): token-overlap (≥4 chars) matching of user text against extracted hints — exact/grounded lookup retained per contract, but L3 must confirm it only matches already-extracted values.
-- `isExplicitHumanRequest` (8260), `isSupportWinOverHuman` (8274): typed-field routing with legacy actionIntent fallback; L3 moves residual semantics to model output.
-- `dynamic-agent-policy.ts` tool gating (191-206): precondition enforcement (keep). `turn-capability-policy.ts:232 projectReplyEvidence`: typed outcome (keep, rewire to generation).
-- No `includes()`/`startsWith()` free-text intent routing found in the reply path beyond the above; extractor prompts carry the `requestedOperation` "meaning, never isolated words" rule (openai-agent-runtime.ts:893).
+| symbol | file | old caller | replacement status |
+| --- | --- | --- | --- |
+| `normalizeInformationExtractionAmbiguity` | `src/runtime/agent-service.ts` | extraction post-processing (2 apply sites) then reply input | E08 — not started (removal target; Carina comparison test) |
+| `guardAmbiguousProviderConfirmation` + `isBareProviderConfirmationTurn` + `hasNoConfirmationDelta` | `src/runtime/agent-service.ts` | main compose seam; second-guesses extractor ambiguity | L3 audit — not started |
+| `hasGroundedSelectionReference` | `src/runtime/agent-service.ts` | selection reference match (token-overlap ≥4 chars) | L3 confirm exact/grounded-only — not started |
+| `isExplicitHumanRequest` + `isSupportWinOverHuman` | `src/runtime/agent-service.ts` | typed-field routing with legacy actionIntent fallback | L3 move residual semantics to model output — not started |
+| `dynamic-agent-policy.ts` tool gating | `src/runtime/dynamic-agent-policy.ts` | precondition enforcement | keep |
+| `turn-capability-policy.ts: projectReplyEvidence` | `src/runtime/turn-capability-policy.ts` | typed outcome | keep, rewire to generation |
+
+No `includes()`/`startsWith()` free-text intent routing found in the reply path
+beyond the above; extractor prompts carry the `requestedOperation` "meaning,
+never isolated words" rule (`openai-agent-runtime.ts: composeExtractorInput`).
 
 ## 7. Eval harness paths (E11/E12)
 
-- `src/evals/targets/live-lambda.ts`, `case-schema.ts`, `runner.ts`, `reporting.ts`: trace raw provenance vs delivered output today via redacted artifacts; missing-evidence handling and transformation versioning need the E11 split (raw candidate / delivered / transform version / failed generation).
-- `runner.ts buildSemanticJudgeContext` + `scorers/semantic-judge.ts`: judge packet composition; E12 requires candidate / candidate-visible evidence / independent effect truth / expectations separated, history truncated at judged turn.
+| symbol | file | old caller | replacement status |
+| --- | --- | --- | --- |
+| `live-lambda.ts` + `case-schema.ts` + `runner.ts` + `reporting.ts` | `src/evals/targets/live-lambda.ts`, `src/evals/*` | trace raw provenance vs delivered output via redacted artifacts | E11 — partial (split raw candidate / delivered / transform version / failed generation) |
+| `buildSemanticJudgeContext` + `scorers/semantic-judge.ts` | `src/evals/runner.ts`, `src/evals/scorers/semantic-judge.ts` | judge packet composition | E12 — partial (separate candidate / candidate-visible evidence / independent effect truth / expectations; truncate history at judged turn) |
+
+## 8. Verification evidence (reproduced at `29ed763e`; line numbers informational only)
+
+All commands run at worktree whose seven runtime blobs match section 0
+(`git hash-object` verified YES for all).
+
+- `rg -n "deterministic" src/runtime`: 54 matched lines total, 43 in
+  `src/runtime/agent-service.ts`, 8 files:
+  `agent-service.ts`, `close-submission-summary.ts`, `dynamic-agent-policy.ts`,
+  `extraction-schemas.ts`, `model-composition.ts`, `openai-agent-runtime.ts`,
+  `purchase-reply-projector.ts`, `reply-evidence-projector.ts`.
+- `rg -n "deterministicReplyText" src`: 12 hits, all in `agent-service.ts`
+  (declaration + RSVP mismatch assignment + 2 delivery uses + 3
+  `renderRsvp*Deterministically` assignments + pending-text assignment +
+  mutation-result assignment + null-check + fragment + completeness flag).
+- `rg -n "enforcePurchaseReplyDeterministic" src`: definition
+  `enforcePurchaseReplyDeterministic` + 1 production caller in the information
+  batch after `composeReply` (reproduced at definition `7047` / caller `5273`;
+  informational, authority is the symbol pair).
+- `rg -n "renderRsvp" src`: 3 deterministic producers
+  (`renderRsvpEventSelectionDeterministically`,
+  `renderRsvpCurrentStateDeterministically`,
+  `renderRsvpMutationResultDeterministically`) + `renderRsvpHandoffFragment` +
+  `renderRsvpDurableOutcomeEs` (effect executor, keep).
+- `rg -n "renderPurchaseReplyDeterministic" src`: definition at
+  `purchase-reply-projector.ts:327` + `resolvePurchaseReplyText` fallback call
+  (informational).
+- `rg -n "resolvePurchaseReplyText" src`: definition at
+  `purchase-reply-projector.ts:364`; no production callers (dead; tests only).
+- `rg -n "CapabilityOutcomeRenderer|renderTurnOutcome|renderHandoffOutcome" src`:
+  definition in `capability-outcome-renderer.ts` + one audit reference in
+  `src/audit/prompt-inventory.ts`; zero production callers — delete with tests.
+- `rg -n "sanitizeAssistantOutput" src`: 3 sites, all `agent-service.ts`
+  (renderer path `11051`, plain-text path `11084`, definition `11257`;
+  informational).
+- `rg -n "normalizeInformationExtractionAmbiguity" src`: 3 sites, all
+  `agent-service.ts` (2 apply sites `780`/`974`, definition `4651`;
+  informational).
+- `rg -n "renderOutbound" src/runtime`: 31 call/definition sites (30 in
+  `agent-service.ts` callers + 1 `private renderOutbound` definition); all 31
+  inspected for unlabelled branches — name search alone was insufficient per
+  contract Section A. Includes the zero-model fixed branches (section 3), the
+  structured/plain-text close paths (section 1), and the classifier
+  suppression sites.
+- `rg -n "deterministic:" src`: 20 `deterministic:` bundle IDs exercised in
+  `agent-service.ts` (escalation, health, human request, RSVP handoff ×3,
+  post-RSVP closure, ambiguous provider confirmation, contextual
+  clarification ×2, capability clarification/continuation, unsupported
+  operation/image-media, image fallback ×2, host withdrawal, auth declined,
+  terminal OTP retained/handoff).
+
+## 9. E-table verification at `29ed763e`
+
+| ID | status | evidence |
+| --- | --- | --- |
+| E01 | done | `reply-evidence-projector.ts`: `ReplyMode`/`deterministicText`/fallback-to-template removed; `ReplyDisposition = suppressed \\| composed \\| operational_failure`, `projectReply` requires the reply model on complete outcomes. `tests/s10-model-projection.test.ts` asserts `requiresReplyModel`. |
+| E02 | not started | `enforcePurchaseReplyDeterministic` + all prose `render*` + `resolvePurchaseReplyText` still present (sections 1-2). |
+| E03 | not started | `deterministicReplyText` merge block + 3 `renderRsvp*Deterministically` + handoff/mismatch/closure branches still present (sections 1, 3). |
+| E04 | not started | `enforceFaqAmbiguityReply` / `enforceMissingFieldReply` / `enforceAmbiguousProviderConfirmationReply` + `contextual_clarification` still present. |
+| E05 | not started | `enforceContactRequestFields` / `completeContactConfirmation` / `buildCloseSubmissionSummary` / `applyCloseSubmissionToText` still present. |
+| E06 | not started | Both capability renderers + outcome JSON maps + support/auth/image fixed branches + guardrail tripwire still present. `CapabilityOutcomeRenderer` confirmed callerless but not yet deleted. |
+| E07 | partial | `sanitizeAssistantOutput` (incl. trailing-period deletion), `normalizeSpanishVocabularyText` substitutions, `formatSentence`/`renderContactRequest` authoring all still present; only audited, not removed. |
+| E08 | not started | `normalizeInformationExtractionAmbiguity` + provider-confirmation guards + token-overlap matcher still present. |
+| E09 | not started | Split extractor/reply builders with planning-heavy snapshots still present; no single profile-scoped builder. |
+| E10 | partial | `buildRequestMetrics`/`extractOpenAiCallRef` capture instruction/input bytes + last-response-ID only; no retry/tool-loop/per-request ID+hash capture. `spanish_only` baseline failure (`token_usage_present`) confirms the gap. |
+| E11 | partial | `live-lambda.ts`/`runner.ts`/`reporting.ts` trace provenance vs delivery but do not split raw candidate / delivered / transform version / failed generation. |
+| E12 | partial | Judge packets carry `requestHash`/`rubricDigest`/`evidenceDigest` but do not separate candidate-visible evidence from fixture truth (manifest records delia/s01 disclosure-minimality verdicts as unresolvable until E12). |
+| R-requirements | contract frozen | R01-R11 per acceptance-contract.md; R05 manifest frozen at 79/83 with 4 classified failures; no rescore. |
+
+## 10. Inventory diff: `a8e443ab` → `29ed763e` (why the old inventory drifted)
+
+- `git diff --stat a8e443ab..29ed763e -- src/runtime/`: 6 files, +299/−132.
+  `agent-service.ts` (+161 lines mostly L1 seam wiring),
+  `reply-evidence-projector.ts` (E01: `ReplyMode`→`ReplyDisposition`),
+  `openai-agent-runtime.ts` (−82 net), `contracts.ts`, `model-composition.ts`
+  (new L1 entry), `prompt-loader.ts`.
+- Symbol drift from line-number authority (informational):
+  `enforcePurchaseReplyDeterministic` definition `6975`→`7047` (+72);
+  `sanitizeAssistantOutput` definition `11140`→`11257` (+117);
+  `enforceFaqAmbiguityReply` callers unchanged as symbols (868/1896/5254 → same
+  symbols at new lines). Old inventory line numbers are superseded; symbols
+  above are the authority.
+- Count drift: `deterministic` in `src/runtime` 60→54 lines
+  (`agent-service.ts` 44→43) from the E01 removal of `deterministic` mode
+  comments/code; `renderOutbound` sites stable at 31; purchase projector
+  symbols unchanged (`renderPurchaseReplyDeterministic:327`,
+  `resolvePurchaseReplyText:364` both stable).
+- `purchase-reply-projector.ts`, `message-renderer.ts`,
+  `capability-outcome-renderer.ts`, `capability-boundary-renderer.ts` blobs
+  unchanged across the range (hashes in section 0 verify at both ends for the
+  four files; L1 did not touch them).
+
+## 11. Wave1-L2 gaps report (what blocks L2 start)
+
+1. L1 deploy+gate pending (manifest placeholder): commits `1305f973`/`29ed763e`
+   postdate dev deploy `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=`; redeploy
+   development (CloudFormation, `se-dev`, `us-east-1`, STS `684516060775`) then
+   run the full `npm run eval:behavior-live` before any L2 runtime edit.
+2. L2 single-writer lock required on `agent-service.ts` (+
+   `purchase-reply-projector.ts` for wave 3): waves 3-8 serialize; this
+   inventory makes no runtime edit.
+3. L2 order per plan.yaml: purchase + close (waves 3-4) first, then
+   support/capability, RSVP, clarification/media/auth (waves 5-7). Each family
+   needs its own `live-behavior-coverage.yaml` entry with hard structural +
+   hard `text_semantic` (`requireJudge: true`) plus an offline twin.
+4. E10/E12 must land before any byte-reduction or disclosure-minimality claim:
+   hidden second calls undetectable today; judge packets omit
+   candidate-visible purchase facts (delia/s01 stay failures, no rescore).
+5. Pre-existing typecheck failure `tests/model-output-origin.test.ts:138`
+   (`Type 'undefined' is not assignable to type 'TurnMessageContext'`) is L1
+   scope; L2 must not widen it. Lint is green (section 12).
+
+## 12. Quality gates recorded (W0-02)
+
+- `npm run lint`: PASS (`eslint .`, exit 0, 2026-09-10).
+- `npm run typecheck` (`tsc --noEmit`): FAIL, pre-existing, single error
+  `tests/model-output-origin.test.ts(138,7): error TS2322: Type 'undefined' is
+  not assignable to type 'TurnMessageContext'.` Noted as L1 scope per task
+  acceptance; no runtime file touched by this inventory task.

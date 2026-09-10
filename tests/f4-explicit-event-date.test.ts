@@ -10,7 +10,7 @@ describe('F4 explicit event date resolves without today or null substitution', (
   });
 
   it('normalizes a model Spanish long-form date', () => {
-    expect(resolveExplicitEventDate('18 de octubre de 2026', 'Cierra el plan.')).toBe(
+    expect(resolveExplicitEventDate('18 de octubre de 2026', 'Mi evento es el 18/10/2026. Cierra el plan.')).toBe(
       '2026-10-18',
     );
   });
@@ -28,6 +28,12 @@ describe('F4 explicit event date resolves without today or null substitution', (
     expect(resolveExplicitEventDate('', 'Mi evento es el 18/10/2026. Cierra el plan.')).toBe(
       '2026-10-18',
     );
+  });
+
+  it('rejects model-only dates and dates contradicted by user evidence', () => {
+    expect(resolveExplicitEventDate('2026-10-18', 'mi teléfono es 51954779071')).toBeNull();
+    expect(resolveExplicitEventDate('2026-10-18', 'Mi evento es el 20 de octubre de 2026.')).toBeNull();
+    expect(resolveExplicitEventDate(null, '2026-10-18 o 2026-10-20')).toBeNull();
   });
 
   it('returns null instead of today when no explicit date exists', () => {
