@@ -1,0 +1,258 @@
+plan_id: 2026-09-09-lean-conversation
+status: in_progress
+tldr: |
+  Lean conversation refactor per plan.md plus binding acceptance-contract.md (E01-E12, R01-R11).
+  Wave0 re-pins the baseline to HEAD 29ed763e and tracks the plan docs. L0/L1 code is
+  committed but L1 is not yet deployed. L2 migrates purchase plus close first, then the
+  remaining families, under a single-writer lock on shared runtime files.
+created_at: '2026-09-09'
+created_by: gem-implementer
+revision: 1
+replan_count: 0
+planner_revision_used: false
+baseline:
+  objective: Refactor to model-owned conversation with runtime-owned evidence and effects,
+    keeping event-plan-first scope, with zero fixed replies and measured request reduction.
+  acceptance_criteria:
+    - 100 percent of ordinary delivered conversational text comes from the current-turn model output
+    - Zero fixed complete replies, post-generation prose replacements, and discarded reply calls
+    - Full live gate passes with zero failed, errored, or skipped cases, all hard structural
+      plus required semantic judges green
+    - No byte-reduction claim until E10 capture exists with identical denominators
+  captured_at: '2026-09-09'
+  git_head: 29ed763eec50f7b7888cb1486b75ed5a6fe75e04
+  prior_inspected: 40d3bd79393462491ab2bab85107e05c18286d36
+  baseline_run: eval-2026-09-09T22-54-06-714Z-1674f810
+  baseline_score: 79/83 passed, 4 failed, 0 errored, 0 skipped
+decisions:
+  - "Single-writer lock: at most one active task edits shared runtime files (agent-service.ts, openai-agent-runtime.ts, contracts.ts). Waves 3 through 8 serialize on those files; no parallel patches."
+  - "L2 order: purchase family plus contact and quotation closure first (waves 3-4), then support and capability, RSVP, and clarification plus images plus auth (waves 5-7)."
+  - "Baseline 79/83 is never rescored. Evaluator changes require a separate reviewed change with both baseline and candidate rerun on the revised contract."
+  - "plan.md line 3 keeps the original 40d3bd79 inspection note as historical fact; the re-pin lives in evaluation-manifest.md plus the implementation log."
+  - "Every behavior-changing wave gets its own live-behavior-coverage.yaml entry with hard structural plus hard text_semantic requireJudge true, a deterministic offline twin, a development deploy (se-dev, us-east-1, STS 684516060775), and the full mandatory live suite. Contract and test-only changes run focused checks only."
+assumptions:
+  - L0 inventory plus frozen contract (a8e443ab, 436600e3, 04500c10) and L1 seam
+    (1305f973, 29ed763e) are committed on branch dev; L1 deploy plus gate are pending.
+  - September deterministic-response fix plans are superseded for response
+    prescriptions; their historical evidence is preserved as-is.
+  - selectSupportAcknowledgmentMessage is dead code kept for L2 deletion with its tests.
+tasks:
+  - id: w0-baseline-repin
+    title: Re-pin baseline to HEAD and track plan docs
+    description: |
+      Record the 5 commits past 40d3bd79 in the log. Triage the dirty tree
+      (preserve information.txt edit, retain probe scratch, leave superseded scratch
+      untracked with reasons). Track plan.md plus acceptance-contract.md, create this
+      plan.yaml, and update evaluation-manifest.md (HEAD, recomputed digest, L1 deploy
+      placeholder, 4-failure classification). No runtime edits.
+    wave: 0
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - git log shows 29ed763e HEAD with the 5 commits recorded in docs/implementation-log.md
+      - Dirty tree triaged with a reason per item; probe removed or recorded
+      - plan.md plus acceptance-contract.md tracked; plan.yaml created
+      - Manifest HEAD is 29ed763e with recomputed digest, deploy placeholder, and classified failures
+    handoff:
+      constraints:
+        - Do not edit agent-service.ts or openai-agent-runtime.ts in this task.
+        - Do not claim R03 byte win from static sizes. Do not rescore 79/83.
+        - Preserve concurrent changes. Fail closed on missing digests.
+      relevant_context:
+        - docs/plan/2026-09-09-lean-conversation/plan.md
+        - docs/plan/2026-09-09-lean-conversation/acceptance-contract.md
+        - docs/plan/2026-09-09-lean-conversation/evaluation-manifest.md
+  - id: l0-freeze-verify
+    title: L0 contract freeze and inventory verification
+    description: |
+      Confirm the model-written conversation invariant in AGENTS.md, the outbound-path
+      inventory, and the frozen evaluation contract with digests. No behavior change.
+    wave: 1
+    agent: gem-implementer
+    status: completed
+    retries_used: 0
+    acceptance_criteria:
+      - Path inventory plus baseline artifact exist with exact file and line evidence
+      - No production behavior change
+    handoff:
+      constraints:
+        - Contract is the authority for later tests; do not weaken it to pass.
+      relevant_context:
+        - docs/plan/2026-09-09-lean-conversation/outbound-inventory.md
+        - docs/plan/2026-09-09-lean-conversation/evaluation-manifest.md
+  - id: l1-seam-gate
+    title: L1 composition seam deploy and gate
+    description: |
+      Deploy L1 bytes (model-composition.ts, ReplyDisposition, support continuity bundle,
+      renderer audit) to development, then run focused suites plus typecheck plus lint
+      plus the full mandatory live gate. Record digest, run artifact, and metrics.
+    wave: 2
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Sentinel model text survives the outbound pipeline on migrated paths
+      - Failure cannot quietly invoke canned prose
+      - Full live gate green on the deployed L1 bytes with artifacts recorded
+    handoff:
+      constraints:
+        - Deploy via CloudFormation with se-dev in us-east-1; fail closed unless STS is 684516060775.
+        - No byte-reduction claim until E10 capture exists.
+      relevant_context:
+        - src/runtime/model-composition.ts
+        - tests/model-output-origin.test.ts
+  - id: l2-purchase
+    title: L2 purchase reply family migration
+    description: |
+      Remove enforcePurchaseReplyDeterministic text replacement plus prose renderers;
+      keep outcome selection, disclosure readers, and projection. Rewrite template tests
+      to evidence plus model-output delivery with live semantic expectations.
+    wave: 3
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Zero purchase deterministic prose replacements remain
+      - f3 purchase truthfulness plus continuity suites pass with live expectations
+    handoff:
+      constraints:
+        - "Single-writer lock: exclusive owner of agent-service.ts plus purchase-reply-projector.ts."
+        - Preserve currency normalization, reconciliation, and reference matching.
+      relevant_context:
+        - src/runtime/purchase-reply-projector.ts
+        - tests/f3-purchase-truthfulness.test.ts
+  - id: l2-close
+    title: L2 contact and quotation closure migration
+    description: |
+      Replace contact confirmation prose, close submission summaries, and text insertion
+      with typed receipt projection before generation. Keep validation and the
+      explicit-confirmation gate.
+    wave: 4
+    depends_on: [l2-purchase]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Five-turn close live case shows no early send, one authorized send, dated response
+      - f4 close suites pass with receipt-data assertions
+    handoff:
+      constraints:
+        - "Single-writer lock: same exclusive owner continues on shared files."
+      relevant_context:
+        - src/runtime/close-submission-summary.ts
+        - tests/f4-close-submission-summary.test.ts
+  - id: l2-support-capability
+    title: L2 support and capability language migration
+    description: |
+      Retire support acknowledgement, escalation, and capability renderer dictionaries;
+      project support issue, status, and permitted next action. Delete the dead
+      selectSupportAcknowledgmentMessage with its tests.
+    wave: 5
+    depends_on: [l2-close]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Support continuity plus capability boundary suites pass with live expectations
+      - Missing identity cannot claim help was requested
+    handoff:
+      constraints:
+        - Single-writer lock on shared files.
+        - Preserve decision and receipt logic; only prose goes.
+      relevant_context:
+        - src/runtime/capability-outcome-renderer.ts
+        - src/runtime/capability-boundary-renderer.ts
+  - id: l2-rsvp
+    title: L2 RSVP prose migration
+    description: |
+      Delete RSVP deterministic prose and the post-generation merge block; feed state,
+      target, and receipt into the model before its response.
+    wave: 6
+    depends_on: [l2-support-capability]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - RSVP authorization and durability suites pass with output-origin assertions
+    handoff:
+      constraints:
+        - Single-writer lock on shared files.
+      relevant_context:
+        - tests/s07-rsvp-decision-policy.test.ts
+        - tests/s11-rsvp-durability.test.ts
+  - id: l2-clarification-media-auth
+    title: L2 clarification, image, and auth refusal migration
+    description: |
+      Replace ambiguity, missing-field, capability-clarification, image fallback, and
+      terminal-auth fixed replies with unresolved alternatives and outcome projection.
+    wave: 7
+    depends_on: [l2-rsvp]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - No inserted questions after generation; terminal outcomes stay truthful
+    handoff:
+      constraints:
+        - Single-writer lock on shared files.
+      relevant_context:
+        - tests/f3-ambiguous-confirmation.test.ts
+  - id: l3-semantic
+    title: L3 authoritative semantic interpretation
+    description: |
+      Remove blanket ambiguity clearing and keyword routing; wire one real request
+      builder with profile-scoped instructions, schema, and tools.
+    wave: 8
+    depends_on: [l1-seam-gate]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Carina stays ambiguous until clarified; live purchase, support, and RSVP
+        requests carry no planning-only fields
+    handoff:
+      constraints:
+        - Single-writer lock on shared files. Keep validation and preservation.
+      relevant_context:
+        - src/runtime/extraction-projection.ts
+        - src/runtime/openai-agent-runtime.ts
+  - id: l4-ownership
+    title: L4 persistent specialist ownership
+    description: |
+      Implement entry plus planning, purchase, invitation, and support profiles on one
+      state store with real tools; delete global extractor participation per moved
+      domain; bound transfers to one per turn.
+    wave: 9
+    depends_on: [l2-clarification-media-auth, l3-semantic]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - No-tool continuation uses one model call; one transfer maximum per turn
+      - Full cross-owner sequences pass with exact effect counts
+    handoff:
+      constraints:
+        - Single-writer lock on shared files. Never run old and new paths twice for one turn.
+      relevant_context:
+        - src/runtime/agent-service.ts
+        - src/core/plan.ts
+  - id: l5-simplify
+    title: L5 machinery deletion and simplification proof
+    description: |
+      Delete unreachable prompt triples, contradictory shared instructions, unused
+      projectors, and obsolete tests. Report net deletion plus real request reduction.
+    wave: 10
+    depends_on: [l4-ownership]
+    agent: gem-implementer
+    status: pending
+    retries_used: 0
+    acceptance_criteria:
+      - Net source and prompt deletion reported with before and after request metrics
+      - All model instructions remain git-trackable under prompts/; no dead path remains
+    handoff:
+      constraints:
+        - Document any byte-target blocker instead of relaxing the target silently.
+      relevant_context:
+        - src/runtime/prompt-manifest.ts
+        - src/runtime/prompt-loader.ts
