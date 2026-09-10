@@ -1132,10 +1132,7 @@ export class InformationOrchestrator {
     requestedCustomerTransactionNumber: string | null;
   } | undefined> {
     const lookupResource: 'orders' | 'gift_purchases' = request.aspects.some(
-      (aspect) =>
-        aspect === 'dedication' ||
-        aspect === 'thanks' ||
-        aspect === 'payment_details',
+      (aspect) => aspect === 'dedication' || aspect === 'thanks',
     )
       ? 'gift_purchases'
       : 'orders';

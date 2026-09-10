@@ -3960,7 +3960,21 @@ export class AgentService {
           }
         : undefined,
     });
-    if (decision.status === 'not_applicable' || decision.status === 'supported') {
+    const documentPurchaseAmbiguity = decision.status === 'unsupported' &&
+      decision.operation === 'confirmation_document.send' &&
+      args.extraction.informationRequests.some((request) => request.kind === 'purchase');
+    const effectiveDecision = documentPurchaseAmbiguity
+      ? resolveCapabilityDecision({
+        requestedOperation: null,
+        manifest: this.capabilityManifest,
+        ambiguity: {
+          status: 'ambiguous',
+          candidateOperations: [decision.operation, 'purchase.orders.read'],
+          questionKey: 'status_or_document',
+        },
+      })
+      : decision;
+    if (effectiveDecision.status === 'not_applicable' || effectiveDecision.status === 'supported') {
       return null;
     }
 
@@ -3969,10 +3983,10 @@ export class AgentService {
     // authoritative state before deciding whether a write is needed. A
     // capability-only request has no such evidence and remains intercepted.
     const hasRsvpEvidence = this.hasMeaningfulRsvpEvidence(args.plan, args.extraction);
-    const hasSecondaryPlanningOperation = decision.status === 'unsupported' &&
+    const hasSecondaryPlanningOperation = effectiveDecision.status === 'unsupported' &&
       this.hasProviderPlanningEvidence(args.extraction) &&
       this.isProviderPlanningActionIntent(args.extraction.actionIntent) &&
-      !this.isProviderPlanningCapabilityOperation(decision.operation);
+      !this.isProviderPlanningCapabilityOperation(effectiveDecision.operation);
     if (hasRsvpEvidence || hasSecondaryPlanningOperation) {
       return null;
     }
@@ -3986,21 +4000,40 @@ export class AgentService {
     // extractor labels it an auth operation (auth.email_otp); the close flow
     // persists it instead of discarding the turn. Capability-only requests
     // with no such typed evidence remain intercepted.
-    if (decision.status === 'unsupported' &&
+    if (effectiveDecision.status === 'unsupported' &&
       args.extraction.actionIntent === 'confirmar_proveedor' &&
       this.hasProviderSelectionEvidence(args.extraction)) {
       return null;
     }
-    if (decision.status === 'unsupported' &&
+    if (effectiveDecision.status === 'unsupported' &&
       args.plan.current_node === 'crear_lead_cerrar' &&
       this.hasCloseContactField(args.extraction) &&
-      this.isAuthCapabilityOperation(decision.operation)) {
+      this.isAuthCapabilityOperation(effectiveDecision.operation)) {
+      return null;
+    }
+    if (effectiveDecision.status === 'unsupported' &&
+      args.plan.lifecycle_state === 'finished' &&
+      this.hasFinishedCloseEvidence(args.plan)) {
+      return null;
+    }
+    if (effectiveDecision.status === 'clarify' &&
+      this.hasProviderPlanningEvidence(args.extraction) &&
+      (this.isProviderPlanningActionIntent(args.extraction.actionIntent) ||
+        (args.extraction.providerQueryIntents?.length ?? 0) > 0 ||
+        (args.extraction.providerPlanOperations?.length ?? 0) > 0)) {
+      return null;
+    }
+    if (effectiveDecision.status === 'clarify' &&
+      (args.plan.information_state.last_completed_request?.kind === 'purchase' ||
+        args.plan.information_state.last_completed_request?.kind === 'associated_event') &&
+      (this.isSupportAcknowledgment(args.extraction.supportAct) ||
+        args.extraction.informationRequests.length > 0)) {
       return null;
     }
 
     const capabilityBoundaryRenderer = await this.loadCapabilityBoundaryRenderer();
 
-    if (decision.status === 'clarify') {
+    if (effectiveDecision.status === 'clarify') {
       // Capability clarification is still an information-resolution turn.
       // Preserve that node explicitly so a seeded or resumed plan cannot
       // drift into the generic planning interview while waiting for the
@@ -4015,7 +4048,7 @@ export class AgentService {
       return {
         plan,
         outbound: this.renderOutbound(
-          { text: capabilityBoundaryRenderer.render(decision) ?? '¿Qué necesitas hacer exactamente con esta información?' },
+          { text: capabilityBoundaryRenderer.render(effectiveDecision) ?? '¿Qué necesitas hacer exactamente con esta información?' },
           [], args.inbound.channel, plan.conversation_id, plan,
         ),
         trace: this.buildTrace({
@@ -4040,7 +4073,7 @@ export class AgentService {
           turnDecision,
           operationalNote: 'Capability request was ambiguous; no external call was made.',
           responseClassifier: args.responseClassifierTrace,
-          capabilityDecision: decision,
+          capabilityDecision: effectiveDecision,
         }),
       };
     }
@@ -4055,9 +4088,9 @@ export class AgentService {
       (request): request is Extract<ExtractedInformationRequest, { kind: 'purchase' }> =>
         request.kind === 'purchase' && request.amount !== null && request.amount !== undefined,
     )?.amount ?? null;
-    const purchaseContinuationText = decision.status === 'unsupported'
+    const purchaseContinuationText = effectiveDecision.status === 'unsupported'
       ? resolveCapabilityPurchaseContinuation({
-        operation: decision.operation,
+        operation: effectiveDecision.operation,
         results: safeRead.results,
         reportedAmount: reportedPurchaseAmount,
       })
@@ -4102,7 +4135,7 @@ export class AgentService {
           turnDecision: this.informationTurnDecision('capability_purchase_continuation'),
           operationalNote: 'Authorized safe read completed before the unsupported mutation; the reply uses canonical purchase evidence with no mutation and no handoff.',
           responseClassifier: args.responseClassifierTrace,
-          capabilityDecision: decision,
+          capabilityDecision: effectiveDecision,
           informationExecution: safeRead.summaries,
         }),
       };
@@ -4111,7 +4144,7 @@ export class AgentService {
     const phoneNumber = this.resolveEscalationPhone(args.inbound);
     const takeoverResult = alreadyRequested
       ? ({ status: 'success', message: 'Human takeover was already requested.' } satisfies AgentGatewayResult)
-      : decision.humanTakeoverAvailable && phoneNumber
+      : effectiveDecision.humanTakeoverAvailable && phoneNumber
         ? await this.requestHumanTakeoverWithTrace(
             this.dependencies.agentConversationGateway ?? new NoopAgentConversationGateway('not_configured'),
             phoneNumber,
@@ -4134,7 +4167,7 @@ export class AgentService {
     await this.dependencies.planStore.save({ plan, reason: 'unsupported_operation_detected' });
     args.tokenUsage.total = this.sumTokenUsage(args.tokenUsage.classifier, args.tokenUsage.extraction);
     args.timingMs.total = Date.now() - args.handleTurnStartedAt;
-    const boundaryText = capabilityBoundaryRenderer.render(decision, {
+    const boundaryText = capabilityBoundaryRenderer.render(effectiveDecision, {
       humanTakeoverRequested: alreadyRequested || takeoverSucceeded,
       humanTakeoverSucceeded: takeoverSucceeded,
       humanTakeoverFailed: !takeoverSucceeded && !alreadyRequested,
@@ -4175,8 +4208,8 @@ export class AgentService {
           ? 'Unsupported operation was handed off once.'
           : 'Unsupported operation could not be handed off; success was not claimed.',
         responseClassifier: args.responseClassifierTrace,
-        capabilityDecision: decision,
-        humanTakeoverAttempted: !alreadyRequested && decision.humanTakeoverAvailable,
+        capabilityDecision: effectiveDecision,
+        humanTakeoverAttempted: !alreadyRequested && effectiveDecision.status === 'unsupported' && effectiveDecision.humanTakeoverAvailable,
         humanTakeoverSucceeded: takeoverSucceeded,
         informationExecution: safeRead.summaries,
       }),
@@ -4707,6 +4740,12 @@ export class AgentService {
       operation === 'auth.phone_update.write' ||
       operation === 'auth.otp.send' ||
       operation === 'auth.otp.verify';
+  }
+
+  private hasFinishedCloseEvidence(plan: PlanSnapshot): boolean {
+    return plan.provider_needs.some(
+      (need) => (need.selected_provider_ids?.length ?? 0) > 0,
+    );
   }
 
   private normalizeInformationExtractionAmbiguity(
@@ -11155,7 +11194,12 @@ export class AgentService {
     if (message.type === 'close_confirmation') {
       const submissionSummary = this.resolveCloseSubmissionSummary(plan, toolUsage);
       if (submissionSummary !== null) {
-        return { ...message, summary_es: submissionSummary };
+        return {
+          ...message,
+          summary_es: submissionSummary,
+          selected_providers_es: [],
+          unselected_needs_es: [],
+        };
       }
     }
 

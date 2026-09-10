@@ -150,6 +150,18 @@ type ReplyTurnEvidence = {
      */
     contact_email_already_provided?: boolean;
     close_ready_to_dispatch?: boolean;
+    /**
+     * Lean-conversation evidence-only facts. Completed close already-sent on
+     * finished plans with selected providers (so a retry reports the existing
+     * outcome instead of dispatching again); purchase selection needs an
+     * explicit event hint or order reference before asserting event-specific
+     * details; reported shortfall payment keeps the order pending with the
+     * indexed 72 business hour validation window. Present only when their
+     * typed evidence exists so unrelated turns stay byte-identical. Facts
+     * for the model to verbalize, never reply prose.
+     */
+    close_already_sent?: boolean;
+    reported_payment_pending_validation?: boolean;
   };
   provider_candidates: Array<Record<string, unknown>>;
   recommendation_funnel: RecommendationFunnelTrace | null;
@@ -1198,6 +1210,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const supportContinuity = this.buildSupportContinuityFacts(args.request);
     const voucherContinuity = this.buildVoucherContinuityFacts(args.request);
     const hostWithdrawalContinuity = this.buildHostWithdrawalFacts(args.request);
+    const leanContinuity = this.buildLeanConversationFacts(args.request);
     const closeContinuity = closeContinuityFacts({
       currentNode: args.request.currentNode,
       contactEmail: args.request.plan.contact_email,
@@ -1266,6 +1279,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ...supportContinuity,
         ...voucherContinuity,
         ...hostWithdrawalContinuity,
+        ...leanContinuity,
         ...closeContinuity,
       },
       provider_candidates: args.providerResults.map((provider, index) =>
@@ -1343,6 +1357,46 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       voucher_image_cannot_confirm_receipt: true,
       backend_validation_pending: true,
     };
+  }
+
+  private buildLeanConversationFacts(
+    request: ComposeReplyRequest,
+  ): Pick<
+    ReplyTurnEvidence['turn_state'],
+    'close_already_sent' | 'reported_payment_pending_validation'
+  > {
+    const facts: Pick<
+      ReplyTurnEvidence['turn_state'],
+      'close_already_sent' | 'reported_payment_pending_validation'
+    > = {};
+    const hasSelectedProviders = request.plan.provider_needs.some((need) =>
+      (need.selected_provider_ids?.length ?? 0) > 0,
+    );
+    if (request.plan.lifecycle_state === 'finished' && hasSelectedProviders) {
+      facts.close_already_sent = true;
+    }
+    const act = request.extraction.supportAct ?? null;
+    const continuedThread = act !== null && (
+      act.kind === 'report_issue' ||
+      act.kind === 'provide_detail' ||
+      act.kind === 'defer_submission'
+    );
+    const reportedBudget = request.extraction.budgetSignal !== null &&
+      request.extraction.budgetSignal !== undefined &&
+      request.extraction.budgetSignal.trim().length > 0;
+    if (continuedThread && reportedBudget) {
+      const hasPendingPurchase = (request.informationResults ?? []).some((result) =>
+        result.kind === 'purchase' &&
+        result.status === 'completed' &&
+        result.purchases.some((purchase) =>
+          (purchase.paymentStatus ?? '').trim().toLocaleLowerCase('en') === 'pending',
+        ),
+      );
+      if (hasPendingPurchase) {
+        facts.reported_payment_pending_validation = true;
+      }
+    }
+    return facts;
   }
 
   /**
