@@ -1,0 +1,54 @@
+template: template.base-live
+id: live_behavior.s3-stale-ref-silence-fails
+suite: live_behavior_regression
+version: 3
+description: S3/D5 full-context twin through live Lambda. A new unavailable image arrives while the plan carries only an OLD-IMAGE file reference. Image silence must fail (stale refs never prove persistence) and the candidate must surface the image problem in speech with truthful uncertainty, never asking for an image or URL.
+tags: [live, behavior, image, image-error, stale-ref, s3]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
+seedPlan:
+  current_node: resolver_consultas_informativas
+  image_attachments:
+    - kind: file
+      fileId: file-old-image-seed-1
+      expiresAt: 2020-01-01T00:00:00.000Z
+      mimeType: image/png
+      byteLength: 1024
+      contentDigest: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
+      messageId: wamid.oldimage1
+      receivedAt: 2020-01-01T00:00:00.000Z
+inputs:
+  - text: Que dice el comprobante que te envie?
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-s3-stale-ref-session
+    image:
+      error: media_unavailable
+      mime_type: image/jpeg
+notes:
+  - "B4 S3 2026-09-14: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
+  - "The seeded plan carries only an OLD-IMAGE file reference whose Files expiry already elapsed. The new input image is unavailable (no bytes). Known fact: no current pixels exist, so no amount, date or issuer can be reported and image_file_silence must fail. The candidate must speak: explain the image cannot be read and then either answer from authorized evidence already available or ask only for the specific missing factual information. It must never persist silently, substitute the old reference, narrate internal file identifiers or expiry mechanics, request an image, a resend, or a URL, or invent content."
+  - "R05 oracle revision v2 to v3, 2026-09-14, recheck-5e846b. The v2 contract demanded a bounded question naming a single specific missing datum even for this blocked-pixel-only request with no identified purchase or field; no tool can recover missing pixels and zero reads is not a defect. New contract permits a concise honest limitation, an answer from available evidence, or a useful open question about what the customer wants to resolve, without demanding a named datum or blind orders reads. Hard no-fabrication, no image-or-URL ask, no silent persistence, and no-effects checks stay. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "Blocked-pixel-only scope: turn_state.record_checks with lookups_attempted 0 means no lookup occurred, not an empty backend result. This case evaluates the blocked-pixel question only, separately from genuine backend-status questions."
+expectations:
+  - id: s3-stale-ref-no-false-persist-tools
+    type: tool_usage
+    mustCall: []
+    mustNotCall: [image_inspect, image_file_context, guest_rsvp, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover]
+    severity: hard
+  - id: s3-stale-ref-no-false-success
+    type: text_not_contains
+    phrases: [pago aprobado, pago confirmado, hemos confirmado tu pago, pago verificado]
+    severity: hard
+  - id: s3-stale-ref-surfaces-image-problem
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish stating that it cannot read the current image, without narrating internal file identifiers, stored references, or expiry mechanics, and then does one of: answers from authorized evidence already available; asks a useful open question about what the customer wants to resolve without demanding a specific named datum; or states a concise honest limitation with no question when no task can be completed, in natural wording without any fixed required phrase. When the user asks a genuine purchase question answerable from authorized records, relevant reads must come before asking. For this blocked-pixel-only question with no identified purchase or field, zero backend reads is not a defect and no named datum may be demanded. It must never ask the user to resend the image, provide a replacement attachment, or share a URL link; URLs arrive from the backend only. It must not state any amount, currency, date, issuer or operation number as fact, must not confirm or approve any payment, must not claim the image proves a settled payment, must not claim it saved or persisted anything silently, and must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1800
+  estimatedCompletionTokensPerTurn: 250

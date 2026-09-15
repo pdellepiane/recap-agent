@@ -1,5 +1,593 @@
 # Implementation Log
 
+## 2026-09-14 — Seven targeted failures on c9f373f8: silent image persist, s11/explicit-time fixtures, empty-evidence recovery, close stall (Fixer)
+
+**Reason:** Explorer audit of the `.eval-runs/eval-2026-09-14T22-*` reruns (native_image 51463cd9 0.78, s11 5740e87a 0.79, malformed 10989047 0.74, expired cc668432 0.80, s3 0221ce81 0.73, explicit-time 44736d65 0.73, token-close 4dec43b7 0.87). Single writer on the files below; no deploy, no full gate (orchestrator-owned). All changes are removals or narrowings; no per-case phrase detectors, no hardcoded conversational sentences, no scripted prose, no new state/timers, intent/context preserved.
+**Decision:**
+- Item 1 (agent-service.ts `runPersistedImageOwnerTurn`, file path only): clear same-turn synthetic ambiguity on image-only empty-text turns with no pre-existing `owner_pending_question` before `persistTurnOwner`. Root cause: the extractor synthesizes ambiguity (0 requests, 2 interpretations) for the empty caption; `persistTurnOwner` stashed its clarification question as `owner_pending_question`, so `hasOutstandingImageTask` saw a pending question and forced `replyOnEstablishedImageNode` (`image_file_turn_processed` + ask_event_context reply) instead of `persistSilentImageTurn` (`image_file_silence`). Clearing restores silent persist; genuine task evidence (information requests, typed pending state, pre-existing pending question) still routes to the owner flow. URL path untouched. YAML untouched (still expects `image_file_silence`), no scripted ack.
+- Items 3-5 routing (agent-service.ts `hasInformationWork`): a text question the extractor tied to a prior image (`imageReference` `prior_single`/`prior_uncertain` with stored `image_attachments`) is information work, so expired-ref turns stay on the resolver bundle with `image_expired` evidence instead of falling through to entrevista/deteccion generic options. Typed linkage only; `none`/unlinked turns unaffected; image-turn gates unaffected (current-image extractions carry null reference).
+- Items 3-5 facts (openai-agent-runtime.ts `buildReplyTurnEvidence` + `ReplyTurnEvidence['turn_state'].record_checks`): new `buildRecordCheckFacts` projects attempted-check facts into reply inputs only when image evidence is unavailable — `image_check {outcome, reason}` plus `purchase_records {lookups_attempted, results_returned}` from already-available `informationResults` (no new I/O, no PII: typed enum reasons and counts only). The model can ground truthful uncertainty with a bounded fact-ask; unrelated turns stay byte-identical (empty object otherwise).
+- Items 3-5 judges (three YAML rubrics): added one empty-evidence acceptance sentence — when projected evidence shows the image unreadable and no retrievable record facts, a bounded question naming the single specific missing datum passes. Bans kept (no image/resend/replacement/URL asks, no resend-in-text, no invented content, no payment approval, no OTP). s3 silence still fails (no-false-persist tool ban + speech requirement untouched).
+- Item 7 (close stall): `shouldContinueCloseAfterRefinement` now also accepts `previousNode === 'entrevista'` when the selection round is fully closed (`unresolvedProviderShortlistNeeds` empty — every need selected or deferred), so a contact-completing turn after a misrouted close continues the close (date-ask + close continuation) instead of thanks-terminal; mid-planning turns with open shortlists still fall through. `resolveCloseBlockers` now orders `missing_event_date` before `missing_contact_fields` so the date-ask is the next step when both are missing. crear_lead_cerrar contract line 5 narrowed: contact-ask applies only when the event date is already available, else ask the date first. No keyword handler, no new state, prose stays model-written.
+- Item 2 fixture (`live-behavior-s11-rsvp-durability.yaml` v3 rubric): receipt-dictation sentence removed (model-written invariant); observable outcome only — confirmed once in Spanish, no declined/retry/OTP/internal-field/handoff-as-failure. Hard `fixture_effect_count` 1/1/0 kept as the durability proof.
+- Item 6 fixture (`live-behavior-purchase-explicit-time.yaml`): `mustCall` updated from stale `lookup_guest_orders_by_phone` to `lookup_guest_gift_purchases_by_phone` (P3 widening routes payment_details to the gift partition; live trace shows the gift lookup with 21:31 semantic PASS). No code/prompt change.
+**Tests:** new s17 pin `persists an image-only empty-text turn silently despite synthetic ambiguity` (scripted ambiguous extraction → zero compose calls, suppress, `image_file_silence`, ref persisted, no pending question stashed). Guard verified: with only the R1 hunk removed the new test fails (1 failed / 27 passed); with it, 28/28.
+**Files and working-tree blob hashes (`git hash-object`):**
+`src/runtime/agent-service.ts` f5bff9928320d3d2a5e495740c12211383cb89d0;
+`src/runtime/openai-agent-runtime.ts` 38738e6f98da13e76367a14f1113378c89504c7e;
+`src/runtime/close-submission-summary.ts` 82f1376c7c818ffb54a16f71d43b9b5f2d1b2d76;
+`prompts/nodes/crear_lead_cerrar/response_contract.txt` 1ee9222efe9d2875e6a98ad9091daef71a2b3530;
+`evals/cases/live-behavior-s11-rsvp-durability.yaml` d865e648450b3b45f28706fa7e6335582443d921;
+`evals/cases/live-behavior-purchase-explicit-time.yaml` c770ce9f2a5a6f207955e5ed4905146a7b30f56d;
+`evals/cases/live-behavior-image-file-malformed.yaml` 583951f7df12d0d518a7e1bcb4198dc309a9afd0;
+`evals/cases/live-behavior-image-expired-reference.yaml` 355c6460e5ff4cb5529b3b17452c72c0c18ca80d;
+`evals/cases/live-behavior-s3-stale-ref-silence-fails.yaml` bb6ef5c934b847ad246b39793134578fcb83864c;
+`tests/s17-image-turn.test.ts` 047719888b4c2d8f9800d569ee784f42029ece56.
+**Validation:** `npx tsc --noEmit` clean. 18 touched suites green: s17-image-turn 28 (1 new), agent-service-information-flow 59 (2 skipped), agent-service 96, prompt-audit 11 (1 skipped, crear_lead_cerrar edit needs no re-pin — only resolver has an exact byte pin), close-completed-evidence 12, close-proceed-confirmed 10, token-defer-close-yield 3, f4-close-submission-summary 7, image-file-persistence 61, r8-image-observation 8, r3-image-access-fallback 33, url-image-context 22, live-behavior-coverage 1, eval-judge-evidence-projection 14, eval-runner-judge-context 9, openai-agent-runtime-token-usage 52, d-grounded-routes 11, attempt3-typed-state 7 — 441 passed / 3 skipped (pre-existing skips), 0 failures. No full gate, no deploy, no `eval:behavior-live` run (orchestrator owns baseline/candidate rerun).
+**Limitations / unresolved:** live wording unverified without deploy; the seven live cases must rerun under the gate (old runs stay on old contracts). Expired-ref routing fires only when the extractor links the question to the prior image (`prior_single`/`prior_uncertain`); an unlinked extraction still falls to generic routing. Bare close requests without close extraction (turn2-shape) still depend on the extractor emitting `cerrar`; the R6 continuation covers the contact-completing follow-up (turn3-shape, the judged turn). `record_checks` reports checks attempted on the turn (0/0 when no lookup ran), not registry-wide absence.
+
+## 2026-09-14 — Shared-cause fixes P1-P4 + judge event-place projection + s11/tito competing-instruction removal (Fixer)
+
+**Reason:** Oracle diagnosis of dab6f421 targeted failures (event_context_long_thread 4552d3d3, native_image_long_thread f3b900dd, malformed df61aa0c, expired 1f568ce0, s3 ec1f3880, explicit-time f7c5f1a2, defer-close 8461bb4f) plus s11 6241f5ce (0.79) and tito d6cf1083 (0.78) semantic fails after the IAM fix. Single writer; no other lane editing these files. All changes are removals or narrowings; no per-case phrase detectors, no hardcoded conversational sentences, no scripted prose, no new state/timers.
+**Decision:**
+- P1 (agent-service.ts): unavailable-image replies stay on the resolver bundle — handleImageTurn unavailable branch now keeps `plan` (already resolver) instead of downgrading captioned turns to deteccion_intencion; replyImageUnavailable now routes to resolver_consultas_informativas instead of deteccion_intencion. shouldUseContextualClarification returns false for image turns (persisted image_attachments or typed imageReference), so empty-delta turns with a persisted image ref no longer detour to aclarar_pedir_faltante.
+- P2 (agent-service.ts): phone-scoped-miss auto-handoff now requires all three — a genuine non-FAQ not_found miss, NO retained media that can answer (no imageTurn, no image_attachments, no typed imageReference), and user-supplied authorization (inbound contactPhone, active user_auth, or explicit human request). Anonymous misses (e.g. native thread amount turn, contactPhone None) and media-answerable turns fall through to the normal reply path. Soft-pause narrowed: classifier-typed new questions (respond/requires_response) and threads with retained image refs bypass blanket suppression; empty follow-ups and same-thread continuations without those signals stay suppressed (existing soft-pause tests unchanged and green).
+- P3 (information-orchestrator.ts): lookup partition gate widened from dedication|thanks to dedication|thanks|payment_details, so a payment_details request (explicit 05:00-vs-17:00 time question on purchase-claudia-085) reads the detailed gift_purchases partition carrying payment.paidAt 21:31. Disclosure stays projector-gated (aspects/sensitiveFields). prompts/extractors/information.txt:23 reviewed only — its payment_details ban covers estado/plazo/opciones, not explicit time detail, so no prompt change and no phrase detector added.
+- P4 (agent-service.ts + openai-agent-runtime.ts): deleted both anchorless replays of last_completed purchase/event on no-request turns (empty-delta and support-only thanks); only same-thread continuations with a current-turn request preserve context. General plan snapshot now omits recommended_provider_ids/titles for status==='deferred' needs (close snapshot already excluded them).
+- Evaluator (src/evals/runner.ts): new fixture-backed buildEventPlaceProjectionLines wired into buildCanonicalEvidenceLines — projects authoritative event nombre/fecha/lugar labels (guestEvents + eventDetails, redacted, e.g. Lima for rsvp-plus-one-multiple-pending) so turn1 en Lima judges grounded. No runtime change for turn1; turn3 repetition fixed by P4 runtime.
+- s11/tito (prompts/nodes/responder_invitacion/response_contract.txt): removed the competing forced no-change restatement paragraph ("Si ya existe una confirmación y no se hizo ningún cambio, deja claro que..."). No new paragraph mandate. s11 receipt-in-text rubric expectation (write receipt narrated in reply prose) conflicts with the no-internal-narration doctrine and is left for oracle rubric alignment; transport already fixed (1/1/0, non-zero turns).
+**Tests updated to the corrected behavior (pins of the removed defects, not new mandates):** tests/s17-image-turn.test.ts unavailable-caption now expects resolver bundle; tests/agent-service-information-flow.test.ts contextual-correction now expects no purchase replay; tests/eval-judge-evidence-projection.test.ts +1 test (fixture-backed Lima place projection).
+**Files and working-tree blob hashes (`git hash-object`):**
+`src/runtime/agent-service.ts` b056488f7ffb783844ebd381993ae2023082d31c;
+`src/runtime/information-orchestrator.ts` 053f900c3516b7981e667c325045d25e2b3a9a3a;
+`src/runtime/openai-agent-runtime.ts` b199bee6a0435e7bb193b888941d6f997723a1af;
+`src/evals/runner.ts` b06dbc576df7dec5056b37e96b46c57563740b3e;
+`prompts/nodes/responder_invitacion/response_contract.txt` e255ca9ae908cf155af2e533fa281fdae996bbda;
+`tests/agent-service-information-flow.test.ts` 225022b4be7b357fe7d56ee2ade06736135185e4;
+`tests/s17-image-turn.test.ts` bb4cfbebaacf0499d4d97845c8ddbc09b1fed3c3;
+`tests/eval-judge-evidence-projection.test.ts` df1c58218feedb79f22fd4188cdcf228be4bde3b.
+**Validation:** `npx tsc --noEmit` clean. Touched suites green: agent-service-information-flow 59 (2 skipped), d-grounded-routes 11, agent-service 96, s11/rsvp-verified/evidence-projection (14 incl. 1 new)/judge-context/r7/s17/image-sdk-wire/r8/image-file-persistence/information-orchestrator/s08/token-defer-close/f3/c-step-c/live-behavior-coverage/eval-runner/semantic-judge/capability-boundary/r3/url-image-context — 218/218 in the broad sweep plus 99/99 image-file group and 164/164 in the flow/grounded/service group, 0 failures. Prompt-audit 10/10 (responder contract removal needs no re-pin). No full gate, no deploy (orchestrator-owned). Fresh backend read-back already covered by Packet B twins (verified-effect 8/8, s11 12/12 with post-write read).
+**Limitations / unresolved:** live wording unverified without deploy; full 114-case gate + baseline/candidate rerun remain orchestrator-owned. d-grounded-routes phone-miss escalation preserved (has inbound phone → still escalates); anonymous phone-miss no longer escalates by design. s11 text_semantic (receipt-in-prose) and tito closure wording still need oracle-side rubric alignment; no prose hardcoded here. Fixture-vs-runtime: P3 was a runtime partition-gate defect (fixture already carried paidAt in the gift record); turn1 Lima was a judge-evidence defect (runtime already projected place), both distinguished per task.
+
+## 2026-09-14 — Packet D break fix + Packet E pre-deploy checks (Fixer)
+
+**Reason:** The working-tree Packet D rewrite of the `image_evidence` rule in
+`prompts/nodes/resolver_consultas_informativas/response_contract.txt` removed
+the URL alternative (answer-from-record + specific-fact rule) and moved the
+resolver bundle 18717 → 18779 (+62), breaking `tests/prompt-audit.test.ts` and
+the literal wording assertion in `tests/r8-image-observation.test.ts`.
+Packets A–D otherwise done. Scope here only: verify the rewrite, shorten the
+rule if possible, re-pin, measure bytes on matched scenarios, check long-thread
+discovery, mark long-thread coverage status, log. No runtime RSVP/image logic
+touched, no new phrase detectors, no scripted prose, no live gate, no deploy.
+
+**Prompt verification (before re-pinning, not blind):** read the full rewritten
+rule; it contains a resend/replacement/URL/written-text prohibition, an
+answer-from-record clause, and a specific-fact clause, and offers no URL (or
+any) recovery alternative. Grepped all of `prompts/` for customer-facing
+image/URL requests (`ofrece/pide/solicita/comparte URL`, `envía enlace`,
+`offer/ask/request/send URL/link`, resend/re-upload demands): the only hits
+are the prohibition itself and allowed OTP-code resends. No image/URL request
+remains. The rule was then shortened −113 bytes with all four norms intact:
+`Si no es legible` covers `no disponible o ilegible` (nothing to read);
+`ni su contenido en texto` keeps the written-text ban; `para responder` and
+`con tus propias palabras` dropped because natural redaction without internal
+field names is already mandated by the `nextInput` line. Final rule (325
+bytes): `Cuando aparezca image_evidence, conserva los datos útiles del texto
+adjunto. Si no es legible, no afirmes que viste su contenido: responde con lo
+que el perfil y el registro sí confirman y si falta un dato concreto, pide
+solo ese dato. Nunca pidas reenviar la imagen, otro archivo, un enlace URL ni
+su contenido en texto.`
+
+**Files and working-tree blob hashes (`git hash-object`):**
+`prompts/.../resolver_consultas_informativas/response_contract.txt`
+`e0ea40c26fc1bf2d77ecd66c2c7ae161f3298c80`;
+`tests/prompt-audit.test.ts`
+`4ced5d5619b0644ce52052d63d71a470d4896e57` (pin 18717 → 18666 with dated
+Packet D comment: rewrite measured 18779 (+62), shortening −113);
+`tests/r8-image-observation.test.ts`
+`e3be94c2664a7d687372b6842916c7c7f4335e30` (untracked R8 working-tree file;
+specific-fact regex updated to the shortened wording plus a new
+answer-from-record assertion; prohibition assertions unchanged);
+`evals/live-behavior-coverage.yaml`
+`35f30500658f45cd4ec0db828158347e4d188f26` (diagnostic-only comment only, no
+entry added).
+
+**Byte deltas per changed call (same `Buffer.byteLength` semantics as
+`buildRequestMetrics`, `openai-agent-runtime.ts:1318-1330`; measured via the
+existing `measureCurrentBranches` path, throwaway probe, deleted after):**
+s08 live baseline (2026-09-14 native-context audit, instruction bytes excl.
+schema/input): classifier 9227 / extraction 13129 / reply 18438.
+Current working tree: classifier branch 9227 (delta 0, classifier prompts
+untouched); extractor purchase-capable profiles (`active_plan`, `shortlist`)
+12960 instruction bytes, tools 0, schemaProps 20/24 (delta −169 vs live, of
+which −34 is the working-tree `extractors/base_system.txt` one-line rewrite
+208 → 174 bytes; the remaining −135 vs deployed is predecessor dirt, exact
+attribution needs deployed-prompt diff, out of scope); resolver reply branch
+18251 instruction bytes, tools 0, schemaProps 4 (delta −187 vs live deployed,
+net subtractive: R9 −337, Packet C −138, Packet D net −51 serialized, i.e.
++62 rewrite −113 shortening; audit pin 18717 → 18666). No irrelevant content
+added by this packet; the only necessary increase (+62) paid for the
+answer-from-record + specific-fact norms and was then more than recovered by
+the −113 shortening. No new measurement infra added.
+
+**Coverage:** `native_image_long_thread` + `event_context_long_thread` have NO
+registry entry and get none here: both YAMLs are untracked diagnostic
+specifications (`??` in git status, `No ... implementing commit exists, and
+their own notes say `New specification, not an implementation-complete
+claim`). No fabricated hash recorded. An explicit diagnostic-only comment was
+added to `evals/live-behavior-coverage.yaml`: register distinct entries with
+real SHAs only after an implementing change lands and passes the gate.
+Discovery check via existing `EvalLoader` (throwaway probe, deleted after):
+suite `live_behavior_regression` selects 114 cases (non-zero);
+`native_image_long_thread` found with 6 inputs / 11 expectations and
+`event_context_long_thread` with 4 inputs / 8 expectations (6 + 4 = 10
+executed turns), both `live_lambda`, both carrying hard structural
+(`tool_usage`/`trace_field_equals`) plus hard `requireJudge` semantic
+expectations. Zero-case discovery did not occur.
+
+**Validation:** `npx tsc --noEmit` clean. 15 offline suites green, 220 passed /
+1 skipped (pre-existing prompt-audit branch skip): prompt-audit (11, pin
+18666 holds), live-behavior-coverage registry (YAML comment parses, schema
+intact), eval-judge-evidence-projection, eval-runner-judge-context,
+eval-runner, eval-runner-case-ids, rsvp-verified-effect, s17-image-turn,
+image-sdk-wire, image-file-persistence, url-image-context, r8-image-observation
+(8, updated assertions hold), r3-image-access-fallback,
+eval-image-fixture-integrity, semantic-judge. Probe files deleted; `git status`
+shows only the four intended files touched.
+
+**Limitations / unresolved:** historical live runs stay on old contracts;
+baseline+candidate must rerun under the Packet E gate (orchestrator owns full
+live gate + deploy). Extractor −135 vs deployed unattributed beyond the −34
+line (needs deployed-prompt diff). Live wording of the shortened rule is
+model-owned and unverified without deployment. The two long threads are
+diagnostic-only until implemented + gated. Fixture-vs-runtime: all defects
+fixed here are prompt/test-pin (fixture-side) mismatches, not runtime defects;
+no runtime behavior changed.
+
+## 2026-09-14 — Packet A: repair evaluation evidence and freeze revised expectations (Fixer)
+
+**Reason:** Native-context/RSVP audit 2026-09-14 Packet A. Latest operator clarification supersedes all earlier recovery alternatives: no customer-facing request for an image or URL is allowed (URLs arrive from the backend only). Prior oracles still passed URL-asks (malformed v4, expired v3) or demanded resend-in-text (s3 v1); the Delia judge marked backend-backed amounts unsupported because fixture-less cases carried no purchase facts; s11 claimed durability with node/tool-name/text assertions only. Scope only: `src/evals/runner.ts`, judge-context tests, the six listed YAMLs (rubrics only), this log. `agent-service.ts` and `openai-agent-runtime.ts` untouched (other lanes own them); `src/evals/scorers/semantic-judge.ts` reviewed, no change needed (stateless, no fixture access).
+**Decision (R05 old-vs-new contract diff, old runs preserved, baseline+candidate must rerun):**
+- Evaluator `src/evals/runner.ts` only, additive: new `buildToolFactLines` projects the sanitized authoritative tool facts actually available to the reply (per-turn lookup kind/status/source/outcome/result counts plus access/coverage and redacted tool summaries; amounts/phones/emails/order ids never travel) into candidate-visible canonical evidence for fixture-less as well as fixture-backed cases (both branches already include canonical lines). Four shared-cause judge rules added: tool-fact authority; fixture-less grounding (`sin_mundo_fixture`/`no_disponible` means live backend, so amounts are not invention solely for a missing projection — user echo and completed purchase lookups decide; inverted polarity, unauthorized writes, wrong entities, duplicate effects, unanswered info still fail hard); never request an image, re-upload, replacement, or URL; repetition alone is quality unless it changes meaning or repeats an action.
+- Oracle revisions: `image_file_malformed_unavailable` v4→v5 and `image_expired_reference_resubmit` v3→v4 — URL-ask now fails; answer from authorized evidence when sufficient, else ask only for the specific missing factual information; expired also bans internal file-ID/expiry narration (expectation renamed `expired-offers-url-or-evidence-answer`→`expired-answers-from-evidence-or-asks-fact`; no test pins it). `s3-stale-ref-silence-fails` v1→v2 — resend-in-text demand removed; silent persist stays forbidden; speech needs truthful uncertainty plus evidence answer or necessary-fact question only. `s08_kiara_approved_replay` v3→v4 — approved-once contract unchanged (pinned id/score/149.9/approved/without-calling-it-pending strings kept for `f3-oracle-revision-mutations`), image/URL added to must-not list. `purchase_delia_status_by_phone` v2→v3 — stays fixture-less live-backend (no fake fixture added; `eval-loader` phone pin kept); rubric judges amounts/dates against tool facts + echo. `s11_rsvp_durability_confirms_once` v2→v3 — added hard `fixture_effect_count` receipt skeleton (`rsvp.write` 1/1/0) and an honest TODO note: intent-before-write, result-before-reply, post-write read do not exist as runtime receipt fields and are packet-B work; description/rubric no longer claim full durability proof. `native_image_long_thread` / `event_context_long_thread` already forbid image/URL requests and unsolicited writes/handoff/auth — untouched, no coverage added (packet E owns it).
+- Tests `tests/eval-judge-evidence-projection.test.ts` (+4 Packet A tests: tool facts in both branches; same amount ungrounded-absent vs grounded-matching; wrong amount/polarity absent while actual statuses persist; shared no-image/URL + repetition rules present; 1 existing no-case assertion updated to check the missing projection header instead of the bare token, which now also appears in the shared fixture-less rule).
+**Files and working-tree blob hashes (`git hash-object`):**
+`src/evals/runner.ts` `00fa0146ac002e5bcc166efeadf352ca53eba280`;
+`src/evals/scorers/semantic-judge.ts` `d4b9e773d53b0611f9b43fe7ce564c83057a37fe` (unchanged);
+`tests/eval-judge-evidence-projection.test.ts` `dd429392eab56c85279a6505039198042ab912d0`;
+`evals/cases/live-behavior-image-file-malformed.yaml` `b38756e0976f8c5f93b8a071be4b8fd86c97175b`;
+`evals/cases/live-behavior-image-expired-reference.yaml` `338254a4817c4dfc932a8387c97a342bf431fcb4`;
+`evals/cases/live-behavior-s3-stale-ref-silence-fails.yaml` `269804673d1a2ebe291fff2b637a5081dd0ce90a`;
+`evals/cases/live-behavior-s08-kiara-approved.yaml` `448435e60497c28091661515f5109823eb8e6714`;
+`evals/cases/live-behavior-purchase-delia-phone-orders.yaml` `28686be093e297ec823bd768466cc52983697c69`;
+`evals/cases/live-behavior-s11-rsvp-durability.yaml` `fec8d9c6d59a2ec194c0caa91979ec182658d5a2`.
+**Validation:** `npm run typecheck` clean; `npx eslint` on touched source/test files clean; 10 judge/runner-adjacent suites 82/82 pass (evidence-projection incl. 4 new, judge-context, f-trace-judge-repair, semantic-judge, f3-oracle-revision-mutations pins intact, eval-loader Delia pin intact, live-behavior-coverage 114-case registration intact, f4-close-evidence, l1-semantic-evidence, semantic-silence-integration). Targeted diagnostics only per packet; no full gate, no deploy, no `eval:behavior-live` run (orchestrator owns it).
+**Limitations / unresolved:** historical failures were NOT turned green retroactively — old runs stay on old contracts and baseline+candidate must rerun under packet-E gate. Fixture-less amount grounding still depends on live lookup evidence the judge sees only as counts, not values; wrong-value detection there rests on polarity/entity/effect hard failures, not amount equality. s11 durability proof stays partial until packet B implements intent/result receipts with post-write read. No live model generations were performed in this packet.
+
+
+## 2026-09-14 — R9 SUBTRACTIVE simplification packet, operator doctrine (Fixer)
+
+**Reason:** destructive-first execution of runtime packet R9. Every behavior change starts by deleting the teaching text/capability record; no new machinery, agents, timers, protocols, or classifiers. Net negative. Preserves EX1/R7/R8 except where they are the thing deleted. No touch to src/evals, evals/cases, evals/suites, evals/live-behavior-coverage.yaml. No new cases. No deploy.
+**Deleted per item:**
+1. Image-inspect record: `recordDeterministicToolInput/output(toolUsage, 'image_inspect', ...)` plus its comment in `handleImageTurn` unavailable branch (src/runtime/agent-service.ts, ~12 lines). Zero `image_inspect` refs remain in the service; silence/recovery branch untouched.
+2. Capability-forced handoffs: `'media.image.inspect': 'media_unavailable'` + `'payment_proof.verify': 'not_implemented'` removed from `alwaysUnavailableReasons` (capability-manifest.ts); `'payment_proof.verify'` removed from `performCapabilitySafeRead` op list; `capabilityDecision` model projection removed from `handleMediaOnlyMessage` (trace kept). Receipt/image turns now resolve `supported` and continue to the model with DB tools; remaining unsupported ops (confirmation_document.send, purchase.modify, refund_or_withdrawal.execute) keep the handoff.
+3. Resend demands: none survive in model-visible text (verified by grep; only the contract prohibition + URL alternative and OTP-code resends remain). Stale `selectFollowUpImageProjection` "asks for resubmission" comment rewritten to the URL-or-DB rule. Dead `image_outcomes.json` retained (prompt-inventory test requires the file; it has no production loader and no resend text).
+4. Campaign-event assumption: `isCampaignLikeSource`/`campaignLikeSources`/`CampaignLikeSource` deleted; `resolveReminderContext` and `resolveClassifierProfile` now license only reminder sources (`admin_campaign`, `frontend_followup`) — agent-sent `admin_manual` yields general profile, no entry anchor, no current reminder. `groundedRsvpCampaignEvent` was already campaign-only. Multi-event ambiguity already resolves deterministically to a name+date selection question; no prompt addition.
+5. RSVP relaxation: `hasRsvpWork` no longer requires `rsvp_state.status === 'none'` to yield to other-domain work — a lingering state without explicit RSVP evidence cannot hijack the turn. Explicit decisions/selections/plus-one still resume RSVP; effect preconditions/dedupe untouched.
+6. Image native simplification + R8 repair: agreement gate deleted — response_contract `image_agreement` exclusivity line, `PurchaseReplyImageAgreement`/`imageAgreement`/`image_agreement` in purchase-reply-projector.ts and its passing in openai-agent-runtime.ts (model may read native pixels again; s5 clarification cause removed). Extractor shrunk to presence+linkage: `buildExtractorImagePresence` drops receive-time/status display and the duplicated index instruction; `image_reference.txt` compressed (field enumeration + possibility mechanics removed; three statuses kept as schema-bound linkage). Native URL/file projection, `buildImageObservation` minimal observation (deposit-seen/legibility/linkage), and the silent path (no observation wiring exists there — verified) kept.
+**Tests:** updated capability-boundary.test.ts (proof/image ops now enabled), agent-service-information-flow.test.ts (proof-validation turn answered from partition-envelope lookup, no takeover, no capability-status-read), s05 + message-response-classifier.test.ts (manual is general traffic), attempt3-typed-state.test.ts (lingering-state yield), r8-image-observation.test.ts (agreement block + helpers deleted, prompt-policy asserts no gate), prompt-audit.test.ts (resolver pin 19191→18854, -337 R9 bytes).
+**Validation:** typecheck clean, lint clean, FULL offline suite 174 files / 1667 passed / 5 skipped (historical skips only; -3 tests deleted with the agreement feature, 0 new, 0 fail). Grep proofs: no resend demand in model-visible text, no `image_inspect` tool records in src, no recency auto-select heuristic, no `payment_proof.verify`/`media.image.inspect` forced-unavailable entries.
+**Limitations:** no live Lambda verification (no deploy per packet) — s5/distractor/s2/tia-niur restoration is reasoned, not re-gated; extractor index builder TYPE kept full-shape for snapshot stability (display only shrunk); `inspectImage` runtime method retained (zero service callers) to avoid churning test doubles; entry-message anchor stays newest-among-qualifying-reminders (trace-only).
+
+## 2026-09-14 — R8 same-day image enrichment packet (Fixer)
+
+**Reason:** final product change before re-gate; operator doctrine 2026-09-14 (images are same-day context enrichment for matching against profile/DB, never structured pixel extraction; never demand comprobante re-upload; unreadable image → URL-ask-or-DB-answer; 1-day horizon). Preserves EX1 (judge evidence + revised oracles, suite 113) and R7 (grounding, no-greeting, extractor context). No touch to src/evals, evals/cases, evals/suites, evals/live-behavior-coverage.yaml.
+**Files (sole-writer scope only):**
+- src/runtime/contracts.ts: additive `ImageObservation` type (seenToday, legibility projected/retained/unavailable, linkage current/prior/none, depositMentioned; never amounts/dates/phones) + optional `observation` on `ComposeReplyRequest['imageEvidence']`.
+- src/runtime/openai-agent-runtime.ts (image reply/projector input only): pure exported `buildImageObservation` (derives the summary from already-persisted attachment refs + same-UTC-day window + typed voucher mention; null when no same-day link so unrelated turns stay byte-identical); `observation` spread into the `image_evidence` block only when present; `projectInformationResultForReply` passes `imageAgreement: { imageSeen: true }` only when image evidence is available.
+- src/runtime/purchase-reply-projector.ts (image-sourced facts only): optional `imageAgreement` context; `image_agreement` block (image_seen + DB-sourced recorded_total/currency/symbol) only on unique-order outcomes with a recorded total, otherwise absent (byte-identical).
+- src/runtime/agent-service.ts (image-turn paths only): `imageObservationForReply` + `withImageObservation` + `isDepositMentioned` (typed supportAct topic/detail only, never keywords); observation attached on established image-node replies (available + fallback), info-flow default + fallback evidence, and both unavailable-image branches (prior same-day linkage, no resend demand).
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt: image_evidence line extended (never demand re-upload/write-in-text; unreadable → answer from profile/DB + offer URL link, model wording) + new pixel-amounts-only-as-`image_agreement`-agreement-language line. image_inspection.txt: same-day-enrichment framing + structured-extraction ban (amounts/dates/phones/references never as isolated facts). image_outcomes.json (dead file, zero production callers since L5): resend demands replaced with URL-ask-or-DB-answer wording.
+- tests/r8-image-observation.test.ts (new, 11 tests: observation current/prior/cross-day/expired/file-expiry, agreement present/absent/selection/no-total, service current-turn + unreadable-links-prior wiring, prompt no-demand + agreement/URL rules). tests/prompt-audit.test.ts: resolver pin 18645→19191 (+542 R8 bytes measured, +4 concurrent-lane drift, dated comment).
+**Validation:** typecheck clean, lint clean, FULL offline suite 174 files / 1670 passed / 5 skipped (historical, 0 new, 0 failures) — joint green with concurrent EX1 tree. No new live cases, no deploy.
+**Limitations:** observation persistence reuses the already-stored attachment refs (linkage + receive time) with per-turn derivation — no new plan store, so pre-R8 same-day images gain observation facts without migration; non-information follow-up paths (clarification/capability/support replies without imageTurn) do not project observation (image/info turns only, per scope); unreadable-image replies state DB/profile facts but the exact prose remains model-owned (no live-oracle proof here — revised oracles judge it at re-gate); s5/distractor amount replies keep passing as DB-record agreement language via `image_agreement` (offline suite holds them byte-identical on non-image turns).
+
+## 2026-09-14 — EX1 evaluator packet: judge-evidence projection + behavior-proving oracles + Tia-Niur cases (evaluator worker)
+
+**Reason:** S8 gate RED 70/110; oracle diagnosis split the 40 failures into ~24 product defects (runtime worker's lane), 13 judge-artifact false failures (judge packet blind to purchase values, FAQ text, seed summaries, and 72h operational notes), and 1 hard fixture/oracle contradiction (s13 currency). Authority: acceptance-contract R05 (separate reviewed evaluator change; old runs never rescored, baseline+candidate rerun follows), R06 (three evidence kinds stay labeled), R07 (wire-delivered candidate judged; no threshold lowering), plus the 2026-09-14 operator doctrine (72h manual-check messaging is DESIRED product behavior; images are context enrichment; recovery = URL-ask or DB-answer, never re-upload demands). No runtime/src or prompt changes in this packet; a runtime worker concurrently owns src/runtime+prompts.
+**Decision (R05 old-vs-new contract diff):**
+- Evaluator `src/evals/runner.ts` only: `buildCanonicalEvidenceLines` keeps every per-turn line byte-identical and appends four projection blocks, all gated to turns at or before the judged turn (no future-turn leakage) and all through the same candidate-path redaction (`redactArtifactText`; opaque order ids, reference values, phones, emails never projected): (1) phone-scoped purchase projection from the case fixture world — the same rows the candidate lookup returned (event labels/dates, amounts, currency presence/absence as code+symbol or `ausente`, method, payment status, customer-reference presence only); (2) retrieved FAQ evidence (filename, content hash, score per completed lookup; `evidencia_faq=ninguna` when no FAQ lookup ran, so unretrieved policy cited as fact stays invention); (3) seeded/accumulated `conversation_summary` facts labeled candidate-visible continuity; (4) two static system-provided operational notes (transfer validation up to 72 business hours; recorded order total is not a remaining balance), credible when the candidate repeats them, never candidate invention. Six new judge rules bind credibility: purchase values grounded only with a completed purchase lookup with results; user-stated echo is echo, never invention; novel symbols beyond user+records are invention; FAQ/operational-note repetition credible with retrieval/system provenance. Missing projections read as unknown/defect, never success.
+- Oracle revisions (behavior-proving, thresholds untouched: 0.9 default, 0.8 image, 0.85 pre-existing kept): (a) 5 image-error cases (`image_too_large_fallback` v3→v4, `image_file_malformed_unavailable` v3→v4, `image_unavailable_captioned` v3→v4, `image_expired_reference_resubmit` v2→v3 with expectation renamed `expired-asks-resubmission`→`expired-offers-url-or-evidence-answer`, `image_url_unavailable_evidence` v2→v3) — resend-or-text demands replaced with URL-ask-or-DB-answer; any demand to re-upload/resend now fails. (b) `customer_transaction_reference_unavailable_multiple` v2→v3 — contradiction fixed by aligning the oracle to world data: both fixture orders carry `currency_code` PEN + `currency_symbol` S/ (`currency` null), independently read from `evals/fixtures/s13-reference-unavailable-multiple.json`, so recorded PEN/S/ with recorded totals 120.5/89.9 is grounded; only novel currencies/amounts/symbols are forbidden. Fixtures untouched (out of scope). (c) `purchase_current_pending_over_old_approved` v1→v2 — echoing the user-stated "S/ 80" is echo, never invention; only novel currency facts beyond the echo are forbidden (record currency null). (d) wording literalism — `tito_numbered_name_and_post_rsvp_closure` v1→v2, `s08_kiara_approved_replay` v2→v3, `purchase_delia_status_by_phone` v1→v2 now judge behavior (thanks acknowledged once / approval stated once, model's own wording, never exact phrasing); `rsvp_declined_state_offers_one_change` verified already compliant (offer-present behavior + own-wording clause since F3), untouched. (e) `token_seeded_selection_defer_close` v1→v2 — seed carries no event date, so a close-flow date-ask is correct behavior; the judge must not invent "date unnecessary".
+- New Tia-Niur-class live cases (additive, existing multi-event fixture `rsvp-plus-one-multiple-pending`, hard structural + hard `text_semantic` requireJudge:true, minScore 0.9): `live_behavior.rsvp_tia_niur_ambiguous_clarifies` (gap 1: ambiguous same-day reference must ask one bounded selection question naming both events with dates, never auto-select newest, no mutation) and `live_behavior.rsvp_tia_niur_old_target_wins` (gap 2: turn 0 grounds newer Cumpleaños Marta, turn 1 explicitly asks about older Boda Ana y Luis → answer with 2026-09-20, no bleed, no re-ask, no mutation). Registered in `evals/suites/live_behavior_regression.yaml` (suite now 113 case IDs) and `evals/live-behavior-coverage.yaml` (`ex1-tia-niur-ambiguous-reference-clarifies-never-newest`, `ex1-tia-niur-explicit-old-target-wins-over-newer`, `implementedBy bdb4a88a` per the S0 dirty-worktree convention). No deletions, no hard→soft, no threshold changes.
+- Tests: new `tests/eval-judge-evidence-projection.test.ts` (9 tests: s13 purchase values incl. grounded PEN/S/; opaque-id/reference-value/phone non-leakage; victor currency-absent; FAQ hash+filename; missing-FAQ line; summary continuity; system operational notes; no-case mode omits fixture purchases; credibility/echo rules present).
+**Files:** src/evals/runner.ts, evals/cases/live-behavior-image-too-large.yaml, evals/cases/live-behavior-image-file-malformed.yaml, evals/cases/live-behavior-image-unavailable-captioned.yaml, evals/cases/live-behavior-image-expired-reference.yaml, evals/cases/live-behavior-image-url-unavailable.yaml, evals/cases/live-behavior-customer-transaction-reference-unavailable-multiple.yaml, evals/cases/live-behavior-purchase-current-vs-old.yaml, evals/cases/live-behavior-tito-post-rsvp-closure.yaml, evals/cases/live-behavior-s08-kiara-approved.yaml, evals/cases/live-behavior-purchase-delia-phone-orders.yaml, evals/cases/live-feedback-token-selection-defer-close.yaml, evals/cases/live-behavior-rsvp-tia-niur-ambiguous-clarifies.yaml, evals/cases/live-behavior-rsvp-tia-niur-old-target-wins.yaml, evals/suites/live_behavior_regression.yaml, evals/live-behavior-coverage.yaml, tests/eval-judge-evidence-projection.test.ts.
+**Validation:** typecheck PASS; eslint on touched source/test files PASS; tests/live-behavior-coverage.test.ts 1/1 (113-case suite incl. 2 new cases with hard structural + hard requireJudge semantic); full judge/eval files 32/32 (coverage, evidence-projection 9/9, judge-context 9/9, semantic-judge 7/7, f4-close-evidence 3/3, f4-unredact 3/3); all tests/eval-*.test.ts 87/87. 5-case diagnostic live sample FORBIDDEN in this packet (not run); no deploy; full S8 gate stays with the coordinator after the runtime worker lands.
+**Limitations:** FAQ grounding projects filename+hash+score, not full KB text (unavailable at judge time); the hash plus the candidate quoted span is the verifiable pair. Fixture purchase projection covers `guestOrders` + `guestGiftPurchases` phone-scoped rows and assumes the lookup returned the subject phone scope (same assumption as the existing subject-scoped fixture-history loader). `semantic-judge.ts` and `trace-packets.ts` owned but unchanged (no packet-schema change needed; evidence digests already cover the extended context). Old runs never rescored per R05; baseline+candidate rerun pending coordinator gate.
+
+## 2026-09-11 — Packet A: five-day native image retention and provider-expiry upload validation
+
+**Reason:** Lean-image execution contract Packet A (exclusive ownership:
+`src/core/image-attachments.ts`, `src/runtime/image-file-store.ts`,
+`tests/image-file-persistence.test.ts`). New uploads must request a five-day
+expiry; the provider-returned `expires_at` is authoritative when present;
+returned ID/time/size must be validated before persisting; expiry must never
+roll on access/replay; orphans from the upload-then-failed-save window stay
+bounded by provider expiry with no distributed-transaction machinery.
+Existing files keep their recorded expiry (no migration daemon).
+
+**Decision:**
+- `IMAGE_FILE_EXPIRY_SECONDS` 2,592,000 → 432,000 (5 days); stale 30-day
+  comments/assertions in owned files updated. Expiry stays centralized in the
+  single constant threaded into `expires_after`; no scattered literals.
+- `OpenAiImageFileStore.uploadImage` now prefers provider `expires_at` when
+  present and falls back to `created_at + 432000` only when absent. It rejects
+  (non-retryable `validation` `ImageFileUploadError`, no invented success)
+  empty IDs, non-positive/non-finite `created_at`, non-positive/non-finite
+  `bytes`, and present-but-not-after-`created_at` `expires_at`. Persisted
+  `byteLength` is the validated provider size. Purpose stays `vision`
+  (supported by the installed SDK FileObject purpose union). Never extends an
+  existing reference; reuse/duplicate-delivery paths are untouched and keep
+  original expiry by construction.
+- Orphan window documented in the store header comment: a successful upload
+  followed by a failed plan save (or process death between the two) leaves a
+  file the provider reaps at expiry; the caller (agent-service, outside Packet
+  A ownership) already attempts best-effort deletion after a failed save and
+  fails truthfully. No new model call, store, scheduler, or transaction
+  machinery.
+- Reuse/digest scoping, in-memory-only decode/upload, fingerprint-only
+  file-ID logging, expired-ref rejection from projection, explicit
+  `image_expired` unavailability (no silent substitution), and the 5-ref /
+  2-per-request / 16KiB / input limits are unchanged and covered by existing
+  tests plus three new ones: provider-expiry retention, invalid-response
+  rejection, and JSON-boundary cold-start reload with zero re-upload and no
+  raw bytes in the reloaded plan.
+- `src/core/plan.ts` NOT touched. `src/runtime/agent-service.ts` NOT touched:
+  its two stale "30-day expiry" comments (base64-turn header ~L4493 and
+  orphan-window note ~L4502) still say 30 days and need a Packet B/coordinator
+  touch-up to five days; behavior there already matches Packet A (original
+  expiry on reuse, best-effort delete + truthful failure on failed save,
+  `image_expired` evidence, no caller file-ID intake).
+
+**Files and working-tree blob hashes (untracked worktree files, `git hash-object`):**
+`src/core/image-attachments.ts` `ca2a33b8e70eeef7f8aa6d852bcd6a303c53afec`;
+`src/runtime/image-file-store.ts` `ce16c6da99f85088edd700030ecff90a08241b7b`;
+`tests/image-file-persistence.test.ts` `a4d1f7f95ceb1ba695185fcbe39a5cccc037a51d`.
+
+**Validation:** `npx vitest run tests/image-file-persistence.test.ts` 29/29
+pass. Neighbor suites `tests/url-image-context.test.ts` +
+`tests/s17-image-turn.test.ts` 30/30 pass. `npm run typecheck` clean.
+`npm run lint` clean. `npx vitest run tests/live-behavior-coverage.test.ts`
+1/1 pass. No deploy, no `eval:behavior-live`, no `plan.yaml`/case-registry
+changes (Packet D owns acceptance), no new registry entry (no new behavior
+beyond the contracted retention/validation change; coordinator registers live
+image cases under Packet D).
+
+**Plan-schema needs for Packet B (not implemented here):** no schema change
+required by Packet A — file refs already persist `fileId/expiresAt/mimeType/
+byteLength/contentDigest/messageId/receivedAt` through `planSchema` +
+`InMemoryPlanStore` (cold-start test proves the round-trip). If Packet B
+wants explicit omission/availability evidence fields on the plan beyond the
+existing runtime `imageEvidence`, that is its schema call.
+
+**Limits (not certified):** live five-day expiry against the real Files API
+unverified without deployment; provider `expires_at` shape confirmed only
+from the installed SDK types plus mocked unit tests. Self-certification
+explicitly withheld — reviewer verifies diff and manifest.
+
+## 2026-09-11 — Audit step D: matched post-SDK request measurement, OTP projection trace, evidence narrowing
+
+**Reason:** Progress audit 2026-09-11 §32 (step D): no matched complete-request
+measurement existed after SDK serialization; the repeated-OTP artifact carries
+~14.5KB of reply instructions against a narrow terminal outcome with no
+projection trace; no reduction claim is valid without matched baseline data.
+
+**Decision:**
+- New `src/audit/matched-request-measurement.ts`: content-free matched-turn
+aggregation over captured stage transports (`summarizeMatchedStage`,
+`summarizeMatchedTurn`, `aggregateMatchedByDomain`,
+`attributeEvidenceBlockBytes`). Reuses the E10 completeness helpers; no
+gate/threshold/rubric/case change. Failed attempts stay counted with intact
+bytes; absent evidence stays null, never zero.
+- Trace result: the ~14.5KB is the `resolver_consultas_informativas` bundle
+instructions (16,948 bytes now; prompt-audit pin 17,356), 46% of it the
+all-outcome `response_contract.txt`. OTP-terminal reply evidence is
+2,167–2,626 bytes and already excludes planning/RSVP/close fields.
+Per-outcome bundle splitting is documented as future work requiring live
+baseline/candidate proof; no prompt text added, edited, or removed here.
+- Two projection-narrowing fixes in `src/runtime/openai-agent-runtime.ts`,
+both projection-only: (1) `buildReplyTurnEvidence` omits the duplicated
+top-level `handoff_outcome` when `authentication_outcome` already carries it
+(terminal/declined auth turns; non-auth handoff paths unchanged, ~40 bytes);
+(2) `composeConversationInput` no longer falls back to plan-derived provider
+focus on established information/RSVP lanes via
+`isEstablishedNonPlanningReplyLane` (`getActiveNeed` returns
+`provider_needs[0]` without an active category, so any coincidental planning
+selection leaked into `turn_state.focus_need_category` despite node
+contracts forbidding recommendations; no prompt reads the field). Planning
+lanes unchanged.
+- New `tests/matched-request-measurement.test.ts` (12 tests): real-runtime
+wire capture per domain (auth/purchase/faq/rsvp/close), extraction+reply
+aggregation, failure-plus-repair inclusion, block attribution with
+no-leakage assertions, handoff dedup, unrelated-state stability (auth + RSVP
+lanes; the auth case failed before fix 2), relevant-change sensitivity.
+- New artifact
+`docs/plan/2026-09-09-lean-conversation/request-measurements-2026-09-11.md`:
+method, bundle/block tables, per-domain wire totals, hashes, validation,
+and the unmatched-baseline limit with future comparison requirements.
+Content-free (IDs, bytes, hashes only).
+
+**Files and working-tree blob hashes (step D only; repo diff also holds
+predecessor dirt):**
+`src/audit/matched-request-measurement.ts`
+`d537d5bf97c1b79f0a92d4ae2eb61c62f23571a8`;
+`tests/matched-request-measurement.test.ts`
+`c1675961c4e4a1da70918feabceb97daffc356c8`;
+`src/runtime/openai-agent-runtime.ts`
+`5810bb94fac25756c092b742a93bed2ae8d6d5db`;
+`docs/plan/2026-09-09-lean-conversation/request-measurements-2026-09-11.md`
+`ee4dc18db7594e60ad4487d09a0e58e64011632c`.
+HEAD `bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157`; 170 dirty/untracked entries
+preserved, none committed.
+
+**Validation:** New suite 12/12. Focused:
+`openai-agent-runtime-token-usage` (51), `prompt-audit`,
+`openai-transport-capture`, `image-sdk-wire`, `agent-service` (96),
+`agent-service-information-flow` (57, 2 skipped), `l4-owner-routing`,
+`acceptance-contract-mutations`: all pass. `live-behavior-coverage`: pass.
+Full `npx vitest run`: 164 files, 1360 passed, 5 skipped, 0 failed.
+`npm run typecheck` clean. `npm run lint` (full repo) clean. No deployment,
+no `eval:behavior-live`, no `evals/`/plan/deploy changes.
+
+**Limits and open risks (not certified):** Offline stub-model bytes pin the
+candidate shape, not live cost; gate `d2141705` RED remains the unmatched
+baseline and no reduction is claimed. Evidence-input changes (dedup, focus
+guard) need live rerun to confirm wording preservation. Residual
+instruction bulk (single all-outcome bundle), always-null evidence blocks,
+and the internal `decision` routing block are future measured work, not
+silent cuts: the pending question, authorizations, alternatives, and
+candidate identity were preserved.
+
+## 2026-09-11 — Audit step B: customer-context wiring, established-owner URL path, host-withdrawal model composition, structured origins, SDK image capture
+
+**Reason:** Progress audit 2026-09-11 §§3–5 (step B): `assembleCustomerContext`/
+`projectCustomerContext` had no production caller; `handleUrlImageTurn` forced the
+informative node with synthetic extraction and no purchase results; the URL fallback
+reclassified every error (including persistence) as image-unavailability and recorded
+no completion tool record; `handleHostWithdrawalInformation` joined complete canned
+messages from `host-withdrawal.json` with no model call; `modelParagraphsOf` accepted
+only `generic.paragraphs_es` so planning/welcome variants had no receipt; and the only
+image-wire evidence was a handwritten `toResponsesWireImageItem` mirror.
+
+**Decision:**
+- `AgentService.resolveCustomerContextForReply` assembles the snapshot from the
+turn's authorized bounded orchestrator reads (identity from trusted channel phone,
+else valid account token; null without either) and projects only
+current-question-relevant detail (`payment` excludes carts, `cart` excludes payment
+detail, `general` only when both typed signals hold, `rsvp` for RSVP-only turns).
+Relevant selectors come from typed request evidence with `resolveRelevantTarget`
+(no auto-selection). Wired into `handleInformationFlow` (plus `owner`) and therefore
+into delegated URL turns; unrelated turns stay byte-identical. No profile model, no
+whole-snapshot send.
+- `handleUrlImageTurn` now runs real extraction plus `persistTurnOwner` on the
+established plan (no forced informative node, no synthetic extraction except as a
+recorded extraction-failure fallback), then delegates information work to
+`handleInformationFlow` with an explicit `imageTurn` (current purchase results,
+`customerContext`, native `imageUrlAttachments`, URL `imageEvidence`) or replies on
+the established node. Attachment selection is explicit-only:
+`selectRelevantImageAttachments` (current-message linkage) plus removal of the
+recent-for-any-open-need runtime fallback. Failure classification is structural:
+only model-stage failures (`isModelStageFailure`: typed composition failure or
+installed-SDK transport/API errors) degrade to `image_unavailable` with both attempts
+recorded; plan saves sit outside the catch so persistence/finish errors propagate.
+Unavailable-image, inspection-failed, and URL-fallback paths all record completion
+tool records; failed refs are retained. No downloader/proxy/rehost/base64 code;
+base64 path untouched.
+- `handleHostWithdrawalInformation` migrates from `host-withdrawal.json` canned joins
+to typed sourced policy (`informationResults` faq policy), unsupported
+individual-status flag, typed event reference, and actual handoff outcome
+(`requested`/`failed`/`unknown`) into the existing owner model composition on the
+node bundle. Effect semantics preserved (single policy execution, handoff once,
+pending retention, escalation record, node move). Deleted
+`prompts/.../host-withdrawal.json`, `PromptLoader.loadHostWithdrawalMessages`, and
+`hostWithdrawalMessagesSchema`; prompt inventory updated (110 files).
+- `modelSpansOf` traces actual model-produced spans for `generic`/`welcome`/
+`recommendation`/`multi_need_recommendation` (provider ids/titles/prices/URLs stay
+mechanical data, never spans); receipts now cover all surviving origins and
+`assertModelOrigin`/delivery verification checks exact equality for generic and
+ordered span survival inside mechanically rendered text for variants. Nothing is
+fabricated from rendered prose.
+- `tests/image-sdk-wire.test.ts` drives real `OpenAiAgentRuntime.composeReply` with a
+stubbed OpenAI fetch and asserts the installed SDK serialized exactly one
+`{type: input_image, image_url, detail: auto}` item, the raw URL occurring only as
+`image_url`, plus receipt and transport capture.
+
+**Files and working-tree blob hashes (step B only; repo diff also holds step-A dirt):**
+`src/runtime/agent-service.ts` `3adbbaec52b569769e37f5888fec68f45ac8988d`;
+`src/runtime/model-composition.ts` `a3a63247fea18f791aa638dbd5e9092bd45d57fc`;
+`src/runtime/openai-agent-runtime.ts` `cd43e0b56e342a189e83827041ec32bb6dee94e5`;
+`src/runtime/contracts.ts` `2cecd873a389bfb94b518099590426a015e197de`;
+`src/runtime/prompt-loader.ts` (loader removal);
+`src/runtime/host-withdrawal-policy.ts` (schema removal);
+`src/audit/prompt-inventory.ts`;
+`prompts/nodes/resolver_consultas_informativas/host-withdrawal.json` (deleted);
+`tests/url-image-context.test.ts` `23c1c7d2edd8ccc273eec16a3844a8c59c40f05d`;
+`tests/l4-customer-context-service.test.ts` (new) `d5d8965d6ee2a1fb4a860547207a12af56b0f`;
+`tests/model-spans-origin.test.ts` (new) `9a9db43e8b5ef2143be5208b8e7065c9b6242300`;
+`tests/image-sdk-wire.test.ts` (new) `f7f5247f232ff00d3e70f68ab472460b1132e6ca`;
+`tests/capability-boundary-routing.test.ts` `4f58cf0c5e6c7a140c5165856d23d56614c38222`;
+`tests/agent-service-information-flow.test.ts` `8d5b635579738056aec08a4ac9db3d81ea22e0ec`;
+`tests/prompt-audit.test.ts` `39e9a6d28227aca22e1deb1de8766bc19c83e77d`.
+Old production callers: `handleUrlImageTurn` (forced informative node +
+`buildUrlImageTurnExtraction`), `handleHostWithdrawalInformation` (deterministic
+canned join, `deterministic:host_withdrawal_policy_and_support`, zero compose calls),
+implicit `resolveProjectedImageAttachments` fallback. New production callers:
+extraction→`persistTurnOwner`→`handleInformationFlow`/`replyOnEstablishedImageNode`
+with `imageTurn`; model-composed host withdrawal with `informationResults` +
+`handoffOutcome`; explicit-only projection.
+
+**Coverage registration:** No new live registry entries (behavior changes reuse the
+existing mandatory live cases; coordinator owns deployment and rerun). New offline
+proof: service-to-model `customerContext` with unrelated-data sentinels and
+relevant/unrelated-change stability; URL established-path/purchase-continuity/
+failure-classification/accounting; host-withdrawal typed composition; variant span
+receipts; installed-SDK image serialization.
+
+**Validation:** Focused suites plus full `npx vitest run`: 161 files, 1305 passed,
+5 skipped, 0 failed. `npx tsc --noEmit` clean. `npx eslint src/ tests/` clean.
+`npx vitest run tests/live-behavior-coverage.test.ts` passed. No deployment, no
+`eval:behavior-live`, no `evals/`/plan/deploy changes (those worktree entries are
+predecessor step-A dirt, preserved untouched).
+
+**Limits and open risks (not certified):** Live wording after migration is unverified
+without deployment and live rerun — host-withdrawal, URL-on-`contacto_inicial`
+(e.g. dice describe now answers under the welcome schema), and expired-URL fallback
+all need candidate-visible evidence. The `general`-focus URL voucher turn still
+projects all stored carts (helper-level cart filtering unchanged). Skipped/no-phone
+host handoff maps to `handoff_unknown`, which the model must verbalize without a
+canned sentence. `buildUrlImageTurnExtraction` survives only as a recorded
+extraction-failure fallback.
+
+## 2026-09-10 — Follow-up diagnostic and evidence-routing fixes
+
+**Reason:** The second development live rerun showed four regressions after the
+model-output migration: normal-turn diagnostic envelopes evicted tool evidence,
+an unavailable image caption bypassed image evidence when history existed,
+ambiguous provider alternatives exposed shortlisted names, and an authentication
+refusal did not explicitly project the terminal no-more-credentials fact.
+
+**Decision:** Raised both bounded diagnostic envelope constants to 12 KiB so
+effect receipts and transport aggregates survive a normal turn; full traces and
+bounded storage behavior remain unchanged. Unavailable image captions now stay
+on the image outcome path and expose `image_evidence` instead of entering text
+continuation routing. Ambiguous provider alternatives now carry only shortlisted
+category facts, never unselected provider names. Authentication refusal evidence
+now includes `no_further_credential_requests: true`; the model remains the sole
+author of the delivered wording. No frozen RSVP behavior or YAML plan was
+changed.
+
+**Files and candidate blob hashes:** `src/runtime/artifact-redaction.ts`
+`4e13388006132dd025f1f1ca6909e0456b81c699`; `src/evals/trace-packets.ts`
+`c69f1e1dc8255a1c99c2217f5d9c230db9cd9e40`; `src/runtime/agent-service.ts`
+`769ee196f45a15ea1f8be4d78c3e8fae2f051413`; `src/runtime/contracts.ts`
+`475dfd563ac30654b9e27ff7a199b7a83ec11f99`; `src/runtime/openai-agent-runtime.ts`
+`1ecdfdbcbe31d6e00b9f07f5641d36db9b31ff9a`; `tests/artifact-redaction.test.ts`
+`dc24a594b63e038a09a958959ef5c430dbae5cfe`; `tests/f-trace-judge-repair.test.ts`
+`ca901acf23954b9f28505e43c50d87865bc9a9a4`; `tests/s17-image-turn.test.ts`
+`413f65bd12932e55b4138dbf0235666cdce46b25`; `tests/f3-ambiguous-confirmation.test.ts`
+`035ffe9967ee580c276de32662a1e4de64245c9d`; `tests/agent-service-information-flow.test.ts`
+`689fccb97e0c03762a807fb60e83d949128f493b`; `evals/live-behavior-coverage.yaml`
+`b922b2ac1d81cb54a3f4f91556767d58f9d9d78d`.
+
+**Coverage registration:** Added separate follow-up entries for unavailable-image
+routing, neutral provider ambiguity, and refusal credential closure. The existing
+mandatory live cases remain the semantic judge cases; the coordinator must
+replace the provisional predecessor hash with the reviewed candidate hash.
+
+**Line deltas for this batch:** `artifact-redaction.ts +2/-1`,
+`trace-packets.ts +1/-1`, image routing `-4` lines, neutral alternatives
+`+1/-1`, authentication evidence `+6` lines across runtime contracts and
+projection, tests `+13/-8` net across the five affected suites, and three
+coverage entries. These are scoped batch deltas; repository-wide dirty diffs
+also contain the coordinator's preceding migration.
+
+**Validation:** Affected suites passed 88 tests with 2 skipped. `npm run typecheck`
+passed; `npm run lint` passed; full `npm test -- --run` passed 1,177 tests with
+5 skipped across 153 files; and `npx vitest run tests/live-behavior-coverage.test.ts`
+passed 1/1. No deployment or live evaluation was run; the coordinator owns the
+development deployment and targeted rerun.
+
+**Limits:** This pass cannot verify live model wording until deployment and live
+evaluation. If the refusal judge still requires verbatim wording despite the new
+typed fact, that is an expectation conflict; no sentence was hardcoded. The
+RSVP `rsvp_confirmed_state_is_reported` behavior was deliberately untouched.
+
+## 2026-09-10 — L2 clarification, media, and authentication model-output migration
+
+**Reason:** Reconciled the remaining 26 assertions from the clarification, image,
+capability-boundary, RSVP acknowledgement, and terminal-auth suites with E04, E06,
+E07, R01, R02, and R09. The old expectations required runtime-authored questions,
+fallback paragraphs, or deterministic terminal replies. They now verify typed
+ambiguity, image, handoff, capability, and authentication evidence while checking
+that the model sentinel reaches the wire unchanged.
+
+**Decision:** No deterministic prose was restored and no runtime evidence projection
+was added: the predecessor already projects `imageEvidence`, `handoffOutcome`,
+`authenticationOutcome`, capability decisions, missing fields, and ambiguity into
+the reply request. Tests were rewritten to assert those projections and exact model
+delivery. Image delivery-error turns compose directly from typed media evidence;
+caption text is not followed by a fallback. The prompt-audit byte expectation was
+updated to the current route-scoped measurement (14,247 bytes), rather than
+loosening product behavior. The OTP loop expectation now reflects the intentional
+two composed terminal turns and suppressed retained follow-up.
+
+**Files and candidate blob hashes:** `tests/s17-image-turn.test.ts`
+`8cc6a71621db1bd4d9dbbd0e74be0683c040e991`; `tests/agent-service.test.ts`
+`2b5e0d812896234f098d35b1e090eba0209264d6`; `tests/agent-service-information-flow.test.ts`
+`59c778bed488d58481bbae03f82b9ffef9378294`; `tests/c-terminal-auth.test.ts`
+`f7769c89b14de700c1d4770f6bdddd2676d8eed0`; `tests/capability-boundary-routing.test.ts`
+`f51533cb79d8f9211a0530c8a63bcac09e2b9a15`; `tests/d-grounded-routes.test.ts`
+`4d42a6cffcc3ce321d5831ca589cab9d050ba532`; `tests/f2-frozen-closure.test.ts`
+`68b371919bfb1bfdaec932f0ce284717adc88112`; `tests/openai-agent-runtime-token-usage.test.ts`
+`c7060021f98e0552fb521a6033daab529b6ae728`; `tests/prompt-audit.test.ts`
+`94cb83e1fe18bea2dad5161bf1f614a8641184a5`; `evals/live-behavior-coverage.yaml`
+`aa6d35724cffeb92e3da54b2c3b282dc1fe51685`.
+
+**Coverage registry:** Added separate entries for model-origin clarification,
+image outcome/caption preservation, authentication refusal, terminal-auth result
+projection, and capability-boundary model delivery. They point to the mandatory
+adversarial clarification, image, auth-refusal, terminal-auth, and Carina document
+cases. `implementedBy` is the current predecessor commit
+`bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157`; the coordinator should replace it with
+the reviewed candidate commit when one exists.
+
+**Line deltas:** Against the current repository baseline, the scoped rewrites are
+`+188/-0` in the shared log (including pre-existing dirty log content),
+`+30/-0` in the registry, and `+176/-127` across the nine rewritten test files.
+The runtime files in the task scope were not changed in this pass because their
+typed projections were already present; no prompt source files were changed.
+
+**Validation:** Focused migration suites passed 231 tests with 3 skipped across 9
+files. `npm run typecheck` passed; `npm run lint` passed; full `npm test` passed
+1,175 tests with 5 skipped across 153 files; and
+`npx vitest run tests/live-behavior-coverage.test.ts` passed 1/1. Negative controls
+now fail if an old fallback/clarification is appended or if model output is
+replaced: image tests assert exact model text and media evidence, FAQ/selection
+tests assert exact model sentinels and ambiguity state, auth tests assert
+terminal/declined evidence, and the prompt audit keeps a measured byte gate. No
+deployment or live diagnostics were run; development Lambda deployment and
+targeted/full live evaluation are pending coordinator ownership.
+
+**Limits:** Same-workspace tests are not independent holdouts. The model sentinels
+prove transport origin and typed request projections, not Spanish quality or live
+model compliance. Existing image readable inspection and backend effect behavior
+remain covered by their prior cases. No AWS, deployment, or live-evaluation claims
+are made by this pass.
+
+## 2026-09-10 — L2 contact and quotation closure model-written migration
+
+**Reason:** Removed runtime-authored contact and quotation closure sentences, including confirmation replacement, sent summaries, and future-tense footer insertion. The close path now sends typed contact gaps, unresolved provider choices, explicit-date provenance, and actual per-provider effects to the reply model.
+
+**Decision:** `finish_plan` remains guarded by complete contact, selected providers, explicit user date, and typed confirmation. Its model-visible result contains only status, date, and receipt fields; backend detail prose stays in the trace. Completion persistence and replay behavior remain unchanged. Close output uses the generic model schema, and renderer transformations no longer author contact or close sentences. Prompt contract and evidence tests now assert receipts and delivered model wording rather than authored prose.
+
+**Files and candidate blob hashes:** `src/runtime/agent-service.ts` 9f023f72e7a321ae0424a2bd48f159b5e0cf2df2; `src/runtime/close-submission-summary.ts` 72cc8e7af544c76ff4d43cee0f7a1665bd35d21f; `src/runtime/message-renderer.ts` f5a14a5eea04c56136098df42c679c62c1118b7f; `src/runtime/openai-agent-runtime.ts` 8a4aa1b468b9d14a28d493b9784eaeb3c983d34e; `evals/live-behavior-coverage.yaml` fdb4c54fcd7e4e7bb5e25511cf4e48368941cc2d; close prompts `a3087315332ab9796b6f26e522f940956dc3d80d`, `489c803e717bd0405f8da7a87623b4880732ea3e`, `5bb2eeeac8dbe90e242120f577221c54ebd1a355`; close tests `b8ffa0adfa6f595efea884cb5108891f29b48fd9`, `380f97da0488ea7a741fff2a61ab97348adf49ea`, `2a999acc69c01b0f493d9e2ab00d82473df9c58d`, `01e3a5d76ed7b6b83a6e5d9e7cffede4e5f177f2`, `177cc31e45fdafffea121b79b1506f3ebd315eff`.
+
+**Line measurements:** source files changed from HEAD/current dirty baseline to candidate: `agent-service.ts 11323/10668`, `close-submission-summary.ts 223/166`, `message-renderer.ts 363/313`, `openai-agent-runtime.ts 2772/2773`; close response contract `34/14` and completed contract `9/7`. The close surface is net negative by more than 250 lines against HEAD; existing predecessor deletions in the dirty tree are included in that measurement.
+
+**Request measurements:** the close tool-surface regression captured `phone {instructionBytes: 12601, inputBytes: 5625, toolBytes: 2}` and confirmed `{instructionBytes: 12601, inputBytes: 5700, toolBytes: 686}`. The close-specific evidence is route-scoped; unrelated turns do not emit `close_submission_receipt`.
+
+**Validation:** Focused close suites plus `tests/close-completed-evidence.test.ts`, `tests/s12-plan-completion.test.ts`, `tests/agent-service.test.ts`, and `tests/batch4-state-machine.test.ts` passed 167/167. `npm run typecheck`, `npm run lint`, and `npm test` were run; full test run passed 1182/1187 with 5 skipped, with two close assertion expectations updated in-scope to typed absence of operational prose. `tests/live-behavior-coverage.test.ts` passed 1/1. No deployment or live evaluation was performed per packet limits; coordinator must deploy and run targeted diagnostics. Negative controls cover prompt-only dates, invocation without effects, missing receipts, failed/unresolved statuses, and post-generation footer/confirmation insertion.
+
+## 2026-09-10 — acceptance-evidence corrective pass
+
+**Reason:** Corrected the E10-E12/R01/R05/R06/R07/R08/R11 defects found in review without adding a second harness. The packet now separates candidate-visible history from independent state/effect evidence, validates the packet on the production scoring path, and keeps missing evidence fail-closed.
+
+**Decision:** Prior user inputs and prior assistant replies carry turn indexes through the selected turn; the selected candidate is supplied only once by `runSemanticJudge`. Independent evidence retains event/location/guest range/active need, provider need status and selected IDs, auth, contact validation, information access, fixture effects and close receipts. Empty output uses trimmed length; mismatch/generation-failed origins fail semantic scoring, while missing origins are reported as incomplete. Live evaluation independently hashes the returned wire message and fixture read failures now differ from empty subject history. Mandatory live case execution is asserted by the runner. The judge instruction is neutral about labeled evidence; the offline injection check proves placement only, not model resistance.
+
+**R05 evidence and limits:** This pass makes structural packet and accounting corrections, not a rubric or threshold change. No concrete original judge request/hash, candidate, packet, or verdict artifact is retained in this workspace, so no semantic rubric correction is claimed and no old artifact was rewritten. The required pinned baseline remains archive `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/daaf4cb438cdb2704155d54ca8320fddf617641c06e2cad97cdaf1337965ec56.zip`, Lambda `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=`. Same revised evaluator digest for baseline/candidate: not run; ordered expected IDs are `evals/suites/live_behavior_regression.yaml:caseIds`, executed IDs: none in this pass; denominators 84/83/1, per-case evidence, and baseline missing-origin result: not run. No retry-until-pass or production promotion occurred. Free-text redaction still collapses distinct codes/emails/phones to class placeholders; changing that outside this owned scope remains a documented evidence limit.
+
+**Validation:** Focused packet suite passed 70/70; typecheck and lint passed; full `npm test` passed 1208 tests with 5 skipped across 153 files; live-behavior coverage passed 1/1. No deployment or live evaluation was performed in this corrective pass. Files outside the corrective scope and `plan.yaml` were preserved.
+
 ## 2026-09-08 — Validate newly announced backend image/currency contract
 
 **Reason:** User supplied endpoint revision 6 and exact image/error payloads plus
@@ -9842,3 +10430,1268 @@ successful default deploy, then focused 7-case live rerun as attempt 1 of 3:
 **Validation:** typecheck exit 0, lint exit 0, full npm test 149 files 1192 passed / 5 skipped. Focused live (same deploy): martha 1/1, spanish_only 1/1, maria_jose 1/1, token_seeded_close_flow 1/1 (footer turn3=1 turn4=0, sent once past-tense, effect 1/1), close_date_provenance 1/1 (turn5 model compose with tokens, no finish_plan, reports existing outcome for provider 90 with event date, lifecycle finished). Carina: turn1 now grounded selection (2 records, no invention, no OTP/document claim) scoring 0.88 vs 0.90 threshold with all 7 other expectations passing including turn2 answer-current-payment 1.0; residual is clarification-axis strictness (selection vs status-vs-document) on extractor-resolved purchase-only repeats, an L3 extraction-quality item per W1-07 precedent (document+purchase variant now clarifies correctly via forced status_or_document). No rescoring, all run dirs retained.
 
 **Failure classification:** 5/6 targets pass; carina partial (0.88 minor semantic, structural 100%) documented as residual L3, not a new deterministic defect.
+
+## 2026-09-10 — lean-conversation last-fix: token defer-close turn2 reply-token yield (dev)
+
+**Reason:** Plan task 2026-09-09-lean-conversation last-fix: live_feedback.token_seeded_selection_defer_close turn2 missing reply tokens (run 67d9dbe7 83/84, score 0.6616 hardGate false semantic 0.1). All else green: orig83 82/83, new case pass 0.8925, close effect 1/1, footer final 0.
+
+**Root cause:** Stochastic extractor variance on the identical turn2 input "ahora cerremos el plan" (intent cerrar, typed closeAction confirm_close, photo selected + catering deferred, no contact yet). Passing runs extract requestedOperation=null and the close flow asks for contact via model compose (reply tokens present, no finish_plan). Failing run 67d9dbe7 turn2 extracted requestedOperation=provider.quote.write (unsupported write_blocked); handleCapabilityBoundaryIfNeeded intercepted with deterministic:unsupported_operation (reply tokens null, total=classifier+extraction only), and turn3 then drifted to entrevista re-proposing catering instead of continuing close. The existing secondary-planning yield explicitly excludes provider-planning ops and the W1-10 selection yield requires confirmar_proveedor + selection hints, so the cerrar+confirm_close shape had no yield. Evidence-only, no canned prose.
+
+**Decision:** One surgical yield in src/runtime/agent-service.ts handleCapabilityBoundaryIfNeeded (after the W1-10 selection yield): unsupported + actionIntent cerrar + closeAction != null + provider-planning op (existing isProviderPlanningCapabilityOperation helper: provider.plan/search/quote.write) returns null so the close flow asks for contact through the model (reply tokens, deferred selection preserved, no premature finish_plan since no contact exists). Typed extraction markers only, no keywords, no fixture IDs; unrelated turns byte-identical. New tests/token-defer-close-yield.test.ts (1 test) seeds the exact turn2 pre-state and asserts model compose with wire==model outbound, no deterministic fallback, tools_called without finish_plan, photo [90] selected, catering deferred.
+
+**Digests:** base bdb4a88a; candidate blobs agent-service.ts 4c8a24007355a171f19b1d615a95bb57d66b6589, token-defer-close-yield.test.ts 3eb0ef94aceb7dbc2c4a7d71021e62890e8eb285 (new file). No rubric/threshold/case/prompt change. Live Lambda redeploy + full eval:behavior-live rerun left to the devops task; code is deploy-ready.
+
+**Validation:** new token-defer-close-yield 1/1 (failed before fix with deterministic:unsupported_operation, passes after); focused defer/close 28/28 (w1-10, lean-close-footer, close-proceed-confirmed, f4-close-submission-summary, f4-judge-close-evidence); capability/projection 119 passed / 2 skipped (information-flow, capability-boundary-routing, capability-boundary, f3-capability-safe-read, s10-model-projection, model-output-origin, message-renderer, live-behavior-coverage); typecheck exit 0; eslint on touched files exit 0; full npm test 150 files / 1193 passed / 5 skipped, 0 failed (prior 149/1192 preserved, +1 new).
+
+## 2026-09-10 — lean-conversation single-case fix: s11 RSVP durability world (dev, no runtime code change)
+
+**Reason:** Plan task 2026-09-09-lean-conversation, sole RSVP writer: live_behavior.s11_rsvp_durability_confirms_once catastrophic in run 83e7a1be (81/84, s11 0.7867, reports-confirmed-final-state-once 0.1). Reply was byte-identical to the passing reversal case ("ya esta confirmada ... No fue necesario hacer otro cambio y no se realizo un nuevo registro") with tools_called of 6 pure reads and zero guest_rsvp, so the judge correctly found no persisted rsvp.write execution behind a durability-confirming claim.
+
+**Root cause:** Eval-world inconsistency, not a code regression. s11 shares fixture s02-rsvp-reversal whose read state is attending (eventDetails will_attend=1), so declining-vs-attending logic in agent-service.ts:2473-2504 takes the identical-attending no-write branch. The sibling s07_attending_identical_no_write case REQUIRES that no-write behavior on the same fixture (mustNotCall guest_rsvp, still passing), while s11 demands exactly one durable write from the same input. rsvpIsolation setup declining is inert under backendFixture (fixture gateway ignores the real-backend write). No duplicate effect, no invented confirmation: with an attending read, no write is the correct product behavior.
+
+**Decision:** Evidence-only world fix, zero runtime/prose change. New fixture evals/fixtures/s11-rsvp-durability-declining.json (same shape as s02-rsvp-reversal, read attendance will_attend=0 declining, write envelope still attending) so the explicit attending decision (extraction rsvp_action attending, proven in artifact) authorizes exactly one guest_rsvp with receipt and confirms via the mutation renderer. Case live-behavior-s11-rsvp-durability.yaml v1->v2: scenario pointer only, rubric untouched, tool_usage mustCall extended to [lookup_rsvp_invitations, guest_rsvp] as the hard structural pin for the single write. s02-rsvp-reversal untouched (s07/reversal preserved). Offline twin: new test in tests/s11-rsvp-durability.test.ts walks the new fixture (declining read, durable execute, confirmed, exactly 1 rsvp.write receipt, attendance true); failed before the fixture existed, passes after.
+
+**Digests:** failing run 83e7a1be (.eval-runs/eval-2026-09-10T07-24-04-141Z-83e7a1be, s11 judge msg with requestHash 1f832ea3 rubricDigest 881e84ad evidenceDigest 73a6a5eb); base bdb4a88a. No Lambda code change; live redeploy needed only to ship the new fixture JSON + case YAML before the next eval:behavior-live gate. Close re-ask phone and Carina ambiguity paths untouched.
+
+**Validation:** new s11 live-world test 1/1 (red pre-fixture, green post); focused RSVP set 81/81 (s11, s02, s07, eval-rsvp-hooks, eval-loader, agent-service-rsvp, rsvp-deterministic-current-state, rsvp-offer-fragment-only, f2-rsvp-declined-offer); live-behavior-coverage 1/1; typecheck exit 0; eslint exit 0; full suite 150 files / 1194 passed / 5 skipped, 0 failed.
+
+## 2026-09-10 — devops targeted rerun + conditional promote (lean-conversation, s11 fix bytes)
+
+**Reason:** Owner-authorized targeted rerun before full gate: s11_rsvp_durability (blocker), close_date_provenance_and_completed_retry, purchase_confirmation_carina, from run 83e7a1be (81/84).
+
+**Freeze:** HEAD bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157; worktree blobs agent-service.ts 4c8a24007355a171f19b1d615a95bb57d66b6589, s11 case 40c9d571ebfe4e3ea71544ca2cb0cd155b5f5a48, s11 test ee6cc49fa3f4fe5cc1cd5af3e83c0c9bc7a1c0e3, token-defer test 3eb0ef94aceb7dbc2c4a7d71021e62890e8eb285, s11 fixture a16c12a0e59636853827c26b6565b41fd0fdf192.
+
+**Deploy (se-dev, us-east-1, fail-closed):** STS account 684516060775 verified. DEPLOYMENT_ENV=development npm run deploy exit 0: artifact sha256 e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616, Lambda recap-agent-runtime-dev CodeSha256 6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY= LastModified 2026-09-10T12:32:51Z. Prior prod recap-agent-runtime lxZNAaVIROigfAWeMBXMMy2wEA/uxTplKzFD1iGx8dU= untouched.
+
+**Targeted:** run eval-2026-09-10T12-34-12-916Z-57a9e47d 2/3 (s11 0.957 pass, carina 0.919 pass, close_date 0.811 fail on completed-retry-reports-existing-outcome 0.02: reply says sent "nuevamente", implies resend; structural 9/10 pass incl. effect 1/1, tokens present, lifecycle durable, no duplicate dispatch). Retry eval-2026-09-10T12-36-24-435Z-729a314b 0/1 (same axis 0, repeatable, deterministic wording defect, not flake). No prod promotion. Full 84-case gate still pending as follow-up. Runs retained incl. 83e7a1be, 67d9dbe7.
+
+## 2026-09-10 — devops prod promotion frozen bytes e8299759 (lean-conversation, owner-authorized wording-only)
+
+**Reason:** Owner-authorized wording-only promotion of frozen dev bytes: targeted 57a9e47d 2/3 pass (s11 0.957 hardGate true, carina 0.919 hardGate true) + retry 729a314b confirms close fail is repeatable deterministic wording only (nuevamente implies resend, score 0 on one axis, effect 1/1, tokens present, lifecycle durable, no duplicate dispatch, footer 0). Owner 5pct rule allows wording-only minors; effects clean. Owner explicitly said just promote, wording case only.
+
+**Freeze verified (fail-closed):** local .artifacts/recap-agent.zip sha256 e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616 matches frozen; dev stack recap-agent-runtime-dev CodeS3Key lambda/e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616.zip; dev Lambda recap-agent-runtime-dev CodeSha256 6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY= LastModified 2026-09-10T12:32:51Z Active/Successful. STS se-dev us-east-1 account 684516060775 verified before mutating. No code change during promote.
+
+**Promote:** DEPLOYMENT_ENV=production DEPLOY_ARTIFACT_PATH=.artifacts/recap-agent.zip DEPLOY_ARTIFACT_SHA256=e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616 npm run deploy exit 0. S3 s3://recap-agent-artifacts-684516060775-us-east-1/lambda/e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616.zip. Stack recap-agent-runtime UPDATE_COMPLETE. Prod CodeS3Key now lambda/e829975950e99ebf7680c17f7e6ace3e5a01a625279a238e3003c0f0c7903616.zip.
+
+**Prod verified:** prior CodeSha256 lxZNAaVIROigfAWeMBXMMy2wEA/uxTplKzFD1iGx8dU= -> new 6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY= LastModified 2026-09-10T12:42:13Z State Active LastUpdateStatus Successful. Smoke: Active/Successful + UPDATE_COMPLETE. Dev unchanged 6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY= 2026-09-10T12:32:51Z. Prod Function URL https://jwtjjociscvaa5dsrp5gokmno40doiva.lambda-url.us-east-1.on.aws/. Rollback: redeploy prior pinned key lambda/97164d01a54844e8a07c059e3015cc332db0100feec53a652b3143d621b1f1d5.zip if needed.
+
+**Runs retained:** 83e7a1be 81/84, 67d9dbe7 83/84, 57a9e47d 2/3, 729a314b 0/1, plus 22d9554d. Wording defect (close completed-retry nuevamente) recorded separately for follow-up, not fixed in prod promote. Full 84-case gate follow-up still pending in dev.
+
+## 2026-09-10 — reconcile lean-conversation plan with completed promotion
+
+**Scope:** Documentation only, requested by the owner after the promotion status report. Updated plan.md, plan.yaml revision 2, debug-2026-09-10.md, and evaluation-manifest.md. Preserved ongoing runtime/S11 fixture/test changes without modification.
+
+**Verified:** Current dev and prod Lambda CodeSha256 both `6CmXWVDpnr92gMF/fmrOPloBpiUnmiOOMAPA8MeQNhY=`, Active/Successful, LastModified 12:32:51Z and 12:42:13Z respectively, using se-dev/us-east-1 read-only calls. Promotion digest e8299759 and authorization are recorded in the prior deployment entry. Retrieved local case artifacts: initial debug 39d75046 completed 81/84 (original 80/83 plus new close case pass), 67d9dbe7 83/84, 83e7a1be 81/84, current targeted 57a9e47d 2/3, repeat 729a314b 0/1. No historical rescoring.
+
+**Plan decision:** Promotion subset complete is distinct from whole-plan acceptance. L1 gate stays in progress; broad family migrations and L3-L5 remain open. Added explicit completed debug/promotion milestones and pending dev-followup for the unsupported repeat-submission claim and fresh full 84-case gate. The model must reason from existing/new receipt evidence; no exact response, word blacklist, deterministic prose rewrite, or judge relaxation. The remaining hard semantic failure is preserved despite the owner-authorized promotion exception. Do not infer deterministic code origin merely from repeatable text.
+
+**Validation:** YAML parses; task IDs are unique; all dependencies resolve without cycles; diff whitespace check passes. No code/prompt changes, no new deployment, and no additional live run initiated by this documentation reconciliation.
+
+## 2026-09-10 — self-contained subagent plan and three-owner scope
+
+**Request:** Audit plan detail/progress, make it executable without chat context, and reduce ownership granularity to Planning, FAQ, and renamed user operations.
+
+**Findings:** Runtime source still contains purchase replacement, RSVP deterministic prose, clarification/contact rewriting and incomplete all-request accounting. The old support acknowledgement helper is already absent. Original task dependencies permitted overlapping shared runtime work and E10–E12 lacked a named implementation owner. No newer full report than the recorded targeted runs was found during this inspection.
+
+**Documentation changes:** Registry revision 3 adds acceptance-evidence, sequences all shared-writer tasks, corrects the L1 task to verify current bytes rather than redeploy historical ones, and removes the stale helper-deletion assignment. Added START-HERE.md and eleven standalone task packets with dispatch context, owned files, actual symbols, steps, test/case IDs, negative controls, exact dev validation commands and reviewer handoff artifacts. Registry has 15 milestones: 4 completed, 1 in progress, 10 pending; this is bookkeeping rather than percentage of engineering complete.
+
+**Owner decision:** Exactly three persistent owners: Planning, General information (FAQ), Customer assistance (renamed user operations). Purchase, RSVP, auth and support are scoped capabilities inside Customer assistance, including accountless users; no subowner agents. Entry selection is transient, not a fourth owner. Ordinary policy reads within a task do not trigger handoff. Silent semantic transfers remain bounded to one per turn with one final response/effect owner and one plan store. Updated plan, registry and all packets consistently. No deterministic response workaround, judge relaxation, runtime change or deployment.
+
+**Validation:** Parsed YAML; unique task IDs and acyclic/resolvable dependencies; verified owned paths, focused test paths and diagnostic case IDs exist. Final packet/registry consistency and whitespace checks recorded with this update.
+
+## 2026-09-10 — lean-conversation completed-close evidence for retry turns (phase 1)
+
+**Reason:** The finished-plan retry path already projected `close_already_sent`, but it did not tell the model that the current turn performed no new provider submission and exposed no finish tool. This allowed a model-authored reply to imply a fresh resend despite one persisted quote write, no repeat `finish_plan`, and a finished lifecycle.
+
+**Decision:** Added the typed evidence key `close_submission_performed_this_turn: false` to `ReplyTurnEvidence.turn_state`. It is projected only when the plan lifecycle is `finished` and at least one provider need has a selected provider, exactly matching the existing `close_already_sent` condition. Active authorized close turns and unrelated planning/information turns omit both completed-close keys. No conflicting runtime instruction, prompt prose, deterministic replacement, word ban, fixture branch, or live case expectation was found; no removal was made. Added paired evidence coverage and two sentinel model-output-origin checks through the finished-plan AgentService branch. Registered `close-completed-retry-no-new-write-evidence` against the unchanged `live_behavior.close_date_provenance_and_completed_retry` case.
+
+**Removed-path inventory:** None. `agent-service.ts`, `prompts/nodes/necesidad_cubierta`, and the live case YAML were unchanged.
+
+**Base/candidate digests:** Base commit `bdb4a88a`. Base blobs: `src/runtime/openai-agent-runtime.ts` `ecac2c7ab802cfa2cd60206fb6e5a4e88ea993a6`, `evals/live-behavior-coverage.yaml` `81a805403bf5459f88d6e73ad85517bc45e6884b`, `tests/close-completed-evidence.test.ts` absent. Candidate blobs before this log append: `src/runtime/openai-agent-runtime.ts` `4e59436df9a4b38f706a689d5c9a993e78b8f5b2`, `tests/close-completed-evidence.test.ts` `3e27a89e612427d7ebd32a98a9f13a666f78cbb6`, `evals/live-behavior-coverage.yaml` `937eab0e05adb5edb0e8ca0ed7c6c622b017906c`. The append-only log blob is reported in the coordinator handoff because including its own final hash would be self-referential.
+
+**Serialized request measurement:** For the completed-close evidence fixture, the prior serialized model input was 5,318 UTF-8 bytes and the candidate input is 5,369 bytes (+51 bytes), with instructions and tools unchanged. The 5,318-byte baseline is the candidate serialization with only the new JSON member removed. An unrelated active planning turn measured 5,485 bytes with the key absent; the conditional projection leaves that serialization byte-identical before and after. These are local composition measurements, not live wire or token measurements.
+
+**Validation:** Focused suite `npx vitest run tests/close-proceed-confirmed.test.ts tests/lean-close-footer.test.ts tests/f4-explicit-event-date.test.ts tests/model-output-origin.test.ts tests/live-behavior-coverage.test.ts tests/close-completed-evidence.test.ts` passed; paired evidence and two sentinel output-origin tests passed. `npm run typecheck`, `npm run lint`, and `npm test` passed. Development deployment and the complete 84-case live gate remain pending the coordinator phase; no live success is claimed.
+
+**Limitations:** This phase proves local evidence projection and delivery-origin behavior only. The coordinator must deploy the candidate bytes and run the mandatory live suite, including semantic judging of the unchanged six-turn case.
+
+## 2026-09-10 — lean-conversation follow-up: completed confirmation must not reset finished plan
+
+**Reason:** Development gate `eval-2026-09-10T14-27-56-593Z-3771d89c` ran on deployed artifact `1c5e175d...` (Lambda CodeSha256 `HF4XXXYcP2ILexnIlRvqRIRmbfogbN/8ungsjlwYoB4=`) with 82/84 passed, 2 failed, 0 errored, and 0 skipped. The evidence change was not exercised. In the failed `live_behavior.close_date_provenance_and_completed_retry` turn 5, the finished plan was overwritten by a fresh plan because the first extraction reported `actionIntent: "confirmar_proveedor"` and `requestedOperation: "provider.quote.write"`; recovered stored response `resp_01fb274c84bea99e006aa2bf11289887d2b5a42e9ee507dad7` and CloudWatch showed two extraction calls.
+
+**Decision:** A completed plan with selected providers treats provider confirmation or a repeated close as continuation of the finished outcome, using the existing completion evidence including `close_submission_performed_this_turn: false`. Removed only `finishedExtraction.actionIntent === 'confirmar_proveedor'` from the finished-plan `isPlanningIntent` condition in `src/runtime/agent-service.ts`. The other five reset intents, capability-boundary yields, and evidence projection are unchanged; `reset_plan` and `buscar_proveedores` continue to reset.
+
+**Tests:** Extended `tests/close-completed-evidence.test.ts` with a typed `confirmar_proveedor`/`provider.quote.write` finished-plan case asserting one extraction, one compose, verbatim wire/model text, stable plan ID and finished lifecycle, selected provider 90, no capability-clarification bundle, no `contacto_inicial` previous node, and no `finish_plan`; added a finished-plan `reset_plan` regression. Added registry entry `close-completed-plan-not-reset-by-confirm-intent` against the unchanged live case.
+
+**Base/candidate blobs:** Base `bdb4a88a`: `agent-service.ts` `47840a87a15b47c6442cc6b6bc382b58e445c515`, `close-completed-evidence.test.ts` absent, `live-behavior-coverage.yaml` `81a805403bf5459f88d6e73ad85517bc45e6884b`, `implementation-log.md` `617279a9bc392b85418a94f298553dff590eb7a7`. Candidate: `agent-service.ts` `43f106867397af07dedf6b87338258aa0749ad98`, `close-completed-evidence.test.ts` `e0864ce7ba37e8db472b7bca2f6fa74769557d51`, `live-behavior-coverage.yaml` `8294b2d9d0f4a9db9b6ed42f53bc0b1e9afc0a0c`, and the pre-entry `implementation-log.md` `ad5f8c3f57b404d295bb6f1531b0503e4d089b87`. The final log blob is intentionally not self-referential.
+
+**Validation:** Packet focused suite passed 30/30 across 6 files; `tests/close-completed-evidence.test.ts` passed 5/5; `npm run typecheck` passed; `npm run lint` passed; `npm test` passed 151 files, 1199 tests, 5 skipped, 0 failed; `tests/live-behavior-coverage.test.ts` passed 1/1. No deployment, live evaluation, commit, live-case YAML change, or `plan.yaml` change was performed. Development deployment and the full 84-case live gate are again pending the coordinator phase.
+
+## 2026-09-10 — lean-conversation follow-up: completed retry existing-outcome prompt guidance
+
+**Reason:** Coordinator run 2 `eval-2026-09-10T15-08-00-207Z-aecdbe5d` evaluated artifact `7e63e21d...` on Lambda `fmPiHfSua6CBWp3CmXGUxhuxWuckpb7ARXZzzTSmtwI=` with 80/84 passing. The target `live_behavior.close_date_provenance_and_completed_retry` failed only the hard semantic `completed-retry-reports-existing-outcome` expectation (0.02): the model authored a new-send framing even though structural expectations passed, including finished lifecycle, preserved provider, effect 1/1, no `finish_plan`, and `close_submission_performed_this_turn: false` in the request. This confirms a wording-steering gap rather than an evidence-projection gap.
+
+**Decision:** Added one route-specific conditional bullet to `prompts/nodes/necesidad_cubierta/response_contract.txt`, using the typed evidence to distinguish an existing result from a new send without a word ban or prescribed answer. Exact text added: `- si turn_state.close_submission_performed_this_turn es false, la misma solicitud ya fue enviada antes de este turno: confirma ese resultado como un estado existente y no anuncies ni ejecutes un envío nuevo;`. Added a prompt bundle-content assertion in `tests/close-completed-evidence.test.ts` for the typed key and both semantic distinctions. Registered `close-completed-retry-existing-outcome-guidance` against the unchanged live case. Runtime evidence projection, live case YAML, judge, rubrics, thresholds, and `plan.yaml` were not changed.
+
+**Base/candidate blob hashes:** Base commit `bdb4a88a`: prompt `prompts/nodes/necesidad_cubierta/response_contract.txt` `91465c9e64a99f59fb69c0b05fe9bdff082fa9c0`, registry `evals/live-behavior-coverage.yaml` `81a805403bf5459f88d6e73ad85517bc45e6884b`, implementation log `617279a9bc392b85418a94f298553dff590eb7a7`, and `tests/close-completed-evidence.test.ts` absent. Candidate before this entry: prompt `a809f3a44dd3132191e57c6e146fb25c7103fa8c`, test `7fedb588832e49f333a47119c3faabe83281cd9f`, registry `b6371074057865e130491d8da531034fa8377a8b`, and implementation log `c41df9464b688f462ceb0b3088126a2901bb053f`. The final log blob is intentionally not self-referential.
+
+**Validation:** Focused close/evidence suites passed 36/36 across 6 files; `npm run typecheck` passed; `npm run lint` passed; full `npm test` passed 151 files, 1,200 tests, 5 skipped, 0 failed; `tests/live-behavior-coverage.test.ts` passed 1/1. Development deployment and the full 84-case live gate remain pending the coordinator phase. No deployment, live evaluation, commit, or `plan.yaml` edit was performed.
+
+## 2026-09-10 — dev-followup coordinator phase: repeated-close fix, dev gates, strict gate open
+
+**Reason:** Close dev-followup (plan task: completed-close follow-up falsely implied another submission with one recorded write; no full 84-case gate on current bytes). Three uncommitted candidate phases were deployed and gated; all runs retained.
+
+**Candidate (uncommitted worktree; current blobs):** `openai-agent-runtime.ts 4e59436df9a4b38f706a689d5c9a993e78b8f5b2`, `agent-service.ts 43f106867397af07dedf6b87338258aa0749ad98`, `prompts/nodes/necesidad_cubierta/response_contract.txt a809f3a44dd3132191e57c6e146fb25c7103fa8c`, `tests/close-completed-evidence.test.ts 7fedb588832e49f333a47119c3faabe83281cd9f`, `evals/live-behavior-coverage.yaml b6371074057865e130491d8da531034fa8377a8b`. Live case YAML unchanged (`788e9499a5e0180b7e3a14c81129c4b7b63b957c`). No commit, no plan.yaml edit by the implementer.
+1. Evidence: `turn_state.close_submission_performed_this_turn: false` projected with `close_already_sent` only on finished plans with selected providers; paired evidence + two-sentinel origin tests.
+2. Reset protection: removed `confirmar_proveedor` from the finished-plan reset intents. Recovered stored extraction `resp_01fb274c…` proved run 3771d89c turn 5 was labelled `confirmar_proveedor` + `provider.quote.write`, which destroyed the completed plan and produced a deterministic clarification. `reset_plan`/`buscar_proveedores` resets preserved by regression.
+3. Guidance: conditional bullet in `prompts/nodes/necesidad_cubierta/response_contract.txt` tied to the typed flag; no word ban, no prescribed sentence. Registrations: `close-completed-retry-no-new-write-evidence`, `close-completed-plan-not-reset-by-confirm-intent`, `close-completed-retry-existing-outcome-guidance`.
+
+**Deployments (se-dev, us-east-1; STS 684516060775 verified before each; no production change):** artifact `1c5e175d761c3f620b7b19c8951bea4484666dfa206cdffcba782c8e5c18a01e` → Lambda `HF4XXXYcP2ILexnIlRvqRIRmbfogbN/8ungsjlwYoB4=` 14:27:03Z; artifact `7e63e21df4ae6ba0815a9dc2997194c61bb15ae724a5bec0457673cd34a6b702` → Lambda `fmPiHfSua6CBWp3CmXGUxhuxWuckpb7ARXZzzTSmtwI=` 15:07:21Z; artifact `5924e4d7f8d924dfa2a11cdfb9ff4e77aa9f71750c0d63ffa362cfde97c167f3` → Lambda `WSTk1/jZJN+ioRzfuf9Od6qfcXUMDWP/o2LP3pfBZ/M=` 15:36:36Z (current).
+
+**Full dev gates (84 cases, no --case filter; all retained):**
+- `eval-2026-09-10T14-27-56-593Z-3771d89c` on 1c5e175d: 82 passed / 2 failed / 0 errored / 0 skipped. Failures: close_date_provenance (completed plan destroyed by the `confirmar_proveedor` reset; root cause recovered from stored extraction) and spanish_only (deterministic `contextual_clarification`, L2-clarification scope).
+- `eval-2026-09-10T15-08-00-207Z-aecdbe5d` on 7e63e21d: 80/3/1/0. close_date failed only the repeat-outcome semantic axis ("enviada nuevamente", 0.02; all structural green, plan stayed finished); maria_paz and carina semantic variance; token_seeded_close_flow errored (empty reply, harness flake).
+- `eval-2026-09-10T15-37-12-044Z-f735b1f0` on 5924e4d7: 68/0/16/0 — INVALID as a gate: the se-dev login expired mid-run (~15:54Z) and harness plan seeding/reads failed; close_date passed 0.8923 hardGate true before expiry. Retained as infrastructure-invalid.
+- `eval-2026-09-10T16-37-22-533Z-618372bf` on 5924e4d7 (credentials refreshed; start/end Lambda `WSTk1/jZ…` unchanged 15:36:36Z): 82 passed / 2 failed / 0 errored / 0 skipped. close_date_provenance PASSED 0.8998 hardGate true; turn 5 delivered "La solicitud a Carlos Schult ya fue enviada…" with `completed-retry-reports-existing-outcome` 1.0.
+- Diagnostic (same bytes) `eval-2026-09-10T17-00-16-079Z-a90eff20`: token_seeded_selection_defer_close 1/1.
+
+**Residual failures on the valid run 618372bf (both hard semantic, unrelated to this task and to close completion):** `purchase_confirmation_carina_request_survives_normalization` 0.8406 (semantic axis 0.08; oscillated across be0bcb49/83e7a1be/aecdbe5d and passed 3771d89c; L3 extraction-quality residual) and `token_seeded_selection_defer_close` 0.9292 (axis 0.72, extra confirmation; passed 3771d89c/aecdbe5d and diagnostic a90eff20; explicit-confirmation close gate documented in W1-07). No deterministic code change is indicated by these results.
+
+**Strict acceptance:** NOT met — the mandatory suite still has two unrelated hard semantic failures. No rescore, no threshold change, no waiver, no production change. dev-followup stays in_progress; `acceptance-evidence` is not dependency-ready while the strict gate is open. All run dirs retained.
+
+## 2026-09-10 — dev-followup owner gate exception (separate from strict status)
+
+**Decision:** Owner disposition of the open strict gate after reviewing runs 3771d89c, aecdbe5d, f735b1f0 (invalid), 618372bf and diagnostic a90eff20. dev-followup is recorded complete-with-exception: the implemented change and its deployed evidence are accepted for task completion, while the strict 84-case gate remains recorded open on the two unrelated oscillating hard semantic failures (`purchase_confirmation_carina_request_survives_normalization`, `token_seeded_selection_defer_close`). This exception does not rescore any run, waive any individual failure, change thresholds or judges, or convert a hard semantic failure into a pass; both failures stay explicit and are re-run under the later l2-close/l3-semantic gates. No production change is authorized by this exception. Writer lock released; next task is `acceptance-evidence`.
+
+## 2026-09-10 — acceptance-evidence Phase 1: transport and live origin receipts
+
+**Reason:** Close the acceptance packet's evidence gaps without changing conversational behavior: the separate response-classifier OpenAI client was not transport-instrumented, live Lambda responses did not emit the output-origin receipt, and the acceptance log lacked the paired baseline/candidate rerun procedure. Retrieval and provider-vector OpenAI clients were also audited as separate conversation-turn transports.
+
+**Decision:** Installed the same hash-only transport capture on classifier, knowledge-retrieval, and provider-vector clients. Classifier calls now capture every serialized attempt, including retries and failed HTTP calls, with stage `classifier`; successful and failed classifier observations are carried in `openai_calls.classifier.requestMetrics.transport`, including nullable response identifiers for failed calls. Retrieval and provider-vector calls use their own `knowledge_retrieval` and `provider_vector_search` stages; knowledge retrieval carries its observations into `information_execution_summary.openAiTransport`. No request body or private text is persisted. `OpenAiAgentRuntime.composeReply` now creates the `transport-v1` `ModelOriginReceipt` itself, which is the live AgentService path; rendering compares the model paragraphs against documented transforms and emits hash-only `verified` or honest `mismatch` evidence. A failed migrated composition emits `generation_failed`; paths without a receipt emit explicit `missing`. The CLI handler always includes `output_origin`, including the `missing` baseline-compatible case. No model-written text, routing, evaluator semantics, thresholds, live case, `plan.yaml`, deployment, live evaluation, or commit was changed.
+
+**Evaluator-semantics-change review flag:** The earlier runner/judge semantic changes remain in the worktree and were intentionally not changed in this phase. Independent review must inspect those pre-existing changes separately; this phase only adds evidence assertions and transport/origin plumbing.
+
+**Exact worktree blobs (`git hash-object`, before this log append):** `src/audit/openai-transport-capture.ts` `9b0950149d9bc56eb260569202404843398aa380`; `src/audit/output-origin.ts` `64456788df5f71442ff12fa4800897ca8cedc7ea`; `src/audit/openai-audit-cli.ts` `71cb3856b16364c075f3192e0a56f21bd0c920bf`; `src/core/information.ts` `b77d90c05e59202fc8eba2e5c7c41ab5801e8b9e`; `src/core/messages.ts` `7e0ab00602c96004c1a413c9b3b5abd41cc93d0d`; `src/evals/case-schema.ts` `6280239e956b71779b07f976ccd2ddf9c759950e`; `src/lambda/handler.ts` `dfa487c43ec30a76c782a9dee9b6737a9439d5fc`; `src/lambda/request-observability.ts` `acc19fd54480a5a3c92f8754a5059a67519e6a36`; `src/runtime/agent-service.ts` `8c87cc0aa509934bca28812bd75be7083df2e858`; `src/runtime/contracts.ts` `d015dd083baa6531b998033286309ee4abe1a1b3`; `src/runtime/information-orchestrator.ts` `46d524d2bef2498a3bbc8e6f0ef9ef59728ad4a7`; `src/runtime/knowledge-retrieval-gateway.ts` `9b12c8ff18225efd5ece18f2caf14580aa9f37b0`; `src/runtime/message-response-classifier.ts` `abe5548af413f6c8106091b8f63334684aaeb182`; `src/runtime/model-composition.ts` `0934454a64eb66ff769a38507ff1d72a3406f833`; `src/runtime/openai-agent-runtime.ts` `77ab46fcda256a6505d947078ce8cb8d7037a84c`; `src/runtime/provider-vector-search.ts` `d3acd6f86881922c5fbf21e98a2df5234465d5ff`; `tests/message-response-classifier.test.ts` `72fb42100644411a91d2311d883720b751a851ea`; `tests/model-output-origin.test.ts` `d0c72d74c4dc91fb85857b1ea24de2668a0136cb`; `tests/openai-transport-capture.test.ts` `c4e493b95f1a4c57b74afd420bf47d67b628248a`; `tests/request-observability.test.ts` `493d532128c89a783e7715c36eeaabe567148afa`. The pre-append log blob was `docs/implementation-log.md` `8977e57abbecd842b26cceaa69a8d677cc164d2f`; its final hash is necessarily reported by the coordinator after this append.
+
+**Transport measurement example:** the classifier sentinel captures two serialized requests with `stage: classifier`, `observedRequestCount: 2`, separate request/response identifiers, UTF-8 payload/component byte counts, and request-body SHA-256 values; the retry test records both attempts. Request-observability preserves the same nested metrics under `openai_calls.classifier.request_metrics`. Retrieval/vector transports are captured under their dedicated stages; mocked gateway tests intentionally report no transport observation when the SDK method is stubbed before HTTP, rather than fabricating a request.
+
+**Validation:** Focused packet suite plus classifier/origin/observability tests passed: 7 files, 47 tests; the expanded classifier tests cover successful observation, retry attempts, failed calls, and the hidden-second-request mutant. `npm run typecheck` passed. `npm run lint` passed. Full `npm test` passed: 153 files, 1,207 tests passed, 5 skipped, 0 failed. `tests/live-behavior-coverage.test.ts` passed 1/1. No deployment and no `npm run eval:behavior-live` execution were performed in this phase.
+
+**Paired revised-contract rerun procedure (documented, not executed):** With `se-dev` in `us-east-1` and the fail-closed account check, recover the frozen baseline from `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/daaf4cb438cdb2704155d54ca8320fddf617641c06e2cad97cdaf1337965ec56.zip` (Lambda CodeSha256 `2q9MtDjNsnBBVdVMqDIP3fYXZBwG4srZfNrxM3ll7FY=`), deploy that exact artifact to development, then run the full 84-case `npm run eval:behavior-live` suite with the revised evaluator and retain its run directory/artifact. Next deploy candidate artifact `5924e4d7f8d924dfa2a11cdfb9ff4e77aa9f71750c0d63ffa362cfde97c167f3` to development, run the same full 84-case suite, and retain the candidate run. Report the original 83-case subset separately from the additive 84th case; do not run or promote anything in production. Baseline turns are expected to carry `output_origin: missing` because the frozen handler predates CLI output-origin emission; the revised evaluator must preserve that as an observed baseline limitation rather than treating it as candidate verified evidence. The paired comparison remains pending coordinator execution.
+
+## 2026-09-10 — leanness directive and runtime audit (strategy adjustment)
+
+**Owner directive:** stop chasing the complete 84-case live gate; prioritize meaningful architecture change and total line reduction. Retain the model-written conversation invariant and frozen evaluator evidence, but do not run the full suite after every change. Validation for behavior changes: targeted family regressions plus structural checks; full-suite parity runs only when a change touches shared trajectory or release acceptance.
+
+**Runtime leanness audit (explorer, read-only, same day):** largest safe deletion targets confirmed with file:line evidence: purchase dispatcher `agent-service.ts:7135-7330` (~180-230 lines) and prose renderers `purchase-reply-projector.ts:300-686` (~300-400); RSVP deterministic merge `agent-service.ts:2616-2645` (~30-45) and renderers `3303-3361` (~60); clarification rewrites `agent-service.ts:3562-3925` (~180-280); semantic-judge path duplication `src/evals/runner.ts:442-483,670-700` (~30-45). Transport normalization `applyDocumentedTransportTransforms` must stay (origin invariant). Estimating roughly 700+ removable lines across the first migration waves.
+
+**Consequences:** (1) acceptance-evidence corrective pass is running lean (net line delta <= 0, justified additions only) and will not be followed by the paired 84-case reruns unless a future release decision requires them; (2) l2-purchase is the first deletion wave with a negative line budget; (3) l2-close/l2-rsvp/l3-semantic follow the same delete-not-add pattern; (4) plan.yaml leanness fields updated for l2-purchase. No production change.
+
+## 2026-09-10 — purchase replies use model-authored delivery from typed evidence
+
+**Reason:** Removed deterministic purchase reply prose, text replacement, and safe-read short circuits so completed purchase answers are generated from projected facts while preserving selection, disclosure, currency, reconciliation, reference matching, and typed outcomes.
+
+**Decision:** Added structured completed-purchase evidence with outcomes, amounts/currency, references, permitted disclosures, next actions, and missing or ambiguous inputs. Capability safe-read purchase continuations now call the reply model with the same factual evidence path. Purchase prompts and offline regressions assert fact-only guidance and verbatim model-output delivery; no deterministic purchase renderer or fallback paragraph remains in `src/`.
+
+**Validation:** Full `npm test -- --run` passed: 153 files, 1,191 tests passed, 5 skipped. Focused purchase suite passed 111/111 across 13 files. `npm run typecheck` and `npm run lint` passed. `tests/live-behavior-coverage.test.ts` passed 1/1. No deployment, live evaluation, commit, or plan edit was performed.
+
+## 2026-09-10 — post-deletion diagnostic evidence repair
+
+**Reason:** Corrected the three evidence-plumbing failures identified in the
+post-deletion development diagnostics while preserving model-written delivery:
+transport request detail was evicting effect receipts, unavailable-image captions
+were bypassing the established text route, and direct image-caption delivery had
+no origin receipt. Provider/action ambiguity evidence was also made explicit for
+the clarification model input. Evidence source: artifact `71a28dc0`, the
+post-deletion `eval-2026-09-10T21-*` runs, and
+`.eval-runs/diag-20260910-post-deletion.log`.
+
+**Decision:** `projectSafeTrace` now removes only nested per-request transport
+detail from turn diagnostics; stage-level identifiers, counts, byte aggregates,
+and the complete transport metrics held by private audit/offline objects remain
+unchanged. Effect-tool inputs and outputs therefore survive a realistic large
+trace. A caption on an unavailable image uses the normal text pipeline only
+when established conversation context exists, avoiding a keyword or canned-text
+fallback. Direct inspected captions receive a `transport-v1` origin receipt and
+are checked against the documented transforms. Shortlist clarification now
+projects provider alternatives as typed evidence in ambiguity interpretations,
+without selecting a provider or writing a question.
+
+**Per-item disposition:**
+
+- Envelope/effect evidence: fixed in `src/runtime/artifact-redaction.ts` and
+  covered by the large-trace offline test. No transport capture schema change
+  was needed; `src/runtime/contracts.ts` and
+  `src/audit/openai-transport-capture.ts` were deliberately left unchanged.
+- Image-unavailable routing: fixed in `src/runtime/agent-service.ts` by
+  routing captioned turns with established context through `handleTurnCore`.
+  No image inspection or deterministic fallback prose was added.
+- Image-caption origin: fixed in `src/runtime/agent-service.ts`; the direct
+  inspected-caption path now carries the model answer as its origin candidate.
+  `tests/s17-image-turn.test.ts` covers verified delivery; existing origin
+  tests cover mismatch and generation-failure observations.
+- Ambiguity priority: fixed in `src/runtime/agent-service.ts` by projecting
+  provider IDs/titles and the extracted operation as alternatives. The offline
+  F3 regression asserts the alternatives and preserves candidate operations.
+- Authentication refusal: no runtime change was made. The refusal path already
+  projects `status`, `protectedRequestsClosed`, remaining public requests, and
+  handoff outcome. The live diagnostic's missing explicit no-further-credential
+  wording is therefore recorded as model variance/frozen expectation conflict;
+  no sentence was hardcoded.
+- RSVP confirmed-state reporting: deliberately unchanged because the observed
+  model-authored, verified-origin response is correct and conflicts only with
+  the frozen pre-L2 expectation.
+
+**Exact worktree blobs (`git hash-object`, before this log append):**
+`src/runtime/artifact-redaction.ts`
+`3b37cae13a1be0032e473c53f88dbbad5e75e9e1`;
+`src/runtime/agent-service.ts`
+`cc42a1b47055aa26dc043cccf4612ff68a02cf88`;
+`tests/artifact-redaction.test.ts`
+`7b01479089c2ef3edacbdcd2dc10abb2d3e783fb`;
+`tests/s17-image-turn.test.ts`
+`b0286863cdc52ba69ccc6af9d1f27b8a02fd4195`;
+`tests/f3-ambiguous-confirmation.test.ts`
+`c578e48f5fa6cb3256bc0a3329f646106c74b5ab`.
+`tests/zz-debug-toolio.test.ts` was deleted as the coordinator's temporary
+probe.
+
+**Validation:** Focused suites passed: 6 files, 48 tests. Full `npm test`
+passed: 153 files, 1,177 tests passed, 5 skipped. `npm run typecheck` passed;
+`npm run lint` passed; `tests/live-behavior-coverage.test.ts` passed 1/1.
+Deployment and live rerun are pending coordinator review; no deployment, live
+evaluation, commit, or `plan.yaml` edit was performed.
+
+## 2026-09-10 — compacted live trace schema conformance
+
+**Reason:** The trace envelope compacts `openai_calls` transport diagnostics by removing per-request `requests` arrays, but the evaluation wire schema required those arrays and rejected every live turn with zero turns.
+
+**Decision:** Made `requests` default to an empty array in both transport schemas: `openAiCallSchema.requestMetrics.transport` and `information_execution_summary.openAiTransport`. Per-request identifiers and hashes remain private-audit data; turn traces carry aggregates. Full per-request capture remains complete in the audit path and offline metrics objects; the existing E10 completeness tests are unchanged.
+
+**Validation:** Added a large-trace regression in `tests/artifact-redaction.test.ts` that projects realistic classifier, extraction, and reply call traces, preserves tool I/O and transport aggregates, and parses the result through both `turnTraceSchema` and `lambdaTurnResponseSchema.shape.trace`.
+
+## 2026-09-10 — customer operations profile design validation
+
+Documentation-only review requested by owner. Verified existing information orchestrator parallel reads, per-turn purchase/event caches, available customer/event interfaces and event-location normalization. Proposed a bounded authorized customer snapshot with section-level source/access/freshness/completeness, compact question-specific model projection, focused follow-up reads, and receipt-driven invalidation. No additional agent, profile LLM, full-customer prompt or unawaited post-response Lambda hydration. Customer home/shipping address support is not established by inspected schemas; event place/country fallback is not equivalent.
+
+Added customer-context.md and linked it into L4 packet, plan and start guide. Current owner-facing label is Customer operations; internal planned ID retained. Registry revision 4 fixes a duplicate l2-close progress_note by preserving the second as historical_progress_note. Recorded advanced implementation progress separately from still-open full acceptance; preserved all task statuses and concurrent source edits. Validated strict YAML parsing and dependency references. No runtime change, deployment or live evaluation performed for this design amendment.
+
+## 2026-09-10 — adversarial progress and acceptance review
+
+Read-only runtime review plus documentation artifact: adversarial-review-2026-09-10.md. Five focused suites passed (19 tests). Independent malformed-origin probe with verified status and unequal candidate/delivered hashes was accepted by validateOutputOriginEvidence. Identified selective per-turn origin gating, transport completeness assertion absent from live acceptance callers, completion/validation-policy inconsistency, remaining support/capability canned prose, and unimplemented three-owner/profile architecture. Genuine deletion/telemetry progress acknowledged. No intentional gaming inferred; no runtime change, deployment or live gate. Latest retained full report inspected: 618372bf 82/84; newer targeted diagnostics cannot establish current full acceptance. Preserve historical owner exceptions while reconciling the latest mandatory AGENTS.md requirements.
+
+## 2026-09-11 — acceptance-evidence repair (offline pass, no deploy)
+
+**Reason:** Adversarial findings #1/#2: validateOutputOriginEvidence accepted verified receipts with unequal hashes; live-target trusted declared candidate hashes; per-turn origin gating was missing-only; transport completeness had no production/live acceptance caller.
+
+**Decision (incremental on dev-followup dirty worktree, no resets):**
+- src/audit/output-origin.ts: validateOutputOriginEvidence now rejects candidateSha256 != deliveredSha256 (forged verified / inconsistent hashes fail).
+- src/audit/openai-transport-capture.ts: added checkTransportMetricsCompleteness (absent = missing/incomplete, never zero; compact aggregate-only = aggregateComplete + detailRedacted, never fully complete) plus reconcileTransportAggregates (aggregates must equal per-request sums). assertCompleteTransportAccounting untouched.
+- src/evals/targets/live-lambda.ts: independentlyObserveWireOutput exported and hardened — never trusts declared candidate hash (verified requires candidate == recomputed wire hash), validates transport-v1, flags forged verified carrying fields; raw-vs-transformed distinction kept via mismatch fields, raw text never logged (R01).
+- src/evals/runner.ts: finalizeResult now fails hardGate on collectOriginGateFailures (every turn validated, incl. unjudged intermediate turns, generation_failed, unknown versions) and collectTransportGateFailures (every completed model stage needs aggregate byte evidence) for live_lambda; reasons recorded in planDiffSummary. Semantic zero-score paths unchanged.
+- src/lambda/request-observability.ts: buildChannelRequestLog adds additive optional transport_accounting { complete, reasons } computed from private call evidence (verbatim metrics preserved); missing evidence flags incomplete, never zero.
+- Not changed by design: case-schema transport.requests default [] kept (2026-09-10 compacted-trace conformance decision); absent detail is treated as incomplete at the validation layer. Judge packet/oracle code unchanged (verified separation, no future leakage, fail-closed empty candidate); handler.ts, artifact-redaction.ts, openai-agent-runtime.ts unchanged (capture already wired per stage incl. retries/failed calls).
+- Tests extended in place (no new harness): acceptance-contract-mutations (inconsistent-hashes, forged-verified, unknown-transformation, model-call-replacement, forged-wire-verified, unknown-wire-transformation, mismatch-unjudged-intermediate-turn, missing-transport-aggregates, fabricated-zero-transport, unreconciled-aggregates + positive controls), model-output-origin, eval-live-target, eval-runner-judge-context (gates + no-future-leakage), semantic-judge (future-turn/empty-evidence rejection), f4-judge-close-evidence (no future close facts), request-observability (complete/incomplete emission), openai-agent-runtime-token-usage (transport passthrough).
+
+**Validation:** 8 focused suites, 86 tests passed; npm run typecheck passed; npm run lint passed. No deployment, no eval:behavior-live run, no commit, no plan.yaml edit. Source hashes (git hash-object): output-origin.ts e5d51b6b, openai-transport-capture.ts fc3b3138, runner.ts 2a8a5811, live-lambda.ts eac25d61, request-observability.ts 8c336b95.
+
+## 2026-09-11 — l2-support-capability: support/capability canned prose migration (no deploy, no live gate)
+
+**Reason:** Remaining live canned prose in the support/capability family: humanEscalationRequestedMessage, selectExplicitHumanMessage (2 inline sentences), conversationHealthHelpOfferMessage in agent-service.ts with deterministic renderOutbound callers (human-help-offer-accepted, conversation-health-help-offer, solicitar_agente_humano terminal); in-code sentence dictionaries defaultCapabilityBoundaryMessages/defaultCapabilityOutcomeMessages plus renderer classes with zero production callers; prompts/capability/turn_outcomes.txt (14 entries) and prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json (8 sentences, only requested/failed live).
+
+**Decision (incremental on dirty worktree, no resets; predecessors' edits preserved):**
+- src/runtime/reply-evidence-projector.ts: added projectSupportHandoffEvidence mapping gateway results to typed evidence before generation (success -> handoff_requested/effectConfirmed; failed+unknown -> handoff_unknown; failed -> handoff_failed; skipped -> null outcome with soft-pause reason note; requiresReplyModel always true). Facts only, never reply prose.
+- src/runtime/agent-service.ts: all three branches now compose through composeModelReply with handoffOutcome + operational-note evidence and deliver via renderOutbound with the model origin receipt; composition failure returns typed failureOutbound (generation_failed observation), never canned fallback. Deleted humanEscalationRequestedMessage/selectExplicitHumanMessage/conversationHealthHelpOfferMessage and the handoff_outcomes.json import. Dedupe, access checks, receipts, turn decisions preserved. Trace promptBundleIds now reference the solicitar_agente_humano / ofrecer_agente_humano bundles instead of deterministic: labels.
+- src/runtime/capability-boundary-renderer.ts: removed defaultCapabilityBoundaryMessages + CapabilityBoundaryRenderer; kept key types + parseCapabilityBoundaryMessages (still used by PromptLoader).
+- src/runtime/capability-outcome-renderer.ts: removed defaultCapabilityOutcomeMessages + CapabilityOutcomeRenderer + parse; kept structural claimAllowsSuccess contract.
+- Deleted prompts/capability/turn_outcomes.txt and prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json. Untouched: host-withdrawal.json, image_outcomes.json, capability_boundary.txt + loaders (adjacent branches, other ownership).
+- Tests rewritten in place with evidence + model-output delivery assertions (two distinct sentinels per outcome on the origin suite): capability-boundary-routing (explicit compose + no-identity negative control), model-output-origin (ExplicitHandoffRuntime: requested/failed/missing-identity x 2 sentinels, verified origin), f3-capability-safe-read (distinct sentinels + informationResults/turnDecision evidence), s10-model-projection (projector mapping + negative control), agent-service-information-flow (requested/null handoff evidence), s16-turn-capability + capability-boundary (evidence projection replaces renderer prose tests), agent-service.test.ts (3 canned assertions -> model delivery + evidence; +2 second-sentinel variants for offer and failed-accept), prompt-audit.test.ts (inventory count 113 -> 111 after file deletions).
+- Left for coordinator: src/audit/prompt-inventory.ts loader strings still name the removed renderers/dictionaries (audit-only strings, inert for deleted files); live registry entries + eval:behavior-live for these behavior changes (not run per dispatch); plan.yaml untouched.
+
+**Validation:** focused 5 suites 95 passed / 2 skipped (pre-existing skips); full offline suite 153 files, 1208 passed / 5 skipped, 0 failed; npm run typecheck clean; npm run lint clean. No deployment, no eval:behavior-live, no commit, no plan.yaml edit. Source sha256: agent-service.ts 8d5ffa897e45938a5e6504f90146b30a930f1da8dadf6a5e1674f994dfe9ddf4, reply-evidence-projector.ts 8e0e6d208f2df08b8a8777da4f49887c9b8709616aa278aa8a541be852e7796f, capability-outcome-renderer.ts 9e9c556ca0bb378862b8e98ff970e5dde55b2e77d2437ff5ad5ebfba664300d8, capability-boundary-renderer.ts 17d9db60b2431ba8236a97c55db0077b7e1c9d1b2e474fe3569fcac50ad9390e. Base HEAD bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157.
+
+
+## 2026-09-10 — URL-only image migration scope (documentation)
+
+User requested native URL image context with plan-stored references, preserving existing base64 behavior and avoiding base64 persistence or additional object storage. Added the binding url-image-context.md specification and linked it from the plan, dispatch entry, receipt feedback and media task; registry revision 5 preserves task progress without claiming implementation. Minimal upstream input is image.url, directly fetchable by OpenAI; no additional sender metadata required. Existing implementation/validation/promotion assignment remains in force. No runtime, prompt or deployment changes made by this documentation amendment.
+
+## 2026-09-11 — l3-semantic: authoritative semantic interpretation (no deploy, no live gate)
+
+**Reason:** E08/E09/R03/R04/R08/R09. Blanket ambiguous-to-clear override in normalizeInformationExtractionAmbiguity converted model conflicts into different executable requests; extract() built the extractor schema/prompts from feature flags alone, leaking planning-only fields and category priorities into established purchase/support/RSVP turns.
+
+**Override classification (raw extraction → normalized state → tool authorization, Carina + cross-domain):**
+- Removed reinterpretation: blanket ambiguous-to-clear flip for non-faq information requests. Model conflicts stay typed unresolved evidence (status/interpretations/candidates/questionKey preserved, shape-only caps).
+- Kept preservation: support ask_policy to faq execution (same query text), last-completed replay of persisted typed requests on empty deltas, ID/reference normalization.
+- Kept validation: isExplicitHumanRequest/isSupportWinOverHuman typed guards, phone-confirmation relevance, auth decline routing. No owner field added (L4 owns plan.ts).
+
+**Decision (incremental on dirty worktree, no resets; predecessors' edits preserved):**
+- src/runtime/extraction-projection.ts: added deriveEstablishedExtractionDomain (typed plan state only, never keywords: info node/pending/last-completed with purchase work -> purchase, other info work -> support; invitation node/active RSVP state -> rsvp; else null/transient). profileFromManifestAndPlan narrows providerPlanning/Operations/Selection/Inspection/close/pause on established lanes; information+RSVP stay expressible for cross-domain continuations. projectExtraction intersects established lanes to the static base intents so planning progress cannot change emitted request bytes.
+- src/runtime/openai-agent-runtime.ts: extract() routes through buildExtractionProjection (single production builder: plan + policy + features -> manifest -> projectExtraction -> profile/schema/bundle/input). Old inline extractionCapabilities object removed. composeExtractorInput takes the projection (allowed-actions line from projection text) and omits provider category starter/priority text on established lanes. buildExtractorPlanSnapshot emits lane-minimal facts (purchase/support: contact + summary + open questions + information_state; rsvp: contact + summary + open questions + rsvp_state) with neutral values omitted.
+- src/runtime/agent-service.ts: normalizeInformationExtractionAmbiguity is now validation-only (2 call sites unchanged as the chokepoint).
+- src/runtime/dynamic-agent-policy.ts: baseActionIntents exported (1-word change, no behavior change).
+- Tests: extraction-schemas (lane derivation + narrowed profiles), openai-agent-runtime-token-usage (12 wire tests: real bundle/schema/input capture via production builder; unchanged-inactive-domain byte-identity incl. unknown entities/reordering; changed-relevant-domain deltas; facts/pending-question preservation; no-keyword-lane proof; serialized accounting incl. schema bytes; inactive-sentinel negative control), f3-ambiguous-confirmation (Carina purchase-shaped status_or_document stays ambiguous through normalizer + end to end; clear-ambiguity mutant negative control), agent-service-information-flow (old clear-override test rewritten to the binding contract: ambiguous purchase is unresolved, not executed/persisted; trace stays ambiguous; model clarifies). eval-runner-judge-context untouched, passing.
+
+**Validation:** focused 5 suites 90 passed; full offline suite 153 files, 1225 passed / 5 skipped, 0 failed; npm run typecheck clean; npm run lint clean (full src + touched tests). No deployment, no eval:behavior-live, no commit, no plan.yaml edit. Source git hashes: extraction-projection.ts 2f4d0726, openai-agent-runtime.ts 028c4f54, agent-service.ts 019d3367, dynamic-agent-policy.ts 595820b2, extraction-schemas.test.ts ff61a90a, openai-agent-runtime-token-usage.test.ts 2b4390d7, f3-ambiguous-confirmation.test.ts 96b9c48e, agent-service-information-flow.test.ts f36d8af7. Base HEAD bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157.
+**Limits:** live purchase/support/RSVP field absence and Carina clarification proven offline only (no dev deploy/live gate per dispatch); repair-attempt byte accounting asserted through transport-aware requestMetrics path, not a live multi-attempt run; cross-domain planning pivots from established lanes travel as intent-only signals (details elicited next turn).
+
+## 2026-09-11 — url-image-context: native URL image projection with bounded refs (no deploy, no live gate)
+
+**Reason:** Binding amendment docs/plan/2026-09-09-lean-conversation/url-image-context.md (supersedes conflicting image-storage/behavior in receipt-attachment-feedback.md). Exclusive image-touching ownership for this pass; incremental on dirty worktree (HEAD bdb4a88a, branch dev), no reset/stash/overwrite/commit. Predecessors' edits preserved.
+
+**Decision:**
+- src/core/inbound-image.ts: strict `image: {url}` wire variant added alongside base64 + media-error; ambiguous url+data rejected by strict union; `source: base64|url` discriminator on available images; non-fetchable shapes (non-https, credentials, localhost/private literals) normalize to unavailable evidence. No MIME/size/expiry/media-ID/auth-header requirements; no downloader, proxy, rehosting, or URL-to-base64 conversion.
+- src/core/image-attachments.ts (new): bounded refs (url + messageId + receivedAt only; MAX 5 refs, 16KB JSON cap); idempotent append (dupe delivery never duplicates; late events never evict newer context); recent-2 selection for later turns; signed-URL redaction (host + `...[redacted]`, fingerprint for correlation) so logs/traces never carry raw links.
+- src/core/plan.ts: `image_attachments` schema field + createEmptyPlan init; normalizeRawPlan strips legacy keys (bytes/descriptions/store-keys) and caps; mergePlan merges monotonically via mergeImageAttachmentRefs.
+- src/runtime/contracts.ts: imageEvidence gains source/refStored; ComposeReplyRequest gains explicit imageUrlAttachments (defined, even empty, means caller-resolved); inspectImage narrowed to base64-only.
+- src/runtime/openai-agent-runtime.ts: owner reply call carries relevant URLs as native content (`input_image` with SDK `image:` field; wire is `{type:input_image, image_url}` per installed agents-openai openaiResponsesModel.js:606-620, asserted against installed bytes in test); exported pure `resolveProjectedImageAttachments` (explicit wins; else informative owner projects ≤2 recent refs only with pending/new information needs); Spanish URL projection note in owner context; image evidence carries counts/hosts/bytes, never raw URLs. Base64 inspect path intact.
+- src/runtime/agent-service.ts: handleImageTurn routes URL images to handleUrlImageTurn (store ref, owner composeModelReply with native URL, no inspect call, redacted tool evidence); model/fetch failure falls back to image_unavailable evidence with state preserved (never payment proof, never fabricated action). Neutral URL-turn extraction keeps caption as user message without rewriting it into retrieval requests.
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt: owner URL-image guidance in Spanish only (interpret when useful/asked; receipt never proves payment; no unsolicited description; no link disclosure). Base64 inspection instructions unchanged.
+- Evals: 3 live_behavior_regression cases (image_url_describe_dice with remotely hosted dice fixture requiring sight: 3 translucent dice blue/green/red; image_url_receipt_payment_thread full payment thread incl. thanks; image_url_unavailable_evidence expired URL), each with hard structural + hard text_semantic requireJudge:true; 3 coverage.yaml entries; redacted URL input variants in offline + live targets and case-schema.
+- tests/url-image-context.test.ts (16 tests): transport, wire shape, persistence bounds/ordering, routing, projection policy, redaction, byte evidence (URL payload <4KB, >100x below 1MB-base64 equivalent). tests/openai-agent-runtime-token-usage.test.ts: added missing image_attachments to plan literal. tests/prompt-audit.test.ts: informative bundle pin 14247 -> 14949 (+702 bytes owner URL guidance; instruction byte evidence).
+
+**Validation:** new 16/16 passed; focused suites (s17, agent-service, artifact-redaction, eval-offline-target, coverage, loader, case-ids) passed; full suite 154 files, 1240 passed / 5 skipped (pre-existing) / 0 failed after pin update (1 pin failure before update, documented above); typecheck clean; eslint clean on touched files. No deploy, no eval:behavior-live, no commit, no plan.yaml change. implementedBy pins use base HEAD short hash bdb4a88 (uncommitted worktree). Source git hashes: inbound-image.ts b47d7b50, image-attachments.ts 01853453, plan.ts 4fb15589, contracts.ts 1ea6c63b, openai-agent-runtime.ts bd8eaa05, agent-service.ts 5544f147, case-schema.ts 989381e3, offline.ts ea7f7fb2, live-lambda.ts fdc27e21, url-image-context.test.ts 22b2e15a, token-usage.test.ts 8a83d72f, prompt-audit.test.ts c888b4e9, response_contract.txt 070811c2, coverage.yaml edb4b535, suite f1cc7515, describe-case 5731936c, receipt-case 3f1ab8a1, unavailable-case 307c41a7. Base HEAD bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157.
+**Limits:** live vision/payment/unavailable behavior specified but not executed (no dev deploy/live gate per dispatch); receipt-thread case reuses purchase-luis-389 backend state with a distinct session; fixture is public Wikimedia content, never customer data.
+
+## 2026-09-11 — l4-ownership: persistent specialist ownership + customer context (no deploy, no live gate)
+
+**Reason:** E09/R01/R03/R04/R06/R08/R09 plus customer-context.md and url-image-context.md relevance §22. Exactly three persistent owners (Planning, General information/FAQ, Customer operations with internal ID customer_assistance), capability slices inside Customer assistance, single-transfer bound, and bounded parallel customer-context projection with payment-vs-cart relevance.
+
+**Decision (incremental on dirty worktree, HEAD bdb4a88a branch dev; predecessors' edits preserved, no reset/stash/overwrite/commit):**
+- src/core/plan.ts: persisted owner discriminator (owner planning|faq|customer_assistance default planning), owner_capability (purchase|rsvp|auth|support|none, null outside assistance), owner_pending_question/owner_pending_task refs, single owner_return. ownerLabels maps internal IDs to user-facing labels (Customer operations). normalizeRawPlan sanitizes legacy/fourth-owner values to planning and clears stale capability; mergePlan enforces capability coherence on owner change and preserves selections. No second store.
+- src/runtime/owner-routing.ts (new, pure): transient initial selection from typed domain signals (customer work wins only grounded-or-public; protected FAQ→assistance transfer gated on identity/access); established turns keep owner with no router call; applyOwnerTransfer enforces max one silent transfer per turn with return owner (second transfer fails closed; same-owner rejected without budget use); capability slices switch without transfer churn or unrelated disclosure; resumeReturnOwner restores paused owner with pending task intact. No message text inspected, so no keyword routing.
+- src/runtime/customer-context.ts (new, pure): shared snapshot assembly over InformationOrchestrator execution results (identity/access, current context, purchases/carts, invitations/events, action outcomes), each with status not_requested|loading|ready|not_found|unavailable|failed + source/time/scope/completeness; not_found only on successful authoritative reads. Minimum-disclosure projection (common refs + question-relevant detail; inactive sections absent); payment focus excludes carts while the snapshot retains them for cart questions; no automatic first-record selection (candidates stay unresolved); venue/shipping/billing/incomplete address kinds with country-only staying incomplete; isolationScopeKey refuses display-name-only keys; invalidate/record/hasConfirmedOutcome for write-refresh and repeat-ack dedupe; signed-URL redaction for logs.
+- src/runtime/agent-service.ts: one additive seam (persistTurnOwner) after extraction finalization on the main path: typed signals from extraction/plan state (planning intents, new faq work, protected/customer work, RSVP, auth, support; identity grounded via valid token or trusted channel phone) persisted via applyOwnerForTurn with zero transfers consumed. Bare continuations (thanks/acks) carry no new domain and keep the established owner without churn. Global extractor/arbitration retirement deferred: no second model call was added (temp old path only, never both); delivery classifier untouched.
+- src/runtime/contracts.ts + openai-agent-runtime.ts: optional customerContext/owner on ComposeReplyRequest; customer_context evidence key and Spanish Customer operations context line emitted only when a projection is supplied (unrelated turns byte-identical; existing token-usage pins unchanged).
+- src/runtime/prompt-manifest.ts: additive ownerNodeSets/ownerForNode/ownerLabels re-export; existing manifest and bundle bytes unchanged. A prompts/owners/ sketch was removed before finishing because the prompt inventory requires every file to have a real consumer; Spanish owner guidance lives in the runtime-projected context line instead.
+- Tests: tests/l4-owner-routing.test.ts (25) and tests/l4-customer-context.test.ts (12) offline twins: owner persistence/sanitization, single-transfer bound with negative control (second transfer fails, real switch succeeds), one-model-call continuation (identical plan object, no churn), cross-owner sequences (planning→FAQ→planning with selections; FAQ→assistance gated then allowed; support→RSVP→support zero-transfer; purchase ambiguity→RSVP read→purchase clarification; mixed FAQ+protected; confirmed→uncertain→repeat), capability switching, exact transfer/effect counts, owner node map; plus cold/independent-failure assembly, required-failure honesty, country-only incompleteness, no-auto-first, accountless/protected isolation, write-refresh + repeat-ack dedupe, minimum-disclosure byte pairs, payment-vs-cart relevance, log redaction. tests/openai-agent-runtime-token-usage.test.ts plan literal extended with owner fields.
+- Evals (entries only, no live run): 2 live_behavior_regression cases (owner_customer_payment_relevance on purchase-luis-389: owner persistence + cart exclusion + thanks close; owner_planning_to_faq_single_transfer: single transfer, no provider search on FAQ turn), suite registration, and 2 live-behavior-coverage entries each with hard structural + hard text_semantic requireJudge:true.
+
+**Validation:** focused 7 suites 209 passed; full offline suite 156 files, 1278 passed / 5 skipped (pre-existing) / 0 failed; npm run typecheck clean; npm run lint clean (repo-wide). No deployment, no eval:behavior-live, no commit, no plan.yaml change. Source git hashes: plan.ts 73811f3a, owner-routing.ts c170902a, customer-context.ts e7f5d8d8, contracts.ts 52589713, openai-agent-runtime.ts 5afb7d4a, prompt-manifest.ts 8a2a1e34, agent-service.ts 20db8876, l4-owner-routing.test.ts 6e17a4f9, l4-customer-context.test.ts c4633e92, token-usage.test.ts 358220d2, coverage.yaml fd4849af, suite 2794cf24, payment-case c9ea5875, transfer-case aea2a559. Base HEAD bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157.
+**Limits:** owner persistence wired on the main turn path only (finished-plan, image-only and media-only paths predate the seam); global extractor participation and redundant arbitration not yet deleted (parity not proven; no dual execution added); customer snapshot assembly is pure over orchestrator results — bounded concurrent entry reads, focused detail-read reuse and cross-turn caching still to be wired with identity isolation/freshness tests; live owner/context behavior specified but not executed (no dev deploy/live gate per dispatch); no independent reviewer available — same-workspace checks only, reviewer must inspect diff and harness artifacts.
+
+## 2026-09-11 — l5-simplify: prompt-loader/inventory dead-code deletion + manifest union fix (no deploy, no live gate)
+
+**Reason:** L5 machinery deletion within owned scope; fixes the known l2-support handoff leftover (prompt-inventory.ts loader strings naming removed renderers). Preserves all in-flight work (HEAD bdb4a88a branch dev; acceptance-evidence, l2-support, l3-semantic, URL-image, L4 edits untouched; no reset/stash/overwrite/commit).
+
+**Decision (caller-verified via production grep excluding tests, not name search alone):**
+- src/runtime/prompt-loader.ts (-20 lines): deleted dead `loadImageMessages` (zero callers; `image_outcomes.json` unreachable) and dead `loadCapabilityBoundaryMessages` (zero callers; `nodes/.../capability_boundary.txt` unreachable) plus the now-unused `parseCapabilityBoundaryMessages`/`CapabilityBoundaryMessages` imports. Kept `loadImageBundle` (OpenAiAgentRuntime.inspectImage model call), `loadSupportContinuityBundle` (handleSupportAcknowledgment via composeModelReply), `loadAuthControlBundle` (extract evidence scope), `loadHostWithdrawalMessages` (handleHostWithdrawalInformation fixed path, l2-support scope).
+- src/runtime/prompt-manifest.ts (+1): `extractorPromptFiles` now includes `extractors/rsvp.txt`, matching `extractorPromptFilesForCapabilities({rsvp:true})` and disk reality; the default fallback bundle equals the full capability union. Production unaffected (extract always passes explicit capabilities, openai-agent-runtime.ts:445; all audit profiles pass explicit capabilities).
+- src/audit/prompt-inventory.ts (-10 net): removed dead branches for disk-deleted `capability/turn_outcomes.txt` and `nodes/.../handoff_outcomes.json`; fixed stale `CapabilityBoundaryRenderer`/`CapabilityOutcomeRenderer` loader strings to `no production loader since L5` with parser/test retention notes; fixed `image_outcomes.json` string (loadImageBundle never read the json); fixed `image_inspection.txt` string to the real `loadImageBundle -> inspectImage (model call)` chain; corrected `auth_control.txt` from `deterministic_reply/no model call` to `extraction` via `loadAuthControlBundle -> extract` (verified merged into extractor model input).
+- Not deleted (explicit, pending l2-support owner): on-disk `nodes/.../capability_boundary.txt` and `nodes/.../image_outcomes.json` plus `tests/capability-boundary.test.ts` parser coverage; file count stays 111 with zero unmapped.
+- tests/prompt-audit.test.ts (+3 regression tests): no removed-renderer/deleted-file loader references; unreachable files must state `no production loader since L5`; default extractor bundle contains rsvp.txt and equals the profile union plus the capabilityBoundary-gated file.
+- docs/plan/2026-09-09-lean-conversation/outbound-inventory.md: appended section 13 with the rebuilt caller table, old/new caller evidence, static metrics and deletion delta; sections 0-12 preserved.
+
+**Request metrics (static samples only, never runtime cost):** default extractor fallback bundle now 8 files, 16158 instruction bytes / 16483 serialized sample bytes (+~2437 vs the 7-file fallback; added bytes are the previously-omitted rsvp.txt, 2411 bytes on disk). Zero production request bytes change. No matched live baseline exists, so no runtime byte-reduction claim is made (missing comparable baseline = no claim).
+
+**Validation:** focused tests/model-output-origin + request-observability + message-renderer + semantic-judge + live-behavior-coverage 51/51 passed; prompt-audit + prompt-loader 25 passed / 1 skipped; capability-boundary + routing + static-prompt-comparison 16/16 passed; existing tests/acceptance-contract-mutations.test.ts mutant suite passes inside the full run; full offline suite 156 files, 1281 passed / 5 skipped (pre-existing) / 0 failed; npm run typecheck clean; npm run lint clean. No deploy, no eval:behavior-live, no commit, no plan.yaml change. Source git hashes: prompt-manifest.ts b18f365f, prompt-loader.ts c61d3e7d, prompt-inventory.ts c5ed6c85, prompt-audit.test.ts 4e295323, outbound-inventory.md d7adac2c. Base HEAD bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157.
+**Limits:** same-workspace robustness checks only — no independent holdouts (same agent can inspect them); live request-byte comparison and full dev gate require coordinator deploy + full eval:behavior-live (not run per dispatch); l2-support-capability and l3-semantic remain pending owners for the retained unreachable files and host-withdrawal fixed path; no independent reviewer available — reviewer must inspect actual diff and harness artifacts, never this summary.
+
+## 2026-09-11 dev validation: deploy + full eval:behavior-live (exclusive-writer task)
+
+**STS:** `aws sts get-caller-identity --profile se-dev --region us-east-1` = account `684516060775` (arn `arn:aws:iam::684516060775:user/Leo`). Fail-closed gate passed; all subsequent AWS calls used `se-dev` / `us-east-1`.
+
+**Base:** HEAD `bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157` branch `dev`, dirty tree preserved (138 changed paths, no reset/stash/overwrite/commit). Tracked-files sha256 `9d88c6525c433e65dcd7350719ad9019eaeec3956b0e1dadc8d140acfcd99dcb`; prompts combined `22ebea415d00410cd3791e5117fc07a9fe90fe9b8e2a1c968e598fc7e62e0d87`; src combined `3ee718611ec4ca09d3ac5ef4abe783d67d0ddbc3ab9761abd4baa3eff5ad1740`.
+
+**Evaluator-contract digest (documented method: sha256 over sorted `<git-hash-object>  <path>` for prompts/**, evals/cases/**, evals/live-behavior-coverage.yaml, src/evals/case-schema.ts, src/evals/scorers/semantic-judge.ts, src/evals/runner.ts; 247 files):** HEAD-content `fbcd84df06092fc1cd0b6d97e1378e6421074391a972bf23905072d397938aaf`; worktree `f5bda276b9457e2317898e86bc4448bfe51e10f1dd2e9ce81873a652479c8b0a` (2 worktree-deleted paths `prompts/capability/turn_outcomes.txt` f6c2f7b3, `prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json` 19580f93 pinned to HEAD blobs for hashing; deletions are L5 in-flight work, not evaluator changes).
+
+**BEFORE deploy:** Lambda `recap-agent-runtime-dev` CodeSha256 `7KkYcehIBkjR7WCw+652L95YLzfeNPki7PCgv2Bd0aM=`, LastModified `2026-09-10T22:45:40Z`, stack `UPDATE_COMPLETE` (2026-09-10T22:45:35Z).
+
+**Deploy:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` exit 0. Artifact sha256 `22cb686c19f6230429aeac4de764bb38fc58bc74f961afac9c402a82b73174fc`, S3 `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/22cb686c19f6230429aeac4de764bb38fc58bc74f961afac9c402a82b73174fc.zip` (6998723 bytes, ETag `2e2d2f0d84c2649c97cc7c4fc6b90f2c`). **AFTER:** Lambda CodeSha256 `IstobBn2IwQprqxN52S7OPxYvHT5Ya+snEAqgrcxdPw=`, LastModified `2026-09-11T12:36:04Z`, CodeSize 6998723, stack `UPDATE_COMPLETE` (2026-09-11T12:35:59Z; stack events confirm `AWS::Lambda::Function UPDATE_COMPLETE` 12:36:11Z, stack `UPDATE_COMPLETE` 12:36:13Z).
+
+**Full gate (NO --case filter):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live` via nohup (foreground 600s timeout exceeded with zero streamed output; background PID 7320), log `/private/var/folders/74/37z4glqn2gn41cm59zml7qvc0000gn/T/opencode/dev-gate-eval.log`, run `eval-2026-09-11T12-47-51-929Z-d2141705` (run dir `.eval-runs/eval-2026-09-11T12-47-51-929Z-d2141705/`, report.json/report.md/results.jsonl + 89 live_lambda artifacts). Started 12:47:51Z, report generated 13:11:07Z (~23min). **Result 48/89 passed, 41 failed, 0 errored, 0 skipped** (avg score 0.884, avg latency 11238.2ms, exit 1 — strict gate red). End-of-run Lambda digest identical (`IstobBn2...`, LastModified 2026-09-11T12:36:04Z): no deployment change during the run, exact-candidate acceptance valid.
+
+**Denominators:** suite = 89 executed of 89 (4 yaml regex artifacts `live/behavior/feedback/mandatory-judge` are not cases). Original 83: **47/83** passed, 36 failed. Additive 6: **1/6** (only `close_date_provenance_and_completed_retry` 0.899 passed; new URL-image x3 + owner x2 all failed). Additive cases identified by diff vs 84-freeze `11939a8a`: `image_url_describe_dice`, `image_url_receipt_payment_thread`, `image_url_unavailable_evidence`, `owner_customer_payment_relevance`, `owner_planning_to_faq_single_transfer` (+ close case = 6).
+
+**Failure taxonomy (all hard severity, hardGate=false on all 41):** `text_semantic` 44 failed expectations (33 judged with requestHash/rubricDigest/evidenceDigest; 11 fail-closed without judge: 8 `Output-origin status mismatch`, 3 `Missing wire-delivered candidate evidence`); `text_contains` 6 (3x `fragment-attending-polarity-event-date-no-change` rsvp_cristian/rsvp_confirmed/rsvp_jose, 1x `deterministic-declining-offers-explicit-question` rsvp_declined, 1x `too-large-fallback-text`, 1x `unavailable-caption-fallback-appended`); `text_not_contains` 1 (`spanish_only` keeps `catering`/`baby shower`); `tool_usage` 1 (`expired-url-uses-native-context` missing `image_url_context`). `repeated_otp_failure_preserves_gift_query` 0.939: all 10 expectations pass but turn-2 output-origin mismatch (empty output) fails the origin gate. All `node_transition` (66), `plan_field_*` (56), `trace_field_*` (17), `provider_result_count` (2), `token_usage_present` (8) pass.
+
+**Effect counts/receipts:** `fixture_effect_count` 16/16 passed (handoff/otp/identity/mismatch/verified/exhausted/nondelivery/unknown/unavailable/wrong/turn0/final effects all match; zero effect-mismatch failures).
+
+**Origin/accounting enforcement:** per-turn outputOrigin across 89 cases: 123 `verified`, 16 `mismatch` (transport-v1). 8 cases carry an `Output-origin status mismatch` semantic failure; 3 carry `Missing wire-delivered candidate evidence`. Case-file judge coverage: 107/108 `text_semantic` blocks carry `requireJudge: true`; judged semantic expectations 63 pass / 33 fail; no judge key missing, no evaluator error, no skip.
+
+**Request metrics:** 474 total tool calls, 1527734 total tokens, avg 11238.2ms/case (p95 per-case in report). E10 transport-capture gap unchanged (last-response-ID only, retry/tool-loop requests uncounted; judge packets omit candidate-visible purchase facts).
+
+**Limits:** 41 hard failures across RSVP reporting fragments, OTP-terminal handoff truthfulness, host-withdrawal policy, image-URL slice, owner-scope and currency/pending-balance grounding — fixes belong to respective owners (l2-support, l3-semantic, URL-image, L4, L5); this task performed deploy + validation only, no code/prompt/rubric/threshold/case change, no targeted rerun (diagnostic-only rule), no production promotion, no plan.yaml status change. Prior foreground `npm run eval:behavior-live` attempt timed out at 600s with no output and was superseded by the nohup run (no partial result claimed).
+
+
+## 2026-09-11 — Initial implementation reconciliation and gate root-cause audit
+
+Read all 89 canonical d2141705 artifacts and traced source boundaries. Added progress-audit-2026-09-11.md/json and linked current execution registry/dispatch status. Confirmed diagnostic redaction/hash and null conversion defects, missing customer-context production wiring, residual host-withdrawal canned prose, partial URL owner integration, obsolete deterministic RSVP oracles and incorrect three-dice oracle (authoritative fixture caption: four). Focused existing tests: 6 files / 75 passed; helper passes do not prove runtime integration. No runtime/prompt/evaluator edits, AWS changes or live rerun in this audit; full acceptance remains red and no corrected score claimed.
+
+## 2026-09-11 — Audit step A: wire-observation, typed silence, oracle corrections
+
+**Reason:** Progress audit of gate d2141705 (RED 48/89) confirmed three
+evaluation-side defects: (1) handler redacts CLI diagnostics text and converts
+null to "", while the live target hashes the redacted payload as provenance
+proof; (2) legitimate silence has no typed acceptance path and fails the
+origin gate like failed generation; (3) three RSVP oracles demand exact
+deterministic fragments and the dice oracle demands three dice while the
+fixture source shows four. Production conversation behavior, prompts, and
+thresholds untouched. No deploy, no live rerun, no plan.yaml change. Other
+agents' dirty edits preserved; no reset/stash/commit.
+
+**Decision 1 — verify original before redaction (contract diff):**
+`buildCliResponseBody` now always emits `message_original_sha256` (sha256 of
+the in-process original outbound text, null stays null) and
+`message_redaction_applied` (false without diagnostics, true with). The public
+`message` stays redacted under diagnostics and null stays null (no ""
+conversion). `independentlyObserveWireOutput` accepts optional wire evidence
+`{ originalSha256, redactionApplied }` (backward compatible: two-arg calls
+behave exactly as before): with redaction, declared hashes verify against the
+original hash and the redacted text is never hashed as provenance proof; with
+redaction claimed but no original hash, fail closed with `original_sha256`;
+`missing`/`generation_failed` declared labels are preserved instead of being
+upgraded to `mismatch` (both still fail the origin gate; only the silence
+exemption distinguishes them). Delivery action/reason now travels on the eval
+turn (`deliveredText` nullable with no "" conversion, `delivery` passthrough)
+in live-lambda, offline, and artifact projection.
+
+**Decision 2 — typed silence path:** new `src/evals/silence.ts`
+`validateSilenceExemption` exempts only null payload + `suppress` delivery +
+legitimate evidence (established `human_escalation_active`, or a
+model-selected suppress action with an enforce-mode `would_suppress`
+classifier trace). Failed generation, mismatched or verified-with-null
+origins, non-suppress delivery, observe-only or missing classifier evidence,
+and unknown reasons all fail closed. `collectOriginGateFailures` skips exempt
+turns; semantic judging policy on empty text is unchanged.
+
+**Decision 3 — oracle corrections (one reviewable evaluator change, no
+threshold/severity/judge weakening):** removed the three deterministic
+`fragment-attending-polarity-event-date-no-change` text_contains oracles and
+replaced the attending-fragment rubrics with reviewed semantic equivalents
+preserving attending polarity, event name, date, and no-write facts with no
+exact-phrase requirement (minScore 0.9, requireJudge, hard unchanged; versions
+5->6, 5->6, 6->7). Dice rubric corrected three->four translucent dice (blue,
+green, yellow, red) per the fixture authority
+https://commons.wikimedia.org/wiki/File:PNG_transparency_demonstration_1.png
+(version 1->2); the model four-dice answer is not coached and the old run is
+not rescored. Old vs revised expectations: deterministic allOf lists
+["figura que asistirás", event, date, "No fue necesario hacer otro cambio",
+"no se realizó un nuevo registro", "ya está confirmada"] deleted in all three
+RSVP cases; dice rubric "three translucent dice in blue, green and red" ->
+"four translucent dice in blue, green, yellow and red".
+
+**Files and candidate blob hashes:** `src/lambda/handler.ts`
+`1026b9771f0da4ed62456945ebefb70c7c627704`; `src/evals/case-schema.ts`
+`96f2185f55039dd1c9dcd40b0fb55b3293241475`; `src/evals/silence.ts` (new)
+`503229ae65cd9ff2b54706dca417bbc18983efe7`; `src/evals/targets/live-lambda.ts`
+`05865f7e0d07c2e53dff1d0f2bb2ab84acfde98e`; `src/evals/targets/offline.ts`
+`e853c3f3154f13e94bf46a497d3c21b3f1e08bea`; `src/evals/runner.ts`
+`ce0535185bbb8b799c1f92da518a43e3149b9fa3`; `src/evals/reporting.ts`
+`6e5a81f7cd4bd09797ad973f6b5de13a31415cbc`;
+`tests/handler-wire-observation.test.ts` (new)
+`3c42987ce7aa4192a56832d78a2252a00a02bf4b`;
+`tests/silence-exemption.test.ts` (new)
+`ed8f9014de5b1931a4c7a7ff6eb626650c0d813f`;
+`evals/cases/live-behavior-rsvp-confirmed-state.yaml`
+`ddea6bee44d959944cfebc9dd6081197de5b572b`;
+`evals/cases/live-behavior-rsvp-cristian-phone-enriched.yaml`
+`89bc7b42724bbb7259f48829a8e77460d6ba3d04`;
+`evals/cases/live-behavior-rsvp-jose-campaign.yaml`
+`1fd2713c1ab770bdcb3f1b6d95700c71d184237a`;
+`evals/cases/live-behavior-image-url-describe.yaml`
+`8dc621dec5ef07eb30d0fcae30901e160efa115f`.
+Old callers changed: `runTurn` (live-lambda) and offline turn builder now set
+`deliveredText`/`delivery`; `collectOriginGateFailures` consults the silence
+exemption. Two-arg `independentlyObserveWireOutput` callers
+(acceptance-contract, eval-live-target tests) unchanged and passing.
+
+**Validation:** focused suites 9 files / 45 passed (handler-wire-observation 4,
+silence-exemption 5, eval-live-target, artifact-redaction, acceptance-contract,
+eval-offline-target, eval-runner, eval-reporting, model-output-origin);
+loader/case-ids/coverage run 5 files / 23 passed, including
+`tests/live-behavior-coverage.test.ts` (edited cases keep hard structural +
+hard judged semantic expectations). `npm run typecheck` passed; `npm run lint`
+passed (one interim unnecessary-assertion finding fixed, not suppressed). No
+deploy, no `eval:behavior-live`, no baseline/candidate rerun: acceptance stays
+RED pending the coordinator's matched rerun under the revised contract. Not
+self-certified.
+
+
+## 2026-09-11 — Base64-first persistent image decision (plan only)
+
+User expects backend base64 to remain and requires image reference across later separate messages. Selected native OpenAI Files upload with 30-day explicit expiry and plan-held references, no extra S3 or Conversations store. Added persistent-image-context.md and supersession notices in plan/dispatch/media task. This overrides earlier base64 behavior preservation, while retaining input compatibility/limits. Defined same-envelope/separate-event behavior, owner integration, bounded context, failure windows and live validation. Docs and installed SDK inspected; no runtime edits, uploads, deployment or acceptance claim in this planning pass.
+
+## 2026-09-11 — Persistent image context: base64 Files persistence + owner projection (runtime)
+
+**Reason:** Binding amendment `docs/plan/2026-09-09-lean-conversation/persistent-image-context.md`
+(supersedes `url-image-context.md` URL-only scope and base64 describe-by-default preservation).
+Reconciled against `progress-audit-2026-09-11.md` before editing: step-B customer-context wiring,
+established-owner URL path, host-withdrawal model composition, and `modelSpansOf` origins were
+present in the dirty worktree (HEAD `bdb4a88a`) and are preserved untouched; helper-test-only
+coverage was not assumed to prove production wiring, so every new path is tested through
+production callers (`AgentService.handleTurn`, `OpenAiAgentRuntime.composeReply`).
+
+**Decision (implements the amendment exactly):**
+- Base64 input contract and byte limits unchanged (`inbound-image.ts` + handler); added
+`decodeValidatedBase64Bytes` (memory-only, null unless available-base64).
+- New narrow `src/runtime/image-file-store.ts`: `OpenAiImageFileStore` uploads decoded bytes
+with purpose `vision` and explicit `expires_after {anchor created_at, seconds 2592000}` over the
+existing OpenAI project credentials (wired in `handler.ts` shared deps for both production and
+fixture runtimes). Typed `ImageFileUploadError` carries `retryable` (transport/rate-limit only)
+plus `causeName`; `deleteImage` is best-effort orphan cleanup. No prose, all calls awaited.
+- `image-attachments.ts` is now a discriminated `file`/`url` union: file refs carry file ID,
+expiry, MIME/byte count, conversation-scoped sha256 content digest, plus existing
+messageId/receivedAt linkage; legacy url-only shapes normalize to `kind: url`. Bounds kept:
+max 5 refs, max 2 per request, refs JSON <= 16 KiB, late-event drop, original expiry retained
+(no silent refresh). Duplicate delivery reuses the persisted ref; identical bytes share one
+file within a conversation with distinct message linkage; wire schema has no file-ID field so
+caller-supplied cross-conversation IDs are impossible; no cross-customer dedupe (per-plan only).
+- `agent-service.ts`: `handleBase64ImageTurn` runs inside the existing per-conversation turn
+lease (check-references/upload/save share turn coordination). Upload reuse → persist ref →
+`runPersistedImageOwnerTurn` (real extraction, `persistTurnOwner`, then `handleInformationFlow`
+with current purchase results + customer context, or `replyOnEstablishedImageNode`). New upload
++ failed save → best-effort deletion + retryable throw, no false success. Crash between upload
+and save can orphan until 30-day expiry: recorded residual, no distributed transactions.
+Upload/store errors degrade to `upload_failed` unavailable evidence; non-upload errors propagate
+(never relabeled as unreadable). Business effects keep existing idempotency. The retired
+inspect/unreadable/human-help/readable base64 branches were removed; `runtime.inspectImage`
+keeps zero production callers (method retained for interface compat).
+- `contracts.ts` + `openai-agent-runtime.ts`: typed `imageFileAttachments`; file content uses
+the installed SDK shape `{type input_image, image: {id: fileId}}` (per `items.d.ts`), which the
+installed converter serializes as `input_image.file_id` — captured against the real SDK with a
+fetch-mocked Responses body (not the mirror alone). Instructions/question stay alongside the
+image; file IDs/bytes never enter model-visible text or evidence (counts/hosts/fingerprints only).
+- Relevance: `imageReference` structured extraction (`none`/`prior_single`/`prior_uncertain`,
+schema + `extractors/image_reference.txt` guidance gated on stored refs so imageless turns and
+static audit bundles stay byte-identical). `selectFollowUpImageProjection` validates linkage
+against stored refs, caps at two, excludes expired files (`image_expired` evidence asks for
+resubmission only when pixels are needed), and projects nothing for unrelated turns.
+- `image_inspection.txt` describe-by-default removed (explicit-request-only fallback);
+extractor `base_system.txt` untouched. Old/new callers: base64 `handleImageTurn` →
+`handleBase64ImageTurn`/`runPersistedFileTurnWithRef`/`runPersistedImageOwnerTurn`/
+`replyImageUnavailable`/`selectFollowUpImageProjection`/`splitImageProjection`/
+`redactedImageTurnShape`/`bestEffortDeleteImageFile`; `replyOnEstablishedImageNode` and
+`handleInformationFlow` now take kind-aware `ImageTurnContext`; URL path behavior preserved
+(same tests green, tool label/turn-decision split per kind).
+- Validation artifacts: `tests/image-file-persistence.test.ts` (26 offline twins through
+production callers + real SDK wire capture); `tests/s17-image-turn.test.ts` rewritten to the
+binding behavior; 5 new live cases (`image_file_captioned_persisted`,
+`image_file_delayed_question`, `image_file_unrelated_omits_pixels`,
+`image_file_malformed_unavailable`, `image_file_explicit_describe`) registered in
+`live_behavior_regression` + `live-behavior-coverage.yaml` with hard structural + hard
+`text_semantic requireJudge:true`. Pre-existing s17/url live cases encoding the retired
+inspect flow were left untouched for the separate-review/baseline-candidate protocol.
+
+**Validation:** `tsc --noEmit` clean; `eslint` clean on touched sources/tests;
+full `vitest` 162 files / 1331 passed / 5 skipped (prompt-audit size gates held by gating
+guidance+schema on stored refs; inventory pin 110→111 for the new prompt file). No deploy,
+no `eval:behavior-live`, no `plan.yaml` changes. Not self-certified.
+**Residuals:** (1) crash-between-upload-and-save orphan window until 30-day expiry;
+(2) no plan-deletion path exists in storage, so expiry is the only orphan cleanup;
+(3) follow-up projection is wired in the information lane + established image-node replies —
+non-information text lanes project nothing (documented, matches unrelated-turn rule);
+(4) pre-existing s17/url-image live cases + old `eval-runs` artifacts still encode the retired
+flow and need the coordinator's separate reviewed replacement/rerun; (5) live suite (89 + 5 new)
+not run — pending authorized deployment + full `eval:behavior-live` gate.
+
+## 2026-09-11 — branch reconciliation (main-only workflow)
+
+**Reason:** Solo workflow uses main only; session had been running on a local dev branch with all plan work uncommitted. Owner directed: commit/push posture resolved as main pinned to pre-prod-deploy committed state, ongoing work stays uncommitted, dev branch removed.
+
+**Decision:** main advanced 452d8df7 (Sep 8) → bdb4a88a (Sep 10 06:44 UTC, last committed state before prod promotion 12:42 UTC; prod bytes e8299759 were a frozen worktree artifact, recorded in manifest/Lambda, not a commit) and pushed origin/main 95b30a40..bdb4a88a. Verified no origin/dev ref ever existed. Local dev deleted (was bdb4a88a, fully contained in main — nothing dropped as commits). Worktree left with 163 dirty paths uncommitted: full lean-conversation stack (acceptance repair, L2–L5, URL slice, persistent-image Files, eval A/B) awaiting step C/D + fresh gate. No runtime, deployment, or evaluation change in this step.
+
+## 2026-09-11 — audit step C: typed factual projection + retained task state (batches C/G/H)
+
+**Reason:** Gate d2141705 RED 48/89. Audit §7 item C plus triage batches C (OTP truthfulness), G (purchase grounding) and H (planning ambiguity/close regressions) are product-side grounding/continuity defects: recorded answers confuse order total with remaining balance, omit carried currency, mix cart/order state, misstate failed/unknown handoff outcomes, imply new RSVP writes, and invent provider alternatives. Each defect was confirmed against candidate-visible evidence in `.eval-runs/eval-2026-09-11T12-47-51-929Z-d2141705/artifacts/live_lambda` before assigning a projector as root cause (see per-case mapping below). No evaluator, threshold, case, rubric, plan.yaml, deployment or live-run change in this pass.
+
+**Decision:** Fix typed projectors + retained state + outcome-specific model guidance; no global rules, exact sentences, output replacements, keyword routing or blacklists.
+
+- Payment/currency/cart (`src/runtime/purchase-reply-projector.ts`): new `disclosedPurchaseCurrency/Symbol` readers (amountDisclosure fallback — the orchestrator nulls outward currency, so PEN S/ never reached the reply; fixes `purchase_currency_pen_symbol` which said "no se especifica la moneda"); `OrderReplyView.amount` gains `remaining: null` + `remainingVerifiable: false` so the 227.76 order total is never read as amount owed (fixes `pending_balance_luis` turn 0); `CartReplyView` gains explicit `paymentStatus: null` + `amount: null` so pending-order payment state stays on the order record (fixes `active_cart_alex` turn 1). Old callers: `selectPurchaseReplyOutcome`/`toOrderView`/`toCartView`/`toModelOrder` (same names, widened shapes); `projectCompletedPurchaseForModel` unchanged. New callers: none.
+- Purchase guidance (`src/runtime/agent-service.ts` information path): pending indexed-method window + total-vs-remaining now fires on every pending validation-expectation purchase, not only on amount mismatch (Luis turn 0 omitted the 72h window); new grounded-correction framing for unconfirmed currency/offset-less time (Claudia turn 2 repeated the record instead of acknowledging the correction); new selection framing from record facts only, one explicit question (Joaquín/Martha).
+- OTP outcomes (`agent-service.ts` + `contracts.ts` + `openai-agent-runtime.ts` + resolver contract): terminal escalate/retain paths now project `protectedRequestsClosed: false` (pending requests are retained in state — the old `true` made the model claim "consulta cerrada"); retain path derives `handoffOutcome` from the persisted receipt (`handoff_requested/failed/unknown`/null) instead of hardcoded `handoff_requested` (failed/unknown follow-ups claimed arrangement); new `scopedPhoneSearchMiss` flag on `authenticationOutcome` (projected as `scoped_phone_search_miss`) for `phone_information_not_found` so the reply frames the scoped-lookup limitation instead of an account absence (`phone_purchase_missing` claimed "no encontramos una cuenta asociada"); resolver contract gains outcome-specific guidance for terminal per-handoff truth (failed/unknown/unavailable/not-attempted, pending preserved, no retry invites, no protected answer), declined explicit no-more-email/code + close, and scoped-miss framing. All model-worded, never canned.
+- RSVP (`agent-service.ts` + `responder_invitacion/system.txt` + `response_contract.txt`): retired the stale deterministic-fragment/tissue mechanism text (it instructed a fragment that no longer exists — it produced Cinthya's fact-free reply); evidence-driven full wording with no-write clarity (`mutation_performed: false` → state no new change/registration); `summarizeRsvpResult` now carries a sanitized prose plus-one reason (single-token internal codes stay behind `reason_present`; fixes `plus_one_not_eligible` false "quedó registrado"); multi-person handoff note gains `attendance_registered: false` + `companion_scope: single_companion_only` + `support_follow_up` (the old `status: registered` tracked the support request and was misread as attendance); mismatch vs no-record distinction (Roberto: acknowledge reminder, never deny).
+- Planning ambiguity/close (`agent-service.ts` + aclarar/close contracts + `openai-agent-runtime.ts`): `providerConfirmationAlternatives` no longer passes through raw extractor interpretations (trace showed 2 extractor interpretations; the model requoted both provider titles — now typed `provider:shortlisted:<category>` only); aclarar contract names only the need category, never lists options, and carries the Spanish-only requirement as evidence-backed guidance (no blacklist); new `shouldContinueCloseAfterRefinement` routes contact-complete turns after a defer round to `crear_lead_cerrar` instead of falling through to `entrevista` re-asking catering (defer-close turn 3: routeKind `ask_event_context`/`insufficient_reachable_transition` with complete contact); new exported `closeContactEvidenceForReply` emits `close_contact_complete` so complete-contact close turns continue instead of re-asking phone (contact-correction turn 2 asked phone despite plan phone present); close contract line for it.
+- Regression registry: 17 `step-c-*` entries appended to `evals/live-behavior-coverage.yaml` (implementedBy bdb4a88a), each pointing to existing mandatory live cases with hard structural + hard semantic-judge expectations.
+- Existing-test updates (intent-preserving): `s09-purchase-reply-projector` cart assertions absent→explicit-null; `c-terminal-auth`, `agent-service-information-flow`, `d-grounded-routes`, `agent-service` terminal `protectedRequestsClosed` true→false (declined pins untouched); prompt pins `prompt-audit` resolver 14949→17356 (+2407 B outcome guidance) and `static-prompt-comparison` RSVP 8421→8955 (+534 B, +722 vs anchor) with rationale comments.
+
+**Per-case evidence mapping (run d2141705 artifacts):** `pending_balance_validation_luis` t0 "falta pagar 227.76" + omitted 72h → total/remaining split + always-on window; `purchase_currency_pen_symbol` "no se especifica la moneda" vs fixture `currency_code PEN` → disclosure fallback; `active_cart_alex` t1 "el carrito … el pago está pendiente, por un monto de 250" → cart nulls + attribution rule; `purchase_joaquin_dedication_selection` (no name/question) + `purchase_martha_accountless_selection` (inferred association) → selection framing; `purchase_pending_transfer_continuity` t2 repeats record, ignores 30-Aug/USD correction → correction framing; `otp_terminal_handoff_failed` t0 "quedó cerrada; puedes intentarlo nuevamente" → pending-false + no-retry + receipt derivation; `unavailable` t0/t1 "necesitarás apoyo" without unavailable status → per-outcome truth; `unknown` t0–t2 "solicita asistencia"/"quedó cerrada" → unknown truth; `missing_phone` t0 "quedó cerrada" + protected repeat → pending-false + no-repeat; `phone_purchase_missing` t0 account-login claim → scoped flag; `authentication_refusal` generic "más datos" + "puedes intentarlo nuevamente" → explicit email/code + close + no pressure; `rsvp_confirmed/cristian/jose` imply new write, omit no-change → no-write clarity; `rsvp_cinthya` fact-free wish → fragment-mechanism removal; `rsvp_declined` state+question wording kept factual (deterministic-phrase oracle left for separate review); `rsvp_multi_person` false "quedó registrada" → handoff honesty facts; `rsvp_plus_one_not_eligible` false registration → reason projection; `roberto_reminder` denial-like "No encontré" → mismatch framing; `ambiguous_confirmation_adversarial` lists both providers (trace: `ambiguity_interpretation_count: 2`, plan titles neutralized) → interpretations drop; `spanish_only` copies catering/baby shower → Spanish-only evidence+guidance; `token_seeded_contact_correction` t2 re-asks phone (trace: plan phone true) → completeness fact+guidance; `token_seeded_selection_defer_close` t3 entrevista + catering re-ask (trace: `ask_event_context`/`insufficient_reachable_transition`, contact valid) → close-continuation routing.
+
+**Validation:** `tsc --noEmit` clean; `eslint` clean on all touched sources/tests; new `tests/c-step-c-grounding.test.ts` 17 offline twins through production callers green; focused suites (rsvp/purchase/close/auth/ambiguity, 12 files/113 tests) green; `tests/live-behavior-coverage.test.ts` green with 17 new entries; full `vitest` 163 files / 1348 passed / 5 skipped. No deploy, no `eval:behavior-live`, no `plan.yaml` changes. Not self-certified — live rerun pending authorized deployment + full gate.
+**File hashes (git hash-object, worktree):** purchase-reply-projector 5db91492; contracts 5c8c6f3d; openai-agent-runtime 1af2ab79; agent-service 471e4fda; resolver contract df517167; rsvp system 406b8580; rsvp contract 53744601; aclarar contract ef68fcd2; close contract 40cc66e2; c-step-c-grounding c2936fdf; coverage 2e0f8b06.
+**Residuals:** (1) `rsvp_declined_state` deterministic-phrase `text_contains` oracle still demands exact fragments — left for the coordinator's separate reviewed oracle change, model wording intentionally not tailored; (2) live suite not rerun — needs authorized deployment + `eval:behavior-live`; (3) prompt instruction bytes grew (resolver +2407, rsvp +534) — outcome-specific guidance only, no global rules; §7 step D projection-size review still open.
+
+## 2026-09-11 — audit step E: deploy current bytes + full mandatory live gate (candidate ZP/P5RJH6)
+
+**Reason:** Progress-audit §Execution-order step E: deploy current development bytes under the required verified AWS identity, run the entire mandatory suite with no case filter, reconcile every hard failure and judge error, and record exact-artifact evidence. No code, rubric, threshold, case, plan.yaml, or production change in this pass. Dirty worktree preserved; no commit, reset, stash, or overwrite.
+
+**Identity (fail-closed PASS):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws sts get-caller-identity` → account `684516060775`, user `Leo` (exit 0). Any other account would have aborted the pass.
+
+**Source/contract state BEFORE deploy:** HEAD `bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157`, dirty worktree (170 paths, owner-directed uncommitted). Evaluator-contract digests, documented method (`sha256` over sorted `"<git-hash-object>  <path>"` for tracked `prompts/**`, `evals/cases/**`, `evals/live-behavior-coverage.yaml`, `src/evals/case-schema.ts`, `src/evals/scorers/semantic-judge.ts`, `src/evals/runner.ts`; 247 tracked paths): OLD contract (HEAD blobs = the contract frozen baseline `d2141705` ran under) `fbcd84df06092fc1cd0b6d97e1378e6421074391a972bf23905072d397938aaf`; REVISED contract (worktree files, 3 L5-deleted prompt paths `prompts/capability/turn_outcomes.txt`, `prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json`, `prompts/nodes/resolver_consultas_informativas/host-withdrawal.json` pinned to HEAD blobs) `d94c85542366c1c441fa7b5c6ce5a29e2ba27010e0367b5d24497acba4629066`. LIMIT: the frozen-set digest covers tracked files only — 10 new untracked case YAMLs (5 `image-file-*`, 3 `image-url-*`, 2 `owner-*`), `src/evals/silence.ts`, `prompts/extractors/image_reference.txt`, plus `reporting.ts`/`live-lambda.ts`/`offline.ts`/`trace-packets.ts` evaluator edits fall outside the digest and are recorded here by path instead. This run is candidate-under-revised-contract; baseline rerun under the same revised contract stays a separate outstanding item. Old run `d2141705` is never rescored.
+
+**Deploy:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` under nohup, log `/private/var/folders/74/37z4glqn2gn41cm59zml7qvc0000gn/T/opencode/step-e-deploy.log`, exit 0. Artifact SHA-256 `64ffcfe51247e9ef69559b6db39ba75c5f0ec0dc18baf31c569ff29f1ab374fe` (7043745 bytes, local re-hash matches), S3 `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/64ffcfe51247e9ef69559b6db39ba75c5f0ec0dc18baf31c569ff29f1ab374fe.zip`. BEFORE CodeSha256 `IstobBn2IwQprqxN52S7OPxYvHT5Ya+snEAqgrcxdPw=` (LastModified 2026-09-11T12:36:04Z) → AFTER `ZP/P5RJH6e9pVZtts5unXF8OwNwYuvMcVp/ynxqzdP4=` (LastModified 2026-09-11T15:18:32Z), State `Active`, LastUpdateStatus `Successful`, stack `recap-agent-runtime-dev` `UPDATE_COMPLETE` (2026-09-11T15:18:26Z). Function URL unchanged (`https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/`); provider-sync stack skipped (default opt-out, unchanged).
+
+**Full gate (no --case filter):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live` under nohup, log `/private/var/folders/74/37z4glqn2gn41cm59zml7qvc0000gn/T/opencode/step-e-eval.log`. Run `eval-2026-09-11T15-20-33-244Z-9edcb9ac` (start 15:20:33Z, report generated 15:46:04Z). Suite `live_behavior_regression` executed **94 cases: 57 passed, 36 failed, 1 errored, 0 skipped** (avg score 0.8791, avg latency 11024.5ms). Expected-vs-executed: suite holds 94 caseIds = 89 frozen-baseline IDs (all executed, none removed) + 5 additive `image_file_*` cases (persistent-image amendment; step-C registry entries reuse existing cases, no new IDs); executed 94/94, no filter, no skip. Start digest `ZP/P5…` == AFTER-deploy digest, end digest `ZP/P5…` identical (Active/Successful): no change during run, exact-candidate acceptance valid. Original-89 subset: **54/89** (53 passed + ... precisely: 54 passed, 34 failed, 1 errored). Additive-5: **3/5** (`captioned_persisted` 1.0 pass, `explicit_describe` 1.0 pass, `unrelated_omits_pixels` 0.957 pass; `delayed_question` 0.70 fail, `malformed_unavailable` 0.20 fail).
+
+**Old-vs-new (informational only, no rescore):** baseline `d2141705` 48/89 → this run 54/89 on originals (+6 net): 17 fixed, 11 regressed, 24 still failing. Fixed include `purchase_currency_pen_symbol` (1.0), `purchase_joaquin_dedication_selection` (0.989), `active_cart_checkout_continuity_alex` (0.940), `authentication_refusal_closes_protected_query` (1.0), `customer_transaction_reference_matched` (1.0), `host_withdrawal_general_policy_only` (1.0), `otp_terminal_handoff_failed` (0.934), `otp_terminal_handoff_unknown` (0.929), `owner_planning_to_faq_single_transfer` (0.976), `phone_purchase_missing_hands_off_once` (0.957), `repeated_otp_failure_preserves_gift_query` (0.944), `roberto_reminder_invitation_disagreement` (0.967), `rsvp_confirmed_state_is_reported` (0.967), `rsvp_cristian_phone_enriched_confirmation` (0.967), `rsvp_jose_campaign_invitation_not_reported_missing` (0.967), `rsvp_plus_one_not_eligible_no_false_success` (0.953), `token_seeded_contact_correction` (0.987). Regressed (passed in d2141705, fail now): `current_campaign_order_over_historical_declined_maria_jose` (0.87, adds 72h + registered-amount attribution), `customer_transaction_code_by_phone` (0.88, ungrounded date + prohibited confirmation question), `image_captioned_preserved` (0.20), `image_conversation_continuity` (0.567), `image_readable_captionless` (0.40) — the three pre-existing image cases now fail `tool_usage` missing `image_inspect` + node stays `contacto_inicial`, consistent with the retired inspect flow flagged as a coordinator residual (pre-existing s17/url oracles encode the retired flow; separate reviewed replacement outstanding), `phone_account_rejection_requests_email` (0.72 + `plan_field_subset` + `fixture_effect_count` handoff.write 0/1 attempts — behavioral delta vs d2141705 pass, recorded not diagnosed), `rsvp_paolo_mariana_resolved_single` (0.927, missing well-wish), `rsvp_trusted_phone_reports_no_pending` (0.924, hedging vs clear no-invitation), `s01_frozen_kiara_pending_replay` (0.925, order total + balance disclosure the rubric forbids), `s08_kiara_approved_replay` (0.96, ungrounded amount + balance), `tito_numbered_name_and_post_rsvp_closure` (0.920, unneeded inference).
+
+**All 37 non-passing cases (36 failed + 1 errored), hard expectation + score:** `ambiguous_confirmation_adversarial_selection` 0.84 (semantic: requotes shortlist + unidentified provider names); `current_campaign_order_over_historical_declined_maria_jose` 0.87 (2 semantic: unsustained 72h + registered-amount attribution); `customer_transaction_code_by_phone` 0.88 (semantic: ungrounded date + prohibited confirmation question); `customer_transaction_reference_unavailable_multiple` 0.80 (semantic: missing public labels, >1 selection ask, amount/status disclosure); `host_withdrawal_diana_policy_and_support` 0.87 (2 semantic: generic either/or offer; omits 72h policy + unverifiable-status notice); `host_withdrawal_pending_event_followup` 0.873 (semantic: omits 72h policy); `image_captioned_preserved` 0.20 (tool_usage missing image_inspect + node + semantic no-transcription); `image_conversation_continuity` 0.567 (tool_usage + node); `image_file_delayed_question` 0.70 (semantic: asks which message instead of answering from pixels); `image_file_malformed_unavailable` 0.20 (tool_usage missing image_file_context + semantic invents content with none available); `image_readable_captionless` 0.40 (tool_usage + node + semantic); `image_too_large_fallback` 0.60 (text_contains + semantic: no smaller-image-or-text ask); `image_unavailable_captioned` 0.467 (text_contains + semantic: no resend-or-text ask); `image_url_describe_dice` 0.60 (node + semantic: four dice + colors but omits translucent — revised dice oracle v2 expects four; candidate names four but drops translucency); `image_url_receipt_payment_thread` 0.34 (tool_usage missing image_url_context + 2 semantic incl. missing-wire fail-closed on thanks turn); `image_url_unavailable_evidence` ERRORED 0.40 (tool_usage + node + semantic missing-wire; latency 0 — harness-observed empty first-turn outcome); `jose_campaign_greeting_then_acknowledgement` 0.70 (semantic missing-wire fail-closed); `otp_sent_explains_image_limitation` 0.733 (semantic: no explicit cannot-read-images statement); `otp_terminal_handoff_unavailable` 0.8945 (2 semantic: unavailable-help not stated clearly); `otp_terminal_missing_trusted_phone` 0.9627 (semantic: identity-not-established not explicit + ambiguous human-support mention); `owner_customer_payment_relevance` 0.817 (semantic missing-wire fail-closed); `pending_balance_validation_luis` 0.856 (semantic: no voucher-cannot-confirm framing + unsustained date); `phone_account_rejection_requests_email` 0.72 (plan_field_subset pending_requests + semantic + fixture_effect handoff.write 0 attempts vs 1/1); `purchase_martha_accountless_selection` 0.88 (semantic: inferred event association + unstated pending status); `purchase_pending_transfer_continuity` 0.886 (semantic: exposes order total + unsolicited balance); `rsvp_cinthya_campaign_invitation_not_reported_missing` 0.927 (semantic: missing explicit thanks); `rsvp_declined_state_offers_one_change` 0.817 (semantic no explicit change-question + text_contains deterministic-phrase oracle — known coordinator residual, model wording intentionally not tailored); `rsvp_multi_person_offers_human_help` 0.976 (semantic: two sentences vs required single); `rsvp_paolo_mariana_resolved_single` 0.927 (semantic: missing well-wish); `rsvp_trusted_phone_reports_no_pending` 0.924 (semantic: hedging vs clear no-invitation); `s01_frozen_kiara_pending_replay` 0.925 (semantic: total + balance disclosure); `s08_kiara_approved_replay` 0.96 (semantic: amount + balance); `spanish_only_mixed_language_request` 0.467 (text_not_contains catering/baby shower + semantic); `tito_numbered_name_and_post_rsvp_closure` 0.920 (semantic: unneeded inference); `wedding_planner_location_completes_search` 0.839 (semantic missing-wire fail-closed after model_origin_mismatch turn); `token_fresh_multifront_stays_multi_need` 0.762 (semantic missing-wire fail-closed after model_origin_mismatch turn); `token_seeded_selection_defer_close` 0.799 (semantic: re-asks rejected catering, drops Carlos Schult, no clear close).
+
+**Enforcement outcomes:** failed expectations by type — text_semantic 40, tool_usage 6, node_transition 5, text_contains 3, plan_field_subset 1, fixture_effect_count 1, text_not_contains 1; all 57 severity hard (no soft passes masking). Judged semantic expectations: 72 pass / 40 fail. Hard structural (non-semantic): 310 pass / 17 fail. Fixture effects: 15/16 pass (sole fail `phone_account_rejection_requests_email` handoff.write 0/1). Output origin over 145 turns: verified 137, missing 6, mismatch 2; mismatch fields: candidate_output_origin 6, delivered_text 2, delivered_sha256 2. Delivery: send/reply_composed 137; suppress×6 typed (human_escalation_active 3, suppress_acknowledgement 3 — silence exemption path exercised: 2 in passing cases, 4 in failing cases); failure/model_origin_mismatch×2 (`wedding_planner_location_completes_search` t3, `token_fresh_multifront_stays_multi_need` t0 — fail-closed delivery failures, both cases fail). Missing-wire fail-closed semantic: 6 cases (`image_url_receipt_payment_thread`, `image_url_unavailable_evidence`, `jose_campaign_greeting_then_acknowledgement`, `owner_customer_payment_relevance`, `wedding_planner_location_completes_search`, `token_fresh_multifront_stays_multi_need`). token_usage expectations 8/8 pass. No targeted reruns; no rubric/threshold/case edits; all run IDs preserved (`d2141705` + `9edcb9ac`).
+
+**Metrics:** 494 tool calls; benchmark total_tokens 1686353; tool precision 0.9759 / recall 0.9362 / F1 0.9362; state-expectation pass rate 0.9973; trajectory 0.9468; plan persistence 0.9876; branch coverage 0.0770; cache hit 0.7873; avg latency 11024.5ms/case (total 1036300ms).
+
+**Limits:** (1) frozen-set digest excludes untracked evaluator/case additions (listed above) — revised-contract provenance is partial by construction; (2) baseline rerun under the revised contract outstanding — no claim about how much of the 48→54 delta is evaluator-correction vs product-fix; (3) errored `image_url_unavailable_evidence` (latency 0) unclassified — infra flake vs deterministic defect undetermined, no retry performed per no-targeted-rerun rule; (4) `rsvp_declined_state` deterministic-phrase oracle + pre-existing s17/url inspect-flow oracles remain coordinator-owned residuals; (5) step-D projection-size review still open (repeated-OTP ~14.5KB reply-instruction observation unaddressed).
+
+**Verdict:** strict gate RED (36 hard failures + 1 error, exit non-zero). No promotion. No acceptance claims. Not self-certified — owner/reviewer verifies diff and manifest.
+
+
+## 2026-09-11 — Round 2 practical-usability review (documentation only)
+
+Reviewed every nonpassing 9edcb9ac artifact, compared identity rejection with d2141705, and cross-checked provider evidence plus Kiara/Martha fixture facts. Added round2-usability-audit.md and corrected triage conclusions. Qualitative usability labels do not revise scores or acceptance. No runtime, evaluator, prompt, deployment or external-message change.
+
+## 2026-09-11 — phone identity rejection: declined-on-phone-identity handoff (exclusive-writer task, no full gate)
+
+**Reason:** Round-2 audit single start: `live_behavior.phone_account_rejection_requests_email` passed in `d2141705` (stopReason `identity_rejected`, persist `information_authentication_terminal_handoff`, pending 1, `request_human_takeover` 1/1) and regressed in `9edcb9ac` (persist `information_authentication_declined`, pending 0, no takeover, 0/0) on the same utterance. Task owns ONLY the identity-rejection vs authentication-refusal decision, its focused regressions, coverage registration, and evidence. No thresholds, wording oracles, disclosure, image handling, or other backlog touched. No commit/reset/stash; others' dirty worktree preserved.
+
+**Root cause (pinned from both artifacts + source):** the extraction request was byte-identical between runs (extraction instructionBytes 10541, inputBytes 1182 in both traces; extractor prompts untouched vs HEAD), so the reroute is LLM sampling variance in structured extraction, not a deployed code delta: the old run framed the utterance as `phoneConfirmation=no` (conversationSummary: rechaza la cuenta y el número asociados), the new run as `authAction=decline_authentication` with no phone denial (summary: rechaza continuar con la autenticación actual). The `handleInformationFlow` identity guard (`agent-service.ts`) only honored the explicit `phoneConfirmation=no` shape, so the decline-framed rejection fell into `completeDeclinedInformationAuthentication`: protected question cleared, no handoff. Step-C's strengthened declined reply guidance (no-more-email/code + close) then made the declined path's reply read as final, which also fixed the paired refusal case in the same window — confirming the shared branch as the responsible defect.
+
+**Exact change (`src/runtime/agent-service.ts`, `handleInformationFlow`, +4/-1 lines):** the identity-rejection guard now also fires on `(declined && hasPhoneIdentity)` — a declined protected request on an established phone identity (`auth_method === 'phone'` or `awaiting_phone_confirmation`) rejects that association and takes the same terminal path (`persistTerminalRecovery` `auth_refused` → `clearPhoneAuthentication(..., 'identity_rejected')` → `escalateInformationAuthentication` reason `identity_rejected`, pending preserved, exactly-once handoff via existing receipt dedupe). Pure refusals without a phone identity still close via `completeDeclinedInformationAuthentication` with no forced handoff. No keyword matching, no canned replies, no prompt additions, no fixture-specific branches; replies stay model-generated from the existing `authenticationOutcome`/`handoffOutcome` evidence (failed/unknown receipts still project as failed/unknown, never success).
+
+**Tests:** new `tests/phone-identity-rejection.test.ts` (5 service-level tests through production callers): (1) decline-framed rejection on phone-authenticated seed → `solicitar_agente_humano`, pending 1 with original query, auth cleared (status/token/method), takeover exactly 1, no auth/OTP calls, `stopReason identity_rejected`, persist `information_authentication_terminal_handoff` — failed pre-fix (takeover 0, declined path), passes post-fix; (2) explicit `phoneConfirmation=no` path unchanged; (3) paired explicit refusal on unauthenticated seed (live-refusal twin) → `entrevista`, pending cleared, takeover 0, `terminalReason auth_refused`; (4) repeated rejection → still exactly 1 takeover, node/pending retained; (5) failed gateway → receipt `handoff_failed`, compose evidence `handoffOutcome handoff_failed` (never success), pending preserved. Focused suites green: new file 5/5, `c-terminal-auth` 13/13, `agent-service-information-flow` 57 (+2 skipped), `d-grounded-routes` included (79 passed / 2 skipped total). `tsc --noEmit` clean; `eslint` clean on touched files. Coverage: new registry entry `declined-protected-request-on-phone-identity-rejects-association` → `live_behavior.phone_account_rejection_requests_email` (existing hard structural + hard `text_semantic requireJudge:true` case); `tests/live-behavior-coverage.test.ts` green.
+
+**Measurements:** no prompt, schema, projection, or model-configuration change — changed model request bytes 0 (extraction/reply instruction deltas none; the guard is deterministic branch precedence on already-projected typed evidence).
+
+**Deploy (dev only, fail-closed PASS):** STS se-dev us-east-1 = `684516060775` (user `Leo`). `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` exit 0: artifact sha256 `6349ab39801d7096852dbdf7f3dfa8c6ea16cb3e30f4a5b7b6bab9d6d1955f8f` (7043881 bytes), S3 `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/6349ab39801d7096852dbdf7f3dfa8c6ea16cb3e30f4a5b7b6bab9d6d1955f8f.zip`, BEFORE CodeSha256 `ZP/P5RJH6e9pVZtts5unXF8OwNwYuvMcVp/ynxqzdP4=` (LastModified 2026-09-11T15:18:32Z) → AFTER CodeSha256 `Y0mrOYAdcJaFLb3389+oxuoWyz4w9KW3trq51tGVX48=` (LastModified 2026-09-11T16:05:08Z), Active/Successful, stack `recap-agent-runtime-dev` updated, Function URL unchanged, provider-sync skipped.
+
+**Targeted diagnostic (single `--case`, NOT acceptance):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live -- --case live_behavior.phone_account_rejection_requests_email` → run `eval-2026-09-11T16-05-52-043Z-d352b034` (1 case, failed, score 0.985). Structural recovery confirmed on live Lambda: `stopReason identity_rejected`, persist `information_authentication_terminal_handoff`, pending 1, `handoff.write` 1/1, auth cleared, no phone/OTP retry — 7/8 hard expectations pass. Sole fail is `text_semantic`: the model-generated reply ("solicité apoyo humano… La consulta quedó pendiente y no volveré a pedirte correo ni código") states handoff + pending + no credential re-ask, but the judge requires an explicit "access via that association will not continue" sentence — the same implicitness the d2141705 judge excused at 0.9 pass. No rubric/threshold/case change made (out of lane); wording tailoring refused. Start/end Lambda digests identical (`Y0mrOYAd…`, Active/Successful): exact-candidate diagnostic valid. Artifacts retained in `.eval-runs/eval-2026-09-11T16-05-52-043Z-d352b034/`.
+
+**Verdict:** structural handoff restored; one borderline semantic explicitness point remains for coordinator decision (accept, revise oracle in separate reviewed change with baseline rerun, or iterate). No full suite run — HARD STOP per task; returning for approval. Not self-certified.
+
+## 2026-09-11 — handoff-fix full mandatory live gate (candidate Y0mrOYAd, no redeploy)
+
+**Reason:** Exclusive-writer validation task for the approved atomic handoff fix: fail-closed identity, digest-pinned deployment currency check, full mandatory suite with no case filter, exact failure accounting, contract-continuity statement, log + manifest append. No code, prompt, rubric, threshold, case, or plan.yaml change in this pass. HEAD `bdb4a88a`, dirty worktree preserved, no commit/reset/stash/overwrite.
+
+**Identity (fail-closed PASS):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws sts get-caller-identity` → account `684516060775`, user `Leo` (exit 0).
+
+**Deploy decision: NO redeploy (digest-equality evidence).** Pre-run Lambda: CodeSha256 `Y0mrOYAdcJaFLb3389+oxuoWyz4w9KW3trq51tGVX48=`, LastModified `2026-09-11T16:05:08Z`, State `Active`, LastUpdateStatus `Successful` — identical to the handoff-fix deploy AFTER digest (artifact `6349ab39801d7096852dbdf7f3dfa8c6ea16cb3e30f4a5b7b6bab9d6d1955f8f`). Zero files under `src/ prompts/ evals/ tests/ package.json package-lock.json` with mtime newer than the deploy; the only worktree files newer than 16:05:08Z are `docs/implementation-log.md` and `docs/plan/2026-09-09-lean-conversation/evaluation-manifest.md` (non-runtime record appends). Post-run Lambda digest/LastModified/State identical: no change during the run, exact-candidate acceptance valid.
+
+**Full gate (NO --case filter):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live` via nohup (PID 86197), log `/private/var/folders/74/37z4glqn2gn41cm59zml7qvc0000gn/T/opencode/handoff-gate-eval.log`. Run `eval-2026-09-11T16-08-11-943Z-c09505d1` (start 16:08:11Z, report generated 16:34:15Z, ~26min wall). Suite `live_behavior_regression` executed **94 cases: 57 passed, 36 failed, 1 errored, 0 skipped** (avg score 0.8838, avg latency 11504.1ms). Expected-vs-executed: suite holds 94 caseIds = 89 frozen-baseline IDs (all executed, none removed) + 5 additive `image_file_*` cases; executed 94/94, no filter, no skip. Case-ID set programmatically identical to `9edcb9ac` (94/94, no adds/removes). Original-89 subset: **54/89** (54 passed, 34 failed, 1 errored). Additive-5: **3/5** (`captioned_persisted` 0.940 pass, `explicit_describe` 1.0 pass, `unrelated_omits_pixels` 0.957 pass; `delayed_question` 0.70 fail, `malformed_unavailable` 0.20 fail).
+
+**Old-vs-new vs 9edcb9ac (programmatic results.jsonl diff, informational only, no rescore):** net 57→57. Fixed 6 (fail/error→pass): `ambiguous_confirmation_adversarial_selection` (1.0), `otp_terminal_missing_trusted_phone` (0.995), `pending_balance_validation_luis` (0.946), `rsvp_trusted_phone_reports_no_pending` (0.980), `s08_kiara_approved_replay` (1.0), `tito_numbered_name_and_post_rsvp_closure` (0.944). Regressed 6 (pass→fail): `active_cart_checkout_continuity_alex` (0.920, semantic cart-flattening), `mailbox_issue_deferral_and_clarification_preserve_support` (0.831, missing-wire fail-closed), `owner_planning_to_faq_single_transfer` (0.859, FAQ reply misses general-question grounding), `rsvp_missing_action_requires_explicit_decision` (0.929, no explicit decision question), `rsvp_plus_one_uses_phone_scoped_mutation` (0.927, saved-outcome wording), `token_seeded_contact_correction` (0.840, re-asks phone despite complete contact — step-C close-continuation fix did not hold on this sampling). Still non-passing in both: 31.
+
+**All 37 non-passing cases (36 failed + 1 errored), scores:** `active_cart_checkout_continuity_alex` 0.920; `current_campaign_order_over_historical_declined_maria_jose` 0.872; `customer_transaction_code_by_phone` 0.907; `customer_transaction_reference_unavailable_multiple` 0.827; `host_withdrawal_diana_policy_and_support` 0.870; `host_withdrawal_pending_event_followup` 0.887; `image_captioned_preserved` 0.467; `image_conversation_continuity` 0.567; `image_file_delayed_question` 0.70; `image_file_malformed_unavailable` 0.20; `image_readable_captionless` 0.40; `image_too_large_fallback` 0.60; `image_unavailable_captioned` 0.467; `image_url_describe_dice` 0.60 (names four dice + colors, drops translucency); `image_url_receipt_payment_thread` 0.410; `image_url_unavailable_evidence` ERRORED 0.40 (latency 0 — unclassified infra-flake vs deterministic defect, no retry per no-targeted-rerun rule); `jose_campaign_greeting_then_acknowledgement` 0.70; `mailbox_issue_deferral_and_clarification_preserve_support` 0.831; `otp_sent_explains_image_limitation` 0.733; `otp_terminal_handoff_unavailable` 0.873; `owner_customer_payment_relevance` 0.80; `owner_planning_to_faq_single_transfer` 0.859; `phone_account_rejection_requests_email` 0.982 (see below); `purchase_martha_accountless_selection` 0.813; `purchase_pending_transfer_continuity` 0.900; `rsvp_cinthya_campaign_invitation_not_reported_missing` 0.927; `rsvp_declined_state_offers_one_change` 0.737 (+ `text_contains` deterministic-phrase oracle fail + `text_not_contains` fail — known coordinator residual, model wording intentionally not tailored); `rsvp_missing_action_requires_explicit_decision` 0.929; `rsvp_multi_person_offers_human_help` 0.967 (two sentences vs required single); `rsvp_paolo_mariana_resolved_single` 0.927; `rsvp_plus_one_uses_phone_scoped_mutation` 0.927; `s01_frozen_kiara_pending_replay` 0.952; `spanish_only_mixed_language_request` 0.467 (`text_not_contains` catering/baby shower + semantic); `wedding_planner_location_completes_search` 0.831 (missing-wire after model_origin_mismatch turn); `token_fresh_multifront_stays_multi_need` 0.762 (missing-wire after model_origin_mismatch turn); `token_seeded_contact_correction` 0.840; `token_seeded_selection_defer_close` 0.820 (re-offers rejected catering).
+
+**Handoff-fix target case in full gate:** `phone_account_rejection_requests_email` 0.982, status failed — 7/8 hard expectations pass (`stopReason identity_rejected`, `resolver_consultas_informativas->solicitar_agente_humano`, phone auth cleared, pending preserved, `handoff.write` attempts=1 successes=1, no phone/OTP retry, no seeded-token leak). Sole fail is the same `text_semantic` explicitness demand as diagnostic `d352b034` (0.82 here vs borderline there; reply states handoff + pending + no credential re-ask, judge requires an explicit access-termination sentence). Structural recovery HELD through the full gate: fixture effects 16/16 overall (vs 15/16 in `9edcb9ac`).
+
+**Enforcement outcomes:** failed expectations by type — text_semantic 38, tool_usage 6, node_transition 5, text_contains 3, text_not_contains 2 (all severity hard; no soft passes masking). Judged semantic expectations: 74 pass / 38 fail. Hard structural (non-semantic): 312 pass / 16 fail. Full type table (pass/fail): budget_constraints 1/0, fixture_effect_count 16/0, node_transition 61/5, plan_field_equals 40/0, plan_field_subset 16/0, provider_result_count 2/0, text_contains 3/3, text_not_contains 43/2, text_semantic 74/38, token_usage_present 8/0, tool_usage 105/6, trace_field_equals 12/0, trace_field_number 1/0, trace_field_subset 4/0. Output origin over 145 turns: verified 136, missing 7, mismatch 2; mismatch fields: candidate_output_origin 7, delivered_text 2, delivered_sha256 2. Delivery: send/reply_composed 136; suppress×7 (human_escalation_active 3 — diana-fail, phone_purchase_missing-pass, repeated_otp-pass; suppress_acknowledgement 4 — receipt, jose, mailbox, owner_payment, all fail); failure/model_origin_mismatch×2 (`wedding_planner_location_completes_search`, `token_fresh_multifront_stays_multi_need` — both fail). Missing-wire fail-closed semantic: 7 cases (receipt, image_url_unavailable_evidence, jose, mailbox, owner_payment, wedding_planner, token_fresh). token_usage expectations 8/8 pass.
+
+**Metrics:** 496 tool calls; benchmark total_tokens 1682102; tool precision 0.9759 / recall 0.9362 / F1 0.9362; state-expectation pass rate 1.0; trajectory 0.9468; plan persistence 0.9876; branch coverage 0.0770; cache hit 0.8050; avg latency 11504.1ms/case.
+
+**Contract continuity:** step-E-method frozen-set digest (sha256 over sorted `"<git-hash-object>  <path>"`, 247 tracked paths, 3 L5-deleted prompt paths pinned to HEAD blobs) = `bc1bb1e7e8909b9d6a4290f375b613d163f375fb5dc6a81ee44cad14c8cad550` vs step-E revised `d94c85542366c1c441fa7b5c6ce5a29e2ba27010e0367b5d24497acba4629066`. The delta is exactly ONE file: `evals/live-behavior-coverage.yaml` is the sole frozen-set path with mtime newer than the `9edcb9ac` start (15:20:33Z) — the handoff-fix task's additive registry entry `declined-protected-request-on-phone-identity-rejects-association` pointing at the existing case `live_behavior.phone_account_rejection_requests_email`. No rubric, threshold, case, scorer, or suite-membership change (case-ID set identical, verified programmatically). Newer `dist/` fixture mtimes are deploy build outputs, outside the contract. Step-E untracked-file LIMIT stands unchanged. Old runs (`d2141705`, `9edcb9ac`, `d352b034`) never rescored; all run IDs and artifacts retained.
+
+**Limits:** (1) errored `image_url_unavailable_evidence` (latency 0) unclassified; (2) 6 regressions vs `9edcb9ac` undiagnosed (sampling variance vs defect undetermined — no targeted reruns per lane rule); (3) `rsvp_declined_state` deterministic-phrase oracle + pre-existing s17/url inspect-flow oracles remain coordinator-owned residuals; (4) baseline rerun under the revised contract still outstanding — no claim about how much of any delta is evaluator-correction vs product-fix.
+
+**Verdict:** strict gate RED (36 hard failures + 1 error, exit non-zero). No promotion. No acceptance claims. Not self-certified — owner/reviewer verifies diff and manifest.
+
+
+## 2026-09-11 — Backend batching/profile sync (plan only)
+
+Added batching-profile-sync.md and linked plan/dispatch/image/profile specifications. Decisions: backend owns eight-second window, ordered packages and cross-package image continuity, technical acknowledgement separate from conversational response, image-only defaults to silence except outstanding tasks. Campaign deferred pending docs. Authorized profile detail expansion uses bounded traversal with no age cutoff and semantic candidate selection; recency/status are evidence, not identity or effect authority. Current source now calls customer-context helpers; historical missing-wiring finding is superseded. No runtime, prompt, evaluator or deployment changes in this amendment.
+
+
+## 2026-09-11 — Lean image execution contract (planning only)
+
+Inspected existing full-turn mutex and native image file adapter; verified current official Files expiry/storage documentation. Selected five-day retention for new uploads, no separate description pass, reuse existing lock without another waiting window. Added lean-image-execution-contract.md with four serialized atomic packets, file ownership, detailed pass/fail checks, storage-volume limits, candidate-comparable metrics and full definition of done. Documented mutex non-FIFO/retry limitations and five-day memory limit; no claim of under-1GB usage without volume evidence. Campaign remains deferred. No runtime/prompt/deployment changes.
+
+## 2026-09-11 — Packet B: packages, mutex, owner continuity (code + tests, no deploy)
+
+**Reason:** Execute lean-image-execution-contract § Packet B under batching-profile-sync §§ Message-package contract / Profile sync notes (mutex). Exclusive files only: handler, messages, inbound-image, plan, agent-service, contracts, lambda-turn-coordination, conversation-turn-coordinator, s17-image-turn, image-file-persistence tests. HEAD bdb4a88a, dirty worktree preserved; no commit/reset/stash/overwrite. No deploy, no eval:behavior-live, no registry/case/rubric changes (Packet D owns acceptance).
+
+**Scope correction applied mid-pass:** an invented `normalizeInboundPackage` envelope was stripped from `src/core/messages.ts` and the handler reverted to the verified single-message wire mapping (`text`/`image`/`media`, `normalizeInboundImage`). `messages.ts` carries zero package refs from this pass. Single-message invocations + existing `runWithConversationTurnLease` only; no array/campaign fields.
+
+**Production changes (`src/runtime/agent-service.ts`):**
+- Fixed the two stale 30-day comments to five-day expiry wording (base64-turn header, orphan-note).
+- Added `isAuthenticationFailure` (401/403 status or AuthenticationError/PermissionDeniedError name) and `isImageFileAccessFailure` (404 status / NotFoundError / invalid_image|image_download|image_url|file_not_found codes; auth excluded). Both exported, failure-kind only, no text inspected.
+- Narrowed file-access handling: invalid image/download 404 (previously rethrown as non-model failure on the established-node path) now degrades to unavailable evidence with both attempts recorded (`reply_failed_file_access` keeps the `reply_failed` prefix; `fallback_reply_received` unchanged). Auth failures propagate truthfully from every image path (upload catch incl. `ImageFileUploadError` auth causeNames, both extraction catches, both compose catches) with `*_auth` tool records and no unavailable-evidence fallback. Fresh-upload orphan cleanup also runs on auth failure (its save never happens). Plan-store and non-model failures still propagate untouched.
+- Image-only silence: caption-empty turns with no outstanding task (`hasOutstandingImageTask`: information work, owner pending task/question, open questions, RSVP pending, `code_requested` — typed state + model extraction, no keywords) persist via shared `persistSilentImageTurn` (plan save with ref, `silent_persisted` tool record with redacted shape, `suppress` + `image_only_no_outstanding_task`, deterministic trace bundle `deterministic:image_only_silence`) with zero generation calls. Wired into both file (`runPersistedImageOwnerTurn`) and URL (`handleUrlImageTurn`) transports. Task-fulfilling images (persisted pending requests or model-extracted task evidence) keep the established owner flow untouched.
+- `src/lambda/handler.ts`: documented the single lease boundary (validation/auth before acquisition; plan/history reads + upload/ref writes + owner work inside; no nested acquisition; reads after acquisition). No behavior change. `messages.ts`/`inbound-image.ts`/`plan.ts`/`contracts.ts`: no production change from this pass (verified already sufficient: sender IDs/timestamps on refs, model-decided `imageReference`, explicit-only projection).
+
+**Old/new callers:** same established-owner callees (`handleInformationFlow`, `replyOnEstablishedImageNode`) now reachable via a silence early-return; catch sites gained auth-first branches; no new services, stores, queues, sleeps, or description model.
+
+**Tests (all arrival realities as single invocations, no FIFO claims, no constant increases):**
+- `s17-image-turn.test.ts` (9→17): image-only silence (suppress reason, 0 composes, ref persisted, bytes/IDs absent from trace); persisted-outstanding-request continuation on empty text; model-extracted task evidence continuation; image-then-text across invocations (10s gap, `prior_single` reload, refs retained); unrelated-text projection clearing with refs retained; 404→unavailable with both attempts; compose/extraction/upload auth propagation (incl. fresh-upload deletion, zero fallback composes).
+- `conversation-turn-coordinator.test.ts` (+2): later holder reads earlier holder write (no stale plan, mutual exclusion explicitly not FIFO); release-on-error with later acquire.
+- `lambda-turn-coordination.test.ts` (+assertions): busy and unavailable paths never read/save plans (failed acquisition never runs agent work).
+
+**Validation:** `npm run typecheck` PASS; `npm run lint` PASS; focused suites PASS — agent-service (96), information-flow (57, 2 skipped pre-existing), silence-exemption (5), model-output-origin (15), s17 (17), image-file-persistence (29), url-image-context (21), conversation-turn-coordinator (20), lambda-turn-coordination (7): 265 passed total. `tests/live-behavior-coverage.test.ts` PASS (no registry change). No deploy, no live eval, no plan.yaml change per task.
+
+**Hashes (worktree):** agent-service `ead85faf`, handler `024362bd`, messages `7e0ab006`, s17 `5e271633`, turn-coordinator `c9295c2a`, lambda-coordination `e5d36ec7`.
+
+**Limits:** multi-image-per-package linkage beyond one image+media descriptors awaits the real backend array contract (no wire invented); upload-stage auth relies on SDK `causeName`; generic non-auth model failures keep the recorded unavailable-evidence fallback (auth/plan-store never relabeled). Not self-certified.
+
+
+## Inbound contract correction — planning error withdrawn
+
+User clarified that batching is invisible to Lambda; the existing request is text plus optional image. Added inbound-continuity-correction.md, superseded package-protocol directions and rewrote Packet B's mistaken steps. Defined semantic continuity and explicit impossibility of one answer across unknown future arrivals, with concrete sequential/concurrent acceptance cases. Inspected current messages/handler/image schema: no package parser found in those files; no other client's runtime changes reverted. No runtime or deployment changes in this correction.
+
+## 2026-09-11 — Packet C: bounded rich profile, sparse model input (code + tests, no deploy)
+
+**Reason:** Execute lean-image-execution-contract § Packet C under batching-profile-sync §§ Profile expansion + Selecting likely records. Exclusive files only: customer-context, information-orchestrator, core/information, agent-service profile builder, openai-agent-runtime evidence projection, l4-customer-context + l4-customer-context-service tests. HEAD bdb4a88a, dirty worktree (Packets A+B) preserved; no commit/reset/stash/overwrite. No deploy, no eval:behavior-live, no plan.yaml/registry changes (Packet D owns acceptance).
+
+**Scope correction applied:** inbound-continuity-correction.md is binding — no package/batch machinery; no pending/answered tracking fields added to profile types. Continuity send/suppress stays in the owner path (separate lane). Reused existing pending-request/outbound-history state only.
+
+**Production changes:**
+- `src/core/information.ts`: `enrichmentBounds` (2 edges, 4 concurrent reads), `EnrichmentResourceType`, scoped `enrichmentVisitKey(type+stableId+scope)`; optional `paginationExhausted`/`historyLimit` on `InformationExecutionSummary`. No new profile model.
+- `src/runtime/information-orchestrator.ts`: public `hydrateRelevantEventDetails` (documented `getEventDetail` reads only; hint-matched candidates; 4-read cap; visited set; per-turn cache reuse; optional `deadlineMs`; depth bound; failures recorded never thrown); `execute()` accepts optional `deadlineMs` threaded to the guest-event path; shared-name multi-event branch now hydrates explicitly relevant details and merges event-scoped purchases via the existing phone-context merge (2nd edge); `guestEventsResult` accepts per-event details with single-select behavior byte-identical.
+- `src/runtime/customer-context.ts`: sections carry `paginationExhausted`/`historyLimit` (unexhausted page forces partial; unknown stays null, never invented); `rankCandidatesByRelevance` (explicit reference ≫ observed state ≫ recency tiebreak; never drops candidates, no newest-wins).
+- `src/runtime/agent-service.ts` profile builder (existing `resolveCustomerContextForReply` caller, no second pipeline): unresolved candidates ranked explicit-first with full purchase/event evidence; no pending/answered tracking added.
+- `src/runtime/openai-agent-runtime.ts` projection: same JSON shape plus short owner-scoped Spanish selection rules (explicit-old-overrides-recency; pending-plus-voucher is hypothesis not proof; ambiguous→clarify before effects; no redundant read confirmations; no whole-profile dump).
+
+**Callers:** `resolveCustomerContextForReply` (agent-service:6389) still the single assemble/project production caller, now focus-first with ranked candidates; orchestrator `execute()` post-pass via `executeGuestEventRequest`; single-select/no-hint/no-method paths unchanged.
+
+**Tests (pair scenarios from the sync note):** pagination unexhausted→partial / unknown→null; explicit years-old order and event-hint override recency; recent-pending-plus-voucher stays candidates; multiple pendings; approved-newest vs explicit-older; dateless question retains all; shared names hydrated within bound (6→4 reads, truncated flag) and ambiguous otherwise; detail-changes-target (venue reaches projection); cycles via visited (duplicate id read once); read-failure/deadline recorded without throw and association preserved; no-redundant-confirmation (hydrated detail projects directly); irrelevant history excluded from prompt but retained in commonRefs index; ambiguous target projects no writable detail; payment/cart scenario and checks preserved.
+
+**Validation:** `npm run typecheck` PASS; `npm run lint` on touched files PASS; full `npx vitest run` PASS — 165 files, 1399 passed, 5 skipped (pre-existing skips); `tests/live-behavior-coverage.test.ts` PASS (no registry change). No deploy, no live eval per task.
+
+**Hashes (worktree):** information `50887a6a`, customer-context `3912c1b2`, information-orchestrator `b2d5e29b`, agent-service `b5c9cf26`, openai-agent-runtime `2dc5abfb`, l4-customer-context `e01b642c`, l4-customer-context-service `59ec180a`.
+
+**Limits:** authenticated-account events and purchase→event venue hydration not yet expanded (phone-guest invitation→event only, to bound blast radius); API-side history caps surface only when routes document them (else explicit null); deep focused reads beyond 2 edges remain available to the same owner. Not self-certified.
+
+## 2026-09-11 — Inbound continuity: model-owned response decision (code + sequence tests + live cases, no deploy)
+
+**Reason:** Implement docs/plan/2026-09-09-lean-conversation/inbound-continuity-correction.md §§ Model-owned response decision + Concrete sequences + File-level correction. Exclusive files only: agent-service.ts (continuity decision), contracts.ts + openai-agent-runtime.ts (minimum pending/answered projection), plan.ts (verify only, no batch fields), sequence tests (image-file-persistence, s17-image-turn, silence-exemption, lambda-turn-coordination), NEW evals/cases + coverage entries (continuity sequences only). HEAD bdb4a88a, large dirty worktree (Packets A+B+C) preserved; no commit/reset/stash/overwrite. No deploy, no eval:behavior-live, no prompt-file edits (Packet D owns prompts), no plan.yaml changes.
+
+**Production changes (facts only, never reply prose; no keyword routing, canned replies, timers, locks, models, fixture branches):**
+- `src/runtime/contracts.ts`: new `ContinuityProjection` type (pendingQuestion, pendingTask, hasPendingInformation, hasCompletedInformation, hasPriorOutbound — derived from already-persisted typed state, no new store, no fragment-state machine) + optional `continuity` field on `ComposeReplyRequest`. Absent means the runtime derives the same reference from plan plus message context, so image and normal paths share one projection either way.
+- `src/runtime/openai-agent-runtime.ts`: new `buildContinuityFacts` (explicit projection preferred, plan+messageContext fallback; conditional keys so unrelated turns stay byte-identical) wired into `turn_state` as `continuity_pending_question` / `continuity_pending_task` / `continuity_has_prior_answer`, with type keys on `ReplyTurnEvidence`. The owner model owns the send/suppress decision from pending vs answered evidence; generated text is never replaced with canned prose.
+- `src/runtime/agent-service.ts`: new `resolveContinuityProjection(plan, messageContext)` helper reusing owner pending refs, open questions, information pending/completed state and real delivered history; passed explicitly on the image owner composer (`replyOnEstablishedImageNode`), the shared information-flow composer (`composeInformationReply`, covers text and image information turns), and both unavailable-image composers. Silent image persistence, typed suppress/failure dispositions, ref-persist-before-delivery, distinct failures, and pending preservation on failed/suppressed turns all unchanged in behavior and now pinned by tests.
+- `src/core/plan.ts`, `src/core/messages.ts`, `src/core/inbound-image.ts`, `src/lambda/handler.ts`: verified — no batch/package/parts fields present (grep exit 1); existing text + optional image wire shape retained; attachment linkage survives normalizeRawPlan JSON transfer (legacy bytes/descriptions stripped, linkage kept). No plan.ts edit.
+
+**Callers (old → new):** `composeWithEvidence` and `composeInformationReply` and both unavailable-image `composeModelReply` calls now carry `continuity`; all other owner calls (planning/RSVP/close flows, direct `runtime.composeReply`) unchanged at the call site and covered by the runtime-side derivation from the already-passed plan+messageContext. Image-upload ref ordering unchanged: in-memory ref precedes composition, plan save precedes delivery on success and silent-suppress paths; failures throw without save (orphan best-effort delete retained).
+
+**Sequence tests through production `handleTurn` (per-turn usefulness + effects, no universal totals):** `tests/s17-image-turn.test.ts` +7 (same-invocation text+image single answer with shared projection; question→answer→image(silent)→follow-up with pixels = 2 answers; seeded owner_pending_question answered by arriving image; generic generation failure throws + preserves pending + cleans up upload; thanks suppress preserves pending with zero generations; explicit repeat answered not suppressed; duplicate delivery reuses upload). `tests/image-file-persistence.test.ts` +2 (wire shape has no batch fields; plan schema has no batch fields + linkage survives transfer). `tests/silence-exemption.test.ts` +1 (thanks silence exempt vs required-answer suppression not exempt vs generation failure distinct). `tests/lambda-turn-coordination.test.ts` +1 (overlapping same-conversation turns serialize through actual lease acquisition order: one 200 + one retryable 503, loser never enters runtime work, every save under its own held lease, no invented FIFO).
+
+**New live cases (full-context, hard structural/effect + hard text_semantic requireJudge:true; judge context is turn-scoped so no oracle assumes future messages; no existing cases edited):** `live_behavior.continuity_text_image_same_turn` (seq 1), `live_behavior.continuity_question_needs_image` (seq 4), `live_behavior.continuity_voucher_then_thanks` (seq 6, voucher captioned so every turn is gate-decidable; thanks turn carries structural-only expectations since empty turns fail semantic judging by harness design). Registered in `evals/suites/live_behavior_regression.yaml` + 3 `evals/live-behavior-coverage.yaml` entries (continuity-text-image-same-turn-single-answer, continuity-question-needs-image-preserved-then-answered, continuity-voucher-receipt-then-thanks-no-repeat).
+
+**Validation:** `npx tsc --noEmit` PASS; `npx eslint .` PASS; focused suites PASS (s17 24, image-file-persistence 31, silence-exemption 6, lambda-turn-coordination 8, live-behavior-coverage 1); full `npx vitest run` PASS — 165 files, 1410 passed, 5 skipped. No deploy, no live eval per task.
+
+**Hashes (worktree):** contracts a33bcc66e097, openai-agent-runtime a1fa7ba220ec, agent-service 8b07ccd1ab25, s17-image-turn 479afef6a9f0, image-file-persistence 8ca5f2cd3e69, silence-exemption 817cc4302376, lambda-turn-coordination 5aa6591407c5, coverage 4e9cfe58b802, suite 874c2289f731, case same-turn cfb34d30e3a2, case needs-image 9102e85b02c5, case voucher-thanks fbf43777227f.
+
+**Limits / handoff:** truly silent image-only turns (delivery suppress `image_only_no_outstanding_task`, origin `missing`) currently fail the live origin gate because `validateSilenceExemption` has no image-silence branch — pre-existing condition (cf. `image_file_delayed_question` live 0.70 fail; gate log shows only human_escalation_active + suppress_acknowledgement suppressions passing). New live cases were therefore designed with no silent turns; silent sequences are covered offline through production callers instead. Extending the silence exemption with a fail-closed silent-persist-evidence branch is recommended follow-up for the owning lane (not done here: shared-file exclusivity). No timers/locks/models added; concurrent ordering asserts actual acquire order only. Not self-certified.
+
+## 2026-09-11 — Packet D: prompts, serialization and useful-answer acceptance (code + tests + live cases, no deploy)
+
+**Reason:** Execute lean-image-execution-contract.md Packet D on exclusive files only: openai-agent-runtime.ts (verify, no change needed), prompts/ node files (verify explicit-only narrowing already in worktree), runner.ts + live-lambda.ts (reviewed oracle/observation correction: image-silence gate branch), tests/image-sdk-wire + model-output-origin + silence-exemption, evals/cases + coverage registry. HEAD bdb4a88a, large dirty worktree (Packets A+B+C + continuity lane) preserved; no commit/reset/stash/overwrite. No deploy, no eval:behavior-live, no plan.yaml changes. Direct follow-up to the continuity-lane handoff (silent image-only turns failed the live origin gate for lack of an image-silence branch).
+
+**Production/observation changes (no narration added by code, no template fragments, no hidden calls):**
+- `src/evals/runner.ts`: new exported `isLegitimateImageOnlySilence` + `IMAGE_ONLY_SILENCE_REASON`, wired into `collectOriginGateFailures` as a reviewed observation correction. All conjuncts required: suppress disposition with exact reason `image_only_no_outstanding_task`, no assistant text (`deliveredText` null, `outputText` empty), origin `missing` (never generation_failed/mismatch/verified), `trace.plan_persisted` with persist reason `image_file_silence`/`image_url_silence`, at least one `plan.image_attachments` entry, image-only input (empty text + image present). Question-bearing turns and failed generations fail closed through the normal gate; arbitrary empty output never exempt.
+- `src/runtime/openai-agent-runtime.ts`, `src/runtime/model-composition.ts`: verified, no change. Zero production callers invoke `inspectImage`/`loadImageBundle` (grep: only the retired-descriptor comment in agent-service + tests); file_id/URL native projection (`resolveReplyImageFiles`, `buildReplyFileImageItems`) unchanged and exercised by the new SDK test. `prompts/.../image_inspection.txt` already narrowed in worktree to short explicit-only owner-scoped Spanish guidance (no response examples, no global receipt-rule list). Obsolete helper/prompt files retained: removal would touch shared contracts/prompt-loader owned by other lanes while their tests still reference them; retention reason recorded here.
+- `src/evals/targets/live-lambda.ts`: verified, no change (independent wire observation + redacted input already carry the evidence the new branch reads).
+
+**Tests (offline twins, negative controls included):**
+- `tests/silence-exemption.test.ts` +4: file/url silence exempt; arbitrary empty output (wrong reason, send-empty, whitespace wire text) rejected; missing persistence (not persisted, wrong/null persist reason, zero attachments) rejected; question-bearing (captioned, imageless) and failed/mismatched/verified origins rejected.
+- `tests/image-sdk-wire.test.ts` +1: installed-SDK fetch-mocked capture proves `{image:{id}}` serializes as `{type:input_image, file_id}` exactly once with current text/task evidence present, raw ID absent from prompt text, `observedRequestCount` 1 (Files upload stays a separate operation, never an extra model call). Handwritten `toResponsesWireImageItem` mirror is not used as acceptance.
+- `tests/model-output-origin.test.ts`: verified, no change (origin seam untouched).
+
+**Live cases (non-sensitive synthetic fixtures, no customer-name/fixture routing; receipt resemblance never authenticity):**
+- New: `image_receipt_illegible_amount` + `image_receipt_ambiguous_digits` (1px fixture with known fact nothing legible; paired controls of readable `image_file_captioned_persisted`), `image_non_receipt_payment_claim`, `image_multiple_pending_orders_no_select` (s13-reference-unavailable-multiple world, no auto-select between Evento A/B), `image_expired_reference_resubmit` (seeded expired file ref, asks resubmission, no invented content). Each: hard tool_usage/text_not_contains + hard text_semantic requireJudge:true; no thanks/well-wish/one-sentence/jargon/translucency/exact-status prose requirements.
+- Revised R05 `image_readable_captionless` v1→v2: old v1 demanded describe-by-default (`image_inspect` + description), contradicting the frozen contract (silent persistence, zero inspection callers). New v2 pins silent persistence on turn 0 (tool_usage + `plan_persist_reason = image_file_silence`) with the delayed question answered on turn 1. Old v1 runs preserved in evaluation-manifest.md; baseline/candidate must rerun on v2. `image_file_delayed_question` turn 0 gains the same silence persist-reason pin (additive only).
+- Deferred with reason: standalone old-image-reference and image concurrency cases (projection/concurrency ownership sits with Packets B/C; behavior not predictable from this lane without risking oracle invention). Registered in `live_behavior_regression` suite + 6 new `live-behavior-coverage.yaml` entries (one per behavior change).
+
+**Callers (old → new):** no production caller changes. `collectOriginGateFailures` now consults `validateSilenceExemption` then `isLegitimateImageOnlySilence`; all other runner/live-lambda paths unchanged.
+
+**Validation:** `npm run typecheck` PASS; `npm run lint` PASS; focused PASS (silence-exemption 10, image-sdk-wire 2, model-output-origin 14, live-behavior-coverage 1); full `npx vitest run` PASS — 165 files, 1415 passed, 5 skipped (pre-existing skips in untouched files). No deploy, no live eval per task.
+
+**Hashes (worktree, git hash-object):** runner 0651e04c0338, silence-exemption 7f7e55023738, image-sdk-wire f3225157cfc7, coverage c1860b2a9a2d, suite 74d552652e9c, case captionless dc69f6162c49, case delayed-question 99659af47cbc, case illegible e8a8a0e26205, case ambiguous ac5d081547f5, case non-receipt d67773679449, case multi-orders b58413bedc3c, case expired 1beed0b03e10.
+
+**Limits:** live behavior of the 5 new + 1 revised cases is unverified (no deploy/live gate per task); full `eval:behavior-live` on frozen candidate bytes remains required before acceptance. Not self-certified.
+
+## 2026-09-11 — lean-image-execution-contract definition-of-done: deploy + full gate Packets A-D + continuity lane (102-case, candidate ooMDgQ7b)
+
+**Reason:** Validation-only task on exclusive writer ownership. HEAD `bdb4a88a` on main, large dirty worktree preserved; no commit/reset/stash/overwrite. No code, prompt, rubric, threshold, case, or plan.yaml edits. No promotion. No rescoring of old runs.
+
+**1. STS fail-closed:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws sts get-caller-identity` = account `684516060775` (pass). Source digest (dirty-inclusive `git status --short | sort | sha256sum`) `931554c953baa307ece7724f33ec8a0607d47989c6fda20e5952f48c6357b97b`; prompts-tree digest `d397673dd28651284a9fdbe92022a42909528918f49c47bcb470b867674dbc58`; cases+coverage+suite digest `d4567450d24b932703098821b277b51f03bbf7c4a6e955eea52a7d7f9925d633`. BEFORE dev Lambda `recap-agent-runtime-dev` CodeSha256 `Y0mrOYAdcJaFLb3389+oxuoWyz4w9KW3trq51tGVX48=`, LastModified 2026-09-11T16:05:08Z.
+
+**2. Deploy:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy`, exit 0, log `/private/var/folders/74/37z4glqn2gn41cm59zml7qvc0000gn/T/opencode/deploy-dev-20260911-131010.log`. Artifact SHA-256 `a28303810edb1fc785f21638caffa66577cf93912fd70caf84dd3bf997539ae8`, S3 `s3://recap-agent-artifacts-684516060775-us-east-1/lambda/a28303810edb1fc785f21638caffa66577cf93912fd70caf84dd3bf997539ae8.zip` (6.7 MiB). AFTER CodeSha256 `ooMDgQ7bH8eF8hY4yv+mZXfPk5Ev1wyvhN07+ZdTmug=`, LastModified 2026-09-11T18:11:05Z, State Active, LastUpdateStatus Successful, stack `recap-agent-runtime-dev` UPDATE_COMPLETE (LastUpdatedTime 2026-09-11T18:10:59Z). Function URL unchanged.
+
+**3. Full gate no-filter:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEV_STACK_NAME=recap-agent-runtime-dev npm run eval:behavior-live`, log `/private/var/folders/74/37z4glqn2gn41cm59zml7qvc0000gn/T/opencode/eval-live-20260911-131309.log`, run `eval-2026-09-11T18-13-10-185Z-31697069` (18:13:10Z→18:41:30Z, ~28 min). Suite caseIds 102 (programmatic: 102 `live[_.]` dash-lines; 4 extra dash-lines are the `tags:` block, not cases) — executed 102, missing 0, extra 0, no `--case` filter. Suite 102 = prior 94 (all rerun, none removed) + 8 additive (`continuity_question_needs_image`, `continuity_text_image_same_turn`, `continuity_voucher_then_thanks`, `image_expired_reference_resubmit`, `image_multiple_pending_orders_no_select`, `image_non_receipt_payment_claim`, `image_receipt_ambiguous_digits`, `image_receipt_illegible_amount`). Result **57/102 passed, 44 failed, 1 errored, 0 skipped** (avg 0.8697, avg latency 11183.9ms/case). Original-94 subset: **55/94** (38 failed, 1 errored). Additive-8: **2/8** (`continuity_text_image_same_turn` 1.0, `image_expired_reference_resubmit` 1.0 pass; 6 fail: continuity_question 0.647, continuity_voucher 0.807, multi-orders 0.733, non-receipt 0.800, ambiguous-digits 0.733, illegible-amount 0.733). Start/end digests identical (prompts `d397673d…`, cases `d4567450…`): exact-candidate acceptance valid.
+- Old-vs-new vs `c09505d1` (programmatic, informational): 5 fixed (`mailbox_issue…` 0.918, `phone_account_rejection…` 0.995, `purchase_pending_transfer_continuity` 0.904, `rsvp_missing_action…` 0.967, `rsvp_plus_one…` 0.953) / 7 regressed (`ambiguous_confirmation_adversarial_selection` 0.830, `otp_not_received…` 0.981, `otp_terminal_handoff_unknown` 0.853, `pending_balance_validation_luis` 0.906, `rsvp_trusted_phone…` 0.924, `s08_kiara_approved_replay` 0.941, `tito_numbered…` 0.784) / 32 still non-passing. Net 57→57.
+- Failed (44, all severity hard): active_cart_checkout_continuity_alex 0.894, ambiguous_confirmation_adversarial_selection 0.830, continuity_question_needs_image 0.647 (2 semantic), continuity_voucher_then_thanks 0.807, current_campaign_order_maria_jose 0.882, customer_transaction_code_by_phone 0.925, customer_transaction_reference_unavailable_multiple 0.880, host_withdrawal_diana 0.875, host_withdrawal_pending_event_followup 0.267 (tool_usage + plan_field_subset + semantic), image_captioned_preserved 0.467 (tool_usage image_inspect missing + node_transition), image_conversation_continuity 0.567 (same pair), image_file_delayed_question 0.767, image_file_malformed_unavailable 0.200 (tool_usage image_file_context missing + semantic invention), image_multiple_pending_orders_no_select 0.733 (tool_usage), image_non_receipt_payment_claim 0.800, image_readable_captionless 0.367 (tool_usage + trace_field_equals persist-reason `image_unavailable` vs `image_file_silence` + semantic), image_receipt_ambiguous_digits 0.733, image_receipt_illegible_amount 0.733, image_too_large_fallback 0.600 (text_contains + semantic), image_unavailable_captioned 0.467 (text_contains + semantic), image_url_describe_dice 0.600 (node_transition + semantic translucency), image_url_receipt_payment_thread 0.430 (tool_usage image_url_context missing + 2 semantic, one missing-wire), jose_campaign_greeting_then_acknowledgement 0.700 (missing-wire), otp_not_received_requires_response 0.981, otp_sent_explains_image_limitation 0.733, otp_terminal_handoff_unavailable 0.810 (2 semantic), otp_terminal_handoff_unknown 0.853, owner_customer_payment_relevance 0.798 (2 semantic), owner_planning_to_faq_single_transfer 0.952, pending_balance_validation_luis 0.906, purchase_martha_accountless_selection 0.907, rsvp_cinthya_campaign 0.927, rsvp_declined_state_offers_one_change 0.732 (semantic + text_contains + text_not_contains forbidden phrase), rsvp_multi_person_offers_human_help 0.960, rsvp_paolo_mariana_resolved_single 0.927, rsvp_trusted_phone_reports_no_pending 0.924, s01_frozen_kiara_pending_replay 0.952, s08_kiara_approved_replay 0.941, spanish_only_mixed_language_request 0.467 (text_not_contains catering/baby shower + semantic), tito_numbered_name_and_post_rsvp_closure 0.784, wedding_planner_location_completes_search 0.836 (missing-wire + origin mismatch), token_fresh_multifront_stays_multi_need 0.741 (missing-wire + origin mismatch), token_seeded_contact_correction 0.837, token_seeded_selection_defer_close 0.802. Errored (1): image_url_unavailable_evidence 0.400 — Live Lambda HTTP 500 (`400 Error while downloading file. Upstream status code: 404`), 0 turns.
+- Enforcement: judged semantic (requireJudge:true on 121/122 `text_semantic` YAML occurrences, 102 files) 75 pass / 46 fail; hard structural 329 pass / 19 fail (breakdown of the 19: tool_usage 6, node_transition 5, text_contains 3, plan_field_subset 1, trace_field_equals 1, text_not_contains 2, plus origin-gate hardGate fails below). Origin over 156 turns: verified 145 / missing 9 / mismatch 2; delivery send 145, typed suppress 9, fail-closed model_origin_mismatch 2 (`wedding_planner…` turn 3, `token_fresh…` turn 0 — both hardGate false). Transport-accounting gate failures 0. Silence: suppress disposition 9 turns; image-silence expectations 3 pass (`current-pending-suppresses-historical-declined`, `file-image-first-turn-silent-persist-reason`, `image-silent-no-bytes-or-id`) / 2 fail (`image-silent-persist-no-inspect` + `image-silent-persist-reason`, both `image_readable_captionless` v2 — persist reason `image_unavailable` instead of `image_file_silence`, no `image_file_context` call). Accounting: token_usage_present 8/8 pass, budget_constraints 1/1 pass, fixture_effect_count 16/16 pass, provider_result_count 2/2 pass, trace_field_number 1/1, trace_field_subset 4/4. Missing-wire fail-closed semantic: 4 cases (`image_url_receipt_payment_thread` thanks-turn, `image_url_unavailable_evidence`, `jose_campaign_greeting_then_acknowledgement`, `wedding_planner…`, `token_fresh…`). hardGatePassed false: 45 (44 failed + 1 errored). Scorer skips 0.
+- Metrics: 156 turns, 528 tool calls (trace `tools_called`: get/log_agent_conversation_message 119/119, classify_reply_delivery 133, guest_orders_by_phone 27, guest_events_by_phone 25, rsvp_invitations 21, event_detail 20, human_takeover 11, kb_search 10, image_file_context 12, image_inspect 5, image_url_context 1, verify_code 6, guest_rsvp 5, provider-search 8), total latency 1140757ms, total tokens 1787803, precision 0.9729 / recall 0.9216 / f1 0.9216, branch coverage 0.0751, state pass-rate 0.9804, trajectory 0.9608, plan persistence 0.9886, cache hit 0.7725. Image lane: 21 cases (5 pass / 15 fail / 1 err). Continuity lane: 7 cases (3 pass / 4 fail).
+- Supporting validation: `npx tsc --noEmit` PASS (exit 0); `tests/live-behavior-coverage.test.ts` 1/1 PASS.
+
+**4. Contract digests + R05 note:** documented-method digest (sha256 over sorted `<git-hash-object> <path>` lines for tracked `prompts/**`, `evals/cases/**`, `evals/live-behavior-coverage.yaml`, `src/evals/case-schema.ts`, `src/evals/scorers/semantic-judge.ts`, `src/evals/runner.ts`; 247 files; 3 L5-deleted prompt paths `prompts/capability/turn_outcomes.txt`, `prompts/nodes/resolver_consultas_informativas/handoff_outcomes.json`, `prompts/nodes/resolver_consultas_informativas/host-withdrawal.json` pinned to HEAD blobs per manifest precedent) = `f5e19b952a4c74dfa71db2c119ce7f1e98fa840095c5d9bc132301eb9981dae8`. R05: step-A + Packet-D evaluator revisions ARE in this candidate (image-silence gate branch in `runner.ts`, silence/origin/separation changes, v2 `image_readable_captionless` + silence pin on `image_file_delayed_question` turn 0); revised-contract digest recorded here; baseline rerun on the same revised contract stays outstanding; `c09505d1`/`9edcb9ac`/`d2141705` never rescored. No plan.yaml changes. No promotion.
+
+**Verdict:** strict gate RED (44 hard failures + 1 error, exit non-zero). Image lane 5/21 and continuity lane 3/7; the v2 silent-persistence pin (`image_readable_captionless`) fails on the candidate itself (wrong persist reason + missing context call + unanswered delayed question). Not self-certified; red stays red.
+
+## 2026-09-11 — Latest gate31697069 re-diagnosis and decided repair handoff
+
+Documentation-only audit; runtime/fixtures/evaluator/deployment unchanged. Latest completed full gate57/102,44failed,1errored,0skipped; shared94case subset55/94 versus57/94 in c09505d1,5gains/7losses,8new cases2passed. Retrieved20stored OpenAI request/response pairs read-only into private .openai-audits files; no private payload committed. Confirmed structured-card origin equality defect, absent image-linkage/current-image extractor evidence, lost pending image question, invalid positive base64 fixtures, static/no-op fixture history, withdrawal-detail early return, conflicting close projection, lost terminal cause/outcome, unsupported currency and05:00->5p.m. error. Confirmed several judge claims of invented amounts/names/dates were false against candidate-visible evidence.
+
+Updated plan.md, START-HERE.md, plan.yaml (11atomic repair packets, pending) and evaluation-manifest.md. New latest-run-31697069-repair-plan.md,45case matrix and evidence JSON separate product,fixture and oracle work without changing historical gate status. Decisions preserve native base64 Files,5day references,3owners, invisible backend grouping, existing lease, no extra model or fixed replies.
+
+Validation: focused model-spans-origin,silence-exemption,image-sdk-wire,live-behavior-coverage19/19passed; direct read-only probes reproduce origin mismatch and decoder rejection of1831/2023character positive fixtures. This is integration-test gap evidence, not gate acceptance. Full live suite not rerun because no behavior was changed. Production remains blocked on exact-artifact full acceptance and R05 revised-contract comparison.
+
+## C0 freeze — repair chain for run 31697069
+
+Coordinator freeze per repair plan §C0. HEAD bdb4a88a main, 189 dirty paths uncommitted; tracked manifest 8ae889c1…7d; 20 untracked eval/prompt files part of candidate. Dev ooMDgQ7b… (gate-31697069 bytes), prod 6CmXWVDp… untouched, STS 684516060775 verified. Order: C0 → F1 → F2 → F3 → R1 → R2 → R3 → R4 → R5 → R6 → C1; two worker lanes (evaluator F / runtime R), coordinator owns deployments, gates, integration, review. No baseline manufactured from dirty files.
+
+## R1 — Repair provenance across the complete delivery boundary (runtime worker)
+
+Packet docs/plan/2026-09-09-lean-conversation/latest-run-31697069-repair-plan.md §R1 (§1: origin verification rejects legitimate rendered provider cards). HEAD bdb4a88a main; no commit/reset/stash/overwrite; other lanes' dirty paths preserved. No deploy, no eval:behavior-live, no rubric/threshold/case edits. Touched ONLY owned files above.
+
+**Root cause (confirmed):** `AgentService.observeModelDelivery` sent joined model prose as `candidateText` while `observeOutputOrigin` compared it for equality against the full rendered card, so every recommendation/multi-need card with provider titles/links mismatched even with intact prose (`wedding_planner_location_completes_search`, `token_fresh_multifront_stays_multi_need`). Ordered containment alone was also unsafe (injected text around intact spans passed).
+
+**Fix:**
+- `src/runtime/contracts.ts` (origin-receipt fields only): `ModelOriginReceipt` keeps `modelParagraphs`/`bundleId`/`transport-v1` (wire readers untouched) and adds immutable `modelMessage` snapshot, `providerFields` (`AuthorizedProviderRenderField`: id/title/category/location/priceLevel/promoBadge/promoSummary/detailUrl — mechanical slots only, zero prose), and `modelContentSha256` (canonical prose+ids digest; distinct from the expected-render hash carried as `candidateSha256` in output-origin evidence).
+- `src/runtime/model-composition.ts`: `modelSpansOf` now traces every prose field incl. `match_label_es`; new `canonicalModelContent`/`hashCanonicalModelContent`/`snapshotStructuredMessage`/`snapshotProviderFields`/`modelProviderIdsOf`/`providerMetadataDiffers`; `buildModelOriginReceipt(reply, bundleId, providerResults?)` snapshots (deep clone, never live refs); `composeModelReply` forwards `request.providerResults`; `assertModelOrigin` rewritten to full-render equality from the snapshot + snapshot-vs-current canonical prose check + provider-id grounding + metadata check; unknown versions and legacy snaptless receipts fail closed; `deliveredContainsModelSpans` retained as diagnostic-only (never acceptance).
+- `src/runtime/agent-service.ts` (`renderOutbound`/`observeModelDelivery` only): delivery rebuilds the expected channel render from the receipt snapshot with the same channel renderer BEFORE comparing (exact equality after documented transport transforms); separately verifies current prose == snapshot prose; enforces provider-id membership and, when the receipt carries provider fields, mechanical metadata equality. `candidateText` is always the expected render, never copied from `deliveredText`. Mismatch evidence → existing `model_origin_mismatch` failure delivery. Generic/welcome paths unchanged in behavior (still exact-equality, still pass).
+- `src/audit/output-origin.ts`: binding comment only (candidate MUST be snapshot-derived expected render); version/validators unchanged and already fail closed together with model-composition and the wire observer (which imports the same `OUTPUT_TRANSFORMATION_VERSION`).
+- `src/runtime/message-renderer.ts`: reviewed, unchanged (pre-existing dirty diff is another lane's: contact/close render removal). Remaining provider-card output is only declared formatting + identity/link/data slots (`Ubicación/Precio/Promo/Nota/Ficha/Limitación`, numbering, category display names); no runtime-written conversational sentences added. Note: single `recommendation` cards have no match-label slot (only compact multi-need rows render `title - matchLabel`); labels stay verified via the content snapshot.
+- Tests: `tests/model-spans-origin.test.ts` (13 tests: snapshot/hash shape, match-label tracing, legit single/multi-need full-render acceptance, injected-surrounding-text rejection despite containment passing, match-label change, id swap/ungrounded, unknown version, tampered receipt); `tests/model-output-origin.test.ts` (+8: production `AgentService→renderer→handler` single recommendation and multi-need deliver with verified origin incl. titles/links, `candidateSha256==deliveredSha256`, validator true; identical-path mutations — changed rationale, changed match label, swapped id, injected sentence, swapped provider metadata — all fail closed `model_origin_mismatch` with validator false); `tests/handler-wire-observation.test.ts` unchanged (still passes; version/wire shape untouched).
+
+**Deliberate non-change (flagged for coordinator integration):** `src/runtime/openai-agent-runtime.ts:874` still calls `buildModelOriginReceipt(composedReply, bundleId)` without provider results (file owned by another writer; signature is backward-compatible via optional param), so live production receipts currently carry `providerFields: []` until a one-line change threads `request.providerResults` through. Delivery still verifies in that state via ID membership + full-render equality; metadata-swap detection activates once the snapshot is populated. Eval target/case-schema need NO change (wire `output_origin` shape and version untouched).
+
+**Validation:** `npx tsc --noEmit` PASS; eslint on all 8 owned files PASS; focused `model-spans-origin + model-output-origin + handler-wire-observation` 39/39 PASS; `live-behavior-coverage` + `acceptance-contract-mutations` + `image-sdk-wire` + `s17-image-turn` + `message-renderer` + `silence-exemption` 60/60 PASS; `agent-service.test.ts` 96/96 PASS; FULL offline suite 166 files 1444 passed / 5 skipped. No registry change (R1). Not self-certified: live Lambda gate rerun is coordinator/C1 business on a deployed artifact.
+
+**Changed-file SHA256 (post-edit working bytes):**
+- src/runtime/model-composition.ts 379c4ab7ccea38ec51e6a6984ddf54fdb5519b3f96df5f927f00924e7222334e
+- src/runtime/agent-service.ts decc6416cb07cb656e863690990798198085876480fab9f51ea01f2e83c2e2a1
+- src/audit/output-origin.ts 4484365e449db9edfebd8d816ade8bdf09037944839bab4c5bb3c8117a8b32f5
+- src/runtime/contracts.ts 8a503c013318487bd1947265d92026d23c20a1316ee85674680cf0e0a48bfa9b
+- tests/model-spans-origin.test.ts a52196f99b10ec9e2b58e68b7ab4e106771a10302e1dcb8b1d26735c58207cb2
+- tests/model-output-origin.test.ts 88feeefa53f88a6b3453debaace5c8b96a628b26e6eb82a83d069752249704e2
+- tests/handler-wire-observation.test.ts f6865c90e731fc15fb2149e6cd204f664be97a13d0ae53413723801afb1bfe37 (reviewed, unchanged)
+- src/runtime/message-renderer.ts (reviewed, unchanged by this worker)
+
+## R2 — Integrate image references, pending questions and response continuity (runtime worker)
+
+Packet docs/plan/2026-09-09-lean-conversation/latest-run-31697069-repair-plan.md §R2 (diagnoses §2+§3: extractor blind to images; pending image question lost) plus inbound-continuity-correction.md sequences 1-8. HEAD bdb4a88a main; reconciled a prior interrupted R2 attempt first (kept verified parts, completed the rest); no commit/reset/stash/overwrite; other lanes' dirty paths preserved. No deploy, no eval:behavior-live, no rubric/threshold/case edits. Touched ONLY owned files below. Shared-file diffs (agent-service.ts, openai-agent-runtime.ts) also carry other lanes' work; R2 portions are listed per function.
+
+**Root cause (confirmed, matches packet):** `buildExtractorPlanSnapshot` omitted attachment linkage on every branch while extraction enabled the imageReference schema whenever attachments existed, so the model returned imageReference none on delayed-image turns (stored delayed-image extraction request showed only old campaign messages, reply image_evidence null, no pixels). The first extraction turned receipt questions into status-vs-proof ambiguity with no persisted pending question, so the later image-only turn had empty text/history and stayed silent instead of answering.
+
+**Fix:**
+- `src/runtime/openai-agent-runtime.ts`: `buildExtractorImagePresence` projects current-image status (disponible/no disponible) plus bounded attachment index via `buildImageAttachmentIndexForExtraction` (message_id, received_at, active/expired, current/prior ONLY; no raw file IDs/URLs/bytes); imageless turns return null (byte-identical). `buildExtractorPlanSnapshot` carries the same index on every lane snapshot that stores refs (empty indexes omitted). `resolveOutputSchema` returns genericMessageSchema (never welcome) for fresh image+question when current_node is contacto_inicial/entrevista and image evidence or attachments exist. Reply compose carries one short image pointer line plus single canonical `request.customerContext` occurrence (structured evidence only, usage policy lives in node contracts); `resolveReplyImageUrls/Files` are explicit-only (undefined projects nothing, stored refs never resent on recency). One-line providerResults threading into `buildModelOriginReceipt` at the reply return (closes the R1-flagged non-change; receipts now carry populated providerFields).
+- `src/runtime/agent-service.ts`: `runPersistedImageOwnerTurn` (real extraction on caption + persisted owner routing + full task flow; only model-stage extraction failure falls back to synthetic), `selectFollowUpImageProjection` (validates imageReference membership+access against stored refs, max two native images; prior_single without linkage projects no pixels), `replyOnEstablishedImageNode` (all owner reply paths incl. clarification at :3853 and capability/information paths share `resolveOwnerImageProjectionForReply` + `resolveContinuityProjection`), normal-turn exits thread continuity+projection identically. `hasOutstandingImageTask` uses typed state only (information work, owner_pending_task/question, RSVP selection, code_requested credential challenge); no keyword inspection and no generic open field auto-answer. Image-only with no task persists silently with zero post-extraction model calls; failed persistence never silent. `withLastOutboundContext` records only successful rendered sends; `applyLastOutboundFallback` exposes the record ONLY when backend history is empty (dedupe by synthetic id -1, never overwrites newer); suppress/failure never write, never clear pending.
+- `src/runtime/contracts.ts`: `ContinuityProjection` (pendingQuestion/pendingTask/hasPending+CompletedInformation/hasPriorOutbound facts only), `ImageUrlAttachment`/`ImageFileAttachment` (native content only, never prompt text), `ExtractRequest.currentMessageId`, `ExtractionResult.imageReference`, explicit `imageUrlAttachments`/`imageFileAttachments` on ComposeReplyRequest.
+- `src/runtime/extraction-schemas.ts`: `imageReferenceEvidenceSchema` (none/prior_single/prior_uncertain, max 2 message ids); field travels only when the plan stores attachments (imageless turns byte-identical).
+- `src/core/plan.ts` (continuity fields only, no batch fields): `last_outbound_context` (message_id, text bounded to 4096 UTF-8 bytes at char boundary via truncateTextToUtf8Bytes with text_truncated, recorded_at, delivery_evidence constructed-vs-confirmed; strict shape fails closed to null so smuggled media keys never persist) + `buildLastOutboundContext` (successful text only; blank returns null) + owner_pending_question reuse via `stashOwnerPendingQuestion`/`clearAnsweredOwnerPendingQuestion` (suppress/failure paths never call either).
+- Prompts (short Spanish only): `prompts/extractors/image_reference.txt` (new: prior_single/prior_uncertain/none selection from visible index); `prompts/nodes/resolver_consultas_informativas/image_inspection.txt` (reply only on explicit describe/read/explain requests; else outcome=unreadable/human_help with empty answer, owner decides); image_evidence/capability/authentication_outcome paragraphs in `resolver_consultas_informativas/response_contract.txt`; single-question clarification wording in `aclarar_pedir_faltante/response_contract.txt`. No new model call (only existing extractor/classifier/reply + imageRunner).
+- Tests: `tests/image-file-persistence.test.ts` (new, 53 tests: union/dedupe/caps, decode, Files adapter incl. 5-day expiry, SDK file_id wire shape, upload-once/persist-before-ack, duplicate-delivery reuse, upload-failure degradation, orphan cleanup on failed save, follow-up relevance incl. cold-start reload and expiry-as-evidence, schema minimum disclosure, no-batch wire/plan shape, 4096 UTF-8 fallback record incl. fail-closed media keys, extractor index, imageless byte-identical, fresh-image generic schema, production-turn continuity incl. silent-record-nothing/failed-records-nothing/unlinked-prior_single-no-pixels); `tests/s17-image-turn.test.ts` (+25-image/sequence tests: silent persist, caption single-turn, too-large/media_unavailable fallbacks, model-pipeline caption, 404→unavailable with both attempts, credential-failure propagation, outstanding-request continuation, model-extracted task evidence, cross-invocation reload, unrelated-image clearing, same-invocation text+image, answer→image→followup two-answers, duplicate reuse, question→image fulfillment, failure/thanks pending preservation, explicit-repeat answer, receipt-question chain); `tests/lambda-turn-coordination.test.ts` (+45 lines: lease acquire order, isolation, no duplicate effects).
+
+**Byte measurements (identical-turn, r2measure.tmp.ts scratch):** extractor FAQ-imageless 1704B vs image-turn 2412B (+708: current-image status + bounded index + media metadata line) vs text-followup-with-priors 2282B (+578 continuity index); reply FAQ 1132B vs followup 1259B (+127 continuity facts); imageless turns byte-identical (test-enforced). Removed side: exactly one customerContext JSON occurrence in compose text (verified single `Contexto de la operación` push; second occurrence is structured evidence, not prose) plus one short image pointer line; no duplicated profile/image prose blocks remain in TS (policy lives in tracked node contracts).
+
+**Validation:** `npx tsc --noEmit` PASS; eslint on owned runtime/core files PASS; focused `image-file-persistence + s17-image-turn + lambda-turn-coordination` 86/86 PASS; `prompt-audit + extraction-schemas` 28 passed/1 skipped PASS; `live-behavior-coverage` PASS (no registry change in R2). No deploy, no eval:behavior-live per packet.
+
+**Changed-file SHA256 (post-edit working bytes, R2-owned files only):**
+- src/runtime/agent-service.ts a325f1f49d5b16c8 (shared file; R2 portions per functions above)
+- src/runtime/openai-agent-runtime.ts 1043e955421c2f5e (shared file; R2 portions per functions above)
+- src/runtime/contracts.ts 9a56832fa4d6630c
+- src/runtime/extraction-schemas.ts b70900b474d42b7f
+- src/core/plan.ts 0f81b902f2241620
+- prompts/extractors/image_reference.txt 96714b053372e4ea (new)
+- tests/image-file-persistence.test.ts dc07f88418ccb39c3 (new)
+- tests/s17-image-turn.test.ts d0163c82558245b4
+- tests/lambda-turn-coordination.test.ts 5aa6591407c55a05
+
+## R3 — Handle inaccessible images without swallowing unrelated failures (runtime worker)
+
+Packet docs/plan/2026-09-09-lean-conversation/latest-run-31697069-repair-plan.md §R3 (diagnosis: BadRequestError/400 with upstream-404 diagnostic missed by the 404-only predicate; image_url_unavailable errored HTTP 500 with zero turns). HEAD bdb4a88a main, large dirty worktree preserved; no commit/reset/stash/overwrite. Touched ONLY owned files below; src/runtime/image-file-store.ts NOT modified (no typed provider-access change needed there). No deploy, no eval:behavior-live, no rubric/threshold/case edits.
+
+**Root cause (reproduced, not guessed):** live artifact `.eval-runs/eval-2026-09-11T18-13-10-185Z-31697069/artifacts/live_lambda/live_behavior.image_url_unavailable_evidence.json` records Lambda HTTP 500 body `400 Error while downloading file. Upstream status code: 404.` Reproduced end to end through the installed SDK (mocked HTTP 400, real OpenAiAgentRuntime.composeReply with image_url): thrown error constructor is `BadRequestError` but `.name` is `'Error'`, `.status` 400, `.code`/`.param` null (structured code absent), `.type` `invalid_request_error`, `.message` `400 Error while downloading file. Upstream status code: 404.` Name checks (`NotFoundError`) and code checks therefore miss it and status is not 404, so the old predicate rethrew → HTTP 500. Scratch reproducer removed after capture; the captured shape is locked in tests via `OpenAI.APIError.generate` (the SDK's own factory).
+
+**Fix:**
+- `src/runtime/openai-agent-runtime.ts` (provider error boundary): new `ProviderImageAccessError` (status/providerCode/providerParam/providerType + failed attempt transport as `failedTransport`, original error as cause) plus narrow `isProviderImageDownloadAccessFailure` duck-type parser (status 400 AND provider error text matching both `error while downloading` and `upstream status`; provider error text only, never user text) plus `toProviderImageAccessError` normalization called from the `composeReply` catch ONLY when the failing call transmitted native image content (`replyImageUrls/Files` non-empty). Auth 401/403 (status and SDK instanceof), `ModelComposedFailureError`, guardrail trips, rate limits, timeouts and generic outages return null and rethrow untouched. Documented with the observed/reproduced shape.
+- `src/runtime/agent-service.ts`: `isImageFileAccessFailure` gains the typed-error branch plus the download-diagnostic parser branch (covers direct/stub errors that bypass the boundary); auth/ModelComposedFailure/generic-400/401/403/429/500/timeout/storage exclusions unchanged. Both composition paths retry ONCE with zero attachments + typed unavailable evidence, preserving the original question and other authorized facts, with no repeat extraction/backend op/upload/handoff; second-composition failure stays a generation failure. Established path (`replyOnEstablishedImageNode`) keeps its current-turn fallback and now merges failed-call evidence (`withFallbackCallEvidence` + `mergeFallbackTransportMetrics`: attemptCount counts both calls, transport sums both attempts, failed attempt never overwritten). Information path (`handleInformationFlow`) additionally retries retained-reference failures on text-only turns that transmitted retained attachments (`carriedRetainedImages` gate; model-stage failures without a current image turn still propagate), with retained-aware labels (`image_file_unavailable`/`image_url_unavailable` from projection, `retained reference` shape note — retention refs never promise indefinite access, `reply_failed_file_access` stage parity). `handleSupportAcknowledgment` deliberately untouched (outside the two packet paths). Invalid local image already enters the same unavailable evidence path before vision with no Files-upload claim (locked by test).
+- Tests: `tests/r3-image-access-fallback.test.ts` (new, 29 tests): boundary normalization of the reproduced shape + non-normalization of generic 400/401/403/429/500/timeout/imageless-call; predicate positives/negatives; current-URL fallback with both attempts in totals (attemptCount 2, transport observedRequestCount 2); raw-SDK-shape fallback; retry-failure stays generation failure; retained-file-404 text follow-up retry with zero attachments and ref retained; unrelated-failure propagation with exactly one attempt; persistence-failure propagation; invalid-local-image unavailable path with zero uploads and no file-ID claims.
+
+**Validation:** `npx tsc --noEmit` PASS; `npm run lint` PASS; focused `r3-image-access-fallback + url-image-context + s17-image-turn + image-sdk-wire + live-behavior-coverage` 78/78 PASS; FULL offline `npx vitest run` 168 files, 1509 passed / 5 skipped (pre-existing skips). No registry change in R3. Not self-certified: live Lambda gate rerun is coordinator/C1 business on a deployed artifact.
+
+**Changed-file hashes (working bytes, R3-owned files only; shared files also carry other lanes' work):**
+- src/runtime/agent-service.ts f17b4d4d1b7c43742340dcdf9554cdc69c150b7a
+- src/runtime/openai-agent-runtime.ts ee24fa470e0619514d6be22719a50de508f3cf5b
+- tests/r3-image-access-fallback.test.ts 52307f1658b3b2b23943621f9b5a4144d7568d50
+
+## R5 — Make close state a single source of truth (runtime worker)
+
+Packet docs/plan/2026-09-09-lean-conversation/latest-run-31697069-repair-plan.md §R5 (diagnosis §7: close replies see conflicting/irrelevant state — saved phone re-asked despite close_contact_complete=true plus a contact.phone=null extraction delta; deferred Catering foregrounded with its rejected EDO card and top-level selected_provider_ids=[] while Photography holds selected ID90). HEAD bdb4a88a main, large dirty worktree preserved (F1+F2+F3+R1+R2+R3+R4 landed, uncommitted); no commit/reset/stash/overwrite. Touched ONLY owned files below — src/runtime/dynamic-agent-policy.ts reviewed and left unchanged (deferred needs already excluded from hasSearchReadyNeed/hasShortlist/hasSelection eligibility; the 2-line working diff there belongs to another lane). No deploy, no eval:behavior-live, no rubric/threshold/case edits.
+
+**Fix (one compact authoritative close projection, no keyword routing, no canned replies, no fixture branches, no global rules):**
+- `src/runtime/openai-agent-runtime.ts`: `buildReplyExtractionSnapshot` gains a crear_lead_cerrar branch returning ONLY action_intent/close_action/contact_delta presence booleans/ambiguity — raw contact nulls never reach the model, so a name/email delta with phone null no longer reads as a missing phone. `buildPromptPlanSnapshot` gains a crear_lead_cerrar branch returning ONLY lifecycle/current_node/merged contact {name,email,phone,complete,missing_fields}/close_selected_providers (ALL non-deferred needs with per-need ids+titles)/close_deferred_categories — no recommended cards, no top-level selected IDs, no planning/auth fields. `buildReplyTurnEvidence` adds the turn_state close block (close_selected_providers, close_deferred_categories, close_event_date_available from user-backed date evidence, close_pending_intention, close_remaining_blockers via the new helper) while keeping the existing close_contact_missing_fields/close_unresolved_provider_needs/close_contact_complete facts; provider_candidates on the close node is filtered to eligible selected IDs (deferred EDO never projected). `composeConversationInput` focuses the first eligible selected category (never a deferred active need) and omits the event-category suggestions plus capability catalog on the close node — the prompt carries the actual close outcome/next field only, plus authorized tools and the operational note. `closeContinuityFacts` adds the optional contactPhone input and the contact_phone_already_provided fact (absent-arg calls stay byte-identical; w1-10 toEqual guards unaffected). New pure helpers `collectCloseEligibleSelectedNeeds`/`collectCloseDeferredCategories` (typed plan state only). Event-date/real-receipt requirements untouched: finish_plan stays gated on an explicit user-backed date plus proceed_confirmed, and the existing idempotent executor still writes once per eligible selected provider with replay-on-duplicate.
+- `src/runtime/agent-service.ts` (close continuation only): new `collectCloseEligibleProviders` (selected providers resolved across non-deferred needs, deferred skipped); both crear_lead_cerrar branches (shortlist-blocked and continuation) reassign providerResults to it before compose/render/trace, so a deferred Catering active need can no longer foreground EDO over selected Photography. Contact merge semantics reviewed and unchanged: name/email deltas apply while the saved phone is retained (locked by the new production-path test).
+- `src/runtime/close-submission-summary.ts`: additive `resolveCloseBlockers` + `CloseBlocker` type (missing_contact_fields/no_selected_providers/unresolved_provider_choice/missing_event_date from merged validated state). Receipt parsing and date grounding unchanged.
+- Prompts (wording only, Spanish): `crear_lead_cerrar/system.txt` (deferred never re-mandated/quoted/silently selected; no global-id substitute; missing date asked once, never invented), `response_contract.txt` (saved phone never re-asked on delta; selected needs never re-chosen; deferred never quoted; receipt-only confirmations), `tool_policy.txt` (complete contact alone never dispatches without a user-backed date; deferred needs never finished).
+- Tests: `tests/close-completed-evidence.test.ts` (+3 R5 projection tests: saved phone kept with zero missing fields and no `"phone":null` anywhere after a name/email delta; deferred-Catering/active-Catering turn focuses Photography with no EDO bytes, no top-level/recommended ID keys and candidates [90]; dated+authorized turn exposes date available with zero blockers and close_ready_to_dispatch). `tests/token-defer-close-yield.test.ts` (close continuation now asserts composed providerResults are exactly [90] with no Catering). `tests/close-proceed-confirmed.test.ts` (+1 contact-correction production-path test: name/email delta on the close node retains 51900000302, applies the email, stays in crear_lead_cerrar with selection [90]).
+
+**Validation:** `npx tsc --noEmit` PASS; eslint on all 7 touched code/test files PASS; focused `close-completed-evidence + token-defer-close-yield + close-proceed-confirmed + f4-close-submission-summary + lean-close-footer` 30/30 PASS (seeded-close duplicate and completed-repeat regressions green); wider `agent-service + w1-10-catastrophic-fix + dynamic-agent-policy + matched-request-measurement + f4-judge-close-evidence + agent-service-information-flow` 179 passed / 2 skipped (pre-existing skips) PASS; `live-behavior-coverage` PASS with no registry change in R5. No deploy, no eval:behavior-live per packet. Not self-certified: live Lambda gate rerun is coordinator/C1 business on a deployed artifact.
+
+**Changed-file SHA256 (post-edit working bytes; shared runtime files also carry other lanes' uncommitted work):**
+- src/runtime/openai-agent-runtime.ts c9fecf2e2fe327da5ba128d0c8bf5cc3852ecfb4e26cf152c661f3f9b8209fff
+- src/runtime/agent-service.ts 40ffdb158cd425de2e30cacd5107c0f6486ec64a949f055e1833e0b70b863dd1
+- src/runtime/close-submission-summary.ts 57030fb5245dd0804c6533c85a3a8ae1044d155f1cd35bd81a5ccc598336e79e
+- src/runtime/dynamic-agent-policy.ts 0662a898132c80e2d25f8f39c3be6e3c47be6c2a0ba6a6c8ba3b4f10eedeb178 (reviewed, unchanged by R5)
+- prompts/nodes/crear_lead_cerrar/response_contract.txt cc3488e13b912b934fef36bdd7715f9d41e5d5482af0d267423cabce35821f41
+- prompts/nodes/crear_lead_cerrar/system.txt 4a5ad3c1c9e7b2f9d784184ac81fcde603125eebd463b38cd5d0c318c94310d9
+- prompts/nodes/crear_lead_cerrar/tool_policy.txt f91c951c9cb2dca7184f14bfc3977b65269637c0651dbad440749f37b47981eb
+- tests/close-completed-evidence.test.ts 8777582e01c89ee6e027ddbcb31a0697459b7c0767f422ebddc7a50ffb6e1fbc
+- tests/token-defer-close-yield.test.ts df9e7c6e3b91a2ec0fee8d639600ff50714ed2eacfb9fd942db96a6265a3f312
+- tests/close-proceed-confirmed.test.ts 3dbc0ff8b5bdf379f7e9c06e71fc5b902271dad9ad593d661f85ea5ddf031d37
+
+## R6 — Correct purchase disclosure, response relevance and factual time (runtime worker)
+
+Packet docs/plan/2026-09-09-lean-conversation/latest-run-31697069-repair-plan.md §R6 (diagnosis §9: purchase facts vs response directions disagree — S01/S08 amounts called invented though stored; Maria 63.85 recorded total vs user-reported; candidate amounts gain S/ without currency; record date becomes payment time; paolo 05:00→17:00; spanish_only drops email task). HEAD bdb4a88a main, large dirty worktree preserved (F1+F2+F3+R1+R2+R3+R4+R5 landed, uncommitted); no commit/reset/stash/overwrite. Touched ONLY owned files below; reply-evidence-projector.ts and information-orchestrator.ts reviewed and left unchanged (no defect there within R6 scope: orchestrator already projects amountDisclosure/payment.paidAt/paymentValidationExpectation; reply-evidence projector is handoff-only). No deploy, no eval:behavior-live, no rubric/threshold/case edits.
+
+Fix (typed evidence only, no keyword routing, no canned replies, no fixture branches):
+- `src/runtime/purchase-reply-projector.ts`: `toOrderView` reads the requested method through `disclosedPurchaseMethod` (disclosure preferred over fields the projection nulled — S01 method no longer dropped while a validation/method question needs it); approved-status-only minimality preserved via the existing wantsMethod gate. `OrderReplyView` gains one typed policy/amount view: `paymentAt` (raw server string, verbatim, never converted), `eventTimezone`/`paymentTimezone` (`unknown` whenever a timestamp is present — no verified zone, no conversion), `validationWindow` ({maxBusinessHours:72} only when validation_window is requested AND the sourced expectation exists, so policy and method metadata travel together). `OrderCandidateView` gains currency/method provenance (`currency`, `currencyAvailability: available|unknown`, `method`) and `transactionReference` is now always null — selection is repaired by event/date/amount/status only, never by transaction/internal IDs. Candidate amounts without authorized currency expose `currencyAvailability: unknown` with null currency, so the model has no S/ to copy. `toModelOrder` omits absent currency/paymentAt/timezone/validationWindow keys (status-only answers carry no dates). `projectCompletedPurchaseForModel` makes the next action question-relevant: order_plus_cart without a payment_options checkout question follows the order (pending → await_validation, else none) instead of pay-the-pending-order-again; explicit checkout keeps complete_checkout; explicit caller override still wins.
+- `src/runtime/openai-agent-runtime.ts` (purchase/RSVP evidence only): new exported `describeRsvpEventTime` (stored string verbatim + hour24 reading + timezone unknown, never converted; null when no readable time) and `rsvp_event_time` evidence fact projected only on responder_invitacion when phone evidence carries a date — source 05:00 reads 05:00, never 17:00; unrelated turns stay byte-identical.
+- `src/runtime/agent-service.ts` (purchase operationalNote only): status-only questions now omit method/policy directions — the unverifiable-time note and the currency/time-correction note are gated behind !isSingleStatusQuery (mismatch/selection/window notes already were). All existing note sentences kept verbatim to preserve other lanes' pinned assertions.
+- Node prompts: NOT edited. Both applicable bundles are byte-pinned by other lanes' tests (resolver_consultas_informativas serializedRequestBytes 17356 in prompt-audit.test.ts:40; responder_invitacion 8955 in static-prompt-comparison.test.ts:93) and both pins are already drifted by landed worktree edits; any wording change here would break those guards. The invariants travel in typed evidence instead (candidate currencyAvailability, paymentAt/timezone labels, rsvp_event_time). Returned to coordinator as a blocked assumption with reproducer (the two pins), not improvised.
+- spanish_only secondary-request retention (planning/extraction retention) lives outside the R6-owned files; no runtime change here drops a secondary request (no owned code path discards one). Returned likewise — needs the owning lane, not a new product behavior from R6.
+- Tests (`tests/c-step-c-grounding.test.ts` only, +9): disclosure method present when requested / absent on approved summary; status-only omits method+validationWindow; paymentAt verbatim 05:00 with unknown timezones; validationWindow only with a validation question; candidates never carry transaction references even when authorized; absent candidate currency never gains S//PEN; explicit PEN candidate carries provenance; order-plus-cart → await_validation on payment discussion / complete_checkout on checkout request (so omission cannot game the factual regression — explicit-time reading is asserted, not omitted); describeRsvpEventTime 05:00 stays 05:00, 17:00 stays 17:00, null/blank → null.
+
+Validation: `npx tsc --noEmit` PASS; eslint on the 4 touched files PASS; focused c-step-c-grounding + s09-purchase-reply-projector + purchase-currency + purchase-prompt-policy + purchase-disclosure-policy 53/53 PASS; wider information-flow + cart/twins/gate/f4 + s11 + rsvp suites 117 passed / 2 skipped (pre-existing skips) PASS; RSVP suites 93/93 PASS; live-behavior-coverage PASS with no registry change in R6. One failure is pre-existing and unrelated: prompt-audit.test.ts expects resolver serializedRequestBytes 17356 but the worktree (other lanes' landed prompt edits to resolver_consultas_informativas/response_contract.txt etc.) measures 17370 (+14); the audit does not import any R6-owned file, and R6 touched zero prompt files. Not self-certified: live Lambda gate rerun is coordinator/C1 business on a deployed artifact.
+
+Changed-file SHA256 (post-edit working bytes; shared runtime files also carry other lanes' uncommitted work):
+- src/runtime/purchase-reply-projector.ts cddf56c502bf237ae411ffb7745786426c1c5cd940024565e4e47ffb92c0d285
+- src/runtime/openai-agent-runtime.ts ae479a6215a7925115ff0bde560e233b4ae68e29ec33afd5f37bde5707215f95
+- src/runtime/agent-service.ts e7409aad178913b8f2deb577700ec54d554bd08d32a85cad571737a9f2404f2c
+- tests/c-step-c-grounding.test.ts ae151407155b5eab99e89fc2dc9c21db03c2659313c043def1f7ab53346e2035
+
+## R6 follow-up — spanish_only multi-need retention + blocked node-prompt wording (runtime worker)
+
+Packet latest-run-31697069-repair-plan.md §R6, two items R6 returned as blocked/outside its files (see R6 entry above). HEAD bdb4a88a main, large dirty worktree preserved; no commit/reset/stash/overwrite. Touched ONLY: `src/runtime/agent-service.ts` (3 hunks), `prompts/nodes/resolver_consultas_informativas/response_contract.txt` (+2 lines), `tests/prompt-audit.test.ts` (pin comment + value only), new `tests/spanish-only-multi-need-retention.test.ts`. No deploy, no eval:behavior-live, no rubric/threshold/case edits. responder_invitacion files NOT touched (its 8955 pin lives in static-prompt-comparison.test.ts, outside this lane).
+
+1. spanish_only retention — drop path found and fixed (it WAS in the owned file). Mixed request `Necesito catering para un baby shower en Miraflores. Please send the RSVP link by email.` extracts to planning evidence (Catering/baby_shower/Miraflores, actionIntent elicitar_necesidades) plus `requestedOperation=confirmation_document.send` (unsupported, not_implemented). `handleCapabilityBoundaryIfNeeded` correctly yields to planning (`hasSecondaryPlanningOperation`), but the planning-tail compose (`composeReply` ~line 2269) never forwarded any `capabilityDecision`, and `ownerPendingTaskRef` had no fallback for a bare requestedOperation — so the email question reached neither model evidence (`capability_outcome` null) nor the transfer packet (`owner_pending_task` null). Reproduced with a scripted-extraction test (compose `capabilityDecision` undefined pre-fix).
+   Fix (typed evidence only, no keyword routing, no canned replies, no new agent, no functionality guarantee):
+   - `ownerPendingTaskRef`: last-resort fallback `capability:<operation>` when no pending/extracted-protected/rsvp/faq task exists; reconciles to null once no longer requested (existing R2 reconciliation). Single planning owner keeps serving both needs.
+   - Planning-tail compose: resolve the capability decision from `extraction.requestedOperation` + ambiguity via the existing `resolveCapabilityDecision`, forward it (and into `buildTrace`) ONLY when `unsupported`/`clarify`; supported/not_applicable stay absent so unrelated turns keep byte-identical model input and traces.
+2. Blocked node-prompt wording: two short outcome-specific Spanish lines appended after the `capability_outcome` line in resolver `response_contract.txt` (invariant provenance + answer-the-current-task + retention, zero backticked TypeScript prescriptions in the added lines; existing pinned sentences untouched). The broader R6 removal intent (TypeScript phrase prescriptions, duplicated profile blocks) is already substantially landed by other lanes in this worktree (responder system rewrite, crear_lead_cerrar rewrite); additive-only here to preserve their pinned assertions. responder bundle untouched per ownership above.
+   Per-pin justification: 17356 (stale pin) → 17370 pre-existing +14 net drift from earlier lanes' landed prompt edits (R6 independently measured 17370 before any lane-owned file changed; this audit imports no runtime file — verified: imports are only decision-nodes/prompt-loader(type)/prompt-manifest/extraction-schemas(type) — so runtime edits cannot move it) → 17637 now. My deliberate +267 is byte-exact: added lines are 265 UTF-8 bytes + 2 JSON newline escapes (265+2=267; 17370+267=17637 measured). Duplication/relevance gates (`violations == []`) stay green; pin updated only to match deliberate approved content.
+   Registry: NO live-behavior-coverage.yaml change — this is R6-scope behavior already covered by `live_behavior.spanish_only_mixed_language_request` (its v2 rubric already fails silently-dropped email requests); no new live case, no new entry.
+   Tests (new file only, +3): mixed request keeps planning owner, projects unsupported `confirmation_document.send` evidence, preserves `capability:confirmation_document.send` pending task, no escalation; planning-only control stays byte-identical (no capabilityDecision, null pending task); resolver wording pins the two retention lines and their prescription-free form.
+
+Validation: `npx tsc --noEmit` PASS; eslint on owned touched files PASS; new file 3/3 PASS; prompt-audit 10 passed/1 skipped PASS; focused capability-boundary-routing + capability-boundary + l4-owner-routing + c-step-c-grounding + f3-capability-safe-read + f3-oracle-revision-mutations + static-prompt-comparison 85/85 PASS; information-flow + rsvp + agent-service + live-behavior-coverage 181 passed/2 skipped (pre-existing skips) PASS. Full offline suite: 1542 passed / 5 skipped / 1 failed — the single failure is pre-existing and out of scope: tests/b-fixture-oracles.test.ts compares a hardcoded OTP rubric constant against eval-case YAML rubric text drifted by another lane (white-dress-restriction sentence); 28 dirty evals/cases files, none owned or touched by this lane (case/rubric edits forbidden). Not self-certified: live Lambda gate rerun is coordinator/C1 business on a deployed artifact.
+
+Changed-file SHA256 (post-edit working bytes; shared files also carry other lanes' uncommitted work — only the hunks described above are this lane's):
+- src/runtime/agent-service.ts 43a8302b9d69ee6315e0d26609226bf2bf0ec866dd8bc690bcf426c8764b7e09
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt 8f649c7b8b14bbf438332103354f14695a9d888a09df619c3d538982be8c9310
+- tests/prompt-audit.test.ts 1cd01645d5765b256e5f26f869fa2f48d16097e879303e967779f5fe84
+- tests/spanish-only-multi-need-retention.test.ts (new, untracked) 63c15a1f1d3527f664373c291b5bbd77bb842efb10ca4ceeae9fb1d5cf25d5cc
+
+## 2026-09-14 — Recheck repaired worktree, integration gaps and progress reconciliation
+
+Documentation-only audit. Latest full live run remains31697069:57/102,44failed,1error,0skipped; no post-repair run found locally. Verified local F1-F3/R1-R6 edits and reconciled stale pending task records to partial/local implementation with acceptance open. Added nine decided continuation packets in recheck-2026-09-14.md and machine registry.
+
+Fresh checks: typecheck/lint pass. Default offline1540passed/5skipped/3timeouts; all3pass in isolation; full four-worker run1543passed/5skipped/0failed across170files. Both new synthetic PNGs independently fully decoded. Six read-only synthetic probes expose disconnected fixture history, stale-history fallback, raw new diagnostic fields, old-ref silence, same-renderer self-verification and image-implies-cart projection. Additional source findings: pending cleared before verified delivery; current-image catch still broad; duplicate customerContext/TS amount prescriptions; proactive profile enrichment not implemented by pure assembly caller.
+
+No runtime/prompt/fixture/evaluator/deployment changes, no old-run rescore or new live quality claim. Private logs preserved under .openai-audits; redacted evidence/source hashes in recheck-2026-09-14-evidence.json. Promotion remains conditional on full binding acceptance, matched revised-contract comparator and exact deployed artifact.
+
+## 2026-09-14 — S0 recoverable freeze and coverage reconciliation (coordinator, in progress)
+
+**Reason:** September14 amendment S0. Pin current dirty worktree with recoverable bytes (digest alone insufficient per recheck), record truthful progress, verify AWS identity before any operation.
+**Decision:**
+- HEAD `bdb4a88a`, ~230 dirty paths preserved, no reset/revert.
+- Archive `.eval-archives/sept14-S0-source.tgz` sha256 `582f8464041ffc958c0ddee205abae0755004bc85a43f43dd15b2983424fe807` (excludes .git/node_modules/.eval-runs/.openai-audits/logs); sorted content manifest `.eval-archives/sept14-S0-manifest.txt` sha256 `7f5d866969343abdf65de9f741630655625afc2b61aca37a53faf14009c6a12f` (674 files under src/prompts/evals/tests/infra/scripts/package).
+- Suite `live_behavior_regression` 103 cases (107 dash lines minus 4 tags; includes `live.faq_from_recommendation_node` with dot). No claim current worktree ran in `31697069` (57/102 historical).
+- STS se-dev us-east-1 `684516060775` verified 2026-09-14; dev Lambda `ooMDgQ7b...` 2026-09-11T18:11:05Z Active/Successful (=31697069 bytes, historical); prod `6CmXWVD...` 2026-09-10T12:42:13Z Active. Recorded separately from history.
+- F1–R6 marked implemented locally, acceptance open/partial per recheck table; C1 pending. Added 4 separate coverage entries (`sept14-r2-*`, `sept14-r5-*`, `sept14-r6-*`, `sept14-secondary-email-*`) reusing existing live cases with `implementedBy bdb4a88a` (base HEAD; worktree dirty as noted here, not a fabricated completed commit); `live-behavior-coverage.test.ts` 1/1.
+**Files:** plan.yaml (sept14-s0 in_progress), evals/live-behavior-coverage.yaml (+4), .eval-archives/sept14-S0-*.
+**Validation:** coverage test 1/1; no runtime change; no deployment.
+
+## 2026-09-14 — S1 durable isolated fixture history through real callers (evaluation/infrastructure worker)
+
+**Reason:** September14 amendment S1 (recheck-2026-09-14.md §S1, D1). Fixture history was disconnected: handler built gateways without run/case/store scope, receipt recording had no production caller, and the distractor fixture had no live case. S2 (central finalization) and S3 (redaction + silence binding) observed complete and preserved untouched.
+**Decision:**
+- Dev wire marker (`src/lambda/request-contract.ts:backendFixtureSchema`) extended with required `runId`/`caseId` only; conversation scope derives from existing channel/user_id via `buildFixtureConversationKey`. Not a production message-package contract. Handler rejects every marker in production before schema parsing (raw-body 403, preserves the existing observability test) and incomplete identities in dev (schema 400 + explicit fail-closed guard).
+- `getFixtureRuntime` (handler-only edit) injects one shared durable store (`EVAL_FIXTURE_TABLE_NAME`, fail-closed when unset) into both conversation and provider-effect gateways with actual run/case/conversation scope; scenario-derived `live-<scenario>` IDs removed. Per-invocation construction, never globally cached. S3 redaction boundary untouched.
+- `EvalFixtureStateStore` history keyed by run/case/conversation (new `conversationKey`, `LOCAL_FIXTURE_CONVERSATION_KEY` default for direct unit use). Same conversation retains observed history across scenario transition (scenario is a stored attribute; seed stays a non-erasing prefix). Atomic per-scope counters (`UpdateCommand` ADD) + conditional inserts replace read-count-then-put; deterministic per-message-id sort keys make concurrent/retried writes idempotent (loser reads back the winner). Consistent reads + `LastEvaluatedKey` pagination everywhere; TTL on all fixture records; no global deletion (Dynamo `resetForTesting` still throws). `FixtureLoggedMessage.ttl` added.
+- Live target (`src/evals/targets/live-lambda.ts`) sends `{scenario, runId, caseId}` (run_id ?? label, case id), stamps `observedMessageId` per turn, prefers the private consistent-read plan for receipt validation (documented response-plan fallback that fails closed when redacted), and calls exported `recordFixtureOutboundObservation` for fixture-scoped turns after validation, before the next turn: private `last_outbound_context` text only when message_id matches, not truncated, and `hashPrivateOutput` equals the independently observed original hash. Mismatch/missing = harness error, never fabricated; suppressed/failed/null never recorded; phone-less turns skip (plan-backed continuity). Unit-direct store calls remain non-completion. `resolveDevelopmentTarget` carries optional `EvalFixtureTableName`; missing table on fixture turns is a harness error. Test seam `fixtureStore` override added (unit only).
+- S3 judge seam: runner passes `observedMessageId` + `nowMs` into silence validation (`silenceEvidenceOptions`); offline turns keep the documented no-wire fallback. Attached evaluation plan precedence unchanged (judge/expectation evidence identical).
+- New mandatory live case `live_behavior.image_distractor_history_preserves_current_question` (image-distractor-history fixture, image→question, same receipt bytes as the clean-world variant which is preserved): hard native-image/tool + persist-reason + campaign-leak + no-backend-mutation checks and a required semantic judge. Suite now 104 cases. Two new coverage entries (`sept14-s1-durable-isolated-fixture-history`, `sept14-s1-outbound-receipt-via-live-target`, `implementedBy bdb4a88a` per the S0 dirty-worktree convention).
+- `infra/cloudformation/stack.yaml`: dev-only `EvalFixtureTable` (string pk/sk, on-demand, TTL `ttl`, `Condition: IsDevelopment`), `EVAL_FIXTURE_TABLE_NAME` set for development only (`Fn::If` + `AWS::NoValue` removes it in production), separate conditional `EvalFixtureTableAccess` policy scoped to GetItem/PutItem/Query/UpdateItem on this table only, `EvalFixtureTableName` output (conditional). PlansTable not repurposed. Local principal setup: the se-dev profile in us-east-1 (account 684516060775) used by the harness needs matching DynamoDB rights on the development table; Lambda gets them via the conditional policy above.
+**Files:** src/lambda/handler.ts, src/lambda/request-contract.ts, src/evals/targets/live-lambda.ts, src/evals/case-schema.ts, src/evals/runner.ts, src/aws/development-target.ts, src/runtime/eval-fixture-gateway.ts, src/runtime/eval-fixture-state.ts, infra/cloudformation/stack.yaml, evals/cases/live-behavior-image-distractor-history-preserves-current-question.yaml, evals/suites/live_behavior_regression.yaml, evals/live-behavior-coverage.yaml, tests/eval-live-target.test.ts, tests/eval-fixture-gateway.test.ts, tests/lambda-request-contract.test.ts.
+**Validation:** typecheck PASS; eslint on touched files PASS; eval-fixture-gateway 29/29, lambda-request-contract 19/19, eval-live-target 10/10, S3 silence suites (semantic-silence-integration, silence-exemption, artifact-redaction, handler-wire-observation, lambda-handler-observability) 49/49, eval-loader/judge-context/s13/f-trace 31/31, eval-runner + offline-target 3/3, case-ids + model-output-origin + image-file-persistence 91/91 PASS. New case validated through EvalLoader (150 total, suite 104/104). No production deploy; CloudFormation change unapplied (coordinator deploys at S8 boundaries). No live Lambda run in this packet.
+**Limitations:** Dynamo paths (atomic counters, conditional idempotency, pagination) are unit-covered for logic via the InMemory twin and test seams, not against a live table — no live deploy in this packet. `FixtureProviderGateway` OTP one-shot guards still read via `count()` (now race-safe under atomic record); true single-flight across processes relies on the conditional-insert attempt uniqueness plus existing replay semantics.
+
+## 2026-09-14 — S6 lean prompt cleanup and cart relevance (runtime worker)
+
+**Reason:** September14 amendment S6 (recheck-2026-09-14.md §S6, D8/D9). The reply input serialized customerContext twice (canonical evidence plus a prose JSON append); the purchase operational note carried a literal "monto [valor] mediante [método registrado]" phrase template and an unconditional "repeat the validation window" continuation prescription; cart focus was driven by image presence, support continuations and voucher reports instead of the user's structured task. Prior S2/S3/S1/S4/S5 work preserved untouched (no edits outside the S6-owned files listed below).
+**Decision:**
+- `src/runtime/openai-agent-runtime.ts` (composeConversationInput only): deleted the duplicate `Contexto de la operación del cliente (JSON)` prose append. The canonical `customer_context` evidence block is the single serialization; the node contract carries the usage policy.
+- `src/runtime/agent-service.ts` (purchase notes + deriveCustomerProjectionFocus only): focus rewritten so cart relevance comes ONLY from structured purchase aspects expressing checkout/cart work (`payment_options`, which the extractor already emits for cart-checkout questions). `imageAvailable` plumbing removed; supportContinuation/voucherReport dropped as cart proxies. Order aspects (summary, payment_status, payment_details, validation_window, shipping, dedication, thanks, decline) stay payment-focused; both signals yield general; neither yields general. No schema change needed: `payment_options` already distinguishes cart requests, so no new requested-subject field and no keyword detector/classifier.
+- Same file, operational notes: removed the amountDisclosure phrase template (typed amount/method/currency facts plus the node contract govern presentation); removed the support-continuation repeat-the-window prescription (replayed thread facts plus the support-continuity prompt govern); gated the indexed transfer-policy sentence and the abandoned-cart recovery prose on explicit checkout evidence (`payment_options` aspect) or a cart-only outcome, so a payment receipt never reveals an abandoned cart while an explicit cart checkout keeps its recovery path. Approved/pending status, recorded/user-reported amounts, unknown currency, and source-time facts preserved. Kept applicable sourced policy (status-only scoping, time/currency correction framing, constancia guard, mismatch provenance, pending validation window, selection framing).
+- `prompts/nodes/resolver_consultas_informativas/response_contract.txt`: two minimal Spanish invariant lines added in place (no new files; file count stays 7): customer_context single-use scoping, and explicit-alternative time framing (answer only the recorded hour with unknown zone for 05:00-vs-17:00 style questions).
+- New live case `evals/cases/live-behavior-purchase-explicit-time.yaml` (fixture purchase-claudia-085, paid_at 21:31 offset-less, currency null): explicit 05:00-vs-17:00 question with hard node_transition + tool_usage + required text_semantic judge. Registered in `evals/suites/live_behavior_regression.yaml` (suite now 109 case IDs including this one). Six separate registry entries in `evals/live-behavior-coverage.yaml` (single serialization, structured checkout relevance, receipt-hides-cart, no phrase template, receipt/thanks payment focus, explicit 05:00/17:00), `implementedBy bdb4a88a` per the S0 dirty-worktree convention.
+- Tests: new `tests/s6-lean-prompt-cart-relevance.test.ts` (8 tests: single serialization incl. absent-projection control; D9 image+payment stays payment; explicit checkout projects carts + recovery prose; payment+thanks stays payment; genuinely-both receives both; voucher report stays payment; receipt hides abandoned cart + transfer policy); updated the contradicting W1-07 pin in `tests/agent-service-information-flow.test.ts` to assert absence of the template plus presence of typed `recorded_method_no_currency` facts; prompt-audit pin updated 17637→18011 (+374 measured, relevance/duplication gates still empty) with dated comment.
+**Files:** src/runtime/openai-agent-runtime.ts, src/runtime/agent-service.ts, prompts/nodes/resolver_consultas_informativas/response_contract.txt, src/runtime/purchase-reply-projector.ts (read-only, no change needed: payment_options already drives checkout next-action), evals/cases/live-behavior-purchase-explicit-time.yaml, evals/suites/live_behavior_regression.yaml, evals/live-behavior-coverage.yaml, tests/s6-lean-prompt-cart-relevance.test.ts, tests/agent-service-information-flow.test.ts, tests/prompt-audit.test.ts.
+**Validation:** typecheck PASS; repo-wide eslint PASS; full offline suite 171 files / 1620 passed / 5 historical skips / 0 failed (default runner; `--maxWorkers=4` rejected by repo tinypool config: minThreads/maxThreads conflict, pre-existing). Focused: S6 8/8; purchase/profile/prompt (11 files) 180 passed; S2–S5 regression (silence, artifact-redaction, wire-observation, spans/origin, acceptance-mutations, r3-fallback, s17, image-persistence, rsvp) 249/249; prompt-audit/coverage/static/bundle/token-usage 76+12. Measured complete serialized purchase reply wire (offline stub, installed SDK): 22,211 total bytes (instruction 17,835, input 3,825, tools 2, schema 313), customer_context exactly once, legacy prose duplicate absent. No deploy (packet scope); no live run, so the new 05:00/17:00 case and registry entries await S8 gate proof.
+**Limitations:** secondary-email capability and three-owner flow untouched but not re-proved live here. If the extractor ever emits a cart question without `payment_options` aspects, the cart note/focus falls back to outcome-gated cart-only evidence only; no keyword backstop added per packet. Concurrent workers share this tree; only the files above are S6-owned.
+
+## 2026-09-14 — B1 live private-evidence seam + B2 per-run effect isolation (evaluation fix packet)
+
+**Reason:** Oracle blockers B1 (live image-only silence fails origin gate: handler publishes redacted wire plan, live target attached the redacted projection as private evidence so `validateImageOnlySilence` never finds the typed active ref) and B2 (run identity not per-run: `runId = config.run_id ?? label` with runner never setting `run_id`, so every gate run shares `EVAL_FIXTURE#live_lambda#caseId` and the second run within the 7-day TTL sees already-consumed OTP + replayed handoffs). S2/S3/S1/S4/S5/S6/S7 + B3/promo fixes preserved; no alternative behavior, no weakened assertions, no waivers.
+**Decision:**
+- B1 `src/evals/targets/live-lambda.ts` only: attach `directPrivatePlan ?? evaluationPlan` as the private evaluation snapshot while `turn.plan` stays `projectSafePlan(evaluationPlan)` public. Outbound receipt observation reuses the same snapshot (identical expression, comment-only change). S3 redaction policy and S4 provenance untouched; `evaluation-state.ts`/`runner.ts` silence threading and `silence.ts` untouched.
+- B2 `src/evals/runner.ts` only (plus tests): `runEvaluation` threads the artifact `runId` into `EvalRunConfig.run_id` (`config.run_id ?? runId` preserved when a matrix sets one explicitly) for `executeCase`/`finalizeResult`/dry-run; live target consumption (`config.run_id?.trim() || label`) unchanged, no production handler contract change, dev marker `runId`/`caseId` stays, 7-day TTL unchanged. Operational fallback only (no code): dev-table purge/rotate via the resolved table name, e.g. `TABLE=$(AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws cloudformation describe-stacks --stack-name recap-agent-runtime-dev --query "Stacks[0].Outputs[?OutputKey=='EvalFixtureTableName'].OutputValue" --output text)` then targeted `aws dynamodb delete-item`/`scan` against `$TABLE` — never a global wipe, never production.
+- B4-infra (docs only, verified no code change needed): `resolveDevelopmentTarget` already surfaces `EvalFixtureTableName` from the dev stack outputs (`infra/cloudformation/stack.yaml` conditional `EvalFixtureTableName` output → `src/aws/development-target.ts` → `live-lambda.ts resolveLiveLambdaDefaults`), and the local harness reads through that path with the `se-dev`/`us-east-1` profile. Remaining local setup is a one-time IAM grant for the se-dev principal on the dev table only (dev-only, no production permission change), e.g. an identity-policy allow for `dynamodb:GetItem/PutItem/Query/UpdateItem` scoped to the table ARN from the same `describe-stacks` lookup above.
+- Tests: `tests/eval-live-target.test.ts` new image-only-silence regression whose mock INCLUDES a redacted wire plan (`projectSafePlan` → `image_attachments:[]`, secrets scrubbed) alongside a private plan carrying the typed active file ref → silence validates, origin gate passes, diagnostics stay redacted; new `run_id` threading test (wire marker carries `run_id`, receipt partitioned by run, label scope empty). `tests/eval-fixture-gateway.test.ts` new effect-isolation test (two distinct runIds sharing phone/case/conversation: second run sees fresh OTP `sent` + fresh handoff, receipt counts partitioned per run).
+**Files:** src/evals/targets/live-lambda.ts, src/evals/runner.ts, tests/eval-live-target.test.ts, tests/eval-fixture-gateway.test.ts.
+**Validation:** typecheck PASS; eslint on touched files PASS; eval-live-target 12/12, eval-fixture-gateway 30/30, silence-exemption 13/13, semantic-silence-integration 15/15, artifact-redaction 13/13, handler-wire-observation 7/7 PASS. No deploy (packet scope); no edits to agent-service, customer-context, orchestrator, renderer, provenance, prompts/cart.
+**Limitations:** Live Dynamo paths remain unit-covered via the InMemory twin and test seams, not against a live table — no live Lambda run in this packet. Concurrent workers share this tree; only the files above are B1/B2-owned.
+
+## 2026-09-14 — S2/S3/S4/S5/S6/S7 integration + oracle-directed fixes (coordinator record)
+
+**Reason:** September14 S8 integration; oracle review PASS S2/S4/S5/S6, FAIL S1/S3/S7 (B1/B2/B3) + B4 gaps + S4 promo clause.
+**Decisions/Files:**
+- S2 (runtime): handleTurn central finalizeLastOutboundRecord; linkage-based fallback merge (no id -1); pending_task_outcome answered-only clear. Focused 136/136; offline 1552/5.
+- S3 (runtime): SafePlanSnapshot redaction (raw IDs/URLs/digests omitted, last-response scrubbed, typed observations); current-image silence binding (observed-ID, active typed ref, persist-reason/kind match); private accessor getPrivatePlanForEvidence. Focused 33/33. Coordinator resolved 2 silence-exemption fixtures to typed schema (kind-matched reasons, full expiry/digest/receivedAt) → 46/46.
+- S1 (evaluation): dev marker runId/caseId; scoped durable store (atomic counters, idempotent IDs, TTL, pagination); live-target validated receipt + silence binding; dev-only EvalFixtureTable; distractor case (suite 103→104). Regression 49/49 + 121/121.
+- S4 (runtime): src/audit/expected-render.ts independent serializer; transport-v2 receipts/hashes; injected-renderer public-path failure (72/72). Coordinator updated development-isolation test for S1 table (null default + passthrough) → 76/76.
+- S5 (runtime): current+retained retry only on typed image-access failure; upload transport/malformed split; usage partial/unavailable; D7 expectations replaced stricter. Full offline 1612/5/0.
+- S6 (runtime): single customerContext (22211B measured); payment_options cart focus; phrase/window removed; explicit 05:00-vs-17:00 case + 6 entries (suite 105). Offline 1620/5/0.
+- S7 (runtime): async linked enrichment 2-edge/4-read/deadline, visited/cache, inline expansion, old-target retention. Focused 47/47.
+- B3 fix (runtime): selector excludes already-detailed IDs + seeded visited set (giftCalls 1); S4 promoSummary removed from mechanical render (evidence-only); dead isModelStageFailure deleted.
+- B1/B2 fix (evaluation): private snapshot = directPrivatePlan ?? evaluationPlan (turn.plan stays redacted) + redacted-wire regression test; artifact runId threaded into EvalRunConfig.run_id + effect-isolation test.
+- B4 (evaluation): 5 live regressions (s2-preserves-pending, s3-stale-ref, s4-renderer-provenance, s5-not-image, s7-no-auto-select) + 5 coverage entries (suite 105→110). Coverage test 1/1; image integrity 7/7; full offline 1636/5/0 then 1631-1636 green.
+**Validation:** typecheck + lint clean throughout; no deploys in packets (coordinator deploys at S8).
+
+## 2026-09-14 — S8 candidate full gate RESULT: RED 70/110 (no promotion)
+
+**Reason:** S8 unfiltered mandatory gate on deployed candidate bytes.
+**Deployment:** artifact `ec2e96ff8d230bf2d309f6e0863e9e6d2466f384d6a473957680aff37fa0aa27` (6.9 MiB), dev Lambda `7C6W/40jC/LTCfbghj6ebSRm84TWpHOVdoCv83+gqic=` Active/Successful 2026-09-14T16:51:19Z, se-dev/us-east-1 `684516060775` verified. Start/end digests identical (exact-candidate valid). Production `6CmXWVD…` untouched.
+**Result:** run `eval-2026-09-14T16-52-09-358Z-4601d6e7` (16:52→17:26Z): 70/110 passed, 40 failed, 0 errored, 0 skipped, avg 0.8939, avg latency 12122ms/case. Tokens 1,922,480; tool precision 0.9766 / recall 0.9182.
+**Failed (40):** live_behavior.accountless_event_answer_precedes_remaining_private_auth;live_behavior.accountless_guest_event_uses_phone_without_otp;live_behavior.continuity_question_needs_image;live_behavior.continuity_voucher_then_thanks;live_behavior.customer_transaction_reference_unavailable_multiple;live_behavior.host_withdrawal_diana_policy_and_support;live_behavior.host_withdrawal_pending_event_followup;live_behavior.image_expired_reference_resubmit;live_behavior.image_file_delayed_question;live_behavior.image_file_malformed_unavailable;live_behavior.image_non_receipt_payment_claim;live_behavior.image_readable_captionless;live_behavior.image_too_large_fallback;live_behavior.image_unavailable_captioned;live_behavior.image_url_receipt_payment_thread;live_behavior.image_url_unavailable_evidence;live_behavior.otp_sent_explains_image_limitation;live_behavior.otp_terminal_handoff_failed;live_behavior.otp_terminal_handoff_unavailable;live_behavior.owner_customer_payment_relevance;live_behavior.owner_planning_to_faq_single_transfer;live_behavior.pending_balance_validation_luis;live_behavior.purchase_confirmation_carina_request_survives_normalization;live_behavior.purchase_current_pending_over_old_approved;live_behavior.purchase_delia_status_by_phone;live_behavior.purchase_explicit_time_alternatives;live_behavior.purchase_joaquin_dedication_selection;live_behavior.purchase_martha_accountless_selection;live_behavior.rsvp_declined_state_offers_one_change;live_behavior.rsvp_plus_one_not_eligible_no_false_success;live_behavior.rsvp_plus_one_uses_phone_scoped_mutation;live_behavior.s01_frozen_kiara_pending_replay;live_behavior.s08_kiara_approved_replay;live_behavior.s12_provider_completion_truthful_event_date;live_behavior.s2-failed-delivery-preserves-pending;live_behavior.s3-stale-ref-silence-fails;live_behavior.s4-injected-renderer-prose-fails;live_behavior.spanish_only_mixed_language_request;live_behavior.tito_numbered_name_and_post_rsvp_closure;live_feedback.token_seeded_selection_defer_close
+**New-case split:** PASS distractor, s5, s7. FAIL s2 (unexpected request_human_takeover), s3 (image_inspect called + no stale-ref disclosure), s4 (card identity), purchase_explicit_time (omitted 21:31 tz-unknown).
+**Decision:** strict gate RED → no baseline comparison run (moot for release; artifact recoverable), no promotion, no rescore. All runs retained. Next: triage 40 failures (systematic image/purchase clusters + 4 new-case failures) under a new dispatch; do not re-gate unchanged bytes.
+
+## 2026-09-14 — S8 failure diagnosis (read-only, no fixes sent)
+
+**Reason:** operator request after RED 70/110 gate: classify each failure as product vs judge/fixture artifact and trace product failures to originating prompt text.
+**Method:** independent oracle review over run `eval-2026-09-14T16-52-09-358Z-4601d6e7` artifacts (note: stored artifacts omit serialized model request bodies — `transport.requests: []`, `operational_note: "[omitted]"` — so prompt attribution uses deployed prompt files + projection code).
+**Outcome:** 24 case-level product judgments (~18 distinct defects, clusters C1/C2/C4 + B4 s2/s3/s4 + S6 time + C7/C8); 13 judge-artifact cases (judge packet blind to purchase values/FAQ text/seed summaries/72h notes); 1 hard fixture/oracle contradiction (s13 currency PEN present vs rubric forbidding). Highest harm: C1 image/recovery, C2 receipt escalation, C4 invented S/, C7 close effect missing, C8 dropped email need. Full per-case table in coordinator report; no code, prompt, fixture, or evaluator change made.
+
+## 2026-09-14 — R7 runtime grounding-continuity packet (Fixer)
+
+**Reason:** S8 RED 70/110 oracle diagnosis (C3/C4/C7/C8/C10/C11 + Tia-Niur class); operator doctrine: grounding supremacy (P0), no mid-conversation greeting (P0), maximal-answer-first, images as-is.
+**Files (sole-writer scope only):**
+- src/runtime/turn-message-context.ts: extractor history budget (6 turns x 2000B = 12000B documented) + buildExtractorConversationHistory (untruncated bodies) + buildPriorAnswerGist + measureAmbiguityRate.
+- src/runtime/openai-agent-runtime.ts: extractor input uses full history + gist + pending ref; global ambiguity rule (history→carry-forward + 1 contextual question, never silent drop; zero history→1 useful question, never welcome; welcome only true start); continuity evidence keeps narrow lane + gist/pending refs + no-silent-delta wording; entrevista/contacto_inicial welcome gates hardened; rsvpPlusOneSupportOfferRequired (multiple→offer) + plus_one_support_offer_required party fact; normalizeCloseActionForDispatch (S12).
+- src/runtime/agent-service.ts: effectiveCloseActionForDispatch + isCloseContactFieldTurn/shouldContinueCloseAfterRefinement wiring (seeded request_contact dispatches); shouldAttemptPhoneLookupBeforeAsking + retainAllInformationRequests; info execution falls back to plan contact phone for phone-scoped lookup.
+- src/runtime/customer-context.ts: displayName null without customerRef; groundedDisplayName + resolveExplicitTargetWins (Tia-Niur) + isNameGrounded.
+- src/runtime/purchase-reply-projector.ts: null currency projects currencyAvailability unknown + currency_unknown (never S/); 72h note untouched.
+- prompts/extractors/base_system.txt + nodes entrevista/aclarar_pedir_faltante/crear_lead_cerrar/resolver_consultas_informativas/responder_invitacion system.txt: surgical R7 lines (lean: extractor bundle kept under gates).
+- tests/r7-grounding-continuity.test.ts (new, 15 tests: history budget, greeting elimination, Tia-Niur, name grounding, currency-unknown, S12, plus-one, phone lookup, multi-request, ambiguity-rate delta); pins updated with dated comments in tests/prompt-audit.test.ts (resolver 18011→18645) and tests/static-prompt-comparison.test.ts (rsvp 8955→9052).
+**Validation:** typecheck clean, lint clean, full offline suite 173 files / 1659 passed / 5 skipped (historical, 0 new). No live cases, no deploy, no eval-owned paths touched.
+**Limitations:** non_receipt-Yape/url-unavailable/captionless greetings fixed via generic schema gates + clarification fallback, not per-case live verification (eval worker owns live); close date at service layer proxied by event_type (blocker path still verifies explicit date); multi-request retention relies on merge + prompt (no new live proof).
+
+## 2026-09-14 — Targeted 20-case diagnostic on candidate PUMpVle (5/20, diagnostic only)
+
+**Deployment:** dev Lambda `PUMpVle/4Z3N7JZm0BHATK1IzgNyekjSCzuyDQFyspE=` 18:43:49Z (EX1+R7+R8 bytes). Run `eval-2026-09-14T18-44-30-567Z-62c5a9d8`: 5 passed, 15 failed, 0 err/skip. Diagnostic, not acceptance.
+**Pass:** purchase_current_pending (echo fix works), tia-niur ambiguous + old-target-wins (both new), s08 (wording fix works), s7.
+**Fail clusters:** (1) `image_inspect` still recorded on all unavailable paths (malformed/too_large/unavailable/s3) + replies still ask re-send (expired/malformed) — R8 missed the :4720 record and the no-resend rule did not change behavior; (2) REGRESSIONS from R8: s5 (was pass, now clarification instead of amount) and distractor (was pass, now `image_file_turn_processed` instead of silence); (3) explicit-time still missing guest-orders lookup + clarification; (4) s2 still deterministic handoff (capability policy vs case conflict unresolved); (5) s4: no card + model now emits promo prose (R8 promo move backfired); (6) delia: fixture-less case still judge-blind to total (EX1 projection is fixture-based); (7) tito/defer_close/s13-labels semantic misses persist.
+
+## 2026-09-14 — Targeted 20-case re-gate on R9 candidate oOvVIP (6/20, diagnostic only)
+
+**Deployment:** dev Lambda `oOvVIP/VcmptDuF2oLH9ApiwB2kct7g9u0Wa10zDu5s=` 19:22:08Z. Run `eval-2026-09-14T19-22-42-354Z-0a4f19a4`: 6 passed, 14 failed, 0 err/skip.
+**Flips vs PUMpVle (5/20):** s2 F→P (capability-deletion worked), s5 F→P (restored); s08 P→F (0.55: double approval + balance caveat — variance or R9 reply-shape change). Hold: current-pending, tia-niur ×2, s7.
+**Structural wins:** zero `image_inspect` tool failures (record deletion worked on all unavailable paths).
+**Still red:** model ASKS RESEND on its own (expired/malformed) despite no resend demand surviving in prompts — the URL alternative exists only in rubrics, no positive prompt instruction teaches it (constructive gap, not a deletion target); distractor still `turn_processed` not silence; s3 stale-ref undisclosed; s4 no card + promo prose; explicit-time lookup missing; url-unavailable handoff; delia fixture-less blind; tito/defer_close/s13 semantics.
+
+
+## 2026-09-14 — Actual-request audit and native context / RSVP amendment
+
+Documentation only. Retrieved twelve stored OpenAI Responses plus complete input items using read-only GETs; private evidence retained under .openai-audits. Confirmed live RSVP bypass of standalone executor, missing normal-success read-back, payment_details erased by normalization, contradictory Tito ambiguity/state prompts, synthetic escalation on image errors, and judge evidence/recovery-contract defects. Added native-context-rsvp-audit-2026-09-14.md with sequential file-level packets A-E and updated stale plan.yaml headline. No runtime edits, live generations, AWS operations or deployment in this audit. Latest reviewed local R9 targeted run remains6/20; full acceptance open.
+
+Follow-up: retrieved three more stored responses (15 total); same native file_id observed on initial and delayed question requests. Confirmed S11 live case lacks structural durability assertions, current attendance read has no companion fields, production plan writes are unfenced, and optional message_id limits deduplication guarantees. Amended packets with concrete production-store/lease integration and explicit no-native-ID limitations. No runtime changes.
+
+## 2026-09-14 — Expanded context audit and longer scenarios
+
+Retrieved 16 additional stored model calls across closure, distractor-image, reference selection and unavailable URL cases (31 cumulative). Added two mandatory multi-turn live specifications with unchanged conversation context; coverage test passes. Corrected recovery policy: never ask customers for images or URLs; tools first, minimal necessary factual questions. Added explicit lean-context/no-hardcoded-prose doctrine and additional closure/distractor root causes to native-context-rsvp-audit-2026-09-14.md. No runtime changes; new case implementations are not falsely registered as completed. Targeted diagnostics pending.
+
+Live diagnostics completed against existing dev: event_context_long_thread b782841e (4 turns) and native_image_long_thread 4bf25cfe (6 turns), both cases failed with 0 errors/skips. Event failure is unnecessary clarification on contextual date follow-up; image failure is unsolicited response on image-only arrival. Native amount reading and later recall succeed. Two more actual stored calls retrieved (33 cumulative). Eight focused offline tests pass. Initial zero-case discovery d17219ea excluded; suite registration corrected to caseIds and verified at114 cases. No production/runtime changes.
+
+## 2026-09-14 — Packet B: verified RSVP execution path (Fixer)
+
+**Reason:** Audit native-context-rsvp-audit-2026-09-14 Packet B. Live RSVP bypassed the durability helper, projected write echoes into observed evidence, accepted mismatched guest identity, and performed zero state reads on success.
+**Files (Packet B scope only, sole writer):**
+- src/runtime/rsvp-effect-executor.ts (sha256 36a245dfee8e): rewritten as the single executor used by the live service; old duplicate/dead `executeRsvpEffectDurably` removed. `executeRsvpEffectVerified` binds intent+receipt to conversation/message/guest/event/each requested field with a SHA-256 typed-operation hash, performs at most one write with no auto-retry, runs one fresh authorized read-back, persists requested-vs-observed receipt before reply, rejects guest/event identity mismatch, never rewrites observed state from requested action, marks companion verification unavailable (backend read exposes no companion fields), reports replayed receipts as replayed with freshRead false. Explicit tradeoff recorded: Dynamo receipt cannot make the HTTP write atomic; interrupted intents reconcile by read without rewriting, else unconfirmed.
+- src/storage/dynamo-rsvp-effect-store.ts (new, a5c3909fcf3f): production RsvpEffectStore on the existing plans table, same conversation partition key, `RSVP_EFFECT#<message-id>` sort key, no second table, no TTL attributes, conditional intent create with operation-hash conflict (never overwrite), intent+result in one record, zod schema validation on reads, optional lease-gated TransactWrite against TURN_LOCK.
+- src/runtime/agent-conversation-gateway.ts (b1c46118387b): `eventId` on responded/already_responded results and RsvpCandidate (event name alone no longer binds identity); guest-id mismatch returns typed failure instead of falling back to the requested id.
+- src/runtime/eval-fixture-gateway.ts (91affbbde1b1): mirrors guest mismatch rejection + eventId; fixture double now reflects its own writes in later reads (fixture coherence fix: previously its static read contradicted its own write); mapEventDetail already exposes guestId/hasResponded/willAttend/responseDate.
+- src/runtime/agent-service.ts (sha256 31aa7cfb51e0): RSVP execution block routes through the single executor with inbound messageId, native-ID flag, turn lease identity + fresh validator, and injected store (transient fallback marked dedup-unavailable, never production durability); phone evidence updates only from verified fresh read (guest AND event id); operational note carries the typed verification receipt; plan save on this path uses saveFenced under lease; confirmation wording stays model-written.
+- src/storage/plan-store.ts (4de6fb30e029) + dynamo-plan-store.ts (26b3b5b62067): optional saveFenced via existing TURN_LOCK transact builder; other plan writes unchanged (see limitations).
+- src/storage/dynamo-conversation-turn-coordinator.ts (6040101d73d8): currentLeaseSnapshot fresh read for effect-boundary validation.
+- src/lambda/handler.ts (1961372cdc97): runConversationTurn generates and threads lease identity into the service operation with fresh validation closure; nativeMessageId threaded via internal execution context (external inbound contract unchanged); production wires DynamoRsvpEffectStore.
+- src/core/messages.ts (04f467989f6e): internal-only nativeMessageId/turnLease/validateTurnLease fields.
+- tests/s11-rsvp-durability.test.ts (rewritten, cb7915c04ace, 12 tests), tests/rsvp-verified-effect.test.ts (new, d413d8331fd6, 8 service-level twins a-g), tests/dynamo-rsvp-effect-store.test.ts (new, 5d7040184c6f, 7 tests), tests/agent-service-rsvp.test.ts (9d83c23cb6ed, write cases now supply verifying reads), tests/agent-conversation-gateway.test.ts (d4b7708435c3, +mismatch rejection and event-id binding).
+**Validation:** `npx tsc --noEmit` clean. Touched suites: s11 12/12, verified-effect twins 8/8, agent-service-rsvp 29/29, agent-conversation-gateway 35/35, dynamo-rsvp-effect-store 7/7, c-step-c-grounding 27/27, plus neighbors (t6/s02/rsvp-*/eval-rsvp-hooks/handler/storage/eval-runner/acceptance/decision-flow/agent-service 300+ tests) all pass. Final combined run: 118/118 across the six Packet B suites. Also fixed: echo-reason sanitization so single-token internal codes stay withheld in the verification block. Full live gate NOT run (orchestrator-owned). Fixed during work: Dynamo result-write condition referenced `operation_hash` while the item stores `operationHash` (would have failed every fenced result write).
+**Limitations:** only the RSVP-path plan save is lease-conditioned; all other plan writes stay unconditional. Without a native inbound id the operation proceeds with read-back but dedup coverage is reported unavailable. Companion state is never verifiable through the current backend read (reported, not invented). Fixture-backed verification only; no live Lambda run or deploy performed. Two pre-existing dirty-tree areas (prompts/evals owned by packets A/C/D) untouched.
+
+## 2026-09-14 — Packet C: remove loss of intent and stale dialogue instructions (Fixer)
+
+**Reason:** Audit native-context-rsvp-audit-2026-09-14 Packet C plus the deferred-closure guard cause in the latest operator clarification. Extraction requested payment_status AND payment_details but normalization erased payment_details (05:00-vs-17:00 loss); RSVP reply carried stale selection state and re-offered on gratitude; guardAmbiguousProviderConfirmation treated every retomar_plan as a shortlist resume and counted selected/deferred needs; multi-need resume re-ran retrieval and rebuilt needs; extractor guidance mandated clarification-first over contextual inference.
+**Files (Packet C scope only, sole writer):**
+- src/runtime/agent-service.ts: normalizePurchaseDetailRoute no longer strips payment_details (pass-through with summary fallback; read partition already chosen separately in the orchestrator from gift-only aspects, disclosure keyed on requested aspects). handleRsvpFlow: stale pending action/plus-one replay gated on a current-turn RSVP signal (current_message decision, event reference, or candidate guest id); change offers on read-only turns keep established current-message behavior but a stale plan_state replay or a turn with no responder_invitacion intent never offers merely because attendance is declining; new reconcileResolvedRsvpSelectionAmbiguity clears a questionKey/candidateOperation-free event-selection ambiguity from the reply extraction only when the lookup resolved the single event behind a stale awaiting_event_selection state. guardAmbiguousProviderConfirmation no longer triggers on retomar_plan; new unresolvedProviderShortlistNeeds counts only needs that are not deferred, carry no selections, and have recommendations — used by the guard, providerConfirmationAlternatives, and hasUnresolvedProviderShortlist (grounded-reference validation for real writes retained). present_existing_shortlist multi-need resume (elicitacion_necesidades node) now presents the existing shortlist without re-running retrieval, preserving selected/deferred records (single-need resume path unchanged; pre-existing resume test still green).
+- src/runtime/openai-agent-runtime.ts: extractor clarification-first mandates replaced with inference-first wording (sustain the history-supported topic as a concrete request with the pending question instead of marking ambiguity; ambiguity only when no topic is sustainable). Pinned substrings kept (continuity label, no-reinicio); no new intent state, no "¿Y ...?" special case. normalizeExtraction/continuity/closeDateEvidence/close-dispatch mirror reviewed, no change needed. Native image wire untouched (D).
+- src/runtime/information-orchestrator.ts, src/runtime/purchase-reply-projector.ts: reviewed, no change (partition from gift-only aspects at ~1504, paidAt disclosure keyed on payment_details at ~2057/2111, aspect-faithful wants gates pinned by R6 tests).
+- prompts/nodes/resolver_consultas_informativas/system.txt: removed the competing maximal-answer line (aspect-gated response contract wins). prompts/nodes/responder_invitacion/response_contract.txt: softened the mandated no-change status restatement into no-new-write honesty without a forced paragraph. Image/URL line left for Packet D (its r8 test pins the URL alternative; flagged as contradicting the no-URL clarification). aclarar/entrevista prompts untouched (out of scope).
+- tests/f3-purchase-continuity.test.ts: flipped to assert payment_details preserved into the read. tests/c-step-c-grounding.test.ts: +2 twins (05:00-vs-17:00 aspects survive into the read and project the sourced payment hour with event hour intact; absent time projects as unknown, never inferred). tests/token-defer-close-yield.test.ts: +2 twins (retomar_plan and bare-ambiguous turns with selected photo + deferred catering never produce provider_selection_ambiguous or shortlist alternatives; records preserved). tests/f2-frozen-closure.test.ts: +1 two-turn Tito twin (selection question, then gratitude: zero writes, state cleared, offer_action false, no select_one_event/await_user_decision). tests/agent-service-rsvp.test.ts: +3 twins (settled selection reconciled out of reply ambiguity; explicit old event wins over recency; multi-event unresolved asks one selection question) and rsvpLookupInvitation gains an eventId param. tests/openai-agent-runtime-token-usage.test.ts: +1 twin (inbound+outbound dialogue pairs reach the extractor with inference-first guidance). tests/prompt-audit.test.ts / tests/static-prompt-comparison.test.ts: pins updated with dated Packet C comments (resolver 18854→18717, RSVP 9052→9034 with delta 801).
+**Validation:** `npx tsc --noEmit` clean. Full unit suite: 176 files, 1699 passed, 5 skipped, 0 failed. Full live gate NOT run (orchestrator-owned).
+**Limitations / reports:** (1) sameRsvpEvent matches on eventId alone, ignoring guestId — two guest records sharing one event ID collapse to the first in projection order; fixtures fixed with distinct event IDs, but a backend returning duplicate eventIds across guests would misattribute (Packet B follow-up candidate; not touched). (2) Purchase operational-note prose strings in TS left in place: c-step-c tests pin their contents, so the evidence-only migration is deferred rather than half-done. (3) Turn-2 close→pausar mis-mapping is a model error under an already-correct extraction scope (both cerrar/pausar allowed, close_pause.txt distinguishes them); no code change, review only. (4) Genuine close-vs-pause ambiguity falls through to existing contextual clarification; no new closure state or phrase handler added. (5) Live fixture inbound-history gaps (extractor seeing only prior outbound) are a backend/fixture capture property — runtime projects both directions when present (pinned by the new twin). (6) Other dirty-tree areas (prompts/evals owned by A/D, RSVP executor wiring owned by B) untouched; working tree still carries those packets' uncommitted changes.
+
+## 2026-09-14 — Packet D: finish native image simplification (Fixer)
+
+**Reason:** Audit native-context-rsvp-audit-2026-09-14 Packet D. Files expiry constant still 432000 (five days) against the one-day direction; media-error turns projected fake human intent (solicitar_humano/1.0) plus planning categories, ranking criteria and capability catalog into reply inputs; response contract and image outcomes offered URL alternatives and requested re-uploads; aclarar contract requested images.
+**Files (Packet D scope only, sole writer):**
+- src/core/image-attachments.ts (sha256 7425677009ada1e90750fcb2e6b94734b96ecbd615f36b1a7dcfeb5009e066a5): IMAGE_FILE_EXPIRY_SECONDS 432_000 → 86_400 (one day); five-day doc comments updated. Existing refs keep their recorded expiry (honored, never rewritten); expiry bounds media availability only, never historical purchases/facts.
+- src/runtime/image-file-store.ts (48f6829a23a64ab625af5fa8689f1ea3471e697b8cc2ef3544f00f06032dff6f): stale five-day comments → one-day. Upload path unchanged (validation, awaited upload, purpose vision, provider-expiry trust).
+- src/runtime/agent-service.ts (27a30723212b2597d26be5e8a5680c174ecc62a12bc7c838a7b22a3296eeeb26): new buildNeutralMediaExtraction (actionIntent null, intentConfidence null, no categories, providerFitCriteria null) now backs all five media-error paths (media-only, inbound-unavailable, replyImageUnavailable, established-node file-access fallback, information-flow retained-image fallback) plus the file/URL turn extraction-failure fallbacks (previously spread the escalation base with solicitar_humano/1.0 + rankingNotes). Genuine escalation/suppression paths (soft-pause, offer-accept, terminal-OTP, classifier suppression) untouched. Stale five-day/URL-alternative comments updated. Image-only silent operationalNote reviewed: trace-only, no model input, no fixed user-facing acknowledgement — kept.
+- src/runtime/openai-agent-runtime.ts (4c4e8e50e30658b71fec2dc5a5b915700c2e981dd33fe78b235041ec52303032): reply input suppresses planning-category suggestions and the capability catalog whenever imageEvidence is present (any status, any node); previously deteccion_intencion image-unavailable replies carried both. Native wire unchanged and reconfirmed: URL → {type: input_image, image_url}, file → {type: input_image, file_id} via installed-SDK serialization (never textual ID, never input_file). Extractor clarification strings untouched (C).
+- prompts/nodes/resolver_consultas_informativas/response_contract.txt (a779ded348c15a02166a5074375fbf8626dcf78da5ed4a16c3092860b3879de7): image_evidence rule no longer offers a URL alternative; answer from profile/record, ask only for the specific missing fact; explicit ban on requesting image/re-upload/URL/transcription.
+- prompts/nodes/resolver_consultas_informativas/image_outcomes.json (c4df6df638b0fea0c24a29d463d602f5ea6d6945c598d7991af09cec9be14d26): URL-recovery alternatives removed from image_too_large/media_unavailable; answer from record via order/date linkage.
+- prompts/nodes/resolver_consultas_informativas/capability_boundary.txt (e4027938380457587902928736cc761fe86366606e39a083e479a48065da545d): image_limitation/proof_limitation rewritten (no image-content requests, no handoff solicitation; receipt never proves approval); all 10 parser keys kept.
+- prompts/nodes/aclarar_pedir_faltante/response_contract.txt (34e7fe73da3476b29085bc92448b113b7c321493423083a7a6c5b3a43229c58b): image-request line replaced with answer-from-record + specific-fact rule.
+- tests/image-file-persistence.test.ts (a7fb1549c5142fb820374a9f4f85cec5d8adacd13c228436b82359a163f520c3): one-day upload assertions + new legacy five-day ref honored-active test. tests/r8-image-observation.test.ts (805d52c0f45b2a6704c6fb422732d20042d4ea67a01c674a5c645db): URL-alternative pin flipped to absence, outcomes scrubbed of URL/resend language, capability_boundary added to the sweep. tests/s17-image-turn.test.ts (4725de5bfc3524a183f83de5485b83d42b96c3f257ef0b0e523b7347045374e2): fallback titles neutralized + neutral-extraction assertions on both unavailable paths. tests/image-sdk-wire.test.ts (f5cfe53b50c4181f3fae326f2a30655855724e5320519ff76ea88c3688cbb34a): +1 test proving deteccion_intencion image-evidence replies carry no planning categories/capability catalog while keeping image_evidence facts.
+**Validation:** `npx tsc --noEmit` clean. Touched suites: image-file-persistence 61/61, s17 27/27, r8 8/8, image-sdk-wire 3/3, r3-access-fallback 33/33, eval-image-fixture-integrity 7/7 (in run), url-image-context 22/22 — combined 161/161. Neighbors capability-boundary 8/8 + prompt-loader 15/15 pass. Full live gate NOT run (orchestrator-owned).
+**Limitations / reports:** (1) prompts change moves the resolver_consultas_informativas prompt-audit pin 18717 → 18779 (+62 bytes, exactly the rewritten image_evidence rule); tests/prompt-audit.test.ts is outside Packet D scope so the re-pin is left for the orchestrator/Packet E — currently 1 pin fails there. (2) buildSyntheticUnsupportedImageExtraction has zero callers (dead); left untouched. (3) replyOnEstablishedImageNode fallback composes with the real extraction (replyExtraction feeds the trace only) — preserved deliberately so a genuine pending question survives the retry. (4) No debounce/waiting infrastructure added; cross-invocation single-answer promises not made. Quota limitation noted, not solved. (5) Image-only planning-question wording and trailing menus remain model-wording quality issues under the tightened evidence; not turned into runtime rules. Other dirty-tree areas (A/B/C) untouched.
+
+## 2026-09-14 — Packet E partial: service validation + dev deploy + targeted live acceptance (Fixer)
+
+**Reason:** Orchestrator Packet E (partial, no full gate, no promotion). Packets A-D + pin fix landed uncommitted on HEAD bdb4a88a; single artifact used throughout, no rebuild between deploy and live runs.
+**Step 1 validation:** `npx tsc --noEmit` clean (exit 0). Full offline suite 176 files / 1701 passed / 5 skipped / 0 failed. `tests/live-behavior-coverage.test.ts` 1/1 pass (every registered change points to a mandatory live Lambda case with hard structural + requireJudge semantic expectations; long threads kept diagnostic-only, no fabricated hashes).
+**Step 2 deploy (se-dev, us-east-1, fail-closed):** STS verified account 684516060775 (user Leo) before mutating. `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` exit 0. Git SHA bdb4a88ac3b3c4fe424a2663fa4f79c6d5f6f157 (dirty worktree preserved, no commit/reset/stash). Artifact SHA-256 dab6f421c96d6f29f6a4df119e832e7841a2ddc70adcdd292b5839c190e2b82f (7236400 bytes), S3 s3://recap-agent-artifacts-684516060775-us-east-1/lambda/dab6f421c96d6f29f6a4df119e832e7841a2ddc70adcdd292b5839c190e2b82f.zip. BEFORE Lambda CodeSha256 oOvVIP/VcmptDuF2oLH9ApiwB2kct7g9u0Wa10zDu5s= (2026-09-14T19:22:08Z) → AFTER 2rb0Icltbyn2pN8RnoMueEGi3ccK3N0pK1g5wZDiuC8= (2026-09-14T22:01:37Z), Active/Successful, stack recap-agent-runtime-dev UPDATE_COMPLETE, Function URL unchanged, provider-sync skipped. Rollback identity: prior CodeSha256 oOvVIP… (redeploy prior content-addressed key). Health: Function URL returns HTTP 401 (auth-required, alive); no Lambda timeouts in any live run (local yield only). Production untouched.
+**Byte pins (current probe):** resolver_consultas_informativas serializedRequestBytes 18666 (−113 vs Packet D 18779, re-pinned at HEAD); responder_invitacion instructionBytes 9034 (anchor 8233, delta +801 per static comparison); extractor/support pins per prompt-audit (support 7986/8570). No rebuild after deploy; live runs executed on dab6f421 bytes.
+**Step 3 targeted live (one run/case, same dab6f421 artifact, all runs totalCases=1, 0 skipped):**
+- event_context_long_thread 4552d3d3: failed, 4/4 turns executed, all 4 read-only tool_usage PASS (no RSVP writes, no disambiguation), semantics 2/4 (turn1 wedding adds unsupported "en Lima"; turn3 thanks repeats event details).
+- native_image_long_thread f3b900dd: failed, 6/6 turns executed, arrival-silent PASS, no-unsolicited-effects 5/6 (turn2 forbidden request_human_takeover), semantics 1/4 (amount turn escalates to human instead of S/ 250.00; recall + payment-boundary turns empty responses).
+- s11_rsvp_durability_confirms_once a1df5687: ERRORED, 0 turns, HTTP 500 deterministic product-infra defect: execution role denied dynamodb:ConditionCheckItem on dev-plans table (Packet B saveFenced TransactWrite has no IAM grant in stack.yaml). No retry (deterministic, not transport). Partial artifact preserved.
+- s08_kiara_approved_replay a086ef13: PASSED 1.0, 1 turn, all 3 hard assertions pass.
+- purchase_delia_status_by_phone 67f42449: PASSED 0.995, 1 turn, all hard assertions pass.
+- image_file_malformed_unavailable df61aa0c: failed, 1 turn, tool_usage PASS (no inspect, no effect), semantic FAIL (asks user to resend image, rubric-forbidden).
+- image_expired_reference_resubmit 1f568ce0: failed, 1 turn, structural PASS, semantic FAIL (asks user to re-share image).
+- s3-stale-ref-silence-fails ec1f3880: failed, 1 turn, structural PASS, semantic FAIL (asks for re-send/attachment).
+- purchase_explicit_time_alternatives f7c5f1a2: failed, 1 turn, structural PASS, semantic FAIL (claims no recorded hour; expected 21:31 timezone-unknown).
+- tito_numbered_name_and_post_rsvp_closure 4c3407e5: ERRORED, 0 turns executed (executed-turn count ZERO, flagged), same ConditionCheckItem IAM denial on turn 0 (product-infra, deterministic, no retry). Partial artifact preserved.
+- token_seeded_selection_defer_close 8461bb4f: failed, 4 turns, all structural PASS (tokens, photo selected, catering deferred ops), semantic FAIL (catering described as "pendiente de elección" instead of options-discarded).
+**Diagnostic-only verdict:** targeted passes (s08, delia) do not establish completion; all failures/errors are diagnostic evidence, not release proof. Zero skips everywhere; selected-case count 1/1 and executed turns non-zero except tito (0, errored).
+**Step 4 matched comparison:** candidate side complete (above runs are under the revised oracle contract on dab6f421). Baseline side NOT executed: frozen baseline artifact key for the lean-conversation acceptance was not named in the dispatch; deploying a different baseline to dev would break the same-artifact chain and risk leaving dev on non-candidate bytes, so dev was left on candidate dab6f421. No rescoring, no promotion, production unchanged.
+**Unresolved limitations:** (1) Packet B lease-fenced RSVP writes are undeployable as-is: Lambda role lacks ConditionCheckItem/TransactWriteItems — every RSVP-mutating live turn 500s (s11, tito proof). Needs stack.yaml IAM grant + redeploy (orchestrator call). (2) Model still requests image resend on malformed/expired/stale refs despite prompt bans (3 cases, product wording defect). (3) Native long thread amount/recall/payment-boundary turns empty or escalating. (4) Event thread location mixing ("en Lima") + thanks-turn detail repetition. (5) Explicit-time turn reports no-hour instead of 21:31. Full gate + identical-artifact promotion out of scope.
+
+## 2026-09-14 — Product-infra fix: dev-only TransactWrite grant for lease-fenced RSVP writes (Fixer)
+
+**Reason:** Deterministic product-infra defect blocking all RSVP-mutating live turns: Lambda execution role denied dynamodb:ConditionCheckItem on dev-plans table (Packet B saveFenced TransactWrite has no IAM grant in stack.yaml). Evidence: runs a1df5687 (s11, 0 turns, HTTP 500) and 4c3407e5 (tito, 0 turns).
+**Scope:** Infrastructure definition only (infra/cloudformation/stack.yaml) + this log entry. No runtime RSVP logic, prompts, evals/cases touched. No second table, no TTL change, existing lease/lock design preserved.
+**Policy diff (new resource PlansTransactAccess, Condition: IsDevelopment, Resource: !GetAtt PlansTable.Arn):**
+```yaml
+  PlansTransactAccess:
+    Type: AWS::IAM::Policy
+    Condition: IsDevelopment
+    Properties:
+      PolicyName: recap-agent-plans-transact
+      Roles:
+        - !Ref RuntimeRole
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - dynamodb:TransactWriteItems
+              - dynamodb:ConditionCheckItem
+            Resource: !GetAtt PlansTable.Arn
+```
+**Least-privilege note:** Both actions granted because DynamoDB TransactWriteItems requires per-operation permissions — TransactWriteItems alone does not cover the ConditionCheck item (verified against saveFenced call sites: src/storage/dynamo-plan-store.ts saveFenced via buildFencedPlanTransactInput Put + TURN_LOCK ConditionCheck, src/storage/dynamo-rsvp-effect-store.ts Put + TURN_LOCK ConditionCheck). The transact Put reuses the existing recap-agent-dynamo PutItem grant on the same table ARN, so only the two missing actions were added. Item-level TURN_LOCK scoping stays in the runtime ConditionExpression (owner_id + lease_until_ms), not IAM — no dynamodb:LeadingKeys condition added, to avoid breakage on the shared conversation partition key.
+**Prod isolation:** New policy carries Condition: IsDevelopment, so stack recap-agent-runtime (production) effective permissions are unchanged; dev stack recap-agent-runtime-dev gains the grant on its own ${FunctionName}-plans table only.
+**STS identity (se-dev/us-east-1, fail-closed):** AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws sts get-caller-identity → Account 684516060775, Arn arn:aws:iam::684516060775:user/Leo, exit 0. Verified before validation; no mutating AWS call made.
+**Validation:** `npx tsc --noEmit` exit 0 (clean). `aws cloudformation validate-template --template-body file://infra/cloudformation/stack.yaml` exit 0 (valid). cfn-lint not installed — skipped with reason (binary absent, validate-template passed instead).
+**Redeploy:** NOT performed in this task per dispatch (orchestrator redeploys the identical artifact after review). Live reruns of s11 (a1df5687) and tito (4c3407e5) are orchestrator-owned after redeploy; no live runs executed here.
+**Unresolved limitations:** (1) Fix is unproven until orchestrator redeploys dev and reruns s11/tito to non-zero executed turns without HTTP 500. (2) Dirty worktree retains unrelated uncommitted Packet A-D + pin changes (HEAD bdb4a88a); this entry's change is the PlansTransactAccess block only. (3) No hardcoded prose, no new tables added.
+
+## 2026-09-14 — Dev redeploy (IAM fix landed) + RSVP-blocked targeted reruns s11/tito (Fixer)
+
+**Reason:** Redeploy development with the landed IAM fix (PlansTransactAccess: TransactWriteItems + ConditionCheckItem on dev plans table) and rerun ONLY the two RSVP-blocked cases. No runtime/prompts/evals logic touched. Oracle semantic diagnosis runs separately (read-only).
+**Scope:** Redeploy dev stack + two single-case live reruns + this log entry. Production untouched. No other of the 9 targeted cases, no full 114 gate, no promotion.
+**STS identity (se-dev/us-east-1, fail-closed):** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 aws sts get-caller-identity` → Account 684516060775, Arn arn:aws:iam::684516060775:user/Leo, exit 0. Verified before any mutating call.
+**Git:** HEAD bdb4a88a (regate: re-pin manifest 11939a8a artifact 1071064b run 67d9dbe7 83/84). Worktree retains uncommitted packets A-D + pin + IAM stack.yaml changes per `git status --short` (dirty, same as pre-deploy baseline).
+**Deploy:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` exit 0.
+- BEFORE: Lambda recap-agent-runtime-dev CodeSha256 2rb0Icltbyn2pN8RnoMueEGi3ccK3N0pK1g5wZDiuC8=, stack recap-agent-runtime-dev UPDATE_COMPLETE @ 2026-09-14T22:01:31Z.
+- AFTER: artifact SHA-256 de0ff85895578d99c822c1ca487445e787d55e4fa9752f602af02ba35d8c21d0, S3 key s3://recap-agent-artifacts-684516060775-us-east-1/lambda/de0ff85895578d99c822c1ca487445e787d55e4fa9752f602af02ba35d8c21d0.zip, Lambda CodeSha256 3g/4WJVXjZnIIsHKSHRF54fVXk+pdS9gKvAro12MIdA= (LastModified 2026-09-14T22:09:52Z), stack UPDATE_COMPLETE @ 2026-09-14T22:09:47Z. Same code bytes redeployed; CloudFormation update applied PlansTransactAccess.
+- Health: Function URL https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/ → HTTP 401 in ~1.9s, alive, no timeouts. Provider-sync stack deploy skipped (default opt-out).
+**Rerun 1 — live_behavior.s11_rsvp_durability_confirms_once:** `npm run eval:behavior-live -- --case live_behavior.s11_rsvp_durability_confirms_once` → runId eval-2026-09-14T22-10-36-583Z-6241f5ce, selected 1/1, executed turns 1 (non-zero, was 0 pre-fix), no HTTP 500 (delivery send, verified origin transport-v2). Hard: remains-in-rsvp-node PASS, reads-authoritative-rsvp-state PASS, exactly-one-rsvp-write-receipt PASS (attempts=1 successes=1 replays=0), no-rsvp-vocabulary PASS; reports-confirmed-final-state-once (text_semantic) FAIL — response confirms attendance in Spanish ("Tu asistencia quedó confirmada para Otra celebración prueba, el 19 de agosto de 2026") with verified read-back (get_guest_event_detail after guest_rsvp), but judge requires the reply text itself to include the write receipt (one attempt, one success, no replays). Final score 0.79, status failed. Classification: TRANSPORT FIXED, remaining failure is PRODUCT (semantic rubric strictness), not infra.
+**Rerun 2 — live_behavior.tito_numbered_name_and_post_rsvp_closure:** `npm run eval:behavior-live -- --case live_behavior.tito_numbered_name_and_post_rsvp_closure` → runId eval-2026-09-14T22-11-01-854Z-d6cf1083, selected 1/1, executed turns 2 (non-zero, was 0 pre-fix), no HTTP 500. Hard: first-turn-reads-rsvp-state-without-account-auth PASS, post-rsvp-comment-performs-no-rsvp-write PASS, post-rsvp-comment-uses-no-rsvp-vocabulary PASS; post-rsvp-comment-preserves-attendance-with-one-acknowledgement (text_semantic) FAIL — turn 0 ("Hola, confirmo mi asistencia") got a clarification question (no event match), turn 1 thanks-turn replied with gratitude plus a reopening question ("¿a qué celebración te refieres? ... o prefieres cerrar la conversación sin confirmar asistencia?"), which the judge counts as reopening selection instead of closure. Final score ~0.78, status failed. Classification: TRANSPORT FIXED (turns execute, no 500), remaining failure is PRODUCT (post-RSVP closure wording), not infra.
+**Artifacts preserved:** .eval-runs/eval-2026-09-14T22-10-36-583Z-6241f5ce (s11) and .eval-runs/eval-2026-09-14T22-11-01-854Z-d6cf1083 (tito), each with report.json/report.md/results.jsonl/artifacts. No candidate changes between turns. No retry on deterministic outcome (both failures are judge-semantic, not flaky infra).
+**Unresolved limitations:** (1) Both cases still FAIL on text_semantic judges — fix is product wording/rubric alignment, owned by oracle diagnosis + orchestrator, out of scope here. (2) Targeted passes do not establish completion; full gate + promotion explicitly not run. (3) Dirty worktree (packets A-D + pin + IAM change) still uncommitted at HEAD bdb4a88a.
+
+## 2026-09-14 — Dev redeploy (P1-P4 fixes) + 11 targeted live reruns (Fixer)
+
+**Reason:** Redeploy development with P1-P4 fixes from the dirty worktree and rerun the 11 targeted live cases on the single new artifact. No rebuild between deploy and runs. No runtime/prompt/eval edits in this task. Production untouched. No full 114 gate, no promotion.
+**Scope:** STS fail-closed check, git/artifact record, one dev deploy, eleven single-case live reruns (history preserved, no candidate changes), this log entry.
+**STS identity (se-dev/us-east-1, fail-closed):** `aws sts get-caller-identity --profile se-dev --region us-east-1` → Account 684516060775, Arn arn:aws:iam::684516060775:user/Leo, exit 0. Verified before any mutating call.
+**Git:** HEAD bdb4a88a (regate: re-pin manifest 11939a8a artifact 1071064b run 67d9dbe7 83/84). Worktree dirty (uncommitted P1-P4 + pin + stack changes, `M`/`??` per status); deployed from this worktree as-is, no commits, no stashes.
+**Deploy:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` exit 0.
+- BEFORE: Lambda recap-agent-runtime-dev CodeSha256 3g/4WJVXjZnIIsHKSHRF54fVXk+pdS9gKvAro12MIdA= (LastModified 2026-09-14T22:09:52Z), stack recap-agent-runtime-dev UPDATE_COMPLETE @ 2026-09-14T22:09:47Z.
+- AFTER: artifact SHA-256 c9f373f847553697fc86dbc30ed42976dc67d3f213b1b2eb83e76f91c6631660, S3 key s3://recap-agent-artifacts-684516060775-us-east-1/lambda/c9f373f847553697fc86dbc30ed42976dc67d3f213b1b2eb83e76f91c6631660.zip, Lambda CodeSha256 yfNz+EdVNpf8htvDDtQpdtxn0/ITsbLrg+dvkcZjFmA= (LastModified 2026-09-14T22:24:24Z), stack UPDATE_COMPLETE @ 2026-09-14T22:24:19Z.
+- Health: Function URL https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/ → HTTP 401, alive. Provider-sync stack deploy skipped (default opt-out).
+**Reruns (each `npm run eval:behavior-live -- --case <id>`, selected 1/1, executed turns non-zero, zero skips, single artifact, history preserved):**
+1. live_behavior.event_context_long_thread → runId eval-2026-09-14T22-25-05-615Z-aebbaf45, PASS, hardGate true, score 0.8914, toolCalls 18. Hard tool_usage 3/3 PASS; text_semantic 3/3 PASS with requireJudge hashes (Cumpleaños Marta 21-sep 19:00 answered, Boda Ana y Luis 20-sep 18:00 resolved, no image/URL resend, no event mixing).
+2. live_behavior.native_image_long_thread → runId eval-2026-09-14T22-26-02-719Z-51463cd9, FAIL, hardGate false, score 0.7799, toolCalls 21. All 6 tool_usage + all 4 text_semantic PASS (S/ 250.00 reported, no image/URL resend, thanks-turn silence acceptable); hard trace_field_equals FAIL: plan_persist_reason "image_file_turn_processed" vs expected "image_file_silence". Classification: PRODUCT (persist-reason contract vs runtime), not transport.
+3. live_behavior.s11_rsvp_durability_confirms_once → runId eval-2026-09-14T22-27-02-567Z-5740e87a, FAIL, hardGate false, score 0.79, toolCalls 8. Hard node_transition/tool_usage/fixture_effect_count (1 attempt 1 success 0 replays)/text_not_contains PASS; text_semantic FAIL: reply confirms attendance in Spanish but omits the write receipt (attempt/success/replay counts) the rubric demands in user text. Classification: PRODUCT (semantic rubric strictness), not transport. No HTTP 500, write path executes.
+4. live_behavior.s08_kiara_approved_replay → runId eval-2026-09-14T22-27-31-710Z-12e6ff86, PASS, hardGate true, score 0.9947, toolCalls 4. Approved status reported once in Spanish, no forbidden data asks.
+5. live_behavior.purchase_delia_status_by_phone → runId eval-2026-09-14T22-27-49-073Z-030be927, PASS, hardGate true, score 0.9947, toolCalls 4. Approved payment reported once, no pending/failed/verifying language.
+6. live_behavior.image_file_malformed_unavailable → runId eval-2026-09-14T22-28-41-321Z-10989047, FAIL, hardGate false, score 0.74, toolCalls 2. tool_usage PASS (no inspect, no effect); text_semantic FAIL: reply in Spanish admits it cannot see the image and asks nothing forbidden, but asks a vague "what do you want to review" instead of the specific factual datum needed. Classification: PRODUCT (recovery-question specificity), not transport.
+7. live_behavior.image_expired_reference_resubmit → runId eval-2026-09-14T22-28-56-875Z-cc668432, FAIL, hardGate false, score 0.8, toolCalls 3. tool_usage + text_not_contains PASS (no resend/URL/internal IDs); text_semantic FAIL: reply says image unavailable but offers generic options instead of answering from authorized evidence or asking only the specific missing fact. Classification: PRODUCT, not transport.
+8. live_behavior.s3-stale-ref-silence-fails → runId eval-2026-09-14T22-29-16-996Z-0221ce81, FAIL, hardGate false, score 0.7333, toolCalls 2. tool_usage + text_not_contains PASS (no false persist, no false success); text_semantic FAIL: reply explains the image cannot be read but neither answers from authorized evidence nor asks the specific factual question. Classification: PRODUCT, not transport.
+9. live_behavior.purchase_explicit_time_alternatives → runId eval-2026-09-14T22-29-31-528Z-44736d65, FAIL, hardGate false, score 0.7333, toolCalls 4. text_semantic PASS: 21:31 answered, no timezone, no 05:00/17:00 conversion, no invented currency; node_transition PASS; tool_usage FAIL: Missing=lookup_guest_orders_by_phone (agent answered from alternate evidence path without the mandated phone-lookup tool). Classification: PRODUCT (tool-path mandate vs evidence-sufficient answer), not transport.
+10. live_behavior.tito_numbered_name_and_post_rsvp_closure → runId eval-2026-09-14T22-29-49-044Z-537cbc11, PASS, hardGate true, score 0.9444, toolCalls 9. Read-only RSVP state, no post-comment write, no RSVP vocabulary, single acknowledgement preserving attendance. Semantic lift vs prior run confirmed (was failing, now passes).
+11. live_feedback.token_seeded_selection_defer_close → runId eval-2026-09-14T22-30-19-485Z-4dec43b7, FAIL, hardGate false, score 0.8683, toolCalls 4. All hard token_usage/plan_field/trace_field PASS (Carlos Schult kept for photography, catering deferred, contact data acknowledged); text_semantic FAIL: reply does not ask the missing event date nor communicate a close result/next close step. Classification: PRODUCT (close-flow continuation), not transport.
+**Tally:** 4 passed / 7 failed / 0 skipped / 0 errored. Every run selected 1/1 with non-zero executed turns. Artifacts preserved under .eval-runs/<runId>/ (results.jsonl, report.json/md, artifacts/). No polling gaps, no partials lost, no candidate changes between runs.
+**Byte notes:** No code/prompt/eval edits in this task, so no serialized-instruction byte delta applies. New artifact 6.9 MiB zip (SHA c9f373f8…1660). Log-only change to docs/implementation-log.md.
+**Unresolved limitations:** (1) 7/11 targeted cases still FAIL — all on hard product expectations (trace/plan persist reasons, tool-path mandates, semantic recovery/close wording), none on transport; fixes owned by oracle diagnosis + orchestrator, out of scope here. (2) Targeted passes do not establish completion; full 114 gate explicitly not run, promotion explicitly not performed. (3) Dirty worktree still uncommitted at HEAD bdb4a88a; artifact c9f373f8…1660 corresponds to uncommitted bytes, not a commit. (4) s11 semantic lift not achieved (still fails on write-receipt-in-text); tito semantic lift achieved (now passes).
+
+## 2026-09-14 — Dev redeploy (7-gap fixes) + 11 targeted live reruns, artifact 5e846b (Fixer)
+
+**Reason:** Redeploy development with the 7-gap fixes from the dirty worktree (silent image persist, s11/explicit-time fixtures, empty-evidence recovery facts + rubric sentences, close stall) and rerun the 11 targeted live cases on the single new artifact. No rebuild between deploy and runs. No runtime/prompt/eval edits in this task. Production untouched. No full 114 gate, no promotion.
+**Scope:** STS fail-closed check, git/artifact record, one dev deploy, eleven single-case live reruns (history preserved, no candidate changes), this log entry.
+**STS identity (se-dev/us-east-1, fail-closed):** `aws sts get-caller-identity --profile se-dev --region us-east-1` → Account 684516060775, Arn arn:aws:iam::684516060775:user/Leo, exit 0. Verified before any mutating call.
+**Git:** HEAD bdb4a88a (regate: re-pin manifest 11939a8a artifact 1071064b run 67d9dbe7 83/84). Worktree dirty (7-gap fixes + prior pin/stack changes uncommitted); deployed from this worktree as-is, no commits, no stashes.
+**Deploy:** `AWS_PROFILE=se-dev AWS_REGION=us-east-1 DEPLOYMENT_ENV=development npm run deploy` exit 0.
+- BEFORE: Lambda recap-agent-runtime-dev CodeSha256 yfNz+EdVNpf8htvDDtQpdtxn0/ITsbLrg+dvkcZjFmA= (LastModified 2026-09-14T22:24:24Z).
+- AFTER: artifact SHA-256 5e846b195fe415d11f9afc32b1a660aaee21d2c6072b2d36acd76179a6a549ff, S3 key s3://recap-agent-artifacts-684516060775-us-east-1/lambda/5e846b195fe415d11f9afc32b1a660aaee21d2c6072b2d36acd76179a6a549ff.zip, Lambda CodeSha256 XoRrGV/kFdEfmvwysaZgqu4h0sYHKy02rNdheaalSf8= (LastModified 2026-09-14T22:45:31Z), stack recap-agent-runtime-dev UPDATE_COMPLETE @ 2026-09-14T22:45:26Z.
+- Health: Function URL https://2lmbpyf24mdgri5m7gk2doe4ri0pjdgh.lambda-url.us-east-1.on.aws/ → HTTP 401, alive. Provider-sync stack deploy skipped (default opt-out).
+- Single artifact: .artifacts/recap-agent.zip SHA re-verified 5e846b…549ff after all 11 runs (no rebuild between deploy and runs).
+**Reruns (each `npm run eval:behavior-live -- --case <id>`, selected 1/1, executed turns non-zero, zero skips, zero errors):**
+1. live_behavior.event_context_long_thread → runId eval-2026-09-14T22-46-19-789Z-e3bb266b, FAIL, score 0.799, turns 4, toolCalls 20. Hard tool_usage 4/4 PASS; text_semantic 3/4 PASS (Cumpleaños Marta 21-sep 19:00, Boda Ana y Luis 20-sep 18:00, hour-only re-ask all correct); context-3 FAIL score 0.1 — thanks-turn repeats all event details, explicitly banned by rubric. Classification: PRODUCT (closing-turn verbosity), not transport. Note: was PASS on c9f373f8 (0.8914) — judge variance or verbosity regression, flagged for oracle.
+2. live_behavior.native_image_long_thread → runId eval-2026-09-14T22-47-16-646Z-25a35aae, FAIL, score 0.783, turns 6, toolCalls 20. image-arrival-silent PASS (plan_persist_reason trace matched — 7-gap fix item 1 confirmed: silent persist with resolver bundle, reason image_file_silence); no-unsolicited-effects 6/6 PASS; contextual-response-3/4/5 PASS; contextual-response-2 FAIL score 0.05 — asks unnecessary image clarification instead of answering S/ 250.00. Classification: PRODUCT (amount-answer directness), not transport.
+3. live_behavior.s11_rsvp_durability_confirms_once → runId eval-2026-09-14T22-48-21-049Z-6484d979, PASS, score 0.95, turns 1, toolCalls 8. Node transition, authoritative-state read, fixture_effect_count 1/1/0, observable confirmation once in Spanish, no RSVP vocabulary — all PASS. 7-gap fix item 2 (receipt-dictation removal) confirmed: confirmation without receipt dictation now passes.
+4. live_behavior.s08_kiara_approved_replay → runId eval-2026-09-14T22-48-38-724Z-7e1d26f0, PASS, score 0.989, turns 1, toolCalls 4. Approved status reported once in Spanish with event/total, no forbidden asks.
+5. live_behavior.purchase_delia_status_by_phone → runId eval-2026-09-14T22-48-57-391Z-0a6e9cf4, PASS, score 1.0, turns 1, toolCalls 4. Gift identified, approved stated once, no pending/failed language.
+6. live_behavior.image_file_malformed_unavailable → runId eval-2026-09-14T22-49-18-222Z-548a6d3e, FAIL, score 0.6, turns 1, toolCalls 2. tool_usage PASS (no inspect, no effect); text_semantic FAIL — Spanish unavailable-image notice present but recovery question vague ("qué parte se quiere revisar") instead of the single specific factual datum. Classification: PRODUCT (bounded fact-ask specificity still open despite record-check facts + rubric sentence), not transport.
+7. live_behavior.image_expired_reference_resubmit → runId eval-2026-09-14T22-49-32-391Z-4ec6966b, FAIL, score 0.853, turns 1, toolCalls 3. tool_usage + text_not_contains PASS (no resend/URL/internal IDs); text_semantic FAIL 0.45 — "dime cuál" vague, does not name the single specific missing datum. Classification: PRODUCT, not transport.
+8. live_behavior.s3-stale-ref-silence-fails → runId eval-2026-09-14T22-49-53-332Z-c9b3d34c, FAIL, score 0.827, turns 1, toolCalls 2. tool_usage + text_not_contains PASS (no false persist, no false success); text_semantic FAIL 0.35 — vague purchase-review phrase, no authorized-evidence answer or specific fact question. Classification: fails BY DESIGN (silence-with-speech rubric unchanged); PRODUCT, not transport.
+9. live_behavior.purchase_explicit_time_alternatives → runId eval-2026-09-14T22-50-07-970Z-dac47834, FAIL, score 0.88, turns 1, toolCalls 4. Node transition + phone-orders tool_usage PASS (7-gap fix item 6 gift-partition mustCall confirmed — explicit-time gift lookup now routes); text_semantic FAIL 0.55 — 21:31 correct with no timezone and no 05:00/17:00, but reply adds status/amount/currency/validation-window beyond hour-only instruction. Classification: PRODUCT (hour-only brevity), not transport.
+10. live_behavior.tito_numbered_name_and_post_rsvp_closure → runId eval-2026-09-14T22-50-35-856Z-2b3f5c41, FAIL, score 0.764, turns 2, toolCalls 9. Read-only RSVP read, no post-comment write, no RSVP vocabulary PASS; closure FAIL 0.1 — thanks-turn re-asks the celebration and reopens confirmation instead of one acknowledgement preserving verified attendance. Classification: PRODUCT (post-RSVP closure wording), not transport. Note: was PASS on c9f373f8 (0.9444) — regression or judge variance, flagged for oracle.
+11. live_feedback.token_seeded_selection_defer_close → runId eval-2026-09-14T22-51-01-107Z-1c98123e, PASS, score 0.953, turns 4, toolCalls 4. Token usage, photography-selected, catering-defer, close behavior 0.95 — Carlos Schult kept, contact data used, date-ask/close continuation present, no catering re-ask. 7-gap fix item 7 (close stall) confirmed.
+**Tally:** 4 passed / 7 failed / 0 skipped / 0 errored. Every run selected 1/1 with non-zero executed turns. Zero transport failures across all 11 (all tool_usage/node_transition/trace/plan hard gates PASS except prior-round categories now fixed). All remaining failures are hard product expectations (semantic wording/recovery/close) or by-design (s3). Artifacts preserved under .eval-runs/<runId>/ (results.jsonl, report.json/md, artifacts/). No polling gaps, no partials lost, no candidate changes between runs.
+**Byte notes:** No code/prompt/eval edits in this task, so no serialized-instruction byte delta applies. New artifact 6.9 MiB zip (SHA 5e846b…549ff). Log-only change to docs/implementation-log.md.
+**Unresolved limitations:** (1) 7/11 still FAIL — all product/by-design, none transport; fixes owned by oracle diagnosis + orchestrator, out of scope here. (2) event_context and tito flipped PASS→FAIL vs the c9f373f8 round while native-silence/s11/token/explicit-time-tool-path flipped FAIL→PASS — net same 4/11 tally with different composition; judge variance vs true regression needs oracle read of the paired run artifacts. (3) Empty-evidence bounded fact-ask still open on malformed/expired/s3 despite the record-check facts + rubric sentences. (4) Targeted passes do not establish completion; full 114 gate explicitly not run, promotion explicitly not performed. (5) Dirty worktree still uncommitted at HEAD bdb4a88a; artifact 5e846b…549ff corresponds to uncommitted bytes, not a commit.
+
+## 2026-09-14 — Recheck of 5e846b implementation
+
+Audited latest11 targeted artifacts and retrieved22 actual model requests. Added recheck-5e846b-2026-09-14.md distinguishing fixed paths from residual defects and overstrict image oracles.16 focused tests pass. Adversarial executor probe reproduces successClaimAllowed=true for hasResponded=false/willAttend=true; saveResult receives4 arguments, leaving optional lease transaction unreachable. Source also permits historical replay observations to overwrite current profile. No runtime edits, new live generation, deploy or promotion.
+
+## 2026-09-14 — Host-policy correction and event identity expansion
+
+Operator confirms hasResponded=false/willAttend=true is valid after host changes. Withdrawn rejection requirement; ordinary attendance reader currently contradicts willAttend and needs alignment. Reproduced helper-level pending-over-explicit selection, sole-event explicit mismatch in RSVP and information paths, and same-name cross-identity date merge. Evidence in event-identity-probes-2026-09-14.json; narrow implementation/validation directions in event-identity-review-2026-09-14.md. No runtime changes.
+
+Event identity live controls completed:7fc6d87f,2/3 pass,0 errors/skips. Four-turn event context and explicit old-target cases preserve dates/times; ambiguous case fails counter/date completeness but does not mix or select events. Documented distinction from reproduced stale-target/name-only-merge source risks. Updated plan headline; no runtime/deploy changes.
+
+## 2026-09-14 — Event identity I1–I3 + RSVP integrity (lease, replay, disclosure gating, R05 oracle) (Fixer)
+
+**Reason:** Implement event-identity-review-2026-09-14.md I1–I3 plus recheck-5e846b-2026-09-14.md RSVP integrity items on top of the held packet tree. No full gate, no promotion, no deploy; dev validation + targeted runs only.
+**Scope (this task's edits only; touched files also carry held packet work — authorship of prior lines unchanged):**
+- I3 `rsvpInvitationState` (agent-service.ts): willAttend boolean takes precedence everywhere; hasResponded is provenance metadata only; null willAttend stays unknown (pending only when hasResponded=false with null attendance).
+- I1 `selectRsvpInvitation`: current explicit event reference resolves first against authorized candidates; unique compatible wins; multiple/zero matches never fall back to stored pending or sole unrelated event. Current guest ID must be a member of candidates and compatible with the ref; disagreement is unresolved. Stored pending usable only when the request switches no target.
+- I1 `lookupRsvpPhoneEvidence` enrichment: first-match replaced with unique-compatible-match; bounded single detail read kept.
+- I1 `projectRsvpPhoneEvidenceForReply`: unresolved explicit reference never resolves into a sole unrelated invitation (returns needs_event_selection); new optional explicitEventReference param.
+- I1 `selectGuestEvent` (information-orchestrator.ts): explicit hint resolves against summaries (unique wins); one-event early return kept only when no hint is present.
+- I2 `sameRsvpEvent`: strict established event-ID match; missing ID keeps records separate. `reconcileRsvpPhoneEvidence` merges only same-ID records with guest-identity guard (`sameRsvpGuest`); different known guests for one event stay separate; associated null guest never nulls the authoritative guest.
+- Replay: `applyVerifiedRsvpReadToPhoneEvidence` now requires status verified AND freshRead=true AND replayed=false. Trace reports only this-invocation calls (guest_rsvp pushed only when a write was performed now; verification read logged only when fresh now) — replay carries no fictional read/write trace.
+- Lease seam: shared `RsvpEffectLeaseContext` (ownerId + nowMs) added to the `RsvpEffectStore` interface for intent/result; executor builds it fresh at each transaction construction from inbound.turnLease via new `leaseOwnerId` arg (+ existing `now` hook); `DynamoRsvpEffectStore.saveIntent` uses a lease-conditioned TransactWrite with TURN_LOCK alongside the receipt Put (saveResult already had it); pre-mutation validateLease kept; read-only recovery retained with no atomicity claim.
+- Tito widening: `reconcileResolvedRsvpSelectionAmbiguity` clears event-selection ambiguity (null or type_missing questionKey, no candidate operations) against a resolved single selection regardless of prior node; document/proof keys and candidate operations untouched. Single invitation still reports state with no new write; gratitude never revives mutation (existing stale-replay guard kept).
+- Manufactured work removal: deleted the inline history-sustain forcing rule and the empty-delta discouragement in openai-agent-runtime.ts extractor input (thanks/closing with no request returns an empty delta; real elliptical inference preserved); continuity evidence keeps elliptical inference and now allows empty delta for thanks; resolver contract no longer binds the reply to extractor ambiguity when resolved image evidence answers it (genuine multi-image ambiguity preserved).
+- Purchase disclosures gated by `disclosures.permitted_aspects` (validation/method, total/balance, currency paragraphs); hour-only stays hour-only. Receipt-is-not-proof keeps the no-team-escalation implication out. Factual constraints kept (no invented currency/balance/timezone).
+- Oracle R05 (evals only, history preserved): malformed v5→v6, expired v4→v5, s3-stale v2→v3. Blocked-pixel-only questions permit a concise honest limitation, an answer from available evidence, or a useful open question about what the customer wants to resolve; no named datum demanded, no blind orders reads; zero reads is not a defect; not_attempted vs empty_result distinguished via record_checks; hard no-fabrication/no-image-or-URL/no-effects kept. RSVP and visible-amount failures untouched.
+- Regressions: tests/event-identity-rsvp.test.ts (7 service tests: pending-A vs explicit-B, sole-A vs named-B zero mutation, identical-name no-merge with ID proof, missing-ID no synthesized date, host true/false display, B-after-A-back-to-A); tests/rsvp-lease-replay-integrity.test.ts (4 tests: executor-to-store lease identity with fresh timestamps, leaseless plain writes, Dynamo TURN_LOCK intent/result transactions incl. intruder rejection, restart-after-host-change with no second write, no stale overwrite, no fictional trace). New live cases: rsvp_explicit_mutation_targets_requested_event, rsvp_unmatched_named_event_no_mutation, rsvp_host_set_declining_consistent (registered in live_behavior_regression suite, now 117 cases).
+**Validation (this task):** `npx tsc --noEmit` clean. New suites 11/11 pass. Touched-suite reruns pass: rsvp-verified-effect 8, dynamo-rsvp-effect-store, seeded-fallback, deterministic-current-state, agent-service-rsvp 32, information-flow 59, mutation-authorization, party-precision, handoff-multi-person, s11-durability, live-behavior-coverage, f3-oracle-revision-mutations 13, prompt-audit (pin updated), agent-service 96, batch4, s16, s17 28, message-classifier 21, r7, f2-reminder, f4-event-date, l4 ×2, model-origin 34, s09, s05, r8, spanish-multi-need, f3-purchase ×2, s6-cart, url-image 22, image-file-persistence 61, cart-amount — all green.
+**Byte notes:** resolver_consultas_informativas serialized pin 18666→19445 (+779, relevance gating documented in prompt-audit.test.ts). Extractor inline sustain removal shortens extractor input (not pinned). Per-branch static comparison responder_invitacion pin (9034 vs measured 8858, -176) FAILS — pre-existing: the working tree's held packet edits rewrote responder_invitacion prompts (deterministic-fragment/tissue removal) without updating that pin; none of this task's edits touch that bundle. Left for the packet owner / orchestrator; reported, not fixed.
+**Unresolved limitations:** (1) No live runs in this task — new live cases are git-tracked but unexecuted; full 114 gate + matched comparison owned by orchestrator before any readiness claim. (2) Ceremony-vs-reception moment specificity has no new dedicated live proof (information-path moments flow unchanged; service twins cover ID binding). (3) Targeted passes ≠ completion; prior lease/replay repairs retained; full release requirements stand.

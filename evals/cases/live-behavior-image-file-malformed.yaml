@@ -1,0 +1,39 @@
+template: template.base-live
+id: live_behavior.image_file_malformed_unavailable
+suite: live_behavior_regression
+version: 6
+description: Malformed base64 degrades to unavailable image evidence without failing the turn. Recovery never asks for an image or URL.
+tags: [live, behavior, image, image-file, base64-persistence, validation]
+targetModes: [live_lambda]
+backendFixture:
+  scenario: image-clean-world
+inputs:
+  - text: Que ves ahi?
+    channel: whatsapp
+    contactPhone: "+51987654321"
+    sessionId: live-image-file-malformed-session
+    image:
+      data: "!!!!not-valid-base64!!!!"
+      mime_type: image/png
+notes:
+  - "F1 2026-09-12: backendFixture scenario image-clean-world; this phone has empty initial history and empty authorized purchase results; never mutable backend data."
+  - No customer content. Malformed payload exercises validation before any upload.
+  - "R05 oracle revision v2 to v3, 2026-09-12, Packet F3. Old file-image-malformed-unavailable expected a file-context tool label for a payload that never uploads, failing correct unavailable evidence. New contract asserts no inspection and zero unauthorized effects, and judges a useful model-written recovery in Spanish. This unavailable-image path stays distinct from successful upload. Old v2 runs preserved; baseline and candidate must rerun on this v3 contract."
+  - "R05 oracle revision v5 to v6, 2026-09-14, recheck-5e846b. The v5 contract demanded a bounded question naming a single specific missing datum even for this blocked-pixel-only request with no identified purchase or field; no tool can recover missing pixels and zero reads is not a defect. New contract permits a concise honest limitation, an answer from available evidence, or a useful open question about what the customer wants to resolve, without demanding a named datum or blind orders reads. Hard no-fabrication, no image-or-URL ask, and no-effects checks stay. Old v5 runs preserved; baseline and candidate must rerun on this v6 contract."
+  - "Blocked-pixel-only scope: turn_state.record_checks with lookups_attempted 0 means no lookup occurred, not an empty backend result. This case evaluates the blocked-pixel question only, separately from genuine backend-status questions."
+expectations:
+  - id: file-image-malformed-no-inspect-no-effect
+    type: tool_usage
+    mustNotCall: [image_inspect, auth_by_phone, request_user_login_code, verify_user_login_code, request_human_takeover, guest_rsvp]
+    severity: hard
+  - id: file-image-malformed-answered-in-spanish
+    type: text_semantic
+    rubric: >-
+      Pass only if the assistant responds entirely in Spanish explaining the image could not be read and then does one of: answers from profile or order evidence already available; asks a useful open question about what the customer wants to resolve without demanding a specific named datum; or states a concise honest limitation with no question when no task can be completed, in natural wording without any fixed required phrase. When the user asks a genuine purchase question answerable from authorized records, relevant reads must come before asking. For this blocked-pixel-only question with no identified purchase or field, zero backend reads is not a defect and no named datum may be demanded. It must never ask the user for an image, a re-upload, a replacement attachment, a resend in text, or a URL link; URLs arrive from the backend only. It must not invent image content, must not claim the image proves anything, must not confirm or approve any payment, and must not ask for an OTP.
+    minScore: 0.8
+    requireJudge: true
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 2500
+  estimatedCompletionTokensPerTurn: 300

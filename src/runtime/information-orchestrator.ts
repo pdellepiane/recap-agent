@@ -3,6 +3,8 @@ import { hostWithdrawalPolicyQuery, parseHostWithdrawalPolicy } from './host-wit
 
 import {
   createInformationAuthGuidance,
+  enrichmentBounds,
+  enrichmentVisitKey,
   type CartInformation,
   type InformationAuthGuidance,
   type InformationExecutionSummary,
@@ -65,6 +67,8 @@ type PhoneEventDetailSuccess = Extract<
   purchases?: PurchaseInformation[];
 };
 
+export type HydratedEventDetail = PhoneEventDetailSuccess;
+
 type PhoneEventDetailResult =
   | PhoneEventDetailSuccess
   | Exclude<AgentEventDetailResult, { status: 'success' }>;
@@ -119,6 +123,34 @@ export type InformationExecution = {
   summaries: InformationExecutionSummary[];
 };
 
+export type EventDetailHydrationFailureKind =
+  | 'not_found'
+  | 'request_failed'
+  | 'not_configured'
+  | 'deadline_exceeded';
+
+export type EventDetailHydrationOutcome = {
+  /** Event details hydrated this pass, keyed by stable event id. */
+  details: Map<number, HydratedEventDetail>;
+  /** Event-scoped purchases surfaced by hydrated details (2nd edge). */
+  purchases: PurchaseInformation[];
+  failures: Array<{ eventId: number; failureKind: EventDetailHydrationFailureKind }>;
+  readsAttempted: number;
+  truncatedByBound: boolean;
+};
+
+export type CustomerLinkedEnrichment = {
+  /** Gift-detail purchases fetched for explicitly targeted orders (edge 1). */
+  readonly giftPurchases: readonly PurchaseInformation[];
+  /** Event details fetched for explicitly targeted events (edge 2). */
+  readonly eventDetails: ReadonlyMap<number, HydratedEventDetail>;
+  readonly readsAttempted: number;
+  readonly truncatedByBound: boolean;
+  /** Required linked detail that stayed unavailable (explicit target). */
+  readonly unavailable: readonly string[];
+  readonly failures: ReadonlyArray<{ target: string; failureKind: string }>;
+};
+
 export class InformationOrchestrator {
   constructor(
     private readonly dependencies: {
@@ -147,6 +179,8 @@ export class InformationOrchestrator {
     authentication: InformationAuthentication | null;
     authBlock: InformationAuthBlock | null;
     trustedPhone?: AgentAuthByPhoneInput | null;
+    /** Current invocation deadline (epoch ms). Past it, bounded detail reads stop. */
+    deadlineMs?: number | null;
   }): Promise<InformationExecution> {
     const canUseTrustedPhone =
       !args.authBlock || args.authBlock.guidance.reason === 'email_required';
@@ -190,6 +224,7 @@ export class InformationOrchestrator {
           phonePurchaseLookups,
           eventDetailLookups,
           phoneContext,
+          args.deadlineMs ?? null,
         );
           return { result, durationMs: Date.now() - startedAt };
         }),
@@ -261,6 +296,7 @@ export class InformationOrchestrator {
         evidence: this.evidenceReferences(result),
         resultCount: this.resultCount(result),
         durationMs: outcomes.get(index)?.durationMs ?? 0,
+        ...(result.openAiTransport ? { openAiTransport: result.openAiTransport } : {}),
         ...(result.status === 'completed' && result.kind === 'associated_event'
           ? {
               accessMethod: result.accessMethod ?? 'authenticated_account',
@@ -300,6 +336,7 @@ export class InformationOrchestrator {
     >,
     eventDetailLookups: EventDetailCache,
     phoneContext: PhoneContextSnapshot,
+    deadlineMs: number | null,
   ): Promise<InformationTaskResult> {
     if (request.kind === 'faq') {
       if (!this.capabilityAvailable('faq.read')) {
@@ -321,6 +358,7 @@ export class InformationOrchestrator {
           return {
             requestId: request.requestId, kind: 'faq', status: 'completed',
             evidence: parsed.evidence, hostWithdrawalPolicy: parsed.policy,
+            openAiTransport: retrieval.openAiTransport,
           };
         }
         return {
@@ -328,6 +366,7 @@ export class InformationOrchestrator {
           kind: 'faq',
           status: 'completed',
           evidence: retrieval.evidence,
+          openAiTransport: retrieval.openAiTransport,
         };
       }
       return {
@@ -341,6 +380,7 @@ export class InformationOrchestrator {
             : 'request_failed',
         message:
           'No pude consultar la información general en este momento. Puedo intentarlo nuevamente o comunicarte con una persona del equipo.',
+        ...(retrieval.openAiTransport ? { openAiTransport: retrieval.openAiTransport } : {}),
       };
     }
 
@@ -372,6 +412,7 @@ export class InformationOrchestrator {
           phoneGateway,
           eventDetailLookups,
           phoneContext,
+          deadlineMs,
         );
       }
       if (guestEvents.status === 'failed') {
@@ -634,6 +675,287 @@ export class InformationOrchestrator {
     }
   }
 
+  /**
+   * Bounded invitation -> event/venue detail expansion over documented
+   * gateway reads only (getEventDetail). At most two relationship edges per
+   * pass (summary -> detail here; detail -> purchases returned for the
+   * caller to merge), four concurrent reads, an access-scoped visited set
+   * so cyclic order -> event -> order links terminate, the current
+   * invocation deadline, and a per-turn cache for identical reads. Only
+   * explicitly relevant candidates (hint-matched names/slugs) are hydrated:
+   * a dateless, reference-free question keeps summaries so the reply can
+   * clarify instead of guessing. Failures are recorded, never thrown, and a
+   * bound or deadline never claims a complete profile.
+   */
+  async hydrateRelevantEventDetails(args: {
+    events: readonly AgentGuestEventSummary[];
+    eventHint: string | null;
+    trustedPhone: AgentAuthByPhoneInput | null;
+    scope: string;
+    detailCache?: EventDetailCache;
+    deadlineMs?: number | null;
+    depth?: number;
+  }): Promise<EventDetailHydrationOutcome> {
+    const outcome: EventDetailHydrationOutcome = {
+      details: new Map(),
+      purchases: [],
+      failures: [],
+      readsAttempted: 0,
+      truncatedByBound: false,
+    };
+    const hint = args.eventHint?.trim() ? args.eventHint : null;
+    if (!hint) {
+      return outcome;
+    }
+    if ((args.depth ?? 0) >= enrichmentBounds.maxRelationshipEdges) {
+      outcome.truncatedByBound = true;
+      return outcome;
+    }
+    const matched = args.events.filter((event) =>
+      sharedEventMatches(event.name, hint) || sharedEventMatches(event.slug, hint),
+    );
+    if (matched.length === 0) {
+      return outcome;
+    }
+    const targets = matched.slice(0, enrichmentBounds.maxConcurrentReads);
+    outcome.truncatedByBound = matched.length > targets.length;
+    const cache: EventDetailCache = args.detailCache ?? new Map<
+      string,
+      Promise<PhoneEventDetailResult>
+    >();
+    const visited = new Set<string>();
+    const readable: AgentGuestEventSummary[] = [];
+    for (const event of targets) {
+      const key = enrichmentVisitKey('event', event.eventId, args.scope);
+      if (visited.has(key)) {
+        continue;
+      }
+      visited.add(key);
+      if (args.deadlineMs !== null && args.deadlineMs !== undefined && Date.now() >= args.deadlineMs) {
+        outcome.failures.push({ eventId: event.eventId, failureKind: 'deadline_exceeded' });
+        outcome.truncatedByBound = true;
+        continue;
+      }
+      readable.push(event);
+    }
+    const settled = await Promise.allSettled(
+      readable.map(async (event) => {
+        outcome.readsAttempted += 1;
+        const detail = await this.lookupEventDetail(
+          event.eventId,
+          args.trustedPhone,
+          this.dependencies.agentGateway,
+          cache,
+        );
+        return { event, detail };
+      }),
+    );
+    for (const entry of settled) {
+      if (entry.status === 'rejected') {
+        continue;
+      }
+      const { event, detail } = entry.value;
+      if (detail.status === 'success') {
+        outcome.details.set(event.eventId, detail);
+        for (const purchase of detail.event.purchases ?? []) {
+          outcome.purchases.push(purchase);
+        }
+      } else if (detail.status === 'not_found') {
+        outcome.failures.push({ eventId: event.eventId, failureKind: 'not_found' });
+      } else if (detail.error.includes('not configured')) {
+        outcome.failures.push({ eventId: event.eventId, failureKind: 'not_configured' });
+      } else {
+        outcome.failures.push({ eventId: event.eventId, failureKind: 'request_failed' });
+      }
+    }
+    return outcome;
+  }
+
+  /**
+   * S7 bounded linked-detail enrichment before final owner composition.
+   * Follows at most two relationship edges (authorized order -> gift purchase
+   * detail; associated invitation/event -> event detail) with at most four
+   * reads in flight, a per-turn access-scoped visited/cache key and the
+   * shared invocation deadline. Reuses the existing orchestrator capability
+   * and gateway access checks plus already-fetched IDs: known IDs and
+   * authorized scopes are prerequisites, so a name or recency never
+   * authorizes a lookup. Duplicate IDs/cycles fetch once. Optional failures
+   * are recorded, never thrown; required unavailable detail stays explicitly
+   * unavailable. Read-only: never writes. Absent gateway capability is
+   * exposed as unavailable, never a guessed API.
+   */
+  async enrichCustomerLinkedDetail(args: {
+    orderIds: readonly string[];
+    eventIds: readonly (number | string)[];
+    authentication: InformationAuthentication | null;
+    trustedPhone: AgentAuthByPhoneInput | null;
+    /** Access scope authorizing the reads (account, trusted phone, public). */
+    scope: string;
+    detailCache?: EventDetailCache;
+    visited?: Set<string>;
+    deadlineMs?: number | null;
+    depth?: number;
+  }): Promise<CustomerLinkedEnrichment> {
+    const giftPurchases: PurchaseInformation[] = [];
+    const eventDetails = new Map<number, HydratedEventDetail>();
+    const unavailable: string[] = [];
+    const failures: Array<{ target: string; failureKind: string }> = [];
+    let readsAttempted = 0;
+    let truncatedByBound = false;
+    if ((args.depth ?? 0) >= enrichmentBounds.maxRelationshipEdges) {
+      return {
+        giftPurchases,
+        eventDetails,
+        readsAttempted,
+        truncatedByBound: true,
+        unavailable,
+        failures,
+      };
+    }
+    const cache: EventDetailCache = args.detailCache ?? new Map<string, Promise<PhoneEventDetailResult>>();
+    const visited: Set<string> = args.visited ?? new Set();
+    const deadlineMs = args.deadlineMs ?? null;
+
+    const pastDeadline = (): boolean =>
+      deadlineMs !== null && deadlineMs !== undefined && Date.now() >= deadlineMs;
+
+    type PlannedRead =
+      | { kind: 'gift'; orderId: string; visitKey: string }
+      | { kind: 'event'; eventId: number; rawId: number | string; visitKey: string };
+    const planned: PlannedRead[] = [];
+    for (const orderId of args.orderIds) {
+      const visitKey = enrichmentVisitKey('order', orderId, args.scope);
+      if (visited.has(visitKey)) continue;
+      visited.add(visitKey);
+      planned.push({ kind: 'gift', orderId, visitKey });
+    }
+    for (const rawId of args.eventIds) {
+      const numeric = typeof rawId === 'number' ? rawId : Number(String(rawId));
+      if (!Number.isFinite(numeric)) {
+        unavailable.push(`event:${String(rawId)}`);
+        continue;
+      }
+      const visitKey = enrichmentVisitKey('event', numeric, args.scope);
+      if (visited.has(visitKey)) continue;
+      visited.add(visitKey);
+      planned.push({ kind: 'event', eventId: numeric, rawId, visitKey });
+    }
+    const bounded = planned.slice(0, enrichmentBounds.maxConcurrentReads);
+    if (planned.length > bounded.length) truncatedByBound = true;
+
+    const fetchGiftDetail = async (
+      orderId: string,
+    ): Promise<PurchaseInformation[] | { unavailable: true } | { failure: string }> => {
+      if (pastDeadline()) return { failure: 'deadline_exceeded' };
+      if (args.authentication) {
+        if (
+          !this.capabilityAvailable('purchase.gift_detail.read', this.gatewayMethodConfigured('getGiftPurchases')) ||
+          !this.dependencies.agentGateway.getGiftPurchases
+        ) {
+          return { unavailable: true };
+        }
+        try {
+          const lookup = await this.dependencies.agentGateway.getGiftPurchases({
+            token: args.authentication.token,
+            orderId,
+          });
+          if (lookup.status === 'success') return lookup.purchases;
+          if (lookup.status === 'not_found') return { unavailable: true };
+          return { failure: 'request_failed' };
+        } catch {
+          return { failure: 'request_failed' };
+        }
+      }
+      if (args.trustedPhone) {
+        if (
+          !this.capabilityAvailable('purchase.gift_detail.read', this.gatewayMethodConfigured('getGuestGiftPurchasesByPhone')) ||
+          !this.dependencies.agentGateway.getGuestGiftPurchasesByPhone
+        ) {
+          return { unavailable: true };
+        }
+        try {
+          const lookup = await this.dependencies.agentGateway.getGuestGiftPurchasesByPhone({
+            phone_extension: args.trustedPhone.phone_extension,
+            phone_number: args.trustedPhone.phone_number,
+            orderId,
+          });
+          if (lookup.status === 'success') return lookup.purchases;
+          if (lookup.status === 'not_found') return { unavailable: true };
+          return { failure: 'request_failed' };
+        } catch {
+          return { failure: 'request_failed' };
+        }
+      }
+      return { unavailable: true };
+    };
+
+    const settled = await Promise.allSettled(
+      bounded.map(async (read) => {
+        if (pastDeadline()) {
+          return { read, outcome: { failure: 'deadline_exceeded' } as const };
+        }
+        readsAttempted += 1;
+        if (read.kind === 'gift') {
+          const result = await fetchGiftDetail(read.orderId);
+          return { read, outcome: result };
+        }
+        const detail = await this.lookupEventDetail(
+          read.eventId,
+          args.trustedPhone,
+          this.dependencies.agentGateway,
+          cache,
+        );
+        return { read, outcome: detail };
+      }),
+    );
+    for (const entry of settled) {
+      if (entry.status === 'rejected') continue;
+      const { read, outcome } = entry.value as {
+        read: PlannedRead;
+        outcome: unknown;
+      };
+      if (read.kind === 'gift') {
+        const result = outcome as
+          | PurchaseInformation[]
+          | { unavailable: true }
+          | { failure: string }
+          | PhoneEventDetailResult;
+        if (Array.isArray(result)) {
+          for (const purchase of result) giftPurchases.push(purchase);
+        } else if (typeof result === 'object' && result !== null && 'unavailable' in result) {
+          unavailable.push(`order:${read.orderId}`);
+        } else if (typeof result === 'object' && result !== null && 'failure' in result) {
+          const kind = (result as { failure: string }).failure;
+          failures.push({ target: `order:${read.orderId}`, failureKind: kind });
+          if (kind === 'deadline_exceeded') truncatedByBound = true;
+        }
+        continue;
+      }
+      const detail = outcome as PhoneEventDetailResult | { failure: string };
+      if (typeof detail === 'object' && detail !== null && 'failure' in detail) {
+        failures.push({ target: `event:${String(read.rawId)}`, failureKind: detail.failure });
+        if (detail.failure === 'deadline_exceeded') truncatedByBound = true;
+      } else if (detail.status === 'success') {
+        eventDetails.set(read.eventId, detail);
+      } else if (detail.status === 'not_found') {
+        unavailable.push(`event:${String(read.rawId)}`);
+      } else if (detail.error.includes('not configured')) {
+        unavailable.push(`event:${String(read.rawId)}`);
+      } else {
+        failures.push({ target: `event:${String(read.rawId)}`, failureKind: 'request_failed' });
+      }
+    }
+    if (pastDeadline() && (bounded.length > 0)) truncatedByBound = true;
+    return {
+      giftPurchases,
+      eventDetails,
+      readsAttempted,
+      truncatedByBound,
+      unavailable,
+      failures,
+    };
+  }
+
   private async executeGuestEventRequest(
     request: Extract<PendingInformationRequest, { kind: 'associated_event' }>,
     events: AgentGuestEventSummary[],
@@ -641,9 +963,39 @@ export class InformationOrchestrator {
     phoneGateway: AgentConversationGateway,
     eventDetailLookups: EventDetailCache,
     phoneContext: PhoneContextSnapshot,
+    deadlineMs: number | null,
   ): Promise<InformationTaskResult> {
     const selected = this.selectGuestEvent(events, request.eventHint);
     if (!selected) {
+      // Shared names or several candidates: hydrate explicitly relevant
+      // details (bounded) so the reply can disambiguate with facts instead
+      // of asking for information that can be read. Without an explicit
+      // reference the summaries stay bare for clarification. Failures keep
+      // the known association; they never fail the whole read.
+      const hydration = await this.hydrateRelevantEventDetails({
+        events,
+        eventHint: request.eventHint,
+        trustedPhone,
+        scope: 'trusted_phone_guest',
+        detailCache: eventDetailLookups,
+        deadlineMs,
+      });
+      for (const purchase of hydration.purchases) {
+        this.mergePhonePurchase(phoneContext, purchase, 'event');
+      }
+      if (hydration.details.size === 0) {
+        return {
+          requestId: request.requestId,
+          kind: 'associated_event',
+          status: 'completed',
+          accessMethod: 'trusted_phone_guest',
+          result: this.guestEventsResult(
+            events,
+            null,
+            trustedPhone?.phone_number ?? '',
+          ),
+        };
+      }
       return {
         requestId: request.requestId,
         kind: 'associated_event',
@@ -653,6 +1005,8 @@ export class InformationOrchestrator {
           events,
           null,
           trustedPhone?.phone_number ?? '',
+          undefined,
+          hydration.details,
         ),
       };
     }
@@ -791,21 +1145,28 @@ export class InformationOrchestrator {
     return await lookup;
   }
 
+  /**
+   * I1 requested-event precedence for information reads. An explicit hint
+   * resolves against the authorized summaries: a unique match wins, while
+   * zero or multiple matches resolve to nothing (never the sole unrelated
+   * event). Without a hint a single summary may serve; several stay
+   * unresolved for disambiguation.
+   */
   private selectGuestEvent(
     events: AgentGuestEventSummary[],
     eventHint: string | null,
   ): AgentGuestEventSummary | null {
+    if (eventHint) {
+      const matches = events.filter((event) => {
+        return sharedEventMatches(event.name, eventHint) ||
+          sharedEventMatches(event.slug, eventHint);
+      });
+      return matches.length === 1 ? matches[0] ?? null : null;
+    }
     if (events.length === 1) {
       return events[0] ?? null;
     }
-    if (!eventHint) {
-      return null;
-    }
-    const matches = events.filter((event) => {
-      return sharedEventMatches(event.name, eventHint) ||
-        sharedEventMatches(event.slug, eventHint);
-    });
-    return matches.length === 1 ? matches[0] ?? null : null;
+    return null;
   }
 
   private guestEventsResult(
@@ -816,17 +1177,32 @@ export class InformationOrchestrator {
     >['event'] | null,
     phoneNumber: string,
     enrichedDetail?: PhoneEventDetailSuccess,
+    extraDetails?: Map<number, HydratedEventDetail>,
   ): UserEventLookupResult {
     const attendance = enrichedDetail?.attendance ?? enrichedDetail?.event.attendance;
     const purchases = enrichedDetail?.purchases ?? enrichedDetail?.event.purchases ?? [];
     return {
       lookup: { email: null, phone: phoneNumber },
       user: null,
-      events: events.map((event) => ({
+      events: events.map((event) => {
+        const extra = extraDetails?.get(event.eventId);
+        const effectiveDetail = detail && detail.eventId === event.eventId
+          ? detail
+          : (extra?.event ?? null);
+        const effectiveEnriched = enrichedDetail?.event.eventId === event.eventId
+          ? enrichedDetail
+          : extra;
+        const effectiveAttendance = effectiveEnriched?.attendance ??
+          effectiveEnriched?.event.attendance ??
+          (effectiveEnriched === undefined ? attendance : undefined);
+        const effectivePurchases = effectiveEnriched?.purchases ??
+          effectiveEnriched?.event.purchases ??
+          (effectiveEnriched === undefined ? purchases : []);
+        return {
         relation: 'guest',
         guestId:
-          enrichedDetail?.event.eventId === event.eventId
-            ? attendance?.guestId ?? null
+          effectiveEnriched?.event.eventId === event.eventId
+            ? effectiveAttendance?.guestId ?? null
             : null,
         eventId: event.eventId,
         slug: event.slug,
@@ -841,13 +1217,13 @@ export class InformationOrchestrator {
         currency: event.currency,
         country: event.country,
         guestStatus:
-          enrichedDetail?.event.eventId === event.eventId &&
-          attendance
+          effectiveEnriched?.event.eventId === event.eventId &&
+          effectiveAttendance
             ? {
-                hasResponded: attendance.hasResponded,
-                willAttend: attendance.willAttend,
+                hasResponded: effectiveAttendance.hasResponded,
+                willAttend: effectiveAttendance.willAttend,
                 hasCouple: null,
-                responseDate: attendance.responseDate,
+                responseDate: effectiveAttendance.responseDate,
               }
             : null,
         hostType: null,
@@ -860,8 +1236,8 @@ export class InformationOrchestrator {
         invitedGuestCount: null,
         confirmedGuestCount: null,
         orders:
-          enrichedDetail?.event.eventId === event.eventId
-            ? purchases.map((purchase) => ({
+          effectiveEnriched?.event.eventId === event.eventId
+            ? effectivePurchases.map((purchase) => ({
                 id: null,
                 incrementId: purchase.orderId,
                 giftType: purchase.items[0]?.type ?? null,
@@ -872,30 +1248,31 @@ export class InformationOrchestrator {
                 paymentMethod: purchase.paymentMethod,
               }))
             : [],
-        ...(detail && detail.eventId === event.eventId
+        ...(effectiveDetail && effectiveDetail.eventId === event.eventId
           ? {
-              place: detail.city,
-              name: detail.name,
-              slug: detail.slug,
-              url: detail.url,
-              type: detail.type,
-              datetime: detail.datetime,
-              stage: detail.stage,
-              currency: detail.currency,
-              country: detail.country,
+              place: effectiveDetail.city,
+              name: effectiveDetail.name,
+              slug: effectiveDetail.slug,
+              url: effectiveDetail.url,
+              type: effectiveDetail.type,
+              datetime: effectiveDetail.datetime,
+              stage: effectiveDetail.stage,
+              currency: effectiveDetail.currency,
+              country: effectiveDetail.country,
               detail: {
-                withTime: detail.withTime,
-                timezone: detail.timezone,
-                city: detail.city,
-                celebrateds: detail.celebrateds,
-                moments: detail.moments,
-                dresscode: detail.dresscode,
-                commonAsked: detail.commonAsked,
-                contactInfo: detail.contactInfo,
+                withTime: effectiveDetail.withTime,
+                timezone: effectiveDetail.timezone,
+                city: effectiveDetail.city,
+                celebrateds: effectiveDetail.celebrateds,
+                moments: effectiveDetail.moments,
+                dresscode: effectiveDetail.dresscode,
+                commonAsked: effectiveDetail.commonAsked,
+                contactInfo: effectiveDetail.contactInfo,
               },
             }
           : {}),
-      })),
+        };
+      }),
       counts: {
         ownerEvents: 0,
         guestEvents: events.length,
@@ -1132,7 +1509,7 @@ export class InformationOrchestrator {
     requestedCustomerTransactionNumber: string | null;
   } | undefined> {
     const lookupResource: 'orders' | 'gift_purchases' = request.aspects.some(
-      (aspect) => aspect === 'dedication' || aspect === 'thanks',
+      (aspect) => aspect === 'dedication' || aspect === 'thanks' || aspect === 'payment_details',
     )
       ? 'gift_purchases'
       : 'orders';

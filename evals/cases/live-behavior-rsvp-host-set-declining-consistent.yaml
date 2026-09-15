@@ -1,0 +1,57 @@
+template: template.base-live
+id: live_behavior.rsvp_host_set_declining_consistent
+suite: live_behavior_regression
+version: 1
+description: A read-only state query for an invitation whose host-set attendance is declining must report declining consistently without a mutation and without claiming who responded.
+tags:
+  - live
+  - behavior
+  - rsvp
+  - host-policy
+  - event-identity
+  - i3
+targetModes:
+  - live_lambda
+inputs:
+  - text: ¿Cuál es el estado de mi invitación a Otra celebración prueba?
+    channel: whatsapp
+    contactPhone: "+51973296571"
+    sessionId: live-rsvp-host-set-declining-session
+rsvpIsolation:
+  setup:
+    guestId: 584353
+    eventName: Otra celebración prueba
+    phone: "+51973296571"
+    targetState: declining
+  teardown:
+    guestId: 584353
+    eventName: Otra celebración prueba
+    phone: "+51973296571"
+    restore: true
+notes:
+  - "I3 2026-09-14, event-identity-review: willAttend boolean takes precedence everywhere and hasResponded is provenance only. This case proves the declining value displays consistently end to end for the requested event. Service-level twins prove hasResponded=false with willAttend true/false displays attending/declining. Never fixed phrases and no claim about who personally responded unless evidenced."
+expectations:
+  - id: declining-query-performs-no-write
+    type: tool_usage
+    mustCall:
+      - lookup_rsvp_invitations
+    mustNotCall:
+      - guest_rsvp
+      - auth_by_phone
+      - request_user_login_code
+      - verify_user_login_code
+    severity: hard
+  - id: declining-reported-for-named-event
+    type: text_semantic
+    rubric: The user asked for the invitation state for Otra celebración prueba, whose authoritative attendance is declining. The response must be natural and entirely in Spanish and clearly report that attendance for that named event is declined, without saying it is attending or pending and without claiming a new mutation was made. It must not assert who personally responded unless the evidence shows it, must not ask for email or a code, and must not expose internal identifiers. No fixed wording is required.
+    minScore: 0.85
+    requireJudge: true
+    severity: hard
+  - id: no-rsvp-vocabulary
+    type: text_not_contains
+    phrases: ["RSVP", "rsvp"]
+    severity: hard
+budget:
+  maxTurns: 1
+  estimatedPromptTokensPerTurn: 1500
+  estimatedCompletionTokensPerTurn: 250

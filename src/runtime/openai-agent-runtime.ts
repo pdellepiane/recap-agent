@@ -22,7 +22,7 @@ import {
   informationValidationPolicyRequestId,
   type InformationNormalizationIssue,
   type InformationTaskResult,
-  type PurchaseInformation,
+  type PurchaseAspect,
 } from '../core/information';
 import {
   prioritizedProviderCategoriesForEvent,
@@ -31,15 +31,24 @@ import {
 import { executeFinishPlanTool } from './finish-plan-tool';
 import type { ProviderQuoteEffect } from './plan-completion-executor';
 import { ModelComposedFailureError } from './model-composition';
-import { resolveExplicitEventDate } from './close-submission-summary';
+import {
+  buildCloseSubmissionReceipt,
+  resolveCloseBlockers,
+  resolveExplicitEventDate,
+  type CloseBlocker,
+  type CloseSubmissionInput,
+} from './close-submission-summary';
 import type {
   AgentRuntime,
   ComposeReplyRequest,
   ComposeReplyResult,
+  ContinuityProjection,
   ExtractResult,
   ExtractRequest,
   OpenAiCallRef,
   OpenAiRequestMetrics,
+  OpenAiTransportMetrics,
+  ModelOriginReceipt,
   TokenUsage,
 } from './contracts';
 import type { PromptLoader } from './prompt-loader';
@@ -49,15 +58,16 @@ import type { ToolName } from './prompt-manifest';
 import type { RecommendationFunnelTrace } from '../core/trace';
 import type { AgentFeatureFlags } from './config';
 import {
-  closeConfirmationMessageSchema,
-  closeResultMessageSchema,
-  contactRequestMessageSchema,
   genericMessageSchema,
   multiNeedRecommendationMessageSchema,
+  pendingTaskOutcomeSchema,
   recommendationMessageSchema,
   welcomeMessageSchema,
+  type PendingTaskOutcome,
 } from './structured-message';
 import { providerCategorySchema, categoryBucketNames } from '../core/provider-category';
+import type { ProviderCategory } from '../core/provider-category';
+import { projectCompletedPurchaseForModel } from './purchase-reply-projector';
 import {
   createDynamicExtractionSchema,
   normalizeRequestedOperation,
@@ -68,6 +78,12 @@ import type {
   RuntimeCapabilityManifest,
   RuntimeOperationId,
 } from './capability-manifest';
+import { buildRuntimeCapabilityManifest } from './capability-manifest';
+import {
+  deriveEstablishedExtractionDomain,
+  projectExtraction,
+  type ExtractionProjection,
+} from './extraction-projection';
 import { providerFitCriteriaSchema } from './provider-fit';
 import {
   deriveDynamicAgentPolicy,
@@ -75,15 +91,212 @@ import {
   type DynamicAgentPolicy,
 } from './dynamic-agent-policy';
 import {
+  buildExtractorConversationHistory,
   buildModelVisibleConversationHistory,
+  buildPriorAnswerGist,
   deriveConversationContinuity,
 } from './turn-message-context';
 import { openAiRetryPolicy } from './openai-retry';
 import { executeOpenAiStage } from './openai-stage-execution';
 import { DEFAULT_PROMPT_CACHE_OPTIONS } from './openai-model-defaults';
-import { areEventNamesEquivalent } from './event-matching';
+import {
+  captureOpenAiTransport,
+  installOpenAiTransportCapture,
+} from '../audit/openai-transport-capture';
+import { buildModelOriginReceipt } from './model-composition';
+import {
+  MAX_PROJECTED_IMAGE_ATTACHMENTS,
+  MAX_PROJECTED_IMAGE_URLS,
+  isFileRefActive,
+} from '../core/image-attachments';
+import type { ImageAttachmentRef } from '../core/image-attachments';
+import type { ImageFileAttachment, ImageObservation, ImageUrlAttachment } from './contracts';
+import type { CustomerContextProjection } from './customer-context';
 
 const SUPPORT_EMAIL = 'hola@sinenvolturas.com';
+
+/**
+ * S2 pending-task outcome read. Returns the model-reported outcome only
+ * when it is one of the typed values; anything else (absent, unknown
+ * string, non-object message) reads as null. Callers additionally require
+ * the pre-turn pending reference so an outcome can never clear an unrelated
+ * older pending request. No keyword or string-similarity inference.
+ */
+export function readPendingTaskOutcome(message: unknown): PendingTaskOutcome | null {
+  if (typeof message !== 'object' || message === null) return null;
+  const outcome = (message as { pending_task_outcome?: unknown }).pending_task_outcome;
+  if (outcome === undefined) return null;
+  const parsed = pendingTaskOutcomeSchema.safeParse(outcome);
+  return parsed.success ? parsed.data : null;
+}
+
+/**
+ * Typed provider image-access failure (R3). Thrown ONLY by the reply
+ * provider boundary when a compose call that transmitted native image
+ * content (image_url or Files file_id) fails because the provider cannot
+ * access that image. Carries the structured provider fields and the failed
+ * attempt transport so callers can merge both attempts into totals instead
+ * of overwriting the failure with success-only numbers.
+ *
+ * Never constructed for auth (401/403), rate limits, timeouts, generic
+ * outages, guardrail trips or schema failures: those rethrow untouched.
+ */
+export class ProviderImageAccessError extends Error {
+  readonly status: number | null;
+  readonly providerCode: string | null;
+  readonly providerParam: string | null;
+  readonly providerType: string | null;
+  readonly failedTransport: OpenAiTransportMetrics | null;
+
+  constructor(
+    message: string,
+    options: {
+      status: number | null;
+      providerCode: string | null;
+      providerParam: string | null;
+      providerType: string | null;
+      failedTransport: OpenAiTransportMetrics | null;
+      cause?: unknown;
+    },
+  ) {
+    super(message);
+    this.name = 'ProviderImageAccessError';
+    this.status = options.status;
+    this.providerCode = options.providerCode;
+    this.providerParam = options.providerParam;
+    this.providerType = options.providerType;
+    this.failedTransport = options.failedTransport;
+    if (options.cause !== undefined) {
+      (this as { cause?: unknown }).cause = options.cause;
+    }
+  }
+}
+
+/**
+ * Narrow provider download diagnostic observed on the live 400 failure
+ * (eval-2026-09-11T18-13-10-185Z-31697069, case
+ * live_behavior.image_url_unavailable_evidence, Lambda HTTP 500 body
+ * `400 Error while downloading file. Upstream status code: 404.`).
+ *
+ * Reproduced end to end through the installed SDK with a mocked HTTP 400:
+ * the thrown error is `BadRequestError` (constructor) with `.name`
+ * `'Error'`, `.status` 400, `.code`/`.param` null (structured code absent),
+ * `.type` `'invalid_request_error'`, `.message`
+ * `400 Error while downloading file. Upstream status code: 404.`. Name and
+ * code predicates therefore miss it; this parser matches ONLY the provider
+ * download/upstream diagnostic phrasing in provider error text (top-level
+ * or nested `.error` message). It never inspects user text and never
+ * routes intent: input is the thrown error object only.
+ */
+const PROVIDER_DOWNLOAD_DIAGNOSTIC = /error\s+while\s+downloading\b/iu;
+const PROVIDER_UPSTREAM_DIAGNOSTIC = /upstream\s+status\b/iu;
+
+function readErrorMessageText(error: unknown): string | null {
+  if (error instanceof Error && error.message.length > 0) return error.message;
+  return null;
+}
+
+function readNestedProviderMessage(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const nested = (error as { error?: unknown }).error;
+  if (typeof nested !== 'object' || nested === null) return null;
+  const message = (nested as { message?: unknown }).message;
+  return typeof message === 'string' && message.length > 0 ? message : null;
+}
+
+function readProviderErrorStatusValue(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const status = (error as { status?: unknown }).status;
+  return typeof status === 'number' && Number.isFinite(status) ? status : null;
+}
+
+function readProviderErrorCodeValue(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const record = error as { code?: unknown; error?: unknown };
+  if (typeof record.code === 'string' && record.code.length > 0) return record.code;
+  if (typeof record.error === 'object' && record.error !== null) {
+    const nested = (record.error as { code?: unknown }).code;
+    if (typeof nested === 'string' && nested.length > 0) return nested;
+  }
+  return null;
+}
+
+/**
+ * Duck-typed narrow image-download access failure. True ONLY for a
+ * status-400 provider error whose provider diagnostic text carries the
+ * observed download/upstream phrasing. Generic 400s, 401/403, 429, 500s,
+ * timeouts and schema failures never match. Inspects provider error text
+ * only, never user text.
+ */
+export function isProviderImageDownloadAccessFailure(error: unknown): boolean {
+  if (readProviderErrorStatusValue(error) !== 400) return false;
+  const texts = [readErrorMessageText(error), readNestedProviderMessage(error)];
+  return texts.some(
+    (text) =>
+      text !== null &&
+      PROVIDER_DOWNLOAD_DIAGNOSTIC.test(text) &&
+      PROVIDER_UPSTREAM_DIAGNOSTIC.test(text),
+  );
+}
+
+function readProviderErrorType(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const record = error as { type?: unknown; error?: unknown };
+  if (typeof record.type === 'string' && record.type.length > 0) return record.type;
+  if (typeof record.error === 'object' && record.error !== null) {
+    const nested = (record.error as { type?: unknown }).type;
+    if (typeof nested === 'string' && nested.length > 0) return nested;
+  }
+  return null;
+}
+
+function readProviderErrorParam(error: unknown): string | null {
+  if (typeof error !== 'object' || error === null) return null;
+  const record = error as { param?: unknown; error?: unknown };
+  if (typeof record.param === 'string' && record.param.length > 0) return record.param;
+  if (typeof record.error === 'object' && record.error !== null) {
+    const nested = (record.error as { param?: unknown }).param;
+    if (typeof nested === 'string' && nested.length > 0) return nested;
+  }
+  return null;
+}
+
+/**
+ * Provider-boundary normalization for reply image access. Returns a typed
+ * `ProviderImageAccessError` ONLY when the failing compose call transmitted
+ * native image content AND the error is a narrow image-access failure:
+ * status 404, a structured image/file code, or the observed 400 download
+ * diagnostic. Auth/rate-limit/timeout/generic-outage/guardrail/schema
+ * errors return null (rethrow untouched). The failed attempt transport is
+ * attached so totals keep both attempts.
+ */
+export function toProviderImageAccessError(
+  error: unknown,
+  options: { hadImageAttachments: boolean; failedTransport: OpenAiTransportMetrics | null },
+): ProviderImageAccessError | null {
+  if (!options.hadImageAttachments) return null;
+  if (error instanceof ProviderImageAccessError) return error;
+  if (error instanceof ModelComposedFailureError) return null;
+  const status = readProviderErrorStatusValue(error);
+  if (status === 401 || status === 403) return null;
+  if (error instanceof OpenAI.AuthenticationError || error instanceof OpenAI.PermissionDeniedError) {
+    return null;
+  }
+  const code = readProviderErrorCodeValue(error);
+  const codeMatches = code !== null && /invalid_image|image_download|image_url|file_not_found/iu.test(code);
+  const is404 = status === 404;
+  const isDownloadFailure = isProviderImageDownloadAccessFailure(error);
+  if (!is404 && !codeMatches && !isDownloadFailure) return null;
+  const message = readErrorMessageText(error) ?? 'Provider image access failed.';
+  return new ProviderImageAccessError(message, {
+    status,
+    providerCode: code,
+    providerParam: readProviderErrorParam(error),
+    providerType: readProviderErrorType(error),
+    failedTransport: options.failedTransport,
+    cause: error,
+  });
+}
 
 type RuntimeContext = {
   toolUsage: ComposeReplyRequest['toolUsage'];
@@ -103,18 +316,63 @@ type ReplyTurnEvidence = {
   extraction: Record<string, unknown>;
   plan: Record<string, unknown>;
   information_results: unknown[];
+  capability_outcome?: {
+    status: string;
+    operation: string | null;
+    reason: string | null;
+    required_input: string[];
+    allowed_next: string;
+  } | null;
+  handoff_outcome?: string | null;
+  image_evidence?: {
+    status: 'available' | 'unavailable';
+    reason: string | null;
+    caption_present: boolean;
+    inspection_outcome?: 'readable' | 'unreadable' | 'human_help';
+    source?: 'base64' | 'url' | 'file';
+    image_url_count?: number;
+    image_url_hosts?: string[];
+    image_url_bytes?: number[];
+    image_file_count?: number;
+    /**
+     * R8 same-day image observation summary (deposit seen, legibility,
+     * message linkage; never structured amounts). Present only when a
+     * same-day image links to this turn. Facts only, never reply prose.
+     */
+    observation?: ImageObservation | null;
+  } | null;
+  authentication_outcome?: {
+    status: 'declined' | 'terminal';
+    reason: string;
+    protected_requests_closed: boolean;
+    public_information_requests_remaining: number;
+    handoff_outcome: string | null;
+    no_further_credential_requests?: boolean;
+  } | null;
+  close_submission_receipt?: CloseSubmissionInput | null;
   rsvp_phone_evidence: ComposeReplyRequest['rsvpPhoneEvidence'];
   rsvp_party: {
     scope: string;
     mentioned_names: string[];
     companion_count: 'one' | 'multiple' | 'unknown';
     plus_one_response: 'yes' | 'no' | 'unknown';
+    plus_one_support_offer_required?: boolean;
+  } | null;
+  /**
+   * R6 unambiguous event-time fact for the model-owned sentence. The stored
+   * value, its hour24 reading and the unknown timezone travel together so a
+   * stated time keeps the source hour with no guessed conversion. Present
+   * only on responder_invitacion when phone evidence carries a date.
+   */
+  rsvp_event_time?: {
+    value: string;
+    hour24: string;
+    timezone: 'unknown';
   } | null;
   turn_state: {
     focus_need_category: PersistedPlan['active_need_category'];
     missing_fields: string[];
     search_ready: boolean;
-    missing_fields_instruction: string;
     /**
      * W1-04 L1 evidence-only facts. Verbatim user-reported support names from
      * the extraction raw strings (never the normalized event_type), the open
@@ -149,6 +407,14 @@ type ReplyTurnEvidence = {
      * reply prose.
      */
     contact_email_already_provided?: boolean;
+    /**
+     * R5 evidence-only fact. The persisted contact phone is already present,
+     * so the model must not re-ask it after a name/email delta whose raw
+     * extraction carries phone null. Present only on crear_lead_cerrar when
+     * the phone exists so unrelated turns stay byte-identical. Facts for
+     * the model to verbalize, never reply prose.
+     */
+    contact_phone_already_provided?: boolean;
     close_ready_to_dispatch?: boolean;
     /**
      * Lean-conversation evidence-only facts. Completed close already-sent on
@@ -161,10 +427,73 @@ type ReplyTurnEvidence = {
      * for the model to verbalize, never reply prose.
      */
     close_already_sent?: boolean;
-    reported_payment_pending_validation?: boolean;
-  };
+    /**
+     * Existing-completion fact: the submission happened in a previous turn,
+     * this turn executes no new provider write and exposes no finish tool.
+     * Facts only, never reply prose.
+     */
+     close_submission_performed_this_turn?: boolean;
+     reported_payment_pending_validation?: boolean;
+     close_contact_missing_fields?: string[];
+     /**
+      * C1 close-contact completeness. True when name, email and phone are
+      * all present in the plan, so the reply continues or completes the
+      * close instead of re-asking contact fields. Facts only, never prose.
+      */
+     close_contact_complete?: boolean;
+     close_unresolved_provider_needs?: Array<{
+       category: string;
+       candidate_provider_ids: number[];
+     }>;
+     /**
+      * R5 authoritative close projection. The single source of truth for the
+      * close turn: every eligible selected provider across all non-deferred
+      * needs (never top-level active-need IDs as a substitute), deferred
+      * categories (never re-mandated, never quoted), user-backed event-date
+      * availability, the pending explicit close intention, and the remaining
+      * typed blockers. Present only on crear_lead_cerrar so unrelated turns
+      * stay byte-identical. Facts only, never reply prose.
+      */
+     close_selected_providers?: Array<{ category: ProviderCategory; provider_ids: number[] }>;
+     close_deferred_categories?: ProviderCategory[];
+     close_event_date_available?: boolean;
+     close_pending_intention?: string | null;
+     close_remaining_blockers?: CloseBlocker[];
+     /**
+      * Attempted-check facts for unavailable-image replies. Typed record of
+      * the checks actually attempted on this turn (image availability with
+      * its typed reason, purchase lookups attempted with results returned)
+      * so the model grounds truthful uncertainty with a bounded fact-ask
+      * instead of vague recovery. Present only when image evidence is
+      * unavailable so unrelated turns stay byte-identical. Facts for the
+      * model to verbalize, never reply prose.
+      */
+     record_checks?: {
+       image_check: { outcome: 'unavailable'; reason: string };
+       purchase_records: { lookups_attempted: number; results_returned: number };
+     };
+     /**
+      * Inbound-continuity facts for the model-owned send/suppress decision.
+      * The model distinguishes an unanswered pending question (answer when
+      * evidence suffices, preserve when it does not), a supplemental image
+      * over an already answered thread (persist silently, no repeat), a new
+      * question or correction (answer, never suppress for a prior answer),
+      * and thanks without a task (legitimate silence). Present only when
+      * their typed evidence exists so unrelated turns stay byte-identical.
+      * Facts for the model to verbalize, never reply prose.
+      */
+     continuity_pending_question?: string | null;
+     continuity_pending_task?: string | null;
+     continuity_has_prior_answer?: boolean;
+   };
   provider_candidates: Array<Record<string, unknown>>;
   recommendation_funnel: RecommendationFunnelTrace | null;
+  /**
+   * L4 Customer operations projection. Present only when the caller
+   * supplied a projection for this turn; absent otherwise so unrelated
+   * turns stay byte-identical.
+   */
+  customer_context?: CustomerContextProjection | null;
 };
 
 /**
@@ -187,15 +516,21 @@ export function otpContinuationEvidence(args: {
 
 /**
  * W1-10 L1 evidence-only close continuity facts. Projects the persisted
- * contact-email already-provided flag and the exactly-once close dispatch
- * precondition from typed close state. Present only on crear_lead_cerrar
- * when their typed evidence exists so unrelated turns stay byte-identical.
- * Facts only, never reply prose (R02). No keyword matching, no fixture
- * identifiers (R09).
+ * contact-email/phone already-provided flags and the exactly-once close
+ * dispatch precondition from typed close state. Present only on
+ * crear_lead_cerrar when their typed evidence exists so unrelated turns stay
+ * byte-identical. Facts only, never reply prose (R02). No keyword matching,
+ * no fixture identifiers (R09).
+ *
+ * R5: the saved-phone flag stops the model from re-asking a persisted phone
+ * after a name/email delta whose raw extraction carries phone null. The
+ * authoritative missing-fields list (never raw extraction nulls) decides
+ * what is actually asked.
  */
 export function closeContinuityFacts(args: {
   readonly currentNode: string;
   readonly contactEmail: string | null;
+  readonly contactPhone?: string | null;
   readonly contactComplete: boolean;
   readonly selectedProviderPresent: boolean;
   readonly closeActionType: string | null;
@@ -203,15 +538,18 @@ export function closeContinuityFacts(args: {
   readonly hasUserEventDate?: boolean;
 }): Pick<
   ReplyTurnEvidence['turn_state'],
-  'contact_email_already_provided' | 'close_ready_to_dispatch'
+  'contact_email_already_provided' | 'contact_phone_already_provided' | 'close_ready_to_dispatch'
 > {
   if (args.currentNode !== 'crear_lead_cerrar') return {};
   const facts: Pick<
     ReplyTurnEvidence['turn_state'],
-    'contact_email_already_provided' | 'close_ready_to_dispatch'
+    'contact_email_already_provided' | 'contact_phone_already_provided' | 'close_ready_to_dispatch'
   > = {};
   if (args.contactEmail !== null && args.contactEmail.trim().length > 0) {
     facts.contact_email_already_provided = true;
+  }
+  if (args.contactPhone !== null && args.contactPhone !== undefined && args.contactPhone.trim().length > 0) {
+    facts.contact_phone_already_provided = true;
   }
   if (
     args.contactComplete &&
@@ -225,8 +563,294 @@ export function closeContinuityFacts(args: {
   return facts;
 }
 
-export class OpenAiAgentRuntime implements AgentRuntime {
-  private readonly runner: Runner;
+/**
+ * R7 RSVP plus-one human-support offer (system.txt:13). When the turn
+ * involves several companions (the system admits a single plus-one), the
+ * reply must include the human-support offer alongside the RSVP answer.
+ * The saved:false failure path already carries its own offer line; this
+ * flag covers the multi-companion shape. Typed extraction evidence only;
+ * no keyword matching.
+ */
+export function rsvpPlusOneSupportOfferRequired(args: {
+  readonly companionCount: 'one' | 'multiple' | 'unknown' | null | undefined;
+  readonly plusOneResponse: 'yes' | 'no' | 'unknown' | null | undefined;
+  readonly hasRsvpWork: boolean;
+}): boolean {
+  if (!args.hasRsvpWork) return false;
+  return args.companionCount === 'multiple';
+}
+
+/**
+ * R7 S12 close misclassification repair. A `request_contact` close action
+ * with fully seeded typed state (complete contact, eligible selection,
+ * user-backed event date, active plan) carries the same dispatch
+ * precondition as `proceed_confirmed` and must dispatch the effect instead
+ * of asking for contact again. Returns the effective action type.
+ */
+export function normalizeCloseActionForDispatch(args: {
+  readonly closeActionType: string | null;
+  readonly contactComplete: boolean;
+  readonly hasEligibleSelection: boolean;
+  readonly eventDateAvailable: boolean;
+  readonly lifecycleActive: boolean;
+}): string | null {
+  if (
+    (args.closeActionType === 'request_contact' || args.closeActionType === 'proceed_confirmed') &&
+    args.contactComplete &&
+    args.hasEligibleSelection &&
+    args.eventDateAvailable &&
+    args.lifecycleActive
+  ) {
+    return 'proceed_confirmed';
+  }
+  return args.closeActionType;
+}
+/**
+ * C1 close-contact evidence for the reply model. Returns the missing contact
+ * fields alongside an explicit completeness flag so the reply continues or
+ * completes the close instead of re-asking fields the plan already holds.
+ * Facts only, never reply prose.
+ */
+export function closeContactEvidenceForReply(plan: {
+  readonly contact_name: string | null;
+  readonly contact_email: string | null;
+  readonly contact_phone: string | null;
+}): { missingFields: string[]; complete: boolean } {
+  const missingFields = (['contact_name', 'contact_email', 'contact_phone'] as const).filter(
+    (field) => !plan[field],
+  );
+  return { missingFields: [...missingFields], complete: missingFields.length === 0 };
+}
+
+/**
+ * R5 authoritative close selection. Every provider need that is NOT deferred
+ * and carries selected provider IDs, in plan order. Deferred needs stay
+ * deferred: they are never re-mandated and never silently selected. Typed
+ * plan state only; no keyword matching, no fixture identifiers.
+ */
+export function collectCloseEligibleSelectedNeeds(plan: {
+  readonly provider_needs: ReadonlyArray<{
+    readonly category: ProviderCategory;
+    readonly status: string;
+    readonly selected_provider_ids: readonly number[];
+  }>;
+}): Array<{ category: ProviderCategory; provider_ids: number[] }> {
+  const selected: Array<{ category: ProviderCategory; provider_ids: number[] }> = [];
+  for (const need of plan.provider_needs) {
+    if (need.status === 'deferred') continue;
+    if (need.selected_provider_ids.length === 0) continue;
+    selected.push({ category: need.category, provider_ids: [...need.selected_provider_ids] });
+  }
+  return selected;
+}
+
+/** R5 deferred categories: needs the user explicitly set aside. Never quoted, never re-mandated. */
+export function collectCloseDeferredCategories(plan: {
+  readonly provider_needs: ReadonlyArray<{ readonly category: ProviderCategory; readonly status: string }>;
+}): ProviderCategory[] {
+  return plan.provider_needs
+    .filter((need) => need.status === 'deferred')
+    .map((need) => need.category);
+}
+
+/**
+ * Native image content for the owner reply call. URL attachments ride as
+ * `{type: input_image, image: URL}`; persisted file references ride as
+ * `{type: input_image, image: {id: fileId}}` (the installed SDK serializes
+ * the latter as `{type: input_image, file_id}` on the Responses wire).
+ * Raw URLs and file IDs travel only here, never as prompt text.
+ */
+export type ReplyImageContentItem =
+  | { type: 'input_text'; text: string }
+  | { type: 'input_image'; image: string; detail: 'auto' }
+  | { type: 'input_image'; image: { id: string }; detail: 'auto' };
+
+export function buildReplyImageContent(
+  text: string,
+  attachments: readonly ImageUrlAttachment[],
+): ReplyImageContentItem[] {
+  return [
+    { type: 'input_text', text },
+    ...attachments.map((attachment): ReplyImageContentItem => ({
+      type: 'input_image',
+      image: attachment.url,
+      detail: 'auto',
+    })),
+  ];
+}
+
+/** File-ID image items appended after the text item by the caller. */
+export function buildReplyFileImageItems(
+  attachments: readonly ImageFileAttachment[],
+): ReplyImageContentItem[] {
+  return attachments.map((attachment): ReplyImageContentItem => ({
+    type: 'input_image',
+    image: { id: attachment.fileId },
+    detail: 'auto',
+  }));
+}
+
+/**
+ * Test mirror of the installed SDK converter: asserts the wire shape the
+ * SDK produces from our content items without sending network traffic.
+ * Authoritative file_id evidence still comes from the installed-SDK capture
+ * test (fetch-mocked Responses body), never from this mirror alone.
+ */
+export function toResponsesWireImageItem(
+  item: ReplyImageContentItem,
+): Record<string, unknown> {
+  if (item.type === 'input_text') return { type: 'input_text', text: item.text };
+  if (typeof item.image === 'string') {
+    return { type: 'input_image', image_url: item.image, detail: item.detail };
+  }
+  return { type: 'input_image', file_id: item.image.id, detail: item.detail };
+}
+
+/**
+ * Pure URL-projection policy (testable): an explicit caller list (even
+ * empty) wins and is the only selection path. Stored references are never
+ * resent on recency or open-need heuristics alone: later-turn reuse needs
+ * demonstrated linkage supplied by the caller (the service selects only
+ * references linked to the current inbound message). Storing alone never
+ * grants model access.
+ */
+export function resolveProjectedImageAttachments(args: {
+  explicit: readonly ImageUrlAttachment[] | undefined;
+  currentNode: string;
+  storedRefs: readonly ImageAttachmentRef[];
+  openNeed: boolean;
+}): ImageUrlAttachment[] {
+  if (args.explicit !== undefined) {
+    return args.explicit.slice(0, MAX_PROJECTED_IMAGE_URLS);
+  }
+  return [];
+}
+
+/**
+ * Explicit-only file-ID projection (same rule as URLs): the caller resolves
+ * relevance from structured evidence and stored refs; undefined projects
+ * nothing. Stored file refs are never resent on recency alone.
+ */
+export function resolveProjectedImageFileAttachments(args: {
+  explicit: readonly ImageFileAttachment[] | undefined;
+}): ImageFileAttachment[] {
+  if (args.explicit === undefined) return [];
+  return args.explicit.slice(0, MAX_PROJECTED_IMAGE_ATTACHMENTS);
+}
+
+/**
+ * R8 same-day image observation summary (pure, testable). Images are
+ * same-day context enrichment for matching against profile/DB, never
+ * structured extraction of amounts/dates/phones from pixels: the summary
+ * carries deposit-seen (from typed voucher/support evidence, never pixels),
+ * legibility and message linkage only. Persistence is the already-stored
+ * image attachment refs (message linkage + receive time); this derives the
+ * observation for the reply, scoped to the same UTC day so follow-up turns
+ * within the day reuse it and cross-day refs create no duties. Returns null
+ * when no same-day image links to this turn so unrelated turns stay
+ * byte-identical.
+ */
+export type ImageObservationInput = {
+  /** This turn's image evidence status (pixels seen or projectable). */
+  readonly imageAvailable: boolean;
+  /** Native pixels ride this reply call. */
+  readonly pixelsProjected: boolean;
+  /** This turn carries its own image (vs a retained prior reference). */
+  readonly currentTurnCarriesImage: boolean;
+  /** Already-persisted attachment refs (message linkage + receive time). */
+  readonly storedRefs: readonly ImageAttachmentRef[];
+  readonly nowMs: number;
+  /** Typed voucher/support evidence mentions a deposit, never pixel content. */
+  readonly depositMentioned: boolean;
+};
+
+export function buildImageObservation(
+  input: ImageObservationInput,
+): ImageObservation | null {
+  const today = new Date(input.nowMs).toISOString().slice(0, 10);
+  const sameDayUsable = input.storedRefs.filter((ref) => {
+    if (typeof ref.receivedAt !== 'string' || ref.receivedAt.slice(0, 10) !== today) return false;
+    return ref.kind === 'url' || isFileRefActive(ref, input.nowMs);
+  });
+  const seenToday = input.imageAvailable || sameDayUsable.length > 0;
+  if (!seenToday) return null;
+  if (input.currentTurnCarriesImage && input.imageAvailable) {
+    return {
+      seenToday: true,
+      legibility: input.pixelsProjected ? 'projected' : 'retained',
+      linkage: 'current',
+      depositMentioned: input.depositMentioned,
+    };
+  }
+  return {
+    seenToday: true,
+    legibility: input.pixelsProjected ? 'projected' : 'retained',
+    linkage: 'prior',
+    depositMentioned: input.depositMentioned,
+  };
+}
+
+/**
+ * Bounded image-attachment index for extraction text. Carries message
+ * linkage, receive time, active/expired status and current/prior relation
+ * ONLY. No raw file IDs, URLs, bytes, captions or descriptions travel here;
+ * the model selects prior_single/prior_uncertain/none from this visible
+ * linkage and the runtime validates membership plus access before projecting
+ * any pixels. Exported for offline tests and byte measurement.
+ */
+export type ImageAttachmentIndexEntry = {
+  message_id: string;
+  received_at: string;
+  status: 'active' | 'expired';
+  relation: 'current' | 'prior';
+};
+
+export function buildImageAttachmentIndexForExtraction(args: {
+  attachments: readonly ImageAttachmentRef[] | undefined;
+  currentMessageId: string | null | undefined;
+  nowMs: number;
+  limit?: number;
+}): ImageAttachmentIndexEntry[] {
+  const refs = [...(args.attachments ?? [])].slice(-(args.limit ?? 5));
+  return refs.map((ref) => ({
+    message_id: ref.messageId,
+    received_at: ref.receivedAt,
+    status: ref.kind === 'url' || isFileRefActive(ref, args.nowMs) ? 'active' : 'expired',
+    relation: args.currentMessageId != null && ref.messageId === args.currentMessageId
+      ? 'current'
+      : 'prior',
+  }));
+}
+
+/**
+ * R6 unambiguous event-time fact. Parses the stored hour verbatim (hour24
+ * as stored, e.g. 05:00 stays 05:00, never 17:00) with no timezone
+ * conversion: record timestamps carry no verified timezone, so the zone is
+ * always unknown. Returns null when the record carries no readable time so
+ * unrelated turns stay byte-identical. Facts only, never reply prose.
+ */
+export function describeRsvpEventTime(
+  value: string | null | undefined,
+): { value: string; hour24: string; timezone: 'unknown' } | null {
+  if (typeof value !== 'string' || value.trim().length === 0) return null;
+  const stored = value.trim();
+  const match = stored.match(/\b(\d{2}):(\d{2})(?::(\d{2}))?\b/u);
+  if (!match) return { value: stored, hour24: 'unknown', timezone: 'unknown' };
+  return { value: stored, hour24: `${match[1]}:${match[2]}`, timezone: 'unknown' };
+}
+
+/**
+ * Step-D lane guard: the two established non-planning reply lanes whose node
+ * contracts forbid provider recommendations and plan edits. Their reply
+ * evidence carries no plan-derived provider focus.
+ */
+function isEstablishedNonPlanningReplyLane(
+  node: ComposeReplyRequest['currentNode'],
+): boolean {
+  return node === 'resolver_consultas_informativas' || node === 'responder_invitacion';
+}
+
+export class OpenAiAgentRuntime implements AgentRuntime {  private readonly runner: Runner;
   private readonly imageRunner: Runner;
 
   constructor(
@@ -254,6 +878,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       apiKey: options.apiKey,
       maxRetries: 0,
     });
+    installOpenAiTransportCapture(openAIClient);
     this.runner = new Runner({
       modelProvider: new OpenAIProvider({ openAIClient }),
     });
@@ -262,6 +887,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   async inspectImage(request: Parameters<NonNullable<AgentRuntime['inspectImage']>>[0]) {
+    if (request.image.source !== 'base64') {
+      throw new Error('inspectImage only handles base64 image input; URL images use the owner reply call.');
+    }
     const bundle = await this.options.promptLoader.loadImageBundle();
     const schema = z.object({ outcome: z.enum(['readable', 'unreadable', 'human_help']), answer: z.string() });
     const agent = new Agent({ name: 'image_inspection', model: this.options.replyModel,
@@ -276,12 +904,17 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const metrics = this.buildRequestMetrics({ instructions: bundle.instructions,
       input: JSON.stringify(input), toolCount: 0, schemaPropertyCount: 2 });
     // Do not log provider errors: they can contain portions of the image input.
-    const result = await this.imageRunner.run(agent, input, {
-      maxTurns: 1, signal: AbortSignal.timeout(this.options.replyTimeoutMs ?? 35_000),
-    });
+    let transportMetrics: OpenAiTransportMetrics | undefined;
+    const captured = await captureOpenAiTransport('image',
+      async () => await this.imageRunner.run(agent, input, {
+        maxTurns: 1, signal: AbortSignal.timeout(this.options.replyTimeoutMs ?? 35_000),
+      }),
+      (metrics) => { transportMetrics = metrics; });
+    const result = captured.value;
     const output = schema.parse(result.finalOutput);
     return { ...output, tokenUsage: this.extractTokenUsage(result),
-      openAiCall: this.extractOpenAiCallRef(result, this.options.replyModel, metrics), promptBundleId: bundle.id };
+      openAiCall: this.extractOpenAiCallRef(captured.value, this.options.replyModel,
+        { ...metrics, transport: transportMetrics }), promptBundleId: bundle.id };
   }
 
   /**
@@ -304,39 +937,22 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   async extract(request: ExtractRequest): Promise<ExtractResult> {
     const policy = deriveDynamicAgentPolicy(request.plan);
     const features = this.resolveFeatureFlags();
-    const informationEnabled =
-      features.faq ||
-      features.invitedEventLookup ||
-      features.purchaseInformation;
-    const allowedActionIntents = policy.allowedActionIntents.filter(
-      (actionIntent) =>
-        (features.providerPlanning || !this.isProviderPlanningIntent(actionIntent)) &&
-        (features.rsvp || actionIntent !== 'responder_invitacion'),
-    );
-    const extractionCapabilities = {
-      information: informationEnabled,
-      rsvp: features.rsvp,
-      providerPlanning: features.providerPlanning,
-      providerOperations:
-        features.providerPlanning && policy.capabilities.hasActivePlan,
-      providerSelection:
-        features.providerPlanning && policy.capabilities.hasShortlist,
-      providerInspection:
-        features.providerPlanning && policy.capabilities.hasShortlist,
-      contact: informationEnabled || policy.capabilities.canClose,
-      close: features.providerPlanning && policy.capabilities.canClose,
-      pause: features.providerPlanning && policy.capabilities.canPause,
-      // Every user-facing extraction profile reports what the user is asking
-      // to do. Availability is decided by the typed runtime manifest later;
-      // keeping this field in the extractor schema prevents the model from
-      // silently routing an unsupported action as a supported one.
-      capabilityBoundary: true,
-    };
+    // L3 single production request builder: the established lane (derived
+    // from typed plan state, never feature flags or message keywords) narrows
+    // the schema profile, prompt files and allowed intents through
+    // projectExtraction. Established purchase/support/RSVP turns omit
+    // planning-only fields; unsupported operations stay expressible through
+    // the capabilityBoundary field.
+    const projection = this.buildExtractionProjection(request.plan, policy, features);
+    const capabilities = projection.profile;
+    const allowedActionIntents = projection.allowedActionIntents;
     const runExtraction = async (): Promise<ExtractResult> => {
-      const capabilities = {
-        ...extractionCapabilities,
-      };
-      const baseBundle = await this.options.promptLoader.loadExtractorBundle(capabilities);
+      const baseBundle = await this.options.promptLoader.loadExtractorBundle(
+        capabilities,
+        // Minimum disclosure: image-linkage guidance only while stored refs
+        // exist; imageless turns stay byte-identical.
+        { includeImageReference: (request.plan.image_attachments?.length ?? 0) > 0 },
+      );
       const hasProtectedContext = request.plan.user_auth.auth_method === 'phone' ||
         request.plan.information_state.pending_requests.some((pending) =>
           pending.kind === 'purchase' || pending.kind === 'associated_event');
@@ -351,6 +967,9 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       const outputSchema = createDynamicExtractionSchema({
         allowedActionIntents,
         capabilities,
+        // Minimum disclosure: follow-up image linkage is expressible only
+        // while the plan stores image attachments.
+        includeImageReference: (request.plan.image_attachments?.length ?? 0) > 0,
       });
       const extractor = new Agent({
         name: 'plan_extractor',
@@ -364,7 +983,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         }),
       });
 
-      const input = this.composeExtractorInput(request, policy);
+      const input = this.composeExtractorInput(request, policy, projection);
       const requestMetrics = this.buildRequestMetrics({
         instructions: bundle.instructions,
         input,
@@ -373,12 +992,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       });
 
       try {
-        const result = await executeOpenAiStage({
-          stage: 'extraction',
-          model: this.options.extractorModel,
-          timeoutMs: this.options.extractorTimeoutMs ?? 35_000,
-          operation: async (signal) => await this.runner.run(extractor, input, { signal }),
-        });
+        let transportMetrics: OpenAiTransportMetrics | undefined;
+        const captured = await captureOpenAiTransport('extraction',
+          async () => await executeOpenAiStage({
+            stage: 'extraction',
+            model: this.options.extractorModel,
+            timeoutMs: this.options.extractorTimeoutMs ?? 35_000,
+            operation: async (signal) => await this.runner.run(extractor, input, { signal }),
+          }),
+          (metrics) => { transportMetrics = metrics; });
+        const result = captured.value;
         return {
           extraction: this.normalizeExtraction(
             result.finalOutput as StructuredExtraction,
@@ -387,7 +1010,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           openAiCall: this.extractOpenAiCallRef(
             result,
             this.options.extractorModel,
-            requestMetrics,
+            { ...requestMetrics, transport: transportMetrics },
           ),
         };
       } catch (error) {
@@ -403,6 +1026,49 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     };
 
     return runExtraction();
+  }
+
+  /**
+   * L3 single production request builder. One projection selects the
+   * extractor schema profile, prompt files, allowed intents and operations
+   * from typed plan state plus the runtime capability manifest. Feature
+   * flags stay a coarse config gate; the established lane decides the
+   * minimal domain actually requested.
+   */
+  private buildExtractionProjection(
+    plan: PersistedPlan,
+    policy: DynamicAgentPolicy,
+    features: AgentFeatureFlags,
+  ): ExtractionProjection {
+    const featureAllowedIntents = policy.allowedActionIntents.filter(
+      (actionIntent) =>
+        (features.providerPlanning || !this.isProviderPlanningIntent(actionIntent)) &&
+        (features.rsvp || actionIntent !== 'responder_invitacion'),
+    );
+    const manifest = this.options.capabilityManifest ??
+      buildRuntimeCapabilityManifest({
+        featureFlags: {
+          faq: features.faq,
+          invitedEventLookup: features.invitedEventLookup,
+          purchaseInformation: features.purchaseInformation,
+          rsvp: features.rsvp,
+          providerPlanning: features.providerPlanning,
+          providerSearch: features.providerSearch,
+          providerQuoteRequests: features.providerQuoteRequests,
+        },
+      });
+    const established = deriveEstablishedExtractionDomain(plan);
+    return projectExtraction({
+      plan,
+      manifest,
+      requestedDomain: established === 'purchase'
+        ? 'purchase'
+        : established === 'rsvp'
+          ? 'rsvp'
+          : null,
+      candidateOperations: [],
+      allowedActionIntents: featureAllowedIntents,
+    });
   }
 
   private normalizeExtraction(
@@ -462,6 +1128,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       providerPlanOperations: extraction.providerPlanOperations ?? [],
       providerExplanationRequest: extraction.providerExplanationRequest ?? null,
       providerDetailRequest: extraction.providerDetailRequest ?? null,
+      imageReference: extraction.imageReference ?? null,
     };
   }
 
@@ -566,28 +1233,43 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       presentation_limit: this.options.presentationProviderLimit,
     };
 
-    const input = this.composeConversationInput(request, recommendationFunnel);
+    const replyImageUrls = this.resolveReplyImageUrls(request);
+    const replyImageFiles = this.resolveReplyImageFiles(request);
+    const input = this.composeConversationInput(request, recommendationFunnel, replyImageUrls, replyImageFiles);
+    const inputPayload = replyImageUrls.length === 0 && replyImageFiles.length === 0
+      ? input
+      : [{
+        role: 'user' as const,
+        content: [
+          ...buildReplyImageContent(input, replyImageUrls),
+          ...buildReplyFileImageItems(replyImageFiles),
+        ],
+      }];
     const requestMetrics = this.buildRequestMetrics({
       instructions: bundle.instructions,
-      input,
+      input: typeof inputPayload === 'string' ? inputPayload : JSON.stringify(inputPayload),
       toolCount: tools.length,
       schemaPropertyCount: Object.keys(outputSchema.shape).length,
     });
 
     let finalOutput: unknown;
     let runResult: unknown;
+    let transportMetrics: OpenAiTransportMetrics | undefined;
     try {
-      const result = await executeOpenAiStage({
-        stage: 'reply',
-        model: this.options.replyModel,
-        timeoutMs: this.options.replyTimeoutMs ?? 22_000,
-        operation: async (signal) => await this.runner.run(agent, input, {
-          context: {
-            toolUsage: request.toolUsage,
-          },
-          signal,
+      const captured = await captureOpenAiTransport('reply',
+        async () => await executeOpenAiStage({
+          stage: 'reply',
+          model: this.options.replyModel,
+          timeoutMs: this.options.replyTimeoutMs ?? 22_000,
+          operation: async (signal) => await this.runner.run(agent, inputPayload, {
+            context: {
+              toolUsage: request.toolUsage,
+            },
+            signal,
+          }),
         }),
-      });
+        (metrics) => { transportMetrics = metrics; });
+      const result = captured.value;
       finalOutput = result.finalOutput;
       runResult = result;
     } catch (error) {
@@ -598,6 +1280,16 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         finalOutput = error.result.agentOutput;
         runResult = error;
       } else {
+        // R3 provider boundary: a narrow image-access failure on a call
+        // that transmitted native image content normalizes to a typed
+        // error carrying the failed attempt transport. Every other
+        // failure (auth, rate limit, timeout, generic outage, schema)
+        // rethrows untouched and is never an image diagnosis.
+        const imageAccessError = toProviderImageAccessError(error, {
+          hadImageAttachments: replyImageUrls.length > 0 || replyImageFiles.length > 0,
+          failedTransport: transportMetrics ?? null,
+        });
+        if (imageAccessError !== null) throw imageAccessError;
         throw error;
       }
     }
@@ -605,7 +1297,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     const structured = parseSchema.parse(
       this.normalizeSupportEmails(finalOutput),
     );
-    return {
+    const composedReply = {
       text: '',
       structuredMessage: structured,
       tokenUsage: this.extractTokenUsage(runResult),
@@ -613,9 +1305,15 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       openAiCall: this.extractOpenAiCallRef(
         runResult,
         this.options.replyModel,
-        requestMetrics,
+        { ...requestMetrics, transport: transportMetrics },
       ),
     };
+    const origin: ModelOriginReceipt | null = buildModelOriginReceipt(
+      composedReply,
+      request.replyBundle?.id ?? request.promptBundleId,
+      request.providerResults,
+    );
+    return { ...composedReply, origin };
   }
 
   private extractTokenUsage(value: unknown): TokenUsage | null {
@@ -948,14 +1646,24 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private composeExtractorInput(
     request: ExtractRequest,
     policy: DynamicAgentPolicy,
+    projection?: ExtractionProjection,
   ): string {
-    const planSnapshot = this.buildExtractorPlanSnapshot(request.plan);
-    const suggestedCategories = this.buildEventCategoryPromptContext(
-      request.plan.event_type,
-      'extractor',
-    );
+    const planSnapshot = this.buildExtractorPlanSnapshot(request.plan, request.currentMessageId ?? null);
+    // L3: established purchase/support/RSVP turns carry no provider
+    // category priorities. The model reads the current lane from the plan
+    // snapshot and pending work, not from planning suggestions.
+    const established = deriveEstablishedExtractionDomain(request.plan);
+    const suggestedCategories = established === null
+      ? this.buildEventCategoryPromptContext(
+        request.plan.event_type,
+        'extractor',
+      )
+      : null;
+    const allowedActionsLine = projection != null
+      ? `${projection.textualAllowedActions} No extraigas acciones fuera de esta lista.`
+      : `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`;
     const continuityEvidence = this.buildExtractorContinuityEvidence(request);
-    const otpEvidence = otpContinuationEvidence({
+    const imagePresence = this.buildExtractorImagePresence(request);    const otpEvidence = otpContinuationEvidence({
       authStatus: request.plan.user_auth.status,
       hasPendingProtectedRequest: request.plan.information_state.pending_requests.some(
         (pending) => pending.kind === 'purchase' || pending.kind === 'associated_event',
@@ -963,18 +1671,22 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     });
     return [
       `Estado del historial: ${request.messageContext.historyStatus}.`,
-      `Historial reciente visible (JSON): ${JSON.stringify(buildModelVisibleConversationHistory(request.messageContext))}`,
+      `Historial reciente para el extractor, cuerpos completos sin truncar orden medio (JSON, maximo 6 turnos x 2000 bytes = 12000 bytes): ${JSON.stringify(buildExtractorConversationHistory(request.messageContext))}`,
+      `Respuesta anterior del asistente (gist, JSON): ${JSON.stringify(buildPriorAnswerGist(request.messageContext))}`,
+      `Pregunta pendiente previa (ref, JSON): ${JSON.stringify(request.plan.owner_pending_question ?? null)}`,
       `Mensaje del usuario: ${request.userMessage}`,
       request.media && request.media.length > 0
         ? `Metadatos de archivos recibidos (no se pueden abrir ni interpretar; JSON): ${JSON.stringify(request.media.map((item) => ({ kind: item.kind, mimeType: item.mimeType, filename: item.fileName })))}.`
         : null,
       `Plan base (JSON compacto): ${JSON.stringify(planSnapshot)}`,
-      `Acciones disponibles en este turno: ${policy.allowedActionIntents.join(', ')}. No extraigas acciones fuera de esta lista.`,
+      allowedActionsLine,
       suggestedCategories,
       continuityEvidence,
+      imagePresence,
       otpEvidence,
       'requestedOperation identifica una operación concreta de capability_boundary.txt; no indica disponibilidad. Usa null cuando no se solicita una operación concreta. Decide por el significado completo y el contexto, nunca por palabras aisladas.',
-      'Extrae solo cambios nuevos del turno. Si no hay un cambio claro, devuelve un delta vacío: no inventes datos y el runtime conservará el estado persistido.',
+      'Regla de ambiguedad con historial: interpreta el mensaje con el historial reciente solo cuando el mensaje sostiene un tema; un agradecimiento, cierre o mensaje sin peticion no es una solicitud: devuelve un delta vacio. El saludo solo esta permitido en conversacion realmente nueva.',
+      'Extrae solo cambios nuevos del turno. Devuelve un delta vacio cuando el turno no trae cambios ni preguntas nuevas; el runtime conservara el estado persistido.',
     ].filter((part): part is string => part !== null).join('\n');
   }
 
@@ -1008,16 +1720,90 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       has_prior_context: continuity.hasPriorContext,
       welcome_allowed: continuity.welcomeAllowed,
       history_status: continuity.historyStatus,
-    })}. El mensaje actual es un seguimiento de esta ruta: conserva el tema que el historial reciente permita sostener; si no puedes extraer un cambio confiable, devuelve un delta vacío o una ambigüedad con una sola pregunta contextual. No saludes, no reinicies y no inventes una nueva intención o consulta.`;
+      prior_answer_gist: buildPriorAnswerGist(request.messageContext),
+      pending_question: request.plan.owner_pending_question ?? null,
+    })}. El mensaje actual es un seguimiento de esta ruta: extrae el tema que el historial reciente permita sostener como solicitud concreta (incluida la pregunta pendiente que siga sin respuesta) en lugar de marcar ambiguedad; solo cuando el historial no permita sostener ningun tema devuelve ambiguedad con una sola pregunta util. Si el turno es solo agradecimiento o cierre sin peticion, devuelve un delta vacio. No saludes, no reinicies y no inventes una nueva intencion o consulta. El saludo solo esta permitido cuando welcome_allowed es true.`;
   }
 
-  private buildExtractorPlanSnapshot(plan: PersistedPlan): Record<string, unknown> {
+  private buildExtractorImagePresence(
+    request: ExtractRequest,
+  ): string | null {
+    // Presence plus message linkage only: whether the current turn carries
+    // an image and which stored message ids it may link to (current/prior).
+    // No receive times, no status menus; the linkage instruction lives in
+    // the image-reference prompt. Imageless turns stay byte-identical; no
+    // raw file IDs, URLs or bytes.
+    const attachments = request.plan.image_attachments ?? [];
+    const hasImageMedia = (request.media ?? []).some((item) => item.kind === 'image');
+    if (attachments.length === 0 && !hasImageMedia) return null;
+    const index = buildImageAttachmentIndexForExtraction({
+      attachments,
+      currentMessageId: request.currentMessageId ?? null,
+      nowMs: Date.now(),
+    });
+    const currentActive = index.some(
+      (entry) => entry.relation === 'current' && entry.status === 'active',
+    );
+    const linkage = index.map((entry) => ({
+      message_id: entry.message_id,
+      relation: entry.relation,
+    }));
+    return [
+      `Imagen actual: ${currentActive ? 'disponible' : 'no disponible'}.`,
+      `Imágenes guardadas (JSON): ${JSON.stringify(linkage)}.`,
+    ].join(' ');
+  }
+
+  private buildExtractorPlanSnapshot(plan: PersistedPlan, currentMessageId: string | null): Record<string, unknown> {
+    // L3 minimum disclosure: established purchase/support/RSVP turns carry
+    // only their lane facts plus contact, summary and pending questions.
+    // Planning-only fields stay omitted so unrelated planning state cannot
+    // leak into (or change the bytes of) an information or RSVP request.
+    const established = deriveEstablishedExtractionDomain(plan);
+    const actionIntent =
+      plan.current_node === 'resolver_consultas_informativas'
+        ? null
+        : plan.intent;
+    // R2: bounded attachment index travels with every lane snapshot that
+    // stores refs (empty indexes are dropped by omission below, so imageless
+    // turns stay byte-identical). Raw file IDs, URLs and bytes never travel.
+    const imageIndex = buildImageAttachmentIndexForExtraction({
+      attachments: plan.image_attachments ?? [],
+      currentMessageId,
+      nowMs: Date.now(),
+    });
+    const laneFacts: Record<string, unknown> = {
+      current_node: plan.current_node,
+      action_intent: actionIntent,
+      contact_name: plan.contact_name,
+      contact_email: plan.contact_email,
+      contact_phone: plan.contact_phone,
+      conversation_summary: this.truncateText(plan.conversation_summary, 180),
+      open_questions: plan.open_questions.slice(0, 3),
+    };
+    if (established === 'purchase' || established === 'support') {
+      return this.omitNeutralSnapshotValues({
+        ...laneFacts,
+        image_attachments: imageIndex,
+        information_state: {
+          pending_requests: plan.information_state.pending_requests,
+          selection_candidates: plan.information_state.selection_candidates,
+          authentication_status: plan.user_auth.status,
+          authenticated_email: plan.user_auth.email,
+        },
+      });
+    }
+    if (established === 'rsvp') {
+      return this.omitNeutralSnapshotValues({
+        ...laneFacts,
+        image_attachments: imageIndex,
+        rsvp_state: plan.rsvp_state,
+      });
+    }
     return {
       current_node: plan.current_node,
-      action_intent:
-        plan.current_node === 'resolver_consultas_informativas'
-          ? null
-          : plan.intent,
+      action_intent: actionIntent,
+      ...(imageIndex.length > 0 ? { image_attachments: imageIndex } : {}),
       event_type: plan.event_type,
       active_need_category: plan.active_need_category,
       vendor_category: plan.vendor_category,
@@ -1068,6 +1854,24 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       },
       rsvp_state: plan.rsvp_state,
     };
+  }
+
+  /**
+   * L3: drop neutral values (null, empty text, empty lists) from narrowed
+   * lane snapshots. Only already-extracted facts travel; the runtime
+   * preserves persisted state for everything the turn leaves unchanged.
+   */
+  private omitNeutralSnapshotValues(
+    snapshot: Record<string, unknown>,
+  ): Record<string, unknown> {
+    const projected: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(snapshot)) {
+      if (value == null) continue;
+      if (typeof value === 'string' && value.trim().length === 0) continue;
+      if (Array.isArray(value) && value.length === 0) continue;
+      projected[key] = value;
+    }
+    return projected;
   }
 
   private buildModelSettings(args: {
@@ -1127,6 +1931,8 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   private composeConversationInput(
     request: ComposeReplyRequest,
     recommendationFunnel: RecommendationFunnelTrace,
+    replyImageUrls: readonly ImageUrlAttachment[] = [],
+    replyImageFiles: readonly ImageFileAttachment[] = [],
   ): string {
     const authenticationOnlyReply =
       this.isAuthenticationOnlyInformationReply(request);
@@ -1148,8 +1954,21 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ? this.collectRecommendedProvidersForMultiNeed(request.plan)
         : request.providerResults.slice(0, this.options.replyProviderLimit);
     const activeNeed = getActiveNeed(request.plan);
-    const focusNeedCategory =
-      request.turnDecision?.focusNeedCategory ?? activeNeed?.category ?? null;
+    // R5: the close turn is a single source of truth. Focus follows the
+    // eligible selection across all non-deferred needs, never the active
+    // need (which may be a deferred category with an empty top-level
+    // selection). Deferred categories are never foregrounded.
+    const isCloseReply = request.currentNode === 'crear_lead_cerrar';
+    const closeEligibleNeeds = isCloseReply ? collectCloseEligibleSelectedNeeds(request.plan) : [];
+    // Step-D projection narrowing: established information/RSVP lanes never
+    // act on provider focus (their node contracts forbid recommendations and
+    // plan edits), so a coincidental planning selection must not leak into
+    // their reply evidence. Planning lanes keep the previous fallback.
+    const focusNeedCategory = isEstablishedNonPlanningReplyLane(request.currentNode)
+      ? request.turnDecision?.focusNeedCategory ?? null
+      : isCloseReply
+        ? (closeEligibleNeeds[0]?.category ?? request.turnDecision?.focusNeedCategory ?? null)
+        : request.turnDecision?.focusNeedCategory ?? activeNeed?.category ?? null;
 
     const evidence = this.buildReplyTurnEvidence({
       request,
@@ -1158,15 +1977,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       recommendationFunnel: stripProviders ? null : recommendationFunnel,
       authenticationOnlyReply,
     });
+    // Packet D: an image-evidence reply (pixels available or unavailable)
+    // never carries planning-category suggestions or the capability
+    // catalog, on any node. Those projections manufactured unrelated
+    // planning intent on media turns; the model answers from the image
+    // plus authorized existing evidence, or asks only for the specific
+    // missing factual information. Never an image or URL request.
+    const hasImageEvidence = request.imageEvidence != null;
     const parts: Array<string | null> = [
       `Evidencia canónica del turno (JSON): ${JSON.stringify(evidence, null, 2)}`,
       request.extraction.ambiguity?.status === 'ambiguous'
-        ? 'La extracción marcó ambigüedad. Formula la respuesta alrededor de ambiguity.clarification_question y no reinicies la conversación con una bienvenida genérica.'
+        ? 'La evidencia de ambigüedad contiene alternativas sin resolver. Pide una aclaración breve y no elijas una alternativa por tu cuenta.'
         : null,
-      resolvedInformationReply
+      // R5: the close prompt carries the actual close outcome/next field
+      // only. Planning-category suggestions and the capability catalog are
+      // unrelated branches on this node; the node contract owns close policy.
+      resolvedInformationReply || isCloseReply || hasImageEvidence
         ? null
         : this.buildEventCategoryPromptContext(request.plan.event_type, 'reply'),
-      authenticationOnlyReply || resolvedInformationReply
+      authenticationOnlyReply || resolvedInformationReply || isCloseReply || hasImageEvidence
         ? null
         : `Capacidades habilitadas para este nodo:\n${this.summarizeEnabledCapabilities(request.currentNode)}`,
     ];
@@ -1183,7 +2012,67 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       parts.push(`Nota operativa: ${request.errorMessage}`);
     }
 
+    if ((replyImageUrls.length > 0 || replyImageFiles.length > 0) && !authenticationOnlyReply) {
+      const imageCount = replyImageUrls.length + replyImageFiles.length;
+      // R2 single canonical occurrence: pixels ride as native image content
+      // and the node contract carries the image policy; this pointer only
+      // states relevance. No links, IDs or prose directions here.
+      parts.push(
+        `Imágenes adjuntas (${imageCount}): úsalas solo si aportan a la tarea actual o si la persona pregunta por lo visible.`,
+      );
+    }
+
     return parts.filter(Boolean).join('\n\n');
+  }
+  // S6 single serialization: the canonical customer_context evidence block
+  // above is the only customerContext serialization. No second JSON append
+  // travels as prose; the node contract carries the usage policy.
+
+  /**
+   * URL/file shape evidence for the model context: counts, byte sizes and
+   * hosts. Raw customer media links and file IDs never enter evidence, logs
+   * or traces.
+   */
+  private buildImageUrlEvidenceFacts(
+    request: ComposeReplyRequest,
+  ): { image_url_count?: number; image_url_hosts?: string[]; image_url_bytes?: number[]; image_file_count?: number } {
+    const resolved = this.resolveReplyImageUrls(request);
+    const resolvedFiles = this.resolveReplyImageFiles(request);
+    const facts: { image_url_count?: number; image_url_hosts?: string[]; image_url_bytes?: number[]; image_file_count?: number } = {};
+    if (resolvedFiles.length > 0) facts.image_file_count = resolvedFiles.length;
+    if (resolved.length === 0) return facts;
+    const hosts: string[] = [];
+    const bytes: number[] = [];
+    for (const attachment of resolved) {
+      try {
+        const host = new URL(attachment.url).hostname.toLowerCase();
+        if (!hosts.includes(host)) hosts.push(host);
+      } catch {
+        hosts.push('[invalid]');
+      }
+      bytes.push(Buffer.byteLength(attachment.url, 'utf8'));
+    }
+    return { image_url_count: resolved.length, image_url_hosts: hosts, image_url_bytes: bytes };
+  }
+
+  private resolveReplyImageUrls(request: ComposeReplyRequest): ImageUrlAttachment[] {
+    // Explicit-only selection: the caller resolves relevance. Stored
+    // references are never resent on recency or open-need heuristics alone.
+    return resolveProjectedImageAttachments({
+      explicit: request.imageUrlAttachments,
+      currentNode: request.currentNode,
+      storedRefs: request.plan.image_attachments ?? [],
+      openNeed: (request.extraction.informationRequests?.length ?? 0) > 0 ||
+        (request.plan.information_state.pending_requests?.length ?? 0) > 0,
+    });
+  }
+
+  private resolveReplyImageFiles(request: ComposeReplyRequest): ImageFileAttachment[] {
+    // Explicit-only selection, same rule as URLs: relevance is resolved by
+    // the caller from structured evidence plus stored file refs.
+    return resolveProjectedImageFileAttachments({
+      explicit: request.imageFileAttachments,
+    });
   }
 
   private buildReplyTurnEvidence(args: {
@@ -1209,23 +2098,62 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       args.request.rsvpPhoneEvidence !== undefined;
     const supportContinuity = this.buildSupportContinuityFacts(args.request);
     const voucherContinuity = this.buildVoucherContinuityFacts(args.request);
+    const recordCheckFacts = this.buildRecordCheckFacts(args.request);
     const hostWithdrawalContinuity = this.buildHostWithdrawalFacts(args.request);
     const leanContinuity = this.buildLeanConversationFacts(args.request);
+    const inboundContinuity = this.buildContinuityFacts(args.request);
+    const closeContactEvidence = closeContactEvidenceForReply(args.request.plan);
+    const closeContactComplete = closeContactEvidence.complete;
+    // R5 single source of truth: eligible selection counts non-deferred needs
+    // only; deferred selections never exist and top-level active-need IDs
+    // never substitute for all selected needs.
+    const closeEligibleSelectedNeeds = collectCloseEligibleSelectedNeeds(args.request.plan);
+    const closeDeferredCategories = args.request.currentNode === 'crear_lead_cerrar'
+      ? collectCloseDeferredCategories(args.request.plan)
+      : [];
+    const closeEventDateAvailable = args.request.currentNode === 'crear_lead_cerrar'
+      ? resolveExplicitEventDate(null, this.closeDateEvidence(args.request)) !== null
+      : false;
     const closeContinuity = closeContinuityFacts({
       currentNode: args.request.currentNode,
       contactEmail: args.request.plan.contact_email,
-      contactComplete: Boolean(
-        args.request.plan.contact_name &&
-        args.request.plan.contact_email &&
-        args.request.plan.contact_phone,
-      ),
-      selectedProviderPresent: args.request.plan.provider_needs.some((need) =>
-        (need.selected_provider_ids?.length ?? 0) > 0,
-      ),
+      contactPhone: args.request.plan.contact_phone,
+      contactComplete: closeContactComplete,
+      selectedProviderPresent: closeEligibleSelectedNeeds.length > 0,
       closeActionType: args.request.extraction.closeAction?.type ?? null,
       lifecycleState: args.request.plan.lifecycle_state,
-      hasUserEventDate: resolveExplicitEventDate(null, this.closeDateEvidence(args.request)) !== null,
+      hasUserEventDate: args.request.currentNode === 'crear_lead_cerrar'
+        ? closeEventDateAvailable
+        : resolveExplicitEventDate(null, this.closeDateEvidence(args.request)) !== null,
     });
+    const closeContactMissingFields = args.request.currentNode === 'crear_lead_cerrar'
+      ? closeContactEvidence.missingFields
+      : [];
+    const unresolvedProviderNeeds = args.request.currentNode === 'crear_lead_cerrar'
+      ? args.request.plan.provider_needs
+        .filter((need) => need.status === 'shortlisted' && need.selected_provider_ids.length === 0)
+        .map((need) => ({
+          category: need.category,
+          candidate_provider_ids: need.recommended_providers.map((provider) => provider.id),
+        }))
+      : [];
+    const closeRemainingBlockers = args.request.currentNode === 'crear_lead_cerrar'
+      ? resolveCloseBlockers({
+        contactComplete: closeContactComplete,
+        eventDateAvailable: closeEventDateAvailable,
+        hasEligibleSelection: closeEligibleSelectedNeeds.length > 0,
+        hasUnresolvedShortlist: unresolvedProviderNeeds.length > 0,
+      })
+      : [];
+    // R5: on the close node the model sees only eligible selected providers.
+    // Rejected deferred recommendation cards (e.g. a deferred Catering
+    // shortlist) never reach provider_candidates.
+    const closeEligibleProviderIds = new Set(
+      closeEligibleSelectedNeeds.flatMap((need) => need.provider_ids),
+    );
+    const evidenceProviders = args.request.currentNode === 'crear_lead_cerrar'
+      ? args.providerResults.filter((provider) => closeEligibleProviderIds.has(provider.id))
+      : args.providerResults;
 
     return {
       nodes: {
@@ -1256,10 +2184,70 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             args.request.plan,
             args.focusNeedCategory,
             args.request.currentNode,
+            args.request.extraction.ambiguity?.status === 'ambiguous',
           ),
       information_results: (args.request.informationResults ?? []).map((result) =>
-        this.projectInformationResultForReply(result),
+        this.projectInformationResultForReply(result, args.request),
       ),
+      capability_outcome: args.request.capabilityDecision
+        ? {
+            status: args.request.capabilityDecision.status,
+            operation: 'operation' in args.request.capabilityDecision
+              ? args.request.capabilityDecision.operation
+              : null,
+            reason: 'reason' in args.request.capabilityDecision
+              ? args.request.capabilityDecision.reason
+              : null,
+            required_input: [],
+            allowed_next: args.request.capabilityDecision.status === 'clarify'
+              ? 'clarify'
+              : args.request.capabilityDecision.status === 'unsupported'
+                ? 'handoff_once'
+                : 'continue',
+          }
+        : null,
+      // Step-D projection narrowing: terminal/declined auth turns already
+      // carry the handoff inside authentication_outcome, so the duplicated
+      // top-level block is omitted there. Non-auth handoff paths keep it.
+      ...(args.request.authenticationOutcome
+        ? {}
+        : { handoff_outcome: args.request.handoffOutcome ?? null }),
+      image_evidence: args.request.imageEvidence
+        ? {
+            status: args.request.imageEvidence.status,
+            reason: args.request.imageEvidence.reason,
+            caption_present: args.request.imageEvidence.captionPresent,
+            ...(args.request.imageEvidence.inspectionOutcome
+              ? { inspection_outcome: args.request.imageEvidence.inspectionOutcome }
+              : {}),
+            ...(args.request.imageEvidence.source
+              ? { source: args.request.imageEvidence.source }
+              : {}),
+            ...(args.request.imageEvidence.observation
+              ? { observation: args.request.imageEvidence.observation }
+              : {}),
+            ...this.buildImageUrlEvidenceFacts(args.request),
+          }
+        : null,
+      authentication_outcome: args.request.authenticationOutcome
+        ? {
+            status: args.request.authenticationOutcome.status,
+            reason: args.request.authenticationOutcome.reason,
+            protected_requests_closed: args.request.authenticationOutcome.protectedRequestsClosed,
+            public_information_requests_remaining:
+              args.request.authenticationOutcome.publicInformationRequestsRemaining,
+            handoff_outcome: args.request.authenticationOutcome.handoffOutcome,
+            ...(args.request.authenticationOutcome.noFurtherCredentialRequests === true
+              ? { no_further_credential_requests: true }
+              : {}),
+            ...(args.request.authenticationOutcome.scopedPhoneSearchMiss === true
+              ? { scoped_phone_search_miss: true }
+              : {}),
+          }
+        : null,
+      ...(args.request.currentNode === 'crear_lead_cerrar'
+        ? { close_submission_receipt: buildCloseSubmissionReceipt(args.request.toolUsage.outputs) }
+        : {}),
       rsvp_phone_evidence: args.request.rsvpPhoneEvidence ?? null,
       rsvp_party: args.request.currentNode === 'responder_invitacion' && args.request.extraction.rsvpParty
           ? {
@@ -1267,25 +2255,50 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             mentioned_names: args.request.extraction.rsvpParty.mentioned_names,
             companion_count: args.request.extraction.rsvpParty.companion_count ?? 'unknown',
             plus_one_response: args.request.extraction.rsvpParty.plus_one_response ?? 'unknown',
+            // R7: plus-one/support offer flag travels with the party facts
+            // so the model-owned sentence includes the human-support offer.
+            ...(rsvpPlusOneSupportOfferRequired({
+              companionCount: args.request.extraction.rsvpParty.companion_count ?? 'unknown',
+              plusOneResponse: args.request.extraction.rsvpParty.plus_one_response ?? 'unknown',
+              hasRsvpWork: true,
+            }) ? { plus_one_support_offer_required: true } : {}),
           }
         : null,
+      ...this.buildRsvpTimeFacts(args.request),
       turn_state: {
         focus_need_category: args.focusNeedCategory,
         missing_fields: args.request.missingFields.map((field) =>
           this.userVisibleMissingFieldLabel(field),
         ),
         search_ready: args.request.searchReady,
-        missing_fields_instruction: this.buildMissingFieldsInstruction(args.request),
         ...supportContinuity,
         ...voucherContinuity,
+        ...recordCheckFacts,
         ...hostWithdrawalContinuity,
         ...leanContinuity,
+        ...inboundContinuity,
         ...closeContinuity,
+        ...(args.request.currentNode === 'crear_lead_cerrar'
+          ? {
+            close_contact_missing_fields: closeContactMissingFields,
+            close_unresolved_provider_needs: unresolvedProviderNeeds,
+            ...(closeContactComplete ? { close_contact_complete: true } : {}),
+            close_selected_providers: closeEligibleSelectedNeeds,
+            close_deferred_categories: closeDeferredCategories,
+            close_event_date_available: closeEventDateAvailable,
+            close_pending_intention: args.request.extraction.closeAction?.type ?? null,
+            close_remaining_blockers: closeRemainingBlockers,
+          }
+          : {}),
       },
-      provider_candidates: args.providerResults.map((provider, index) =>
+      provider_candidates: evidenceProviders.map((provider, index) =>
         this.buildProviderEvidence(provider, index + 1),
       ),
       recommendation_funnel: args.recommendationFunnel,
+      ...(args.request.customerContext !== null &&
+      args.request.customerContext !== undefined
+        ? { customer_context: args.request.customerContext }
+        : {}),
     };
   }
 
@@ -1359,21 +2372,62 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     };
   }
 
+  /**
+   * Attempted-check facts for unavailable-image replies. Projects the typed
+   * record of the checks actually attempted on this turn (image availability
+   * with its typed reason, purchase lookups attempted with results returned)
+   * so the model grounds truthful uncertainty with a bounded fact-ask
+   * instead of vague recovery. Returns no keys when the image is available
+   * or no image evidence travels, so unrelated turns stay byte-identical.
+   * Facts only, never reply prose.
+   */
+  private buildRecordCheckFacts(
+    request: ComposeReplyRequest,
+  ): Pick<ReplyTurnEvidence['turn_state'], 'record_checks'> {
+    if (request.imageEvidence?.status !== 'unavailable') return {};
+    const purchaseLookups = (request.informationResults ?? []).filter(
+      (result) => result.kind === 'purchase',
+    );
+    const resultsReturned = purchaseLookups.reduce((total, result) => {
+      if (result.kind === 'purchase' && result.status === 'completed') {
+        return total + result.purchases.length;
+      }
+      return total;
+    }, 0);
+    return {
+      record_checks: {
+        image_check: {
+          outcome: 'unavailable',
+          reason: request.imageEvidence.reason ?? 'unknown',
+        },
+        purchase_records: {
+          lookups_attempted: purchaseLookups.length,
+          results_returned: resultsReturned,
+        },
+      },
+    };
+  }
+
   private buildLeanConversationFacts(
     request: ComposeReplyRequest,
   ): Pick<
     ReplyTurnEvidence['turn_state'],
-    'close_already_sent' | 'reported_payment_pending_validation'
+    'close_already_sent' |
+    'close_submission_performed_this_turn' |
+    'reported_payment_pending_validation'
   > {
     const facts: Pick<
       ReplyTurnEvidence['turn_state'],
-      'close_already_sent' | 'reported_payment_pending_validation'
+      'close_already_sent' |
+      'close_submission_performed_this_turn' |
+      'reported_payment_pending_validation'
     > = {};
     const hasSelectedProviders = request.plan.provider_needs.some((need) =>
       (need.selected_provider_ids?.length ?? 0) > 0,
     );
     if (request.plan.lifecycle_state === 'finished' && hasSelectedProviders) {
       facts.close_already_sent = true;
+      facts.close_submission_performed_this_turn = false;
     }
     const act = request.extraction.supportAct ?? null;
     const continuedThread = act !== null && (
@@ -1395,6 +2449,53 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       if (hasPendingPurchase) {
         facts.reported_payment_pending_validation = true;
       }
+    }
+    return facts;
+  }
+
+  /**
+   * Inbound-continuity facts for the model-owned send/suppress decision.
+   * Resolved from the explicit caller projection when present, otherwise
+   * derived from the same persisted typed state (owner pending refs, open
+   * questions, information pending/completed, delivered history), so image
+   * and normal turns share one projection. Returns no keys when no pending
+   * question, pending task, or prior answer exists so unrelated turns stay
+   * byte-identical. Facts only, never reply prose. No keyword matching, no
+   * fixture identifiers, no timers.
+   */
+  private buildContinuityFacts(
+    request: ComposeReplyRequest,
+  ): Pick<
+    ReplyTurnEvidence['turn_state'],
+    'continuity_pending_question' | 'continuity_pending_task' | 'continuity_has_prior_answer'
+  > {
+    const explicit: ContinuityProjection | null = request.continuity ?? null;
+    const plan = request.plan;
+    const pendingQuestion = explicit?.pendingQuestion ??
+      plan.owner_pending_question ??
+      plan.open_questions[0] ??
+      null;
+    const pendingTask = explicit?.pendingTask ?? plan.owner_pending_task ?? null;
+    const hasCompletedInformation = explicit?.hasCompletedInformation ??
+      plan.information_state.last_completed_request != null;
+    const continuity = request.messageContext.continuity ?? deriveConversationContinuity({
+      plan,
+      recentMessages: request.messageContext.recentMessages,
+      historyStatus: request.messageContext.historyStatus,
+    });
+    const hasPriorOutbound = explicit?.hasPriorOutbound ?? continuity.hasPriorOutbound;
+    const facts: Pick<
+      ReplyTurnEvidence['turn_state'],
+      'continuity_pending_question' | 'continuity_pending_task' | 'continuity_has_prior_answer'
+    > = {};
+    if (pendingQuestion !== null && pendingQuestion.trim().length > 0) {
+      facts.continuity_pending_question = pendingQuestion.trim().slice(0, 280);
+    }
+    if (pendingTask !== null && pendingTask.trim().length > 0) {
+      facts.continuity_pending_task = pendingTask.trim().slice(0, 280);
+    }
+    if (hasPriorOutbound || hasCompletedInformation) {
+      facts.continuity_has_prior_answer = true;
     }
     return facts;
   }
@@ -1441,6 +2542,26 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return facts;
   }
 
+  /**
+   * R6 RSVP time facts. Projects the stored event date verbatim with its
+   * hour24 reading and unknown timezone for the model-owned sentence.
+   * Present only on responder_invitacion when phone evidence carries a
+   * date, so unrelated turns stay byte-identical. Facts only, never prose.
+   */
+  private buildRsvpTimeFacts(
+    request: ComposeReplyRequest,
+  ): Pick<ReplyTurnEvidence, 'rsvp_event_time'> {
+    if (request.currentNode !== 'responder_invitacion') return {};
+    const evidence = request.rsvpPhoneEvidence;
+    if (!evidence || evidence.state === 'unavailable') return {};
+    const rawDate = evidence.state === 'resolved_single'
+      ? evidence.event.event_date
+      : evidence.candidates.map((candidate) => candidate.event_date).find((date) => date !== null) ?? null;
+    const fact = describeRsvpEventTime(rawDate);
+    if (!fact) return {};
+    return { rsvp_event_time: fact };
+  }
+
   private buildMinimalRsvpExtractionSnapshot(
     extraction: ComposeReplyRequest['extraction'],
   ): Record<string, unknown> {
@@ -1459,7 +2580,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
           ambiguity: extraction.ambiguity
           ? {
               status: extraction.ambiguity.status,
-              clarification_question: extraction.ambiguity.clarificationQuestion,
               candidate_operations: extraction.ambiguity.candidateOperations ?? [],
               question_key: extraction.ambiguity.questionKey ?? null,
             }
@@ -1496,19 +2616,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return node;
   }
 
-  private buildMissingFieldsInstruction(request: ComposeReplyRequest): string {
-    const hasPlanMissingFields = request.missingFields.length > 0;
-    const hasNeedMissingFields = request.plan.provider_needs.some(
-      (need) => need.missing_fields.length > 0,
-    );
-
-    if (hasPlanMissingFields || hasNeedMissingFields) {
-      return 'Solo menciona faltantes presentes en turn_state.missing_fields o plan.provider_needs[].missing_fields. No agregues otros.';
-    }
-
-    return 'No hay faltantes registrados. No digas que faltan fecha, distrito, modalidad, restricciones, presupuesto, preferencias u otros datos.';
-  }
-
   private buildEventCategoryPromptContext(
     eventType: PersistedPlan['event_type'],
     mode: 'extractor' | 'reply',
@@ -1532,6 +2639,28 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     extraction: ComposeReplyRequest['extraction'],
     node: ComposeReplyRequest['currentNode'],
   ): Record<string, unknown> {
+    // R5: the close turn sees one authoritative close intent, never redundant
+    // raw contact nulls. A name/email delta with phone null must not read as
+    // a missing phone: merged plan completeness (turn_state + plan.contact)
+    // is the only contact truth. Selection state also lives in the plan
+    // projection; raw hints never substitute for it.
+    if (node === 'crear_lead_cerrar') {
+      return {
+        action_intent: extraction.actionIntent,
+        close_action: extraction.closeAction ?? null,
+        contact_delta: {
+          name_present: extraction.contactName !== null,
+          email_present: extraction.contactEmail !== null,
+          phone_present: extraction.contactPhone !== null,
+        },
+        ambiguity: extraction.ambiguity
+          ? {
+              status: extraction.ambiguity.status,
+              interpretations: extraction.ambiguity.interpretations ?? [],
+            }
+          : null,
+      };
+    }
     if (node === 'resolver_consultas_informativas') {
       return {
         action_intent: extraction.actionIntent,
@@ -1540,10 +2669,18 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         support_act: extraction.supportAct ?? null,
         phone_confirmation: extraction.phoneConfirmation ?? null,
         ...(extraction.contactEmail ? { contact_email: extraction.contactEmail } : {}),
+        ...(extraction.imageReference && extraction.imageReference.status !== 'none'
+          ? {
+            image_reference: {
+              status: extraction.imageReference.status,
+              referenced_message_ids: extraction.imageReference.referencedMessageIds,
+            },
+          }
+          : {}),
         ambiguity: extraction.ambiguity
           ? {
               status: extraction.ambiguity.status,
-              clarification_question: extraction.ambiguity.clarificationQuestion,
+              interpretations: extraction.ambiguity.interpretations ?? [],
             }
           : null,
       };
@@ -1567,7 +2704,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         ambiguity: extraction.ambiguity
           ? {
               status: extraction.ambiguity.status,
-              clarification_question: extraction.ambiguity.clarificationQuestion,
               interpretations: extraction.ambiguity.interpretations ?? [],
             }
           : null,
@@ -1580,7 +2716,6 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       ambiguity: extraction.ambiguity
         ? {
             status: extraction.ambiguity.status,
-            clarification_question: extraction.ambiguity.clarificationQuestion,
             interpretations: extraction.ambiguity.interpretations ?? [],
           }
         : null,
@@ -1656,11 +2791,46 @@ export class OpenAiAgentRuntime implements AgentRuntime {
   }
 
   private resolveOutputSchema(request: ComposeReplyRequest) {
+    const base = this.resolveBaseOutputSchema(request);
+    // S2 pending-task outcome: turns carrying owner_pending_question expose
+    // a small conditional result field on the existing reply schema. The
+    // active question reference travels in the request (explicit
+    // pendingQuestionRef, else continuity, else plan); unrelated turns keep
+    // the base schema byte-identical with no extra model call.
+    if (this.activePendingQuestionRef(request) === null) return base;
+    return base.extend({ pending_task_outcome: pendingTaskOutcomeSchema.optional() });
+  }
+
+  /**
+   * Active owner pending-question reference for this turn, if the turn
+   * carries one. Explicit request ref wins; otherwise the shared continuity
+   * projection; otherwise the plan. Null means unrelated turn: no outcome
+   * field, no extra call, no prompt change.
+   */
+  private activePendingQuestionRef(request: ComposeReplyRequest): string | null {
+    const explicit = request.pendingQuestionRef?.trim();
+    if (explicit && explicit.length > 0) return explicit;
+    const projected = request.continuity?.pendingQuestion?.trim();
+    if (projected && projected.length > 0) return projected;
+    const stored = request.plan.owner_pending_question?.trim();
+    return stored && stored.length > 0 ? stored : null;
+  }
+
+  private resolveBaseOutputSchema(request: ComposeReplyRequest) {
     if (request.extraction.ambiguity?.status === 'ambiguous') {
       return genericMessageSchema;
     }
 
     const node = request.currentNode;
+    // R2: a fresh image carrying a question is an established owner turn, not
+    // a welcome turn. The welcome schema must not swallow the image question
+    // merely because current_node is still contacto_inicial.
+    const hasImageForReply = request.imageEvidence?.status === 'available' ||
+      (request.imageUrlAttachments?.length ?? 0) > 0 ||
+      (request.imageFileAttachments?.length ?? 0) > 0;
+    if (hasImageForReply && (node === 'contacto_inicial' || node === 'entrevista')) {
+      return genericMessageSchema;
+    }
     if (
       (node === 'contacto_inicial' || node === 'entrevista') &&
       request.messageContext.continuity?.welcomeAllowed === false
@@ -1671,12 +2841,25 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return genericMessageSchema;
     }
     if (node === 'contacto_inicial') {
+      // R7: a stale contacto_inicial node with established plan context is
+      // a mid-conversation turn, never a greeting. True starts only.
+      if (this.hasPlanningContext(request.plan)) {
+        return genericMessageSchema;
+      }
       return welcomeMessageSchema;
     }
-    if (node === 'entrevista' &&
-      request.messageContext.continuity?.welcomeAllowed !== false &&
-      !this.hasPlanningContext(request.plan)) {
-      return welcomeMessageSchema;
+    // R7: mid-conversation entrevista never welcomes. Welcome schema only
+    // on a true conversation start (welcomeAllowed true with no persisted
+    // plan context); every other entrevista turn uses the generic schema
+    // so the reply is a history-grounded clarification, never a greeting.
+    if (node === 'entrevista') {
+      if (
+        request.messageContext.continuity?.welcomeAllowed === true &&
+        !this.hasPlanningContext(request.plan)
+      ) {
+        return welcomeMessageSchema;
+      }
+      return genericMessageSchema;
     }
     if (
       node === 'elicitacion_necesidades' &&
@@ -1688,17 +2871,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return recommendationMessageSchema;
     }
     if (node === 'crear_lead_cerrar') {
-      const hasContact =
-        request.plan.contact_name &&
-        request.plan.contact_email &&
-        request.plan.contact_phone;
-      if (!hasContact) {
-        return contactRequestMessageSchema;
-      }
-      if (request.plan.lifecycle_state === 'finished') {
-        return closeResultMessageSchema;
-      }
-      return closeConfirmationMessageSchema;
+      return genericMessageSchema;
     }
     return genericMessageSchema;
   }
@@ -2460,12 +3633,31 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             priorEffects: completionEffects,
           });
           if ('effects' in result) completionEffects = result.effects;
-          if ('planUpdate' in result && result.planUpdate !== null) {
-            await request.onPlanCompleted?.(result.planUpdate);
-          }
-          this.recordToolOutput(toolUsage, 'finish_plan', result);
-          return result;
-        },
+           if ('planUpdate' in result && result.planUpdate !== null) {
+             await request.onPlanCompleted?.(result.planUpdate);
+           }
+           this.recordToolOutput(toolUsage, 'finish_plan', result);
+           if ('detail' in result) {
+             return {
+               status: result.status,
+               error: result.error,
+               eventDate: null,
+               effects: [],
+             };
+           }
+           return {
+             status: result.status,
+             eventDate: result.eventDate,
+             effects: result.effects.map((effect) => ({
+               providerId: effect.providerId,
+               category: effect.category,
+               status: effect.status,
+               eventDate: effect.eventDate,
+               receiptId: effect.receiptId,
+               attemptCount: effect.attemptCount,
+             })),
+           };
+         },
       }),
     } satisfies Record<ToolName, ReturnType<typeof tool>>;
 
@@ -2504,6 +3696,7 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     plan: PersistedPlan,
     focusNeedCategory: PersistedPlan['active_need_category'],
     node: ComposeReplyRequest['currentNode'],
+    neutralizeUnselectedProviders = false,
   ): Record<string, unknown> {
     if (node === 'resolver_consultas_informativas') {
       return {
@@ -2524,6 +3717,41 @@ export class OpenAiAgentRuntime implements AgentRuntime {
         current_node: plan.current_node,
         contact_phone_present: Boolean(plan.contact_phone_extension && plan.contact_phone_number),
         rsvp_state: plan.rsvp_state,
+      };
+    }
+
+    // R5 authoritative close projection. One compact merged truth replaces
+    // the raw-contact dump and the active-need shortlist: validated contact
+    // completeness with the single missing-fields list, ALL eligible selected
+    // providers across non-deferred needs with their titles, and deferred
+    // categories with no recommendation cards. Top-level selected IDs are
+    // never a substitute for per-need selection, so they are omitted here.
+    if (node === 'crear_lead_cerrar') {
+      const closeContact = closeContactEvidenceForReply(plan);
+      return {
+        lifecycle_state: plan.lifecycle_state,
+        current_node: this.modelVisibleNodeName(plan.current_node),
+        contact: {
+          name: plan.contact_name,
+          email: plan.contact_email,
+          phone: plan.contact_phone,
+          complete: closeContact.complete,
+          missing_fields: [...closeContact.missingFields],
+        },
+        close_selected_providers: plan.provider_needs
+          .filter((need) => need.status !== 'deferred' && need.selected_provider_ids.length > 0)
+          .map((need) => ({
+            category: need.category,
+            provider_ids: [...need.selected_provider_ids],
+            provider_titles: need.selected_provider_ids
+              .map((selectedProviderId) =>
+                need.recommended_providers.find((provider) => provider.id === selectedProviderId)?.title ?? null,
+              )
+              .filter((title): title is string => Boolean(title)),
+          })),
+        close_deferred_categories: plan.provider_needs
+          .filter((need) => need.status === 'deferred')
+          .map((need) => need.category),
       };
     }
 
@@ -2564,10 +3792,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
             need.recommended_providers.find((provider) => provider.id === selectedProviderId)?.title ?? null,
           )
           .filter((title): title is string => Boolean(title)),
-        recommended_provider_ids: need.recommended_provider_ids.slice(0, 6),
-        recommended_provider_titles: need.recommended_providers
-          .slice(0, 3)
-          .map((provider) => provider.title),
+        recommended_provider_ids: need.status === 'deferred' ? [] : need.recommended_provider_ids.slice(0, 6),
+        recommended_provider_titles: need.status === 'deferred' || neutralizeUnselectedProviders
+          ? []
+          : need.recommended_providers.slice(0, 3).map((provider) => provider.title),
       })),
       selected_provider_ids: plan.selected_provider_ids,
       selected_provider_hints: plan.selected_provider_hints,
@@ -2607,7 +3835,10 @@ export class OpenAiAgentRuntime implements AgentRuntime {
     return value;
   }
 
-  private projectInformationResultForReply(result: InformationTaskResult): unknown {
+  private projectInformationResultForReply(
+    result: InformationTaskResult,
+    request: ComposeReplyRequest,
+  ): unknown {
     if (result.status === 'completed' && result.kind === 'faq') {
       if (result.hostWithdrawalPolicy !== undefined) {
         return {
@@ -2654,112 +3885,30 @@ export class OpenAiAgentRuntime implements AgentRuntime {
       return this.stripRawFields(result);
     }
 
-    const boundedPurchases = result.purchases.slice(0, 3).map((purchase) =>
-      this.projectPurchaseForReply(purchase),
+    const purchaseRequests = request.extraction.informationRequests.filter(
+      (informationRequest) => informationRequest.kind === 'purchase',
     );
-    const carts = result.carts ?? [];
-    const shouldExposeCarts = boundedPurchases.length === 0 && carts.length > 0;
-    const boundedCarts = shouldExposeCarts
-      ? carts.slice(0, 3).map((cart) => this.projectCartForReply(cart))
-      : undefined;
-    const sameEventCarts = !shouldExposeCarts && boundedPurchases.length > 0 && carts.length > 0
-      ? carts.filter((cart) => this.isSameEventCart(cart, boundedPurchases))
-      : [];
-    const boundedSameEventCarts =
-      sameEventCarts.length > 0
-        ? sameEventCarts.slice(0, 1).map((cart) => this.projectSameEventCartForReply(cart))
-        : undefined;
-    const finalCarts = boundedCarts ?? boundedSameEventCarts;
-    return this.stripRawFields({
-      ...result,
-      purchases: boundedPurchases,
-      ...(finalCarts ? { carts: finalCarts } : { carts: undefined }),
-    });
-  }
-
-  private projectPurchaseForReply(purchase: PurchaseInformation): Record<string, unknown> {
-    const cashOnly = purchase.items.length > 0 && purchase.items.every(
-      (item) => item.type?.trim().toLowerCase() === 'cash',
+    const requestedAspects: PurchaseAspect[] = purchaseRequests.flatMap(
+      (informationRequest) => informationRequest.aspects,
     );
-    const evidenceLimits = {
-      ...(purchase.amountDisclosure?.presentation === 'recorded_method_no_currency'
-        ? { currency: 'not_reported' }
-        : {}),
-      ...(purchase.paymentStatus?.trim().toLocaleLowerCase('en') === 'pending' &&
-        purchase.amountDisclosure?.paid === null
-        ? { remainingBalance: 'not_verifiable' }
-        : {}),
-      ...(purchase.paymentValidationExpectation && !purchase.payment?.paidAt
-        ? { transactionTime: 'not_verifiable' }
-        : {}),
-    };
-    const sanitized: Record<string, unknown> = {
-      ...purchase,
-      ...(Object.keys(evidenceLimits).length > 0 ? { evidenceLimits } : {}),
-    };
-    // Display metadata never stands in for a withheld currency claim.
-    if (sanitized.currency === null || sanitized.currency === undefined) {
-      delete sanitized.currencySymbol;
-    }
-    if (cashOnly) {
-      delete sanitized.shippingStatus;
-      if (sanitized.dedication && typeof sanitized.dedication === 'object') {
-        const dedication = sanitized.dedication as Record<string, unknown>;
-        const nextDedication = Object.fromEntries(
-          Object.entries(dedication).filter(
-            ([key]) => key !== 'sendPhysical' && key !== 'physicalStatus',
-          ),
-        );
-        sanitized.dedication = nextDedication;
-      }
-    }
-    delete sanitized.payment;
-    delete sanitized.declineCode;
-    delete sanitized.adminComment;
-    // Backend no longer returns COD reference for this flow; identifier is reply-internal only - exclude from model projection per minimum_disclosure
-    delete sanitized.customerTransactionNumber;
-    return sanitized;
-  }
-
-  private projectCartForReply(cart: unknown): unknown {
-    if (!cart || typeof cart !== 'object') return cart;
-    const source = cart as Record<string, unknown>;
-    return {
-      cartId: source.cartId,
-      status: source.status,
-      wasAbandoned: source.wasAbandoned,
-      eventId: source.eventId,
-      eventName: source.eventName,
-      eventDate: source.eventDate,
-      amountDisclosure: source.amountDisclosure,
-      createdAt: source.createdAt,
-    };
-  }
-
-  private projectSameEventCartForReply(cart: unknown): unknown {
-    if (!cart || typeof cart !== 'object') return cart;
-    const source = cart as Record<string, unknown>;
-    return {
-      status: source.status,
-      wasAbandoned: source.wasAbandoned,
-      eventName: source.eventName,
-    };
-  }
-
-  private isSameEventCart(cart: unknown, purchases: ReadonlyArray<Record<string, unknown>>): boolean {
-    if (!cart || typeof cart !== 'object') return false;
-    const source = cart as Record<string, unknown>;
-    const cartEventId = source.eventId;
-    const cartEventName = typeof source.eventName === 'string' ? source.eventName : null;
-    return purchases.some((purchase) => {
-      const purchaseEventId = purchase.eventId;
-      if (cartEventId !== null && cartEventId !== undefined && purchaseEventId !== null && purchaseEventId !== undefined) {
-        if (cartEventId === purchaseEventId) return true;
-      }
-      const purchaseEventName = typeof purchase.eventName === 'string' ? purchase.eventName : null;
-      if (!purchaseEventName || !cartEventName) return false;
-      return areEventNamesEquivalent(purchaseEventName, cartEventName);
-    });
+    const reportedPurchase = purchaseRequests.find(
+      (informationRequest) => informationRequest.amount !== null &&
+        informationRequest.amount !== undefined,
+    );
+    return this.stripRawFields(projectCompletedPurchaseForModel(result, {
+      requestedAspects,
+      referenceAuthorized: result.accessMethod === 'authenticated_account',
+      userReported: {
+        amount: reportedPurchase?.amount ?? null,
+      },
+      permittedNextAction: request.extraction.requestedOperation === 'purchase.modify'
+        ? 'human_support'
+        : null,
+      missingInputs: result.needsSelection ? ['purchase_selection'] : [],
+      ambiguousInputs: request.extraction.ambiguity?.status === 'ambiguous'
+        ? ['purchase_interpretation']
+        : [],
+    }));
   }
 
   private truncateText(value: string, maxLength: number): string {

@@ -3,10 +3,11 @@ import path from 'node:path';
 import type OpenAI from 'openai';
 import { describe, expect, it, vi } from 'vitest';
 
-import { auditPromptBundles } from '../src/audit/prompt-audit';
+import { auditPromptBundles, extractorAuditProfiles } from '../src/audit/prompt-audit';
 import { buildPromptInventory } from '../src/audit/prompt-inventory';
 import { measureCurrentBranches, sampleInputForBranch } from '../src/audit/prompt-branch-measurement';
 import { PromptLoader } from '../src/runtime/prompt-loader';
+import { extractorPromptFilesForCapabilities } from '../src/runtime/prompt-manifest';
 
 describe('prompt audit', () => {
   const loader = new PromptLoader(path.resolve(process.cwd(), 'prompts'));
@@ -27,7 +28,73 @@ describe('prompt audit', () => {
     expect(entry(result, 'resolver_consultas_informativas')).toMatchObject({
       maximumToolCount: 0,
     });
-    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBeLessThan(13854);
+    // The clarification/media/auth evidence projection is intentionally
+    // route-scoped; this is the current measured budget for that bundle.
+    // 2026-09-10 url-image-context: +702 bytes for the owner URL-image
+    // guidance (native projection note, receipt-is-not-proof, no link
+    // disclosure). Previous pin 14247.
+    // 2026-09-11 step C grounding: +2407 bytes for typed factual projection
+    // guidance (order-total vs remaining-balance, currency provenance,
+    // cart/order attribution, selection framing, user-correction framing,
+    // terminal/declined/scoped-miss authentication outcomes). Previous pin 14949.
+    // 2026-09-12 spanish-only multi-need retention (R6 blocked follow-up):
+    // +267 bytes for two outcome-specific retention lines in
+    // resolver_consultas_informativas/response_contract.txt (answer the
+    // current task from its evidence; a pending second request is
+    // acknowledged in the same reply with a concrete next step, never
+    // discarded nor closed, no unexecuted action claimed). Previous measured
+    // 17370. The 17356 pin predates a +14 net drift from earlier lanes'
+    // landed prompt edits: R6 measured 17370 before any file owned by this
+    // lane changed, and this audit imports no runtime file, so neither the
+    // +14 nor this update can silence the duplication/relevance gates below
+    // (violations must stay empty).
+    // 2026-09-14 S6 lean prompt cleanup: +374 bytes for two minimal
+    // tracked invariant lines in
+    // resolver_consultas_informativas/response_contract.txt (customer_context
+    // single-use scoping; explicit 05:00-vs-17:00 time-alternative framing).
+    // The duplicate customerContext prose JSON append was deleted from the
+    // reply input builder in the same packet, so complete serialized
+    // purchase requests shrink despite the prompt growth. Previous pin 17637.
+    // 2026-09-14 R7 grounding-continuity: +634 bytes for four R7 lines in
+    // resolver_consultas_informativas/system.txt (maximal-answer-first,
+    // scoped-record grounding with explicit-target-wins, currency-unknown
+    // negative evidence keeping the 72h note, multi-request retention).
+    // Previous pin 18011.
+    // 2026-09-14 R8 same-day image enrichment: +542 net bytes for two R8
+    // lines in resolver_consultas_informativas/response_contract.txt
+    // (image_evidence no-resend rule with URL alternative; pixel
+    // amounts/dates only as image_agreement DB-sourced agreement language).
+    // Measured 19191 (+546 vs the 18645 pin; +4 net drift from a concurrent
+    // lane's contract rewrites on the same bundle).
+    // 2026-09-14 R9 subtractive simplification: -337 bytes for deleting the
+    // R8 image_agreement exclusivity line from
+    // resolver_consultas_informativas/response_contract.txt (pixel amounts
+    // no longer gated on DB agreement language; the no-resend + URL
+    // alternative rule stays). Previous pin 19191.
+    // 2026-09-14 Packet C intent preservation: -138 bytes for deleting the
+    // competing maximal-answer line from
+    // resolver_consultas_informativas/system.txt (aspect-gated answers in
+    // the response contract win over first-turn maximal disclosure).
+    // Previous pin 18854.
+    // 2026-09-14 Packet D no-URL rewrite + shortening: the rewritten
+    // image_evidence rule drops the URL alternative (answer from
+    // profile/record, ask only the specific missing fact; resend,
+    // replacement, URL, and written-text prohibitions kept). Verified no
+    // customer-facing image/URL request remains in prompts/ (only the
+    // prohibition itself plus allowed OTP-code resends match). The rule
+    // was then shortened -113 bytes with all four norms intact (illegible
+    // implies unavailable; natural redaction already mandated by the
+    // nextInput line). Rewrite measured 18779 (+62); final pin 18666.
+    // 2026-09-14 recheck-5e846b residual cleanup (aspect-gated relevance):
+    // +779 bytes in
+    // resolver_consultas_informativas/response_contract.txt. Global purchase
+    // disclosures (validation/method paragraph, total/balance paragraph,
+    // currency paragraph) now project only when the requested aspect carries
+    // them in disclosures.permitted_aspects, so hour-only answers stay
+    // hour-only; extractor ambiguity no longer binds the reply when resolved
+    // image evidence answers it; receipt-is-not-proof keeps the no-team-escalation
+    // implication out. Relevance controls, not new disclosures. Previous pin 18666.
+    expect(entry(result, 'resolver_consultas_informativas').serializedRequestBytes).toBe(19445);
     expect(entry(result, 'responder_invitacion')).toMatchObject({
       maximumToolCount: 0,
     });
@@ -74,9 +141,9 @@ describe('prompt inventory', () => {
     const inventory = await buildPromptInventory({
       promptsDir: path.resolve(process.cwd(), 'prompts'),
     });
-    expect(inventory.totalFiles).toBe(113);
+    expect(inventory.totalFiles).toBe(111);
     expect(inventory.unmappedFiles).toEqual([]);
-    expect(inventory.entries).toHaveLength(113);
+    expect(inventory.entries).toHaveLength(111);
     for (const entry of inventory.entries) {
       expect(entry.consumers.length).toBeGreaterThan(0);
       expect(entry.filePath).toBeTruthy();
@@ -88,6 +155,68 @@ describe('prompt inventory', () => {
     expect(rsvpExtractor?.consumers.some((consumer) => consumer.callType === 'extraction')).toBe(true);
     const classifier = inventory.entries.find((entry) => entry.filePath === 'nodes/deteccion_intencion/response_classifier.txt');
     expect(classifier?.consumers.some((consumer) => consumer.callType === 'classifier')).toBe(true);
+  });
+
+  it('names no removed renderer and no deleted file as a live loader', async () => {
+    const inventory = await buildPromptInventory({
+      promptsDir: path.resolve(process.cwd(), 'prompts'),
+    });
+    for (const entry of inventory.entries) {
+      for (const consumer of entry.consumers) {
+        expect(consumer.loader).not.toContain('CapabilityOutcomeRenderer');
+        expect(consumer.loader).not.toContain('CapabilityBoundaryRenderer (');
+      }
+    }
+    const filePaths = inventory.entries.map((entry) => entry.filePath);
+    expect(filePaths).not.toContain('capability/turn_outcomes.txt');
+    expect(filePaths).not.toContain('nodes/resolver_consultas_informativas/handoff_outcomes.json');
+    expect(filePaths).not.toContain('nodes/resolver_consultas_informativas/host-withdrawal.json');
+  });
+
+  it('marks runtime-unreachable prompt files as having no production loader', async () => {
+    const inventory = await buildPromptInventory({
+      promptsDir: path.resolve(process.cwd(), 'prompts'),
+    });
+    for (const filePath of [
+      'nodes/resolver_consultas_informativas/capability_boundary.txt',
+      'nodes/resolver_consultas_informativas/image_outcomes.json',
+    ]) {
+      const found = inventory.entries.find((entry) => entry.filePath === filePath);
+      expect(found).toBeDefined();
+      expect(found?.consumers.length).toBeGreaterThan(0);
+      for (const consumer of found?.consumers ?? []) {
+        expect(consumer.loader).toContain('no production loader since L5');
+      }
+    }
+  });
+
+  it('keeps the default extractor bundle equal to the full capability union', async () => {
+    const promptsDir = path.resolve(process.cwd(), 'prompts');
+    const bundle = await new PromptLoader(promptsDir).loadExtractorBundle();
+    expect(bundle.filePaths).toContain('extractors/rsvp.txt');
+    const union = new Set<string>();
+    for (const profile of extractorAuditProfiles) {
+      for (const file of extractorPromptFilesForCapabilities(profile.capabilities)) {
+        union.add(file);
+      }
+    }
+    const boundaryOnly = extractorPromptFilesForCapabilities({
+      information: false,
+      rsvp: false,
+      providerPlanning: false,
+      providerOperations: false,
+      providerSelection: false,
+      providerInspection: false,
+      contact: false,
+      close: false,
+      pause: false,
+      capabilityBoundary: true,
+    });
+    expect(boundaryOnly).toContain('extractors/capability_boundary.txt');
+    for (const file of boundaryOnly) {
+      union.add(file);
+    }
+    expect(new Set(bundle.filePaths)).toEqual(union);
   });
 });
 
